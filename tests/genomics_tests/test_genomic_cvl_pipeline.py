@@ -164,7 +164,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
                 consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
                 consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
             )
-            self.data_generator.create_database_genomic_set_member(
+            member = self.data_generator.create_database_genomic_set_member(
                 genomicSetId=self.gen_set.id,
                 biobankId=summary.biobankId,
                 sampleId=f"100{num}",
@@ -176,6 +176,12 @@ class GenomicCVLPipelineTest(BaseTestCase):
                 genomeType="aou_wgs",
                 participantId=summary.participantId,
                 cvlW2scManifestJobRunID=cvl_w2sc_gen_job_run.id
+            )
+
+            self.data_generator.create_database_genomic_result_workflow_state(
+                genomic_set_member_id=member.id,
+                results_workflow_state=ResultsWorkflowState.CVL_W2SC,
+                results_module=ResultsModuleType.HDRV1
             )
 
         gc_site_ids = ['bi', 'uw', 'bcm']
@@ -195,7 +201,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
         with clock.FakeClock(fake_date):
             genomic_pipeline.cvl_w3sr_manifest_workflow()
 
-        # TODO check members have results workflow state updated correctly for manifest generation
         current_members = self.member_dao.get_all()
 
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
@@ -251,6 +256,20 @@ class GenomicCVLPipelineTest(BaseTestCase):
 
                         self.assertEqual(row['biobank_id'], f'{prefix}{bi_member.biobankId}')
                         self.assertEqual(row['site_name'], 'co')
+
+        # check result workflow state being updated
+        current_workflow_states = self.results_workflow_dao.get_all()
+        self.assertEqual(len(current_workflow_states), 3)
+        self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_module is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_module_str is not None for obj in current_workflow_states))
+
+        self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W3SR for
+                            obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W3SR.name for obj in
+                            current_workflow_states))
+        self.assertTrue(all(obj.results_module == ResultsModuleType.HDRV1 for obj in current_workflow_states))
 
         # check num of manifests generated cp to bucket
         self.assertEqual(len(cvl_sites), physical_manifest_count)
@@ -762,7 +781,6 @@ class ManifestGenerationTestMixin:
     def assert_manifest_has_rows(self, manifest_cloud_writer_mock, expected_rows):
         write_rows_func = manifest_cloud_writer_mock.__enter__.return_value.write_rows
         actual_rows = write_rows_func.call_args[0][0]
-
         self.assertListEqual(expected_rows, actual_rows)
 
     @classmethod
@@ -941,6 +959,26 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             )
         ], any_order=True)
 
+        # check result workflow state being updated
+        results_workflow_dao = GenomicResultWorkflowStateDao()
+        current_workflow_states = results_workflow_dao.get_all()
+
+        self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_module is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_module_str is not None for obj in current_workflow_states))
+
+        self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W1IL for
+                            obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W1IL.name for obj in
+                            current_workflow_states))
+        self.assertTrue(all(obj.results_module == ResultsModuleType.PGXV1 for
+                            obj in current_workflow_states))
+        self.assertEqual(len(current_workflow_states), 5)
+
+        pgx_workflow_states = list(filter(lambda x: x.results_module == ResultsModuleType.PGXV1, current_workflow_states))
+        self.assertEqual(len(current_workflow_states), len(pgx_workflow_states))
+
         # check for hdr manifest
         with clock.FakeClock(manifest_generation_datetime):
             genomic_pipeline.cvl_w1il_manifest_workflow(
@@ -975,6 +1013,29 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
                 'genomic_set_member_update_task'
             )
         ])
+
+        # check result workflow state being updated
+        results_workflow_dao = GenomicResultWorkflowStateDao()
+        current_workflow_states = results_workflow_dao.get_all()
+
+        self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_module is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_module_str is not None for obj in current_workflow_states))
+        self.assertEqual(len(current_workflow_states), 6)
+
+        hdr_workflow_states = list(filter(lambda x: x.results_module == ResultsModuleType.HDRV1,
+                                          current_workflow_states))
+
+        self.assertEqual(len(hdr_workflow_states), 1)
+
+        self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W1IL for
+                            obj in hdr_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str
+                            == ResultsWorkflowState.CVL_W1IL.name for obj in
+                            hdr_workflow_states))
+        self.assertTrue(all(obj.results_module == ResultsModuleType.HDRV1 for
+                            obj in hdr_workflow_states))
 
     def _generate_cvl_participant(
         self,
@@ -1111,15 +1172,27 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         # Generate some set members that should appear in a W2W for different sites
         self.first_withdrawn_member, self.first_summary = self._generate_participant_data(
             set_member_params={'gcSiteId': 'bcm'},
-            withdrawal_status=WithdrawalStatus.NO_USE
+            withdrawal_status=WithdrawalStatus.NO_USE,
+            results_workflow_state_params={
+                'results_workflow_state': ResultsWorkflowState.CVL_W2SC,
+                'results_module': ResultsModuleType.HDRV1,
+            }
         )
         self.second_withdrawn_member, self.second_summary = self._generate_participant_data(
             set_member_params={'gcSiteId': 'bcm'},
-            withdrawal_status=WithdrawalStatus.NO_USE
+            withdrawal_status=WithdrawalStatus.NO_USE,
+            results_workflow_state_params={
+                'results_workflow_state': ResultsWorkflowState.CVL_W2SC,
+                'results_module': ResultsModuleType.HDRV1,
+            }
         )
         self.co_withdrawal, self.co_summary = self._generate_participant_data(
             set_member_params={'gcSiteId': 'bi'},
-            withdrawal_status=WithdrawalStatus.EARLY_OUT
+            withdrawal_status=WithdrawalStatus.EARLY_OUT,
+            results_workflow_state_params={
+                'results_workflow_state': ResultsWorkflowState.CVL_W2SC,
+                'results_module': ResultsModuleType.HDRV1,
+            }
         )
 
         # Generate some participants that should not appear on the W2W manifest
@@ -1128,14 +1201,14 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
                 'gcSiteId': 'bcm',
                 'cvlW2wJobRunId': self.data_generator.create_database_genomic_job_run().id
             },
-            withdrawal_status=WithdrawalStatus.NO_USE
+            withdrawal_status=WithdrawalStatus.NO_USE,
         )
         self._generate_participant_data(
             set_member_params={
                 'gcSiteId': 'bcm',
                 'genomeType': config.GENOME_TYPE_ARRAY
             },
-            withdrawal_status=WithdrawalStatus.NO_USE
+            withdrawal_status=WithdrawalStatus.NO_USE,
         )
 
     @mock.patch('rdr_service.genomic.genomic_job_components.SqlExporter')
@@ -1204,7 +1277,25 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             )
         ], any_order=True)
 
-    def _generate_participant_data(self, set_member_params, withdrawal_status):
+        # check result workflow state being updated
+        results_workflow_dao = GenomicResultWorkflowStateDao()
+        current_workflow_states = results_workflow_dao.get_all()
+
+        self.assertEqual(len(current_workflow_states), 3)
+        self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
+
+        self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W2W for
+                            obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W2W.name for obj in
+                            current_workflow_states))
+
+    def _generate_participant_data(
+        self,
+        set_member_params,
+        withdrawal_status,
+        results_workflow_state_params=None
+    ):
         summary_params = {
             'withdrawalStatus': withdrawal_status
         }
@@ -1228,6 +1319,13 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         if 'cvlW2scManifestJobRunID' not in set_member_params:
             set_member_params['cvlW2scManifestJobRunID'] = self.data_generator.create_database_genomic_job_run().id
         set_member = self.data_generator.create_database_genomic_set_member(**set_member_params)
+
+        if results_workflow_state_params:
+            default_result_params = {
+                'genomic_set_member_id': set_member.id
+            }
+            results_workflow_state_params.update(default_result_params)
+            self.data_generator.create_database_genomic_result_workflow_state(**results_workflow_state_params)
 
         return set_member, summary
 

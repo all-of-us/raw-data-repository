@@ -1278,7 +1278,7 @@ class GenomicFileIngester:
         )
         if (new_results_state and result_state_obj) \
                 and (result_state_obj.results_workflow_state != new_results_state):
-            self.results_workflow_dao.update_workflow_state_record(
+            self.results_workflow_dao.update_results_workflow_state_record(
                 result_state_obj,
                 new_results_state
             )
@@ -3526,7 +3526,7 @@ class ManifestDefinitionProvider:
                 'job_run_field': 'cvlW2wJobRunId',
                 'output_filename':
                     f'{CVL_W2W_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W2W_{now_formatted}.csv',
-                'signal': 'manifest-generated',
+                'signal': 'withdrawal-manifest-generated',
                 'query': self.query_dao.get_data_ready_for_w2w_manifest,
                 'params': {
                     'cvl_id': self.cvl_site_id
@@ -3711,6 +3711,7 @@ class ManifestCompiler:
 
             # Handle Genomic States for manifests
             if self.manifest_def.signal != "bypass":
+                # genomic workflow state
                 new_wf_state = GenomicStateHandler.get_new_state(
                     member.genomicWorkflowState,
                     signal=self.manifest_def.signal
@@ -3718,7 +3719,40 @@ class ManifestCompiler:
                 if new_wf_state or new_wf_state != member.genomicWorkflowState:
                     self.member_dao.update_member_workflow_state(member, new_wf_state)
 
-                # TODO Handle result workflow insert/update for manifest generation
+                # result workflow state
+                cvl_manifest_w1il_map = {
+                    GenomicManifestTypes.CVL_W1IL_PGX: ResultsModuleType.PGXV1,
+                    GenomicManifestTypes.CVL_W1IL_HDR: ResultsModuleType.HDRV1
+                }
+
+                # handles transition from genomic wf state to result state in CVL pipeline
+                if cvl_manifest_w1il_map.get(manifest_type):
+                    module_type = cvl_manifest_w1il_map.get(manifest_type)
+                    result_state_obj = self.results_workflow_dao.get_by_member_id(
+                        member.id,
+                        module_type=module_type
+                    )
+                    if not result_state_obj:
+                        self.results_workflow_dao.insert_new_result_record(
+                            member.id,
+                            module_type
+                        )
+                        continue
+
+                result_state_obj = self.results_workflow_dao.get_by_member_id(
+                    member.id,
+                    module_type=ResultsModuleType.HDRV1
+                )
+                new_results_state = GenomicStateHandler.get_new_state(
+                    result_state_obj.results_workflow_state,
+                    signal=self.manifest_def.signal
+                )
+                if (new_results_state and result_state_obj) \
+                        and (result_state_obj.results_workflow_state != new_results_state):
+                    self.results_workflow_dao.update_results_workflow_state_record(
+                        result_state_obj,
+                        new_results_state
+                    )
 
         # Updates job run field on set member
         if self.controller.member_ids_for_update:
