@@ -217,8 +217,7 @@ class GenomicDataGenManifestSchemaDao(BaseDao):
             ).filter(GenomicSetMember.sampleId.in_(sample_ids))
 
             if cvl_id:
-                query_dao = GenomicQueriesDao()
-                gc_site_id = query_dao.transform_cvl_site_id(cvl_id)
+                gc_site_id = GenomicQueriesDao.transform_cvl_site_id(cvl_id)
                 query = query.filter(GenomicSetMember.gcSiteId == gc_site_id)
 
             return query.all()

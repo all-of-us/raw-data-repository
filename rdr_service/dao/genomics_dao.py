@@ -3289,8 +3289,8 @@ class GenomicQueriesDao(BaseDao):
     def get_id(self, obj):
         pass
 
-    @staticmethod
-    def transform_cvl_site_id(site_id=None):
+    @classmethod
+    def transform_cvl_site_id(cls, site_id=None):
         # co => bi => cvl workflow
         site_id_map = {
             'co': 'bi'
