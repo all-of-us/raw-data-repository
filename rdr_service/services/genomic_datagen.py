@@ -1,3 +1,4 @@
+# pylint: disable=unused-import
 import faker
 import os
 import logging
@@ -16,7 +17,13 @@ from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvide
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
     ResultsWorkflowState, GenomicManifestTypes
 from rdr_service.model.config_utils import get_biobank_id_prefix
-from rdr_service.model.genomics import GenomicSetMember, GenomicResultWorkflowState
+from rdr_service.model.genomics import (
+    GenomicSetMember,
+    GenomicResultWorkflowState,
+    GenomicGCValidationMetrics,
+    GenomicCVLAnalysis,
+    GenomicCVLSecondSample
+)
 from tests.helpers.data_generator import DataGenerator
 
 
@@ -499,8 +506,10 @@ class ManifestGenerator:
     def generate_manifest_data(self):
         manifest_query_result = None
         # Lookup in template table
-        self.template_fields = self.manifest_datagen_dao.get_template_by_name(self.project_name,
-                                                                  self.template_name)
+        self.template_fields = self.manifest_datagen_dao.get_template_by_name(
+            self.project_name,
+            self.template_name)
+
         if self.template_fields:
             self.logger.info("Manifest name found in template table. Running external manifest.")
 
@@ -575,7 +584,7 @@ class ManifestGenerator:
                 return
 
         # Run the manifest query for sample IDs.
-        return self.manifest_datagen_dao.execute_manifest_query(columns, self.sample_ids)
+        return self.manifest_datagen_dao.execute_manifest_query(columns, self.sample_ids, self.cvl_site_id)
 
     def execute_internal_manifest_query(self):
         self.manifest_compiler = ManifestCompiler()
