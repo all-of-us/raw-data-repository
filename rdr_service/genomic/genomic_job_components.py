@@ -3743,16 +3743,17 @@ class ManifestCompiler:
                     member.id,
                     module_type=ResultsModuleType.HDRV1
                 )
-                new_results_state = GenomicStateHandler.get_new_state(
-                    result_state_obj.results_workflow_state,
-                    signal=self.manifest_def.signal
-                )
-                if (new_results_state and result_state_obj) \
-                        and (result_state_obj.results_workflow_state != new_results_state):
-                    self.results_workflow_dao.update_results_workflow_state_record(
-                        result_state_obj,
-                        new_results_state
+                if result_state_obj:
+                    new_results_state = GenomicStateHandler.get_new_state(
+                        result_state_obj.results_workflow_state,
+                        signal=self.manifest_def.signal
                     )
+                    if (new_results_state and result_state_obj) \
+                            and (result_state_obj.results_workflow_state != new_results_state):
+                        self.results_workflow_dao.update_results_workflow_state_record(
+                            result_state_obj,
+                            new_results_state
+                        )
 
         # Updates job run field on set member
         if self.controller.member_ids_for_update:
