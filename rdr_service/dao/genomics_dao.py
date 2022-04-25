@@ -19,7 +19,8 @@ from werkzeug.exceptions import BadRequest, NotFound
 from rdr_service import clock, config
 from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT, GENOMIC_MEMBER_BLOCKLISTS
-from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus
+from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus, \
+    ResultsWorkflowState
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
@@ -3272,7 +3273,17 @@ class GenomicResultWorkflowStateDao(UpdatableDao):
 
             return records
 
-    def update_workflow_state_record(self, obj, new_state):
+    def insert_new_result_record(self, member_id, module_type, state=None):
+        inserted_state = ResultsWorkflowState.CVL_W1IL if not state else state
+        self.insert(GenomicResultWorkflowState(
+            genomic_set_member_id=member_id,
+            results_workflow_state=inserted_state,
+            results_workflow_state_str=inserted_state.name,
+            results_module=module_type,
+            results_module_str=module_type.name
+        ))
+
+    def update_results_workflow_state_record(self, obj, new_state):
         obj.results_workflow_state = new_state
         obj.results_workflow_state_str = new_state.name
         self.update(obj)
