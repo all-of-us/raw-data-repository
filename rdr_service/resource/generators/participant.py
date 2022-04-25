@@ -27,6 +27,7 @@ from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_base import BQRecord
 # TODO: Create new versions of these ENUMs in resource.constants.
 from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum, BQModuleStatusEnum
+from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus
 from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
@@ -206,6 +207,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
             summary['activity'] = self.validate_activity_timestamps(summary['activity'])
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
+
+            # DA-2611 related: Closes a gap where primary consent metrics records in PDR have some stale errors for
+            # invalid DOB/invalid age at consent
+            if summary.get('date_of_birth', None):
+                self.generate_primary_consent_metrics(p_id, ro_session)
+
             return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
 
     def patch_resource(self, p_id, data):
@@ -308,7 +315,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         withdrawal_reason = WithdrawalReason(p.withdrawalReason if p.withdrawalReason else 0)
         suspension_status = SuspensionStatus(p.suspensionStatus)
 
-
         # PDR-252:  The AIAN withdrawal ceremony decision needs to be made available to PDR.  Look for the latest
         # authored answer code, if one exists
         ceremony_question_code = ro_session.query(Code.codeId).filter(Code.value == WITHDRAWAL_CEREMONY_QUESTION_CODE)
@@ -328,7 +334,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 _withdrawal_aian_ceremony_status_map.get(ceremony_response.value, WithdrawalAIANCeremonyStatus.UNSET)
         else:
             withdrawal_aian_ceremony_status = WithdrawalAIANCeremonyStatus.UNSET
-
 
         # The cohort_2_pilot_flag field values in participant_summary were set via a one-time backfill based on a
         # list of participant IDs provided by PTSC and archived in the participant_cohort_pilot table.  See:
@@ -1590,6 +1595,42 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return data
 
+    @staticmethod
+    def generate_primary_consent_metrics(p_id, ro_session=None):
+        """
+        Rebuild the PDR consent metrics records for a participant's primary consent(s).  Invalid DOB/age at consent
+        errors need to be checked for resolution when participant data is rebuilt, in case a new ConsentPII with a
+        different DOB value has been received.
+        :param p_id:  Participant id
+        :param ro_session:  Active DB session for running a read-only query (optional)
+        """
+        dao = None
+        if not ro_session:
+            dao = ResourceDataDao(backup=True)
+            ro_session = dao.session()
+
+        # Only need to regenerate metrics if there are already primary consent PDF validation results (could still be
+        # pending if this is a newly consented participant), with certain statuses pertinent to the metrics.  This
+        # query is almost always limited to 2 or fewer results (a few dozen outlier pids have more)
+        sql = """
+             select id from consent_file
+             where participant_id = :p_id and type = :consent_type
+                   and sync_status in :status_filter
+        """
+        args = {'p_id': p_id, 'consent_type': int(ConsentType.PRIMARY),
+                'status_filter': [int(ConsentSyncStatus.NEEDS_CORRECTING), int(ConsentSyncStatus.READY_FOR_SYNC),
+                                      int(ConsentSyncStatus.SYNC_COMPLETE)]}
+        results = ro_session.execute(sql, args)
+
+        if results:
+            consent_file_ids = [r.id for r in results]
+            if len(consent_file_ids):
+                res_gen = generators.ConsentMetricGenerator(ro_dao=dao)
+                # Transform into consent metrics records for PDR (resource_data table/resource API only, not in BQ)
+                validation_results = res_gen.get_consent_validation_records(id_list=consent_file_ids)
+                for row in validation_results:
+                    res = res_gen.make_resource(row.id, consent_validation_rec=row)
+                    res.save()
 
 def rebuild_participant_summary_resource(p_id, res_gen=None, patch_data=None):
     """
