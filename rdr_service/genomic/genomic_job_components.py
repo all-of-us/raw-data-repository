@@ -3748,7 +3748,7 @@ class ManifestCompiler:
                         result_state_obj.results_workflow_state,
                         signal=self.manifest_def.signal
                     )
-                    if (new_results_state and result_state_obj) \
+                    if new_results_state \
                             and (result_state_obj.results_workflow_state != new_results_state):
                         self.results_workflow_dao.update_results_workflow_state_record(
                             result_state_obj,
