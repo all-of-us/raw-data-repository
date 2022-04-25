@@ -5,7 +5,9 @@ from sqlalchemy.orm import Query, aliased
 from sqlalchemy.sql import functions
 
 from rdr_service.dao.base_dao import BaseDao
-from rdr_service.model.genomics import GenomicInformingLoop, GenomicSetMember
+from rdr_service.dao.genomics_dao import GenomicQueriesDao
+from rdr_service.model.genomics import GenomicInformingLoop, GenomicSetMember, GenomicCVLSecondSample, \
+    GenomicGCValidationMetrics, GenomicCVLAnalysis
 from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate, GenomicDataGenRun, \
     GenomicDatagenMemberRun, GenomicDataGenOutputTemplate, GenomicDataGenManifestSchema
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -195,11 +197,28 @@ class GenomicDataGenManifestSchemaDao(BaseDao):
                 GenomicDataGenManifestSchema.ignore_flag == 0
             ).order_by(GenomicDataGenManifestSchema.field_index).all()
 
-    def execute_manifest_query(self, columns, sample_ids):
+    def execute_manifest_query(self, columns, sample_ids, cvl_id=None):
+
         with self.session() as session:
-            return session.query(
+            query = session.query(
                 *columns
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
-            ).filter(GenomicSetMember.sampleId.in_(sample_ids)).all()
+            ).outerjoin(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).outerjoin(
+                GenomicCVLSecondSample,
+                GenomicCVLSecondSample.genomic_set_member_id == GenomicSetMember.id
+            ).outerjoin(
+                GenomicCVLAnalysis,
+                GenomicCVLAnalysis.genomic_set_member_id == GenomicSetMember.id
+            ).filter(GenomicSetMember.sampleId.in_(sample_ids))
+
+            if cvl_id:
+                query_dao = GenomicQueriesDao()
+                gc_site_id = query_dao.transform_cvl_site_id(cvl_id)
+                query = query.filter(GenomicSetMember.gcSiteId == gc_site_id)
+
+            return query.all()
