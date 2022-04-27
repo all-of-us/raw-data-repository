@@ -89,6 +89,7 @@ from rdr_service.model.consent_response import ConsentResponse, ConsentType
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension, QuestionnaireResponseClassificationType
+from rdr_service.model.participant import Participant
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption, SurveyQuestionType
 from rdr_service.participant_enums import (
     QuestionnaireDefinitionStatus,
@@ -1237,6 +1238,42 @@ class QuestionnaireResponseDao(BaseDao):
                 system, code = system_and_code
                 answer.valueCodeId = code_id_map.get(system, code)
             qr.answers.append(answer)
+
+    @classmethod
+    def get_participant_ids_with_response_to_survey(
+        cls,
+        survey_code: str,
+        session: Session,
+        sent_statuses: Optional[List[QuestionnaireResponseStatus]] = None,
+        classification_types: Optional[List[QuestionnaireResponseClassificationType]] = None
+    ) -> List[int]:
+        if sent_statuses is None:
+            sent_statuses = [QuestionnaireResponseStatus.COMPLETED]
+        if classification_types is None:
+            classification_types = [QuestionnaireResponseClassificationType.COMPLETE]
+
+        query = (
+            session.query(Participant.participantId)
+            .join(
+                QuestionnaireResponse,
+                QuestionnaireResponse.participantId == Participant.participantId
+            ).join(
+                QuestionnaireConcept,
+                and_(
+                    QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
+                    QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
+                )
+            ).join(
+                Code,
+                Code.codeId == QuestionnaireConcept.codeId
+            ).filter(
+                Code.value.ilike(survey_code),
+                QuestionnaireResponse.status.in_(sent_statuses),
+                QuestionnaireResponse.classificationType.in_(classification_types)
+            )
+        )
+
+        return list(result_row.participantId for result_row in query.all())
 
     @classmethod
     def get_responses_to_surveys(

@@ -97,6 +97,25 @@ class ConsentFileAbstractFactory(ABC):
             if self._is_wear_consent(blob_wrapper)
         ]
 
+    def get_from_path(self, file_path: str, consent_date=None) -> 'ConsentFile':
+        wrapper = None
+        for consent in self.consent_blobs:
+            if file_path in consent.blob.public_url:
+                wrapper = consent
+                break
+        if self._is_primary_consent(wrapper):
+            return self._build_primary_consent(wrapper)
+        elif self._is_cabor_consent(wrapper):
+            return self._build_cabor_consent(wrapper)
+        elif self._is_ehr_consent(wrapper):
+            return self._build_ehr_consent(wrapper)
+        elif self._is_gror_consent(wrapper):
+            return self._build_gror_consent(wrapper)
+        elif self._is_primary_update_consent(wrapper, consent_date=consent_date):
+            return self._build_primary_update_consent(wrapper, consent_date=consent_date)
+        elif self._is_wear_consent(wrapper):
+            return self._build_wear_consent(wrapper)
+
     @abstractmethod
     def _is_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         ...
