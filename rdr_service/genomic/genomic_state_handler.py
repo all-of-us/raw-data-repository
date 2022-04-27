@@ -240,6 +240,9 @@ class W1ILState(GenomicStateBase):
 
 class W2SCState(GenomicStateBase):
     def transition_function(self, signal):
+        if signal == 'withdrawal-manifest-generated':
+            return ResultsWorkflowState.CVL_W2W
+
         if signal == 'manifest-generated':
             return ResultsWorkflowState.CVL_W3SR
 

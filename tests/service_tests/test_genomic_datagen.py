@@ -603,7 +603,7 @@ class GenomicDataGenManifestGeneratorTest(BaseTestCase):
     def test_execute_external_manifest_query(self):
         # create test genomic_set_members
         for i in range(1, 3):
-            self.build_default_genomic_set_member(i)
+            self.build_default_genomic_set_member(i, gcSiteId='bi')
 
         # run manifest
         dt = datetime.datetime(2022, 4, 6)
@@ -613,6 +613,7 @@ class GenomicDataGenManifestGeneratorTest(BaseTestCase):
                 template_name="W3NS",
                 sample_ids=['1001', '1002'],
                 update_samples=False,
+                cvl_site_id='co'
             ) as manifest_generator:
                 results = manifest_generator.generate_manifest_data()
 
