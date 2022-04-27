@@ -76,7 +76,7 @@ class ConsentErrorReport(Base):
     modified = Column(UTCDateTime)
     consent_file_id = Column(Integer, ForeignKey(ConsentFile.id), nullable=False)
     notes = Column(String(2048))
-    """ May contain additional details about the error report, such as a corresponding PTSC SD ticket number """
+    """ Additional details about the report, e.g. the error description and/or corresponding PTSC SD ticket number """
 
 
 event.listen(ConsentFile, "before_insert", model_insert_listener)

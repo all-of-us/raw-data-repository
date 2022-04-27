@@ -80,17 +80,19 @@ class ConsentErrorReportTool(object):
             # This enables use of SendGrid email service when running this tool from a dev server vs. app instance
             config.override_setting(config.SENDGRID_KEY, project_config[config.SENDGRID_KEY])
 
-        errors_since = self.args.errors_since
         report = ConsentErrorReportGenerator()
+        id_list = self.id_list
         # Specific ids will override any date filter
-        if self.id_list:
-            errors_since = None
-        report.create_error_reports(errors_created_since=errors_since,
+        if not id_list:
+            report.get_unreported_error_ids()
+
+        report.create_error_reports(
                                     id_list=self.id_list,
                                     recipients=self.recipients,
                                     cc_list=self.cc_recipients,
                                     participant_origin=self.args.origin,
-                                    to_file=self.args.to_file)
+                                    to_file=self.args.to_file
+        )
         return 0
 
 def get_id_list(fname):

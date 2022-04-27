@@ -105,19 +105,16 @@ def batch_rebuild_retention_metrics_task(payload):
 
 def check_consent_errors_task(payload):
     """
-    Review new records from the daily consent validation and generate an automated error report
+    Review previously unreported consent errors and generate an automated error report
     """
-    created_since = payload.get('errors_created_since')
     origin = payload.get('participant_origin', 'vibrent')
-    if isinstance(created_since, datetime):
-        date_filter=created_since
-    elif isinstance(created_since, str):
-        date_filter = datetime.strptime(created_since, "%Y-%m-%dT%H:%M:%S")
-    else:
-        raise ValueError('Invalid errors_created_since value in payload for check_consent_errors_task')
-
+    # DA-2611: Generate a list of all previously unreported errors, based on ConsentErrorReport table content
     gen = ConsentErrorReportGenerator()
-    gen.create_error_reports(errors_created_since=date_filter, participant_origin=origin)
+    id_list = gen.get_unreported_error_ids(origin=origin)
+    if len(id_list):
+        gen.create_error_reports(participant_origin=origin, id_list=id_list)
+    else:
+        logging.info(f'No unreported consent errors found for participants with origin {origin}')
 
 
 def batch_rebuild_consent_metrics_task(payload):
@@ -181,16 +178,12 @@ def dispatch_rebuild_consent_metrics_tasks(id_list, in_seconds=15, quiet=True, b
 
         logging.info(f'Dispatched {completed_batches} batch_rebuild_consent_metrics tasks of max size {batch_size}')
 
-def dispatch_check_consent_errors_task(created_since, in_seconds=30, quiet=True,
+def dispatch_check_consent_errors_task(in_seconds=30, quiet=True, origin=None,
                                        project_id=config.GAE_PROJECT, build_locally=False):
     """
-    Create / queue a task that will check for newly created consent validation errors and generate error reports
-    for PTSC
+    Create / queue a task that will check for unreported validation errors and generate error reports
     """
-    if not isinstance(created_since, datetime):
-        raise(ValueError, "Invalid errors_created_since datetime filter value supplied")
-
-    payload = {'errors_created_since': created_since}
+    payload = {'participant_origin': origin}
     if build_locally or project_id == 'localhost':
         check_consent_errors_task(payload)
     else:

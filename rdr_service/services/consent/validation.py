@@ -410,8 +410,6 @@ class ConsentValidationController:
         """
         Find all the expected consents (filtering by dates if provided) and check the files that have been uploaded
         """
-        validation_start_time = datetime.utcnow().replace(microsecond=0)
-
         # Retrieve consent response objects that need to be validated
         participant_id_consent_map = self.consent_dao.get_consent_responses_to_validate(session=session)
         participant_summaries = self.participant_summary_dao.get_by_ids_with_session(
@@ -437,8 +435,10 @@ class ConsentValidationController:
                 max_authored_date=max_consent_date
             )
 
-        # Queue a task to check for new errors to report to PTSC
-        dispatch_check_consent_errors_task(validation_start_time)
+        # Queue a task to check for new errors to report.  Reporting mechanisms differ for PTSC and CE, so perform
+        # origin-specific tasks to look for errors that have not yet been reported and generate a report
+        dispatch_check_consent_errors_task(participant_origin='vibrent')
+        dispatch_check_consent_errors_task(participant_origin='careevolution')
 
     def validate_all_for_participant(self, participant_id: int, output_strategy: ValidationOutputStrategy):
         summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)

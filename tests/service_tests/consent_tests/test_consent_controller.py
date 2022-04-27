@@ -104,8 +104,9 @@ class ConsentControllerTest(BaseTestCase):
                 ConsentFile(id=4, file_path='/valid_cabor_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
             ]
         )
-        # Confirm call to dispatcher for task that checks for newly detected validation errors
-        self.assertEqual(1, self.dispatch_check_consent_errors_mock.call_count)
+        # Confirm calls to dispatcher for task that checks for newly detected validation errors.   A separate task
+        # is dispatched for each participant origin.
+        self.assertEqual(2, self.dispatch_check_consent_errors_mock.call_count)
 
         # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
         # values from the expected_updates list

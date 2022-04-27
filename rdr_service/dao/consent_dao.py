@@ -8,7 +8,7 @@ from sqlalchemy.orm import aliased, joinedload, Session
 from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.code import Code
-from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType, ConsentErrorReport
 from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -80,7 +80,6 @@ class ConsentDao(BaseDao):
             grouped_results[consent_type].append(authored_time)
 
         return dict(grouped_results)
-
 
     @classmethod
     def get_participants_with_unvalidated_files(cls, session) -> Collection[ParticipantSummary]:
@@ -243,3 +242,23 @@ class ConsentDao(BaseDao):
             ConsentFile.sync_status: ConsentSyncStatus.READY_FOR_SYNC,
             ConsentFile.sync_time: None
         })
+
+class ConsentErrorReportDao(BaseDao):
+
+    def __init__(self):
+        super(ConsentErrorReportDao, self).__init__(ConsentErrorReport)
+
+    @classmethod
+    def _batch_update_consent_error_reports_with_session(cls, session, error_reports: Collection[ConsentErrorReport]):
+        for rec in error_reports:
+            if rec.id:
+                session.merge(rec)
+            else:
+                session.add(rec)
+
+    def batch_update_consent_error_reports(self, error_reports: Collection[ConsentErrorReport], session=None):
+        if session is None:
+            with self.session() as dao_session:
+                return self._batch_update_consent_error_reports_with_session(dao_session, error_reports)
+        else:
+            return self._batch_update_consent_error_reports_with_session(session, error_reports)

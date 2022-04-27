@@ -11,8 +11,10 @@ from re import findall as re_findall
 
 from rdr_service import config
 from rdr_service.dao.resource_dao import ResourceDataDao
+from rdr_service.dao.consent_dao import ConsentErrorReportDao
 from rdr_service.resource import generators, schemas
-from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus, ConsentFile, ConsentOtherErrors
+from rdr_service.model.consent_file import (ConsentType, ConsentSyncStatus, ConsentFile, ConsentOtherErrors,
+                                            ConsentErrorReport)
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.hpo import HPO
@@ -308,16 +310,15 @@ class ConsentMetricGenerator(generators.BaseGenerator):
         return data
 
     def get_consent_validation_records(self, dao=None, id_list=None, sync_statuses=None, consent_types=None,
-                                       created_since_ts=None, origin=None, date_filter='2021-06-01'):
+                                       origin=None, date_filter='2021-06-01'):
         """
         Retrieve consent_file validation records based on provided filter(s)
         :param dao:  Read-only DAO object if one was already instantiated by the caller
-        :param id_list: List of specific consent_file record IDs to retrieve.  Overrides any date/ts filter values
+        :param id_list: List of specific consent_file record IDs to retrieve.  Overrides date_filter
         :param sync_statuses: List of ConsentSyncStatus values to filter on.  Always applied if present
         :param consent_types: List of ConsentType values to filter on.  Always applied if present
-        :param created_since_ts:  Datetime filter value;  takes precedence over date_filter value
         :param date_filter: Date value; default value will return all consent_file records (from any RDR environment)
-        :param origin: participant origin string filter (default is 'vibrent').  Always applied
+        :param origin: participant origin string filter
         :return:  A result set from the query of consent validation data
         """
         if not dao:
@@ -345,30 +346,26 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                                   ParticipantSummary.consentForElectronicHealthRecordsFirstYesAuthored,
                                   ParticipantSummary.consentForElectronicHealthRecordsAuthored,
                                   ParticipantSummary.consentForGenomicsRORAuthored,
+                                  Participant.participantOrigin,
                                   Participant.isGhostId,
                                   Participant.isTestParticipant,
-                                  Participant.participantOrigin,
                                   HPO.hpoId,
                                   HPO.name.label('hpo_name'),
                                   Organization.organizationId,
                                   Organization.displayName.label('organization_name'))\
-                  .outerjoin(ParticipantSummary, ParticipantSummary.participantId == ConsentFile.participant_id)\
-                  .outerjoin(Participant, Participant.participantId == ConsentFile.participant_id)\
-                  .outerjoin(HPO, HPO.hpoId == ParticipantSummary.hpoId)\
-                  .outerjoin(Organization, ParticipantSummary.organizationId == Organization.organizationId)
+                .outerjoin(ParticipantSummary, ParticipantSummary.participantId == ConsentFile.participant_id)\
+                .outerjoin(Participant, Participant.participantId == ConsentFile.participant_id) \
+                .outerjoin(HPO, HPO.hpoId == Participant.hpoId)\
+                .outerjoin(Organization, Participant.organizationId == Organization.organizationId)
 
             if origin:
                 query = query.filter(Participant.participantOrigin == origin)
 
-            # List of ids takes precedence over date/datetime filters
+            # List of ids takes precedence over date filter
             if id_list and len(id_list):
-                query = query.filter(ConsentFile.id.in_(id_list))
+                query = query.filter(ConsentFile.id.in_(list(id_list)))
             else:
-                # Date/Datetime filters, in order of precedence:  created_since overrides date_filter
-                if created_since_ts:
-                    query = query.filter(ConsentFile.created >= created_since_ts)
-                else:
-                    query = query.filter(ConsentFile.modified >= date_filter)
+                query = query.filter(ConsentFile.modified >= date_filter)
 
             if sync_statuses:
                 query = query.filter(ConsentFile.sync_status.in_(sync_statuses))
@@ -415,8 +412,8 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         :param cc_list: List of cc email addresses, if overriding the default config item
         """
         email_config = config.getSettingJson(config.PTSC_SERVICE_DESK_EMAIL, {})
-        recipients = recipients or email_config.get('recipients')
-        cc_list = cc_list or email_config.get('cc_recipients')
+        recipients = recipients if isinstance(recipients, list) else email_config.get('recipients')
+        cc_list = cc_list if isinstance(cc_list, list) else email_config.get('cc_recipients')
         if recipients is None:
             logging.error('No recipient address list available for consent error email generation')
         elif not isinstance(recipients, list):
@@ -433,50 +430,23 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
                          'Please confirm successful PTSC SD ticket creation'])
         logging.warning(msg)
 
-    def get_error_records(self, ids=None, created_since=None, origin=None):
-        """
-        Retrieve NEEDS_CORRECTING consent metrics records
-        Will also identify any records in the id list or created_since date range that have invalid DOB/age at consent
-        error conditions (not part of the consent PDF validation, file may have passed validation as READY_TO_SYNC)
-        :param ids:  List of ConsentFile table primary key ids.  Overrides created_since filter
-        :param created_since:  Datetime value to filter on recently created consent errors
-        :param origin:  Participant origin string (e.g., 'vibrent' or 'careevolution')
-        """
-        results = None
-        error_status_filter = [ConsentSyncStatus.NEEDS_CORRECTING, ]
-        if isinstance(ids, list):
-            results = self.get_consent_validation_records(dao=self.ro_dao, id_list=ids,
-                                                          sync_statuses=error_status_filter)
-            # Null out created_since so it isn't used in the additional primary_consents query below
-            created_since = None
-        elif isinstance(created_since, datetime):
-            results = self.get_consent_validation_records(dao=self.ro_dao, created_since_ts=created_since,
-                                                          origin=origin,
-                                                          sync_statuses=error_status_filter)
-
-        # Also need to find primary consents that passed PDF validation, but have invalid DOB or age at consent
-        primary_consents = self.get_consent_validation_records(dao=self.ro_dao,
-                                                               id_list=ids,
-                                                               created_since_ts=created_since,
-                                                               origin=origin,
-                                                               consent_types=[ConsentType.PRIMARY,],
-                                                               sync_statuses=[ConsentSyncStatus.READY_FOR_SYNC,
-                                                                              ConsentSyncStatus.SYNC_COMPLETE])
-        for row in primary_consents:
-            authored = self._get_authored_timestamps_from_rec(row).get(ConsentType.PRIMARY)
-            dob = row.dateOfBirth
-            if not self.is_valid_dob(authored, dob) or not self.is_valid_age_at_consent(authored, dob):
-                results.append(row)
-
-        return results
-
-    def send_error_reports(self, output_file=None, recipients=None, cc_list=None):
+    def send_error_reports(self, output_file=None, recipients=None, cc_list=None, origin='vibrent'):
         """
         Loop through the results from create_error_reports() and send related emails or output all data to a file
         :param output_file:  File pathname for output, in lieu of sending emails.
         :param recipients:  List of email addresses to send report to, if overriding default config item
         :param cc_list:  List of cc email addresses, if overriding default config item
+        :param origin: Participant origin (default is vibrent)
         """
+        email_config = config.getSettingJson(config.PTSC_SERVICE_DESK_EMAIL, {})
+        if origin == 'vibrent':
+            recipients = recipients if isinstance(recipients, list) else email_config.get('recipients')
+            cc_list = cc_list if isinstance(cc_list, list) else email_config.get('cc_recipients')
+        # TODO:  For now, use the DRC recipent list (cc: list for PTSC emails) as the "to" list for CE-related reports
+        # and blank out the cc: list
+        elif origin == 'careevolution':
+            recipients = recipients if isinstance(recipients, list) else email_config.get('cc_recipients')
+            cc_list = []
 
         # PTSC wants tickets identified by error type detected.  Each error type is a key in the error_list dict where
         # the value is a list of reports (dicts) with details about each detected instance of that error type
@@ -490,7 +460,8 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
             # E.g.:  DRC Consent Validation Issue | PRIMARY, EHR | Missing signature
             #   or   DRC Consent Validation Issue | GROR | Checkbox not checked
             consent_types_in_error = set([e['Consent Type'] for e in error_reports])
-            subject_line = ' | '.join(['DRC Consent Validation Issue',
+            ce_origin = '(CE) ' if origin == 'careevolution' else ''
+            subject_line = ' | '.join([f'{ce_origin}DRC Consent Validation Issue',
                                        ', '.join(consent_types_in_error),
                                        METRICS_ERROR_TYPES.get(err_type)])
 
@@ -507,7 +478,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
 
             if output_file:
                 report_lines.extend(['\n\nSubject: ', subject_line, '\n\n', body])
-            # A separate email/ticket is generated for each detected error type (per PTSC request)
+            # A separate email/ticket is generated for each detected error type (per PTSC request).
             else:
                 self.send_consent_error_email(subject_line, body.rstrip(),
                                               recipients=recipients, cc_list=cc_list)
@@ -516,41 +487,34 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
             with open(output_file, 'w') as f:
                 f.writelines(report_lines)
 
-    def create_error_reports(self, id_list=None, errors_created_since=None, to_file=None,
-                             recipients=None,
-                             cc_list=None,
+    def create_error_reports(self, id_list=None, to_file=None, recipients=None, cc_list=None,
                              participant_origin='vibrent'):
         """
-        Generate relevant consent error report content, currently only for PTSC.  May be called as part of the daily
-        consent validation cron job, or from the manual consent-error-report tool
+        Generate relevant consent error report content.  May be called as part of the daily consent validation cron job,
+        or from the manual consent-error-report tool
 
-        :param id_list: list of consent_file primary key id values.  Has precedence over errors_created_since filter
-        :param errors_created_since: Datetime value to filter for recent errors.  Used by daily cron job
+        :param id_list: list of consent_file primary key id values
         :param participant_origin:  Filter value for participant_origin.  Default is 'vibrent'
         :param to_file: File pathname if error reports are to be routed to output file instead of emailed.  This can
                         be used when running the consent-error-report locally as a dry run.
         :param recipients: List of email address to send reports to, if overriding default config item
         :param cc_list: List of cc email addresses, if overriding default config item
         """
-        error_records = list()
-        if not isinstance(errors_created_since, datetime) and not isinstance(id_list, list):
-            raise ValueError('No filters for consent error report creation')
+        if not isinstance(id_list, list):
+            logging.info('No ids provided for consent error report creation')
+            return
 
-        if isinstance(id_list, list):
-            error_records = self.get_error_records(ids=id_list, origin=participant_origin)
-        elif isinstance(errors_created_since, datetime):
-            error_records = self.get_error_records(created_since=errors_created_since,
-                                                   origin=participant_origin)
-
+        error_records = self.get_consent_validation_records(id_list=id_list, origin=participant_origin)
         if not error_records:
-            msg = 'No consent errors to report based on provided filters'
+            msg = f'No consent errors to report for provided ids and origin {participant_origin}\n'
             if to_file:
                 with open(to_file, 'w') as f:
-                    f.write(msg + '\n')
+                    f.write(msg)
             else:
                 logging.info(msg)
             return
 
+        new_error_report_records = list()
         for rec in error_records:
             authored = self._get_authored_timestamps_from_rec(rec)
             # ConsentMetric resource generator provides data dict used in reporting.  Can skip records flagged as
@@ -565,12 +529,15 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
             # Generate a report entry for any validation error that was detected for this consent
             for err_key in METRICS_ERROR_TYPES.keys():
                 if rsc_data.get(err_key, False):
+                    error_report_record = ConsentErrorReport(consent_file_id=rec.id,
+                                                             notes=METRICS_ERROR_TYPES[err_key])
                     consent = ConsentType(rsc_data.get('consent_type'))
                     error_details = {
                         'Participant': rsc_data.get('participant_id'),
                         'Consent Type': str(consent),
                         'Authored On': authored[consent].strftime("%Y-%m-%dT%H:%M:%S"),
-                        'Error Detected': METRICS_ERROR_TYPES[err_key]
+                        'Error Detected': METRICS_ERROR_TYPES[err_key],
+                        'DRC Tracking ID': rec.id,
                     }
                     # All but 'missing file' reports will contain details on the file that failed validation
                     if err_key != 'missing_file':
@@ -600,6 +567,8 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
                     elif err_key == 'invalid_signing_date':
                         error_details['Expected signing date'] = rec.expected_sign_date
                         error_details['Signing date found'] = rec.signing_date
+
+                    # Per DA-2611, reporting of these invalid_dob and invalid_age_at_consent is no longer automated
                     elif err_key in ['invalid_dob', 'invalid_age_at_consent']:
                         primary_consent_authored = authored[ConsentType.PRIMARY]
                         error_details['Primary Consent Authored'] = primary_consent_authored
@@ -616,5 +585,33 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
                         error_details['Notes'] = note_text
 
                     self.error_list[err_key].append(error_details)
+                    # Unless output is being redirected to a file, add to list of records to insert into DB
+                    if not to_file:
+                        new_error_report_records.append(error_report_record)
 
-        self.send_error_reports(output_file=to_file, recipients=recipients, cc_list=cc_list)
+        self.send_error_reports(output_file=to_file, recipients=recipients, cc_list=cc_list,
+                                origin=participant_origin)
+
+        dao = ConsentErrorReportDao()
+        dao.batch_update_consent_error_reports(new_error_report_records)
+
+    def get_unreported_error_ids(self):
+        """
+        Find all NEEDS_CORRECTING records from the consent_file table that do not have an existing record
+        in the consent_error_report table (added for DA-2611).
+        :returns: A list of consent_file id primary keys, or None
+        """
+        unreported_error_ids = None
+        dao = self.ro_dao or ResourceDataDao()
+        with dao.session() as session:
+            # Date filter is to ignore older unresolved errors prior to release of DA-2611 changes
+            # ~ any() construct will produce results where no related consent_error_report records exist
+            # TODO:  Revise if/when permanent method for tracking outstanding DOB issues is implemented, update
+            # query to combine those with the NEEDS_CORRECTING consent_file records
+            query = session.query(ConsentFile).filter(ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING,
+                                                      ~ConsentFile.consent_error_report.any())
+            results = query.all()
+            if results:
+                unreported_error_ids = [r.id for r in results]
+
+        return unreported_error_ids
