@@ -48,6 +48,8 @@ class Response:
         )
 
     def get_answers_for(self, question_code_str: str) -> Optional[List['Answer']]:
+        if question_code_str is None:
+            return None
         question_code_str = question_code_str.lower()
 
         if (

@@ -89,7 +89,6 @@ from rdr_service.model.consent_response import ConsentResponse, ConsentType
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension, QuestionnaireResponseClassificationType
-from rdr_service.model.participant import Participant
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption, SurveyQuestionType
 from rdr_service.participant_enums import (
     QuestionnaireDefinitionStatus,
@@ -1253,11 +1252,8 @@ class QuestionnaireResponseDao(BaseDao):
             classification_types = [QuestionnaireResponseClassificationType.COMPLETE]
 
         query = (
-            session.query(Participant.participantId)
+            session.query(QuestionnaireResponse.participantId)
             .join(
-                QuestionnaireResponse,
-                QuestionnaireResponse.participantId == Participant.participantId
-            ).join(
                 QuestionnaireConcept,
                 and_(
                     QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
@@ -1273,7 +1269,7 @@ class QuestionnaireResponseDao(BaseDao):
             )
         )
 
-        return list(result_row.participantId for result_row in query.all())
+        return [result_row.participantId for result_row in query.all()]
 
     @classmethod
     def get_responses_to_surveys(
