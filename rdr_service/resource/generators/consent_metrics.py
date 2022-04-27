@@ -363,7 +363,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
 
             # List of ids takes precedence over date filter
             if id_list and len(id_list):
-                query = query.filter(ConsentFile.id.in_(list(id_list)))
+                query = query.filter(ConsentFile.id.in_(id_list))
             else:
                 query = query.filter(ConsentFile.modified >= date_filter)
 
@@ -568,7 +568,9 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
                         error_details['Expected signing date'] = rec.expected_sign_date
                         error_details['Signing date found'] = rec.signing_date
 
-                    # Per DA-2611, reporting of these invalid_dob and invalid_age_at_consent is no longer automated
+                    # Per DA-2611, the invalid dob/age at consent error reports will only be generated if they are
+                    # associated with a consent that also had another PDF validation issue that resulted in a
+                    # NEEDS_CORRECTING status.
                     elif err_key in ['invalid_dob', 'invalid_age_at_consent']:
                         primary_consent_authored = authored[ConsentType.PRIMARY]
                         error_details['Primary Consent Authored'] = primary_consent_authored
@@ -604,7 +606,6 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         unreported_error_ids = None
         dao = self.ro_dao or ResourceDataDao()
         with dao.session() as session:
-            # Date filter is to ignore older unresolved errors prior to release of DA-2611 changes
             # ~ any() construct will produce results where no related consent_error_report records exist
             # TODO:  Revise if/when permanent method for tracking outstanding DOB issues is implemented, update
             # query to combine those with the NEEDS_CORRECTING consent_file records
