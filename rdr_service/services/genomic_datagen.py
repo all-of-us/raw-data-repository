@@ -521,8 +521,7 @@ class ManifestGenerator:
             manifest_query_result = self.execute_external_manifest_query()
 
         else:
-            # Get manifest defitions and set site
-
+            # Get manifest definitions and set site
             site = "rdr"
             if self.cvl_site_id:
                 if self.cvl_site_id == 'bi':
