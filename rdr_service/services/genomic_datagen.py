@@ -521,9 +521,17 @@ class ManifestGenerator:
             manifest_query_result = self.execute_external_manifest_query()
 
         else:
-            # Get manifest defitions and set site
-            site = self.cvl_site_id if self.cvl_site_id else "rdr"
-            self.manifest_def_provider = ManifestDefinitionProvider(cvl_site_id=site, kwargs={})
+            # Get manifest definitions and set site
+            site = "rdr"
+            if self.cvl_site_id:
+                if self.cvl_site_id == 'bi':
+                    site = 'co'
+                else:
+                    site = self.cvl_site_id
+
+            self.manifest_def_provider = ManifestDefinitionProvider(
+                cvl_site_id=site, kwargs={}
+            )
 
             # check manifest defs
             rdr_manifest_names = [a.name for a in self.manifest_def_provider.manifest_columns_config.keys()]
