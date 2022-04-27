@@ -23,6 +23,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
 
     def _create_participant_with_all_consents_authored(self, **kwargs):
         """ Populate a participant_summary record with provided data """
+        # Tests using this setup method may need participants with specific origin or paired hpo_id values and specify
+        # those in the kwargs
         participant = self.data_generator.create_database_participant(
             participantOrigin=kwargs.get('participantOrigin','vibrent'),
             hpoId=kwargs.get('hpoId', 0)
@@ -43,7 +45,6 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         for key in defaults.keys():
             if key not in kwargs.keys():
                 kwargs = dict(**{key: defaults[key]}, **kwargs)
-
 
         participant = self.data_generator.create_database_participant_summary(**kwargs)
         return participant
@@ -283,7 +284,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         generated = {k: v for k, v in resource_data.items() if k in expected}
         self.assertDictEqual(generated, expected)
 
-        # DA-2611: NEEDS_CORRECTING primary consent files in the unreported_errors consent_file ids list can also
+        # DA-2611: consent_file ids in NEEDS_CORRECTING for another PDF validation error can also
         # trigger DOB/age at consent error reports associated with the same ConsentPII payload
         unreported_errors = self.consent_error_report_generator.get_unreported_error_ids()
         self.consent_error_report_generator.create_error_reports(unreported_errors)
@@ -311,7 +312,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             other_errors=ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK
         )
 
-        # Create consent_file record with veteran consent for non-veteran participant error
+        # Create consent_file record with veteran consent for non-veteran error
         consent_file_rec_2 = self.data_generator.create_database_consent_file(
             type=ConsentType.EHR,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -686,7 +687,10 @@ class ConsentMetricGeneratorTest(BaseTestCase):
 
     @mock.patch('rdr_service.services.email_service.EmailService.send_email')
     def test_ce_error_email(self, email_mock):
-        """ For consent errors originating from CE, email report (temporarily) goes to DRC "to" list """
+        """
+        For consent errors originating from CE, email report (temporarily) goes to same recipients who are
+        configured as the cc: recipients in the app config for PTSC service desk tickets
+        """
         # Override config settings for test purposes
         test_key = 'test_key'
         test_email_config = {
@@ -726,10 +730,5 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             self.assertEqual('no-reply@pmi-ops.org', call_arg.args[0].from_email)
             self.assertEqual(test_email_config.get('cc_recipients'), call_arg.args[0].recipients)
             self.assertEmpty(call_arg.args[0].cc_recipients)
-            # CE notation prepended to subject line text
+            # Confirm CE notation prepended to subject line text
             self.assertIn('(CE)', call_arg.args[0].subject)
-
-        # Verify the expected subject line was generated
-        self.assertIn('(CE) DRC Consent Validation Issue | GROR | Checkbox not checked', subject_lines)
-
-

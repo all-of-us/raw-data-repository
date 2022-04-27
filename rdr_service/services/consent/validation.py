@@ -435,8 +435,8 @@ class ConsentValidationController:
                 max_authored_date=max_consent_date
             )
 
-        # Queue a task to check for new errors to report.  Reporting mechanisms differ for PTSC and CE, so perform
-        # origin-specific tasks to look for errors that have not yet been reported and generate a report
+        # Reporting mechanisms differ for PTSC and CE, so perform separate origin-specific tasks to process
+        # errors that have not been reported yet
         dispatch_check_consent_errors_task(participant_origin='vibrent')
         dispatch_check_consent_errors_task(participant_origin='careevolution')
 
