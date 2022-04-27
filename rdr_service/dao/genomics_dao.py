@@ -1069,9 +1069,10 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                 GenomicSetMember.sampleId.is_(None)
             ).first()
 
-    def get_members_for_informing_loop_ready(self, limit=None):
-        with self.session() as session:
-            records = session.query(
+    @classmethod
+    def base_informing_loop_ready(cls):
+        return (
+            sqlalchemy.orm.Query(
                 GenomicSetMember
             ).join(
                 ParticipantSummary,
@@ -1082,15 +1083,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
                     GenomicGCValidationMetrics.ignoreFlag != 1
                 )
-            ).join(
-                BiobankStoredSample,
-                BiobankStoredSample.biobankStoredSampleId == GenomicSetMember.collectionTubeId
-            ).join(
-                BiobankOrderIdentifier,
-                BiobankOrderIdentifier.value == BiobankStoredSample.biobankOrderIdentifier
-            ).join(
-                BiobankOrder,
-                BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId
             ).filter(
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
@@ -1108,8 +1100,28 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                 ParticipantSummary.participantOrigin != 'careevolution',
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.blockResults != 1,
-                GenomicSetMember.informingLoopReadyFlag != 1,
-                GenomicSetMember.informingLoopReadyFlagModified.is_(None)
+            )
+        )
+
+    def get_members_for_informing_loop_ready(self, limit=None):
+        informing_loop_ready = self.base_informing_loop_ready().filter(
+            GenomicSetMember.informingLoopReadyFlag != 1,
+            GenomicSetMember.informingLoopReadyFlagModified.is_(None)
+        ).subquery()
+        with self.session() as session:
+            records = session.query(
+                GenomicSetMember
+            ).join(
+                BiobankStoredSample,
+                BiobankStoredSample.biobankStoredSampleId == GenomicSetMember.collectionTubeId
+            ).join(
+                BiobankOrderIdentifier,
+                BiobankOrderIdentifier.value == BiobankStoredSample.biobankOrderIdentifier
+            ).join(
+                BiobankOrder,
+                BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId
+            ).filter(
+                GenomicSetMember.id == informing_loop_ready.c.id
             ).order_by(
                 BiobankOrder.finalizedTime
             )
@@ -1708,26 +1720,27 @@ class GenomicPiiDao(BaseDao):
         pass
 
     def to_client_json(self, result):
-        if result['data'].consentForGenomicsROR == QuestionnaireStatus.SUBMITTED:
-            if result['mode'] == 'GEM':
+        participant_data = result.get('data')
+        if participant_data.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED:
+            if result.get('mode') == 'GP':
                 return {
-                    "biobank_id": result['data'].biobankId,
-                    "first_name": result['data'].firstName,
-                    "last_name": result['data'].lastName,
-                    "sex_at_birth": result['data'].sexAtBirth,
+                    "biobank_id": participant_data.biobankId,
+                    "first_name": participant_data.firstName,
+                    "last_name": participant_data.lastName,
+                    "sex_at_birth": participant_data.sexAtBirth,
+                    "hgm_informing_loop": participant_data.hgm_informing_loop
                 }
 
-            elif result['mode'] == 'RHP':
+            elif result.get('mode') == 'RHP':
                 return {
-                    "biobank_id": result['data'].biobankId,
-                    "first_name": result['data'].firstName,
-                    "last_name": result['data'].lastName,
-                    "date_of_birth": result['data'].dateOfBirth,
-                    "sex_at_birth": result['data'].sexAtBirth,
+                    "biobank_id": participant_data.biobankId,
+                    "first_name": participant_data.firstName,
+                    "last_name": participant_data.lastName,
+                    "date_of_birth": participant_data.dateOfBirth,
+                    "sex_at_birth": participant_data.sexAtBirth,
                 }
             else:
-                return {"message": "Only GEM and RHP modes supported."}
-
+                return {"message": "Only GP and RHP modes supported."}
         else:
             return {"message": "No RoR consent."}
 
@@ -1737,27 +1750,37 @@ class GenomicPiiDao(BaseDao):
         :param pid:
         :return: query results for PID
         """
+        informing_loop_ready = GenomicSetMemberDao.base_informing_loop_ready().filter(
+            GenomicSetMember.informingLoopReadyFlag == 1,
+            GenomicSetMember.informingLoopReadyFlagModified.isnot(None)
+        ).subquery()
         with self.session() as session:
-            return (
-                session.query(
-                    GenomicSetMember.biobankId,
-                    ParticipantSummary.firstName,
-                    ParticipantSummary.lastName,
-                    ParticipantSummary.consentForGenomicsROR,
-                    ParticipantSummary.dateOfBirth,
-                    GenomicSetMember.sexAtBirth
-                )
-                .join(
-                    ParticipantSummary,
-                    GenomicSetMember.participantId == ParticipantSummary.participantId,
-                ).filter(
-                    GenomicSetMember.participantId == pid,
-                    GenomicSetMember.gemPass == "Y",
-                    ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                    ParticipantSummary.withdrawalStatus == SuspensionStatus.NOT_SUSPENDED,
-                    GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                ).first()
-            )
+            return session.query(
+                GenomicSetMember.biobankId,
+                ParticipantSummary.firstName,
+                ParticipantSummary.lastName,
+                ParticipantSummary.consentForGenomicsROR,
+                ParticipantSummary.dateOfBirth,
+                GenomicSetMember.sexAtBirth,
+                sqlalchemy.case(
+                    [
+                        (informing_loop_ready.c.id.isnot(None), True)
+                    ],
+                    else_=False
+                ).label('hgm_informing_loop')
+            ).outerjoin(
+                informing_loop_ready,
+                informing_loop_ready.c.participant_id == GenomicSetMember.participantId
+            ).join(
+                ParticipantSummary,
+                GenomicSetMember.participantId == ParticipantSummary.participantId,
+            ).filter(
+                GenomicSetMember.participantId == pid,
+                GenomicSetMember.gemPass == "Y",
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE
+            ).first()
 
 
 class GenomicOutreachDao(BaseDao):
@@ -3313,7 +3336,7 @@ class GenomicQueriesDao(BaseDao):
         return site_id_map[site_id]
 
     def get_w3sr_records(self, **kwargs):
-        site_id = self.transform_cvl_site_id(kwargs.get('site_id'))
+        gc_site_id = self.transform_cvl_site_id(kwargs.get('site_id'))
         sample_ids = kwargs.get('sample_ids')
 
         with self.session() as session:
@@ -3353,9 +3376,9 @@ class GenomicQueriesDao(BaseDao):
                 GenomicSetMember.genomeType == config.GENOME_TYPE_WGS
             )
 
-            if site_id:
+            if gc_site_id:
                 records = records.filter(
-                    GenomicSetMember.gcSiteId == site_id.lower()
+                    GenomicSetMember.gcSiteId == gc_site_id.lower()
                 )
 
             if sample_ids:
@@ -3370,6 +3393,7 @@ class GenomicQueriesDao(BaseDao):
         Returns the genomic set member and other data needed for a W1IL manifest.
         :param module: Module to retrieve genomic set members for, either 'pgx' or 'hdr'
         :param cvl_id: CVL id that the data will go to ('co', 'uw', 'bcm')
+        :param sample_ids: Sample IDs that the data will filter on if defined
         """
 
         gc_site_id = self.transform_cvl_site_id(cvl_id)

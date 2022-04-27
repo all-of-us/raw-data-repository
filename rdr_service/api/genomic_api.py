@@ -23,8 +23,8 @@ class GenomicPiiApi(BaseApi):
 
     @auth_required([GEM, RDR])
     def get(self, mode=None, p_id=None):
-        if mode not in ('GEM', 'RHP'):
-            raise BadRequest("GenomicPII Mode required to be \"GEM\" or \"RHP\".")
+        if mode not in ('GP', 'RHP'):
+            raise BadRequest("GenomicPII Mode required to be \"GP\" or \"RHP\".")
 
         if p_id is not None:
             pii = self.dao.get_by_pid(p_id)
