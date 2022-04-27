@@ -22,7 +22,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicMemberReportStateDao,
     GenomicGcDataFileDao, GenomicResultViewedDao
 )
-from rdr_service.genomic_enums import GenomicJob, GenomicReportState, GenomicWorkflowState, GenomicManifestTypes
+from rdr_service.genomic_enums import GenomicJob, GenomicReportState, GenomicWorkflowState, GenomicManifestTypes, \
+    GenomicQcStatus
 from rdr_service.model.participant import Participant
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -115,7 +116,8 @@ class GenomicApiTestBase(BaseTestCase):
             gemPass='Y',
             biobankId=participant.biobankId,
             sexAtBirth='F',
-            genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY)
+            genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY
+        )
 
         kwargs = dict(valid_kwargs, **override_kwargs)
         new_member = GenomicSetMember(**kwargs)
@@ -128,39 +130,103 @@ class GenomicApiTestBase(BaseTestCase):
         self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
 
 
-class GemApiTest(GenomicApiTestBase):
+class GPGenomicPIIApiTest(GenomicApiTestBase):
     def setUp(self):
-        super(GemApiTest, self).setUp()
+        super(GPGenomicPIIApiTest, self).setUp()
 
     def test_get_pii_valid_pid(self):
-        p1_pii = self.send_get("GenomicPII/GEM/P1")
+        p1_pii = self.send_get("GenomicPII/GP/P1")
         self.assertEqual(p1_pii['biobank_id'], '1')
         self.assertEqual(p1_pii['first_name'], 'TestFN')
         self.assertEqual(p1_pii['last_name'], 'TestLN')
         self.assertEqual(p1_pii['sex_at_birth'], 'F')
+        self.assertEqual(p1_pii['hgm_informing_loop'], False)
 
     def test_get_pii_invalid_pid(self):
         p = self._make_participant()
         self._make_summary(p, withdrawalStatus=WithdrawalStatus.NO_USE)
         self._make_set_member(p)
-        self.send_get("GenomicPII/GEM/P2", expected_status=404)
+        self.send_get(f"GenomicPII/GP/P{p.participantId}", expected_status=404)
 
     def test_get_pii_no_gror_consent(self):
         p = self._make_participant()
         self._make_summary(p, consentForGenomicsROR=0)
         self._make_set_member(p)
-        p2_pii = self.send_get("GenomicPII/GEM/P2")
+        p2_pii = self.send_get(f"GenomicPII/GP/P{p.participantId}")
         self.assertEqual(p2_pii['message'], "No RoR consent.")
 
     def test_get_pii_bad_request(self):
-        self.send_get("GenomicPII/GEM/", expected_status=404)
-        self.send_get("GenomicPII/GEM/P8", expected_status=404)
+        self.send_get("GenomicPII/GP/", expected_status=404)
+        self.send_get("GenomicPII/GP/P8", expected_status=404)
         self.send_get("GenomicPII/CVL/P2", expected_status=400)
 
+    def test_sex_at_birth_equals_na(self):
+        sex_type = 'NA'
+        p = self._make_participant()
+        self._make_set_member(p, sexAtBirth=sex_type)
+        self._make_summary(p)
+        response = self.send_get(f"GenomicPII/GP/P{p.participantId}")
+        self.assertIsNotNone(response)
+        self.assertEqual(response.get('sex_at_birth'), sex_type)
 
-class RhpApiTest(GenomicApiTestBase):
+    def test_hgm_informing_loop_statuses(self):
+        p = self._make_participant()
+        self._make_set_member(p)
+        self._make_summary(p, consentForStudyEnrollment=1)
+
+        response = self.send_get(f"GenomicPII/GP/P{p.participantId}")
+        self.assertIsNotNone(response)
+        self.assertEqual(response.get('hgm_informing_loop'), False)
+
+        # build informing_loop_ready criteria
+        wgs_member = self._make_set_member(
+            p,
+            genomeType=config.GENOME_TYPE_WGS,
+            qcStatus=GenomicQcStatus.PASS,
+            gcManifestSampleSource='Whole Blood',
+            informingLoopReadyFlag=1,
+            informingLoopReadyFlagModified=clock.CLOCK.now()
+        )
+        self.data_generator.create_database_genomic_gc_validation_metrics(
+            genomicSetMemberId=wgs_member.id,
+            sexConcordance='True',
+            drcFpConcordance='Pass',
+            drcSexConcordance='Pass',
+            processingStatus='Pass'
+        )
+
+        response = self.send_get(f"GenomicPII/GP/P{p.participantId}")
+        self.assertIsNotNone(response)
+        self.assertEqual(response.get('hgm_informing_loop'), True)
+
+        wgs_member = self.member_dao.get(wgs_member.id)
+        wgs_member.informingLoopReadyFlag = 0
+        self.member_dao.update(wgs_member)
+
+        response = self.send_get(f"GenomicPII/GP/P{p.participantId}")
+        self.assertIsNotNone(response)
+        self.assertEqual(response.get('hgm_informing_loop'), False)
+
+        wgs_member = self.member_dao.get(wgs_member.id)
+        wgs_member.informingLoopReadyFlag = 1
+        self.member_dao.update(wgs_member)
+
+        response = self.send_get(f"GenomicPII/GP/P{p.participantId}")
+        self.assertIsNotNone(response)
+        self.assertEqual(response.get('hgm_informing_loop'), True)
+
+        update_summary = self.ps_dao.get_by_participant_id(p.participantId)
+        update_summary.participantOrigin = 'careevolution'
+        self.ps_dao.update(update_summary)
+
+        response = self.send_get(f"GenomicPII/GP/P{p.participantId}")
+        self.assertIsNotNone(response)
+        self.assertEqual(response.get('hgm_informing_loop'), False)
+
+
+class RhpGenomicPIIApiTest(GenomicApiTestBase):
     def setUp(self):
-        super(RhpApiTest, self).setUp()
+        super(RhpGenomicPIIApiTest, self).setUp()
 
     def test_get_pii_valid_pid(self):
         p1_pii = self.send_get("GenomicPII/RHP/P1")

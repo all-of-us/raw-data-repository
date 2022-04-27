@@ -164,7 +164,7 @@ class ManifestGeneratorTool(ToolBase):
 
         # Execute the manifest generator process or the job controller
         with ManifestGenerator(**manifest_params) as manifest_generator:
-            _logger.info("running...")
+            _logger.info("Running Manifest Generator...")
             results = manifest_generator.generate_manifest_data()
             _logger.info(results['status'])
             _logger.info(results['message'])
@@ -181,7 +181,7 @@ class ManifestGeneratorTool(ToolBase):
                 else:
                     output_path += results['output_filename']
 
-                _logger.info("output path: " + output_path)
+                _logger.info("Output path: " + output_path)
 
                 # write file
                 output_local_csv(output_path, results['manifest_data'])
