@@ -133,6 +133,7 @@ class ManifestGeneratorTool(ToolBase):
             return 1
 
         self.gcp_env.activate_sql_proxy()
+        server_config = self.get_server_config()
 
         manifest_params = {
             "template_name": None,
@@ -161,6 +162,9 @@ class ManifestGeneratorTool(ToolBase):
 
         if self.args.cvl_site_id:
             manifest_params["cvl_site_id"] = self.args.cvl_site_id
+
+        if server_config.get('biobank_id_prefix'):
+            manifest_params['biobank_id_prefix'] = server_config.get('biobank_id_prefix')[0]
 
         # Execute the manifest generator process or the job controller
         with ManifestGenerator(**manifest_params) as manifest_generator:
