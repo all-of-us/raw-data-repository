@@ -455,6 +455,12 @@ class ConsentValidationController:
         if self._has_primary_update_consent(summary):
             output_strategy.add_all(validator.get_primary_update_validation_results())
 
+    def revalidate_file(self, summary: ParticipantSummary, file: ParsingResult,
+                        output_strategy: ValidationOutputStrategy):
+        validator = self._build_validator(participant_summary=summary)
+        result = validator.revalidate(file)
+        output_strategy.add_result(result)
+
     @classmethod
     def _check_consent_type(cls, consent_type: ConsentType, to_check_list: Collection[ConsentType]):
         if to_check_list is None:
@@ -553,7 +559,6 @@ class ConsentValidator:
         return self._generate_validation_results(
             consent_files=self.factory.get_primary_consents(),
             consent_type=ConsentType.PRIMARY,
-            additional_validation=self._validate_is_va_file,
             expected_sign_datetime=expected_signing_date
         )
 
@@ -564,7 +569,6 @@ class ConsentValidator:
         return self._generate_validation_results(
             consent_files=self.factory.get_ehr_consents(),
             consent_type=ConsentType.EHR,
-            additional_validation=self._validate_is_va_file,
             expected_sign_datetime=expected_signing_date
         )
 
@@ -582,15 +586,9 @@ class ConsentValidator:
         if expected_signing_date is None:
             expected_signing_date = self.participant_summary.consentForGenomicsRORAuthored
 
-        def check_for_checkmark(consent: files.GrorConsentFile, result):
-            if not consent.is_confirmation_selected():
-                result.other_errors = ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK
-                result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
-
         return self._generate_validation_results(
             consent_files=self.factory.get_gror_consents(),
             consent_type=ConsentType.GROR,
-            additional_validation=check_for_checkmark,
             expected_sign_datetime=expected_signing_date
         )
 
@@ -598,26 +596,11 @@ class ConsentValidator:
         if expected_signing_date is None:
             expected_signing_date = self.participant_summary.consentForStudyEnrollmentAuthored
 
-        def extra_primary_update_checks(consent: files.PrimaryConsentUpdateFile, result):
-            errors_detected = []
-
-            if not consent.is_agreement_selected():
-                errors_detected.append(ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK)
-
-            va_version_error_str = self._check_for_va_version_mismatch(consent)
-            if va_version_error_str:
-                errors_detected.append(va_version_error_str)
-
-            if errors_detected:
-                result.other_errors = ', '.join(errors_detected)
-                result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
-
         return self._generate_validation_results(
             consent_files=self.factory.get_primary_update_consents(
                 self.participant_summary.consentForStudyEnrollmentAuthored
             ),
             consent_type=ConsentType.PRIMARY_UPDATE,
-            additional_validation=extra_primary_update_checks,
             expected_sign_datetime=expected_signing_date
         )
 
@@ -627,6 +610,31 @@ class ConsentValidator:
             consent_type=ConsentType.WEAR,
             expected_sign_datetime=expected_signing_date
         )
+
+    def revalidate(self, file: ParsingResult) -> ParsingResult:
+        expected_signature_datetime = datetime(
+            year=file.expected_sign_date.year,
+            month=file.expected_sign_date.month,
+            day=file.expected_sign_date.day
+        )
+        new_results = self.factory.get_from_path(file.file_path, consent_date=expected_signature_datetime)
+
+        return self._generate_validation_results(
+            consent_files=[new_results],
+            consent_type=file.type,
+            expected_sign_datetime=expected_signature_datetime
+        )[0]
+
+    def _get_extra_validation_function_by_type(self, consent_type: ConsentType):
+        if consent_type in [ConsentType.PRIMARY, consent_type.EHR]:
+            return self._validate_is_va_file
+        elif consent_type == ConsentType.GROR:
+            return self._check_for_checkmark
+        elif consent_type == ConsentType.PRIMARY_UPDATE:
+            return self._additional_primary_update_checks
+        else:
+            return None
+
 
     def _check_for_va_version_mismatch(self, consent):
         is_va_consent = consent.get_is_va_consent()
@@ -643,9 +651,29 @@ class ConsentValidator:
             result.other_errors = mismatch_error_str
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
+    def _check_for_checkmark(self, consent: files.GrorConsentFile, result: ParsingResult):
+        if not consent.is_confirmation_selected():
+            result.other_errors = ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK
+            result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
+
+    def _additional_primary_update_checks(self, consent: files.PrimaryConsentUpdateFile, result: ParsingResult):
+        errors_detected = []
+
+        if not consent.is_agreement_selected():
+            errors_detected.append(ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK)
+
+        va_version_error_str = self._check_for_va_version_mismatch(consent)
+        if va_version_error_str:
+            errors_detected.append(va_version_error_str)
+
+        if errors_detected:
+            result.other_errors = ', '.join(errors_detected)
+            result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
+
     def _generate_validation_results(self, consent_files: List[files.ConsentFile], consent_type: ConsentType,
-                                     expected_sign_datetime: datetime,
-                                     additional_validation=None) -> List[ParsingResult]:
+                                     expected_sign_datetime: datetime) -> List[ParsingResult]:
+        additional_validation = self._get_extra_validation_function_by_type(consent_type)
+
         results = []
         for consent in consent_files:
             result = self._build_validation_result(consent, consent_type, expected_sign_datetime)

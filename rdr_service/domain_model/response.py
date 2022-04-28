@@ -47,7 +47,11 @@ class Response:
             and any([answer.is_valid for answer in self.answered_codes[question_code_str]])
         )
 
-    def get_answers_for(self, question_code_str) -> Optional[List['Answer']]:
+    def get_answers_for(self, question_code_str: str) -> Optional[List['Answer']]:
+        if question_code_str is None:
+            return None
+        question_code_str = question_code_str.lower()
+
         if (
             question_code_str not in self.answered_codes
             or not any([answer.is_valid for answer in self.answered_codes[question_code_str]])

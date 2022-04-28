@@ -1239,6 +1239,39 @@ class QuestionnaireResponseDao(BaseDao):
             qr.answers.append(answer)
 
     @classmethod
+    def get_participant_ids_with_response_to_survey(
+        cls,
+        survey_code: str,
+        session: Session,
+        sent_statuses: Optional[List[QuestionnaireResponseStatus]] = None,
+        classification_types: Optional[List[QuestionnaireResponseClassificationType]] = None
+    ) -> List[int]:
+        if sent_statuses is None:
+            sent_statuses = [QuestionnaireResponseStatus.COMPLETED]
+        if classification_types is None:
+            classification_types = [QuestionnaireResponseClassificationType.COMPLETE]
+
+        query = (
+            session.query(QuestionnaireResponse.participantId)
+            .join(
+                QuestionnaireConcept,
+                and_(
+                    QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
+                    QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
+                )
+            ).join(
+                Code,
+                Code.codeId == QuestionnaireConcept.codeId
+            ).filter(
+                Code.value.ilike(survey_code),
+                QuestionnaireResponse.status.in_(sent_statuses),
+                QuestionnaireResponse.classificationType.in_(classification_types)
+            )
+        )
+
+        return [result_row.participantId for result_row in query.all()]
+
+    @classmethod
     def get_responses_to_surveys(
         cls,
         survey_codes: List[str],
