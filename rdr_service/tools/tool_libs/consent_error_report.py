@@ -89,7 +89,7 @@ class ConsentErrorReportTool(object):
 
         if id_list and len(id_list):
             report.create_error_reports(
-                                        id_list=self.id_list,
+                                        id_list=id_list,
                                         recipients=self.recipients,
                                         cc_list=self.cc_recipients,
                                         participant_origin=self.args.origin,
