@@ -357,6 +357,12 @@ class ConsentFile(ABC):
 
         return None
 
+    def get_printed_name(self):
+        printed_name_elements = self._get_printed_name_elements()
+        for element in printed_name_elements:
+            if isinstance(element, LTFigure) and len(element) > 0:
+                return ''.join([char_child.get_text() for char_child in element]).strip()
+
     def _get_date_signed_str(self):
         date_elements = self._get_date_elements()
         for element in date_elements:
@@ -368,6 +374,9 @@ class ConsentFile(ABC):
         return []
 
     def _get_date_elements(self):
+        return []
+
+    def _get_printed_name_elements(self):
         return []
 
 
