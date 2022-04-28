@@ -3503,7 +3503,8 @@ class ManifestDefinitionProvider:
             GenomicManifestTypes.CVL_W1IL_PGX: {
                 'job_run_field': 'cvlW1ilPgxJobRunId',
                 'output_filename':
-                    f'{CVL_W1IL_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_PGX_{now_formatted}.csv',
+                    f'{CVL_W1IL_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_'
+                    f'{ResultsModuleType.PGXV1.name}_{now_formatted}.csv',
                 'signal': 'manifest-generated',
                 'query': self.query_dao.get_data_ready_for_w1il_manifest,
                 'params': {
@@ -3514,7 +3515,8 @@ class ManifestDefinitionProvider:
             GenomicManifestTypes.CVL_W1IL_HDR: {
                 'job_run_field': 'cvlW1ilHdrJobRunId',
                 'output_filename':
-                    f'{CVL_W1IL_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_HDR_{now_formatted}.csv',
+                    f'{CVL_W1IL_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_'
+                    f'{ResultsModuleType.HDRV1.name}_{now_formatted}.csv',
                 'signal': 'manifest-generated',
                 'query': self.query_dao.get_data_ready_for_w1il_manifest,
                 'params': {

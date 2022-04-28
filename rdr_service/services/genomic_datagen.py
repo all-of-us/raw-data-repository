@@ -452,7 +452,8 @@ class ManifestGenerator:
         update_samples=False,
         member_run_id_column=None,
         cvl_site_id=None,
-        logger=logging
+        logger=logging,
+        biobank_id_prefix=None
     ):
         # Params
         self.project_name = project_name
@@ -462,6 +463,7 @@ class ManifestGenerator:
         self.member_run_id_column = member_run_id_column  # only used for testing
         self.cvl_site_id = cvl_site_id
         self.logger = logger
+        self.biobank_id_prefix = biobank_id_prefix or 'Z'
 
         # Job vars
         self.job = GenomicJob.DATAGEN_MANIFEST_GENERATION
@@ -553,8 +555,12 @@ class ManifestGenerator:
                 bid_field = "biobank_id"
                 if "biobankid" in result.keys():
                     bid_field = "biobankid"
-                if result[bid_field][0] not in [get_biobank_id_prefix(), 'T']:
-                    result[bid_field] = f"{get_biobank_id_prefix()}{result[bid_field]}"
+
+                if result.get(bid_field)[0] != self.biobank_id_prefix:
+                    if result.get(bid_field)[0].isalpha():
+                        result[bid_field] = f"{self.biobank_id_prefix}{result.get(bid_field)[1:]}"
+                    else:
+                        result[bid_field] = f"{self.biobank_id_prefix}{result.get(bid_field)}"
 
             self.run_results['message'] = f"Completed {self.template_name} Manifest Generation. "
             self.run_results['message'] += f"{self.template_name} Manifest Included" \
