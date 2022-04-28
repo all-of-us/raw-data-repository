@@ -58,8 +58,10 @@ class ConsentErrorReportTool(object):
 
     def _connect_to_rdr_replica(self):
         """ Establish a connection to the replica RDR database for reading consent validation data """
-        self.gcp_env.activate_sql_proxy(replica=True)
-        self.db_conn = self.gcp_env.make_mysqldb_connection()
+        replica = True if self.gcp_env.project == 'all-of-us-rdr-prod' else False
+        self.gcp_env.activate_sql_proxy(replica=replica, project=self.gpc_env.project)
+        if self.gcp_env.project != 'localhost':
+            self.db_conn = self.gcp_env.make_mysqldb_connection()
 
     def execute(self):
         """
@@ -69,6 +71,7 @@ class ConsentErrorReportTool(object):
         # Only generate error reports/tickets if project is prod,  or we're directing output to a file instead of
         # generating emails (allows for testing in lower environments if needed)
         if not (self.args.to_file or self.gcp_env.project == 'all-of-us-rdr-prod'):
+            _logger.error('Must use --to-file unless running against prod')
             return
 
         self._connect_to_rdr_replica()
@@ -81,18 +84,20 @@ class ConsentErrorReportTool(object):
             config.override_setting(config.SENDGRID_KEY, project_config[config.SENDGRID_KEY])
 
         report = ConsentErrorReportGenerator()
-        id_list = self.id_list
-        # Specific ids will override any date filter
-        if not id_list:
-            report.get_unreported_error_ids()
+        # If no user-provided ids were specified (--id or --from-file), default to all unreported errors
+        id_list = self.id_list or report.get_unreported_error_ids()
 
-        report.create_error_reports(
-                                    id_list=self.id_list,
-                                    recipients=self.recipients,
-                                    cc_list=self.cc_recipients,
-                                    participant_origin=self.args.origin,
-                                    to_file=self.args.to_file
-        )
+        if id_list and len(id_list):
+            report.create_error_reports(
+                                        id_list=self.id_list,
+                                        recipients=self.recipients,
+                                        cc_list=self.cc_recipients,
+                                        participant_origin=self.args.origin,
+                                        to_file=self.args.to_file
+            )
+        else:
+            _logger.info('No ids specified by user and no outstanding error records found')
+
         return 0
 
 def get_id_list(fname):
