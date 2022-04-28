@@ -23,8 +23,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
 
     def _create_participant_with_all_consents_authored(self, **kwargs):
         """ Populate a participant_summary record with provided data """
-        # Tests using this setup method may need participants with specific origin or paired hpo_id values and specify
-        # those in the kwargs
+        # Tests using this setup method may create participants with specific origin or paired hpo_id values
         participant = self.data_generator.create_database_participant(
             participantOrigin=kwargs.get('participantOrigin','vibrent'),
             hpoId=kwargs.get('hpoId', 0)
@@ -37,7 +36,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             'consentForElectronicHealthRecordsFirstYesAuthored': \
                 datetime.strptime('2020-01-01 03:00:00', "%Y-%m-%d %H:%M:%S"),
             'consentForGenomicsRORAuthored': datetime.strptime('2020-01-01 04:00:00', "%Y-%m-%d %H:%M:%S"),
-            'participantOrigin': 'vibrent',
+            'participantOrigin': participant.participantOrigin,
             'participant': participant
         }
 

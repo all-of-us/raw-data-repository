@@ -437,8 +437,8 @@ class ConsentValidationController:
 
         # Reporting mechanisms differ for PTSC and CE, so perform separate origin-specific tasks to process
         # errors that have not been reported yet
-        dispatch_check_consent_errors_task(participant_origin='vibrent')
-        dispatch_check_consent_errors_task(participant_origin='careevolution')
+        dispatch_check_consent_errors_task(origin='vibrent')
+        dispatch_check_consent_errors_task(origin='careevolution')
 
     def validate_all_for_participant(self, participant_id: int, output_strategy: ValidationOutputStrategy):
         summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)

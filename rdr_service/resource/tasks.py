@@ -110,7 +110,7 @@ def check_consent_errors_task(payload):
     origin = payload.get('participant_origin', 'vibrent')
     # DA-2611: Generate a list of all previously unreported errors, based on ConsentErrorReport table content
     gen = ConsentErrorReportGenerator()
-    id_list = gen.get_unreported_error_ids(origin=origin)
+    id_list = gen.get_unreported_error_ids()
     if len(id_list):
         gen.create_error_reports(participant_origin=origin, id_list=id_list)
     else:
