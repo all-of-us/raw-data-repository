@@ -557,7 +557,10 @@ class ManifestGenerator:
                     bid_field = "biobankid"
 
                 if result.get(bid_field)[0] != self.biobank_id_prefix:
-                    result[bid_field] = f"{self.biobank_id_prefix}{result[bid_field]}"
+                    if result.get(bid_field)[0].isalpha():
+                        result[bid_field] = f"{self.biobank_id_prefix}{result.get(bid_field)[1:]}"
+                    else:
+                        result[bid_field] = f"{self.biobank_id_prefix}{result.get(bid_field)}"
 
             self.run_results['message'] = f"Completed {self.template_name} Manifest Generation. "
             self.run_results['message'] += f"{self.template_name} Manifest Included" \
