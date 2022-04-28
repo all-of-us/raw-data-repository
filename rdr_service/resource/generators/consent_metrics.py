@@ -462,12 +462,9 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         :param subject:  A string in the expected format (agreed upon w/PTSC) summarizing the error condition
         :param body: Text/string (multi-line/multi-paragraph format agreed upon w/PTSC ) with details of each instance
                      of the detected error condition
-        :param recipients: Destination email address list, if overriding the default config item
-        :param cc_list: List of cc email addresses, if overriding the default config item
+        :param recipients: Destination email address list
+        :param cc_list: List of cc email addresses
         """
-        email_config = config.getSettingJson(config.PTSC_SERVICE_DESK_EMAIL, {})
-        recipients = recipients if isinstance(recipients, list) else email_config.get('recipients')
-        cc_list = cc_list if isinstance(cc_list, list) else email_config.get('cc_recipients')
         if recipients is None:
             logging.error('No recipient address list available for consent error email generation')
         elif not isinstance(recipients, list):
