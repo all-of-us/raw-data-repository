@@ -59,7 +59,7 @@ class ConsentErrorReportTool(object):
     def _connect_to_rdr_replica(self):
         """ Establish a connection to the replica RDR database for reading consent validation data """
         replica = True if self.gcp_env.project == 'all-of-us-rdr-prod' else False
-        self.gcp_env.activate_sql_proxy(replica=replica, project=self.gpc_env.project)
+        self.gcp_env.activate_sql_proxy(replica=replica, project=self.gcp_env.project)
         if self.gcp_env.project != 'localhost':
             self.db_conn = self.gcp_env.make_mysqldb_connection()
 
