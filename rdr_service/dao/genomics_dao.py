@@ -1936,8 +1936,8 @@ class GenomicOutreachDaoV2(BaseDao):
             GenomicSetMember, order_by_ending=['id'])
         self.allowed_modules = ['gem', 'hdr', 'pgx']
         self.module = self.allowed_modules
-        self.allowed_types = ['result', 'informingLoop']
-        self.type = self.allowed_types
+        self.req_allowed_types = ['result', 'informingLoop']
+        self.req_type = self.req_allowed_types
         self.report_query_state = self.get_report_state_query_config()
         self.result_viewed_dao = GenomicResultViewedDao()
 
@@ -1948,25 +1948,23 @@ class GenomicOutreachDaoV2(BaseDao):
         pass
 
     def to_client_json(self, _dict):
-        report_statuses, report, p_status, p_module = [], {}, None, None
-
+        report_statuses = []
         # handle date
         try:
-            ts = pytz.utc.localize(_dict['date'])
+            timestamp = pytz.utc.localize(_dict['date'])
         except ValueError:
-            ts = _dict['date']
+            timestamp = _dict['date']
 
         if not _dict.get('data'):
-            client_json = {
+            return {
                 "data": report_statuses,
-                "timestamp": ts
+                "timestamp": timestamp
             }
-            return client_json
 
         for p in _dict.get('data'):
+            pid = p.participant_id
             if 'result' in p.type:
                 p_status, p_module = self._determine_report_state(p.genomic_report_state)
-                pid = p.participant_id
                 genomic_result_viewed = p.GenomicResultViewed
                 result_viewed = 'no'
 
@@ -1975,58 +1973,51 @@ class GenomicOutreachDaoV2(BaseDao):
                         and genomic_result_viewed.module_type == p_module:
                     result_viewed = 'yes'
 
-                report = {
+                report_statuses.append({
                     "module": p_module.lower(),
-                    "type": p.type,
+                    "type": 'result',
                     "status": p_status,
                     "viewed": result_viewed,
                     "participant_id": f'P{pid}',
-                }
-                report_statuses.append(report)
-            elif 'informingLoop' in p.type:
-                p_status = 'completed' if hasattr(p, 'decision_value') else 'ready'
-                # ready_modules = ['hdr', 'pgx']
-                # if p_status == 'ready':
-                #     for module in ready_modules:
-                #         report = {
-                #             "module": module,
-                #             "type": 'informingLoop',
-                #             "status": p_status,
-                #             "participant_id": f'P{p[0]}',
-                #         }
-                #         report_statuses.append(report)
-                if p_status == 'completed':
-                    report = {
+                })
+            elif 'informing_loop' in p.type:
+                if 'ready' in p.type:
+                    ready_modules = ['hdr', 'pgx']
+                    for module in ready_modules:
+                        report_statuses.append({
+                            "module": module,
+                            "type": 'informingLoop',
+                            "status": 'ready',
+                            "participant_id": f'P{pid}',
+                        })
+                if 'decision' in p.type:
+                    report_statuses.append({
                         "module": p.module_type.lower(),
-                        "type": p.type,
-                        "status": p_status,
+                        "type": 'informingLoop',
+                        "status": 'completed',
                         "decision": p.decision_value,
-                        "participant_id": f'P{p.participant_id}',
-                    }
-                    report_statuses.append(report)
+                        "participant_id": f'P{pid}'
+                    })
 
-        client_json = {
+        return {
             "data": report_statuses,
-            "timestamp": ts
+            "timestamp": timestamp
         }
-
-        return client_json
 
     def outreach_lookup(self, pid=None, start_date=None, end_date=None):
         informing_loops, results = [], []
-
-        if not end_date:
-            end_date = clock.CLOCK.now()
+        end_date = clock.CLOCK.now() if not end_date else end_date
+        informing_loop_ready = GenomicSetMemberDao.base_informing_loop_ready().subquery()
 
         with self.session() as session:
-            if 'informingLoop' in self.type:
+            if 'informingLoop' in self.req_type:
                 genomic_loop_alias = aliased(GenomicInformingLoop)
                 decision_loop = (
                     session.query(
                         distinct(GenomicInformingLoop.participant_id).label('participant_id'),
                         GenomicInformingLoop.module_type,
                         GenomicInformingLoop.decision_value,
-                        literal('informingLoop').label('type')
+                        literal('informing_loop_decision').label('type')
                     )
                     .join(
                         ParticipantSummary,
@@ -2034,10 +2025,7 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                     .join(
                         GenomicSetMember,
-                        and_(
-                            GenomicSetMember.participantId == GenomicInformingLoop.participant_id,
-                            GenomicSetMember.genomeType == 'aou_array'
-                        )
+                        GenomicSetMember.participantId == GenomicInformingLoop.participant_id,
                     ).outerjoin(
                         genomic_loop_alias,
                         and_(
@@ -2054,49 +2042,39 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.ignoreFlag != 1
                     )
                 )
-                # ready_loop = (
-                #     session.query(
-                #         GenomicSetMember.participantId.label('participant_id'),
-                #         literal('informingLoop')
-                #     )
-                #     .join(
-                #         ParticipantSummary,
-                #         ParticipantSummary.participantId == GenomicSetMember.participantId
-                #     )
-                #     .join(
-                #         GenomicGCValidationMetrics,
-                #         GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
-                #     )
-                #     .filter(
-                #         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                #         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                #         ParticipantSummary.consentForGenomicsROR == 1,
-                #         GenomicGCValidationMetrics.processingStatus == 'Pass',
-                #         GenomicSetMember.genomeType == 'aou_wgs',
-                #         GenomicSetMember.aw3ManifestJobRunID.isnot(None)
-                #     )
-                # )
+                ready_loop = (
+                    session.query(
+                        GenomicSetMember.participantId.label('participant_id'),
+                        literal('informing_loop_ready').label('type')
+                    )
+                    .join(
+                        informing_loop_ready,
+                        informing_loop_ready.c.participant_id == GenomicSetMember.participantId
+                    ).filter(
+                        GenomicSetMember.informingLoopReadyFlag == 1,
+                        GenomicSetMember.informingLoopReadyFlagModified.isnot(None)
+                    )
+                )
                 if pid:
                     decision_loop = decision_loop.filter(
+                        GenomicSetMember.participantId == pid
+                    )
+                    ready_loop = ready_loop.filter(
                         ParticipantSummary.participantId == pid
                     )
-                    # ready_loop = ready_loop.filter(
-                    #     ParticipantSummary.participantId == pid
-                    # )
                 if start_date:
                     decision_loop = decision_loop.filter(
                         GenomicInformingLoop.event_authored_time > start_date,
                         GenomicInformingLoop.event_authored_time < end_date
                     )
-                    # ready_loop = ready_loop.filter(
-                    #     GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
-                    #     GenomicSetMember.genomicWorkflowStateModifiedTime < end_date
-                    # )
+                    ready_loop = ready_loop.filter(
+                        GenomicSetMember.informingLoopReadyFlagModified > start_date,
+                        GenomicSetMember.informingLoopReadyFlagModified < end_date
+                    )
 
-                # informing_loops = decision_loop.all() + ready_loop.all()
-                informing_loops = decision_loop.all()
+                informing_loops = decision_loop.all() + ready_loop.all()
 
-            if 'result' in self.type:
+            if 'result' in self.req_type:
                 # results
                 result_query = (
                     session.query(
@@ -2197,12 +2175,12 @@ class GenomicOutreachDaoV2(BaseDao):
                         mappings.extend(value)
         return mappings
 
-    def set_globals(self, module, _type):
+    def set_globals(self, module, req_type):
         if module:
             self.module = [module]
             self.report_query_state = self.get_report_state_query_config()
-        if _type:
-            self.type = [_type]
+        if req_type:
+            self.req_type = [req_type]
 
 
 class GenomicManifestFileDao(BaseDao, GenomicDaoUtils):

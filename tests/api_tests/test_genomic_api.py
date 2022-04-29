@@ -1168,66 +1168,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                                    if int(obj['participant_id'].split('P')[1]) in pids)
         self.assertTrue(pids_only_viewed_yes)
 
-    def test_only_get_array_results(self):
-        self.num_participants = 10
-        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
-        fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
-        fake_now = clock.CLOCK.now().replace(microsecond=0)
-        module = 'gem'
-        report_state = GenomicReportState.GEM_RPT_READY
-
-        gen_set = self.data_generator.create_database_genomic_set(
-            genomicSetName=".",
-            genomicSetCriteria=".",
-            genomicSetVersion=1
-        )
-
-        for num in range(self.num_participants):
-            participant = self.data_generator.create_database_participant()
-
-            self.data_generator.create_database_participant_summary(
-                participant=participant,
-                consentForGenomicsRORAuthored=fake_date_one,
-                consentForStudyEnrollmentAuthored=fake_date_one
-            )
-
-            gen_member = self.data_generator.create_database_genomic_set_member(
-                genomicSetId=gen_set.id,
-                biobankId="100153482",
-                sampleId="21042005280",
-                genomeType="aou_array" if num % 2 == 0 else 'aou_wgs',
-                genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
-                participantId=participant.participantId,
-                genomicWorkflowStateModifiedTime=fake_date_two
-            )
-
-            self.data_generator.create_database_genomic_member_report_state(
-                genomic_set_member_id=gen_member.id,
-                participant_id=participant.participantId,
-                module=module,
-                genomic_report_state=report_state
-            )
-
-        total_num_result_set = self.report_dao.get_all()
-        self.assertEqual(len(total_num_result_set), self.num_participants)
-
-        with clock.FakeClock(fake_now):
-            resp = self.send_get(
-                f'GenomicOutreachV2?start_date={fake_date_one}'
-            )
-        self.assertEqual(len(resp['data']), self.num_participants // 2)
-
-        only_results = all(obj['type'] == 'result' for obj in resp['data'])
-        self.assertTrue(only_results)
-
-        current_members = self.member_dao.get_all()
-
-        for record in resp['data']:
-            pid = int(record['participant_id'].split('P')[1])
-            member = list(filter(lambda x: x.participantId == pid, current_members))[0]
-            self.assertIsNotNone(member)
-            self.assertTrue(member.genomeType == 'aou_array')
-
 
 class GenomicCloudTasksApiTest(BaseTestCase):
     def setUp(self):
