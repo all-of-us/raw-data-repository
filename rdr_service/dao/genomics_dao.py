@@ -1934,10 +1934,13 @@ class GenomicOutreachDaoV2(BaseDao):
     def __init__(self):
         super(GenomicOutreachDaoV2, self).__init__(
             GenomicSetMember, order_by_ending=['id'])
+
         self.allowed_modules = ['gem', 'hdr', 'pgx']
         self.module = self.allowed_modules
+
         self.req_allowed_types = ['result', 'informingLoop']
         self.req_type = self.req_allowed_types
+
         self.report_query_state = self.get_report_state_query_config()
         self.result_viewed_dao = GenomicResultViewedDao()
 
@@ -1966,12 +1969,9 @@ class GenomicOutreachDaoV2(BaseDao):
             if 'result' in p.type:
                 p_status, p_module = self._determine_report_state(p.genomic_report_state)
                 genomic_result_viewed = p.GenomicResultViewed
-                result_viewed = 'no'
 
-                if genomic_result_viewed \
-                    and genomic_result_viewed.participant_id \
-                        and genomic_result_viewed.module_type == p_module:
-                    result_viewed = 'yes'
+                result_viewed = 'yes' if genomic_result_viewed \
+                                         and genomic_result_viewed.module_type == p_module else 'no'
 
                 report_statuses.append({
                     "module": p_module.lower(),
@@ -2036,6 +2036,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicInformingLoop.decision_value.isnot(None),
+                        # test this
                         GenomicInformingLoop.module_type.in_(self.module),
                         GenomicInformingLoop.event_authored_time.isnot(None),
                         genomic_loop_alias.event_authored_time.is_(None),
@@ -2044,7 +2045,7 @@ class GenomicOutreachDaoV2(BaseDao):
                 )
                 ready_loop = (
                     session.query(
-                        GenomicSetMember.participantId.label('participant_id'),
+                        distinct(GenomicSetMember.participantId).label('participant_id'),
                         literal('informing_loop_ready').label('type')
                     )
                     .join(
@@ -2060,7 +2061,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.participantId == pid
                     )
                     ready_loop = ready_loop.filter(
-                        ParticipantSummary.participantId == pid
+                        GenomicSetMember.participantId == pid
                     )
                 if start_date:
                     decision_loop = decision_loop.filter(
