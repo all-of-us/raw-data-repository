@@ -119,6 +119,8 @@ CONSENT_GROR_NOT_SURE = "CheckDNA_NotSure"
 COHORT_1_REVIEW_CONSENT_YES_CODE = "ReviewConsentAgree_Yes"
 COHORT_1_REVIEW_CONSENT_NO_CODE = "ReviewConsentAgree_No"
 
+WEAR_YES_ANSWER_CODE = "wear_yes"
+
 # Cohort Group Code
 CONSENT_COHORT_GROUP_CODE = "ConsentPII_CohortGroup"
 
