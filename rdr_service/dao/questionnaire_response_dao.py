@@ -41,7 +41,6 @@ from rdr_service.code_constants import (
     GENDER_IDENTITY_QUESTION_CODE,
     LANGUAGE_OF_CONSENT,
     PMI_SKIP_CODE,
-    PMI_YES,
     PPI_EXTRA_SYSTEM,
     PPI_SYSTEM,
     RACE_QUESTION_CODE,
@@ -54,6 +53,7 @@ from rdr_service.code_constants import (
     CONSENT_COPE_DEFERRED_CODE,
     COPE_CONSENT_QUESTION_CODE,
     WEAR_CONSENT_QUESTION_CODE,
+    WEAR_YES_ANSWER_CODE,
     STREET_ADDRESS_QUESTION_CODE,
     STREET_ADDRESS2_QUESTION_CODE,
     EHR_CONSENT_EXPIRED_YES,
@@ -714,10 +714,8 @@ class QuestionnaireResponseDao(BaseDao):
                             logging.error(f'Invalid value given for cohort group: received "{answer.valueString}"')
                     elif code.value.lower() == WEAR_CONSENT_QUESTION_CODE:
                         answer_value = code_dao.get(answer.valueCodeId).value
-                        if answer_value.lower() == PMI_YES:
+                        if answer_value.lower() == WEAR_YES_ANSWER_CODE:
                             self.consents_provided.append(ConsentType.WEAR)
-
-
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
         # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.
