@@ -471,6 +471,14 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
 
         return elements
 
+    def _get_printed_name_elements(self):
+        signature_page = self._get_signature_page()
+
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50),
+            page=signature_page
+        )
+
 
 class VibrentCaborConsentFile(CaborConsentFile):
     def _get_signature_elements(self):
@@ -494,6 +502,9 @@ class VibrentEhrConsentFile(EhrConsentFile):
 
     def _get_date_elements(self):
         return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=250, bottom=110, top=115), page=6)
+
+    def _get_printed_name_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=350, right=500, bottom=45, top=50), page=6)
 
 
 class VibrentGrorConsentFile(GrorConsentFile):

@@ -648,26 +648,27 @@ class ConsentValidator:
     def _validate_is_va_file(self, consent, result: ParsingResult):
         mismatch_error_str = self._check_for_va_version_mismatch(consent)
         if mismatch_error_str:
-            result.other_errors = mismatch_error_str
+            self._append_other_error(mismatch_error_str, result)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
     def _check_for_checkmark(self, consent: files.GrorConsentFile, result: ParsingResult):
         if not consent.is_confirmation_selected():
-            result.other_errors = ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK
+            self._append_other_error(ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK, result)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
     def _additional_primary_update_checks(self, consent: files.PrimaryConsentUpdateFile, result: ParsingResult):
-        errors_detected = []
+        errors_detected = False
 
         if not consent.is_agreement_selected():
-            errors_detected.append(ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK)
+            self._append_other_error(ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK, result)
+            errors_detected = True
 
         va_version_error_str = self._check_for_va_version_mismatch(consent)
         if va_version_error_str:
-            errors_detected.append(va_version_error_str)
+            self._append_other_error(va_version_error_str, result)
+            errors_detected = True
 
         if errors_detected:
-            result.other_errors = ', '.join(errors_detected)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
     def _generate_validation_results(self, consent_files: List[files.ConsentFile], consent_type: ConsentType,
@@ -712,7 +713,20 @@ class ConsentValidator:
             expected_date=result.expected_sign_date
         )
 
-        if result.is_signature_valid and result.is_signing_date_valid:
+        passes_printed_name_check = True
+        if self.participant_summary.participantOrigin == 'vibrent':
+            # Only Vibrent PDF consent files have/need a printed name
+            printed_name = consent.get_printed_name()
+            print(f'P{self.participant_summary.participantId} - "{printed_name}"')
+            # todo: store the printed name
+            if not printed_name:
+                passes_printed_name_check = False
+                self._append_other_error(
+                    error=ConsentOtherErrors.INVALID_PRINTED_NAME,
+                    result=result
+                )
+
+        if result.is_signature_valid and result.is_signing_date_valid and passes_printed_name_check:
             result.sync_status = ConsentSyncStatus.READY_FOR_SYNC
         else:
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
@@ -738,3 +752,7 @@ class ConsentValidator:
 
     def _get_date_from_datetime(self, timestamp: datetime):
         return timestamp.replace(tzinfo=pytz.utc).astimezone(self._central_time).date()
+
+    @classmethod
+    def _append_other_error(cls, error: ConsentOtherErrors, result: ParsingResult):
+        result.other_errors = (result.other_errors or '') + error

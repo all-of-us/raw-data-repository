@@ -12,6 +12,7 @@ class ConsentOtherErrors:
     MISSING_CONSENT_CHECK_MARK = 'missing consent check mark'
     NON_VETERAN_CONSENT_FOR_VETERAN = 'non-veteran consent for veteran participant'
     VETERAN_CONSENT_FOR_NON_VETERAN = 'veteran consent for non-veteran participant'
+    INVALID_PRINTED_NAME = 'invalid printed name'
 
 
 class ConsentType(messages.Enum):
