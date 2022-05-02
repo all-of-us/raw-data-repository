@@ -1941,6 +1941,7 @@ class GenomicOutreachDaoV2(BaseDao):
         self.req_allowed_types = ['result', 'informingLoop']
         self.req_type = self.req_allowed_types
 
+        self.genome_types = []
         self.report_query_state = self.get_report_state_query_config()
         self.result_viewed_dao = GenomicResultViewedDao()
 
@@ -2009,6 +2010,16 @@ class GenomicOutreachDaoV2(BaseDao):
         end_date = clock.CLOCK.now() if not end_date else end_date
         informing_loop_ready = GenomicSetMemberDao.base_informing_loop_ready().subquery()
 
+        def _set_genome_types():
+            genome_types = []
+            if 'gem' in self.module:
+                genome_types.append(config.GENOME_TYPE_ARRAY)
+            if 'hdr' or 'pgx' in self.module:
+                genome_types.append(config.GENOME_TYPE_WGS)
+            return genome_types
+
+        query_genome_types = _set_genome_types()
+
         with self.session() as session:
             if 'informingLoop' in self.req_type:
                 genomic_loop_alias = aliased(GenomicInformingLoop)
@@ -2025,7 +2036,10 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                     .join(
                         GenomicSetMember,
-                        GenomicSetMember.participantId == GenomicInformingLoop.participant_id,
+                        and_(
+                            GenomicSetMember.participantId == GenomicInformingLoop.participant_id,
+                            GenomicSetMember.genomeType.in_(query_genome_types)
+                        )
                     ).outerjoin(
                         genomic_loop_alias,
                         and_(
@@ -2091,7 +2105,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember,
                         and_(
                             GenomicSetMember.participantId == GenomicMemberReportState.participant_id,
-                            GenomicSetMember.genomeType == 'aou_array'
+                            GenomicSetMember.genomeType.in_(query_genome_types)
                         )
                     ).outerjoin(
                         GenomicResultViewed,
