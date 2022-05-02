@@ -161,11 +161,10 @@ class GenomicOutreachApiV2(BaseApi):
 
     @auth_required(RDR_AND_PTC)
     def get(self):
-        if not request.args.get('participant_id'):
-            self._check_global_args(
-                request.args.get('module'),
-                request.args.get('type')
-            )
+        self._check_global_args(
+            request.args.get('module'),
+            request.args.get('type')
+        )
         return self.get_outreach()
 
     def get_outreach(self):

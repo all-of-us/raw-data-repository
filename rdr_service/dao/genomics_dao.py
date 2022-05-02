@@ -2036,7 +2036,6 @@ class GenomicOutreachDaoV2(BaseDao):
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicInformingLoop.decision_value.isnot(None),
-                        # test this
                         GenomicInformingLoop.module_type.in_(self.module),
                         GenomicInformingLoop.event_authored_time.isnot(None),
                         genomic_loop_alias.event_authored_time.is_(None),
