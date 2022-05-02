@@ -161,11 +161,10 @@ class GenomicOutreachApiV2(BaseApi):
 
     @auth_required(RDR_AND_PTC)
     def get(self):
-        if not request.args.get('participant_id'):
-            self._check_global_args(
-                request.args.get('module'),
-                request.args.get('type')
-            )
+        self._check_global_args(
+            request.args.get('module'),
+            request.args.get('type')
+        )
         return self.get_outreach()
 
     def get_outreach(self):
@@ -204,30 +203,30 @@ class GenomicOutreachApiV2(BaseApi):
 
         raise BadRequest
 
-    def _check_global_args(self, module, _type):
+    def _check_global_args(self, module, req_type):
         """
         Checks that the mode in the endpoint is valid
         :param module: "GEM" / "PGX" / "HDR"
         :param _type: "result" / "informingLoop" / "appointment"
         """
-        current_module = None
-        current_type = None
+        current_module, current_type = None, None
 
         if module:
             if module.lower() not in self.dao.allowed_modules:
                 raise BadRequest(
                     f"GenomicOutreach accepted modules: {' | '.join(self.dao.allowed_modules)}")
-            else:
-                current_module = module.lower()
-        if _type:
-            if _type not in self.dao.allowed_types:
-                raise BadRequest(f"GenomicOutreach accepted types: {' | '.join(self.dao.allowed_types)}")
-            else:
-                current_type = _type
+
+            current_module = module.lower()
+
+        if req_type:
+            if req_type not in self.dao.req_allowed_types:
+                raise BadRequest(f"GenomicOutreach accepted types: {' | '.join(self.dao.req_allowed_types)}")
+
+            current_type = req_type
 
         self.dao.set_globals(
             module=current_module,
-            _type=current_type
+            req_type=current_type
         )
 
     @staticmethod
