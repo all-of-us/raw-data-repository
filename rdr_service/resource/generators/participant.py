@@ -72,7 +72,8 @@ _consent_module_question_map = {
     'cope_dec': 'section_participation',
     'cope_feb': 'section_participation',
     'GeneticAncestry': 'GeneticAncestry_ConsentAncestryTraits',
-    'covid_19_serology_results': 'covid_19_serology_results_decision'
+    'covid_19_serology_results': 'covid_19_serology_results_decision',
+    'wear_consent': 'resultsconsent_wear'
 }
 
 # _consent_expired_question_map, for expired consents. { module: question code string }
@@ -106,6 +107,9 @@ _consent_answer_status_map = {
     # covid_19_serology_results_decision
     'Decision_Yes': BQModuleStatusEnum.SUBMITTED,
     'Decision_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    'WEAR_Yes': BQModuleStatusEnum.SUBMITTED,
+    'WEAR_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
+
 }
 
 # PDR-252:  When RDR starts accepting QuestionnaireResponse payloads for withdrawal screens, AIAN participants
