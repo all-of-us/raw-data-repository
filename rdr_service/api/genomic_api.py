@@ -215,13 +215,14 @@ class GenomicOutreachApiV2(BaseApi):
             if module.lower() not in self.dao.allowed_modules:
                 raise BadRequest(
                     f"GenomicOutreach accepted modules: {' | '.join(self.dao.allowed_modules)}")
-            else:
-                current_module = module.lower()
+
+            current_module = module.lower()
+
         if req_type:
             if req_type not in self.dao.req_allowed_types:
                 raise BadRequest(f"GenomicOutreach accepted types: {' | '.join(self.dao.req_allowed_types)}")
-            else:
-                current_type = req_type
+
+            current_type = req_type
 
         self.dao.set_globals(
             module=current_module,

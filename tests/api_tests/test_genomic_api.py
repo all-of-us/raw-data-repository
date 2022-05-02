@@ -1297,7 +1297,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
 
         self.assertEqual(len(resp['data']), 9)
         self.assertTrue(all(obj['module'] in loop_modules for obj in resp['data']))
-        members_pid_resp_set = set([obj['participant_id'] for obj in resp['data']])
+        members_pid_resp_set = {obj['participant_id'] for obj in resp['data']}
 
         self.assertEqual(len(members_pid_resp_set), 3)
         for pid in members_pid_resp_set:
