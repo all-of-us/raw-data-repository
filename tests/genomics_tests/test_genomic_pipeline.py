@@ -213,6 +213,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.data_file_dao = GenomicGcDataFileDao()
         self.missing_file_dao = GenomicGcDataFileMissingDao()
         self.sample_dao = BiobankStoredSampleDao()
+        self.order_dao = BiobankOrderDao()
         self.mk_dao = MailKitOrderDao()
         self.site_dao = SiteDao()
         self.code_dao = CodeDao()
@@ -523,6 +524,17 @@ class GenomicPipelineTest(BaseTestCase):
         sites[1].state = 'AZ'
         for site in sites:
             self.site_dao.update(site)
+
+    def _update_site_type_div_pouch(self, site_id):
+        site = self.site_dao.get(site_id)
+        site.siteType = "Diversion Pouch"
+        self.site_dao.update(site)
+
+    def _update_biobank_order_collected_site(self, biobank_order_id, site_id):
+        biobank_order = self.order_dao.get(biobank_order_id)
+        biobank_order.collectedSiteId = site_id
+        with self.order_dao.session() as session:
+            session.merge(biobank_order)
 
     def _setup_fake_sex_at_birth_codes(self, sex_code='n'):
         if sex_code.lower() == 'f':
@@ -2354,6 +2366,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._insert_control_sample_genomic_set_member(sample_id=30003, genome_type="aou_array")
 
+        # set site 2 to diversion pouch
+        self._update_site_type_div_pouch(2)
+        self._update_biobank_order_collected_site(1, 2)
+
         # Setup Test file
         gc_manifest_file = open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-6.csv")
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
@@ -2395,6 +2411,12 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(2, member.reconcileGCManifestJobRunId)
                 self.assertEqual('rdr', member.gcSiteId)
                 self.assertEqual("aou_array", member.gcManifestTestName)
+
+                # Test div pouch flag updated correctly
+                if member.participantId == 1:
+                    self.assertEqual(member.diversionPouchSiteFlag, 1)
+                else:
+                    self.assertEqual(member.diversionPouchSiteFlag, 0)
 
         files_processed = self.file_processed_dao.get_all()
         self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(files_processed[0].uploadDate))
