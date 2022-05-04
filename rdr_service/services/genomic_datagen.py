@@ -1,4 +1,3 @@
-# pylint: disable=unused-import
 import faker
 import os
 import logging
@@ -16,13 +15,9 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider, ManifestCompiler
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
     ResultsWorkflowState, GenomicManifestTypes
-from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import (
     GenomicSetMember,
-    GenomicResultWorkflowState,
-    GenomicGCValidationMetrics,
-    GenomicCVLAnalysis,
-    GenomicCVLSecondSample
+    GenomicResultWorkflowState
 )
 from tests.helpers.data_generator import DataGenerator
 
