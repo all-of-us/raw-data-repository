@@ -1130,6 +1130,23 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
 
             return records.all()
 
+    def get_ready_loop_by_participant_id(self, participant_id):
+        informing_loop_ready = self.base_informing_loop_ready().filter(
+            GenomicSetMember.informingLoopReadyFlag == 1,
+            GenomicSetMember.informingLoopReadyFlagModified.isnot(None)
+        ).subquery()
+        with self.session() as session:
+            record = session.query(
+                    distinct(GenomicSetMember.participantId).label('participant_id'),
+                    literal('informing_loop_ready').label('type')
+                ).join(
+                    informing_loop_ready,
+                    informing_loop_ready.c.participant_id == participant_id
+                ).filter(
+                  GenomicSetMember.participantId == participant_id
+            )
+            return record.first()
+
     def handle_control_samples_from_raw_aw1(self, record):
         """ Create control samples from aw1 raw data """
 
@@ -1739,8 +1756,6 @@ class GenomicPiiDao(BaseDao):
                     "date_of_birth": participant_data.dateOfBirth,
                     "sex_at_birth": participant_data.sexAtBirth,
                 }
-            else:
-                return {"message": "Only GP and RHP modes supported."}
         else:
             return {"message": "No RoR consent."}
 

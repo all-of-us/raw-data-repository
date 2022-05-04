@@ -36,6 +36,7 @@ from rdr_service.participant_enums import (
 )
 
 from tests.helpers.unittest_base import BaseTestCase
+from tests.service_tests.test_genomic_datagen import GenomicDataGenMixin
 
 
 class GenomicApiTestBase(BaseTestCase):
@@ -446,7 +447,7 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         self.assertTrue(resp.status_code== 403)
 
 
-class GenomicOutreachApiV2Test(GenomicApiTestBase):
+class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
     def setUp(self):
         super(GenomicOutreachApiV2Test, self).setUp()
         self.loop_dao = GenomicInformingLoopDao()
@@ -455,8 +456,9 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         self.member_dao = GenomicSetMemberDao()
         self.num_participants = 5
 
+    # GET
     def test_validate_params(self):
-        bad_response = 'GenomicOutreach accepted params: start_date | end_date | participant_id | module | type'
+        bad_response = 'GenomicOutreachV2 GET accepted params: start_date | end_date | participant_id | module | type'
 
         response_one = self.send_get(
             "GenomicOutreachV2?wwqwqw=ewewe",
@@ -483,7 +485,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         self.assertEqual(response_three.json['message'], bad_response)
         self.assertEqual(response_three.status_code, 400)
 
-        bad_response = 'GenomicOutreach accepted modules: gem | hdr | pgx'
+        bad_response = 'GenomicOutreachV2 GET accepted modules: gem | hdr | pgx'
 
         response_four = self.send_get(
             "GenomicOutreachV2?module=ewewewew",
@@ -493,7 +495,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         self.assertEqual(response_four.json['message'], bad_response)
         self.assertEqual(response_four.status_code, 400)
 
-        bad_response = 'GenomicOutreach accepted types: result | informingLoop'
+        bad_response = 'GenomicOutreachV2 GET accepted types: result | informingLoop'
 
         response_five = self.send_get(
             "GenomicOutreachV2?type=ewewewew",
@@ -1327,6 +1329,149 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         self.assertTrue(all(obj['module'] == 'pgx' for obj in resp['data']))
         self.assertTrue(all(obj['participant_id'] in members_pid_resp_set for obj in resp['data']))
 
+    # POST/PUT
+    def test_validate_post_put_data(self):
+
+        resp = self.send_post(
+            'GenomicOutreachV2',
+            request_data={'bad_key': ''},
+            expected_status=400
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json['message'], 'GenomicOutreachV2 POST accepted data/params: '
+                                               'informing_loop_eligible | eligibility_date_utc | participant_id')
+
+        resp = self.send_put(
+            'GenomicOutreachV2',
+            request_data={'bad_key': ''},
+            expected_status=400
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json['message'], 'GenomicOutreachV2 PUT accepted data/params: '
+                                               'informing_loop_eligible | eligibility_date_utc | participant_id')
+
+        resp = self.send_post(
+            'GenomicOutreachV2?bad_arg=bad',
+            request_data={
+                'informing_loop_eligible': '',
+                'eligibility_date_utc': ''
+            },
+            expected_status=400
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json['message'], 'GenomicOutreachV2 POST accepted data/params: '
+                                               'informing_loop_eligible | eligibility_date_utc | participant_id')
+
+        resp = self.send_put(
+            'GenomicOutreachV2?bad_arg=bad',
+            request_data={
+                'informing_loop_eligible': '',
+                'eligibility_date_utc': ''
+            },
+            expected_status=400
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json['message'], 'GenomicOutreachV2 PUT accepted data/params: '
+                                               'informing_loop_eligible | eligibility_date_utc | participant_id')
+
+        resp = self.send_post(
+            'GenomicOutreachV2',
+            request_data={},
+            expected_status=400
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json['message'], 'Missing request data/params in POST')
+
+        resp = self.send_put(
+            'GenomicOutreachV2',
+            request_data={},
+            expected_status=400
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json['message'], 'Missing request data/params in PUT')
+
+    def build_ready_loop_template_data(self):
+        post_data_map = {
+            'participant_summary': {
+                'participant_id': 'external_participant_id',
+                'consent_for_genomics_ror': 1,
+                'consent_for_study_enrollment': 1,
+                'withdrawal_status': 1,
+                'suspension_status': 1,
+                'deceased_status': 0,
+            },
+            'genomic_set_member': {
+                'genomic_set_id': 'system',
+                'participant_id': '%participant_summary.participant_id%',
+                'genome_type': 'aou_wgs',
+                'qc_status': 1,
+                'gc_manifest_sample_source': 'Whole Blood',
+                'informing_loop_ready_flag': 'external_informing_loop_ready_flag',
+                'informing_loop_ready_flag_modified': 'external_informing_loop_ready_flag_modified'
+            },
+            'genomic_gc_validation_metrics': {
+                'genomic_set_member_id': '%genomic_set_member.id%',
+                'sex_concordance': 'True',
+                'processing_status': 'PASS',
+                'drc_sex_concordance': 'PASS',
+                'drc_fp_concordance': 'PASS',
+            }
+        }
+
+        # build template datagen w1il template data
+        self.build_cvl_template_based_data(
+            template_name='default',
+            _dict=post_data_map,
+            project_name='cvl_il'
+        )
+
+    def test_post_put_checks_for_participant(self):
+
+        resp = self.send_post(
+            f'GenomicOutreachV2?participant_id=P12234312',
+            request_data={
+                'informing_loop_eligible': 'yes',
+                'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
+            },
+            expected_status=404
+        )
+        self.assertIsNotNone(resp)
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json['message'], 'Participant with id P12234312 was not found')
+
+        resp = self.send_put(
+            f'GenomicOutreachV2?participant_id=P12234312',
+            request_data={
+                'informing_loop_eligible': 'yes',
+                'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
+            },
+            expected_status=404
+        )
+        self.assertIsNotNone(resp)
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json['message'], 'Participant with id P12234312 was not found')
+
+    def test_post_inserts_participant_data_via_template(self):
+        ready_modules = ['hdr', 'pgx']
+        self.build_ready_loop_template_data()
+
+        participant = self.data_generator.create_database_participant()
+
+        resp = self.send_post(
+            f'GenomicOutreachV2?participant_id=P{participant.participantId}',
+            request_data={
+                'informing_loop_eligible': 'yes',
+                'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
+            }
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(len(resp['data']), 2)
+        self.assertTrue(all(obj['participant_id'] == f'P{participant.participantId}'
+                            for obj in resp['data']))
+
+        self.assertTrue(all(obj['module'] in ready_modules for obj in resp['data']))
+        self.assertTrue(all(obj['status'] == 'ready' for obj in resp['data']))
 
 class GenomicCloudTasksApiTest(BaseTestCase):
     def setUp(self):
