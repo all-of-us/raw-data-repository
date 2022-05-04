@@ -272,8 +272,8 @@ class ConsentTool(ToolBase):
                         file=file
                     )
                     if result.other_errors and 'invalid printed name' in result.other_errors:
-                        logger.info(f'printed name for {result.id} found invalid')
-                        self._write_invalid_id(result.id)
+                        logger.info(f'printed name for {file.id} found invalid')
+                        self._write_invalid_id(file.id)
 
                     latest_id = file.id
                     self._write_last_id(latest_id)
