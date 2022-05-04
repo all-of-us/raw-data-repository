@@ -310,7 +310,8 @@ class ConsentValidationController:
         self.participant_summary_dao = participant_summary_dao
         self.storage_provider = storage_provider
 
-        self.va_hpo_id = hpo_dao.get_by_name('VA').hpoId
+        print(hpo_dao)
+        self.va_hpo_id = 15  # hpo_dao.get_by_name('VA').hpoId
 
     @classmethod
     def build_controller(cls):
