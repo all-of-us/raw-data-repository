@@ -3,6 +3,7 @@ import csv
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from itertools import islice
+import os
 from typing import Collection
 
 import requests
@@ -18,9 +19,10 @@ from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.gcp_utils import gcp_make_auth_header
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import Enum
 from rdr_service.offline.sync_consent_files import ConsentSyncGuesser
-from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
+from rdr_service.services.consent.validation import ConsentValidationController, \
     LogResultStrategy
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
@@ -70,6 +72,8 @@ class ConsentTool(ToolBase):
             self.retro_validate()
         elif self.args.command == 'files-for-update':
             self.files_for_update()
+        elif self.args.command == 'printed':
+            self.validate_printed()
 
     def _call_server_for_retro_validation(self, participant_ids):
         if len(participant_ids) > 0:
@@ -213,6 +217,67 @@ class ConsentTool(ToolBase):
                 dispatch_rebuild_consent_metrics_tasks([file.id],
                                                        project_id=self.gcp_env.project, build_locally=True)
 
+    @classmethod
+    def _read_last_id(cls):
+        if not os.path.exists('last_id_file.txt'):
+            return 0
+
+        with open('last_id_file.txt', 'r') as file:
+            return file.readline()
+
+    @classmethod
+    def _write_last_id(cls, _id):
+        with open('last_id_file.txt', 'w') as file:
+            file.write(str(_id))
+
+    @classmethod
+    def _write_invalid_id(cls, _id):
+        with open('invalid_printed.txt', 'a') as invalid_printed_file:
+            invalid_printed_file.write(f'{_id}\n')
+
+    def validate_printed(self):
+        consent_type = ConsentType.PRIMARY
+
+        latest_id = self._read_last_id()
+        logger.info(f'starting with id {latest_id} for {consent_type}')
+
+        controller = ConsentValidationController(
+            consent_dao=ConsentDao(),
+            participant_summary_dao=ParticipantSummaryDao(),
+            hpo_dao=HPODao(),
+            storage_provider=GoogleCloudStorageProvider()
+        )
+
+        found_files = True
+        with self.get_session() as session:
+            while found_files:
+                consent_files = session.query(
+                    ConsentFile, ParticipantSummary
+                ).join(
+                    ParticipantSummary,
+                    ParticipantSummary.participantId == ConsentFile.participant_id
+                ).filter(
+                    ConsentFile.sync_status.in_([ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE]),
+                    ParticipantSummary.participantOrigin == 'vibrent',
+                    ConsentFile.type == consent_type,
+                    ConsentFile.id > latest_id
+                ).order_by(ConsentFile.id).limit(2000).all()
+
+                found_files = len(consent_files) > 0
+
+                for file, summary in consent_files:
+                    print(file.id)
+                    result = controller.revalidate_file(
+                        summary=summary,
+                        file=file
+                    )
+                    if result.other_errors and 'invalid printed name' in result.other_errors:
+                        logger.info(f'printed name for {result.id} found invalid')
+                        self._write_invalid_id(result.id)
+
+                    latest_id = file.id
+                    self._write_last_id(latest_id)
+
     def validate_consents(self):
         consent_type = None
         if self.args.type:
@@ -225,12 +290,8 @@ class ConsentTool(ToolBase):
             storage_provider=GoogleCloudStorageProvider()
         )
         with open(self.args.pid_file) as pid_file,\
-                self.get_session() as session,\
-                ReplacementStoringStrategy(
-                    session=session,
-                    consent_dao=controller.consent_dao,
-                    project_id=self.gcp_env.project
-                ) as store_strategy:
+                self.get_session() as session, \
+                LogResultStrategy(logger, verbose=False, storage_provider=None) as store_strategy:
             # Get participant ids from the file in batches
             # (retrieving all their summaries at once, processing them before the next batch)
             participant_lookup_batch_size = 500
@@ -244,6 +305,28 @@ class ConsentTool(ToolBase):
                         types_to_validate=[consent_type]
                     )
                 participant_ids = list(islice(pid_file, participant_lookup_batch_size))
+
+        # with self.get_session() as session,\
+        #          as store_strategy:
+        #     pid_list = session.query(ConsentFile.participant_id).join(
+        #         Participant,
+        #         Participant.participantId == ConsentFile.participant_id
+        #     ).filter(
+        #         ConsentFile.type == ConsentType.PRIMARY,
+        #         ConsentFile.expected_sign_date > '2020-10-01',
+        #         Participant.participantOrigin == 'vibrent'
+        #     ).limit(1000).distinct().all()
+        #
+        #     summaries = ParticipantSummaryDao.get_by_ids_with_session(
+        #         session=session,
+        #         obj_ids=[file.participant_id for file in pid_list]
+        #     )
+        #     for participant_summary in summaries:
+        #         controller.validate_participant_consents(
+        #             summary=participant_summary,
+        #             output_strategy=store_strategy,
+        #             types_to_validate=[consent_type]
+        #         )
 
     def upload_records(self):
         file_ids_modified = []
@@ -356,6 +439,7 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
     subparsers.add_parser('check-retro-sync')
     subparsers.add_parser('retro-validation')
     subparsers.add_parser('files-for-update')
+    subparsers.add_parser('printed')
 
 
 def run():

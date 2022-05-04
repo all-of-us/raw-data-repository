@@ -455,11 +455,10 @@ class ConsentValidationController:
         if self._has_primary_update_consent(summary):
             output_strategy.add_all(validator.get_primary_update_validation_results())
 
-    def revalidate_file(self, summary: ParticipantSummary, file: ParsingResult,
-                        output_strategy: ValidationOutputStrategy):
+    def revalidate_file(self, summary: ParticipantSummary, file: ParsingResult):
         validator = self._build_validator(participant_summary=summary)
         result = validator.revalidate(file)
-        output_strategy.add_result(result)
+        return result
 
     @classmethod
     def _check_consent_type(cls, consent_type: ConsentType, to_check_list: Collection[ConsentType]):
