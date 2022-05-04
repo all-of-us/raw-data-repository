@@ -495,6 +495,11 @@ class VibrentCaborConsentFile(CaborConsentFile):
 
         return elements
 
+    def _get_printed_name_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50)
+        )
+
 
 class VibrentEhrConsentFile(EhrConsentFile):
     def _get_signature_elements(self):
@@ -531,6 +536,12 @@ class VibrentGrorConsentFile(GrorConsentFile):
             search_box = Rect.from_edges(left=70, right=73, bottom=475, top=478)
 
         return self.pdf.get_elements_intersecting_box(search_box, page=self._SIGNATURE_PAGE)
+
+    def _get_printed_name_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50),
+            page=self._SIGNATURE_PAGE
+        )
 
 
 class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
@@ -584,6 +595,12 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
                         return True
 
             return False
+
+    def _get_printed_name_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50),
+            page=self._get_signature_page()
+        )
 
 
 class CeFileWrapper:
