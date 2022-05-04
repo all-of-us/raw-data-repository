@@ -3,6 +3,7 @@
 # Template for RDR tool python program.
 #
 import logging
+import pytz
 from sqlalchemy import and_, case, insert, or_, text
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
@@ -11,6 +12,7 @@ from sqlalchemy.sql.functions import coalesce, concat
 from typing import Type
 
 from rdr_service import config
+from rdr_service import api_util
 from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, PMI_SKIP_CODE, \
     EMPLOYMENT_ZIPCODE_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -278,7 +280,7 @@ class CurationExportClass(ToolBase):
         )
 
     @classmethod
-    def _get_base_src_clean_answers_select(cls, session):
+    def _get_base_src_clean_answers_select(cls, session, cutoff_date=None):
         module_code = aliased(Code)
         question_code = aliased(Code)
         answer_code = aliased(Code)
@@ -377,7 +379,6 @@ class CurationExportClass(ToolBase):
             ParticipantSummary,
             ParticipantSummary.participantId == Participant.participantId
         ).filter(
-            Participant.withdrawalStatus != WithdrawalStatus.NO_USE,
             Participant.isGhostId.isnot(True),
             Participant.isTestParticipant.isnot(True),
             Participant.participantOrigin != 'careevolution',
@@ -401,9 +402,30 @@ class CurationExportClass(ToolBase):
             )
         )
 
+        if cutoff_date is not None:
+            questionnaire_answers_select = questionnaire_answers_select.filter(
+                or_(
+                    and_(
+                        QuestionnaireResponse.authored < cutoff_date,
+                        ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored < cutoff_date,
+                        ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE
+                    ),
+                    and_(
+                        QuestionnaireResponse.authored < cutoff_date,
+                        ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored < cutoff_date,
+                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NO_USE,
+                        ParticipantSummary.withdrawalAuthored >= cutoff_date
+                    )
+                )
+            )
+        else:
+            questionnaire_answers_select = questionnaire_answers_select.filter(
+                Participant.withdrawalStatus != WithdrawalStatus.NO_USE
+            )
+
         return column_map, questionnaire_answers_select, module_code, question_code
 
-    def _populate_src_clean(self, session):
+    def _populate_src_clean(self, session, cutoff_date=None):
         self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion, ParticipantSummary,
                                     QuestionnaireResponse, QuestionnaireResponseAnswer])
 
@@ -420,7 +442,7 @@ class CurationExportClass(ToolBase):
         ).distinct().subquery()
 
         column_map, questionnaire_answers_select, module_code, question_code \
-            = self._get_base_src_clean_answers_select(session)
+            = self._get_base_src_clean_answers_select(session, cutoff_date)
 
         latest_responses_select = questionnaire_answers_select.outerjoin(
             responses_by_module_subquery,
@@ -479,6 +501,13 @@ class CurationExportClass(ToolBase):
         session.execute(insert_query)
 
     def populate_cdm_database(self):
+        cutoff_date = None
+        if self.args.cutoff:
+            cutoff_date = api_util.parse_date(self.args.cutoff, '%Y-%m-%d')
+            cutoff_date = cutoff_date.replace(tzinfo=pytz.UTC)
+            _logger.info(f"populating cdm data with cutoff date {self.args.cutoff}...")
+        else:
+            _logger.info(f"populating cdm data without cutoff date")
         with self.get_session(database_name='cdm', alembic=True) as session:  # using alembic to get CREATE permission
             self._create_tables(session, [
                 QuestionnaireAnswersByModule,
@@ -488,7 +517,7 @@ class CurationExportClass(ToolBase):
         # using alembic here to get the database_factory code to set up a connection to the CDM database
         with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
             self._populate_questionnaire_answers_by_module(session)
-            self._populate_src_clean(session)
+            self._populate_src_clean(session, cutoff_date)
 
         return 0
 
@@ -510,6 +539,8 @@ class CurationExportClass(ToolBase):
 def add_additional_arguments(parser):
     parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
     parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
+    parser.add_argument("--cutoff", help="populate cdm with cut off date, example: 2022-04-01",
+                        type=str, default=None)  # noqa
     subparsers = parser.add_subparsers(dest='command')
 
     export_parser = subparsers.add_parser('export')

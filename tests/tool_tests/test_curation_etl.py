@@ -82,9 +82,10 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         return questionnaire_response
 
     @staticmethod
-    def run_cdm_data_generation():
+    def run_cdm_data_generation(cutoff=None):
         CurationEtlTest.run_tool(CurationExportClass, tool_args={
-            'command': 'cdm-data'
+            'command': 'cdm-data',
+            'cutoff': cutoff
         })
 
     def test_locking(self):
@@ -405,6 +406,69 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.run_cdm_data_generation()
         src_clean_answers = self.session.query(SrcClean).all()
         self.assertEqual(0, len(src_clean_answers))
+
+    def test_cutoff_date(self):
+        participant1 = self.data_generator.create_database_participant()
+        # consent before cutoff 2022-04-01, should be included in the result
+        self.data_generator.create_database_participant_summary(
+            participant=participant1, consentForStudyEnrollmentFirstYesAuthored=datetime(2022, 2, 1),
+            dateOfBirth=datetime(1982, 1, 9))
+        self._setup_questionnaire_response(
+            participant1,
+            self.questionnaire,
+            authored=datetime(2022, 2, 1)
+        )
+
+        participant2 = self.data_generator.create_database_participant()
+        # consent after cutoff 2022-04-01, should not be included in the result
+        self.data_generator.create_database_participant_summary(
+            participant=participant2, consentForStudyEnrollmentFirstYesAuthored=datetime(2022, 4, 20),
+            dateOfBirth=datetime(1982, 1, 9))
+        self._setup_questionnaire_response(
+            participant2,
+            self.questionnaire,
+            authored=datetime(2022, 4, 20)
+        )
+
+        participant3 = self.data_generator.create_database_participant()
+        # withdrawal before cutoff 2022-04-01, should not be included in the result
+        self.data_generator.create_database_participant_summary(
+            participant=participant3, consentForStudyEnrollmentFirstYesAuthored=datetime(2022, 2, 1),
+            withdrawalStatus=2, withdrawalAuthored=datetime(2022, 2, 20), dateOfBirth=datetime(1982, 1, 9))
+        self._setup_questionnaire_response(
+            participant3,
+            self.questionnaire,
+            authored=datetime(2022, 2, 1)
+        )
+
+        participant4 = self.data_generator.create_database_participant()
+        # withdrawal after cutoff 2022-04-01, should be included in the result
+        self.data_generator.create_database_participant_summary(
+            participant=participant4, consentForStudyEnrollmentFirstYesAuthored=datetime(2022, 2, 1),
+            withdrawalStatus=2, withdrawalAuthored=datetime(2022, 4, 20), dateOfBirth=datetime(1982, 1, 9))
+        self._setup_questionnaire_response(
+            participant4,
+            self.questionnaire,
+            authored=datetime(2022, 2, 1)
+        )
+
+        self.run_cdm_data_generation('2022-04-01')
+
+        src_clean_answers_p1 = self.session.query(SrcClean)\
+            .filter(SrcClean.participant_id == participant1.participantId).all()
+        self.assertEqual(4, len(src_clean_answers_p1))
+
+        src_clean_answers_p2 = self.session.query(SrcClean) \
+            .filter(SrcClean.participant_id == participant2.participantId).all()
+        self.assertEqual(0, len(src_clean_answers_p2))
+
+        src_clean_answers_p3 = self.session.query(SrcClean) \
+            .filter(SrcClean.participant_id == participant3.participantId).all()
+        self.assertEqual(0, len(src_clean_answers_p3))
+
+        src_clean_answers_p4 = self.session.query(SrcClean) \
+            .filter(SrcClean.participant_id == participant4.participantId).all()
+        self.assertEqual(4, len(src_clean_answers_p4))
 
     def test_ignored_answers_are_marked_invalid(self):
         """
