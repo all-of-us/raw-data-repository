@@ -224,3 +224,8 @@ cron:
   timezone: America/New_York
   schedule: every day 10:00
   target: offline
+- description: Export VA Workqueue
+  url: /offline/ExportVaWorkQueue
+  timezone: America/New_York
+  schedule: every monday 04:00
+  target: offline
