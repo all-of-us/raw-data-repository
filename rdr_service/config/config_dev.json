@@ -1,31 +1,75 @@
 {
   "allow_nonprod_requests": true,
-  "biobank_id_prefix": ["Z"],
+  "biobank_id_prefix": [
+    "Z"
+  ],
   "biobank_samples_shards": [
     "2"
   ],
   "user_info": {
     "example@example.com": {
-      "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr", "workbench", "gem", "redcap", "biobank"],
+      "roles": [
+        "ptc",
+        "healthpro",
+        "exporter",
+        "storefront",
+        "rdr",
+        "workbench",
+        "gem",
+        "redcap",
+        "biobank"
+      ],
       "clientId": "example",
       "allow_list_ip_ranges": {
-        "ip6": ["::1/64"],
-        "ip4": ["127.0.0.1/32"]
+        "ip6": [
+          "::1/64"
+        ],
+        "ip4": [
+          "127.0.0.1/32"
+        ]
       }
     },
-      "example@spellman.com": {
-        "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr", "workbench", "gem"],
-        "clientId": "vibrent",
-        "allow_list_ip_ranges": {
-          "ip6": ["::1/64"],
-          "ip4": ["127.0.0.1/32"]
-        }
-      },
+    "example@spellman.com": {
+      "roles": [
+        "ptc",
+        "healthpro",
+        "exporter",
+        "storefront",
+        "rdr",
+        "workbench",
+        "gem"
+      ],
+      "clientId": "vibrent",
+      "allow_list_ip_ranges": {
+        "ip6": [
+          "::1/64"
+        ],
+        "ip4": [
+          "127.0.0.1/32"
+        ]
+      }
+    },
     "awardee-pitt@pmi-drc-api-test.iam.gserviceaccount.com": {
-      "roles": ["awardee_sa"],
+      "roles": [
+        "awardee_sa"
+      ],
       "awardee": "PITT",
-      "allow_list_ip_ranges" : {
-	"ip4": ["136.142.28.15", "136.142.28.122", "136.142.28.123", "136.142.28.76", "136.142.202.70", "136.142.202.71", "136.142.202.72", "136.142.202.73", "136.142.202.74", "136.142.202.75", "136.142.202.76", "136.142.202.77", "136.142.202.78"]
+      "allow_list_ip_ranges": {
+        "ip4": [
+          "136.142.28.15",
+          "136.142.28.122",
+          "136.142.28.123",
+          "136.142.28.76",
+          "136.142.202.70",
+          "136.142.202.71",
+          "136.142.202.72",
+          "136.142.202.73",
+          "136.142.202.74",
+          "136.142.202.75",
+          "136.142.202.76",
+          "136.142.202.77",
+          "136.142.202.78"
+        ]
       }
     }
   },
@@ -51,23 +95,29 @@
     "genomic_samples_manifests"
   ],
   "genomic_center_bucket_name": [
-   "dev-genomics-baylor",
-   "dev-genomics-broad",
-   "dev-genomics-northwest",
-   "dev-genomics-color"
+    "dev-genomics-baylor",
+    "dev-genomics-broad",
+    "dev-genomics-northwest",
+    "dev-genomics-color"
   ],
   "genomic_center_data_bucket_name": [
-   "dev-genomics-raw-baylor",
-   "dev-genomics-raw-broad",
-   "dev-genomics-raw-northwest",
-   "dev-genomics-raw-color"
+    "dev-genomics-raw-baylor",
+    "dev-genomics-raw-broad",
+    "dev-genomics-raw-northwest",
+    "dev-genomics-raw-color"
   ],
   "drc_broad_bucket_name": [
     "dev-drc-broad"
   ],
-  "co_bucket_name": ["dev-co"],
-  "uw_bucket_name": ["dev-uw"],
-  "bcm_bucket_name": ["dev-bcm"],
+  "co_bucket_name": [
+    "dev-co"
+  ],
+  "uw_bucket_name": [
+    "dev-uw"
+  ],
+  "bcm_bucket_name": [
+    "dev-bcm"
+  ],
   "aw1_array_subfolder_name": [
     "AW1_genotyping_sample_manifests"
   ],
@@ -111,7 +161,17 @@
     "northwest": "uw",
     "rdr": "rdr"
   },
-  "mayolink_creds": ["rdr-mayolink-creds-test.json"],
-  "mayolink_endpoint": ["https://test.orders.mayocliniclabs.com/orders/create.xml"],
-  "a1_limit": [10000]
+  "mayolink_creds": [
+    "rdr-mayolink-creds-test.json"
+  ],
+  "mayolink_endpoint": [
+    "https://test.orders.mayocliniclabs.com/orders/create.xml"
+  ],
+  "a1_limit": [
+    10000
+  ],
+  "va_workqueue_bucket_name": [
+    "app_default_bucket"
+  ]
 }
+

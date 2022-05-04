@@ -20,7 +20,7 @@ class VaWqExporterTest(BaseTestCase, PDRGeneratorTestMixin):
     def setUp(self):
         super().setUp()
 
-    @mock.patch('rdr_service.offline.export_va_workqueue_participants.clock.CLOCK')
+    @mock.patch('rdr_service.offline.export_va_workqueue.clock.CLOCK')
     def testExportVaWorkQueue(self, mock_clock):
         mock_clock.now.return_value = datetime.datetime(2022, 1, 13, 7, 4, 0)
         summary_dao = ParticipantSummaryDao()
@@ -40,7 +40,7 @@ class VaWqExporterTest(BaseTestCase, PDRGeneratorTestMixin):
             participant_dao.update(participant)
             summary_dao.insert(self.participant_summary(participant))
         generate_workqueue_report()
-        with open_cloud_file(os.path.normpath(config.VA_WORKQUEUE_BUCKET_NAME+"/Participants_2022-01-13-07-04-00.csv")) as f:
+        with open_cloud_file(os.path.normpath(config.getSetting(config.VA_WORKQUEUE_BUCKET_NAME)+"/Participants_2022-01-13-07-04-00.csv")) as f:
             reader = csv.DictReader(f)
             row_count = 0
             for _ in reader:

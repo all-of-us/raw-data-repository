@@ -57,7 +57,7 @@ def get_workqueue_participants():
 
 
 def generate_workqueue_report():
-    bucket_name = config.VA_WORKQUEUE_BUCKET_NAME
+    bucket_name = config.getSetting(config.VA_WORKQUEUE_BUCKET_NAME)
     file_timestamp = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
     file_name = f'Participants_{file_timestamp}.csv'
     participants = get_workqueue_participants()
