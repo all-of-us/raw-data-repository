@@ -1147,6 +1147,15 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             )
             return record.first()
 
+    def get_member_by_participant_id(self, participant_id, genome_type=config.GENOME_TYPE_ARRAY):
+        with self.session() as session:
+            return session.query(
+                    GenomicSetMember
+                ).filter(
+                  GenomicSetMember.participantId == participant_id,
+                  GenomicSetMember.genomeType == genome_type
+            ).first()
+
     def handle_control_samples_from_raw_aw1(self, record):
         """ Create control samples from aw1 raw data """
 

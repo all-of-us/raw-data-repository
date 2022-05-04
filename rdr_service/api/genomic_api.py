@@ -4,7 +4,7 @@ from dateutil import parser
 from flask import request
 from werkzeug.exceptions import NotFound, BadRequest
 
-from rdr_service import clock
+from rdr_service import clock, config
 from rdr_service.api.base_api import BaseApi, log_api_request, UpdatableApi
 from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
 from rdr_service.app_util import auth_required, restrict_to_gae_project
@@ -230,10 +230,10 @@ class GenomicOutreachApiV2(UpdatableApi):
 
     @staticmethod
     def set_ready_loop(participant_id, req_data):
+        member_dao = GenomicSetMemberDao()
 
         def _build_ready_response():
             report_statuses = []
-            member_dao = GenomicSetMemberDao()
             ready_loop = member_dao.get_ready_loop_by_participant_id(participant_id)
             if ready_loop:
                 for module in ['hdr', 'pgx']:
@@ -255,6 +255,13 @@ class GenomicOutreachApiV2(UpdatableApi):
         }
 
         if request.method == 'PUT':
+            current_member = member_dao.get_member_by_participant_id(
+                participant_id,
+                genome_type=config.GENOME_TYPE_WGS
+            )
+            if not current_member:
+                raise NotFound(f'Participant with id P{participant_id} was not found in genomics system')
+
             log_api_request(log=request.log_record)
             return _build_ready_response()
 
