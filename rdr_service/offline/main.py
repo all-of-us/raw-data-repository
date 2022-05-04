@@ -25,7 +25,7 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status, \
-    antibody_study_pipeline, genomic_data_quality_pipeline
+    antibody_study_pipeline, genomic_data_quality_pipeline, export_va_workqueue
 from rdr_service.offline.ce_health_data_reconciliation_pipeline import CeHealthDataReconciliationPipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
@@ -705,6 +705,12 @@ def genomic_data_quality_validation_fails_resolved():
     return '{"success": "true"}'
 
 
+@app_util.auth_required_cron
+def export_va_workqueue_report():
+    export_va_workqueue.generate_workqueue_report()
+    return '{"success": "true"}'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
@@ -1128,6 +1134,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'MigrateRequestsLog/<string:target_db>',
         endpoint='migrate_requests_log',
         view_func=migrate_requests_logs,
+        methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'ExportVaWorkQueue',
+        endpoint='export_va_workqueue_report',
+        view_func=export_va_workqueue_report,
         methods=['GET']
     )
 

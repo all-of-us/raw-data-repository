@@ -138,6 +138,7 @@ DATA_BUCKET_SUBFOLDERS_PROD = 'data_bucket_subfolders_prod'
 HEALTHPRO_CONSENT_BUCKET = 'hpro_consent_bucket'
 HEALTHPRO_CONSENTS_TRANSFER_LIMIT = 'hpro_consents_transfer_limit'
 CE_HEALTH_DATA_BUCKET_NAME = "ce_health_data_bucket_name"
+VA_WORKQUEUE_BUCKET_NAME = 'va_workqueue_bucket_name'
 
 # Buckets to listen for Pub/Sub notifications
 PUBSUB_NOTIFICATION_BUCKETS_PROD = [
