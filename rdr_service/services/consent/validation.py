@@ -754,4 +754,8 @@ class ConsentValidator:
 
     @classmethod
     def _append_other_error(cls, error: ConsentOtherErrors, result: ParsingResult):
-        result.other_errors = (result.other_errors or '') + error
+        previous_errors = []
+        if result.other_errors:
+            previous_errors = result.other_errors.split(', ')
+
+        result.other_errors = ', '.join([*previous_errors, str(error)])
