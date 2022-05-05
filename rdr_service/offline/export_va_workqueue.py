@@ -1,5 +1,7 @@
+import datetime
 from sqlalchemy import or_
 from rdr_service import clock, config
+from rdr_service.api_util import list_blobs, delete_cloud_file
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -43,6 +45,10 @@ CSV_HEADER = ['PMI ID', 'Biobank ID', 'Last Name', 'First Name', 'Middle Initial
               'SDOH PPI Survey Complete', 'SDOH PPI Survey Completion Date', 'Winter Minute PPI Survey Complete',
               'Winter Minute PPI Survey Completion Date', 'New Year Minute PPI Survey Complete',
               'New Year Minute PPI Survey Completion Date']
+_INPUT_CSV_TIME_FORMAT_LENGTH = 18
+_CSV_SUFFIX_LENGTH = 4
+INPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
+_MAX_FILE_AGE = datetime.timedelta(days=7)
 
 
 def get_workqueue_participants():
@@ -107,3 +113,29 @@ def generate_workqueue_report():
     with exporter.open_cloud_writer(file_name) as writer:
         writer.write_header(CSV_HEADER)
         writer.write_rows(participants_new)
+
+
+def delete_old_reports():
+    bucket = config.getSetting(config.VA_WORKQUEUE_BUCKET_NAME)
+    for file in list_blobs(bucket):
+        if file.name.endswith(".csv") and file.name.startswith("Participants"):
+            file_time = _timestamp_from_filename(file.name)
+            now = clock.CLOCK.now()
+            if now - file_time > _MAX_FILE_AGE:
+                delete_cloud_file(bucket + "/" + file.name)
+
+
+def _timestamp_from_filename(csv_filename):
+    if len(csv_filename) < _INPUT_CSV_TIME_FORMAT_LENGTH + _CSV_SUFFIX_LENGTH:
+        raise RuntimeError("Can't parse time from CSV filename: %s" % csv_filename)
+    time_suffix = csv_filename[
+        len(csv_filename)
+        - (_INPUT_CSV_TIME_FORMAT_LENGTH + _CSV_SUFFIX_LENGTH)
+        - 1 : len(csv_filename)
+        - _CSV_SUFFIX_LENGTH
+    ]
+    try:
+        timestamp = datetime.datetime.strptime(time_suffix, INPUT_CSV_TIME_FORMAT)
+    except ValueError:
+        raise RuntimeError("Can't parse time from CSV filename: %s" % csv_filename)
+    return timestamp
