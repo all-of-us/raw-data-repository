@@ -1278,16 +1278,16 @@ class GenomicFileIngester:
             member.id,
             module_type=kwargs.get('module_type')
         )
-        new_results_state = GenomicStateHandler.get_new_state(
-            result_state_obj.results_workflow_state,
-            signal=kwargs.get('signal')
-        )
-        if (new_results_state and result_state_obj) \
-                and (result_state_obj.results_workflow_state != new_results_state):
-            self.results_workflow_dao.update_results_workflow_state_record(
-                result_state_obj,
-                new_results_state
+        if result_state_obj:
+            new_results_state = GenomicStateHandler.get_new_state(
+                result_state_obj.results_workflow_state,
+                signal=kwargs.get('signal')
             )
+            if new_results_state and (result_state_obj.results_workflow_state != new_results_state):
+                self.results_workflow_dao.update_results_workflow_state_record(
+                    result_state_obj,
+                    new_results_state
+                )
 
         return row_copy, member
 
