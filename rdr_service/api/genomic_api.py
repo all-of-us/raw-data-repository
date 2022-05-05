@@ -173,9 +173,7 @@ class GenomicOutreachApiV2(UpdatableApi):
     @auth_required(RDR_AND_PTC)
     @restrict_to_gae_project(PTC_ALLOWED_ENVIRONMENTS)
     def post(self):
-
         participant_id, request_data = self.validate_post_data()
-
         return self.set_ready_loop(
             participant_id,
             request_data
@@ -184,9 +182,7 @@ class GenomicOutreachApiV2(UpdatableApi):
     @auth_required(RDR_AND_PTC)
     @restrict_to_gae_project(PTC_ALLOWED_ENVIRONMENTS)
     def put(self):
-
         participant_id, request_data = self.validate_post_data()
-
         return self.set_ready_loop(
             participant_id,
             request_data

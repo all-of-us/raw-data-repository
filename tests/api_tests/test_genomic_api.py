@@ -839,7 +839,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 f'GenomicOutreachV2?start_date={fake_date_one}&module=PGX'
             )
 
-        self.assertEqual(len(resp['data']), 10)
+        self.assertEqual(len(resp['data']), 5)
 
         all_pgx = all(obj for obj in resp['data'] if obj['module'] == 'pgx')
         loop_and_result = all(obj['type'] == 'informingLoop' or obj['type'] == 'result' for obj in resp['data'])
