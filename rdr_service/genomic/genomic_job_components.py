@@ -496,6 +496,12 @@ class GenomicFileIngester:
                                                     )
                     # Skip rest of iteration and continue processing file
                     continue
+
+            # Check for diversion pouch site
+            div_pouch_site_id = self.sample_dao.get_diversion_pouch_site_id(row_copy['collectiontubeid'])
+            if div_pouch_site_id:
+                member.diversionPouchSiteFlag = 1
+
             # Process the attribute data
             member_changed, member = self._process_aw1_attribute_data(row_copy, member)
             if member_changed:

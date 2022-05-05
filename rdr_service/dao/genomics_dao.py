@@ -2137,7 +2137,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember,
                         and_(
                             GenomicSetMember.participantId == GenomicMemberReportState.participant_id,
-                            GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY
+                            GenomicSetMember.genomeType.in_(query_genome_types)
                         )
                     ).outerjoin(
                         GenomicResultViewed,
@@ -2871,21 +2871,25 @@ class GenomicInformingLoopDao(UpdatableDao):
             )
         )
 
-    def get_latest_state_for_pid(self, pid, module="gem"):
+    def get_latest_state_for_pid(self, pid, module="gem", decision_values_only=True):
         """
         Returns latest event_type and decision_value
         genomic_informing_loop record for a specific participant
+        :param decision_values_only: default true; don't want "started" events
         :param pid: participant_id
         :param module: gem (default), hdr, or pgx
         :return: query result
         """
         with self.session() as session:
-            return self.build_latest_decision_query(module).with_entities(
+            query = self.build_latest_decision_query(module).with_entities(
                 GenomicInformingLoop.event_type,
                 GenomicInformingLoop.decision_value
             ).filter(
                 GenomicInformingLoop.participant_id == pid
-            ).with_session(session).all()
+            )
+            if decision_values_only:
+                query.filter(GenomicInformingLoop.event_type == 'informing_loop_decision')
+            return query.with_session(session).all()
 
     def prepare_gem_migration_obj(self, row):
         decision_mappings = {

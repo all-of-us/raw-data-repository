@@ -1324,13 +1324,18 @@ class GenomicJobController:
                     latest_state = [x for x in latest_state[0] if x]
                     lookup_state = f"{module}.{'.'.join(latest_state)}"
 
-                    if event.event_name != event_mappings[lookup_state]:
-                        # create incident
-                        self.create_incident(**incident_params)
+                    try:
+                        if event.event_name != event_mappings[lookup_state]:
+                            # create incident
+                            self.create_incident(**incident_params)
 
-                    else:
-                        # add to update_pids reconcile_job_run_id
-                        update_pids.append(event.participant_id)
+                        else:
+                            # add to update_pids reconcile_job_run_id
+                            update_pids.append(event.participant_id)
+                    except KeyError:
+                        incident_params['message'] = f'{self.job_id.name}: Key Error on IL lookup.' \
+                                                     f'PID: {event.participant_id}'
+                        self.create_incident(**incident_params)
 
                 else:
                     # No informing loop for pid, create incident
