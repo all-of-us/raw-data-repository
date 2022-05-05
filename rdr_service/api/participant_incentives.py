@@ -60,28 +60,18 @@ class ParticipantIncentivesApi(UpdatableApi):
         return self._make_response(model)
 
     @staticmethod
-    def _get_required_keys(required_type=None):
-        key_map = {
-            'POST': {
-                'default': ['createdBy', 'site', 'dateGiven', 'occurrence', 'incentiveType', 'amount']
-            },
-            'PUT': {
-                'default': ['createdBy', 'site', 'dateGiven', 'occurrence', 'incentiveType', 'amount'],
-                'cancel': ['incentiveId', 'cancelledBy', 'cancelledDate']
-            }
-        }
+    def _get_required_keys(is_cancel=False):
         try:
-            if not required_type:
-                return key_map[request.method]['default']
+            if is_cancel:
+                return ['incentiveId', 'cancelledBy', 'cancelledDate']
 
-            return key_map[request.method][required_type]
+            return ['site', 'dateGiven']
 
         except KeyError:
             raise BadRequest(f"Error in getting required keys for method: {request.method}")
 
     def validate_payload_data(self):
         resource = request.get_json(force=True)
-        required_type = None
 
         if resource.get('site'):
             valid_site = self.site_dao.get_by_google_group(resource['site'])
@@ -91,10 +81,7 @@ class ParticipantIncentivesApi(UpdatableApi):
 
             self.site_id = valid_site.siteId
 
-        if resource.get('cancel'):
-            required_type = 'cancel'
-
-        req_keys = self._get_required_keys(required_type)
+        req_keys = self._get_required_keys(is_cancel=resource.get('cancel'))
 
         if not all(k in list(resource.keys()) for k in req_keys):
             raise BadRequest(f"Missing required key/values in request, required: {' | '.join(req_keys)}")
