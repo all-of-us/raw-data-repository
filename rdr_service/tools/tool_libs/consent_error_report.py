@@ -58,8 +58,10 @@ class ConsentErrorReportTool(object):
 
     def _connect_to_rdr_replica(self):
         """ Establish a connection to the replica RDR database for reading consent validation data """
-        self.gcp_env.activate_sql_proxy(replica=True)
-        self.db_conn = self.gcp_env.make_mysqldb_connection()
+        replica = True if self.gcp_env.project == 'all-of-us-rdr-prod' else False
+        self.gcp_env.activate_sql_proxy(replica=replica, project=self.gcp_env.project)
+        if self.gcp_env.project != 'localhost':
+            self.db_conn = self.gcp_env.make_mysqldb_connection()
 
     def execute(self):
         """
@@ -69,28 +71,35 @@ class ConsentErrorReportTool(object):
         # Only generate error reports/tickets if project is prod,  or we're directing output to a file instead of
         # generating emails (allows for testing in lower environments if needed)
         if not (self.args.to_file or self.gcp_env.project == 'all-of-us-rdr-prod'):
+            _logger.error('Must use --to-file unless running against prod')
             return
 
         self._connect_to_rdr_replica()
 
         if not self.args.to_file:
             project_config = self.gcp_env.get_app_config()
-            if not project_config[config.SENDGRID_KEY]:
-                raise (config.MissingConfigException, 'No API key configured for sendgrid')
+            if not project_config[config.SENDGRID_KEY] or not project_config[config.PTSC_SERVICE_DESK_EMAIL]:
+                raise (config.MissingConfigException,
+                       'Missing configuration for sendgrid key or default email addresses')
             # This enables use of SendGrid email service when running this tool from a dev server vs. app instance
             config.override_setting(config.SENDGRID_KEY, project_config[config.SENDGRID_KEY])
+            config.override_setting(config.PTSC_SERVICE_DESK_EMAIL, project_config[config.PTSC_SERVICE_DESK_EMAIL])
 
-        errors_since = self.args.errors_since
         report = ConsentErrorReportGenerator()
-        # Specific ids will override any date filter
-        if self.id_list:
-            errors_since = None
-        report.create_error_reports(errors_created_since=errors_since,
-                                    id_list=self.id_list,
-                                    recipients=self.recipients,
-                                    cc_list=self.cc_recipients,
-                                    participant_origin=self.args.origin,
-                                    to_file=self.args.to_file)
+        # If no user-provided ids were specified (--id or --from-file), default to all unreported errors
+        id_list = self.id_list or report.get_unreported_error_ids()
+
+        if id_list and len(id_list):
+            report.create_error_reports(
+                                        id_list=id_list,
+                                        recipients=self.recipients,
+                                        cc_list=self.cc_recipients,
+                                        participant_origin=self.args.origin,
+                                        to_file=self.args.to_file
+            )
+        else:
+            _logger.info('No ids specified by user and no outstanding error records found')
+
         return 0
 
 def get_id_list(fname):
