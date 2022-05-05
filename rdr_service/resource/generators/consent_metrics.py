@@ -15,8 +15,10 @@ from rdr_service.dao.consent_dao import ConsentErrorReportDao
 from rdr_service.resource import generators, schemas
 from rdr_service.model.consent_file import (ConsentType, ConsentSyncStatus, ConsentFile, ConsentOtherErrors,
                                             ConsentErrorReport)
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.services import email_service
@@ -36,7 +38,8 @@ METRICS_ERROR_TYPES = {
     'non_va_consent_for_va': 'Non-VA consent version for VA participant',
     'va_consent_for_non_va': 'VA consent version for non-VA participant',
     'invalid_dob': 'Invalid date of birth',
-    'invalid_age_at_consent': 'Invalid age at consent'
+    'invalid_age_at_consent': 'Invalid age at consent',
+    'invalid_printed_name': 'Invalid printed name'
 }
 
 class ConsentMetricGenerator(generators.BaseGenerator):
@@ -47,24 +50,43 @@ class ConsentMetricGenerator(generators.BaseGenerator):
         self.ro_dao = ro_dao
 
     @classmethod
-    def _get_authored_timestamps_from_rec(cls, rec):
+    def _get_authored_timestamps(cls, rec):
         """
-        Find authored dates in the record (from participant_summary joined fields) based on consent type
+        Find authored dates in the record (from participant_summary / joined fields) based on consent type
         :param rec: A result row from ConsentMetricGenerator.get_consent_validation_records()
         :returns:  A dictionary of consent type keys and their authored date values from the result row
         """
-
-        # Lower environments have some dirty/incomplete data (e.g., "FirstYesAuthored" fields were not backfilled)
-        # Make a best effort to assign the appropriate authored date for a consent
-        return {
+        # Default values are from participant_summary
+        consent_authored_values = {
             ConsentType.PRIMARY: rec.consentForStudyEnrollmentFirstYesAuthored\
                                  or rec.consentForStudyEnrollmentAuthored,
             ConsentType.EHR: rec.consentForElectronicHealthRecordsFirstYesAuthored\
                              or rec.consentForElectronicHealthRecordsAuthored,
             ConsentType.CABOR: rec.consentForCABoRAuthored,
             ConsentType.GROR: rec.consentForGenomicsRORAuthored,
-            ConsentType.PRIMARY_UPDATE: rec.consentForStudyEnrollmentAuthored
+            ConsentType.PRIMARY_UPDATE: rec.consentForStudyEnrollmentAuthored,
+            ConsentType.WEAR: None   # Should be resolved below, is not part of ParticipantSummary joined fields
         }
+        # For validation records that were created after introduction of the ConsentResponse relationship, go
+        # directly to the QuestionnaireResponse to get the authored time
+        if rec.consent_response_id:
+            dao = ResourceDataDao(backup=True)
+            with dao.session() as session:
+                query = session.query(
+                    QuestionnaireResponse.authored
+                ).select_from(ConsentResponse).join(QuestionnaireResponse
+                ).filter(ConsentResponse.id == rec.consent_response_id)
+
+                authored_result = query.first()
+
+        consent_authored_values[rec.type] = authored_result or consent_authored_values[rec.type]
+
+        # Defensive check, mostly for WEAR consents if something went wrong resolving the authored time.  Purposely
+        # allow the metrics generation to try and continue
+        if not consent_authored_values[rec.type]:
+            logging.error(f'Unresolved authored timestamp for consent_file id {rec.id}')
+
+        return consent_authored_values
 
     @staticmethod
     def _calculate_age(dob: date, at_date: date) -> int:
@@ -258,12 +280,13 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                 'va_consent_for_non_va': False,
                 'invalid_dob': False,
                 'invalid_age_at_consent': False,
+                'invalid_printed_name': False,
                 'test_participant': False,
                 'ignore': False
         }
 
         # Look up the specific authored timestamp associated with this consent
-        authored_ts_from_row = ConsentMetricGenerator._get_authored_timestamps_from_rec(row).get(consent_type, None)
+        authored_ts_from_row = ConsentMetricGenerator._get_authored_timestamps(row).get(consent_type, None)
         if authored_ts_from_row:
             data['consent_authored_date'] = authored_ts_from_row.date()
 
@@ -285,6 +308,8 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                 row.other_errors.find(ConsentOtherErrors.NON_VETERAN_CONSENT_FOR_VETERAN) != -1
             data['va_consent_for_non_va'] =\
                 row.other_errors.find(ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN) != -1
+            data['invalid_printed_name'] =\
+                row.other_errors.find(ConsentOtherErrors.INVALID_PRINTED_NAME) != -1
 
         # DOB-related errors are not tracked in the RDR consent_file table.  They are derived from
         # participant_summary data and only apply to the primary consent.  invalid_age_at_consent will only be true
@@ -339,6 +364,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                                   ConsentFile.signing_date,
                                   ConsentFile.file_path,
                                   ConsentFile.file_upload_time,
+                                  ConsentFile.consent_response_id,
                                   ConsentFile.consent_error_report,
                                   ParticipantSummary.dateOfBirth,
                                   ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored,
@@ -520,7 +546,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         :param rsc_data: Result dict from ConsentMetricGenerator.make_resource()
         :returns: Dict of report fields and text strings used to populate a formatted error report
         """
-        authored = self._get_authored_timestamps_from_rec(rec)
+        authored = self._get_authored_timestamps(rec)
         consent = ConsentType(rsc_data.get('consent_type'))
         error_details = {
             'Participant': rsc_data.get('participant_id'), 'Consent Type': str(consent),
