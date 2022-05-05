@@ -1130,6 +1130,40 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
 
             return records.all()
 
+    def get_ready_loop_by_participant_id(self, participant_id):
+        informing_loop_ready = self.base_informing_loop_ready().filter(
+            GenomicSetMember.informingLoopReadyFlag == 1,
+            GenomicSetMember.informingLoopReadyFlagModified.isnot(None)
+        ).subquery()
+        with self.session() as session:
+            record = session.query(
+                    distinct(GenomicSetMember.participantId).label('participant_id'),
+                    literal('informing_loop_ready').label('type')
+                ).join(
+                    informing_loop_ready,
+                    informing_loop_ready.c.participant_id == participant_id
+                ).filter(
+                  GenomicSetMember.participantId == participant_id
+            )
+            return record.first()
+
+    def get_member_by_participant_id(self, participant_id, genome_type=config.GENOME_TYPE_ARRAY):
+        with self.session() as session:
+            return session.query(
+                    GenomicSetMember
+                ).filter(
+                  GenomicSetMember.participantId == participant_id,
+                  GenomicSetMember.genomeType == genome_type
+            ).first()
+
+    def update_loop_ready_attrs(self, member, **kwargs):
+        informing_loop_ready_flag = kwargs.get('informing_loop_ready_flag', 1)
+        informing_loop_ready_flag_modified = kwargs.get('informing_loop_ready_flag_modified', clock.CLOCK.now())
+
+        member.informingLoopReadyFlag = informing_loop_ready_flag
+        member.informingLoopReadyFlagModified = informing_loop_ready_flag_modified
+        self.update(member)
+
     def handle_control_samples_from_raw_aw1(self, record):
         """ Create control samples from aw1 raw data """
 
@@ -1739,8 +1773,6 @@ class GenomicPiiDao(BaseDao):
                     "date_of_birth": participant_data.dateOfBirth,
                     "sex_at_birth": participant_data.sexAtBirth,
                 }
-            else:
-                return {"message": "Only GP and RHP modes supported."}
         else:
             return {"message": "No RoR consent."}
 
@@ -2105,7 +2137,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember,
                         and_(
                             GenomicSetMember.participantId == GenomicMemberReportState.participant_id,
-                            GenomicSetMember.genomeType.in_(query_genome_types)
+                            GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY
                         )
                     ).outerjoin(
                         GenomicResultViewed,

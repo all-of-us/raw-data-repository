@@ -18,52 +18,7 @@ from tests.helpers.unittest_base import BaseTestCase
 
 class GenomicDataGenMixin(BaseTestCase):
 
-    data_file_base = 'gs://stable-rdr-genomics/Wgs_sample_raw_data/SS_VCF_clinical/'
-    defaults_map = {
-        'participant': {
-            'participant_id': 'system',
-            'biobank_id': 'system',
-            'research_id': 'system',
-        },
-        'participant_summary': {
-            'consent_for_genomics_ror': 'external_gror_status',
-            'consent_for_study_enrollment': 1,
-            'withdrawal_status': 'external_withdrawal_status',
-            'suspension_status': 1,
-            'deceased_status': 0,
-            'date_of_birth': '1980-01-01',
-            'participant_origin': 'vibrent'
-        },
-        'genomic_set_member': {
-            'genomic_set_id': 'system',
-            'participant_id': '%participant.participant_id%',
-            'collection_tube_id': '%participant.participant_id%%participant.biobank_id%',
-            'genome_type': 'aou_wgs',
-            'biobank_id': '%participant.biobank_id%',
-            'sample_id': '22%participant.participant_id%',
-            'sex_at_birth': 'F',
-            'ny_flag': 0,
-            'gc_site_id': 'external_requesting_site',
-            'qc_status': 1,
-            'qc_status_str': 'PASS',
-            'genomic_workflow_state': 22,
-            'genomic_workflow_state_str': 'CVL_READY'
-        },
-        'genomic_gc_validation_metrics': {
-            'genomic_set_member_id': '%genomic_set_member.id%',
-            'sex_concordance': True,
-            'processing_status': 'PASS',
-            'drc_fp_concordance': 'PASS',
-            'aou_hdr_coverage': 99.999,
-            'contamination': 0.001,
-            'hf_vcf_path': f'{data_file_base}%genomic_set_member'
-                           f'.gc_site_id%_T%participant.biobank_id%_'
-                           f'%genomic_set_member.sample_id%_v1.vcf.gz',
-            'hf_vcf_tbi_received': 1
-        }
-    }
-
-    def build_cvl_template_based_data(self, template_name, _dict):
+    def build_cvl_template_based_data(self, template_name, _dict, project_name='cvl'):
         for table, attribute_list in _dict.items():
             for key, val in attribute_list.items():
                 if val == 'system':
@@ -80,7 +35,7 @@ class GenomicDataGenMixin(BaseTestCase):
                     value = val
 
                 self.data_generator.create_database_datagen_template(
-                    project_name='cvl',
+                    project_name=project_name,
                     template_name=template_name,
                     rdr_field=f'{table}.{key}',
                     field_source=source,
@@ -102,8 +57,56 @@ class GenomicDataGenParticipantGeneratorTest(GenomicDataGenMixin):
         self.datagen_member_run_dao = GenomicDataGenMemberRunDao()
         self.num_participants = 4
 
+        self.defaults_map = self.get_gen_defaults_map()
+
         # build default datagen template data
-        self.build_cvl_template_based_data('default', self.defaults_map)
+        self.build_cvl_template_based_data('default',  self.defaults_map)
+
+    @classmethod
+    def get_gen_defaults_map(cls):
+        return {
+            'participant': {
+                'participant_id': 'system',
+                'biobank_id': 'system',
+                'research_id': 'system',
+            },
+            'participant_summary': {
+                'consent_for_genomics_ror': 'external_gror_status',
+                'consent_for_study_enrollment': 1,
+                'withdrawal_status': 'external_withdrawal_status',
+                'suspension_status': 1,
+                'deceased_status': 0,
+                'date_of_birth': '1980-01-01',
+                'participant_origin': 'vibrent'
+            },
+            'genomic_set_member': {
+                'genomic_set_id': 'system',
+                'participant_id': '%participant.participant_id%',
+                'collection_tube_id': '%participant.participant_id%%participant.biobank_id%',
+                'genome_type': 'aou_wgs',
+                'biobank_id': '%participant.biobank_id%',
+                'sample_id': '22%participant.participant_id%',
+                'sex_at_birth': 'F',
+                'ny_flag': 0,
+                'gc_site_id': 'external_requesting_site',
+                'qc_status': 1,
+                'qc_status_str': 'PASS',
+                'genomic_workflow_state': 22,
+                'genomic_workflow_state_str': 'CVL_READY'
+            },
+            'genomic_gc_validation_metrics': {
+                'genomic_set_member_id': '%genomic_set_member.id%',
+                'sex_concordance': True,
+                'processing_status': 'PASS',
+                'drc_fp_concordance': 'PASS',
+                'aou_hdr_coverage': 99.999,
+                'contamination': 0.001,
+                'hf_vcf_path': 'gs://stable-rdr-genomics/Wgs_sample_raw_data/SS_VCF_clinical/%genomic_set_member'
+                               '.gc_site_id%_T%participant.biobank_id%_'
+                               '%genomic_set_member.sample_id%_v1.vcf.gz',
+                'hf_vcf_tbi_received': 1
+            }
+        }
 
     def test_build_cvl_template_based_data_method_inserts_correctly(self):
         current_template_data = self.datagen_template_dao.get_all()
@@ -371,6 +374,8 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
             'biobank_id': 'GenomicSetMember.biobankId',
             'sample_id': 'GenomicSetMember.sampleId',
         }
+
+        self.defaults_map = GenomicDataGenParticipantGeneratorTest.get_gen_defaults_map()
 
         # build default datagen template data
         self.build_cvl_template_based_data('default', self.defaults_map)

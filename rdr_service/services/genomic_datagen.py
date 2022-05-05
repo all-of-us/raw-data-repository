@@ -1,4 +1,3 @@
-# pylint: disable=unused-import
 import faker
 import os
 import logging
@@ -16,13 +15,9 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider, ManifestCompiler
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
     ResultsWorkflowState, GenomicManifestTypes
-from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import (
     GenomicSetMember,
-    GenomicResultWorkflowState,
-    GenomicGCValidationMetrics,
-    GenomicCVLAnalysis,
-    GenomicCVLSecondSample
+    GenomicResultWorkflowState
 )
 from tests.helpers.data_generator import DataGenerator
 
@@ -89,6 +84,7 @@ class ParticipantGenerator(GeneratorMixin):
         self.default_template_records = []
         self.template_records = []
         self.default_table_map = {}
+        self.session = None
 
     def __enter__(self):
         self.data_generator = self.initialize_data_generator()
@@ -119,11 +115,10 @@ class ParticipantGenerator(GeneratorMixin):
     def __exit__(self, *_, **__):
         ...
 
-    @staticmethod
-    def initialize_data_generator():
-        session = database_factory.get_database().make_session()
+    def initialize_data_generator(self):
+        self.session = database_factory.get_database().make_session()
         fake = faker.Faker()
-        return DataGenerator(session, fake)
+        return DataGenerator(self.session, fake)
 
     @staticmethod
     def convert_case(string_value):
@@ -143,11 +138,16 @@ class ParticipantGenerator(GeneratorMixin):
                 records=self.default_template_records,
                 template_type=self.template_type,
                 validation_step='generation',
+                project=self.project,
                 external_values=self.external_values
             )
 
         base_participant = None
+        table_names = {obj.rdr_field.split('.')[0].lower() for obj in self.default_template_records}
         for table in self.default_table_map:
+            if table not in table_names:
+                continue
+
             # make sure it has generator, will throw exception if not
             generator_method = self._get_generator_method(table)
 
@@ -173,8 +173,16 @@ class ParticipantGenerator(GeneratorMixin):
             if current_table_defaults:
                 attr_dict = self._get_type_attr_dict(current_table_defaults)
 
-                if table == 'participant_summary' and base_participant:
-                    attr_dict['participant'] = base_participant
+                if table == 'participant_summary':
+                    if base_participant:
+                        attr_dict['participant'] = base_participant
+                    if self.external_values.get('participant_id'):
+                        participant_id = self.external_values.get('participant_id')
+                        attr_dict['participant'] = \
+                            self.participant_dao.get_with_session(
+                            self.session,
+                            participant_id
+                        )
                 if table == 'genomic_set_member' and self.genomic_set:
                     attr_dict['genomicSetId'] = self.genomic_set.id
 
@@ -201,11 +209,12 @@ class ParticipantGenerator(GeneratorMixin):
                 records=self.template_records,
                 template_type=self.template_type,
                 validation_step='generation',
+                project=self.project,
                 external_values=self.external_values
             )
 
         # if template records have attributes from multiple tables
-        table_names = set([obj.rdr_field.split('.')[0].lower() for obj in self.template_records])
+        table_names = {obj.rdr_field.split('.')[0].lower() for obj in self.template_records}
 
         # loop in externals not in template
         if 'genomic_informing_loop' not in table_names \

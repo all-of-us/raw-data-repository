@@ -1,13 +1,16 @@
+import pytz
 from dateutil import parser
 
 from flask import request
 from werkzeug.exceptions import NotFound, BadRequest
 
-from rdr_service import clock
-from rdr_service.api.base_api import BaseApi, log_api_request
+from rdr_service import clock, config
+from rdr_service.api.base_api import BaseApi, log_api_request, UpdatableApi
 from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
 from rdr_service.app_util import auth_required, restrict_to_gae_project
 from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicSetMemberDao, GenomicOutreachDao, GenomicOutreachDaoV2
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.services.genomic_datagen import ParticipantGenerator
 
 PTC_ALLOWED_ENVIRONMENTS = [
     'all-of-us-rdr-sandbox',
@@ -154,7 +157,7 @@ class GenomicOutreachApi(BaseApi):
             raise BadRequest(f"GenomicOutreach Mode required to be one of {modes}.")
 
 
-class GenomicOutreachApiV2(BaseApi):
+class GenomicOutreachApiV2(UpdatableApi):
     def __init__(self):
         super(GenomicOutreachApiV2, self).__init__(GenomicOutreachDaoV2())
         self.validate_params()
@@ -166,6 +169,24 @@ class GenomicOutreachApiV2(BaseApi):
             request.args.get('type')
         )
         return self.get_outreach()
+
+    @auth_required(RDR_AND_PTC)
+    @restrict_to_gae_project(PTC_ALLOWED_ENVIRONMENTS)
+    def post(self):
+        participant_id, request_data = self.validate_post_data()
+        return self.set_ready_loop(
+            participant_id,
+            request_data
+        )
+
+    @auth_required(RDR_AND_PTC)
+    @restrict_to_gae_project(PTC_ALLOWED_ENVIRONMENTS)
+    def put(self):
+        participant_id, request_data = self.validate_post_data()
+        return self.set_ready_loop(
+            participant_id,
+            request_data
+        )
 
     def get_outreach(self):
         """
@@ -203,25 +224,87 @@ class GenomicOutreachApiV2(BaseApi):
 
         raise BadRequest
 
+    @staticmethod
+    def set_ready_loop(participant_id, req_data):
+        member_dao = GenomicSetMemberDao()
+
+        def _build_ready_response():
+            report_statuses = []
+            ready_loop = member_dao.get_ready_loop_by_participant_id(participant_id)
+            if ready_loop:
+                for module in ['hdr', 'pgx']:
+                    report_statuses.append({
+                        "module": module,
+                        "type": 'informingLoop',
+                        "status": 'ready',
+                        "participant_id": f'P{participant_id}',
+                    })
+
+            return {
+                "data": report_statuses,
+                "timestamp": pytz.utc.localize(clock.CLOCK.now())
+            }
+
+        convert_bool_map = {
+            'yes': 1,
+            'no': 0
+        }
+
+        if request.method == 'PUT':
+            current_member = member_dao.get_member_by_participant_id(
+                participant_id,
+                genome_type=config.GENOME_TYPE_WGS
+            )
+            if not current_member:
+                raise NotFound(f'Participant with id P{participant_id} was not found in genomics system')
+
+            member_dao.update_loop_ready_attrs(
+                current_member,
+                informing_loop_ready_flag=convert_bool_map[
+                        req_data['informing_loop_eligible'].lower()
+                    ],
+                informing_loop_ready_flag_modified=parser.parse(
+                    req_data['eligibility_date_utc'])
+            )
+
+            log_api_request(log=request.log_record)
+            return _build_ready_response()
+
+        with ParticipantGenerator(
+            project='cvl_il'
+        ) as participant_generator:
+            participant_generator.run_participant_creation(
+                num_participants=1,
+                template_type='default',
+                external_values={
+                    'participant_id': participant_id,
+                    'informing_loop_ready_flag': convert_bool_map[
+                        req_data['informing_loop_eligible'].lower()
+                    ],
+                    'informing_loop_ready_flag_modified': parser.parse(req_data['eligibility_date_utc']
+                                                                       )
+                }
+            )
+
+        log_api_request(log=request.log_record)
+        return _build_ready_response()
+
     def _check_global_args(self, module, req_type):
         """
         Checks that the mode in the endpoint is valid
         :param module: "GEM" / "PGX" / "HDR"
-        :param _type: "result" / "informingLoop" / "appointment"
+        :param req_type: "result" / "informingLoop" / "appointment"
         """
         current_module, current_type = None, None
 
         if module:
             if module.lower() not in self.dao.allowed_modules:
                 raise BadRequest(
-                    f"GenomicOutreach accepted modules: {' | '.join(self.dao.allowed_modules)}")
-
+                    f"GenomicOutreachV2 GET accepted modules: {' | '.join(self.dao.allowed_modules)}")
             current_module = module.lower()
-
         if req_type:
             if req_type not in self.dao.req_allowed_types:
-                raise BadRequest(f"GenomicOutreach accepted types: {' | '.join(self.dao.req_allowed_types)}")
-
+                raise BadRequest(f"GenomicOutreachV2 GET accepted types: {' | '.join(self.dao.req_allowed_types)}")
             current_type = req_type
 
         self.dao.set_globals(
@@ -230,8 +313,51 @@ class GenomicOutreachApiV2(BaseApi):
         )
 
     @staticmethod
+    def validate_post_data():
+        request_data = request.get_json()
+        request_args = request.args
+
+        if not request_data or not request_args:
+            raise BadRequest(f"Missing request data/params in {request.method}")
+
+        participant_id = request.args.get("participant_id", None)
+
+        if not participant_id:
+            raise BadRequest(f"Missing participant id {request.method} params")
+
+        participant_dao = ParticipantDao()
+        participant_id = participant_id[1:] if participant_id.startswith("P") else participant_id
+        participant = participant_dao.get(int(participant_id))
+
+        if not participant:
+            raise NotFound(f"Participant with id P{participant_id} was not found")
+
+        return participant_id, request_data
+
+    @staticmethod
     def validate_params():
-        valid_params = ['start_date', 'end_date', 'participant_id', 'module', 'type']
-        request_keys = list(request.args.keys())
-        if any(arg for arg in request_keys if arg not in valid_params):
-            raise BadRequest(f"GenomicOutreach accepted params: {' | '.join(valid_params)}")
+        def _check_error(*,
+                         params_sent,
+                         accepted_params,
+                         message
+                         ):
+            if any(arg for arg in params_sent if arg not in accepted_params):
+                raise BadRequest(f"{message}: {' | '.join(accepted_params)}")
+
+        if request.method == 'GET':
+            valid_params = ['start_date', 'end_date', 'participant_id', 'module', 'type']
+            request_keys = list(request.args.keys())
+            return _check_error(
+                params_sent=request_keys,
+                accepted_params=valid_params,
+                message='GenomicOutreachV2 GET accepted params'
+            )
+        if request.method in ['POST', 'PUT']:
+            valid_params = ['informing_loop_eligible', 'eligibility_date_utc', 'participant_id']
+            request_keys = list(request.get_json().keys())
+            request_keys += list(request.args.keys())
+            return _check_error(
+                params_sent=request_keys,
+                accepted_params=valid_params,
+                message=f'GenomicOutreachV2 {request.method} accepted data/params'
+            )
