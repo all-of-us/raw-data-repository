@@ -357,6 +357,12 @@ class ConsentFile(ABC):
 
         return None
 
+    def get_printed_name(self):
+        printed_name_elements = self._get_printed_name_elements()
+        for element in printed_name_elements:
+            if isinstance(element, LTFigure) and len(element) > 0:
+                return ''.join([char_child.get_text() for char_child in element]).strip()
+
     def _get_date_signed_str(self):
         date_elements = self._get_date_elements()
         for element in date_elements:
@@ -368,6 +374,9 @@ class ConsentFile(ABC):
         return []
 
     def _get_date_elements(self):
+        return []
+
+    def _get_printed_name_elements(self):
         return []
 
 
@@ -462,6 +471,14 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
 
         return elements
 
+    def _get_printed_name_elements(self):
+        signature_page = self._get_signature_page()
+
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50),
+            page=signature_page
+        )
+
 
 class VibrentCaborConsentFile(CaborConsentFile):
     def _get_signature_elements(self):
@@ -478,6 +495,11 @@ class VibrentCaborConsentFile(CaborConsentFile):
 
         return elements
 
+    def _get_printed_name_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50)
+        )
+
 
 class VibrentEhrConsentFile(EhrConsentFile):
     def _get_signature_elements(self):
@@ -485,6 +507,9 @@ class VibrentEhrConsentFile(EhrConsentFile):
 
     def _get_date_elements(self):
         return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=250, bottom=110, top=115), page=6)
+
+    def _get_printed_name_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=350, right=500, bottom=45, top=50), page=6)
 
 
 class VibrentGrorConsentFile(GrorConsentFile):
@@ -511,6 +536,12 @@ class VibrentGrorConsentFile(GrorConsentFile):
             search_box = Rect.from_edges(left=70, right=73, bottom=475, top=478)
 
         return self.pdf.get_elements_intersecting_box(search_box, page=self._SIGNATURE_PAGE)
+
+    def _get_printed_name_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50),
+            page=self._SIGNATURE_PAGE
+        )
 
 
 class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
@@ -564,6 +595,12 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
                         return True
 
             return False
+
+    def _get_printed_name_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50),
+            page=self._get_signature_page()
+        )
 
 
 class CeFileWrapper:

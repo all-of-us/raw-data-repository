@@ -12,6 +12,7 @@ class ConsentOtherErrors:
     MISSING_CONSENT_CHECK_MARK = 'missing consent check mark'
     NON_VETERAN_CONSENT_FOR_VETERAN = 'non-veteran consent for veteran participant'
     VETERAN_CONSENT_FOR_NON_VETERAN = 'veteran consent for non-veteran participant'
+    INVALID_PRINTED_NAME = 'invalid printed name'
 
 
 class ConsentType(messages.Enum):
@@ -51,6 +52,7 @@ class ConsentFile(Base):
     signature_str = Column(String(200), nullable=True)
     is_signature_image = Column(Boolean, default=False)
     signing_date = Column(Date, nullable=True)
+    printed_name = Column(String(200), nullable=True)
     expected_sign_date = Column(Date, nullable=True)
 
     file_upload_time = Column(UTCDateTime, nullable=True)
