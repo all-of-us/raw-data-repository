@@ -1428,7 +1428,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
     def test_post_put_checks_for_participant(self):
 
         resp = self.send_post(
-            f'GenomicOutreachV2?participant_id=P12234312',
+            'GenomicOutreachV2?participant_id=P12234312',
             request_data={
                 'informing_loop_eligible': 'yes',
                 'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
@@ -1440,7 +1440,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.assertEqual(resp.json['message'], 'Participant with id P12234312 was not found')
 
         resp = self.send_put(
-            f'GenomicOutreachV2?participant_id=P12234312',
+            'GenomicOutreachV2?participant_id=P12234312',
             request_data={
                 'informing_loop_eligible': 'yes',
                 'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
@@ -1498,7 +1498,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
         # PUT for no set member
         resp = self.send_put(
-            f'GenomicOutreachV2?participant_id=P2121232',
+            'GenomicOutreachV2?participant_id=P2121232',
             request_data={
                 'informing_loop_eligible': 'no',
                 'eligibility_date_utc': '2022-03-23T20:52:12+00:00'

@@ -101,9 +101,9 @@ class GenomicDataGenParticipantGeneratorTest(GenomicDataGenMixin):
                 'drc_fp_concordance': 'PASS',
                 'aou_hdr_coverage': 99.999,
                 'contamination': 0.001,
-                'hf_vcf_path': f'gs://stable-rdr-genomics/Wgs_sample_raw_data/SS_VCF_clinical/%genomic_set_member'
-                               f'.gc_site_id%_T%participant.biobank_id%_'
-                               f'%genomic_set_member.sample_id%_v1.vcf.gz',
+                'hf_vcf_path': 'gs://stable-rdr-genomics/Wgs_sample_raw_data/SS_VCF_clinical/%genomic_set_member'
+                               '.gc_site_id%_T%participant.biobank_id%_'
+                               '%genomic_set_member.sample_id%_v1.vcf.gz',
                 'hf_vcf_tbi_received': 1
             }
         }
