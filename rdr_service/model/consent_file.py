@@ -52,6 +52,7 @@ class ConsentFile(Base):
     signature_str = Column(String(200), nullable=True)
     is_signature_image = Column(Boolean, default=False)
     signing_date = Column(Date, nullable=True)
+    printed_name = Column(String(200), nullable=True)
     expected_sign_date = Column(Date, nullable=True)
 
     file_upload_time = Column(UTCDateTime, nullable=True)

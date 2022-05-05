@@ -717,7 +717,7 @@ class ConsentValidator:
         if self.participant_summary.participantOrigin == 'vibrent':
             # Only Vibrent PDF consent files have/need a printed name
             printed_name = consent.get_printed_name()
-            # todo: store the printed name
+            result.printed_name = printed_name
             if not printed_name or printed_name.strip().lower() in ['null', 'null null']:
                 passes_printed_name_check = False
                 self._append_other_error(
