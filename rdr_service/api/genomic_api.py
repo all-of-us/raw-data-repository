@@ -249,7 +249,7 @@ class GenomicOutreachApiV2(UpdatableApi):
                 "timestamp": pytz.utc.localize(clock.CLOCK.now())
             }
 
-        convert_external_map = {
+        convert_bool_map = {
             'yes': 1,
             'no': 0
         }
@@ -262,6 +262,15 @@ class GenomicOutreachApiV2(UpdatableApi):
             if not current_member:
                 raise NotFound(f'Participant with id P{participant_id} was not found in genomics system')
 
+            member_dao.update_loop_ready_attrs(
+                current_member,
+                informing_loop_ready_flag=convert_bool_map[
+                        req_data['informing_loop_eligible'].lower()
+                    ],
+                informing_loop_ready_flag_modified=parser.parse(
+                    req_data['eligibility_date_utc'])
+            )
+
             log_api_request(log=request.log_record)
             return _build_ready_response()
 
@@ -273,7 +282,7 @@ class GenomicOutreachApiV2(UpdatableApi):
                 template_type='default',
                 external_values={
                     'participant_id': participant_id,
-                    'informing_loop_ready_flag': convert_external_map[
+                    'informing_loop_ready_flag': convert_bool_map[
                         req_data['informing_loop_eligible'].lower()
                     ],
                     'informing_loop_ready_flag_modified': parser.parse(req_data['eligibility_date_utc']

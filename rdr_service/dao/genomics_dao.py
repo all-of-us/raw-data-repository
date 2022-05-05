@@ -1156,6 +1156,14 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                   GenomicSetMember.genomeType == genome_type
             ).first()
 
+    def update_loop_ready_attrs(self, member, **kwargs):
+        informing_loop_ready_flag = kwargs.get('informing_loop_ready_flag', 1)
+        informing_loop_ready_flag_modified = kwargs.get('informing_loop_ready_flag_modified', clock.CLOCK.now())
+
+        member.informingLoopReadyFlag = informing_loop_ready_flag
+        member.informingLoopReadyFlagModified = informing_loop_ready_flag_modified
+        self.update(member)
+
     def handle_control_samples_from_raw_aw1(self, record):
         """ Create control samples from aw1 raw data """
 
