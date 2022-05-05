@@ -69,6 +69,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
         }
         # For validation records that were created after introduction of the ConsentResponse relationship, go
         # directly to the QuestionnaireResponse to get the authored time
+        authored_result = None
         if rec.consent_response_id:
             dao = ResourceDataDao(backup=True)
             with dao.session() as session:
@@ -79,7 +80,8 @@ class ConsentMetricGenerator(generators.BaseGenerator):
 
                 authored_result = query.first()
 
-        consent_authored_values[rec.type] = authored_result or consent_authored_values[rec.type]
+        if authored_result:
+            consent_authored_values[rec.type] = authored_result.authored
 
         # Defensive check, mostly for WEAR consents if something went wrong resolving the authored time.  Purposely
         # allow the metrics generation to try and continue
