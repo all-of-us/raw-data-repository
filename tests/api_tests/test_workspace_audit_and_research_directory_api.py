@@ -1820,7 +1820,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "name": "workspace name str 2",
                 "creationTime": "2020-11-25T17:43:41.085Z",
                 "modifiedTime": "2020-11-25T17:43:41.085Z",
-                "status": "INACTIVE",
+                "status": "ACTIVE",
                 "workspaceUsers": [
                     {
                         "userId": 0,
@@ -1858,8 +1858,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
             self.send_post('workbench/directory/workspaces', request_data=request_json)
 
         # check that only the workspace created after May of 2020 is returned
-        result = self.send_get('researchHub/projectDirectory')
+        result = self.send_get('researchHub/projectDirectory?status=ACTIVE')
         self.assertEqual([1], [workspace_json['workspaceId'] for workspace_json in result['data']])
+        self.assertEqual(result['totalActiveProjects'], 1)
 
     def test_get_audit_researchers_with_params(self):
         researchers_json = [

@@ -486,6 +486,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         now = clock.CLOCK.now()
         sequest_hours_ago = now - timedelta(hours=sequest_hour)
         with self.session() as session:
+            start_date = datetime(2020, 5, 20)
             subquery = (
                 session.query(distinct(WorkbenchWorkspaceUser.workspaceId))
                     .filter(WorkbenchWorkspaceUser.isCreator == 1)
@@ -502,7 +503,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                                            WorkbenchWorkspaceApproved.id.notin_(subquery)
                                        )),
                                    or_(WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
-                                       WorkbenchWorkspaceApproved.isReviewed == 1))
+                                       WorkbenchWorkspaceApproved.isReviewed == 1),
+                                   WorkbenchWorkspaceApproved.creationTime > start_date
+                                   )
                            )
             total = count_query.count()
 
@@ -527,7 +530,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
                         WorkbenchWorkspaceApproved.isReviewed == 1
                     ),
-                    WorkbenchWorkspaceApproved.creationTime > datetime(2020, 5, 20)
+                    WorkbenchWorkspaceApproved.creationTime > start_date
                 ).order_by(
                     desc(WorkbenchWorkspaceApproved.modifiedTime)
                 )
