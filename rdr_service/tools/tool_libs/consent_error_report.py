@@ -78,10 +78,12 @@ class ConsentErrorReportTool(object):
 
         if not self.args.to_file:
             project_config = self.gcp_env.get_app_config()
-            if not project_config[config.SENDGRID_KEY]:
-                raise (config.MissingConfigException, 'No API key configured for sendgrid')
+            if not project_config[config.SENDGRID_KEY] or not project_config[config.PTSC_SERVICE_DESK_EMAIL]:
+                raise (config.MissingConfigException,
+                       'Missing configuration for sendgrid key or default email addresses')
             # This enables use of SendGrid email service when running this tool from a dev server vs. app instance
             config.override_setting(config.SENDGRID_KEY, project_config[config.SENDGRID_KEY])
+            config.override_setting(config.PTSC_SERVICE_DESK_EMAIL, project_config[config.PTSC_SERVICE_DESK_EMAIL])
 
         report = ConsentErrorReportGenerator()
         # If no user-provided ids were specified (--id or --from-file), default to all unreported errors

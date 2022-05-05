@@ -339,6 +339,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                                   ConsentFile.signing_date,
                                   ConsentFile.file_path,
                                   ConsentFile.file_upload_time,
+                                  ConsentFile.consent_error_report,
                                   ParticipantSummary.dateOfBirth,
                                   ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored,
                                   ParticipantSummary.consentForStudyEnrollmentAuthored,
@@ -353,6 +354,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                                   HPO.name.label('hpo_name'),
                                   Organization.organizationId,
                                   Organization.displayName.label('organization_name'))\
+                .outerjoin(ConsentErrorReport, ConsentFile.id == ConsentErrorReport.consent_file_id)\
                 .outerjoin(ParticipantSummary, ParticipantSummary.participantId == ConsentFile.participant_id)\
                 .outerjoin(Participant, Participant.participantId == ConsentFile.participant_id) \
                 .outerjoin(HPO, HPO.hpoId == Participant.hpoId)\
@@ -594,8 +596,12 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
             else:
                 logging.info(msg)
             return
-
         for rec in needs_correcting_recs:
+            # Skip records that already have an entry in the ConsentErrorReport table
+            if rec.consent_error_report:
+                logging.debug(f'Error report already sent for consent_file id {rec.id}')
+                continue
+
             # ConsentMetric resource generator provides data dict used in reporting.
             rsc_data = self.make_resource(rec.id, consent_validation_rec=rec).get_data()
             if rsc_data.get('ignore', False) or rsc_data.get('test_participant', False):
