@@ -1,5 +1,7 @@
+import os
 import datetime
 from sqlalchemy import or_
+
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, delete_cloud_file
 from rdr_service.offline.sql_exporter import SqlExporter
@@ -139,25 +141,27 @@ _INPUT_CSV_TIME_FORMAT_LENGTH = 18
 _CSV_SUFFIX_LENGTH = 4
 INPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
 _MAX_FILE_AGE = datetime.timedelta(days=7)
+FILE_PREFIX = 'va_daily_participant_wq_'
 
 
 def get_workqueue_participants():
     with ParticipantSummaryDao().session() as session:
         return session.query(ParticipantSummary
-                             ).join(HPO, HPO.hpoId == ParticipantSummary.hpoId
-                                    ).join(Participant, Participant.participantId == ParticipantSummary.participantId
-                                           ).filter(HPO.name == 'VA',
-                                                    Participant.isTestParticipant != 1,
-                                                    # Just filtering on isGhostId != 1 will return no results
-                                                    or_(Participant.isGhostId != 1, Participant.isGhostId == None)
-                                                    ).all()
+                            ).join(HPO, HPO.hpoId == ParticipantSummary.hpoId
+                            ).join(Participant, Participant.participantId == ParticipantSummary.participantId
+                            ).filter(HPO.name == 'VA',
+                                     Participant.isTestParticipant != 1,
+                                     # Just filtering on isGhostId != 1 will return no results
+                                     or_(Participant.isGhostId != 1, Participant.isGhostId == None)
+                            ).all()
 
 
 def generate_workqueue_report():
     """ Creates csv file from ParticipantSummary table for participants paired to VA """
-    bucket_name = config.getSetting(config.VA_WORKQUEUE_BUCKET_NAME)
+    bucket = config.getSetting(config.VA_WORKQUEUE_BUCKET_NAME)
+    subfolder = config.getSetting(config.VA_WORKQUEUE_SUBFOLDER)
     file_timestamp = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
-    file_name = f'Participants_{file_timestamp}.csv'
+    file_name = f'{FILE_PREFIX}{file_timestamp}.csv'
     participants = get_workqueue_participants()
     participants_new = []
     for p in participants:
@@ -288,8 +292,8 @@ def generate_workqueue_report():
                  p.questionnaireOnCopeVaccineMinute4,
                  p.questionnaireOnCopeVaccineMinute4Authored]
         participants_new.append(p_new)
-    exporter = SqlExporter(bucket_name)
-    with exporter.open_cloud_writer(file_name) as writer:
+    exporter = SqlExporter(bucket)
+    with exporter.open_cloud_writer(subfolder+"/"+file_name) as writer:
         writer.write_header(CSV_HEADER)
         writer.write_rows(participants_new)
 
@@ -297,8 +301,9 @@ def generate_workqueue_report():
 def delete_old_reports():
     """ Deletes export files that more than 7 days old """
     bucket = config.getSetting(config.VA_WORKQUEUE_BUCKET_NAME)
-    for file in list_blobs(bucket):
-        if file.name.endswith(".csv") and file.name.startswith("Participants"):
+    subfolder = config.getSetting(config.VA_WORKQUEUE_SUBFOLDER)
+    for file in list_blobs(bucket, subfolder):
+        if file.name.endswith(".csv") and os.path.basename(file.name).startswith(FILE_PREFIX):
             file_time = _timestamp_from_filename(file.name)
             now = clock.CLOCK.now()
             if now - file_time > _MAX_FILE_AGE:

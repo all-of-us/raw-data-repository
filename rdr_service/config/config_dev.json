@@ -172,6 +172,9 @@
   ],
   "va_workqueue_bucket_name": [
     "app_default_bucket"
+  ],
+  "va_workqueue_subfolder": [
+    "DailyParticipants"
   ]
 }
 
