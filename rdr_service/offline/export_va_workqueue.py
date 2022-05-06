@@ -1,13 +1,10 @@
 import os
 import datetime
-from sqlalchemy import or_
 
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, delete_cloud_file
 from rdr_service.offline.sql_exporter import SqlExporter
-from rdr_service.model.participant import Participant
-from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.hpo import HPO
+from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 
 CSV_HEADER = ['PMI ID',
@@ -144,25 +141,15 @@ _MAX_FILE_AGE = datetime.timedelta(days=7)
 FILE_PREFIX = 'va_daily_participant_wq_'
 
 
-def get_workqueue_participants():
-    with ParticipantSummaryDao().session() as session:
-        return session.query(ParticipantSummary
-                             ).join(HPO, HPO.hpoId == ParticipantSummary.hpoId
-                                    ).join(Participant, Participant.participantId == ParticipantSummary.participantId
-                                           ).filter(HPO.name == 'VA',
-                                                    Participant.isTestParticipant != 1,
-                                                    # Just filtering on isGhostId != 1 will return no results
-                                                    or_(Participant.isGhostId != 1, Participant.isGhostId == None)
-                                                    ).all()
-
-
 def generate_workqueue_report():
     """ Creates csv file from ParticipantSummary table for participants paired to VA """
+    hpo_dao = HPODao()
+    summary_dao = ParticipantSummaryDao()
     bucket = config.getSetting(config.VA_WORKQUEUE_BUCKET_NAME)
     subfolder = config.getSetting(config.VA_WORKQUEUE_SUBFOLDER)
     file_timestamp = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
     file_name = f'{FILE_PREFIX}{file_timestamp}.csv'
-    participants = get_workqueue_participants()
+    participants = summary_dao.get_by_hpo(hpo_dao.get_by_name('VA'))
     participants_new = []
     for participant in participants:
         participant_row = [participant.participantId,
@@ -299,13 +286,13 @@ def generate_workqueue_report():
 
 
 def delete_old_reports():
-    """ Deletes export files that more than 7 days old """
+    """ Deletes export files that are more than 7 days old """
     bucket = config.getSetting(config.VA_WORKQUEUE_BUCKET_NAME)
     subfolder = config.getSetting(config.VA_WORKQUEUE_SUBFOLDER)
+    now = clock.CLOCK.now()
     for file in list_blobs(bucket, subfolder):
         if file.name.endswith(".csv") and os.path.basename(file.name).startswith(FILE_PREFIX):
             file_time = _timestamp_from_filename(file.name)
-            now = clock.CLOCK.now()
             if now - file_time > _MAX_FILE_AGE:
                 delete_cloud_file(bucket + "/" + file.name)
 
