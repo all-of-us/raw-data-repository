@@ -1,7 +1,7 @@
 import os
 import csv
-import mock
 import datetime
+import mock
 
 from rdr_service import config
 from rdr_service.api_util import open_cloud_file, upload_from_string, list_blobs
@@ -10,15 +10,15 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.model.participant import Participant
 from rdr_service.model.hpo import HPO
-from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
-
 from rdr_service.offline.export_va_workqueue import generate_workqueue_report, delete_old_reports
+
+from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
 
 class ExportVaWorkQueueTest(BaseTestCase, PDRGeneratorTestMixin):
 
-    def setUp(self):
-        super().setUp()
+    def setUp(self, *args, **kwargs):
+        super().setUp(*args, **kwargs)
         self.bucket = config.getSetting(config.VA_WORKQUEUE_BUCKET_NAME)
         self.subfolder = config.getSetting(config.VA_WORKQUEUE_SUBFOLDER)
 
@@ -28,23 +28,23 @@ class ExportVaWorkQueueTest(BaseTestCase, PDRGeneratorTestMixin):
         summary_dao = ParticipantSummaryDao()
         participant_dao = ParticipantDao()
         hpo_dao = HPODao()
-        va = hpo_dao.insert(HPO(name="VA", hpoId=99))
+        va_hpo = hpo_dao.insert(HPO(name="VA", hpoId=99))
         nids = 10
-        for x in range(nids):
+        for pid in range(nids):
             participant = participant_dao.insert(Participant())
-            participant.hpoId = va.hpoId
-            if x == 2:
+            participant.hpoId = va_hpo.hpoId
+            if pid == 2:
                 participant.isGhostId = 0
-            elif x == 5:
+            elif pid == 5:
                 participant.isGhostId = 1
-            elif x == 7:
+            elif pid == 7:
                 participant.isTestParticipant = 1
             participant_dao.update(participant)
             summary_dao.insert(self.participant_summary(participant))
         generate_workqueue_report()
         with open_cloud_file(os.path.normpath(
-            self.bucket + "/" + self.subfolder + "/va_daily_participant_wq_2022-01-13-07-04-00.csv")) as f:
-            reader = csv.DictReader(f)
+            self.bucket + "/" + self.subfolder + "/va_daily_participant_wq_2022-01-13-07-04-00.csv")) as test_csv:
+            reader = csv.DictReader(test_csv)
             row_count = sum(1 for _ in reader)
             self.assertEqual(row_count, nids - 2)
 
@@ -67,5 +67,5 @@ class ExportVaWorkQueueTest(BaseTestCase, PDRGeneratorTestMixin):
             upload_from_string("test", self.bucket + "/" + self.subfolder + "/" + file)
         delete_old_reports()
         bucket_file_list = [file.name for file in list_blobs(self.bucket, self.subfolder)]
-        self.assertIn(self.subfolder+"/va_daily_participant_wq_2022-01-12-05-00-00.csv", bucket_file_list)
-        self.assertNotIn(self.subfolder+"/va_daily_participant_wq_2022-01-05-00-00-00.csv", bucket_file_list)
+        self.assertIn(self.subfolder + "/va_daily_participant_wq_2022-01-12-05-00-00.csv", bucket_file_list)
+        self.assertNotIn(self.subfolder + "/va_daily_participant_wq_2022-01-05-00-00-00.csv", bucket_file_list)
