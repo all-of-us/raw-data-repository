@@ -1,5 +1,4 @@
 import os
-import logging
 import datetime
 from sqlalchemy import or_
 
@@ -163,7 +162,6 @@ def generate_workqueue_report():
     subfolder = config.getSetting(config.VA_WORKQUEUE_SUBFOLDER)
     file_timestamp = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
     file_name = f'{FILE_PREFIX}{file_timestamp}.csv'
-    logging.info(f"Generating /{bucket}/{subfolder}/{file_name}")
     participants = get_workqueue_participants()
     participants_new = []
     for p in participants:
@@ -296,7 +294,6 @@ def generate_workqueue_report():
         participants_new.append(p_new)
     exporter = SqlExporter(bucket)
     with exporter.open_cloud_writer(subfolder+"/"+file_name) as writer:
-        logging.info(f"Saving {file_name} to {bucket}/{subfolder}")
         writer.write_header(CSV_HEADER)
         writer.write_rows(participants_new)
 

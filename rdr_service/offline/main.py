@@ -1143,14 +1143,14 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + 'ExportVaWorkQueue',
+        OFFLINE_PREFIX + 'DeleteOldVaWorkQueueReports',
         endpoint='delete_old_va_workqueue_reports',
         view_func=delete_old_va_workqueue_reports,
         methods=['GET']
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + 'DeleteOldVaWorkQueueReports',
+        OFFLINE_PREFIX + 'ExportVaWorkQueue',
         endpoint='export_va_workqueue_report',
         view_func=export_va_workqueue_report,
         methods=['GET']
