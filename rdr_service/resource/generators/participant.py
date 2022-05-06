@@ -952,10 +952,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             if bo_pk:
                 # From known biobank orders
                 id_ = int(f'{bo_pk}{BIOBANK_UNIQUE_TEST_IDS[test]}')
-            else:
+            elif test in BIOBANK_UNIQUE_TEST_IDS:
                 # For unknown biobank orders, use participant_id + 99 + test id.
                 # All tests here will be grouped together under this 99 id.
                 id_ = int(f'{bss.participant_id}99{BIOBANK_UNIQUE_TEST_IDS[test]}')
+            else:
+                id_ = int(f'{bss.participant_id}9999')  # This should only hit in unittests.
 
             return {
                 'id': id_,
