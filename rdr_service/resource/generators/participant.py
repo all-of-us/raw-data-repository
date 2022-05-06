@@ -949,15 +949,14 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 return {}
 
             # Create a unique repeatable primary key value for each biobank sample record.
+            test_id = BIOBANK_UNIQUE_TEST_IDS[test] if test in BIOBANK_UNIQUE_TEST_IDS else '99'
             if bo_pk:
                 # From known biobank orders
-                id_ = int(f'{bo_pk}{BIOBANK_UNIQUE_TEST_IDS[test]}')
-            elif test in BIOBANK_UNIQUE_TEST_IDS:
+                id_ = int(f'{bo_pk}{test_id}')
+            else:
                 # For unknown biobank orders, use participant_id + 99 + test id.
                 # All tests here will be grouped together under this 99 id.
-                id_ = int(f'{bss.participant_id}99{BIOBANK_UNIQUE_TEST_IDS[test]}')
-            else:
-                id_ = int(f'{bss.participant_id}9999')  # This should only hit in unittests.
+                id_ = int(f'{bss.participant_id}99{test_id}')
 
             return {
                 'id': id_,
