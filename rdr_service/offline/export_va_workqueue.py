@@ -163,6 +163,7 @@ def generate_workqueue_report():
     subfolder = config.getSetting(config.VA_WORKQUEUE_SUBFOLDER)
     file_timestamp = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
     file_name = f'{FILE_PREFIX}{file_timestamp}.csv'
+    logging.info(f"Generating /{bucket}/{subfolder}/{file_name}")
     participants = get_workqueue_participants()
     participants_new = []
     for p in participants:
