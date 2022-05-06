@@ -10,7 +10,6 @@ from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
 from rdr_service.app_util import auth_required, restrict_to_gae_project
 from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicSetMemberDao, GenomicOutreachDao, GenomicOutreachDaoV2
 from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.services.genomic_datagen import ParticipantGenerator
 
 PTC_ALLOWED_ENVIRONMENTS = [
     'all-of-us-rdr-sandbox',
@@ -269,22 +268,6 @@ class GenomicOutreachApiV2(UpdatableApi):
 
             log_api_request(log=request.log_record)
             return _build_ready_response()
-
-        with ParticipantGenerator(
-            project='cvl_il'
-        ) as participant_generator:
-            participant_generator.run_participant_creation(
-                num_participants=1,
-                template_type='default',
-                external_values={
-                    'participant_id': participant_id,
-                    'informing_loop_ready_flag': convert_bool_map[
-                        req_data['informing_loop_eligible'].lower()
-                    ],
-                    'informing_loop_ready_flag_modified': parser.parse(req_data['eligibility_date_utc']
-                                                                       )
-                }
-            )
 
         log_api_request(log=request.log_record)
         return _build_ready_response()
