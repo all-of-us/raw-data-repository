@@ -56,9 +56,8 @@ class ConsentErrorReportTool(object):
             cc_recipients = list(cc_list.split(','))
         return recipients, cc_recipients
 
-    def _connect_to_rdr_replica(self):
-        """ Establish a connection to the replica RDR database for reading consent validation data """
-        replica = True if self.gcp_env.project == 'all-of-us-rdr-prod' else False
+    def _connect_to_rdr(self, replica=False):
+        """ Establish a connection to RDR database for managing consent error report generation/logging """
         self.gcp_env.activate_sql_proxy(replica=replica, project=self.gcp_env.project)
         if self.gcp_env.project != 'localhost':
             self.db_conn = self.gcp_env.make_mysqldb_connection()
@@ -74,7 +73,10 @@ class ConsentErrorReportTool(object):
             _logger.error('Must use --to-file unless running against prod')
             return
 
-        self._connect_to_rdr_replica()
+        # Will use the replica if possible on prod, if redirecting output (no writing to ConsentErrorReport table)
+        use_replica = self.gcp_env.project == 'all-of-us-rdr-prod' and self.args.to_file is not None
+
+        self._connect_to_rdr(replica=use_replica)
 
         if not self.args.to_file:
             project_config = self.gcp_env.get_app_config()
@@ -142,7 +144,7 @@ def run():
     parser.add_argument("--from-file", type=str, help="File with list of consent_file primary_key ids to create " + \
                                                       "error reports for")
     parser.add_argument("--to-file", help="Output error report content to this file",
-                        default=False, type=str, dest="to_file")
+                        default=None, type=str, dest="to_file")
     parser.add_argument("--origin", default='vibrent', help="participant_origin value to filter on")
     parser.add_argument("--to", default=None,
                         help="Comma-separated list of email addresses for To: list.  Overrides app config setting")
