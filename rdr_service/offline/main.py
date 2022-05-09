@@ -560,7 +560,9 @@ def genomic_cvl_w1il_hdr_workflow():
 @run_genomic_cron_job('cvl_w2w_manifest_workflow')
 @interval_run_schedule(GenomicJob.CVL_W2W_WORKFLOW, 'skip_week')
 def genomic_cvl_w2w_workflow():
-    genomic_pipeline.cvl_w2w_manifest_workflow()
+    genomic_pipeline.cvl_w2w_manifest_workflow(
+        cvl_site_bucket_map=config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP)
+    )
     return '{"success": "true"}'
 
 
