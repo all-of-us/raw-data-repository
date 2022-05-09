@@ -19,7 +19,7 @@ from rdr_service.model.genomics import (
     GenomicSetMember,
     GenomicResultWorkflowState
 )
-from tests.helpers.data_generator import DataGenerator
+from rdr_service.data_gen.generators.data_generator import DataGenerator
 
 
 class GeneratorMixin:

@@ -42,7 +42,7 @@ from rdr_service.offline import sql_exporter
 from rdr_service.resource.generators.code import CodeGenerator
 from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
 from rdr_service.storage import LocalFilesystemStorageProvider
-from tests.helpers.data_generator import DataGenerator
+from rdr_service.data_gen.generators.data_generator import DataGenerator
 from tests.helpers.mysql_helper import reset_mysql_instance, clear_table_on_next_reset
 from tests.test_data import data_path
 
