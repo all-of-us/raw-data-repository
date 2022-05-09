@@ -1,5 +1,6 @@
 import datetime
 import enum
+import hashlib
 import json
 import logging
 import re
@@ -50,7 +51,7 @@ from rdr_service.resource import generators, schemas
 from rdr_service.resource.calculators import EnrollmentStatusCalculator, ParticipantUBRCalculator as ubr
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
     PDREnrollmentStatusEnum
-from rdr_service.resource.schemas.participant import StreetAddressTypeEnum
+from rdr_service.resource.schemas.participant import StreetAddressTypeEnum, BIOBANK_UNIQUE_TEST_IDS
 
 
 class ModuleLookupEnum(enum.Enum):
@@ -929,12 +930,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
             return match
 
-        def _make_sample_dict_from_row(bss=None, bos=None):
+        def _make_sample_dict_from_row(bss=None, bos=None, bo_pk=None, idx=None):
             """"
             Internal helper routine to populate a sample dict entry from the available ordered sample and
             stored sample information.
             :param bss:   A biobank_stored_sample row
             :param bos:   A biobank_ordered_sample row
+            :param bo_pk: The primary key value for the biobank order.
             Note that there should never be an instance where neither parameter has content
             """
 
@@ -952,7 +954,26 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 logging.error(f'No stored or ordered sample info provided for biobank id {p_bb_id}. Please investigate')
                 return {}
 
+            # Create a unique repeatable primary key value for each biobank sample record.
+            test_id = BIOBANK_UNIQUE_TEST_IDS[test] if test in BIOBANK_UNIQUE_TEST_IDS else '99'
+            if bo_pk:
+                # From known biobank orders
+                id_ = int(f'{bo_pk}{test_id}{idx}')
+            else:
+                # For unknown biobank orders, use participant_id + 99 + test id.
+                # All tests here will be grouped together under this 99 id.
+                id_ = int(f'{bss.participant_id}99{test_id}{idx}')
+
+            # Create a hash integer value that will fit in a 32-bit data field, as an alternate unique id.
+            if bss:
+                hash_str = f'{id_}{bss.test}{bss.created}{bss.biobank_stored_sample_id}{bss.family_id}'.encode('utf-8')
+            else:
+                hash_str = f'{id_}'.encode('utf-8')
+            hash_id = int(str(int(hashlib.sha512(hash_str).hexdigest()[:12], 16))[:9])
+
             return {
+                'id': id_,
+                'hash_id': hash_id,
                 'biobank_stored_sample_id': bss.biobank_stored_sample_id if bss else None,
                 'test': test,
                 'baseline_test': 1 if test in self._baseline_sample_test_codes else 0,  # Boolean field
@@ -971,7 +992,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # SQL to generate a list of biobank orders associated with a participant
         _biobank_orders_sql = """
-           select bo.biobank_order_id, bo.created, bo.order_status,
+           select bo.participant_id, bo.biobank_order_id, bo.created, bo.order_status,
                    bo.collected_site_id, (select google_group from site where site.site_id = bo.collected_site_id) as collected_site,
                    bo.processed_site_id, (select google_group from site where site.site_id = bo.processed_site_id) as processed_site,
                    bo.finalized_site_id, (select google_group from site where site.site_id = bo.finalized_site_id) as finalized_site,
@@ -984,7 +1005,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # SQL to collect all the ordered samples associated with a biobank order
         _biobank_ordered_samples_sql = """
-            select bo.biobank_order_id, bos.*
+            select bo.participant_id, bo.biobank_order_id, bos.*
             from biobank_order bo
             inner join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
             where bo.participant_id = :p_id and bo.biobank_order_id = :bo_id
@@ -996,13 +1017,14 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # See: https://precisionmedicineinitiative.atlassian.net/browse/PDR-89.
         _biobank_stored_samples_sql = """
             select
+                (select p.participant_id from participant p where p.biobank_id = bss.biobank_id) as participant_id,
                 (select distinct boi.biobank_order_id from
                    biobank_order_identifier boi where boi.`value` = bss.biobank_order_identifier
                 ) as biobank_order_id,
                 bss.*
             from biobank_stored_sample bss
             where bss.biobank_id = :bb_id
-            order by biobank_order_id, test;
+            order by biobank_order_id, bss.test, bss.created;
         """
 
         data = {}
@@ -1011,6 +1033,16 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # Find all biobank orders associated with this participant
         cursor = ro_session.execute(_biobank_orders_sql, {'p_id': p_id})
         biobank_orders = [r for r in cursor]
+        # Create a unique identifier for each biobank order. This uid must be repeatable, so we sort by 'created'.
+        # This unique biobank order id will be used as the prefix of the unique id for each biobank sample record.
+        # Note: This is why every database table should have an 'id' integer field as the primary key, so we don't
+        #       have to fudge up a primary key value in code.
+        bbo_pks = dict()
+        bbo_tmp = [[bo.participant_id, bo.biobank_order_id, bo.created] for bo in biobank_orders]
+        sorted(bbo_tmp, key=lambda i: i[2])
+        for x in range(len(bbo_tmp)):
+            # bo pk = participant_id + order index left padded 2 zeros.
+            bbo_pks[bbo_tmp[x][1]] = int(f'{bbo_tmp[x][0]}{str(x).zfill(2)}')
 
         # Find stored samples associated with this participant. For any stored samples for which there
         # is no known biobank order, create a separate list that will be consolidated into a "pseudo" order record
@@ -1032,23 +1064,30 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # RDR has a small number of biobank_order records (mail kit salivary orders) without a related
             # biobank_ordered_sample record, but with biobank_stored_sample records.  Make sure those stored samples
             # are included with the participant's biobank_order data
+            idx = 0
             if len(bos_results) == 0 and len(bss_results) > 0:
                 for bss in bss_results:
                     if bss.biobank_order_id == row.biobank_order_id:
-                        bbo_samples.append(_make_sample_dict_from_row(bss=bss, bos=None))
+                        idx += 1
+                        bbo_samples.append(_make_sample_dict_from_row(
+                                bss=bss, bos=None, bo_pk=bbo_pks[row.biobank_order_id], idx=idx))
                         stored_count += 1
             # PDR-400: There are about 20 participants that have less ordered samples than stored samples.
             elif len(bss_results) > 0 and len(bos_results) < len(bss_results):
                 for bss in bss_results:
                     if bss.biobank_order_id == row.biobank_order_id:
-                        bbo_samples.append(_make_sample_dict_from_row(bss=bss, bos=bos_results[0]))
+                        idx += 1
+                        bbo_samples.append(_make_sample_dict_from_row(
+                                bss=bss, bos=bos_results[0], bo_pk=bbo_pks[row.biobank_order_id], idx=idx))
                         stored_count += 1
             else:
                 for ordered_sample in bos_results:
+                    idx += 1
                     # Look for a matching stored sample result based on the biobank order id and test type
                     # from the ordered sample record, to add to the order's list of samples
                     stored_sample = _get_stored_sample_row(bss_results, ordered_sample)
-                    bbo_samples.append(_make_sample_dict_from_row(bss=stored_sample, bos=ordered_sample))
+                    bbo_samples.append(_make_sample_dict_from_row(
+                            bss=stored_sample, bos=ordered_sample, bo_pk=bbo_pks[row.biobank_order_id], idx=idx))
                     if stored_sample:
                         stored_count += 1
 
@@ -1070,6 +1109,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 finalized_status = OrderStatus.UNSET
 
             order = {
+                'id': bbo_pks[row.biobank_order_id],
                 'biobank_order_id': row.biobank_order_id,
                 'created': row.created,
                 'status': str(bb_order_status),
@@ -1099,12 +1139,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # pseudo order with an order id of 'UNSET'
         if len(bss_missing_orders):
             orderless_stored_samples = list()
+            idx = 0
             for bss_row in bss_missing_orders:
-                sr = _make_sample_dict_from_row(bss=bss_row, bos=None)
+                idx += 1
+                sr = _make_sample_dict_from_row(bss=bss_row, bos=None, idx=idx)
                 if sr not in orderless_stored_samples:  # Don't put duplicates in samples list.
                     orderless_stored_samples.append(sr)
 
             order = {
+                'id': int(f'{bss_missing_orders[0].participant_id}99'),
                 'finalized_time': None,
                 'biobank_order_id': 'UNSET',
                 'collection_method': str(SampleCollectionMethod.UNSET),

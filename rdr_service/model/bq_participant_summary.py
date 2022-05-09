@@ -168,6 +168,8 @@ class BQBiobankSampleSchema(BQSchema):
     bbs_disposed_reason_id = BQField('bbs_disposed_reason_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     bbs_biobank_stored_sample_id = BQField('bbs_biobank_stored_sample_id', BQFieldTypeEnum.STRING,
                                            BQFieldModeEnum.NULLABLE)
+    bbs_id = BQField('bbs_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    bbs_hash_id = BQField('bbs_hash_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQBiobankOrderSchema(BQSchema):
@@ -195,6 +197,7 @@ class BQBiobankOrderSchema(BQSchema):
                                       BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     bbo_collection_method = BQField('bbo_collection_method', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     bbo_collection_method_id = BQField('bbo_collection_method_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    bbo_id = BQField('bbo_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQPatientStatusSchema(BQSchema):
