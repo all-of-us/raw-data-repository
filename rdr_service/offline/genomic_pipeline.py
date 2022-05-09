@@ -14,7 +14,7 @@ def run_genomic_cron_job(val):
     def inner_decorator(f):
         def wrapped(*args, **kwargs):
             if not config.getSettingJson(config.GENOMIC_CRON_JOBS).get(val):
-                RuntimeError(f'Cron job for {val} is currently disabled')
+                raise RuntimeError(f'Cron job for {val} is currently disabled')
             return f(*args, **kwargs)
         return wrapped
     return inner_decorator
