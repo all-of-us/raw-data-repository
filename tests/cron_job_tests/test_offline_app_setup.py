@@ -62,7 +62,7 @@ class OfflineAppTest(BaseTestCase):
     @mock.patch('rdr_service.offline.main.genomic_pipeline')
     def test_genomics_config_disables_jobs(self, pipeline_mock):
         self.temporarily_override_config_setting(config.GENOMIC_CRON_JOBS, {})
-        self.send_cron_request(f'GenomicAW3ArrayWorkflow', expected_status=500)
+        self.send_cron_request('GenomicAW3ArrayWorkflow', expected_status=500)
         pipeline_mock.aw3_array_manifest_workflow.assert_not_called()
 
         # Enable the cron job and call it again to be sure that it would have worked if it was enabled
@@ -72,5 +72,5 @@ class OfflineAppTest(BaseTestCase):
         self.temporarily_override_config_setting(config.GENOMIC_CRON_JOBS, {
             'aw3_array_manifest_workflow': 1
         })
-        self.send_cron_request(f'GenomicAW3ArrayWorkflow')
+        self.send_cron_request('GenomicAW3ArrayWorkflow')
         pipeline_mock.aw3_array_manifest_workflow.assert_called()
