@@ -1,6 +1,9 @@
+import http.client
 import mock
 
 from tests.helpers.unittest_base import BaseTestCase
+
+from rdr_service import config
 
 
 class OfflineAppTest(BaseTestCase):
@@ -11,12 +14,13 @@ class OfflineAppTest(BaseTestCase):
         self.offline_test_client = app.test_client()
         self.url_prefix = OFFLINE_PREFIX
 
-    def send_cron_request(self, path):
-        self.send_get(
+    def send_cron_request(self, path, expected_status=http.client.OK):
+        return self.send_get(
             path,
             test_client=self.offline_test_client,
             prefix=self.url_prefix,
-            headers={'X-Appengine-Cron': True}
+            headers={'X-Appengine-Cron': True},
+            expected_status=expected_status
         )
 
     def test_offline_http_exceptions_get_logged(self):
@@ -54,3 +58,19 @@ class OfflineAppTest(BaseTestCase):
     def test_data_quality_check_route(self, mock_checker):
         self.send_cron_request(f'DataQualityChecks')
         mock_checker.assert_called()
+
+    @mock.patch('rdr_service.offline.main.genomic_pipeline')
+    def test_genomics_config_disables_jobs(self, pipeline_mock):
+        self.temporarily_override_config_setting(config.GENOMIC_CRON_JOBS, {})
+        self.send_cron_request('GenomicAW3ArrayWorkflow', expected_status=500)
+        pipeline_mock.aw3_array_manifest_workflow.assert_not_called()
+
+        # Enable the cron job and call it again to be sure that it would have worked if it was enabled
+        # If this check fails, then the assumptions made in this test are wrong and the test needs to be changed.
+        # This test assumes that the only reason the AW3 job would not run and call the pipeline function is if
+        # is disabled.
+        self.temporarily_override_config_setting(config.GENOMIC_CRON_JOBS, {
+            'aw3_array_manifest_workflow': 1
+        })
+        self.send_cron_request('GenomicAW3ArrayWorkflow')
+        pipeline_mock.aw3_array_manifest_workflow.assert_called()
