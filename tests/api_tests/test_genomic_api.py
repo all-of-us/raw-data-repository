@@ -1451,107 +1451,107 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.assertEqual(resp.status_code, 404)
         self.assertEqual(resp.json['message'], 'Participant with id P12234312 was not found')
 
-    # def test_post_with_yes_inserts_via_template_returns_correctly(self):
-    #     ready_modules = ['hdr', 'pgx']
-    #     self.build_ready_loop_template_data()
-    #
-    #     participant = self.data_generator.create_database_participant()
-    #
-    #     resp = self.send_post(
-    #         f'GenomicOutreachV2?participant_id=P{participant.participantId}',
-    #         request_data={
-    #             'informing_loop_eligible': 'yes',
-    #             'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
-    #         }
-    #     )
-    #
-    #     self.assertIsNotNone(resp)
-    #     self.assertEqual(len(resp['data']), 2)
-    #     self.assertTrue(all(obj['participant_id'] == f'P{participant.participantId}'
-    #                         for obj in resp['data']))
-    #
-    #     self.assertTrue(all(obj['module'] in ready_modules for obj in resp['data']))
-    #     self.assertTrue(all(obj['status'] == 'ready' for obj in resp['data']))
-    #
-    #     self.clear_table_after_test('genomic_datagen_member_run')
-    #
-    # def test_post_with_no_inserts_via_template_returns_correctly(self):
-    #     self.build_ready_loop_template_data()
-    #
-    #     participant = self.data_generator.create_database_participant()
-    #
-    #     resp = self.send_post(
-    #         f'GenomicOutreachV2?participant_id=P{participant.participantId}',
-    #         request_data={
-    #             'informing_loop_eligible': 'no',
-    #             'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
-    #         }
-    #     )
-    #
-    #     self.assertIsNotNone(resp)
-    #     self.assertEqual(len(resp['data']), 0)
-    #     self.assertEqual(resp['data'], [])
-    #
-    #     self.clear_table_after_test('genomic_datagen_member_run')
-    #
-    # def test_put_validates_updates_and_returns(self):
-    #
-    #     # PUT for no set member
-    #     resp = self.send_put(
-    #         'GenomicOutreachV2?participant_id=P2121232',
-    #         request_data={
-    #             'informing_loop_eligible': 'no',
-    #             'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
-    #         },
-    #         expected_status=404
-    #     )
-    #
-    #     self.assertIsNotNone(resp)
-    #     self.assertEqual(resp.status_code, 404)
-    #     self.assertEqual(resp.json['message'], 'Participant with id P2121232 was not found')
-    #
-    #     self.build_ready_loop_template_data()
-    #
-    #     participant = self.data_generator.create_database_participant()
-    #
-    #     # POST to create set member
-    #     resp = self.send_post(
-    #         f'GenomicOutreachV2?participant_id=P{participant.participantId}',
-    #         request_data={
-    #             'informing_loop_eligible': 'no',
-    #             'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
-    #         }
-    #     )
-    #
-    #     self.assertIsNotNone(resp)
-    #     self.assertEqual(len(resp['data']), 0)
-    #     self.assertEqual(resp['data'], [])
-    #
-    #     # PUT to update set member
-    #     resp = self.send_put(
-    #         f'GenomicOutreachV2?participant_id=P{participant.participantId}',
-    #         request_data={
-    #             'informing_loop_eligible': 'yes',
-    #             'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
-    #         }
-    #     )
-    #
-    #     self.assertIsNotNone(resp)
-    #     self.assertEqual(len(resp['data']), 2)
-    #
-    #     resp = self.send_put(
-    #         f'GenomicOutreachV2?participant_id=P{participant.participantId}',
-    #         request_data={
-    #             'informing_loop_eligible': 'no',
-    #             'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
-    #         }
-    #     )
-    #
-    #     self.assertIsNotNone(resp)
-    #     self.assertEqual(len(resp['data']), 0)
-    #     self.assertEqual(resp['data'], [])
-    #
-    #     self.clear_table_after_test('genomic_datagen_member_run')
+    def test_post_with_yes_inserts_via_template_returns_correctly(self):
+        ready_modules = ['hdr', 'pgx']
+        self.build_ready_loop_template_data()
+
+        participant = self.data_generator.create_database_participant()
+
+        resp = self.send_post(
+            f'GenomicOutreachV2?participant_id=P{participant.participantId}',
+            request_data={
+                'informing_loop_eligible': 'yes',
+                'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
+            }
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(len(resp['data']), 2)
+        self.assertTrue(all(obj['participant_id'] == f'P{participant.participantId}'
+                            for obj in resp['data']))
+
+        self.assertTrue(all(obj['module'] in ready_modules for obj in resp['data']))
+        self.assertTrue(all(obj['status'] == 'ready' for obj in resp['data']))
+
+        self.clear_table_after_test('genomic_datagen_member_run')
+
+    def test_post_with_no_inserts_via_template_returns_correctly(self):
+        self.build_ready_loop_template_data()
+
+        participant = self.data_generator.create_database_participant()
+
+        resp = self.send_post(
+            f'GenomicOutreachV2?participant_id=P{participant.participantId}',
+            request_data={
+                'informing_loop_eligible': 'no',
+                'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
+            }
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(len(resp['data']), 0)
+        self.assertEqual(resp['data'], [])
+
+        self.clear_table_after_test('genomic_datagen_member_run')
+
+    def test_put_validates_updates_and_returns(self):
+
+        # PUT for no set member
+        resp = self.send_put(
+            'GenomicOutreachV2?participant_id=P2121232',
+            request_data={
+                'informing_loop_eligible': 'no',
+                'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
+            },
+            expected_status=404
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json['message'], 'Participant with id P2121232 was not found')
+
+        self.build_ready_loop_template_data()
+
+        participant = self.data_generator.create_database_participant()
+
+        # POST to create set member
+        resp = self.send_post(
+            f'GenomicOutreachV2?participant_id=P{participant.participantId}',
+            request_data={
+                'informing_loop_eligible': 'no',
+                'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
+            }
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(len(resp['data']), 0)
+        self.assertEqual(resp['data'], [])
+
+        # PUT to update set member
+        resp = self.send_put(
+            f'GenomicOutreachV2?participant_id=P{participant.participantId}',
+            request_data={
+                'informing_loop_eligible': 'yes',
+                'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
+            }
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(len(resp['data']), 2)
+
+        resp = self.send_put(
+            f'GenomicOutreachV2?participant_id=P{participant.participantId}',
+            request_data={
+                'informing_loop_eligible': 'no',
+                'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
+            }
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(len(resp['data']), 0)
+        self.assertEqual(resp['data'], [])
+
+        self.clear_table_after_test('genomic_datagen_member_run')
 
 
 class GenomicCloudTasksApiTest(BaseTestCase):
