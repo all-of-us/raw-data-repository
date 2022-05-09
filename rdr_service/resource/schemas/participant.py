@@ -193,7 +193,8 @@ class PhysicalMeasurementsSchema(Schema):
 
 class BiobankSampleSchema(Schema):
     """ Biobank sample information """
-    id = fields.Int32()
+    id = fields.Int64()
+    hash_id = fields.Int32()
     test = fields.String(validate=validate.Length(max=80))
     baseline_test = fields.Boolean()
     dna_test = fields.Boolean()

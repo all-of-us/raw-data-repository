@@ -169,6 +169,7 @@ class BQBiobankSampleSchema(BQSchema):
     bbs_biobank_stored_sample_id = BQField('bbs_biobank_stored_sample_id', BQFieldTypeEnum.STRING,
                                            BQFieldModeEnum.NULLABLE)
     bbs_id = BQField('bbs_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    bbs_hash_id = BQField('bbs_hash_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQBiobankOrderSchema(BQSchema):
