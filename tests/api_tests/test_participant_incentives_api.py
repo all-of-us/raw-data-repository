@@ -45,8 +45,7 @@ class ParticipantIncentivesApiTest(BaseTestCase):
         message = response.json['message']
         self.assertEqual(
             message,
-            'Missing required key/values in request, required: '
-            'createdBy | site | dateGiven | occurrence | incentiveType | amount'
+            'Missing required key/values in request, required: site | dateGiven'
         )
 
         response = self.send_put(
@@ -59,8 +58,7 @@ class ParticipantIncentivesApiTest(BaseTestCase):
         message = response.json['message']
         self.assertEqual(
             message,
-            'Missing required key/values in request, required: '
-            'createdBy | site | dateGiven | occurrence | incentiveType | amount'
+            'Missing required key/values in request, required: site | dateGiven'
         )
 
         data = {
