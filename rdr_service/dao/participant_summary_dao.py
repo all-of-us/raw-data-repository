@@ -39,6 +39,7 @@ from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
+from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import (
     ParticipantGenderAnswers,
     ParticipantRaceAnswers,
@@ -1118,7 +1119,14 @@ class ParticipantSummaryDao(UpdatableDao):
 
     @classmethod
     def get_all_consented_participant_ids(cls, session):
-        db_results = session.query(ParticipantSummary.participantId).all()
+        db_results = session.query(
+            ParticipantSummary.participantId
+        ).join(
+            Participant,
+            Participant.participantId == ParticipantSummary.participantId
+        ).filter(
+            Participant.isTestParticipant.is_(False)
+        ).all()
         return [obj.participantId for obj in db_results]
 
     def get_participant_ids_with_ehr_data_available(self):
