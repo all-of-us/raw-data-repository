@@ -73,7 +73,7 @@ class GhostCheckService:
 
         if len(pdr_rebuild_list):
             # PDR BQ module views select the test/ghost flag from participant data; don't need to rebuild module data
-            dispatch_participant_rebuild_tasks(pdr_rebuild_list, project=project, build_modules=False)
+            dispatch_participant_rebuild_tasks(pdr_rebuild_list, project_id=project, build_modules=False)
 
     def _record_ghost_result(self, is_ghost_response: bool, participant: Participant) -> bool:
         """ Update the participant isGhostId status if needed.  Returns true if update was performed """
