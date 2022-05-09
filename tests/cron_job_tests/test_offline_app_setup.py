@@ -1,5 +1,4 @@
 import http.client
-
 import mock
 
 from tests.helpers.unittest_base import BaseTestCase
