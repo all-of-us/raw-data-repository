@@ -1013,7 +1013,7 @@ class ParticipantSummaryDao(UpdatableDao):
         records = [self.incentive_dao.convert_json_obj(obj) for obj in records]
         return records
 
-    def to_client_json(self, model: ParticipantSummary):
+    def to_client_json(self, model: ParticipantSummary, strip_none_values=True):
         result = model.asdict()
 
         if self.hpro_consents:
@@ -1097,7 +1097,9 @@ class ParticipantSummaryDao(UpdatableDao):
             result["recontactMethod"] = "NO_CONTACT"
 
         # Strip None values.
-        result = {k: v for k, v in list(result.items()) if v is not None}
+        if strip_none_values is True:
+            result = {k: v for k, v in list(result.items()) if v is not None}
+
 
         return result
 
