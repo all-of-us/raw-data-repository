@@ -707,6 +707,43 @@ event.listen(GenomicAW4Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicAW4Raw, 'before_update', model_update_listener)
 
 
+class GenomicW1ILRaw(Base):
+    """
+    Raw data from W1IL files
+    """
+    __tablename__ = 'genomic_w1il_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    cvl_site_id = Column(String(128), nullable=True, index=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    vcf_raw_path = Column(String(255), nullable=True)
+    vcf_raw_index_path = Column(String(255), nullable=True)
+    vcf_raw_md5_path = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    ny_flag = Column(String(255), nullable=True)
+    genome_center = Column(String(255), nullable=True)
+    consent_for_gror = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    informing_loop_pgx = Column(String(255), nullable=True)
+    informing_loop_hdr = Column(String(255), nullable=True)
+    aou_hdr_coverage = Column(String(255), nullable=True)
+    contamination = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW1ILRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW1ILRaw, 'before_update', model_update_listener)
+
+
 class GenomicW2SCRaw(Base):
     """
     Raw data from W2SC files
@@ -728,6 +765,32 @@ class GenomicW2SCRaw(Base):
 
 event.listen(GenomicW2SCRaw, 'before_insert', model_insert_listener)
 event.listen(GenomicW2SCRaw, 'before_update', model_update_listener)
+
+
+class GenomicW2WRaw(Base):
+    """
+    Raw data from W2W files
+    """
+    __tablename__ = 'genomic_w2w_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    cvl_site_id = Column(String(128), nullable=True, index=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    date_of_consent_removal = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW2WRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW2WRaw, 'before_update', model_update_listener)
 
 
 class GenomicW3NSRaw(Base):
@@ -768,6 +831,8 @@ class GenomicW3SRRaw(Base):
     file_path = Column('file_path', String(255), nullable=True, index=True)
     ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
     dev_note = Column('dev_note', String(255), nullable=True)
+
+    cvl_site_id = Column(String(128), nullable=True, index=True)
 
     biobank_id = Column(String(255), nullable=True)
     sample_id = Column(String(255), nullable=True)

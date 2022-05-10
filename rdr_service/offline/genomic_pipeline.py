@@ -3,7 +3,7 @@ import logging
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicAW3RawDao, GenomicAW4RawDao, \
     GenomicJobRunDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao, GenomicW3NSRawDao, \
-    GenomicW5NFRawDao, GenomicW3SSRawDao
+    GenomicW5NFRawDao, GenomicW3SSRawDao, GenomicW2WRawDao, GenomicW1ILRawDao
 from rdr_service.services.system_utils import JSONObject
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
@@ -170,7 +170,20 @@ def cvl_w1il_manifest_workflow(cvl_site_bucket_map, module_type):
             bucket_name=cvl_bucket_name_key,
             cvl_site_id=site_id
         ) as controller:
-            controller.generate_manifest(manifest_type, _genome_type=config.GENOME_TYPE_WGS)
+            controller.generate_manifest(
+                manifest_type=manifest_type,
+                _genome_type=config.GENOME_TYPE_WGS
+            )
+            for manifest in controller.manifests_generated:
+                logging.info(
+                    f"Loading W1IL Manifest Raw Data: {manifest['file_path']}")
+
+                # Call pipeline function to load raw
+                load_awn_manifest_into_raw_table(
+                    manifest['file_path'],
+                    "w1il",
+                    cvl_site_id=site_id
+                )
 
 
 def cvl_w2w_manifest_workflow(cvl_site_bucket_map):
@@ -185,6 +198,16 @@ def cvl_w2w_manifest_workflow(cvl_site_bucket_map):
                 manifest_type=GenomicManifestTypes.CVL_W2W,
                 _genome_type=config.GENOME_TYPE_WGS
             )
+            for manifest in controller.manifests_generated:
+                logging.info(
+                    f"Loading W2W Manifest Raw Data: {manifest['file_path']}")
+
+                # Call pipeline function to load raw
+                load_awn_manifest_into_raw_table(
+                    manifest['file_path'],
+                    "w2w",
+                    cvl_site_id=site_id
+                )
 
 
 def cvl_w3sr_manifest_workflow():
@@ -198,15 +221,19 @@ def cvl_w3sr_manifest_workflow():
             cvl_site_id=site_id
         ) as controller:
             controller.generate_manifest(
-                GenomicManifestTypes.CVL_W3SR,
+                manifest_type=GenomicManifestTypes.CVL_W3SR,
                 _genome_type=config.GENOME_TYPE_WGS,
             )
             for manifest in controller.manifests_generated:
                 logging.info(
-                    f"Loading W3SR Investigation Raw Data: {manifest['file_path']}")
+                    f"Loading W3SR Manifest Raw Data: {manifest['file_path']}")
 
                 # Call pipeline function to load raw
-                load_awn_manifest_into_raw_table(manifest['file_path'], "w3sr")
+                load_awn_manifest_into_raw_table(
+                    manifest['file_path'],
+                    "w3sr",
+                    cvl_site_id=site_id
+                )
 
 
 def aw3_array_investigation_workflow():
@@ -497,7 +524,8 @@ def load_awn_manifest_into_raw_table(
     file_path,
     manifest_type,
     project_id=None,
-    provider=None
+    provider=None,
+    cvl_site_id=None
 ):
     raw_jobs_map = {
         "aw1": {
@@ -516,9 +544,17 @@ def load_awn_manifest_into_raw_table(
             'job_id': GenomicJob.LOAD_AW4_TO_RAW_TABLE,
             'dao': GenomicAW4RawDao
         },
+        "w1il": {
+            'job_id': GenomicJob.LOAD_CVL_W1IL_TO_RAW_TABLE,
+            'dao': GenomicW1ILRawDao
+        },
         "w2sc": {
             'job_id': GenomicJob.LOAD_CVL_W2SC_TO_RAW_TABLE,
             'dao': GenomicW2SCRawDao
+        },
+        "w2w": {
+            'job_id': GenomicJob.LOAD_CVL_W2W_TO_RAW_TABLE,
+            'dao': GenomicW2WRawDao
         },
         "w3ns": {
             'job_id': GenomicJob.LOAD_CVL_W3NS_TO_RAW_TABLE,
@@ -553,4 +589,8 @@ def load_awn_manifest_into_raw_table(
     with GenomicJobController(raw_job.get('job_id'),
                               bq_project_id=project_id,
                               storage_provider=provider) as controller:
-        controller.load_raw_awn_data_from_filepath(file_path, raw_job.get('dao'))
+        controller.load_raw_awn_data_from_filepath(
+            file_path,
+            raw_job.get('dao'),
+            cvl_site_id=cvl_site_id
+        )
