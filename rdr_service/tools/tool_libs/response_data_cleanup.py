@@ -1,5 +1,4 @@
 import argparse
-import logging
 
 from sqlalchemy.orm import joinedload, Session
 from typing import Dict, List
@@ -12,7 +11,7 @@ from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOptio
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from rdr_service.services.response_validation.validation import ResponseValidator, ValidationError
 from rdr_service.services.system_utils import list_chunks
-from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
 
 tool_cmd = 'response-cleanup'
@@ -67,7 +66,7 @@ class ResponseDataCleanup(ToolBase):
 class ValidationErrorHandler:
     def __init__(self, session: Session, invalidation_reason, project_id):
         self._participant_ids_to_rebuild = []
-        self._answer_ids_to_invalidate = []
+        self._answer_ids_to_invalidate = set()
 
         self._session = session
         self._invalidation_reason = invalidation_reason
@@ -77,7 +76,7 @@ class ValidationErrorHandler:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        logging.info(f'Invalidating {len(self._answer_ids_to_invalidate)} answers...')
+        logger.info(f'Invalidating {len(self._answer_ids_to_invalidate)} answers...')
         self._session.query(
             QuestionnaireResponseAnswer
         ).filter(
@@ -87,27 +86,33 @@ class ValidationErrorHandler:
                 QuestionnaireResponseAnswer.ignore: True,
                 QuestionnaireResponseAnswer.ignore_reason: self._invalidation_reason
             },
-            syncronize_session=False
+            synchronize_session=False
         )
         self._session.commit()
 
-        logging.info(
+        logger.info(
             f'... answers marked as invalid. '
             f'Sending rebuild task for {len(self._participant_ids_to_rebuild)} participants...'
         )
         dispatch_participant_rebuild_tasks(
             pid_list=self._participant_ids_to_rebuild,
-            project_id=self._project_id
+            project_id=self._project_id,
+            build_locally=False
         )
-        logging.info('... rebuild task sent.')
+        logger.info('... rebuild task sent.')
 
     def handle_errors(self, validation_errors: Dict[str, List[ValidationError]], participant_id):
-        logging.info(f'Will invalidate answers for participant P{participant_id}')
+        logger.info(f'Will invalidate answers for participant P{participant_id}')
+        for question_code, error_list in validation_errors.items():
+            logger.info(f'invalidating the following for {question_code}')
+            for error in error_list:
+                logger.info(f' - {error.answer_id}: {error.reason}')
+
         self._participant_ids_to_rebuild.append(participant_id)
 
         for errors_list in validation_errors.values():
             for error in errors_list:
-                self._answer_ids_to_invalidate.extend(error.answer_id)
+                self._answer_ids_to_invalidate.update(error.answer_id)
 
 
 def add_additional_arguments(parser: argparse.ArgumentParser):

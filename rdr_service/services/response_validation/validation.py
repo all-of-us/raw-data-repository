@@ -625,7 +625,7 @@ class ResponseValidator:
     def get_errors_in_responses(self, participant_responses: response_domain_model.ParticipantResponses):
         errors_by_question = defaultdict(list)
         for response in participant_responses.in_authored_order:
-            # self._check_for_definition_errors(response, errors_by_question)
+            self._check_for_definition_errors(response, errors_by_question)
 
             branching_errors = self._branching_logic.check_for_errors(response)
             for error in branching_errors:
@@ -746,7 +746,7 @@ class ResponseValidator:
                                     f'Unexpected validation string for question, got "{question.validation}"'
                                 )
 
-                            if min_value and answer_value < min_value:
+                            if min_value is not None and answer_value < min_value:
                                 errors_by_question[question_code_str].append(
                                     ValidationError(
                                         question_code_str,
@@ -754,7 +754,7 @@ class ResponseValidator:
                                         reason='Answer lower than minimum value'
                                     )
                                 )
-                            if max_value and answer_value > max_value:
+                            if max_value is not None and answer_value > max_value:
                                 errors_by_question[question_code_str].append(
                                     ValidationError(
                                         question_code_str,
