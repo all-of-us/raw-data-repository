@@ -23,7 +23,7 @@ class ParticipantIncentivesDao(UpdatableDao):
         obj = self.convert_json_obj(obj)
         return obj
 
-    def from_client_json(self, resource, incentive_id=None, cancel=False):
+    def from_client_json(self, resource, incentive_id=None):
         if incentive_id:
             update_incentive = self.get_by_incentive_id(resource['incentiveId'])
             if not update_incentive:
@@ -31,7 +31,7 @@ class ParticipantIncentivesDao(UpdatableDao):
 
             update_incentive = update_incentive._asdict()
 
-            if cancel:
+            if resource.get('cancel'):
                 del resource['cancel']
                 resource['cancelled'] = 1
 
@@ -65,7 +65,8 @@ class ParticipantIncentivesDao(UpdatableDao):
                 ParticipantIncentives.notes,
                 ParticipantIncentives.cancelled,
                 ParticipantIncentives.cancelledBy,
-                ParticipantIncentives.cancelledDate
+                ParticipantIncentives.cancelledDate,
+                ParticipantIncentives.declined
             ).filter(
                 ParticipantIncentives.participantId.in_(participant_ids)
             ).all()
@@ -85,7 +86,8 @@ class ParticipantIncentivesDao(UpdatableDao):
                 ParticipantIncentives.notes,
                 ParticipantIncentives.cancelled,
                 ParticipantIncentives.cancelledBy,
-                ParticipantIncentives.cancelledDate
+                ParticipantIncentives.cancelledDate,
+                ParticipantIncentives.declined
             ).filter(
                 ParticipantIncentives.id == incentive_id
             ).one_or_none()
@@ -93,7 +95,7 @@ class ParticipantIncentivesDao(UpdatableDao):
     def convert_json_obj(self, obj):
         obj = obj._asdict() or obj.asdict()
 
-        bool_fields = ['cancelled']
+        bool_fields = ['cancelled', 'declined']
         for field in bool_fields:
             format_json_bool(obj, field_name=field)
 

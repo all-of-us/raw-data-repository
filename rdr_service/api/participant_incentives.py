@@ -49,8 +49,7 @@ class ParticipantIncentivesApi(UpdatableApi):
 
         model = self.dao.from_client_json(
             request.get_json(force=True),
-            incentive_id=resource['incentiveId'],
-            cancel=resource.get('cancel')
+            incentive_id=resource['incentiveId']
         )
 
         model.id = resource['incentiveId']
@@ -60,15 +59,16 @@ class ParticipantIncentivesApi(UpdatableApi):
         return self._make_response(model)
 
     @staticmethod
-    def _get_required_keys(is_cancel=False):
-        try:
-            if is_cancel:
-                return ['incentiveId', 'cancelledBy', 'cancelledDate']
+    def _get_required_keys(**kwargs):
+        if request.method == 'PUT':
+            base_put = ['incentiveId']
+            if kwargs.get('is_cancel') is not None:
+                return base_put + ['cancelledBy', 'cancelledDate']
 
-            return ['site', 'dateGiven']
+            if kwargs.get('is_declined') is not None:
+                return base_put
 
-        except KeyError:
-            raise BadRequest(f"Error in getting required keys for method: {request.method}")
+        return ['site', 'dateGiven']
 
     def validate_payload_data(self):
         resource = request.get_json(force=True)
@@ -81,7 +81,10 @@ class ParticipantIncentivesApi(UpdatableApi):
 
             self.site_id = valid_site.siteId
 
-        req_keys = self._get_required_keys(is_cancel=resource.get('cancel'))
+        req_keys = self._get_required_keys(
+            is_cancel=resource.get('cancel'),
+            is_declined=resource.get('declined')
+        )
 
         if not all(k in list(resource.keys()) for k in req_keys):
             raise BadRequest(f"Missing required key/values in request, required: {' | '.join(req_keys)}")

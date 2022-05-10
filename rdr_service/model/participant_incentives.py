@@ -30,6 +30,7 @@ class ParticipantIncentives(Base):
     cancelled = Column(SmallInteger, nullable=False, default=0)
     cancelledBy = Column('cancelled_by', String(255), nullable=True)
     cancelledDate = Column('cancelled_date', String(255), nullable=True)
+    declined = Column(SmallInteger, nullable=False, default=0)
 
 
 event.listen(ParticipantIncentives, "before_insert", model_insert_listener)
