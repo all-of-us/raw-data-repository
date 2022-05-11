@@ -33,19 +33,32 @@ class ExportVaWorkQueueTest(BaseTestCase, PDRGeneratorTestMixin):
         for pid in range(nids):
             participant = participant_dao.insert(Participant())
             participant.hpoId = va_hpo.hpoId
-            if pid == 2:
+            if pid == 1:
+                test_participant_id = str(participant.participantId)
+            elif pid == 2:
                 participant.isGhostId = 0
             elif pid == 5:
                 participant.isGhostId = 1
             elif pid == 7:
                 participant.isTestParticipant = 1
             participant_dao.update(participant)
-            summary_dao.insert(self.participant_summary(participant))
+            ps = summary_dao.insert(self.participant_summary(participant))
+            if pid == 1:
+                ps.dateOfBirth = datetime.date(1979, 3, 11)
+                ps.questionnaireOnCopeDec = 1
+                ps.questionnaireOnCopeDecAuthored = datetime.datetime(2022, 1, 3, 13, 23)
+                summary_dao.update(ps)
         generate_workqueue_report()
         with open_cloud_file(os.path.normpath(
             self.bucket + "/" + self.subfolder + "/va_daily_participant_wq_2022-01-13-07-04-00.csv")) as test_csv:
             reader = csv.DictReader(test_csv)
-            row_count = sum(1 for _ in reader)
+            row_count = 0
+            for item in reader:
+                row_count += 1
+                if item['PMI ID'] == 'P'+test_participant_id:
+                    self.assertEqual(item["Age Range"], "36-45")
+                    self.assertEqual(item["COPE Dec PPI Survey Complete"], "SUBMITTED")
+                    self.assertEqual(item["COPE Dec PPI Survey Completion Date"], "2022-01-03T13:23:00")
             self.assertEqual(row_count, nids - 2)
 
     @mock.patch('rdr_service.offline.export_va_workqueue.clock.CLOCK')
