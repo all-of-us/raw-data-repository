@@ -432,7 +432,8 @@ class BQPDRParticipantBiobankOrderView(BQView):
              nt.bbo_tests_ordered,
              nt.bbo_tests_stored,
              nt.bbo_collection_method,
-             nt.bbo_collection_method_id
+             nt.bbo_collection_method_id,
+             nt.bbo_id
         FROM (
           SELECT *,
               ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
@@ -462,7 +463,9 @@ class BQPDRParticipantBiobankSampleView(BQView):
                nt.bbs_disposed,
                nt.bbs_disposed_reason,
                nt.bbs_disposed_reason_id,
-               nt.bbs_biobank_stored_sample_id
+               nt.bbs_biobank_stored_sample_id,
+               nt.bss_id,
+               nt.bss_hash
            FROM (
               SELECT *,
                   ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
