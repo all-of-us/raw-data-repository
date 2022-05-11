@@ -56,6 +56,7 @@ class ExportVaWorkQueueTest(BaseTestCase, PDRGeneratorTestMixin):
             for item in reader:
                 row_count += 1
                 if item['PMI ID'] == 'P'+test_participant_id:
+                    self.assertEqual(item["Date of Birth"], "1979-03-11")
                     self.assertEqual(item["Age Range"], "36-45")
                     self.assertEqual(item["COPE Dec PPI Survey Complete"], "SUBMITTED")
                     self.assertEqual(item["COPE Dec PPI Survey Completion Date"], "2022-01-03T13:23:00")

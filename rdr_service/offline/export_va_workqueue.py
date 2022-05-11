@@ -12,6 +12,7 @@ CSV_HEADER = ['PMI ID',
               'Last Name',
               'First Name',
               'Middle Initial',
+              'Date of Birth',
               'Age Range',
               'Participant Status',
               'Primary Consent Status',
@@ -180,7 +181,8 @@ DATETIME_FIELDS = ['consentForStudyEnrollmentAuthored',
                    'questionnaireOnCopeVaccineMinute3Authored',
                    'questionnaireOnCopeVaccineMinute4Authored',
                    'questionnaireOnDnaProgramAuthored',
-                   'enrollmentStatusCoreMinusPMTime'
+                   'enrollmentStatusCoreMinusPMTime',
+                   'dateOfBirth'
                    ]
 _INPUT_CSV_TIME_FORMAT_LENGTH = 18
 _CSV_SUFFIX_LENGTH = 4
@@ -212,6 +214,7 @@ def generate_workqueue_report():
                            participant_filtered["lastName"],
                            participant_filtered["firstName"],
                            participant_filtered["middleName"],
+                           participant_filtered["dateOfBirth"],
                            participant_filtered["ageRange"],
                            participant_filtered["enrollmentStatus"],
                            participant_filtered["consentForStudyEnrollment"],
