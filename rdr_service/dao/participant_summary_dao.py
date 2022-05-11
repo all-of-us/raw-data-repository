@@ -48,6 +48,7 @@ from rdr_service.model.participant_summary import (
     WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
 )
 from rdr_service.model.patient_status import PatientStatus
+from rdr_service.model.participant import Participant
 from rdr_service.model.utils import get_property_type, to_client_participant_id
 from rdr_service.participant_enums import (
     BiobankOrderStatus,
@@ -506,6 +507,20 @@ class ParticipantSummaryDao(UpdatableDao):
             ).filter(
                 ParticipantSummary.participantId == participant_id
             ).one_or_none()
+
+    def get_by_hpo(self, hpo):
+        """ Returns participants for HPO except test and ghost participants"""
+        with self.session() as session:
+            return session.query(
+                ParticipantSummary
+            ).join(
+                Participant, Participant.participantId == ParticipantSummary.participantId
+            ).filter(
+                ParticipantSummary.hpoId == hpo.hpoId,
+                Participant.isTestParticipant != 1,
+                # Just filtering on isGhostId != 1 will return no results
+                or_(Participant.isGhostId != 1, Participant.isGhostId == None)
+            ).all()
 
     def _validate_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
         """Participant summaries don't have a version value; drop it from validation logic."""
@@ -999,7 +1014,7 @@ class ParticipantSummaryDao(UpdatableDao):
         records = [self.incentive_dao.convert_json_obj(obj) for obj in records]
         return records
 
-    def to_client_json(self, model: ParticipantSummary):
+    def to_client_json(self, model: ParticipantSummary, strip_none_values=True):
         result = model.asdict()
 
         if self.hpro_consents:
@@ -1083,7 +1098,9 @@ class ParticipantSummaryDao(UpdatableDao):
             result["recontactMethod"] = "NO_CONTACT"
 
         # Strip None values.
-        result = {k: v for k, v in list(result.items()) if v is not None}
+        if strip_none_values is True:
+            result = {k: v for k, v in list(result.items()) if v is not None}
+
 
         return result
 
