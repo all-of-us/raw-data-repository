@@ -486,7 +486,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         now = clock.CLOCK.now()
         sequest_hours_ago = now - timedelta(hours=sequest_hour)
         with self.session() as session:
-            start_date = datetime(2020, 5, 20)
+            start_date = datetime(2020, 5, 27)
             subquery = (
                 session.query(distinct(WorkbenchWorkspaceUser.workspaceId))
                     .filter(WorkbenchWorkspaceUser.isCreator == 1)
@@ -550,7 +550,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
                         WorkbenchWorkspaceApproved.isReviewed == 1
                     ),
-                    WorkbenchWorkspaceApproved.creationTime > datetime(2020, 5, 20)
+                    WorkbenchWorkspaceApproved.creationTime > start_date
                 )
             )
 
