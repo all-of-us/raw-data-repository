@@ -94,7 +94,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             task_key = "w3sc"
 
         # W3SS files have "_PKG" in their file path (bucket name)
-        elif '_PKG' in object_id:
+        elif '_pkg' in object_id:
             task_key = "w3ss"
 
         # W4WR files have "W2SC" in their file path (bucket name)
