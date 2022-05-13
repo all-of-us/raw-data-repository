@@ -208,17 +208,18 @@ class GenomicFileIngester:
         :return: result code
         """
         file_queue_result = self.generate_file_processing_queue()
-
         if file_queue_result == GenomicSubProcessResult.NO_FILES:
             logging.info('No files to process.')
             return file_queue_result
         else:
             logging.info('Processing files in queue.')
             results = []
+            current_file = None
             while len(self.file_queue):
                 try:
-                    ingestion_result = self._ingest_genomic_file(
-                        self.file_queue[0])
+                    current_file = self.file_queue[0]
+                    ingestion_result = self._ingest_genomic_file(current_file)
+
                     file_ingested = self.file_queue.popleft()
                     results.append(ingestion_result == GenomicSubProcessResult.SUCCESS)
 
@@ -234,6 +235,11 @@ class GenomicFileIngester:
                         GenomicSubProcessStatus.COMPLETED,
                         ingestion_result
                     )
+
+                # pylint: disable=broad-except
+                except Exception as e:
+                    logging.error(f'Exception occured when ingesting manifest {current_file.filePath}: {e}')
+                    self.file_queue.popleft()
                 except IndexError:
                     logging.info('No files left in file queue.')
 
