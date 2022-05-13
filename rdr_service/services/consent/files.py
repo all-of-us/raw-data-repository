@@ -260,7 +260,7 @@ class CeConsentFactory(ConsentFileAbstractFactory):
         pdf = blob_wrapper.get_parsed_pdf()
         return pdf.has_text([(
             "California Experimental Subject's Bill of Rights",
-            'Declaración de Derechos del Sujeto de Investigación Experimental, de California'
+            'Declaración de Derechos del Sujeto de Investigación Experimental'
         )])
 
     def _is_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
@@ -633,7 +633,8 @@ class CeFileWrapper:
             "Participant's Name (printed)",
             "'s Name (printed)",
             "Name (printed)",
-            'Nombre del Participant'
+            'Nombre del Participant',
+            'Nombre del'
         ]
 
         for offset in signature_offsets:
