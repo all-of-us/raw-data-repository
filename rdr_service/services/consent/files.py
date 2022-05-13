@@ -252,7 +252,8 @@ class CeConsentFactory(ConsentFileAbstractFactory):
         pdf = blob_wrapper.get_parsed_pdf()
         return pdf.has_text([(
             'Consent to Join the All of Us Research Program',
-            'Consentimiento para Participar en el Programa Científico'
+            'Consentimiento para Participar en el Programa Científico',
+            'Consentimiento para Participar en el\nPrograma Cientíﬁco'
         )])
 
     def _is_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
@@ -623,39 +624,30 @@ class CeFileWrapper:
         return None
 
     def get_signature_on_file(self):
-        self.shift_params = (8, 10)
-        signature_str = self._try_to_parse_signature("Participant's Name (printed)")
-        if signature_str:
-            return signature_str
+        signature_offsets = [
+            (8, 10),
+            (73, 75)
+        ]
 
-        self.shift_params = (73, 75)
-        signature_str = self._try_to_parse_signature("Participant's Name (printed)")
-        if signature_str:
-            return signature_str
+        signature_label_strings = [
+            "Participant's Name (printed)",
+            "'s Name (printed)",
+            "Name (printed)",
+            'Nombre del Participant'
+        ]
 
-        self.shift_params = (8, 10)
-        signature_str = self._try_to_parse_signature("'s Name (printed)")
-        if signature_str:
-            return signature_str
-
-        self.shift_params = (73, 75)
-        signature_str = self._try_to_parse_signature("'s Name (printed)")
-        if signature_str:
-            return signature_str
-
-        self.shift_params = (8, 10)
-        signature_str = self._try_to_parse_signature("Name (printed)")
-        if signature_str:
-            return signature_str
-
-        self.shift_params = (73, 75)
-        signature_str = self._try_to_parse_signature("Name (printed)")
-        if signature_str:
-            return signature_str
+        for offset in signature_offsets:
+            for label_string in signature_label_strings:
+                self.shift_params = offset
+                signature_str = self._try_to_parse_signature(label_string)
+                if signature_str:
+                    return signature_str
 
     def get_date_signed_str(self):
         signature_page = self._get_last_page()
         signature_footer_location = self._get_location_of_string(signature_page, 'Date')
+        if not signature_footer_location:
+            signature_footer_location = self._get_location_of_string(signature_page, 'Fecha')
 
         if signature_footer_location:
             date_string_list = self._text_in_bounds(
