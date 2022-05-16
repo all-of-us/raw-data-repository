@@ -3632,6 +3632,7 @@ class ManifestCompiler:
 
         validation_failed, message = self._validate_source_data(source_data, manifest_type)
         if validation_failed:
+            message = f'{self.controller.job_id.name}: {message}'
             self.controller.create_incident(
                 source_job_run_id=self.run_id,
                 code=GenomicIncidentCode.MANIFEST_GENERATE_DATA_VALIDATION_FAILED.name,
