@@ -208,17 +208,18 @@ class GenomicFileIngester:
         :return: result code
         """
         file_queue_result = self.generate_file_processing_queue()
-
         if file_queue_result == GenomicSubProcessResult.NO_FILES:
             logging.info('No files to process.')
             return file_queue_result
         else:
             logging.info('Processing files in queue.')
             results = []
+            current_file = None
             while len(self.file_queue):
                 try:
-                    ingestion_result = self._ingest_genomic_file(
-                        self.file_queue[0])
+                    current_file = self.file_queue[0]
+                    ingestion_result = self._ingest_genomic_file(current_file)
+
                     file_ingested = self.file_queue.popleft()
                     results.append(ingestion_result == GenomicSubProcessResult.SUCCESS)
 
@@ -235,6 +236,10 @@ class GenomicFileIngester:
                         ingestion_result
                     )
 
+                # pylint: disable=broad-except
+                except Exception as e:
+                    logging.error(f'Exception occured when ingesting manifest {current_file.filePath}: {e}')
+                    self.file_queue.popleft()
                 except IndexError:
                     logging.info('No files left in file queue.')
 
@@ -1257,8 +1262,13 @@ class GenomicFileIngester:
 
     def _base_cvl_ingestion(self, **kwargs):
         row_copy = self._clean_row_keys(kwargs.get('row'))
-        biobank_id = self._clean_alpha_values(row_copy['biobankid'])
-        sample_id = row_copy['sampleid']
+        biobank_id = row_copy.get('biobankid')
+        sample_id = row_copy.get('sampleid')
+
+        if not (biobank_id and sample_id):
+            return row_copy, None
+
+        biobank_id = self._clean_alpha_values(biobank_id)
 
         member = self.member_dao.get_member_from_biobank_id_and_sample_id(
             biobank_id,
@@ -1268,7 +1278,7 @@ class GenomicFileIngester:
         if not member:
             logging.warning(f'Can not find genomic member record for biobank_id: '
                             f'{biobank_id} and sample_id: {sample_id}, skipping...')
-            return
+            return row_copy, None
 
         setattr(member, kwargs.get('run_attr'), self.job_run_id)
         self.member_dao.update(member)
