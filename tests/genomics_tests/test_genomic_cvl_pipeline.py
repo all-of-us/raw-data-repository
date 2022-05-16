@@ -9,7 +9,7 @@ from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
     GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicCVLAnalysisDao, \
     GenomicW3SCRawDao, GenomicResultWorkflowStateDao, GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, \
-    GenomicCVLSecondSampleDao
+    GenomicCVLSecondSampleDao, GenomicW1ILRawDao, GenomicW2WRawDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicQcStatus, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicWorkflowState, ResultsWorkflowState, ResultsModuleType
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
@@ -318,6 +318,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.genome_type == 'aou_cvl' for obj in w3sr_raw_records))
         self.assertTrue(all(obj.site_name in cvl_sites for obj in w3sr_raw_records))
         self.assertTrue(all(obj.ai_an == 'N' for obj in w3sr_raw_records))
+        self.assertTrue(all(obj.cvl_site_id in cvl_sites for obj in w3sr_raw_records))
 
         w3sr_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE, self.job_run_dao.get_all()))
 
@@ -1041,6 +1042,71 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         self.assertTrue(all(obj.results_module == ResultsModuleType.HDRV1 for
                             obj in hdr_workflow_states))
 
+    def test_w1il_manifest_generation_to_raw(self):
+        cvl_sites = config.GENOMIC_CVL_SITES
+        w1il_raw_dao = GenomicW1ILRawDao()
+        # PGX manifest
+        with clock.FakeClock(clock.CLOCK.now()):
+            genomic_pipeline.cvl_w1il_manifest_workflow(
+                cvl_site_bucket_map=self._get_cvl_bucket_map(),
+                module_type='pgx'
+            )
+
+        current_raw_records = w1il_raw_dao.get_all()
+        pgx_raw_records = list(filter(lambda x: 'PGXV1' in x.file_path, current_raw_records))
+        self.assertEqual(len(pgx_raw_records), 5)
+
+        self.assertTrue(all(obj.file_path is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.cvl_site_id in cvl_sites for obj in pgx_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.vcf_raw_path is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.vcf_raw_index_path is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.vcf_raw_md5_path is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.sex_at_birth is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.ny_flag is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.genome_type == 'aou_cvl' for obj in pgx_raw_records))
+        self.assertTrue(all(obj.genome_center is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.consent_for_gror == 'Y' for obj in pgx_raw_records))
+        self.assertTrue(all(obj.cvl_site_id in cvl_sites for obj in pgx_raw_records))
+
+        self.assertTrue(all(obj.informing_loop_pgx == 'Y' for obj in pgx_raw_records))
+        self.assertTrue(all(obj.informing_loop_hdr is None for obj in pgx_raw_records))
+
+        self.assertTrue(all(obj.aou_hdr_coverage is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.contamination is not None for obj in pgx_raw_records))
+
+        # HDR manifest
+        with clock.FakeClock(clock.CLOCK.now()):
+            genomic_pipeline.cvl_w1il_manifest_workflow(
+                cvl_site_bucket_map=self._get_cvl_bucket_map(),
+                module_type='hdr'
+            )
+
+        current_raw_records = w1il_raw_dao.get_all()
+        hdr_raw_records = list(filter(lambda x: 'HDRV1' in x.file_path, current_raw_records))
+        self.assertEqual(len(hdr_raw_records), 1)
+
+        self.assertTrue(all(obj.file_path is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.cvl_site_id in cvl_sites for obj in hdr_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.vcf_raw_path is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.vcf_raw_index_path is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.vcf_raw_md5_path is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.sex_at_birth is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.ny_flag is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.genome_type == 'aou_cvl' for obj in hdr_raw_records))
+        self.assertTrue(all(obj.genome_center is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.consent_for_gror == 'Y' for obj in hdr_raw_records))
+        self.assertTrue(all(obj.cvl_site_id in cvl_sites for obj in hdr_raw_records))
+
+        self.assertTrue(all(obj.informing_loop_pgx is None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.informing_loop_hdr == 'Y' for obj in hdr_raw_records))
+
+        self.assertTrue(all(obj.aou_hdr_coverage is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.contamination is not None for obj in hdr_raw_records))
+
     def _generate_cvl_participant(
         self,
         participant_summary_params=None,
@@ -1293,6 +1359,24 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
                             obj in current_workflow_states))
         self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W2W.name for obj in
                             current_workflow_states))
+
+    def test_w2w_manifest_generation_to_raw(self):
+        cvl_sites = config.GENOMIC_CVL_SITES
+        w2w_raw_dao = GenomicW2WRawDao()
+
+        with clock.FakeClock(clock.CLOCK.now()):
+            genomic_pipeline.cvl_w2w_manifest_workflow(
+                cvl_site_bucket_map=self._get_cvl_bucket_map()
+            )
+
+        current_raw_records = w2w_raw_dao.get_all()
+        self.assertEqual(len(current_raw_records), 3)
+
+        self.assertTrue(all(obj.file_path is not None for obj in current_raw_records))
+        self.assertTrue(all(obj.cvl_site_id in cvl_sites for obj in current_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in current_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in current_raw_records))
+        self.assertTrue(all(obj.date_of_consent_removal is not None for obj in current_raw_records))
 
     def _generate_participant_data(
         self,

@@ -561,10 +561,11 @@ class GenomicFileIngester:
             session.add(new_set)
         return new_set
 
-    def load_raw_awn_file(self, raw_dao):
+    def load_raw_awn_file(self, raw_dao, **kwargs):
         """
         Loads raw models with raw data from manifests file
         Ex: genomic_aw1_raw => aw1_manifest
+        :param raw_dao: Model Dao Class
         :return:
         """
 
@@ -592,6 +593,10 @@ class GenomicFileIngester:
 
         for row in file_data['rows']:
             row_obj = self._set_raw_awn_attributes(row, model_columns)
+
+            if kwargs.get('cvl_site_id'):
+                row_obj['cvl_site_id'] = kwargs.get('cvl_site_id')
+
             row_obj = dao.get_model_obj_from_items(row_obj.items())
 
             batch.append(row_obj)
@@ -962,7 +967,7 @@ class GenomicFileIngester:
             filename = path.split('/')[1]
             logging.info(
                 'Opening CSV file from queue {}: {}.'
-                    .format(path.split('/')[1], filename)
+                            .format(path.split('/')[1], filename)
             )
             if self.controller.storage_provider:
                 with self.controller.storage_provider.open(path, 'r') as csv_file:
