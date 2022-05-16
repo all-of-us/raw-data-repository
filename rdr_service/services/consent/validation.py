@@ -410,6 +410,12 @@ class ConsentValidationController:
         """
         Find all the expected consents (filtering by dates if provided) and check the files that have been uploaded
         """
+
+        # Workaround for this job frequently failing (OOM killer) before it can launch these tasks on a normal exit:
+        # Pre-schedule the error reporting tasks to run in 8 hours.  Ensures the error report check occurs once a day.
+        dispatch_check_consent_errors_task(origin='vibrent', in_seconds=28800)
+        dispatch_check_consent_errors_task(origin='careevolution', in_seconds=28800)
+
         # Retrieve consent response objects that need to be validated
         participant_id_consent_map = self.consent_dao.get_consent_responses_to_validate(session=session)
         participant_summaries = self.participant_summary_dao.get_by_ids_with_session(
@@ -434,11 +440,6 @@ class ConsentValidationController:
                 min_authored_date=min_consent_date,
                 max_authored_date=max_consent_date
             )
-
-        # Reporting mechanisms differ for PTSC and CE, so perform separate origin-specific tasks to process
-        # errors that have not been reported yet
-        dispatch_check_consent_errors_task(origin='vibrent')
-        dispatch_check_consent_errors_task(origin='careevolution')
 
     def validate_all_for_participant(self, participant_id: int, output_strategy: ValidationOutputStrategy):
         summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)
