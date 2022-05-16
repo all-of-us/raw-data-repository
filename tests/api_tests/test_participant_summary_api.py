@@ -768,7 +768,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
                     occurrence="one_time",
                     incentiveType="cash",
                     amount=25,
-                    notes="example_notes"
+                    notes="example_notes",
+                    declined=1 if num % 2 != 0 else 0
                 )
             else:
                 self.data_generator.create_database_participant_incentives(
@@ -804,6 +805,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertIsNotNone(first_incentives)
         self.assertEqual(len(first_incentives), 2)
         self.assertTrue(all(obj['participantId'] == f'P{first_pid}' for obj in first_incentives))
+
+        # should be one
+        self.assertTrue(any(obj['declined'] is True for obj in first_incentives))
 
         # should be one
         self.assertTrue(any(obj['cancelled'] is True for obj in first_incentives))
