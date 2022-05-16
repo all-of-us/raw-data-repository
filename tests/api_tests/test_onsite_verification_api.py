@@ -11,6 +11,7 @@ class OnsiteVerificationApiTest(BaseTestCase):
                                                              googleGroup='test-group')
         self.p = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
         self.p2 = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
+        self.p3 = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
         self.ps = self.data_generator.create_database_participant_summary(participant=self.p)
 
     def test_onsite_verification(self):
@@ -39,10 +40,15 @@ class OnsiteVerificationApiTest(BaseTestCase):
             "verificationType": "TWO_OF_PII",
             "visitType": "BIOSPECIMEN_COLLECTION_ONLY"
         }
+        payload_4 = {
+            "participantId": 'P' + str(self.p3.participantId),
+            "verifiedTime": "2022-02-03T04:05:06Z",
+        }
 
         response1 = self.send_post(path, payload_1)
         response2 = self.send_post(path, payload_2)
         response3 = self.send_post(path, payload_3)
+        response4 = self.send_post(path, payload_4)
         self.assertEqual(response1,
                          {'participantId': 'P' + str(self.p.participantId),
                           'verifiedTime': '2022-03-22T06:07:08',
@@ -69,6 +75,15 @@ class OnsiteVerificationApiTest(BaseTestCase):
                           'siteName': self.site.siteName,
                           'verificationType': 'TWO_OF_PII',
                           'visitType': 'BIOSPECIMEN_COLLECTION_ONLY'}
+                         )
+        self.assertEqual(response4,
+                         {'participantId': 'P' + str(self.p3.participantId),
+                          'verifiedTime': '2022-02-03T04:05:06',
+                          'userEmail': None,
+                          'siteGoogleGroup': None,
+                          'siteName': None,
+                          'verificationType': 'UNSET',
+                          'visitType': 'UNSET'}
                          )
 
         get_path = 'Onsite/Id/Verification/P' + str(self.p.participantId)
@@ -102,3 +117,16 @@ class OnsiteVerificationApiTest(BaseTestCase):
                               'verificationType': 'TWO_OF_PII',
                               'visitType': 'BIOSPECIMEN_COLLECTION_ONLY'}
                          ]})
+        get_path = 'Onsite/Id/Verification/P' + str(self.p3.participantId)
+        result = self.send_get(get_path)
+        self.assertEqual(result,
+                         {'entry': [
+                             {'participantId': 'P' + str(self.p3.participantId),
+                              'verifiedTime': '2022-02-03T04:05:06',
+                              'userEmail': None,
+                              'siteGoogleGroup': None,
+                              'siteName': None,
+                              'verificationType': 'UNSET',
+                              'visitType': 'UNSET'}
+                         ]})
+

@@ -486,12 +486,14 @@ class MetricsCronJobStage(messages.Enum):
 
 class OnSiteVerificationType(messages.Enum):
     """Types of on site verification"""
+    UNSET = 0
     PHOTO_AND_ONE_OF_PII = 1
     TWO_OF_PII = 2
 
 
 class OnSiteVerificationVisitType(messages.Enum):
     """Types of on site visit"""
+    UNSET = 0
     PMB_INITIAL_VISIT = 1
     PHYSICAL_MEASUREMENTS_ONLY = 2
     BIOSPECIMEN_COLLECTION_ONLY = 3
