@@ -4,7 +4,7 @@
 #
 import logging
 import pytz
-from sqlalchemy import and_, case, insert, or_, text
+from sqlalchemy import and_, case, insert, or_, text, not_
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import literal_column
@@ -24,9 +24,11 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseClassificationType
-from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus
+from rdr_service.model.curation_etl import CdrExcludedCode
+from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus, CdrEtlCodeType
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
+from rdr_service.dao.curation_etl_dao import CdrEtlRunHistoryDao, CdrEtlSurveyHistoryDao, CdrExcludedCodeDao
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -60,6 +62,8 @@ class CurationExportClass(ToolBase):
     def __init__(self, args, gcp_env=None, tool_name=None):
         super(CurationExportClass, self).__init__(args, gcp_env, tool_name)
         self.db_conn = None
+        self.cdr_etl_run_history_dao = CdrEtlRunHistoryDao()
+        self.cdr_etl_survey_history_dao = CdrEtlSurveyHistoryDao()
 
     def get_field_names(self, table, exclude=None):
         """
@@ -175,6 +179,21 @@ class CurationExportClass(ToolBase):
         _logger.info(f'exporting {export_name}')
         gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
 
+    def export_etl_run_info(self):
+        etl_run_info_sql = self.cdr_etl_run_history_dao.get_last_etl_run_info(is_sql=True)
+        etl_run_code_info = self.cdr_etl_survey_history_dao.get_last_etl_run_code_history(is_sql=True)
+
+        run_info_export_name = 'cdr_etl_run_info'
+        code_info_export_name = 'cdr_etl_run_code_info'
+
+        cloud_file = f'gs://{self.args.export_path}/{run_info_export_name}.csv'
+        _logger.info(f'exporting {run_info_export_name}')
+        gcp_sql_export_csv(self.args.project, etl_run_info_sql, cloud_file, database='rdr')
+
+        cloud_file = f'gs://{self.args.export_path}/{code_info_export_name}.csv'
+        _logger.info(f'exporting {code_info_export_name}')
+        gcp_sql_export_csv(self.args.project, etl_run_code_info, cloud_file, database='rdr')
+
     def run_curation_export(self):
         # Because there are no models for the data stored in the 'cdm' database, we'll
         # just use a standard MySQLDB connection.
@@ -196,6 +215,7 @@ class CurationExportClass(ToolBase):
 
         self.export_cope_map()
         self.export_participant_id_map()
+        self.export_etl_run_info()
 
         for table in self.problematic_tables:
             self.export_table(table)
@@ -231,7 +251,7 @@ class CurationExportClass(ToolBase):
 
     def _populate_questionnaire_answers_by_module(self, session):
         self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept, QuestionnaireHistory,
-                                    QuestionnaireQuestion, QuestionnaireResponseAnswer])
+                                    QuestionnaireQuestion, QuestionnaireResponseAnswer, CdrExcludedCode])
         column_map = {
             QuestionnaireAnswersByModule.participant_id: QuestionnaireResponse.participantId,
             QuestionnaireAnswersByModule.authored: QuestionnaireResponse.authored,
@@ -399,6 +419,18 @@ class CurationExportClass(ToolBase):
                 ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored.isnot(None),
                 func.timestampdiff(text('YEAR'), ParticipantSummary.dateOfBirth,
                                    ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored) >= 18
+            ),
+            not_(QuestionnaireConcept.codeId.in_(
+                session.query(CdrExcludedCode.codeId).filter(
+                    CdrExcludedCode.codeType == CdrEtlCodeType.MODULE).subquery())),
+            not_(QuestionnaireQuestion.codeId.in_(
+                session.query(CdrExcludedCode.codeId).filter(
+                    CdrExcludedCode.codeType == CdrEtlCodeType.QUESTION).subquery())),
+            or_(
+                QuestionnaireResponseAnswer.valueCodeId.is_(None),
+                not_(QuestionnaireResponseAnswer.valueCodeId.in_(
+                    session.query(CdrExcludedCode.codeId).filter(
+                        CdrExcludedCode.codeType == CdrEtlCodeType.ANSWER).subquery()))
             )
         )
 
@@ -508,6 +540,12 @@ class CurationExportClass(ToolBase):
             _logger.info(f"populating cdm data with cutoff date {self.args.cutoff}...")
         else:
             _logger.info(f"populating cdm data without cutoff date")
+
+        # save ETL running info into ETL history table
+        if not self.args.vocabulary:
+            raise NameError(
+                "parameter vocabulary must be set, example: gs://curation-vocabulary/aou_vocab_20220201/")
+        etl_history = self.cdr_etl_run_history_dao.create_etl_history_record(cutoff_date, self.args.vocabulary)
         with self.get_session(database_name='cdm', alembic=True) as session:  # using alembic to get CREATE permission
             self._create_tables(session, [
                 QuestionnaireAnswersByModule,
@@ -518,6 +556,35 @@ class CurationExportClass(ToolBase):
         with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
             self._populate_questionnaire_answers_by_module(session)
             self._populate_src_clean(session, cutoff_date)
+
+        self.cdr_etl_survey_history_dao.save_include_exclude_code_history_for_etl_run(etl_history.id)
+        self.cdr_etl_run_history_dao.update_etl_end_time(etl_history.id)
+
+        return 0
+
+    def manage_etl_exclude_code(self):
+        if not self.args.operation or self.args.operation not in ['add', 'remove']:
+            raise NameError("parameter operation must be set for exclude-code command "
+                            "and the value should be add or remove")
+        if not self.args.code_value:
+            raise NameError("parameter code-value must be set for manage-code command")
+        if not self.args.code_type or self.args.code_type not in ['module', 'question', 'answer']:
+            raise NameError("parameter code-type must be set for manage-code command "
+                            "and the value should be module, question or answer")
+
+        code_values = self.args.code_value.split(',')
+        code_type_map = {
+            'module': CdrEtlCodeType.MODULE,
+            'question': CdrEtlCodeType.QUESTION,
+            'answer': CdrEtlCodeType.ANSWER
+        }
+        dao = CdrExcludedCodeDao()
+        if self.args.operation == 'remove':
+            for value in code_values:
+                dao.remove_excluded_code(value, code_type_map[self.args.code_type])
+        elif self.args.operation == 'add':
+            for value in code_values:
+                dao.add_excluded_code(value, code_type_map[self.args.code_type])
 
         return 0
 
@@ -532,6 +599,8 @@ class CurationExportClass(ToolBase):
             return self.run_curation_export()
         elif self.args.command == 'cdm-data':
             return self.populate_cdm_database()
+        elif self.args.command == 'exclude-code':
+            return self.manage_etl_exclude_code()
 
         return 0
 
@@ -539,15 +608,26 @@ class CurationExportClass(ToolBase):
 def add_additional_arguments(parser):
     parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
     parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
-    parser.add_argument("--cutoff", help="populate cdm with cut off date, example: 2022-04-01",
-                        type=str, default=None)  # noqa
+
     subparsers = parser.add_subparsers(dest='command')
 
     export_parser = subparsers.add_parser('export')
     export_parser.add_argument("--export-path", help="Bucket path to export to", required=True, type=str)  # noqa
     export_parser.add_argument("--table", help="Export a specific table", type=str, default=None)  # noqa
 
-    subparsers.add_parser('cdm-data')
+    cdm_parser = subparsers.add_parser('cdm-data')
+    cdm_parser.add_argument("--cutoff", help="populate cdm with cut off date, example: 2022-04-01",
+                            type=str, default=None)  # noqa
+    cdm_parser.add_argument("--vocabulary", help="the path of the vocabulary of this run, "
+                                                 "example: gs://curation-vocabulary/aou_vocab_20220201/",
+                            type=str, default=None)  # noqa
+
+    manage_code_parser = subparsers.add_parser('exclude-code')
+    manage_code_parser.add_argument("--operation", help="operation type for exclude code command: add or remove",
+                                    type=str, default=None)  # noqa
+    manage_code_parser.add_argument("--code-value", help="code values, split by comma", type=str, default=None)  # noqa
+    manage_code_parser.add_argument("--code-type", help="code type: module, question or answer",
+                                    type=str, default=None)  # noqa
 
 
 def run():
