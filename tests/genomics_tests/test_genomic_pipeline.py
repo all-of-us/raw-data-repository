@@ -3696,7 +3696,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
-            f"Sample IDs ['{first_sample_id}'] are not distinct"
+            f"AW3_ARRAY_WORKFLOW: Sample IDs ['{first_sample_id}'] are not distinct"
         )
 
         self.assertIsNotNone(incident)
@@ -3732,7 +3732,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
-            f"Path {bad_data_path} is invalid formatting"
+            f'AW3_ARRAY_WORKFLOW: Path {bad_data_path} is invalid formatting'
         )
 
         self.assertIsNotNone(incident)
@@ -3754,7 +3754,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
-            f"Path {no_bucket_path} is invalid formatting"
+            f'AW3_ARRAY_WORKFLOW: Path {no_bucket_path} is invalid formatting'
         )
 
         self.assertIsNotNone(incident)
@@ -3775,7 +3775,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
-            'Invalid Sex at Birth values'
+            'AW3_ARRAY_WORKFLOW: Invalid Sex at Birth values'
         )
 
         self.assertIsNotNone(incident)
@@ -4255,7 +4255,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
-            f'Path {bad_data_path} is invalid formatting'
+            f'AW3_WGS_WORKFLOW: Path {bad_data_path} is invalid formatting'
         )
 
         self.assertIsNotNone(incident)
@@ -4277,7 +4277,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
-            f'Path {no_bucket_path} is invalid formatting'
+            f'AW3_WGS_WORKFLOW: Path {no_bucket_path} is invalid formatting'
         )
 
         self.assertIsNotNone(incident)
@@ -4298,7 +4298,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
-            'Invalid Sex at Birth values'
+            'AW3_WGS_WORKFLOW: Invalid Sex at Birth values'
         )
 
         self.assertIsNotNone(incident)
