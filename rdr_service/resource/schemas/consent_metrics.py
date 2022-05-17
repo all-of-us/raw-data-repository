@@ -29,6 +29,7 @@ class ConsentMetricSchema(Schema):
     resolved_date = fields.Date(description='Last modified timestamp from consent_file, for OBSOLETE sync_status files')
     missing_file = fields.Boolean(description='True if consent PDF file is missing')
     signature_missing = fields.Boolean(description='True if consent PDF file has no signature')
+    invalid_printed_name = fields.Boolean(description='True if printed name cannot be validated')
     invalid_signing_date = fields.Boolean(description='True if signing date is outside of valid date range')
     invalid_dob = fields.Boolean(description='True if participant DOB is missing or outside of valid date range')
     invalid_age_at_consent = fields.Boolean(
