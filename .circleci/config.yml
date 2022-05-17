@@ -35,6 +35,9 @@ commands:
           name: Safety Check
           command: source venv/bin/activate && safety check
       - run:
+          name: Verify App Instance Running
+          command: source venv/bin/activate && python ./ci/verify_instance.py
+      - run:
           name: Check Licenses
           command : |
             export PYTHONPATH=$PYTHONPATH:`pwd`
