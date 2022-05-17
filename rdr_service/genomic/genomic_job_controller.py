@@ -431,6 +431,15 @@ class GenomicJobController:
             mod_type = [obj for obj in records if obj.fieldName in ['module_type', 'result_type'] and obj.valueString]
             return mod_type[0].valueString if mod_type else None
 
+        def _set_genome_type(module):
+            return {
+                'gem': config.GENOME_TYPE_ARRAY,
+                'hdr': config.GENOME_TYPE_WGS,
+                'pgx': config.GENOME_TYPE_WGS,
+                'hdr_v1': config.GENOME_TYPE_WGS,
+                'pgx_v1': config.GENOME_TYPE_WGS
+            }[module.lower()]
+
         if 'informing_loop' in event_type:
             loop_type = event_type
             informing_records = self.message_broker_event_dao.get_informing_loop(
@@ -443,25 +452,36 @@ class GenomicJobController:
                 if not module_type:
                     logging.warning(f'Cannot find module type in message record id: '
                                     f'{informing_records[0].messageRecordId}')
+                    self.job_result = GenomicSubProcessResult.ERROR
                     return
 
                 first_record = informing_records[0]
                 logging.info(f'Inserting informing loop for Participant: {first_record.participantId}')
 
+                member = self.member_dao.get_member_by_participant_id(
+                    participant_id=first_record.participantId,
+                    genome_type=_set_genome_type(module_type)
+                )
                 decision_value = [obj for obj in informing_records if obj.fieldName == 'decision_value' and
                                   obj.valueString]
+                if not member:
+                    logging.warning(f'Cannot find member for informing loop insert: '
+                                    f'{informing_records[0].messageRecordId}')
+                    self.job_result = GenomicSubProcessResult.ERROR
+                    return
 
                 loop_obj = GenomicInformingLoop(
-                    participant_id=first_record.participantId,
-                    message_record_id=first_record.messageRecordId,
-                    event_type=loop_type,
-                    event_authored_time=first_record.eventAuthoredTime,
-                    module_type=module_type,
-                    decision_value=decision_value[0].valueString if decision_value else None,
+                        participant_id=first_record.participantId,
+                        message_record_id=first_record.messageRecordId,
+                        event_type=loop_type,
+                        event_authored_time=first_record.eventAuthoredTime,
+                        module_type=module_type,
+                        decision_value=decision_value[0].valueString if decision_value else None,
+                        sample_id=member.sampleId
                 )
 
                 self.informing_loop_dao.insert(loop_obj)
-                return
+                self.job_result = GenomicSubProcessResult.SUCCESS
 
         elif 'result_viewed' in event_type:
             result_records = self.message_broker_event_dao.get_result_viewed(
@@ -482,6 +502,17 @@ class GenomicJobController:
                     module_type
                 )
 
+                member = self.member_dao.get_member_by_participant_id(
+                    participant_id=first_record.participantId,
+                    genome_type=_set_genome_type(module_type)
+                )
+
+                if not member:
+                    logging.warning(f'Cannot find member for result viewed insert: '
+                                    f'{result_records[0].messageRecordId}')
+                    self.job_result = GenomicSubProcessResult.ERROR
+                    return
+
                 if not current_record:
                     result_obj = GenomicResultViewed(
                         participant_id=first_record.participantId,
@@ -490,13 +521,17 @@ class GenomicJobController:
                         event_authored_time=first_record.eventAuthoredTime,
                         module_type=module_type,
                         first_viewed=first_record.eventAuthoredTime,
-                        last_viewed=first_record.eventAuthoredTime
+                        last_viewed=first_record.eventAuthoredTime,
+                        sample_id=member.sampleId
                     )
                     self.result_viewed_dao.insert(result_obj)
+                    self.job_result = GenomicSubProcessResult.SUCCESS
                     return
 
                 current_record.last_viewed = first_record.eventAuthoredTime
                 self.result_viewed_dao.update(current_record)
+
+                self.job_result = GenomicSubProcessResult.SUCCESS
 
     def accession_data_files(self, file_path, bucket_name):
         data_file_dao = GenomicGcDataFileDao()
