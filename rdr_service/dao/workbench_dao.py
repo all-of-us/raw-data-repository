@@ -29,7 +29,8 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, \
     WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, \
     WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAge, WorkbenchAuditWorkspaceAccessDecision, \
-    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType, WorkbenchWorkspaceAccessTier
+    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType, WorkbenchWorkspaceAccessTier, \
+    WorkbenchResearcherAccessTierShortName
 
 
 class WorkbenchWorkspaceDao(UpdatableDao):
@@ -385,6 +386,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     "givenName": researcher.givenName,
                     "familyName": researcher.familyName,
                     "email": researcher.email,
+                    "accessTier": researcher.get_access_tier(),
                     "verifiedInstitutionalAffiliation": verified_institutional_affiliation,
                     "affiliations": affiliations
                 }
@@ -885,6 +887,15 @@ class WorkbenchResearcherDao(UpdatableDao):
                         raise BadRequest(f"Invalid degree: {degree}")
             item['degree'] = degree_array
 
+            access_tier_array = []
+            if item.get('accessTierShortNames') is not None:
+                for access_tier in item.get('accessTierShortNames'):
+                    try:
+                        access_tier_array.append(int(WorkbenchResearcherAccessTierShortName(access_tier)))
+                    except TypeError:
+                        raise BadRequest(f"Invalid accessTierShortNames: {access_tier}")
+            item['accessTierShortNames'] = access_tier_array
+
             try:
                 if item.get('disability') is None:
                     item['disability'] = 'UNSET'
@@ -957,6 +968,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                     'givenName': researcher.givenName,
                     'familyName': researcher.familyName,
                     'email': researcher.email,
+                    "accessTier": researcher.get_access_tier(),
                     'affiliations': affiliations
                 })
 
@@ -991,6 +1003,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 disability=WorkbenchResearcherDisability(item.get('disability', 'UNSET')),
                 gender=item.get('gender'),
                 race=item.get('race'),
+                accessTierShortNames=item.get('accessTierShortNames'),
                 workbenchInstitutionalAffiliations=self._get_affiliations(item.get('affiliations'),
                                                                           item.get('verifiedInstitutionalAffiliation')),
                 resource=json.dumps(item)

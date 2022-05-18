@@ -35,6 +35,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "race": ["AIAN", "WHITE"],
                 "education": "COLLEGE_GRADUATE",
                 "degree": ["PHD", "MBA"],
+                "accessTierShortNames": ["REGISTERED"],
                 "disability": "YES",
                 "affiliations": [
                     {
@@ -63,6 +64,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].email, 'xxx@xxx.com')
         self.assertEqual(results[0].gender, [1, 2])
         self.assertEqual(results[0].race, [1, 5])
+        self.assertEqual(results[0].accessTierShortNames, [1])
         self.assertEqual(results[0].sexAtBirth, [1, 3])
         self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
         self.assertEqual(results[0].education, WorkbenchResearcherEducation('COLLEGE_GRADUATE'))
@@ -113,6 +115,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "ethnicity": "NOT_HISPANIC",
                 "gender": ["WOMAN", "NONE_DESCRIBE_ME"],
                 "race": ["NHOPI", "WHITE"],
+                "accessTierShortNames": ["REGISTERED", "CONTROLLED"],
                 "sexAtBirth": ["INTERSEX"],
                 "identifiesAsLgbtq": True,
                 "lgbtqIdentity": "string",
@@ -169,6 +172,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].email, 'yyy@yyy.com')
         self.assertEqual(results[0].gender, [2, 5])
         self.assertEqual(results[0].race, [4, 5])
+        self.assertEqual(results[0].accessTierShortNames, [1, 2])
         self.assertEqual(results[0].identifiesAsLgbtq, True)
         self.assertEqual(results[0].lgbtqIdentity, "string")
         self.assertEqual(results[0].sexAtBirth, [3])
