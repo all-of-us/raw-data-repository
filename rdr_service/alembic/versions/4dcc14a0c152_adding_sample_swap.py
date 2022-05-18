@@ -7,17 +7,6 @@ Create Date: 2022-05-17 14:10:14.511703
 """
 from alembic import op
 import sqlalchemy as sa
-import rdr_service.model.utils
-
-
-from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
-from rdr_service.participant_enums import WithdrawalStatus, WithdrawalReason, SuspensionStatus, QuestionnaireDefinitionStatus
-from rdr_service.participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType, BiobankOrderStatus
-from rdr_service.participant_enums import OrderShipmentTrackingStatus, OrderShipmentStatus
-from rdr_service.participant_enums import MetricSetType, MetricsKey, GenderIdentity
-from rdr_service.model.base import add_table_history_table, drop_table_history_table
-from rdr_service.model.code import CodeType
-from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
 revision = '4dcc14a0c152'
@@ -49,6 +38,7 @@ def upgrade_rdr():
     sa.Column('ignore_flag', sa.SmallInteger(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
+
     op.create_table('genomic_sample_swap_member',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('created', sa.DateTime(), nullable=True),
@@ -60,11 +50,34 @@ def upgrade_rdr():
     sa.ForeignKeyConstraint(['genomic_set_member_id'], ['genomic_set_member.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+
     op.add_column('genomic_informing_loop', sa.Column('sample_id', sa.String(length=80), nullable=True))
     op.create_index(op.f('ix_genomic_informing_loop_sample_id'), 'genomic_informing_loop', ['sample_id'], unique=False)
     op.add_column('genomic_result_viewed', sa.Column('sample_id', sa.String(length=80), nullable=True))
     op.create_index(op.f('ix_genomic_result_viewed_sample_id'), 'genomic_result_viewed', ['sample_id'], unique=False)
     # ### end Alembic commands ###
+
+    op.execute(
+        """
+        Update genomic_informing_loop gil
+        Inner join genomic_set_member gsm
+            On gsm.participant_id = gil.participant_id
+        Set gil.sample_id = gsm.sample_id
+        Where gsm.genome_type = 'aou_array'
+        And gil.module_type = 'gem'
+        """
+    )
+
+    op.execute(
+        """
+        Update genomic_result_viewed grv
+        Inner join genomic_set_member gsm
+            On gsm.participant_id = grv.participant_id
+        Set grv.sample_id = gsm.sample_id
+        Where gsm.genome_type = 'aou_array'
+        And grv.module_type = 'gem'
+        """
+    )
 
 
 def downgrade_rdr():
