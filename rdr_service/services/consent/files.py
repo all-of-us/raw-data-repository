@@ -625,16 +625,15 @@ class CeFileWrapper:
 
     def get_signature_on_file(self):
         signature_offsets = [
-            (8, 10),
-            (73, 75)
+            (8, 15),
+            (73, 80)
         ]
 
         signature_label_strings = [
             "Participant's Name (printed)",
             "'s Name (printed)",
             "Name (printed)",
-            'Nombre del Participant',
-            'Nombre del'
+            'Nombre'
         ]
 
         for offset in signature_offsets:
