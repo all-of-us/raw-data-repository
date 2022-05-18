@@ -1475,6 +1475,35 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
         self.clear_table_after_test('genomic_datagen_member_run')
 
+    def test_post_twice_same_pid_validation(self):
+        self.build_ready_loop_template_data()
+
+        participant = self.data_generator.create_database_participant()
+
+        resp = self.send_post(
+            f'GenomicOutreachV2?participant_id=P{participant.participantId}',
+            request_data={
+                'informing_loop_eligible': 'yes',
+                'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
+            }
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(len(resp['data']), 2)
+
+        resp = self.send_post(
+            f'GenomicOutreachV2?participant_id=P{participant.participantId}',
+            request_data={
+                'informing_loop_eligible': 'yes',
+                'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
+            },
+            expected_status=400
+        )
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json['message'], f'Participant with id P{participant.participantId} and WGS sample '
+                                               f'already exists. Please use PUT to update.')
+
     def test_post_with_no_inserts_via_template_returns_correctly(self):
         self.build_ready_loop_template_data()
 

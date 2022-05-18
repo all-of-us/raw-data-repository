@@ -250,11 +250,12 @@ class GenomicOutreachApiV2(UpdatableApi):
             'no': 0
         }
 
+        current_member = member_dao.get_member_by_participant_id(
+            participant_id,
+            genome_type=config.GENOME_TYPE_WGS
+        )
+
         if request.method == 'PUT':
-            current_member = member_dao.get_member_by_participant_id(
-                participant_id,
-                genome_type=config.GENOME_TYPE_WGS
-            )
             if not current_member:
                 raise NotFound(f'Participant with id P{participant_id} was not found in genomics system')
 
@@ -269,6 +270,10 @@ class GenomicOutreachApiV2(UpdatableApi):
 
             log_api_request(log=request.log_record)
             return _build_ready_response()
+
+        if current_member:
+            raise BadRequest(f'Participant with id P{participant_id} and WGS sample already exists. '
+                             f'Please use PUT to update.')
 
         with ParticipantGenerator(
             project='cvl_il'
