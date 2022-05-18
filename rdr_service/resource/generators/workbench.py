@@ -16,7 +16,7 @@ from rdr_service.participant_enums import WorkbenchResearcherDegree, WorkbenchRe
     WorkbenchInstitutionNonAcademic, WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, \
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceAccessToCare, \
     WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchWorkspaceAge, \
-    WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAccessTier
+    WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAccessTier, WorkbenchResearcherAccessTierShortName
 
 
 class WBWorkspaceGenerator(generators.BaseGenerator):
@@ -247,6 +247,16 @@ class WBResearcherGenerator(generators.BaseGenerator):
             degrees = json.loads(row.degree if row.degree and row.degree != 'null' else '[]')
             data['degrees'] = [{'degree': str(WorkbenchResearcherDegree(v)),
                                 'degree_id': int(WorkbenchResearcherDegree(v))} for v in degrees]
+
+            access_tier_short_names = json.loads(row.access_tier_short_names
+                                                 if row.access_tier_short_names and
+                                                    row.access_tier_short_names != 'null' else '[]')
+            data['access_tier_short_names'] = [
+                {
+                    'access_tier_short_name': str(WorkbenchResearcherAccessTierShortName(v)),
+                    'access_tier_short_name_id': int(WorkbenchResearcherAccessTierShortName(v))
+                 } for v in access_tier_short_names
+            ]
 
             data['disability'] = str(WorkbenchResearcherDisability(row.disability))
             data['disability_id'] = int(WorkbenchResearcherDisability(row.disability))
