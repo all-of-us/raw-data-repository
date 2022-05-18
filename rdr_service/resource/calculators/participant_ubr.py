@@ -91,6 +91,9 @@ class ParticipantUBRCalculator:
         answers = [i for i in tmp_list if i]
         if not answers:
             return UBRValueEnum.RBR
+        # If the gender_ident_closer list is empty, remove the 'GenderIdentity_AdditionalOptions' answer if needed.
+        if not gender_ident_closer and 'GenderIdentity_AdditionalOptions' in answers:
+            answers.remove('GenderIdentity_AdditionalOptions')
 
         # Assume ubr by default and check for exclusion criteria. If there is more than one answer in the
         # list, assume UBR.
