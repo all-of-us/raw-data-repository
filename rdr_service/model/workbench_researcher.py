@@ -7,7 +7,8 @@ from rdr_service.participant_enums import (
     WorkbenchInstitutionNonAcademic,
     WorkbenchResearcherEducation,
     WorkbenchResearcherDisability,
-    WorkbenchResearcherEthnicity
+    WorkbenchResearcherEthnicity,
+    WorkbenchResearcherAccessTierShortName
 )
 
 
@@ -45,8 +46,19 @@ class WorkbenchResearcherBase(object):
     disability = Column("disability", Enum(WorkbenchResearcherDisability), default=WorkbenchResearcherDisability.UNSET)
     identifiesAsLgbtq = Column("identifies_as_lgbtq", Boolean)
     lgbtqIdentity = Column("lgbtq_identity", String(250))
+    accessTierShortNames = Column("access_tier_short_names", JSON)
     resource = Column("resource", BlobUTF8, nullable=False)
     """The resource payload"""
+
+    def get_access_tier(self):
+        access_tier_short_names = self.accessTierShortNames
+        if not access_tier_short_names:
+            return 'NOT_REGISTERED'
+        elif len(access_tier_short_names) == 1 \
+            and int(WorkbenchResearcherAccessTierShortName.REGISTERED) in access_tier_short_names:
+            return 'REGISTERED'
+        else:
+            return 'REGISTERED_AND_CONTROLLED'
 
 
 class WorkbenchResearcher(WorkbenchResearcherBase, Base):

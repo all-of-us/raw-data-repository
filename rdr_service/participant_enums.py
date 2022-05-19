@@ -783,6 +783,11 @@ class WorkbenchResearcherDegree(messages.Enum):
     MPH = 14
 
 
+class WorkbenchResearcherAccessTierShortName(messages.Enum):
+    REGISTERED = 1
+    CONTROLLED = 2
+
+
 class WorkbenchResearcherDisability(messages.Enum):
     UNSET = 0
     YES = 1
