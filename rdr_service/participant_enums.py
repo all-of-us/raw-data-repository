@@ -809,3 +809,12 @@ class WorkbenchAuditWorkspaceAccessDecision(messages.Enum):
     DISABLE_WORKSPACE_AND_REVIEW_RESEARCHERS = 2
 
 
+class CdrEtlSurveyStatus(messages.Enum):
+    EXCLUDE = 1
+    INCLUDE = 2
+
+
+class CdrEtlCodeType(messages.Enum):
+    MODULE = 1
+    QUESTION = 2
+    ANSWER = 3

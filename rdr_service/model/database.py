@@ -65,6 +65,7 @@ from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerM
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.model.ce_health_reconciliation import CeHealthReconciliation
 from rdr_service.model.onsite_id_verification import OnsiteIdVerification
+from rdr_service.model.curation_etl import CdrEtlRunHistory, CdrEtlSurveyHistory, CdrExcludedCode
 
 RETRY_CONNECTION_LIMIT = 10
 
