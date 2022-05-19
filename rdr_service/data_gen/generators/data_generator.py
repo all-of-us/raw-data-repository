@@ -16,7 +16,8 @@ from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate, Genomi
 from rdr_service.model.genomics import GenomicManifestFeedback, GenomicManifestFile, GenomicJobRun, GenomicSet, \
     GenomicSetMember, GenomicAW1Raw, GenomicAW2Raw, GenomicFileProcessed, GenomicIncident, GenomicGCValidationMetrics, \
     GenomicMemberReportState, UserEventMetrics, GenomicInformingLoop, GenomicGcDataFile, GenomicGcDataFileMissing, \
-    GenomicResultViewed, GenomicResultWorkflowState, GenomicCVLAnalysis, GenomicCVLSecondSample
+    GenomicResultViewed, GenomicResultWorkflowState, GenomicCVLAnalysis, GenomicCVLSecondSample, GenomicSampleSwap, \
+    GenomicSampleSwapMember
 from rdr_service.model.hpo import HPO
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.log_position import LogPosition
@@ -804,8 +805,8 @@ class DataGenerator:
         return m
 
     @staticmethod
-    def _genomic_datagen_output_template(**kwargs):
-        return GenomicDataGenOutputTemplate(**kwargs)
+    def _genomic_cvl_second_sample(**kwargs):
+        return GenomicCVLSecondSample(**kwargs)
 
     def create_database_genomic_datagen_output_template(self, **kwargs):
         m = self._genomic_datagen_output_template(**kwargs)
@@ -813,8 +814,26 @@ class DataGenerator:
         return m
 
     @staticmethod
-    def _genomic_cvl_second_sample(**kwargs):
-        return GenomicCVLSecondSample(**kwargs)
+    def _genomic_datagen_output_template(**kwargs):
+        return GenomicDataGenOutputTemplate(**kwargs)
+
+    def create_database_genomic_sample_swap(self, **kwargs):
+        m = self._genomic_sample_swap(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_sample_swap(**kwargs):
+        return GenomicSampleSwap(**kwargs)
+
+    def create_database_genomic_sample_swap_member(self, **kwargs):
+        m = self._genomic_sample_swap_member(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_sample_swap_member(**kwargs):
+        return GenomicSampleSwapMember(**kwargs)
 
     def create_withdrawn_participant(self, withdrawal_reason_justification, is_native_american=False,
                                      requests_ceremony=None, withdrawal_time=datetime.utcnow()):

@@ -1,6 +1,5 @@
 import datetime
 import mock
-import random
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
@@ -258,14 +257,31 @@ class GenomicJobControllerTest(BaseTestCase):
         # https://docs.google.com/document/d/1E1tNSi1mWwhBSCs9Syprbzl5E0SH3c_9oLduG1mzlcY/edit#heading=h.2m73apfm9irj
         loop_module_types = ['gem', 'hdr', 'pgx']
 
-        participant = self.data_generator.create_database_participant()
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
 
+        participant = self.data_generator.create_database_participant()
+        sample_id = '22222222'
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            sampleId=sample_id,
+            participantId=participant.participantId,
+            biobankId="1",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW0
+        )
+
+        # gem array
         message_broker_record = self.data_generator.create_database_message_broker_record(
             participantId=participant.participantId,
             eventType=loop_decision,
             eventAuthoredTime=clock.CLOCK.now(),
             messageOrigin='example@example.com',
-            requestBody={'module_type': random.choice(loop_module_types), 'decision_value': 'yes'},
+            requestBody={'module_type': loop_module_types[0], 'decision_value': 'yes'},
             requestTime=clock.CLOCK.now(),
             responseError='',
             responseCode='200',
@@ -298,15 +314,16 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(decision_genomic_record.message_record_id, message_broker_record.id)
         self.assertEqual(decision_genomic_record.participant_id, message_broker_record.participantId)
         self.assertEqual(decision_genomic_record.event_type, loop_decision)
-        self.assertTrue(decision_genomic_record.module_type in loop_module_types)
+        self.assertTrue(decision_genomic_record.module_type == 'gem')
         self.assertEqual(decision_genomic_record.decision_value, 'yes')
+        self.assertEqual(decision_genomic_record.sample_id, sample_id)
 
         message_broker_record_two = self.data_generator.create_database_message_broker_record(
             participantId=participant.participantId,
             eventType=loop_started,
             eventAuthoredTime=clock.CLOCK.now(),
             messageOrigin='example@example.com',
-            requestBody={'module_type': 'gem'},
+            requestBody={'module_type': loop_module_types[0]},
             requestTime=clock.CLOCK.now(),
             responseError='',
             responseCode='200',
@@ -339,7 +356,62 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(started_genomic_record.message_record_id, message_broker_record_two.id)
         self.assertEqual(started_genomic_record.participant_id, message_broker_record_two.participantId)
         self.assertEqual(started_genomic_record.event_type, loop_started)
-        self.assertEqual(started_genomic_record.module_type, 'gem')
+        self.assertEqual(started_genomic_record.module_type, loop_module_types[0])
+        self.assertEqual(decision_genomic_record.sample_id, sample_id)
+
+        sample_id = '22333333'
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            sampleId=sample_id,
+            participantId=participant.participantId,
+            biobankId="2",
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.AW0
+        )
+
+        # hdr wgs
+        message_broker_record_three = self.data_generator.create_database_message_broker_record(
+            participantId=participant.participantId,
+            eventType=loop_decision,
+            eventAuthoredTime=clock.CLOCK.now(),
+            messageOrigin='example@example.com',
+            requestBody={'module_type': loop_module_types[1], 'decision_value': 'yes'},
+            requestTime=clock.CLOCK.now(),
+            responseError='',
+            responseCode='200',
+            responseTime=clock.CLOCK.now()
+        )
+
+        for key, value in message_broker_record_three.requestBody.items():
+            self.data_generator.create_database_message_broker_event_data(
+                participantId=message_broker_record_three.participantId,
+                messageRecordId=message_broker_record_three.id,
+                eventType=message_broker_record_three.eventType,
+                eventAuthoredTime=message_broker_record_three.eventAuthoredTime,
+                fieldName=key,
+                valueString=value
+            )
+
+        with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP) as controller:
+            controller.ingest_records_from_message_broker_data(
+                message_record_id=message_broker_record_three.id,
+                event_type=loop_decision
+            )
+
+        decision_genomic_record = self.informing_loop_dao.get(3)
+
+        self.assertIsNotNone(decision_genomic_record)
+        self.assertIsNotNone(decision_genomic_record.event_type)
+        self.assertIsNotNone(decision_genomic_record.module_type)
+        self.assertIsNotNone(decision_genomic_record.decision_value)
+
+        self.assertEqual(decision_genomic_record.message_record_id, message_broker_record_three.id)
+        self.assertEqual(decision_genomic_record.participant_id, message_broker_record_three.participantId)
+        self.assertEqual(decision_genomic_record.event_type, loop_decision)
+        self.assertTrue(decision_genomic_record.module_type == 'hdr')
+        self.assertEqual(decision_genomic_record.decision_value, 'yes')
+        self.assertEqual(decision_genomic_record.sample_id, sample_id)
 
     def test_result_viewed_ingestion_message_broker(self):
         event_type = 'result_viewed'
@@ -347,12 +419,29 @@ class GenomicJobControllerTest(BaseTestCase):
         # https://docs.google.com/document/d/1E1tNSi1mWwhBSCs9Syprbzl5E0SH3c_9oLduG1mzlcY/edit#heading=h.dtikttz25h22
         result_module_types = ['gem', 'hdr_v1', 'pgx_v1']
 
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        sample_id = '2222222'
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            sampleId=sample_id,
+            participantId=participant.participantId,
+            biobankId="1",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW0
+        )
+
         message_broker_record = self.data_generator.create_database_message_broker_record(
             participantId=participant.participantId,
             eventType=event_type,
             eventAuthoredTime=clock.CLOCK.now(),
             messageOrigin='example@example.com',
-            requestBody={'result_type': random.choice(result_module_types)},
+            requestBody={'result_type': result_module_types[0]},
             requestTime=clock.CLOCK.now(),
             responseError='',
             responseCode='200',
@@ -388,7 +477,8 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(result_viewed_genomic_record.message_record_id, message_broker_record.id)
         self.assertEqual(result_viewed_genomic_record.participant_id, message_broker_record.participantId)
         self.assertEqual(result_viewed_genomic_record.event_type, event_type)
-        self.assertTrue(result_viewed_genomic_record.module_type in result_module_types)
+        self.assertTrue(result_viewed_genomic_record.module_type == 'gem')
+        self.assertEqual(result_viewed_genomic_record.sample_id, sample_id)
 
         self.assertEqual(result_viewed_genomic_record.first_viewed, message_broker_record.eventAuthoredTime)
         self.assertEqual(result_viewed_genomic_record.last_viewed,  message_broker_record.eventAuthoredTime)
@@ -433,6 +523,61 @@ class GenomicJobControllerTest(BaseTestCase):
         # check updated record has the last viewed time
         self.assertEqual(result_viewed_genomic_record.last_viewed, message_broker_record_two.eventAuthoredTime)
         self.assertEqual(result_viewed_genomic_record.message_record_id, message_broker_record.id)
+
+        sample_id = '223333'
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            sampleId=sample_id,
+            participantId=participant.participantId,
+            biobankId="2",
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.AW0
+        )
+
+        message_broker_record_two = self.data_generator.create_database_message_broker_record(
+            participantId=participant.participantId,
+            eventType=event_type,
+            eventAuthoredTime=clock.CLOCK.now(),
+            messageOrigin='example@example.com',
+            requestBody={'result_type': result_module_types[1]},
+            requestTime=clock.CLOCK.now(),
+            responseError='',
+            responseCode='200',
+            responseTime=clock.CLOCK.now()
+        )
+
+        for key, value in message_broker_record_two.requestBody.items():
+            self.data_generator.create_database_message_broker_event_data(
+                participantId=message_broker_record_two.participantId,
+                messageRecordId=message_broker_record_two.id,
+                eventType=message_broker_record_two.eventType,
+                eventAuthoredTime=message_broker_record_two.eventAuthoredTime,
+                fieldName=key,
+                valueString=value
+            )
+
+        with GenomicJobController(GenomicJob.INGEST_RESULT_VIEWED) as controller:
+            controller.ingest_records_from_message_broker_data(
+                message_record_id=message_broker_record_two.id,
+                event_type=event_type
+            )
+
+        result_viewed_genomic_record = self.result_viewed_dao.get(2)
+
+        self.assertIsNotNone(result_viewed_genomic_record)
+
+        self.assertIsNotNone(result_viewed_genomic_record.event_type)
+        self.assertIsNotNone(result_viewed_genomic_record.module_type)
+
+        self.assertEqual(result_viewed_genomic_record.message_record_id, message_broker_record_two.id)
+        self.assertEqual(result_viewed_genomic_record.participant_id, message_broker_record_two.participantId)
+        self.assertEqual(result_viewed_genomic_record.event_type, event_type)
+        self.assertTrue(result_viewed_genomic_record.module_type == 'hdr_v1')
+        self.assertEqual(result_viewed_genomic_record.sample_id, sample_id)
+
+        self.assertEqual(result_viewed_genomic_record.first_viewed, message_broker_record_two.eventAuthoredTime)
+        self.assertEqual(result_viewed_genomic_record.last_viewed, message_broker_record_two.eventAuthoredTime)
 
     def test_updating_members_blocklists(self):
 
