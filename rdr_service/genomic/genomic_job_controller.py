@@ -1686,8 +1686,11 @@ class DataQualityJobController:
 
         # Compile long reports to cloud file and post link
         if len(report_string.split("\n")) > 25:
-            file_path = rc.create_report_file(report_string, report_params['display_name'])
-
+            file_path = rc.create_report_file(
+                report_string=report_string,
+                display_name=report_params['display_name'],
+                report_type=report_params['target']
+            )
             message = report_params['display_name'] + " too long for output.\n"
             message += f"Report too long for Slack Output, download the report here:" \
                        f" https://storage.cloud.google.com{file_path}"

@@ -5,7 +5,7 @@ from rdr_service import clock
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicJobRunDao
 from rdr_service.genomic.genomic_data import GenomicQueryClass
-from rdr_service.config import GENOMIC_REPORT_PATH
+from rdr_service.config import GENOMIC_INGESTION_REPORT_PATH, GENOMIC_INCIDENT_REPORT_PATH
 
 
 class GenomicDataQualityComponentBase:
@@ -65,21 +65,16 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         # Set report level (SUMMARY, DETAIL, etc)
         try:
             report_level = kwargs['report_level']
-
         except KeyError:
             report_level = self.controller.job.name.split('_')[1]
-
         # Set report target (INGESTION, RUNS, etc)
         try:
             report_target = kwargs['report_target']
-
         except KeyError:
             report_target = self.controller.job.name.split('_')[-1]
-
         # Set report time frame (D, W, etc.)
         try:
             time_frame = kwargs['time_frame']
-
         except KeyError:
             time_frame = self.controller.job.name[0]
 
@@ -161,18 +156,14 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         """
         if rows:
             header = rows[0].keys() if not hasattr(rows, 'keys') else rows.keys()
-
             # Report title
             report_string = "```" + self.report_def.display_name + '\n'
-
             # Header row
             report_string += "    ".join(header)
             report_string += "\n"
-
             for row in rows:
                 report_string += "    ".join(tuple(map(str, row)))
                 report_string += "\n"
-
             report_string += "```"
         else:
             report_string = self.report_def.empty_report_string
@@ -180,12 +171,17 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         return report_string
 
     @staticmethod
-    def create_report_file(report_string, display_name):
+    def create_report_file(report_string, display_name, report_type):
+        path = {
+            'ingestions': GENOMIC_INGESTION_REPORT_PATH,
+            'incidents': GENOMIC_INCIDENT_REPORT_PATH
+        }[report_type.lower()]
+
         now_str = clock.CLOCK.now().replace(microsecond=0).isoformat(sep="_", )
         report_file_name = f"{display_name.replace(' ', '_')}_{now_str}.txt"
-        path = GENOMIC_REPORT_PATH + report_file_name
+        file_path = path + report_file_name
 
-        with open_cloud_file(path, mode='wt') as cloud_file:
+        with open_cloud_file(file_path, mode='wt') as cloud_file:
             cloud_file.write(report_string)
 
-        return path
+        return file_path
