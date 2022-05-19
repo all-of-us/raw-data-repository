@@ -423,6 +423,7 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     gvcf_md5_deleted = BQField('gvcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     drc_call_rate = BQField('drc_call_rate', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     pipeline_id = BQField('pipeline_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    mapped_reads_pct = BQField('mapped_reads_pct', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicGCValidationMetrics(BQTable):
