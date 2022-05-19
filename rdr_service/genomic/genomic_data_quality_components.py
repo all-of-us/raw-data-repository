@@ -5,7 +5,7 @@ from rdr_service import clock
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicJobRunDao
 from rdr_service.genomic.genomic_data import GenomicQueryClass
-from rdr_service.config import GENOMIC_INGESTION_REPORT_PATH, GENOMIC_INCIDENT_REPORT_PATH
+from rdr_service.config import GENOMIC_INGESTION_REPORT_PATH, GENOMIC_INCIDENT_REPORT_PATH, GENOMIC_RESOLVED_REPORT_PATH
 
 
 class GenomicDataQualityComponentBase:
@@ -174,7 +174,8 @@ class ReportingComponent(GenomicDataQualityComponentBase):
     def create_report_file(report_string, display_name, report_type):
         path = {
             'ingestions': GENOMIC_INGESTION_REPORT_PATH,
-            'incidents': GENOMIC_INCIDENT_REPORT_PATH
+            'incidents': GENOMIC_INCIDENT_REPORT_PATH,
+            'resolved': GENOMIC_RESOLVED_REPORT_PATH
         }[report_type.lower()]
 
         now_str = clock.CLOCK.now().replace(microsecond=0).isoformat(sep="_", )

@@ -3,7 +3,7 @@ import mock, datetime, pytz
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
-from rdr_service.config import GENOMIC_INGESTION_REPORT_PATH, GENOMIC_INCIDENT_REPORT_PATH
+from rdr_service.config import GENOMIC_INGESTION_REPORT_PATH, GENOMIC_INCIDENT_REPORT_PATH, GENOMIC_RESOLVED_REPORT_PATH
 from rdr_service.dao.genomics_dao import GenomicIncidentDao
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
     GenomicManifestTypes, GenomicIncidentCode
@@ -288,6 +288,15 @@ class GenomicDataQualityReportTest(BaseTestCase):
             report_file_data = report_file.read()
 
         self.assertTrue(GENOMIC_INCIDENT_REPORT_PATH in report_output)
+        self.assertEqual(expected_report, report_file_data)
+
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED) as controller:
+            report_output = controller.execute_workflow(slack=True)
+
+        with open_cloud_file(report_output, 'r') as report_file:
+            report_file_data = report_file.read()
+
+        self.assertTrue(GENOMIC_RESOLVED_REPORT_PATH in report_output)
         self.assertEqual(expected_report, report_file_data)
 
     def test_daily_incident_report(self):
