@@ -1807,10 +1807,14 @@ class GenomicPiiDao(BaseDao):
                     ParticipantSummary.lastName,
                     ParticipantSummary.consentForGenomicsROR,
                     ParticipantSummary.dateOfBirth,
-                    GenomicSetMember.sexAtBirth
+                    GenomicSetMember.gcManifestSampleSource.label('sampleSource'),
+                    BiobankStoredSample.confirmed.label('collectionDate')
                 ).join(
                     ParticipantSummary,
                     GenomicSetMember.participantId == ParticipantSummary.participantId,
+                ).join(
+                    BiobankStoredSample,
+                    BiobankStoredSample.biobankStoredSampleId == GenomicSetMember.collectionTubeId
                 ).filter(
                     or_(
                         GenomicSetMember.cvlW4wrHdrManifestJobRunID.isnot(None),
