@@ -6118,75 +6118,102 @@ class GenomicPipelineTest(BaseTestCase):
         runs = self.job_run_dao.get_all()
         self.assertEqual(GenomicSubProcessResult.SUCCESS, runs[0].runResult)
 
-    def test_reconcile_raw_to_aw1_ingested(self):
-        # Raw table needs resetting for this test when running full suite
-        self.aw1_raw_dao.truncate()
-
-        # create genomic set
-        self.data_generator.create_database_genomic_set(
-            genomicSetName='test',
-            genomicSetCriteria='.',
-            genomicSetVersion=1
-        )
-
-        # create genomic set members
-        for i in range(1, 5):
-            self.data_generator.create_database_genomic_set_member(
-                participantId=i,
-                genomicSetId=1,
-                biobankId=i,
-                collectionTubeId=100,
-                genomeType="aou_array",
-            )
-
-        # create control parent sample
-        self.data_generator.create_database_genomic_set_member(
-            genomicSetId=1,
-            biobankId='HG-1005',
-            collectionTubeId=100,
-            genomeType="aou_array",
-            genomicWorkflowState=GenomicWorkflowState.CONTROL_SAMPLE
-        )
-
-        # Set up test AW1
-        aw1_manifest_file = open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-4.csv")
-        aw1_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
-
-        write_cloud_csv(
-            aw1_manifest_filename,
-            aw1_manifest_file,
-            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
-            folder=_FAKE_GENOTYPING_FOLDER,
-        )
-        test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
-        self.data_generator.create_database_genomic_job_run(
-            jobId=GenomicJob.AW1_MANIFEST,
-            startTime=clock.CLOCK.now()
-        )
-        self.data_generator.create_database_genomic_file_processed(
-            runId=1,
-            startTime=clock.CLOCK.now(),
-            filePath=test_file_path,
-            bucketName=_FAKE_GENOMIC_CENTER_BUCKET_A,
-            fileName=aw1_manifest_filename,
-        )
-
-        # Run load job
-        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
-
-        genomic_pipeline.reconcile_raw_to_aw1_ingested()
-
-        member1 = self.member_dao.get(1)
-        self.assertEqual('1', member1.biobankId)
-        self.assertEqual('1001', member1.sampleId)
-        self.assertEqual('1', member1.collectionTubeId)
-        self.assertEqual('jh', member1.gcSiteId)
-        self.assertEqual(GenomicWorkflowState.AW1, member1.genomicWorkflowState)
-        self.assertEqual(1, member1.aw1FileProcessedId)
-
-        member_cntrl = self.member_dao.get(6)
-        self.assertEqual('HG-1005', member_cntrl.biobankId)
-        self.assertEqual('1005', member_cntrl.sampleId)
+    # Disabling this job until further notice
+    # def test_reconcile_raw_to_aw1_ingested(self):
+    #     # Raw table needs resetting for this test when running full suite
+    #     self.aw1_raw_dao.truncate()
+    #
+    #     # create genomic set
+    #     self.data_generator.create_database_genomic_set(
+    #         genomicSetName='test',
+    #         genomicSetCriteria='.',
+    #         genomicSetVersion=1
+    #     )
+    #
+    #     # create genomic set members
+    #     for i in range(1, 6):
+    #         self.data_generator.create_database_genomic_set_member(
+    #             participantId=i,
+    #             genomicSetId=1,
+    #             biobankId=i,
+    #             collectionTubeId=100,
+    #             genomeType="aou_array",
+    #             genomicWorkflowState=GenomicWorkflowState.AW0,
+    #             genomicWorkflowStateStr="AW0",
+    #         )
+    #
+    #     # create control parent sample
+    #     self.data_generator.create_database_genomic_set_member(
+    #         genomicSetId=1,
+    #         biobankId='HG-1005',
+    #         collectionTubeId=100,
+    #         genomeType="aou_array",
+    #         genomicWorkflowState=GenomicWorkflowState.CONTROL_SAMPLE
+    #     )
+    #
+    #     # Set up replated samples test
+    #     self.data_generator.create_database_genomic_set_member(
+    #         participantId=6,
+    #         genomicSetId=1,
+    #         biobankId=6,
+    #         collectionTubeId=1006,
+    #         sampleId=10006,
+    #         genomeType="aou_array",
+    #         genomicWorkflowState=GenomicWorkflowState.AW2,
+    #         genomicWorkflowStateStr="AW2",
+    #     )
+    #
+    #     # The replate-request
+    #     self.data_generator.create_database_genomic_set_member(
+    #         participantId=6,
+    #         genomicSetId=1,
+    #         biobankId=6,
+    #         collectionTubeId=1006,
+    #         genomeType="aou_array",
+    #         genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
+    #         genomicWorkflowStateStr="EXTRACT_REQUESTED",
+    #         replatedMemberId=7,
+    #     )
+    #
+    #     # Set up test AW1
+    #     aw1_manifest_file = open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-7.csv")
+    #     aw1_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+    #
+    #     write_cloud_csv(
+    #         aw1_manifest_filename,
+    #         aw1_manifest_file,
+    #         bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+    #         folder=_FAKE_GENOTYPING_FOLDER,
+    #     )
+    #     test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
+    #     self.data_generator.create_database_genomic_job_run(
+    #         jobId=GenomicJob.AW1_MANIFEST,
+    #         startTime=clock.CLOCK.now()
+    #     )
+    #     self.data_generator.create_database_genomic_file_processed(
+    #         runId=1,
+    #         startTime=clock.CLOCK.now(),
+    #         filePath=test_file_path,
+    #         bucketName=_FAKE_GENOMIC_CENTER_BUCKET_A,
+    #         fileName=aw1_manifest_filename,
+    #     )
+    #
+    #     # Run load job
+    #     genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
+    #
+    #     genomic_pipeline.reconcile_raw_to_aw1_ingested()
+    #
+    #     member1 = self.member_dao.get(1)
+    #     self.assertEqual('1', member1.biobankId)
+    #     self.assertEqual('1001', member1.sampleId)
+    #     self.assertEqual('1', member1.collectionTubeId)
+    #     self.assertEqual('jh', member1.gcSiteId)
+    #     self.assertEqual(GenomicWorkflowState.AW1, member1.genomicWorkflowState)
+    #     self.assertEqual(1, member1.aw1FileProcessedId)
+    #
+    #     member_cntrl = self.member_dao.get(6)
+    #     self.assertEqual('HG-1005', member_cntrl.biobankId)
+    #     self.assertEqual('1005', member_cntrl.sampleId)
 
     def test_reconcile_raw_to_aw2_ingested(self):
         # Basic Setup
@@ -6210,6 +6237,9 @@ class GenomicPipelineTest(BaseTestCase):
                 collectionTubeId=100+i,
                 sampleId=1000+i,
                 genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED if i == 6 else GenomicWorkflowState.AW1,
+                genomicWorkflowStateStr="EXTRACT_REQUESTED" if i == 6 else "AW1",
+                replatedMemberId=1 if i == 6 else None,
             )
             ss = (i, 100+i)
             stored_samples.append(ss)
@@ -6247,7 +6277,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.reconcile_raw_to_aw2_ingested()
 
         metrics = self.metrics_dao.get_all()
-        self.assertEqual(5, len(metrics))
+        self.assertEqual(4, len(metrics))
 
     def test_raw_aw1_delete_from_filepath(self):
         # Raw table needs resetting for this test when running full suite

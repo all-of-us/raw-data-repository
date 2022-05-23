@@ -2516,6 +2516,7 @@ class GenomicAW2RawDao(BaseDao, GenomicDaoUtils):
                 GenomicAW2Raw.ignore_flag == 0,
                 GenomicAW2Raw.biobank_id != "",
                 GenomicAW2Raw.sample_id != "",
+                GenomicSetMember.replatedMemberId.is_(None),
             ).order_by(GenomicAW2Raw.id).all()
 
     def delete_from_filepath(self, filepath):
