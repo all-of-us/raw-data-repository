@@ -4,7 +4,7 @@ import logging
 import os
 import re
 import copy
-from datetime import date, datetime
+from datetime import datetime
 from dateutil import parser
 from hashlib import md5
 import pytz
@@ -1279,8 +1279,8 @@ class QuestionnaireResponseDao(BaseDao):
         include_ignored_answers=False,
         sent_statuses: Optional[List[QuestionnaireResponseStatus]] = None,
         classification_types: Optional[List[QuestionnaireResponseClassificationType]] = None,
-        created_start_datetime: date = None,
-        created_end_datetime: date = None
+        created_start_datetime: datetime = None,
+        created_end_datetime: datetime = None
     ) -> Dict[int, response_domain_model.ParticipantResponses]:
         """
         Retrieve questionnaire response data (returned as a domain model) for the specified participant ids

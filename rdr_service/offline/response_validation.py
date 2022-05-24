@@ -71,7 +71,6 @@ class ResponseValidationController:
 
     def _send_error_message(self):
         if not self._error_list:
-            # send message that no errors were found ("No validation errors were found since")
             self._output_result(f'No validation errors were found since {self._since_date}')
             return
 
