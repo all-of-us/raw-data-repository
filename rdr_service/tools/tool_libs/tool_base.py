@@ -60,6 +60,10 @@ class ToolBase:
 
 def cli_run(tool_cmd, tool_desc, tool_class: Type[ToolBase], parser_hook=None, defaults={}):
     # Set global debug value and setup application logging.
+    if hasattr(tool_class, 'logger_name'):
+        global logger
+        logger = logging.getLogger(tool_class.logger_name)
+
     setup_logging(
         logger, tool_cmd, "--debug" in sys.argv, "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None
     )

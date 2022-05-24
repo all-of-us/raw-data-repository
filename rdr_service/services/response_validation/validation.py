@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import auto, Enum
+import logging
+import re
 from typing import Dict, List, Optional, Sequence
 
 from dateutil.parser import parse
@@ -634,6 +636,16 @@ class ResponseValidator:
         self._branching_logic.reset_state()
         return dict(errors_by_question)
 
+    def get_errors_in_response(self, response: response_domain_model.Response):
+        errors_by_question = defaultdict(list)
+        self._check_for_definition_errors(response, errors_by_question)
+
+        for error in self._branching_logic.check_for_errors(response):
+            errors_by_question[error.question_code].append(error)
+
+        self._branching_logic.reset_state()
+        return dict(errors_by_question)
+
     def _check_for_definition_errors(self, response: response_domain_model.Response,
                                      errors_by_question: Dict[str, List[ValidationError]]):
         for question in self._survey_definition.questions:
@@ -664,16 +676,15 @@ class ResponseValidator:
                                 ValidationError(
                                     question_code_str,
                                     [answer.id],
-                                    reason=f'Code answer expected, but gave {str(answer.data_type)}'
+                                    reason=f'Code answer expected, but found {str(answer.data_type)}'
                                 )
                             )
-
-                        if answer.value not in [option.code.value for option in question.options]:
+                        elif answer.value not in [option.code.value for option in question.options]:
                             errors_by_question[question_code_str].append(
                                 ValidationError(
                                     question_code_str,
                                     [answer.id],
-                                    reason=f'Question answered with unexpected code "{answer.value}"'
+                                    reason='Answer code value not found in question options'
                                 )
                             )
 
@@ -694,7 +705,7 @@ class ResponseValidator:
                                     ValidationError(
                                         question_code_str,
                                         [answer.id],
-                                        reason=f'Text answer expected, but gave {str(answer.data_type)}'
+                                        reason=f'Text answer expected, but found {str(answer.data_type)}'
                                     )
                                 )
                         else:
@@ -708,7 +719,7 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason=f'Date answer expected, but gave {str(answer.data_type)}'
+                                            reason=f'Date answer expected, but found {str(answer.data_type)}'
                                         )
                                     )
                                 answer_value = parse(answer.value)
@@ -722,7 +733,7 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason=f'Integer answer expected, but gave {str(answer.data_type)}'
+                                            reason=f'Integer answer expected, but found {str(answer.data_type)}'
                                         )
                                     )
                                 answer_value = None
@@ -733,7 +744,7 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason=f'Unable to parse integer value, found "{answer.value}"'
+                                            reason='Unable to parse answer as integer'
                                         )
                                     )
                                 if answer_value:
@@ -741,10 +752,38 @@ class ResponseValidator:
                                         min_value = int(question.validation_min)
                                     if question.validation_max:
                                         max_value = int(question.validation_max)
+                            elif question.validation == 'zipcode':
+                                zipcode_pattern = re.compile('^[0-9]{5}$')
+                                if not zipcode_pattern.match(answer.value):
+                                    errors_by_question[question_code_str].append(
+                                        ValidationError(
+                                            question_code_str,
+                                            [answer.id],
+                                            reason='Answer not recognized as a zip code'
+                                        )
+                                    )
+                            elif question.validation == 'email':
+                                email_pattern = re.compile('^.*@.*\..*$')
+                                if not email_pattern.match(answer.value):
+                                    errors_by_question[question_code_str].append(
+                                        ValidationError(
+                                            question_code_str,
+                                            [answer.id],
+                                            reason='Answer not recognized as a valid email'
+                                        )
+                                    )
+                            elif question.validation == 'phone':
+                                email_pattern = re.compile('^[0-9]{10}$')
+                                if not email_pattern.match(answer.value):
+                                    errors_by_question[question_code_str].append(
+                                        ValidationError(
+                                            question_code_str,
+                                            [answer.id],
+                                            reason='Answer not recognized as a valid phone number'
+                                        )
+                                    )
                             else:
-                                raise Exception(
-                                    f'Unexpected validation string for question, got "{question.validation}"'
-                                )
+                                logging.error(f'Unexpected validation string for question, got "{question.validation}"')
 
                             if min_value is not None and answer_value < min_value:
                                 errors_by_question[question_code_str].append(
@@ -762,5 +801,8 @@ class ResponseValidator:
                                         reason='Answer higher than maximum value'
                                     )
                                 )
+                elif question.questionType == SurveyQuestionType.FILE:
+                    # TODO: unsure how to validate FILE
+                    ...
                 else:
-                    raise Exception(f'Unrecognized question type "{question.questionType}"')
+                    logging.error(f'Unrecognized question type "{question.questionType}"')
