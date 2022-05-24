@@ -1239,6 +1239,25 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
     def _is_valid_set_member_job_field(cls, job_field_name):
         return job_field_name is not None and hasattr(GenomicSetMember, job_field_name)
 
+    def get_members_from_biobank_ids(self, biobank_ids, genome_type=None):
+        """
+        Returns genomicSetMember objects for list of Biobank IDs.
+        :param biobank_ids:
+        :param genome_type:
+        :return:
+        """
+        with self.session() as session:
+            members = session.query(GenomicSetMember).filter(
+                GenomicSetMember.biobankId.in_(biobank_ids),
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+            )
+
+            if genome_type:
+                members = members.filter(
+                    GenomicSetMember.genomeType == genome_type
+                )
+            return members.all()
+
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoUtils):
     """ Stub for GenomicJobRun model """
@@ -3009,16 +3028,22 @@ class GcDataFileStagingDao(BaseDao):
         with self.session() as session:
             session.execute("DELETE FROM gc_data_file_staging WHERE TRUE")
 
-    def get_missing_gc_data_file_records(self):
+    def get_missing_gc_data_file_records(self, sample_ids=None):
         with self.session() as session:
-            return session.query(
+            query = session.query(
                 GcDataFileStaging
             ).outerjoin(
                 GenomicGcDataFile,
                 GcDataFileStaging.file_path == GenomicGcDataFile.file_path
             ).filter(
                 GenomicGcDataFile.id.is_(None)
-            ).all()
+            )
+            if sample_ids is not None:
+                query.filter(
+                    GenomicGcDataFile.identifier_type == 'sample_id',
+                    GenomicGcDataFile.identifier_value.in_(sample_ids)
+                )
+            return query.all()
 
     def insert_filenames_bulk(self, files):
         with self.session() as session:

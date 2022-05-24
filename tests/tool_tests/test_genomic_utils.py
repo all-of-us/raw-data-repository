@@ -5,7 +5,8 @@ from tests import test_data
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicGCValidationMetricsDao
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicContaminationCategory
 from rdr_service.tools.tool_libs.backfill_gvcf_paths import GVcfBackfillTool
-from rdr_service.tools.tool_libs.genomic_utils import GenomicProcessRunner, LoadRawManifest, IngestionClass
+from rdr_service.tools.tool_libs.genomic_utils import GenomicProcessRunner, LoadRawManifest, IngestionClass, \
+    UnblockSamples
 from tests.helpers.tool_test_mixin import ToolTestMixin
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -25,7 +26,6 @@ class GenomicProcessRunnerTest(GenomicUtilsTestBase):
                                         _csv=None,
                                         _file=None,
                                         _cloud_task=None):
-
         GenomicProcessRunnerTest.run_tool(GenomicProcessRunner, tool_args={
             'command': 'process-runner',
             'job': genomic_job,
@@ -98,7 +98,6 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
 
     @mock.patch('rdr_service.offline.genomic_pipeline.load_awn_manifest_into_raw_table')
     def test_load_manifest_into_raw_table(self, load_job_mock):
-
         test_file = "test-bucket/test_folder/test_manifest_file.csv"
 
         GenomicUtilsGeneralTest.run_tool(LoadRawManifest, tool_args={
@@ -114,7 +113,6 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             self.assertEqual("aw1", kwargs['manifest_type'])
 
     def test_ingest_awn_from_raw_table(self):
-
         test_aw1 = "test-bucket/test_folder/test_GEN_sample_manifest.csv"
         test_aw2 = "test-bucket/test_folder/test_GEN_data_manifest.csv"
 
@@ -224,3 +222,145 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
 
         self.assertEqual(metric_obj.gvcfReceived, 1)
         self.assertEqual(metric_obj.gvcfPath, expected_path)
+
+    def test_unblock_samples(self):
+        # Setup test data
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=2
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="11",
+            sampleId=None,
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW0,
+            blockResearch=True,
+            blockResults=True
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="12",
+            sampleId=None,
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW0,
+            blockResearch=True,
+            blockResults=True
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="14",
+            sampleId="1012",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW1,
+            blockResearch=True,
+            blockResults=True
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="15",
+            sampleId="1013",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW1,
+            blockResearch=True,
+            blockResults=True
+        )
+
+        test_aw1 = "test-bucket/test_folder/testunblock_GEN_sample_manifest.csv"
+        test_aw2 = "test-bucket/test_folder/testunblock_GEN_data_manifest.csv"
+
+        # self.setup_raw_test_data(test_aw1=test_aw1, test_aw2=test_aw2)
+
+        self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now(),
+        )
+
+        self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.METRICS_INGESTION,
+            startTime=clock.CLOCK.now(),
+        )
+
+        # AW1 file_processed
+        self.data_generator.create_database_genomic_file_processed(
+            runId=1,
+            startTime=clock.CLOCK.now(),
+            filePath=f'{test_aw1}',
+            bucketName="test-bucket",
+            fileName="testunblock_GEN_sample_manifest.csv"
+        )
+
+        # AW2 file_processed
+        self.data_generator.create_database_genomic_file_processed(
+            runId=2,
+            startTime=clock.CLOCK.now(),
+            filePath=f'{test_aw2}',
+            bucketName="test-bucket",
+            fileName="testunblock_GEN_data_manifest.csv"
+        )
+
+        self.data_generator.create_database_genomic_aw1_raw(
+            file_path=test_aw1,
+            package_id="pkg-1",
+            well_position="A11",
+            sample_id="1011",
+            collection_tube_id="211000",
+            biobank_id="A11",
+            test_name="aou_array",
+        )
+
+        self.data_generator.create_database_genomic_aw2_raw(
+            file_path=test_aw2,
+            biobank_id="A14",
+            sample_id="1012",
+            contamination="0.005",
+            call_rate="",
+            processing_status="Pass",
+            chipwellbarcode="10011_R01C01",
+        )
+
+        test_sampleid_file = test_data.data_path("unblock_sampleids.txt")
+        test_sampleid_file_2 = test_data.data_path("unblock_sampleids_2.txt")
+        test_biobankid_file = test_data.data_path("unblock_biobankids.txt")
+        GenomicUtilsGeneralTest.run_tool(UnblockSamples, tool_args={
+            "command": "unblock-samples",
+            "file_path": test_sampleid_file,
+            "research_only": False,
+            "results_only": False,
+            "dryrun": False
+        })
+
+        GenomicUtilsGeneralTest.run_tool(UnblockSamples, tool_args={
+            "command": "unblock-samples",
+            "file_path": test_sampleid_file_2,
+            "research_only": True,
+            "results_only": False,
+            "dryrun": False
+        })
+
+        GenomicUtilsGeneralTest.run_tool(UnblockSamples, tool_args={
+            "command": "unblock-samples",
+            "file_path": test_biobankid_file,
+            "research_only": False,
+            "results_only": False,
+            "dryrun": False
+        })
+        member_dao = GenomicSetMemberDao()
+        sid_member = member_dao.get_member_from_sample_id("1012", "aou_array")
+        self.assertEqual(sid_member.blockResults, 0)
+        self.assertEqual(sid_member.blockResearch, 0)
+        self.assertIsNot(sid_member.aw2FileProcessedId, None)
+
+        sid_member2 = member_dao.get_member_from_sample_id("1013", "aou_array")
+        self.assertEqual(sid_member2.blockResults, 1)
+        self.assertEqual(sid_member2.blockResearch, 0)
+
+        bid_member = member_dao.get_member_from_biobank_id("11", "aou_array")
+        self.assertEqual(bid_member.blockResults, 0)
+        self.assertEqual(bid_member.blockResearch, 0)
+        self.assertEqual(bid_member.sampleId, "1011")
