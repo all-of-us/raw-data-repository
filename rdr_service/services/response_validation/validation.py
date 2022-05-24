@@ -684,7 +684,7 @@ class ResponseValidator:
                                 ValidationError(
                                     question_code_str,
                                     [answer.id],
-                                    reason=f'Answer code value not found in question options'
+                                    reason='Answer code value not found in question options'
                                 )
                             )
 
@@ -744,7 +744,7 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason=f'Unable to parse answer as integer'
+                                            reason='Unable to parse answer as integer'
                                         )
                                     )
                                 if answer_value:
@@ -759,7 +759,7 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason=f'Answer not recognized as a zip code'
+                                            reason='Answer not recognized as a zip code'
                                         )
                                     )
                             elif question.validation == 'email':
@@ -769,7 +769,7 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason=f'Answer not recognized as a valid email'
+                                            reason='Answer not recognized as a valid email'
                                         )
                                     )
                             elif question.validation == 'phone':
@@ -779,7 +779,7 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason=f'Answer not recognized as a valid phone number'
+                                            reason='Answer not recognized as a valid phone number'
                                         )
                                     )
                             else:
