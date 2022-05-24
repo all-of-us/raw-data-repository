@@ -4,7 +4,7 @@ import logging
 import os
 import re
 import copy
-from datetime import datetime
+from datetime import date, datetime
 from dateutil import parser
 from hashlib import md5
 import pytz
@@ -86,6 +86,7 @@ from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_F
     QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
+from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension, QuestionnaireResponseClassificationType
@@ -1272,12 +1273,14 @@ class QuestionnaireResponseDao(BaseDao):
     @classmethod
     def get_responses_to_surveys(
         cls,
-        survey_codes: List[str],
         session: Session,
-        participant_ids: List[int],
+        survey_codes: List[str] = None,
+        participant_ids: List[int] = None,
         include_ignored_answers=False,
         sent_statuses: Optional[List[QuestionnaireResponseStatus]] = None,
-        classification_types: Optional[List[QuestionnaireResponseClassificationType]] = None
+        classification_types: Optional[List[QuestionnaireResponseClassificationType]] = None,
+        created_start_datetime: date = None,
+        created_end_datetime: date = None
     ) -> Dict[int, response_domain_model.ParticipantResponses]:
         """
         Retrieve questionnaire response data (returned as a domain model) for the specified participant ids
@@ -1289,6 +1292,11 @@ class QuestionnaireResponseDao(BaseDao):
         :param include_ignored_answers: Include response answers that have been ignored
         :param sent_statuses: List of QuestionnaireResponseStatus to use when filtering responses
             (defaults to QuestionnaireResponseStatus.COMPLETED)
+        :param classification_types: List of QuestionnaireResponseClassificationTypes to filter results by
+        :param created_start_datetime: Optional start date, if set only responses that were sent to
+            the API after this date will be returned
+        :param created_end_datetime: Optional end date, if set only responses that were sent to the
+            API before this date will be returned
         :return: A dictionary keyed by participant ids with the value being the collection of responses for
             that participant
         """
@@ -1314,6 +1322,10 @@ class QuestionnaireResponseDao(BaseDao):
             .select_from(QuestionnaireResponseAnswer)
             .join(QuestionnaireQuestion)
             .join(QuestionnaireResponse)
+            .join(
+                Participant,
+                Participant.participantId == QuestionnaireResponse.participantId
+            )
             .join(question_code, question_code.codeId == QuestionnaireQuestion.codeId)
             .join(
                 QuestionnaireConcept,
@@ -1324,19 +1336,40 @@ class QuestionnaireResponseDao(BaseDao):
             ).join(survey_code, survey_code.codeId == QuestionnaireConcept.codeId)
             .options(joinedload(QuestionnaireResponseAnswer.code))
             .filter(
-                survey_code.value.in_(survey_codes),
-                QuestionnaireResponse.participantId.in_(participant_ids),
                 QuestionnaireResponse.status.in_(sent_statuses),
-                QuestionnaireResponse.classificationType.in_(classification_types)
+                QuestionnaireResponse.classificationType.in_(classification_types),
+                Participant.isTestParticipant != 1
             )
         )
 
+        if survey_codes:
+            query = query.filter(
+                survey_code.value.in_(survey_codes)
+            )
+        if participant_ids:
+            query = query.filter(
+                QuestionnaireResponse.participantId.in_(participant_ids)
+            )
         if not include_ignored_answers:
             query = query.filter(
                 or_(
                     QuestionnaireResponseAnswer.ignore.is_(False),
                     QuestionnaireResponseAnswer.ignore.is_(None)
                 )
+            )
+        if created_start_datetime:
+            query = query.filter(
+                QuestionnaireResponse.created >= created_start_datetime
+            ).with_hint(
+                QuestionnaireResponse,
+                'USE INDEX (idx_created_q_id)'
+            )
+        if created_end_datetime:
+            query = query.filter(
+                QuestionnaireResponse.created <= created_end_datetime
+            ).with_hint(
+                QuestionnaireResponse,
+                'USE INDEX (idx_created_q_id)'
             )
 
         # build dict with participant ids as keys and ParticipantResponse objects as values
