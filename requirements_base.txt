@@ -81,7 +81,7 @@ pyasn1-modules==0.2.8     # via google-auth, oauth2client
 pyasn1==0.4.8             # via oauth2client, pyasn1-modules, rsa
 pycparser==2.20           # via cffi
 pygments==2.7.4           # via sphinx
-pyjwt==1.7.1              # via oauthlib
+pyjwt==2.4.0              # via oauthlib
 pylint==2.7.4             # via -r requirements.in
 pyopenssl==19.1.0         # via requests
 pyparsing==2.4.7          # via packaging
