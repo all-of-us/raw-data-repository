@@ -30,7 +30,9 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, \
     WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAge, WorkbenchAuditWorkspaceAccessDecision, \
     WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType, WorkbenchWorkspaceAccessTier, \
-    WorkbenchResearcherAccessTierShortName
+    WorkbenchResearcherAccessTierShortName, WorkbenchResearcherEthnicCategory, WorkbenchResearcherSexualOrientationV2, \
+    WorkbenchResearcherGenderIdentity, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2,\
+    WorkbenchResearcherEducationV2
 
 
 class WorkbenchWorkspaceDao(UpdatableDao):
@@ -931,6 +933,40 @@ class WorkbenchResearcherDao(UpdatableDao):
                         raise BadRequest(
                             f"Invalid nonAcademicAffiliation: {institution.get('nonAcademicAffiliation')}")
 
+            if item.get("demographicSurveyV2") is not None:
+                survey = item.get("demographicSurveyV2")
+                current_year = clock.CLOCK.now().year
+                if current_year - int(survey.get("yearOfBirth")) > 125:
+                    raise BadRequest(f"Invalid birth year: {survey.get('yearOfBirth')} more than 125 years ago")
+                ethnic_categories = []
+                if survey.get("ethnicCategories") is not None:
+                    for ethnic_category in survey.get("ethnicCategories"):
+                        try:
+                            ethnic_categories.append(int(WorkbenchResearcherEthnicCategory(ethnic_category)))
+                        except TypeError:
+                            raise BadRequest(f"Invalid ethnic category: {ethnic_category}")
+                survey["ethnicCategories"] = ethnic_categories
+                gender_identities = []
+                if survey.get("genderIdentities") is not None:
+                    for gender_identity in survey.get("genderIdentities"):
+                        try:
+                            gender_identities.append(int(WorkbenchResearcherGenderIdentity(gender_identity)))
+                        except TypeError:
+                            raise BadRequest(f"Invalid gender identity: {gender_identity}")
+                survey["genderIdentities"] = gender_identities
+                sexual_orientations = []
+                if survey.get("sexualOrientations") is not None:
+                    for sexual_orientation in survey.get("sexualOrientations"):
+                        try:
+                            sexual_orientations.append(int(WorkbenchResearcherSexualOrientationV2(sexual_orientation)))
+                        except TypeError:
+                            raise BadRequest(f"Invalid sexual orientation: {sexual_orientation}")
+                survey["sexualOrientations"] = sexual_orientations
+                item["demographicSurveyV2"] = survey
+
+
+
+
     def get_redcap_audit_researchers(
         self,
         last_snapshot_id=None,
@@ -979,6 +1015,7 @@ class WorkbenchResearcherDao(UpdatableDao):
         now = clock.CLOCK.now()
         researchers = []
         for item in resource_json:
+            survey_parameters = self._build_survey_parameters(item.get("demographicSurveyV2"))
             researcher = WorkbenchResearcher(
                 created=now,
                 modified=now,
@@ -1006,7 +1043,9 @@ class WorkbenchResearcherDao(UpdatableDao):
                 accessTierShortNames=item.get('accessTierShortNames'),
                 workbenchInstitutionalAffiliations=self._get_affiliations(item.get('affiliations'),
                                                                           item.get('verifiedInstitutionalAffiliation')),
-                resource=json.dumps(item)
+                resource=json.dumps(item),
+                **survey_parameters
+
             )
 
             researchers.append(researcher)
@@ -1112,6 +1151,62 @@ class WorkbenchResearcherDao(UpdatableDao):
     @staticmethod
     def get_researchers_by_user_id_list_with_session(session, user_id_list):
         return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId.in_(user_id_list)).all()
+
+    @staticmethod
+    def _build_survey_parameters(survey):
+        if survey:
+            survey_params = {
+                'dsv2CompletionTime': parse(survey.get('completionTime')) if survey.get(
+                    'completionTime') is not None else None,
+                'dsv2EthnicCategories': survey.get('ethnicCategories'),
+                'dsv2EthnicityAiAnOther': survey.get('ethnicityAiAnOtherText'),
+                'dsv2EthnicityAsianOther': survey.get('ethnicityAsianOtherText'),
+                'dsv2EthnicityOther': survey.get('ethnicityOtherText'),
+                'dsv2GenderIdentities': survey.get('genderIdentities'),
+                'dsv2GenderOther': survey.get('genderOtherText'),
+                'dsv2SexualOrientations': survey.get('sexualOrientations'),
+                'dsv2OrientationOther': survey.get('orientationOtherText'),
+                'dsv2SexAtBirth': WorkbenchResearcherSexAtBirthV2(survey.get('sexAtBirth', 'UNSET')),
+                'dsv2SexAtBirthOther': survey.get('sexAtBirthOtherText'),
+                'dsv2YearOfBirth': int(survey.get('yearOfBirth')),
+                'dsv2YearOfBirthPreferNot': survey.get('yearOfBirthPreferNot'),
+                'dsv2DisabilityHearing': WorkbenchResearcherYesNoPreferNot(survey.get('disabilityHearing', 'UNSET')),
+                'dsv2DisabilitySeeing': WorkbenchResearcherYesNoPreferNot(survey.get('disabilitySeeing', 'UNSET')),
+                'dsv2DisabilityConcentrating': WorkbenchResearcherYesNoPreferNot(
+                    survey.get('disabilityConcentrating', 'UNSET')),
+                'dsv2DisabilityWalking': WorkbenchResearcherYesNoPreferNot(survey.get('disabilityWalking', 'UNSET')),
+                'dsv2DisabilityDressing': WorkbenchResearcherYesNoPreferNot(survey.get('disabilityDressing', 'UNSET')),
+                'dsv2DisabilityErrands': WorkbenchResearcherYesNoPreferNot(survey.get('disabilityErrands', 'UNSET')),
+                'dsv2DisabilityOther': survey.get('disabilityOtherText'),
+                'dsv2Education': WorkbenchResearcherEducationV2(survey.get('education', 'UNSET')),
+                'dsv2Disadvantaged': WorkbenchResearcherYesNoPreferNot(survey.get('disadvantaged', 'UNSET')),
+            }
+        else:
+            survey_params = {
+                'dsv2CompletionTime': None,
+                'dsv2EthnicCategories': [],
+                'dsv2EthnicityAiAnOther': None,
+                'dsv2EthnicityAsianOther': None,
+                'dsv2EthnicityOther': None,
+                'dsv2GenderIdentities': [],
+                'dsv2GenderOther': None,
+                'dsv2SexualOrientations': [],
+                'dsv2OrientationOther': None,
+                'dsv2SexAtBirth': WorkbenchResearcherSexAtBirthV2('UNSET'),
+                'dsv2SexAtBirthOther': None,
+                'dsv2YearOfBirth': None,
+                'dsv2YearOfBirthPreferNot': None,
+                'dsv2DisabilityHearing': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2DisabilitySeeing': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2DisabilityConcentrating': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2DisabilityWalking': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2DisabilityDressing': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2DisabilityErrands': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2DisabilityOther': None,
+                'dsv2Education': WorkbenchResearcherEducationV2('UNSET'),
+                'dsv2Disadvantaged': WorkbenchResearcherYesNoPreferNot('UNSET'),
+            }
+        return survey_params
 
 
 class WorkbenchResearcherHistoryDao(UpdatableDao):
