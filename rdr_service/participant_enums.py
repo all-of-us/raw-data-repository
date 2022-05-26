@@ -854,12 +854,13 @@ class WorkbenchResearcherGenderIdentity(messages.Enum):
     GENDERQUEER = 1
     MAN = 2
     NON_BINARY = 3
-    TRANS_MAN = 4
-    TRANS_WOMAN = 5
-    TWO_SPIRIT = 6
-    WOMAN = 7
-    OTHER = 8
-    PREFER_NOT_TO_ANSWER = 9
+    QUESTIONING = 4
+    TRANS_MAN = 5
+    TRANS_WOMAN = 6
+    TWO_SPIRIT = 7
+    WOMAN = 8
+    OTHER = 9
+    PREFER_NOT_TO_ANSWER = 10
 
 
 class WorkbenchResearcherSexualOrientationV2(messages.Enum):
