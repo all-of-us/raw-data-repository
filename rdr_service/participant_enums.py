@@ -823,3 +823,83 @@ class CdrEtlCodeType(messages.Enum):
     MODULE = 1
     QUESTION = 2
     ANSWER = 3
+
+
+class WorkbenchResearcherEthnicCategory(messages.Enum):
+    AI_AN = 1
+    AI_AN_CENTRAL_SOUTH = 2
+    AI_AN_OTHER = 3
+    ASIAN = 4
+    ASIAN_INDIAN = 5
+    ASIAN_CAMBODIAN = 6
+    ASIAN_CHINESE = 7
+    ASIAN_FILIPINO = 8
+    ASIAN_HMONG = 9
+    ASIAN_JAPANESE = 10
+    ASIAN_KOREAN = 11
+    ASIAN_LAO = 12
+    ASIAN_PAKISTANI = 13
+    ASIAN_VIETNAMESE = 14
+    ASIAN_OTHER = 15
+    BLACK = 16
+    HISPANIC = 17
+    MENA = 18
+    NHPI = 19
+    WHITE = 20
+    OTHER = 21
+    PREFER_NOT_TO_ANSWER = 22
+
+
+class WorkbenchResearcherGenderIdentity(messages.Enum):
+    GENDERQUEER = 1
+    MAN = 2
+    NON_BINARY = 3
+    QUESTIONING = 4
+    TRANS_MAN = 5
+    TRANS_WOMAN = 6
+    TWO_SPIRIT = 7
+    WOMAN = 8
+    OTHER = 9
+    PREFER_NOT_TO_ANSWER = 10
+
+
+class WorkbenchResearcherSexualOrientationV2(messages.Enum):
+    ASEXUAL = 1
+    BISEXUAL = 2
+    GAY = 3
+    LESBIAN = 4
+    POLYSEXUAL = 5
+    QUEER = 6
+    QUESTIONING = 7
+    SAME_GENDER = 8
+    STRAIGHT = 9
+    TWO_SPIRIT = 10
+    OTHER = 11
+    PREFER_NOT_TO_ANSWER = 12
+
+
+class WorkbenchResearcherSexAtBirthV2(messages.Enum):
+    UNSET = 0
+    FEMALE = 1
+    INTERSEX = 2
+    MALE = 3
+    OTHER = 4
+    PREFER_NOT_TO_ANSWER = 5
+
+
+class WorkbenchResearcherEducationV2(messages.Enum):
+    UNSET = 0
+    NO_EDUCATION = 1
+    GRADES_1_12 = 2
+    UNDERGRADUATE = 3
+    COLLEGE_GRADUATE = 4
+    MASTER = 5
+    DOCTORATE = 6
+    PREFER_NOT_TO_ANSWER = 7
+
+
+class WorkbenchResearcherYesNoPreferNot(messages.Enum):
+    UNSET = 0
+    YES = 1
+    NO = 2
+    PREFER_NOT_TO_ANSWER = 3

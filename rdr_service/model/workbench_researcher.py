@@ -8,7 +8,10 @@ from rdr_service.participant_enums import (
     WorkbenchResearcherEducation,
     WorkbenchResearcherDisability,
     WorkbenchResearcherEthnicity,
-    WorkbenchResearcherAccessTierShortName
+    WorkbenchResearcherAccessTierShortName,
+    WorkbenchResearcherEducationV2,
+    WorkbenchResearcherYesNoPreferNot,
+    WorkbenchResearcherSexAtBirthV2
 )
 
 
@@ -47,6 +50,38 @@ class WorkbenchResearcherBase(object):
     identifiesAsLgbtq = Column("identifies_as_lgbtq", Boolean)
     lgbtqIdentity = Column("lgbtq_identity", String(250))
     accessTierShortNames = Column("access_tier_short_names", JSON)
+    dsv2CompletionTime = Column("dsv2_completion_time", UTCDateTime6, nullable=True)
+    dsv2EthnicCategories = Column("dsv2_ethnic_categories", JSON)
+    dsv2EthnicityAiAnOther = Column("dsv2_ethnicity_aian_other", String(200))
+    dsv2EthnicityAsianOther = Column("dsv2_ethnicity_asian_other", String(200))
+    dsv2EthnicityOther = Column("dsv2_ethnicity_other", String(200))
+    dsv2GenderIdentities = Column("dsv2_gender_identities", JSON)
+    dsv2GenderOther = Column("dsv2_gender_other", String(200))
+    dsv2SexualOrientations = Column("dsv2_sexual_orientations", JSON)
+    dsv2OrientationOther = Column("dsv2_orientation_other", String(200))
+    dsv2SexAtBirth = Column("dsv2_sex_at_birth", Enum(WorkbenchResearcherSexAtBirthV2),
+                            default=WorkbenchResearcherSexAtBirthV2.UNSET)
+    dsv2SexAtBirthOther = Column("dsv2_sex_at_birth_other", String(200))
+    dsv2YearOfBirth = Column("dsv2_year_of_birth", Integer, nullable=True)
+    dsv2YearOfBirthPreferNot = Column("dsv2_year_of_birth_prefer_not", Boolean)
+    dsv2DisabilityHearing = Column("dsv2_disability_hearing", Enum(WorkbenchResearcherYesNoPreferNot),
+                                   default=WorkbenchResearcherYesNoPreferNot.UNSET)
+    dsv2DisabilitySeeing = Column("dsv2_disability_seeing", Enum(WorkbenchResearcherYesNoPreferNot),
+                                  default=WorkbenchResearcherYesNoPreferNot.UNSET)
+    dsv2DisabilityConcentrating = Column("dsv2_disability_concentrating", Enum(WorkbenchResearcherYesNoPreferNot),
+                                         default=WorkbenchResearcherYesNoPreferNot.UNSET)
+    dsv2DisabilityWalking = Column("dsv2_disability_walking", Enum(WorkbenchResearcherYesNoPreferNot),
+                                   default=WorkbenchResearcherYesNoPreferNot.UNSET)
+    dsv2DisabilityDressing = Column("dsv2_disability_dressing", Enum(WorkbenchResearcherYesNoPreferNot),
+                                    default=WorkbenchResearcherYesNoPreferNot.UNSET)
+    dsv2DisabilityErrands = Column("dsv2_disability_errands", Enum(WorkbenchResearcherYesNoPreferNot),
+                                   default=WorkbenchResearcherYesNoPreferNot.UNSET)
+    dsv2DisabilityOther = Column("dsv2_disability_other", String(200))
+    dsv2Education = Column("dsv2_education", Enum(WorkbenchResearcherEducationV2),
+                           default=WorkbenchResearcherEducationV2.UNSET)
+    dsv2Disadvantaged = Column("dsv2_disadvantaged", Enum(WorkbenchResearcherYesNoPreferNot),
+                               default=WorkbenchResearcherYesNoPreferNot.UNSET)
+
     resource = Column("resource", BlobUTF8, nullable=False)
     """The resource payload"""
 
