@@ -11,6 +11,7 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.model.participant import Participant
 from rdr_service.model.hpo import HPO
 from rdr_service.offline.export_va_workqueue import generate_workqueue_report, delete_old_reports
+from rdr_service.participant_enums import WithdrawalStatus
 
 from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
@@ -47,6 +48,10 @@ class ExportVaWorkQueueTest(BaseTestCase, PDRGeneratorTestMixin):
                 ps.dateOfBirth = datetime.date(1979, 3, 11)
                 ps.questionnaireOnCopeDec = 1
                 ps.questionnaireOnCopeDecAuthored = datetime.datetime(2022, 1, 3, 13, 23)
+                summary_dao.update(ps)
+            elif pid == 9:
+                ps.withdrawalStatus = WithdrawalStatus.NO_USE
+                ps.withdrawalTime = datetime.datetime(2019, 7, 11, 13, 2)
                 summary_dao.update(ps)
         generate_workqueue_report()
         with open_cloud_file(os.path.normpath(
