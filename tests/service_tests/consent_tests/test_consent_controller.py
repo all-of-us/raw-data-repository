@@ -54,24 +54,27 @@ class ConsentControllerTest(BaseTestCase):
         """The controller should find all recent participant summary consents authored and validate files for them"""
         primary_and_ehr_participant_id = 123
         cabor_participant_id = 456
-        self.consent_dao_mock.get_consent_responses_to_validate.return_value = {
-            primary_and_ehr_participant_id: [
-                ConsentResponse(
-                    response=QuestionnaireResponse(participantId=primary_and_ehr_participant_id),
-                    type=ConsentType.PRIMARY
-                ),
-                ConsentResponse(
-                    response=QuestionnaireResponse(participantId=primary_and_ehr_participant_id),
-                    type=ConsentType.EHR
-                )
-            ],
-            cabor_participant_id: [
-                ConsentResponse(
-                    response=QuestionnaireResponse(participantId=cabor_participant_id),
-                    type=ConsentType.CABOR
-                ),
-            ]
-        }
+        self.consent_dao_mock.get_consent_responses_to_validate.return_value = (
+            {
+                primary_and_ehr_participant_id: [
+                    ConsentResponse(
+                        response=QuestionnaireResponse(participantId=primary_and_ehr_participant_id),
+                        type=ConsentType.PRIMARY
+                    ),
+                    ConsentResponse(
+                        response=QuestionnaireResponse(participantId=primary_and_ehr_participant_id),
+                        type=ConsentType.EHR
+                    )
+                ],
+                cabor_participant_id: [
+                    ConsentResponse(
+                        response=QuestionnaireResponse(participantId=cabor_participant_id),
+                        type=ConsentType.CABOR
+                    ),
+                ]
+            },
+            True  # is last batch
+        )
 
         self.consent_validator_mock.get_primary_validation_results.return_value = [
             ConsentFile(id=1, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_primary_1'),
