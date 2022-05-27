@@ -224,3 +224,23 @@ cron:
   timezone: America/New_York
   schedule: every day 10:00
   target: offline
+- description: Genomic Reconcile PGX Results (Daily)
+  url: /offline/GenomicReconcilePGXResults
+  timezone: America/New_York
+  schedule: every day 07:00
+  target: offline
+- description: Genomic Reconcile HDR Results (Daily)
+  url: /offline/GenomicReconcileHDRResults
+  timezone: America/New_York
+  schedule: every day 07:15
+  target: offline
+- description: Genomic CVL Reconciliation Alerts (Weekly)
+  url: /offline/GenomicCVLReconciliationAlerts
+  timezone: America/New_York
+  schedule: every monday 09:00
+  target: offline
+- description: Genomic GHR3 Resolve Samples (Weekly)
+  url: /offline/GenomicGHR3ResolveSamples
+  timezone: America/New_York
+  schedule: every monday 10:00
+  target: offline

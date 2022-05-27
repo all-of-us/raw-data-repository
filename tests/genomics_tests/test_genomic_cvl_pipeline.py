@@ -9,7 +9,7 @@ from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
     GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicCVLAnalysisDao, \
     GenomicW3SCRawDao, GenomicResultWorkflowStateDao, GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, \
-    GenomicCVLSecondSampleDao, GenomicW1ILRawDao, GenomicW2WRawDao
+    GenomicCVLSecondSampleDao, GenomicW1ILRawDao, GenomicW2WRawDao, GenomicCVLResultPastDueDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicQcStatus, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicWorkflowState, ResultsWorkflowState, ResultsModuleType
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
@@ -697,86 +697,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.health_related_data_file_name is not None for obj in w5nf_raw_records))
         self.assertTrue(all(obj.clinical_analysis_type is not None for obj in w5nf_raw_records))
 
-    def test_cvl_skip_week_manifest_generation(self):
-
-        from rdr_service.offline.main import app, OFFLINE_PREFIX
-        offline_test_client = app.test_client()
-
-        # create initial job run
-        initial_job_run = self.data_generator.create_database_genomic_job_run(
-            jobId=GenomicJob.CVL_W3SR_WORKFLOW,
-            jobIdStr=GenomicJob.CVL_W3SR_WORKFLOW.name,
-            startTime=clock.CLOCK.now(),
-            endTime=clock.CLOCK.now(),
-            runResult=GenomicSubProcessResult.SUCCESS,
-            runStatus=GenomicSubProcessStatus.COMPLETED,
-        )
-
-        response = self.send_get(
-            'GenomicCVLW3SRWorkflow',
-            test_client=offline_test_client,
-            prefix=OFFLINE_PREFIX,
-            headers={'X-Appengine-Cron': True},
-            expected_status=500
-        )
-
-        self.assertTrue(response.status_code == 500)
-
-        current_job_runs = self.job_run_dao.get_all()
-        # remove initial
-        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
-        self.assertTrue(len(current_job_runs) == 0)
-
-        today_plus_seven = clock.CLOCK.now() + datetime.timedelta(days=7)
-
-        with clock.FakeClock(today_plus_seven):
-            response = self.send_get(
-                'GenomicCVLW3SRWorkflow',
-                test_client=offline_test_client,
-                prefix=OFFLINE_PREFIX,
-                headers={'X-Appengine-Cron': True},
-                expected_status=500
-            )
-
-        self.assertTrue(response.status_code == 500)
-
-        current_job_runs = self.job_run_dao.get_all()
-        # remove initial
-        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
-        self.assertTrue(len(current_job_runs) == 0)
-
-        today_plus_fourteen = clock.CLOCK.now() + datetime.timedelta(days=14)
-
-        with clock.FakeClock(today_plus_fourteen):
-            response = self.send_get(
-                'GenomicCVLW3SRWorkflow',
-                test_client=offline_test_client,
-                prefix=OFFLINE_PREFIX,
-                headers={'X-Appengine-Cron': True}
-            )
-
-        self.assertTrue(response['success'] == 'true')
-
-        current_job_runs = self.job_run_dao.get_all()
-        # remove initial
-        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
-
-        self.assertEqual(len(current_job_runs), len(config.GENOMIC_CVL_SITES))
-        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.NO_FILES for obj in current_job_runs))
-
-        today_plus_fourteen_plus_seven = today_plus_fourteen + datetime.timedelta(days=7)
-
-        with clock.FakeClock(today_plus_fourteen_plus_seven):
-            response = self.send_get(
-                'GenomicCVLW3SRWorkflow',
-                test_client=offline_test_client,
-                prefix=OFFLINE_PREFIX,
-                headers={'X-Appengine-Cron': True},
-                expected_status=500
-            )
-
-        self.assertTrue(response.status_code == 500)
-
 
 class ManifestGenerationTestMixin:
     def assert_manifest_has_rows(self, manifest_cloud_writer_mock, expected_rows):
@@ -1424,3 +1344,211 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             str(set_member.sampleId),
             summary.withdrawalAuthored.strftime('%Y-%m-%dT%H:%M:%S+00:00')
         )
+
+
+class GenomicCVLMiscPipelineTest(BaseTestCase):
+    def setUp(self):
+        super(GenomicCVLMiscPipelineTest, self).setUp()
+
+    def test_cvl_skip_week_manifest_generation(self):
+
+        from rdr_service.offline.main import app, OFFLINE_PREFIX
+        offline_test_client = app.test_client()
+
+        job_run_dao = GenomicJobRunDao()
+
+        # create initial job run
+        initial_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.CVL_W3SR_WORKFLOW,
+            jobIdStr=GenomicJob.CVL_W3SR_WORKFLOW.name,
+            startTime=clock.CLOCK.now(),
+            endTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS,
+            runStatus=GenomicSubProcessStatus.COMPLETED,
+        )
+
+        response = self.send_get(
+            'GenomicCVLW3SRWorkflow',
+            test_client=offline_test_client,
+            prefix=OFFLINE_PREFIX,
+            headers={'X-Appengine-Cron': True},
+            expected_status=500
+        )
+
+        self.assertTrue(response.status_code == 500)
+
+        current_job_runs = job_run_dao.get_all()
+        # remove initial
+        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
+        self.assertTrue(len(current_job_runs) == 0)
+
+        today_plus_seven = clock.CLOCK.now() + datetime.timedelta(days=7)
+
+        with clock.FakeClock(today_plus_seven):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True},
+                expected_status=500
+            )
+
+        self.assertTrue(response.status_code == 500)
+
+        current_job_runs = job_run_dao.get_all()
+        # remove initial
+        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
+        self.assertTrue(len(current_job_runs) == 0)
+
+        today_plus_fourteen = clock.CLOCK.now() + datetime.timedelta(days=14)
+
+        with clock.FakeClock(today_plus_fourteen):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True}
+            )
+
+        self.assertTrue(response['success'] == 'true')
+
+        current_job_runs = job_run_dao.get_all()
+        # remove initial
+        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
+
+        self.assertEqual(len(current_job_runs), len(config.GENOMIC_CVL_SITES))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.NO_FILES for obj in current_job_runs))
+
+        today_plus_fourteen_plus_seven = today_plus_fourteen + datetime.timedelta(days=7)
+
+        with clock.FakeClock(today_plus_fourteen_plus_seven):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True},
+                expected_status=500
+            )
+
+        self.assertTrue(response.status_code == 500)
+
+
+class GenomicCVLReconcileTest(BaseTestCase):
+    def setUp(self):
+        super(GenomicCVLReconcileTest, self).setUp()
+        self.job_run_dao = GenomicJobRunDao()
+        self.member_dao = GenomicSetMemberDao()
+        self.result_dao = GenomicCVLResultPastDueDao()
+        self.gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+    def test_get_samples_for_resolved(self):
+        num_samples = 5
+        result_type = ResultsModuleType.HDRV1
+
+        for num in range(num_samples):
+            member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                sampleId=f'{num}111111'
+            )
+            self.data_generator.create_database_genomic_cvl_past_due(
+                genomic_set_member_id=member.id,
+                sample_id=member.sampleId,
+                results_type=result_type,
+                cvl_site_id='rdr'
+            )
+
+        genomic_pipeline.reconcile_cvl_results(
+            reconcile_job_type=GenomicJob.RECONCILE_CVL_RESOLVE
+        )
+
+        all_past_due = self.result_dao.get_all()
+        self.assertTrue(all(obj.resolved == 0 and obj.resolved_date is None for obj in all_past_due))
+
+        all_members = self.member_dao.get_all()
+        for member in all_members:
+            self.data_generator.create_database_genomic_w4wr_raw(
+                sample_id=member.sampleId,
+                clinical_analysis_type=result_type
+            )
+
+        genomic_pipeline.reconcile_cvl_results(
+            reconcile_job_type=GenomicJob.RECONCILE_CVL_RESOLVE
+        )
+
+        all_past_due_resolved = self.result_dao.get_all()
+        self.assertTrue(all(obj.resolved == 1 and obj.resolved_date is not None for obj in all_past_due_resolved))
+
+        # job run checks
+        current_job_runs = self.job_run_dao.get_all()
+        self.assertTrue(len(current_job_runs), 1)
+
+        current_job_run = current_job_runs[0]
+        self.assertTrue(current_job_run.jobId == GenomicJob.RECONCILE_CVL_RESOLVE)
+        self.assertTrue(current_job_run.jobIdStr == GenomicJob.RECONCILE_CVL_RESOLVE.name)
+        self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
+
+    @mock.patch('rdr_service.services.email_service.EmailService.send_email')
+    def test_send_emails_for_past_due_samples(self, email_mock):
+        num_samples = 8
+        cvl_site_ids = ['co', 'bcm']
+
+        for num in range(num_samples):
+            result_type = ResultsModuleType.HDRV1 if num % 2 == 0 \
+                else ResultsModuleType.PGXV1
+            cvl_site_id = cvl_site_ids[0] if num > 3 else cvl_site_ids[1]
+
+            member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                sampleId=f'{num}111111'
+            )
+            self.data_generator.create_database_genomic_cvl_past_due(
+                genomic_set_member_id=member.id,
+                sample_id=member.sampleId,
+                results_type=result_type,
+                cvl_site_id=cvl_site_id
+            )
+
+        genomic_pipeline.reconcile_cvl_results(
+            reconcile_job_type=GenomicJob.RECONCILE_CVL_ALERTS
+        )
+
+        # mock checks
+        self.assertEqual(email_mock.call_count, len(cvl_site_ids))
+
+        email_config = config.getSettingJson(config.GENOMIC_CVL_RECONCILE_EMAILS)
+        config_recipients = [obj for obj in email_config['recipients'].values()]
+        cc_config_recipients = [obj for obj in email_config['cc_recipients']]
+
+        call_args = email_mock.call_args_list
+
+        for call_arg in call_args:
+            recipient_called_list = call_arg.args[0].recipients
+            cc_recipients_list = call_arg.args[0].cc_recipients
+            plain_text = call_arg.args[0].plain_text_content
+
+            self.assertTrue(recipient_called_list in config_recipients)
+            self.assertTrue(cc_config_recipients == cc_recipients_list)
+            self.assertEqual('no-reply@pmi-ops.org', call_arg.args[0].from_email)
+            self.assertEqual('GHR3 Weekly Past Due Samples Report', call_arg.args[0].subject)
+            self.assertTrue(plain_text is not None)
+
+        # data checks
+        all_past_due_emails_sent = self.result_dao.get_all()
+        self.assertTrue(all(obj.email_notification_sent == 1 and obj.email_notification_sent_date is
+                            not None for obj in all_past_due_emails_sent))
+
+        # job run checks
+        current_job_runs = self.job_run_dao.get_all()
+        self.assertTrue(len(current_job_runs), 1)
+
+        current_job_run = current_job_runs[0]
+        self.assertTrue(current_job_run.jobId == GenomicJob.RECONCILE_CVL_ALERTS)
+        self.assertTrue(current_job_run.jobIdStr == GenomicJob.RECONCILE_CVL_ALERTS.name)
+        self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
+
+
+

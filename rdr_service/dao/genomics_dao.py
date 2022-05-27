@@ -20,7 +20,7 @@ from rdr_service import clock, config
 from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT, GENOMIC_MEMBER_BLOCKLISTS
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus, \
-    ResultsWorkflowState
+    ResultsWorkflowState, ResultsModuleType
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
@@ -42,7 +42,7 @@ from rdr_service.model.genomics import (
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
-    GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw)
+    GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -3567,3 +3567,121 @@ class GenomicQueriesDao(BaseDao):
                 )
 
             return query.all()
+
+
+class GenomicCVLResultPastDueDao(UpdatableDao):
+
+    validate_version_match = False
+
+    def __init__(self):
+        super(GenomicCVLResultPastDueDao, self).__init__(
+            GenomicCVLResultPastDue, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        return obj.id
+
+    def get_past_due_samples(self, result_type):
+        cvl_limits = config.getSettingJson(config.GENOMIC_CVL_RECONCILE_LIMITS, {})
+        if not cvl_limits:
+            return []
+
+        genomic_past_due_alias = aliased(GenomicCVLResultPastDue)
+        result_attributes = {
+            'hdr': {
+               'w1il_run_id': GenomicSetMember.cvlW1ilHdrJobRunId,
+               'analysis_type': ResultsModuleType.HDRV1
+            },
+            'pgx': {
+                'w1il_run_id': GenomicSetMember.cvlW1ilPgxJobRunId,
+                'analysis_type': ResultsModuleType.PGXV1
+            }
+        }[result_type]
+
+        with self.session() as session:
+            records = session.query(
+                GenomicSetMember.id,
+                GenomicSetMember.sampleId
+            ).outerjoin(
+                genomic_past_due_alias,
+                genomic_past_due_alias.sample_id == GenomicSetMember.sampleId
+            ).outerjoin(
+                    GenomicW4WRRaw,
+                    and_(
+                        GenomicW4WRRaw.sample_id == GenomicSetMember.sampleId,
+                        GenomicW4WRRaw.clinical_analysis_type == result_attributes.get('analysis_type')
+                    )
+            )
+
+            if result_type == 'hdr':
+                records = records.outerjoin(
+                    GenomicW2WRaw,
+                    GenomicW2WRaw.sample_id == GenomicSetMember.sampleId,
+                )
+            elif result_type == 'pgx':
+                pass
+
+            records = records.filter(
+                result_attributes.get('w1il_run_id').isnot(None),
+                GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                genomic_past_due_alias.id.is_(None),
+                GenomicW4WRRaw.id.is_(None)
+            )
+            return records.all()
+
+    def get_samples_for_notifications(self):
+        with self.session() as session:
+            return session.query(
+                GenomicCVLResultPastDue.id,
+                GenomicCVLResultPastDue.cvl_site_id,
+                GenomicCVLResultPastDue.sample_id,
+                GenomicCVLResultPastDue.results_type
+            ).filter(
+                GenomicCVLResultPastDue.email_notification_sent != 1,
+                GenomicCVLResultPastDue.resolved != 1,
+            ).all()
+
+    def get_samples_to_resolve(self):
+        with self.session() as session:
+            records = session.query(
+                GenomicCVLResultPastDue.id
+            ).join(
+                GenomicSetMember,
+                and_(
+                    GenomicSetMember.id == GenomicCVLResultPastDue.genomic_set_member_id,
+                    GenomicSetMember.sampleId == GenomicCVLResultPastDue.sample_id,
+                )
+            ).outerjoin(
+                GenomicW4WRRaw,
+                and_(
+                    GenomicW4WRRaw.sample_id == GenomicSetMember.sampleId,
+                    GenomicW4WRRaw.clinical_analysis_type == GenomicCVLResultPastDue.results_type
+                )
+            ).filter(
+                GenomicCVLResultPastDue.resolved != 1,
+                GenomicW4WRRaw.id.isnot(None)
+            )
+            return records.all()
+
+    def batch_update_samples(self, update_type, _ids):
+        update_map = {
+            GenomicJob.RECONCILE_CVL_RESOLVE: {
+                'resolved': 1,
+                'resolved_date': datetime.utcnow()
+            },
+            GenomicJob.RECONCILE_CVL_ALERTS: {
+                'email_notification_sent': 1,
+                'email_notification_sent_date': datetime.utcnow()
+            }
+        }[update_type]
+
+        _ids = [_ids] if not type(_ids) is list else _ids
+
+        for _id in _ids:
+            current_record = self.get(_id)
+            for key, value in update_map.items():
+                setattr(current_record, key, value)
+
+            self.update(current_record)

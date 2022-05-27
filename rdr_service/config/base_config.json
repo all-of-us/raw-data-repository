@@ -123,6 +123,14 @@
       "jh": ["testone.testy@jhmi.edu", "testtwo.testy@jhmi.edu"]
     }
   },
+  "genomic_cvl_reconcile_emails": {
+    "send_emails": 1,
+    "cc_recipients": ["testone_cc.testy@vumc.edu"],
+    "recipients": {
+      "co": ["testone.testy@co.edu", "testtwo.testy@co.edu"],
+      "bcm": ["testone.testy@bcm.edu", "testtwo.testy@bcm.edu"]
+    }
+  },
   "genomic_set_member_blocklists": {
     "block_research": [
        {

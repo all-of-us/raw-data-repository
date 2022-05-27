@@ -678,6 +678,38 @@ def genomic_reconcile_pdr_data():
     genomic_pipeline.reconcile_pdr_data()
     return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_cvl_pgx_results')
+def genomic_reconcile_cvl_pgx_results():
+    genomic_pipeline.reconcile_cvl_results(
+        reconcile_job_type=GenomicJob.RECONCILE_CVL_PGX_RESULTS
+    )
+    return '{"success": "true"}'
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_cvl_hdr_results')
+def genomic_reconcile_cvl_hdr_results():
+    genomic_pipeline.reconcile_cvl_results(
+        reconcile_job_type=GenomicJob.RECONCILE_CVL_HDR_RESULTS
+    )
+    return '{"success": "true"}'
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_cvl_alerts')
+def genomic_reconcile_cvl_alerts():
+    genomic_pipeline.reconcile_cvl_results(
+        reconcile_job_type=GenomicJob.RECONCILE_CVL_ALERTS
+    )
+    return '{"success": "true"}'
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_cvl_resolved')
+def genomic_reconcile_cvl_resolve():
+    genomic_pipeline.reconcile_cvl_results(
+        reconcile_job_type=GenomicJob.RECONCILE_CVL_RESOLVE
+    )
+    return '{"success": "true"}'
+
 
 @app_util.auth_required_cron
 @run_genomic_cron_job('daily_ingestion_summary')
@@ -1057,6 +1089,30 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "CalculateInformingLoopReadyStatusDaily",
         endpoint="informing_loop_ready_flags_daily",
         view_func=genomic_calculate_informing_loop_ready_flags_daily,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicReconcilePGXResults",
+        endpoint="genomic_reconcile_pgx_results",
+        view_func=genomic_reconcile_cvl_pgx_results,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicReconcileHDRResults",
+        endpoint="genomic_reconcile_hdr_results",
+        view_func=genomic_reconcile_cvl_hdr_results,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicGHR3ReconciliationAlerts",
+        endpoint="genomic_ghr3_reconcile_alerts",
+        view_func=genomic_reconcile_cvl_alerts,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicGHR3ResolveSamples",
+        endpoint="genomic_ghr3_resolve_samples",
+        view_func=genomic_reconcile_cvl_resolve,
         methods=["GET"]
     )
     # END Genomic Pipeline Jobs

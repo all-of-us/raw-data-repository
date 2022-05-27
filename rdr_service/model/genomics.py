@@ -1275,12 +1275,12 @@ class GenomicMemberReportState(Base):
 
     id = Column('id', Integer,
                 primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
     genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False)
     genomic_report_state = Column(Enum(GenomicReportState), default=GenomicReportState.UNSET)
     genomic_report_state_str = Column(String(64), default="UNSET")
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=True)
-    created = Column(DateTime)
-    modified = Column(DateTime)
     module = Column(String(80), nullable=False)
 
 
@@ -1500,3 +1500,28 @@ class GenomicSampleSwapMember(Base):
 
 event.listen(GenomicSampleSwapMember, 'before_insert', model_insert_listener)
 event.listen(GenomicSampleSwapMember, 'before_update', model_update_listener)
+
+
+class GenomicCVLResultPastDue(Base):
+    """
+    Used for storing samples in need on reconciliation by CVLs
+    """
+
+    __tablename__ = "genomic_cvl_result_past_due"
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    genomic_set_member_id = Column(Integer, ForeignKey('genomic_set_member.id'), nullable=False)
+    sample_id = Column(String(255), nullable=False, index=True)
+    results_type = Column(String(128), nullable=False)
+    cvl_site_id = Column(String(128), nullable=False, index=True)
+    email_notification_sent = Column(SmallInteger, nullable=False, default=0)
+    email_notification_sent_date = Column(DateTime, nullable=True)
+    resolved = Column(SmallInteger, nullable=False, default=0)
+    resolved_date = Column(DateTime, nullable=True)
+
+
+event.listen(GenomicCVLResultPastDue, 'before_insert', model_insert_listener)
+event.listen(GenomicCVLResultPastDue, 'before_update', model_update_listener)
