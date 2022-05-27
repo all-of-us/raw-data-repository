@@ -109,7 +109,7 @@ class ConsentFileDaoTest(BaseTestCase):
         self.session.commit()
 
         # Make sure we get the correct response from the DAO
-        pid_consent_response_map = self.consent_dao.get_consent_responses_to_validate(session=self.session)
+        pid_consent_response_map, _ = self.consent_dao.get_consent_responses_to_validate(session=self.session)
         self.assertNotIn(ignored_response.participantId, pid_consent_response_map)
 
         consent_response = pid_consent_response_map[response_to_validate.participantId][0]
