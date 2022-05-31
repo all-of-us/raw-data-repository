@@ -66,7 +66,7 @@ class WorkbenchGeneratorTest(BaseTestCase):
         # Test that the number of fields in the DAO model has not changed.
         # This test is to make sure the resource model is updated when the SA model has been changed.
         column_count = len(WorkbenchResearcher.__table__.columns)
-        self.assertEqual(column_count, 26)
+        self.assertEqual(column_count, 48)
 
         self.session.add(self.researcher)
         self.session.commit()

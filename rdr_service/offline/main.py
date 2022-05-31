@@ -40,6 +40,7 @@ from rdr_service.offline.participant_maint import skew_duplicate_last_modified
 from rdr_service.offline.patient_status_backfill import backfill_patient_status
 from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, PublicMetricsExport
 from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
+from rdr_service.offline.response_validation import ResponseValidationController
 from rdr_service.offline.service_accounts import ServiceAccountKeyManager
 from rdr_service.offline.sync_consent_files import ConsentSyncController
 from rdr_service.offline.table_exporter import TableExporter
@@ -376,6 +377,25 @@ def check_enrollment_status():
 def flag_response_duplication():
     detector = ResponseDuplicationDetector()
     detector.flag_duplicate_responses()
+    return '{ "success": "true" }'
+
+
+@app_util.auth_required_cron
+def validate_responses():
+    a_day_ago = CLOCK.now() - timedelta(days=1)
+    since_date = datetime(year=a_day_ago.year, month=a_day_ago.month, day=a_day_ago.day)
+
+    slack_webhooks = config.getSettingJson(config.RDR_SLACK_WEBHOOKS)
+
+    dao = BaseDao(None)
+    with dao.session() as session:
+        controller = ResponseValidationController(
+            session=session,
+            since_date=since_date,
+            slack_webhook=slack_webhooks[config.RDR_VALIDATION_WEBHOOK]
+        )
+        controller.run_validation()
+
     return '{ "success": "true" }'
 
 
@@ -767,6 +787,13 @@ def _build_pipeline_app():
         endpoint="flagResponseDuplication",
         view_func=flag_response_duplication,
         methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ResponseValidation",
+        endpoint="responseValidation",
+        view_func=validate_responses,
+        methods=["GET"]
     )
 
     offline_app.add_url_rule(

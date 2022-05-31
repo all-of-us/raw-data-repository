@@ -83,4 +83,4 @@ class ParticipantDataValidation:
         if webhook_config is None:
             return None
 
-        return webhook_config.get('rdr_validation_webhook')
+        return webhook_config.get(config.RDR_VALIDATION_WEBHOOK)

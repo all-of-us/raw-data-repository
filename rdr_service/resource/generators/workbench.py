@@ -16,7 +16,9 @@ from rdr_service.participant_enums import WorkbenchResearcherDegree, WorkbenchRe
     WorkbenchInstitutionNonAcademic, WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, \
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceAccessToCare, \
     WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchWorkspaceAge, \
-    WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAccessTier, WorkbenchResearcherAccessTierShortName
+    WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAccessTier, WorkbenchResearcherAccessTierShortName, \
+    WorkbenchResearcherSexAtBirthV2, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherEducationV2, \
+    WorkbenchResearcherEthnicCategory, WorkbenchResearcherGenderIdentity, WorkbenchResearcherSexualOrientationV2
 
 
 class WBWorkspaceGenerator(generators.BaseGenerator):
@@ -260,6 +262,46 @@ class WBResearcherGenerator(generators.BaseGenerator):
 
             data['disability'] = str(WorkbenchResearcherDisability(row.disability))
             data['disability_id'] = int(WorkbenchResearcherDisability(row.disability))
+            ethnic_categories = json.loads(
+                row.dsv2_ethnic_categories if row.dsv2_ethnic_categories
+                and row.dsv2_ethnic_categories != 'null' else '[]')
+            data['dsv2_ethnic_categories'] = [{'ethnic_category': str(WorkbenchResearcherEthnicCategory(v)),
+                                               'ethnic_category_id': int(WorkbenchResearcherEthnicCategory(v))} for v in
+                                              ethnic_categories]
+            gender_identities = json.loads(
+                row.dsv2_gender_identities if row.dsv2_gender_identities
+                and row.dsv2_gender_identities != 'null' else '[]')
+            data['dsv2_gender_identities'] = [{'gender_identity': str(WorkbenchResearcherGenderIdentity(v)),
+                                               'gender_identity_id': int(WorkbenchResearcherGenderIdentity(v))} for v in
+                                              gender_identities]
+            sexual_orientations = json.loads(
+                row.dsv2_sexual_orientations if row.dsv2_sexual_orientations
+                and row.dsv2_sexual_orientations != 'null' else '[]')
+            data['dsv2_sexual_orientations'] = [{'sexual_orientation': str(WorkbenchResearcherSexualOrientationV2(v)),
+                                                 'sexual_orientation_id': int(
+                                                     WorkbenchResearcherSexualOrientationV2(v))} for v in
+                                                sexual_orientations]
+            data['dsv2_sex_at_birth'] = str(WorkbenchResearcherSexAtBirthV2(row.dsv2_sex_at_birth))
+            data['dsv2_sex_at_birth_id'] = int(WorkbenchResearcherSexAtBirthV2(row.dsv2_sex_at_birth))
+            data['dsv2_disability_hearing'] = str(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_hearing))
+            data['dsv2_disability_hearing_id'] = int(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_hearing))
+            data['dsv2_disability_seeing'] = str(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_seeing))
+            data['dsv2_disability_seeing_id'] = int(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_seeing))
+            data['dsv2_disability_concentrating'] = str(
+                WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_concentrating))
+            data['dsv2_disability_concentrating_id'] = int(
+                WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_concentrating))
+            data['dsv2_disability_walking'] = str(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_walking))
+            data['dsv2_disability_walking_id'] = int(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_walking))
+            data['dsv2_disability_dressing'] = str(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_dressing))
+            data['dsv2_disability_dressing_id'] = int(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_dressing))
+            data['dsv2_disability_errands'] = str(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_errands))
+            data['dsv2_disability_errands_id'] = int(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_errands))
+            data['dsv2_education'] = str(WorkbenchResearcherEducationV2(row.dsv2_education))
+            data['dsv2_education_id'] = int(WorkbenchResearcherEducationV2(row.dsv2_education))
+            data['dsv2_disadvantaged'] = str(WorkbenchResearcherYesNoPreferNot(row.dsv2_disadvantaged))
+            data['dsv2_disadvantaged_id'] = int(WorkbenchResearcherYesNoPreferNot(row.dsv2_disadvantaged))
+
             return generators.ResourceRecordSet(schemas.WorkbenchResearcherSchema, data)
 
 
