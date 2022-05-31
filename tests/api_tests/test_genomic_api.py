@@ -1219,7 +1219,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                                    if int(obj['participant_id'].split('P')[1]) in pids)
         self.assertTrue(pids_only_viewed_yes)
 
-    def test_get_multi_module_decision_loop(self):
+    def test_get_multi_module_last_decision_loop(self):
         fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
         fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
         fake_now = clock.CLOCK.now().replace(microsecond=0)
@@ -1234,7 +1234,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
         for num in range(self.num_participants):
             participant = self.data_generator.create_database_participant()
-            event_authored_time = fake_date_one if num % 2 == 0 else fake_date_two
             genome_type = config.GENOME_TYPE_ARRAY if num % 2 == 0 else config.GENOME_TYPE_WGS
 
             if num == 0:
@@ -1263,71 +1262,92 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 module_type='gem',
                 participant_id=participant.participantId,
                 decision_value='yes',
-                event_authored_time=event_authored_time
+                event_authored_time=fake_date_one
+            )
+
+            # 2nd gem decision
+            self.data_generator.create_database_genomic_informing_loop(
+                message_record_id=1,
+                event_type='informing_loop_decision',
+                module_type='gem',
+                participant_id=participant.participantId,
+                decision_value='no',
+                event_authored_time=fake_date_one + datetime.timedelta(days=1, minutes=23)
+            )
+
+            # 3rd gem decision
+            self.data_generator.create_database_genomic_informing_loop(
+                message_record_id=1,
+                event_type='informing_loop_decision',
+                module_type='gem',
+                participant_id=participant.participantId,
+                decision_value='maybe_later',
+                event_authored_time=fake_date_one + datetime.timedelta(days=1, minutes=24)
             )
 
             # hdr decision
             self.data_generator.create_database_genomic_informing_loop(
-                message_record_id=2,
+                message_record_id=1,
                 event_type='informing_loop_decision',
                 module_type='hdr',
                 participant_id=participant.participantId,
                 decision_value='yes',
-                event_authored_time=event_authored_time
+                event_authored_time=fake_date_one
+            )
+
+            # 2nd hdr decision
+            self.data_generator.create_database_genomic_informing_loop(
+                message_record_id=1,
+                event_type='informing_loop_decision',
+                module_type='hdr',
+                participant_id=participant.participantId,
+                decision_value='no',
+                event_authored_time=fake_date_one + datetime.timedelta(days=1, minutes=26)
             )
 
             # pgx decision
             self.data_generator.create_database_genomic_informing_loop(
-                message_record_id=3,
+                message_record_id=1,
                 event_type='informing_loop_decision',
                 module_type='pgx',
                 participant_id=participant.participantId,
                 decision_value='yes',
-                event_authored_time=event_authored_time
+                event_authored_time=fake_date_one
+            )
+
+            # 2nd pgx decision
+            self.data_generator.create_database_genomic_informing_loop(
+                message_record_id=1,
+                event_type='informing_loop_decision',
+                module_type='pgx',
+                participant_id=participant.participantId,
+                decision_value='no',
+                event_authored_time=fake_date_one + datetime.timedelta(days=1, minutes=30)
             )
 
         resp = self.send_get(f'GenomicOutreachV2?participant_id={first_participant.participantId}')
 
         self.assertEqual(len(resp['data']), 3)
         self.assertTrue(all(obj['module'] in loop_modules for obj in resp['data']))
-
-        resp = self.send_get(
-            f'GenomicOutreachV2?participant_id={first_participant.participantId}&module=PGX',
-            expected_status=404
-        )
-
-        self.assertIsNotNone(resp)
-        self.assertEqual(resp.status_code, 404)
-
-        resp = self.send_get(
-            f'GenomicOutreachV2?participant_id={first_participant.participantId}&module=GEM'
-        )
-
-        self.assertEqual(len(resp['data']), 1)
-        self.assertTrue(all(obj['module'] == 'gem' for obj in resp['data']))
+        self.assertTrue(all(obj['decision'] != 'yes' for obj in resp['data']))
+        self.assertTrue(all(obj['decision'] == 'no' for obj in resp['data'] if obj['module'] in ['pgx', 'hdr']))
+        self.assertTrue(all(obj['decision'] == 'maybe_later' for obj in resp['data'] if obj['module'] in ['gem']))
 
         with clock.FakeClock(fake_now):
             resp = self.send_get(
                 f'GenomicOutreachV2?start_date={fake_date_one}'
             )
 
-        self.assertEqual(len(resp['data']), 6)
+        self.assertEqual(len(resp['data']), 15)
         self.assertTrue(all(obj['module'] in loop_modules for obj in resp['data']))
         members_pid_resp_set = {obj['participant_id'] for obj in resp['data']}
+        self.assertEqual(len(members_pid_resp_set), 5)
+        self.assertTrue(all(obj['decision'] == 'no' for obj in resp['data'] if obj['module'] in ['pgx', 'hdr']))
+        self.assertTrue(all(obj['decision'] == 'maybe_later' for obj in resp['data'] if obj['module'] in ['gem']))
 
-        self.assertEqual(len(members_pid_resp_set), 2)
         for pid in members_pid_resp_set:
             loops = list(filter(lambda x: x['participant_id'] == pid, resp['data']))
             self.assertEqual(len(loops), 3)
-
-        with clock.FakeClock(fake_now):
-            resp = self.send_get(
-                f'GenomicOutreachV2?start_date={fake_date_one}&module=PGX'
-            )
-
-        self.assertEqual(len(resp['data']), 2)
-        self.assertTrue(all(obj['module'] == 'pgx' for obj in resp['data']))
-        self.assertTrue(all(obj['participant_id'] in members_pid_resp_set for obj in resp['data']))
 
     # POST/PUT
     def test_validate_post_put_data(self):

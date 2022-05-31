@@ -2052,14 +2052,30 @@ class GenomicOutreachDaoV2(BaseDao):
 
         query_genome_types = _set_genome_types()
 
+        def _get_max_decision_loops(decision_loops):
+            if not decision_loops:
+                return []
+
+            max_loops, participant_ids = [], {obj.participant_id for obj in decision_loops}
+
+            for participant_id in participant_ids:
+                participant_loops = list(filter(lambda x: x.participant_id == participant_id, decision_loops))
+
+                modules = {obj.module_type for obj in participant_loops}
+                for module in modules:
+                    max_loops.append(
+                        max([loop for loop in participant_loops if loop.module_type.lower() == module.lower()],
+                            key=lambda x: x.id))
+            return max_loops
+
         with self.session() as session:
             if 'informingLoop' in self.req_type:
-                genomic_loop_alias = aliased(GenomicInformingLoop)
                 decision_loop = (
                     session.query(
                         distinct(GenomicInformingLoop.participant_id).label('participant_id'),
                         GenomicInformingLoop.module_type,
                         GenomicInformingLoop.decision_value,
+                        GenomicInformingLoop.id,
                         literal('informing_loop_decision').label('type')
                     )
                     .join(
@@ -2072,19 +2088,12 @@ class GenomicOutreachDaoV2(BaseDao):
                             GenomicSetMember.participantId == GenomicInformingLoop.participant_id,
                             GenomicSetMember.genomeType.in_(query_genome_types)
                         )
-                    ).outerjoin(
-                        genomic_loop_alias,
-                        and_(
-                            genomic_loop_alias.participant_id == GenomicInformingLoop.participant_id,
-                            GenomicInformingLoop.event_authored_time < genomic_loop_alias.event_authored_time
-                        )
                     ).filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicInformingLoop.decision_value.isnot(None),
                         GenomicInformingLoop.module_type.in_(self.module),
                         GenomicInformingLoop.event_authored_time.isnot(None),
-                        genomic_loop_alias.event_authored_time.is_(None),
                         GenomicSetMember.ignoreFlag != 1
                     )
                 )
@@ -2118,10 +2127,9 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.informingLoopReadyFlagModified < end_date
                     )
 
-                informing_loops = decision_loop.all() + ready_loop.all()
+                informing_loops = _get_max_decision_loops(decision_loop.all()) + ready_loop.all()
 
             if 'result' in self.req_type:
-                # results
                 result_query = (
                     session.query(
                         distinct(GenomicMemberReportState.participant_id).label('participant_id'),
