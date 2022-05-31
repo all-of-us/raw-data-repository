@@ -180,8 +180,9 @@ class CurationExportClass(ToolBase):
         gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
 
     def export_etl_run_info(self):
-        etl_run_info_sql = self.cdr_etl_run_history_dao.get_last_etl_run_info(is_sql=True)
-        etl_run_code_info = self.cdr_etl_survey_history_dao.get_last_etl_run_code_history(is_sql=True)
+        with self.get_session() as session:
+            etl_run_info_sql = self.cdr_etl_run_history_dao.get_last_etl_run_info(session, is_sql=True)
+            etl_run_code_info = self.cdr_etl_survey_history_dao.get_last_etl_run_code_history(session, is_sql=True)
 
         run_info_export_name = 'cdr_etl_run_info'
         code_info_export_name = 'cdr_etl_run_code_info'
@@ -545,7 +546,9 @@ class CurationExportClass(ToolBase):
         if not self.args.vocabulary:
             raise NameError(
                 "parameter vocabulary must be set, example: gs://curation-vocabulary/aou_vocab_20220201/")
-        etl_history = self.cdr_etl_run_history_dao.create_etl_history_record(cutoff_date, self.args.vocabulary)
+        with self.get_session() as session:
+            etl_history = self.cdr_etl_run_history_dao.create_etl_history_record(session, cutoff_date,
+                                                                                 self.args.vocabulary)
         with self.get_session(database_name='cdm', alembic=True) as session:  # using alembic to get CREATE permission
             self._create_tables(session, [
                 QuestionnaireAnswersByModule,
@@ -557,8 +560,9 @@ class CurationExportClass(ToolBase):
             self._populate_questionnaire_answers_by_module(session)
             self._populate_src_clean(session, cutoff_date)
 
-        self.cdr_etl_survey_history_dao.save_include_exclude_code_history_for_etl_run(etl_history.id)
-        self.cdr_etl_run_history_dao.update_etl_end_time(etl_history.id)
+        with self.get_session() as session:
+            self.cdr_etl_survey_history_dao.save_include_exclude_code_history_for_etl_run(session, etl_history.id)
+            self.cdr_etl_run_history_dao.update_etl_end_time(session, etl_history.id)
 
         return 0
 
@@ -579,12 +583,13 @@ class CurationExportClass(ToolBase):
             'answer': CdrEtlCodeType.ANSWER
         }
         dao = CdrExcludedCodeDao()
-        if self.args.operation == 'remove':
-            for value in code_values:
-                dao.remove_excluded_code(value, code_type_map[self.args.code_type])
-        elif self.args.operation == 'add':
-            for value in code_values:
-                dao.add_excluded_code(value, code_type_map[self.args.code_type])
+        with self.get_session() as session:
+            if self.args.operation == 'remove':
+                for value in code_values:
+                    dao.remove_excluded_code(session, value, code_type_map[self.args.code_type])
+            elif self.args.operation == 'add':
+                for value in code_values:
+                    dao.add_excluded_code(session, value, code_type_map[self.args.code_type])
 
         return 0
 
