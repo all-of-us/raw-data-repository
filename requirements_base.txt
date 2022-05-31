@@ -82,7 +82,7 @@ pyasn1==0.4.8             # via oauth2client, pyasn1-modules, rsa
 pycparser==2.20           # via cffi
 pygments==2.7.4           # via sphinx
 pyjwt==2.4.0              # via oauthlib
-pylint==2.7.4             # via -r requirements.in
+pylint==2.13.0            # via -r requirements.in
 pyopenssl==19.1.0         # via requests
 pyparsing==2.4.7          # via packaging
 python-dateutil==2.8.1    # via alembic, faker
