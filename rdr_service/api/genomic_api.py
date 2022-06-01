@@ -30,7 +30,10 @@ class GenomicPiiApi(BaseApi):
             raise BadRequest("GenomicPII Mode required to be \"GP\" or \"RHP\".")
 
         if p_id is not None:
-            pii = self.dao.get_by_pid(p_id)
+            pii = self.dao.get_by_pid(
+                p_id,
+                mode
+            )
 
             if not pii:
                 raise NotFound(f"Participant with ID {p_id} not found")
