@@ -1797,8 +1797,6 @@ class GenomicPiiDao(BaseDao):
                 ).outerjoin(
                     informing_loop_ready,
                     informing_loop_ready.c.participant_id == GenomicSetMember.participantId
-                ).filter(
-                    GenomicSetMember.gemPass == "Y"
                 )
             elif mode == 'rhp':
                 record = session.query(
