@@ -51,6 +51,8 @@ class PhysicalMeasurements(Base):
     reason = Column("reason", UnicodeText)
     """If measurements are edited or cancelled, user notes to detail change"""
     measurements = relationship("Measurement", cascade="all, delete-orphan")
+    origin = Column("origin", String(255))
+    isSelfReported = Column("is_self_reported", Boolean, default=False)
     resource = Column("resource", JSON, nullable=True)
     """Original resource value; whole payload request that was sent"""
 

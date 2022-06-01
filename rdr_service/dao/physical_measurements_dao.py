@@ -682,6 +682,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
             createdUsername=created_username,
             finalizedSiteId=finalized_site_id,
             finalizedUsername=finalized_username,
+            origin='hpro',
+            isSelfReported=False
         )
         record = self.store_record_fhir_doc(record, resource_json)
         return record

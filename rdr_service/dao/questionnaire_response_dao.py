@@ -70,7 +70,8 @@ from rdr_service.code_constants import (
     FITBIT_SHARING_MODULE,
     FITBIT_STOP_SHARING_MODULE,
     THE_BASICS_PPI_MODULE,
-    BASICS_PROFILE_UPDATE_QUESTION_CODES
+    BASICS_PROFILE_UPDATE_QUESTION_CODES,
+    REMOTE_PM_MODULE
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -486,6 +487,11 @@ class QuestionnaireResponseDao(BaseDao):
                     new_session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
                 )
 
+                # update physical measurement for remote self reported physical measurement response
+                if module == REMOTE_PM_MODULE:
+                    self._update_physical_measurement(new_session, questionnaire_response, questions, code_ids,
+                                                      resource_json)
+
         self.create_consent_responses(
             questionnaire_response=questionnaire_response,
             session=session
@@ -541,6 +547,10 @@ class QuestionnaireResponseDao(BaseDao):
             return 'Dec'
         else:
             return 'Feb'
+
+    def _update_physical_measurement(self, session, questionnaire_response, questions, code_ids, resource_json):
+        # TODO
+        pass
 
     def _update_participant_summary(
         self, session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json

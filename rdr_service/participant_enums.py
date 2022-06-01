@@ -75,6 +75,14 @@ class PhysicalMeasurementsStatus(messages.Enum):
     CANCELLED = 2
 
 
+class PhysicalMeasurementsCollectType(messages.Enum):
+    """The collect type of the participant's physical measurements"""
+
+    UNSET = 0
+    SITE = 1
+    SELF_REPORTED = 2
+
+
 class QuestionnaireStatus(messages.Enum):
     """The status of a given questionnaire for this participant"""
 
