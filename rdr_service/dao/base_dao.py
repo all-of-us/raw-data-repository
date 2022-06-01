@@ -3,6 +3,8 @@ import datetime
 import json
 import logging
 import random
+import re
+
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from collections import OrderedDict
 from contextlib import closing
@@ -610,6 +612,10 @@ class BaseDao(object):
     :return: string
     """
         return sqlparse.format(str(query), reindent=reindent)
+
+    @staticmethod
+    def camel_to_snake(string_value):
+        return re.sub(r'(?<!^)(?=[A-Z])', '_', string_value).lower()
 
     def to_dict(self, obj, result_proxy=None):
         """
