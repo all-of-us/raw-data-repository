@@ -1755,64 +1755,81 @@ class GenomicPiiDao(BaseDao):
 
     def to_client_json(self, result):
         participant_data = result.get('data')
-        if participant_data.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED:
-            if result.get('mode') == 'GP':
-                return {
-                    "biobank_id": participant_data.biobankId,
-                    "first_name": participant_data.firstName,
-                    "last_name": participant_data.lastName,
-                    "sex_at_birth": participant_data.sexAtBirth,
-                    "hgm_informing_loop": participant_data.hgm_informing_loop
-                }
-
-            elif result.get('mode') == 'RHP':
-                return {
-                    "biobank_id": participant_data.biobankId,
-                    "first_name": participant_data.firstName,
-                    "last_name": participant_data.lastName,
-                    "date_of_birth": participant_data.dateOfBirth,
-                    "sex_at_birth": participant_data.sexAtBirth,
-                }
-        else:
+        if participant_data.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED:
             return {"message": "No RoR consent."}
 
-    def get_by_pid(self, pid):
+        participant_dict = participant_data._asdict()
+        del participant_dict['consentForGenomicsROR']
+
+        return {self.camel_to_snake(k): v for k, v in participant_dict.items()}
+
+    def get_by_pid(self, pid, mode):
         """
         Returns Biobank ID, First Name, and Last Name for requested PID
         :param pid:
+        :param mode:
         :return: query results for PID
         """
+        mode = mode.lower()
         informing_loop_ready = GenomicSetMemberDao.base_informing_loop_ready().filter(
             GenomicSetMember.informingLoopReadyFlag == 1,
             GenomicSetMember.informingLoopReadyFlagModified.isnot(None)
         ).subquery()
+
         with self.session() as session:
-            return session.query(
-                GenomicSetMember.biobankId,
-                ParticipantSummary.firstName,
-                ParticipantSummary.lastName,
-                ParticipantSummary.consentForGenomicsROR,
-                ParticipantSummary.dateOfBirth,
-                GenomicSetMember.sexAtBirth,
-                sqlalchemy.case(
-                    [
-                        (informing_loop_ready.c.id.isnot(None), True)
-                    ],
-                    else_=False
-                ).label('hgm_informing_loop')
-            ).outerjoin(
-                informing_loop_ready,
-                informing_loop_ready.c.participant_id == GenomicSetMember.participantId
-            ).join(
-                ParticipantSummary,
-                GenomicSetMember.participantId == ParticipantSummary.participantId,
-            ).filter(
+            if mode == 'gp':
+                record = session.query(
+                    GenomicSetMember.biobankId,
+                    ParticipantSummary.firstName,
+                    ParticipantSummary.lastName,
+                    ParticipantSummary.consentForGenomicsROR,
+                    ParticipantSummary.dateOfBirth,
+                    GenomicSetMember.sexAtBirth,
+                    sqlalchemy.case(
+                        [
+                            (informing_loop_ready.c.id.isnot(None), True)
+                        ],
+                        else_=False
+                    ).label('hgmInformingLoop')
+                ).join(
+                    ParticipantSummary,
+                    GenomicSetMember.participantId == ParticipantSummary.participantId,
+                ).outerjoin(
+                    informing_loop_ready,
+                    informing_loop_ready.c.participant_id == GenomicSetMember.participantId
+                ).filter(
+                    GenomicSetMember.gemPass == "Y"
+                )
+            elif mode == 'rhp':
+                record = session.query(
+                    GenomicSetMember.participantId,
+                    ParticipantSummary.firstName,
+                    ParticipantSummary.lastName,
+                    ParticipantSummary.consentForGenomicsROR,
+                    ParticipantSummary.dateOfBirth,
+                    GenomicSetMember.gcManifestSampleSource.label('sampleSource'),
+                    BiobankStoredSample.confirmed.label('collectionDate')
+                ).join(
+                    ParticipantSummary,
+                    GenomicSetMember.participantId == ParticipantSummary.participantId,
+                ).join(
+                    BiobankStoredSample,
+                    BiobankStoredSample.biobankStoredSampleId == GenomicSetMember.collectionTubeId
+                ).filter(
+                    or_(
+                        GenomicSetMember.cvlW4wrHdrManifestJobRunID.isnot(None),
+                        GenomicSetMember.cvlW4wrPgxManifestJobRunID.isnot(None)
+                    )
+                )
+
+            record = record.filter(
                 GenomicSetMember.participantId == pid,
-                GenomicSetMember.gemPass == "Y",
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE
-            ).first()
+            )
+
+            return record.first()
 
 
 class GenomicOutreachDao(BaseDao):

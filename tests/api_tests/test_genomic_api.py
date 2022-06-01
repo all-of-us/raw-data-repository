@@ -230,22 +230,52 @@ class RhpGenomicPIIApiTest(GenomicApiTestBase):
         super(RhpGenomicPIIApiTest, self).setUp()
 
     def test_get_pii_valid_pid(self):
-        p1_pii = self.send_get("GenomicPII/RHP/P1")
-        self.assertEqual(p1_pii['biobank_id'], '1')
-        self.assertEqual(p1_pii['first_name'], 'TestFN')
-        self.assertEqual(p1_pii['last_name'], 'TestLN')
-        self.assertEqual(p1_pii['date_of_birth'], '2000-01-01')
+        participant = self._make_participant()
+        self._make_summary(participant)
+        self._make_set_member(
+            participant=participant,
+            collectionTubeId=11111,
+            cvlW4wrHdrManifestJobRunID=1,
+            gcManifestSampleSource='Whole Blood'
+        )
+        self.data_generator.create_database_biobank_stored_sample(
+            biobankId=participant.biobankId,
+            biobankOrderIdentifier=self.fake.pyint(),
+            biobankStoredSampleId=11111,
+            confirmed=clock.CLOCK.now()
+        )
+        response = self.send_get(f"GenomicPII/RHP/P{participant.participantId}")
+        self.assertIsNotNone(response)
+        needed_keys = ['participant_id', 'first_name', 'last_name', 'date_of_birth', 'sample_source', 'collection_date']
+        all_keys_values = all(not len(response.keys() - needed_keys) and
+                              response.values())
+        self.assertTrue(all_keys_values)
 
     def test_get_pii_invalid_pid(self):
         p = self._make_participant()
-        self._make_summary(p, withdrawalStatus=WithdrawalStatus.NO_USE)
+        self._make_summary(p, withdrawalStatus=WithdrawalStatus.NO_USE
+                           )
         self._make_set_member(p)
         self.send_get("GenomicPII/RHP/P2", expected_status=404)
 
     def test_get_pii_no_gror_consent(self):
-        p = self._make_participant()
-        self._make_summary(p, consentForGenomicsROR=0)
-        self._make_set_member(p)
+        participant = self._make_participant()
+        self._make_summary(
+            participant,
+            consentForGenomicsROR=0
+        )
+        self._make_set_member(
+            participant=participant,
+            collectionTubeId=11111,
+            cvlW4wrHdrManifestJobRunID=1,
+            gcManifestSampleSource='Whole Blood'
+        )
+        self.data_generator.create_database_biobank_stored_sample(
+            biobankId=participant.biobankId,
+            biobankOrderIdentifier=self.fake.pyint(),
+            biobankStoredSampleId=11111,
+            confirmed=clock.CLOCK.now()
+        )
         p2_pii = self.send_get("GenomicPII/RHP/P2")
         self.assertEqual(p2_pii['message'], "No RoR consent.")
 
