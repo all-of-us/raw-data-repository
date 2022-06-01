@@ -114,7 +114,6 @@ class GenomicApiTestBase(BaseTestCase):
         valid_kwargs = dict(
             genomicSetId=1,
             participantId=participant.participantId,
-            gemPass='Y',
             biobankId=participant.biobankId,
             sexAtBirth='F',
             genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY
