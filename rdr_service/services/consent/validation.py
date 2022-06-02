@@ -417,7 +417,21 @@ class ConsentValidationController:
         dispatch_check_consent_errors_task(origin='careevolution', in_seconds=28800)
 
         # Retrieve consent response objects that need to be validated
-        participant_id_consent_map = self.consent_dao.get_consent_responses_to_validate(session=session)
+        is_last_batch = False
+        while not is_last_batch:
+            participant_id_consent_map, is_last_batch = self.consent_dao.get_consent_responses_to_validate(
+                session=session
+            )
+            self._process_id_consent_map(
+                participant_id_consent_map=participant_id_consent_map,
+                output_strategy=output_strategy,
+                session=session,
+                min_consent_date=min_consent_date,
+                max_consent_date=max_consent_date
+            )
+
+    def _process_id_consent_map(self, participant_id_consent_map, output_strategy,
+                                session, min_consent_date=None, max_consent_date=None):
         participant_summaries = self.participant_summary_dao.get_by_ids_with_session(
             session=session,
             obj_ids=participant_id_consent_map.keys()

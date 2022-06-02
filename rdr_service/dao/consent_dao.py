@@ -40,11 +40,13 @@ class ConsentDao(BaseDao):
         )
 
     @classmethod
-    def get_consent_responses_to_validate(cls, session) -> Dict[int, List[ConsentResponse]]:
+    def get_consent_responses_to_validate(cls, session) -> (Dict[int, List[ConsentResponse]], bool):
         """
         Gets all the consent responses that need to be validated.
         :return: Dictionary with keys being participant ids and values being collections of ConsentResponses
         """
+        consent_batch_limit = 500
+
         # A ConsentResponse hasn't been validated yet if there aren't any ConsentFiles that link to the response
         consent_responses = session.query(ConsentResponse).outerjoin(
             ConsentFile
@@ -52,13 +54,13 @@ class ConsentDao(BaseDao):
             ConsentFile.id.is_(None)
         ).options(
             joinedload(ConsentResponse.response)
-        ).all()
+        ).limit(consent_batch_limit).all()
 
         grouped_results = defaultdict(list)
         for consent_response in consent_responses:
             grouped_results[consent_response.response.participantId].append(consent_response)
 
-        return dict(grouped_results)
+        return dict(grouped_results), len(consent_responses) < consent_batch_limit
 
     @classmethod
     def get_consent_authored_times_for_participant(cls, session, participant_id) -> Dict[ConsentType, List[datetime]]:
