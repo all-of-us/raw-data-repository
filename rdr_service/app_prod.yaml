@@ -4,3 +4,8 @@ instance_class: F4
 # Have 5 idle instances to prepare for sudden traffic spikes.
 automatic_scaling:
   min_idle_instances: 5
+
+# to have fixed outbound US. ip address
+vpc_access_connector:
+  name: projects/aou-svpc-prod/locations/us-central1/connectors/prod-rdr-egress
+  egress_setting: all-traffic

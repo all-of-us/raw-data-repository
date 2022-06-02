@@ -199,6 +199,10 @@ then
     then
       echo "Using ${BOLD}prod${NONE} app.yaml for project $PROJECT."
       APP_YAML=rdr_service/app_prod.yaml
+    elif [ "${PROJECT}" = "all-of-us-rdr-stable" ]
+    then
+      echo "Using ${BOLD}stable${NONE} app.yaml for project $PROJECT."
+      APP_YAML=rdr_service/app_stable.yaml
     else
       APP_YAML=rdr_service/app_nonprod.yaml
     fi
