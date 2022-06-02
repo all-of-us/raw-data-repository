@@ -1129,6 +1129,13 @@ class GenomicProcessRunner(GenomicManifestBase):
 
                 self.run_calculate_record_counts_aw1(mid)
 
+        if self.gen_job_name == "RECONCILE_INFORMING_LOOP_RESPONSES":
+            with GenomicJobController(GenomicJob.RECONCILE_INFORMING_LOOP_RESPONSES,
+                                      storage_provider=self.gscp,
+                                      bq_project_id=self.gcp_env.project
+                                      ) as controller:
+                controller.reconcile_informing_loop_responses()
+
         return 0
 
     def run_aw1_manifest(self):
@@ -1270,6 +1277,9 @@ class GenomicProcessRunner(GenomicManifestBase):
             task_data,
             project_id=self.gcp_env.project
         )
+
+    def run_user_event_il_reconciliation_to(self):
+        pass
 
     def csv_to_list(self):
         files = []
@@ -2336,7 +2346,8 @@ def run():
                                            'CALCULATE_RECORD_COUNT_AW1',
                                            'AW3_WGS_WORKFLOW',
                                            'AW3_ARRAY_WORKFLOW',
-                                           'RESOLVE_MISSING_FILES'
+                                           'RESOLVE_MISSING_FILES',
+                                           'RECONCILE_INFORMING_LOOP_RESPONSES'
                                        ],
                                        type=str
                                        )
