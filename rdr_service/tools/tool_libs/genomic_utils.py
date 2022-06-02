@@ -1278,9 +1278,6 @@ class GenomicProcessRunner(GenomicManifestBase):
             project_id=self.gcp_env.project
         )
 
-    def run_user_event_il_reconciliation_to(self):
-        pass
-
     def csv_to_list(self):
         files = []
         with open(self.args.csv, encoding='utf-8-sig') as f:
