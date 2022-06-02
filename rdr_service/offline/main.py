@@ -635,12 +635,12 @@ def reconcile_gc_data_file_to_table():
     genomic_pipeline.reconcile_gc_data_file_to_table()
     return '{"success": "true"}'
 
-
-@app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_raw_to_aw1_ingested_workflow')
-def reconcile_raw_to_aw1_ingested():
-    genomic_pipeline.reconcile_raw_to_aw1_ingested()
-    return '{"success": "true"}'
+# Disabling job until further notice
+# @app_util.auth_required_cron
+# @run_genomic_cron_job('reconcile_raw_to_aw1_ingested_workflow')
+# def reconcile_raw_to_aw1_ingested():
+#     genomic_pipeline.reconcile_raw_to_aw1_ingested()
+#     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
@@ -1033,12 +1033,13 @@ def _build_pipeline_app():
         view_func=reconcile_gc_data_file_to_table,
         methods=["GET"]
     )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "ReconcileRawToAw1Ingested",
-        endpoint="reconcile_raw_to_aw1_ingested",
-        view_func=reconcile_raw_to_aw1_ingested,
-        methods=["GET"]
-    )
+    # Disabling job until further notice
+    # offline_app.add_url_rule(
+    #     OFFLINE_PREFIX + "ReconcileRawToAw1Ingested",
+    #     endpoint="reconcile_raw_to_aw1_ingested",
+    #     view_func=reconcile_raw_to_aw1_ingested,
+    #     methods=["GET"]
+    # )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "ReconcileRawToAw2Ingested",
         endpoint="reconcile_raw_to_aw2_ingested",
