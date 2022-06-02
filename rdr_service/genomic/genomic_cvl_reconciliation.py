@@ -1,6 +1,6 @@
 import logging
 
-from rdr_service import config
+from rdr_service import config, clock
 from rdr_service.dao.genomics_dao import GenomicCVLResultPastDueDao
 from rdr_service.services.email_service import Email, EmailService
 from rdr_service.genomic_enums import GenomicJob
@@ -24,18 +24,53 @@ class GenomicCVLReconcile:
         run_method()
 
     def set_samples_for_reconcile(self):
-        ...
+
+        def _process_sample_data(*, dao, sample):
+            sample = sample._asdict()
+            sample['cvlSiteId'] = 'co' if sample.get('cvlSiteId') == 'bi' else sample.get('cvlSiteId')
+            past_due_sample_obj = dao.get_model_obj_from_items(
+                {self.result_dao.camel_to_snake(k): v for k, v in sample.items()}.items()
+            )
+            past_due_sample_obj.created = clock.CLOCK.now()
+            past_due_sample_obj.modified = clock.CLOCK.now()
+            return past_due_sample_obj
+
+        past_due_samples = self.result_dao.get_past_due_samples(
+            result_type=self.reconcile_type
+        )
+        if not past_due_samples:
+            logging.info(f'There are no CVL past due samples to flag')
+            return
+
+        logging.info(f'Flagging/Storing {len(past_due_samples)} past due samples')
+        batch_size, item_count, batch = 100, 0, []
+
+        for sample in past_due_samples:
+            batch.append(
+                _process_sample_data(dao=self.result_dao, sample=sample)
+            )
+            item_count += 1
+
+            if item_count == batch_size:
+                with self.result_dao.session() as session:
+                    session.bulk_save_objects(batch)
+                item_count = 0
+                batch.clear()
+
+        if item_count:
+            with self.result_dao.session() as session:
+                session.bulk_save_objects(batch)
 
     def send_reconcile_alerts(self):
 
         def _build_message(*, samples, results_types):
-            message = 'The following sample IDs are past due:\n'
+            returned_message = 'The following sample IDs are past due:\n'
             for results_type in results_types:
-                message += f'{results_type}\n'
+                returned_message += f'{results_type}\n'
                 current_samples = [obj for obj in samples if obj.results_type.lower() == results_type.lower()]
                 for sample in current_samples:
-                    message += f'{sample.sample_id}\n'
-            return message
+                    returned_message += f'{sample.sample_id}\n'
+            return returned_message
 
         email_config = config.getSettingJson(config.GENOMIC_CVL_RECONCILE_EMAILS, {})
         if not email_config or \

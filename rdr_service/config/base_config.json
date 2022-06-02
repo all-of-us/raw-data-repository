@@ -131,6 +131,9 @@
       "bcm": ["testone.testy@bcm.edu", "testtwo.testy@bcm.edu"]
     }
   },
+  "genomic_cvl_reconcile_limits": {
+    "pgx_time_limit": 3
+  },
   "genomic_set_member_blocklists": {
     "block_research": [
        {

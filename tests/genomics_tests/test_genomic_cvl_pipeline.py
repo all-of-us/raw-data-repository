@@ -2,6 +2,8 @@ import csv
 import datetime
 import mock
 import os
+
+from dateutil import parser
 from typing import Tuple
 
 from rdr_service import clock, config
@@ -1439,11 +1441,64 @@ class GenomicCVLReconcileTest(BaseTestCase):
         self.job_run_dao = GenomicJobRunDao()
         self.member_dao = GenomicSetMemberDao()
         self.result_dao = GenomicCVLResultPastDueDao()
+
         self.gen_set = self.data_generator.create_database_genomic_set(
             genomicSetName=".",
             genomicSetCriteria=".",
             genomicSetVersion=1
         )
+
+    def test_pgx_set_past_due_records(self):
+        num_samples = 4
+        fake_date = parser.parse('2020-05-28T08:00:01-05:00')
+        fake_plus_one = fake_date + datetime.timedelta(days=1)
+        fake_plus_four = fake_date + datetime.timedelta(days=4)
+
+        gen_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.CVL_W1IL_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        job_run = self.job_run_dao.get(gen_job_run.id)
+        job_run.created = fake_date
+        self.job_run_dao.update(job_run)
+
+        # pgx run
+        for num in range(num_samples):
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                sampleId=f'{num}111111',
+                cvlW1ilPgxJobRunId=gen_job_run.id,
+                genomeType=config.GENOME_TYPE_WGS,
+                gcSiteId='bi' if num % 2 == 0 else 'rdr'
+            )
+
+        # config item => 3 => should not find samples
+        with clock.FakeClock(fake_plus_one):
+            genomic_pipeline.reconcile_cvl_results(
+                reconcile_job_type=GenomicJob.RECONCILE_CVL_PGX_RESULTS
+            )
+
+        all_past_due = self.result_dao.get_all()
+        self.assertEqual(len(all_past_due), 0)
+
+        # config item => 3 => should find samples
+        with clock.FakeClock(fake_plus_four):
+            genomic_pipeline.reconcile_cvl_results(
+                reconcile_job_type=GenomicJob.RECONCILE_CVL_PGX_RESULTS
+            )
+
+        all_past_due = self.result_dao.get_all()
+        member_ids = [obj.id for obj in self.member_dao.get_all()]
+
+        self.assertEqual(len(all_past_due), num_samples)
+        self.assertTrue(all(obj.results_type == 'PGXV1' for obj in all_past_due))
+        self.assertTrue(all(obj.cvl_site_id in ('co', 'rdr') for obj in all_past_due))
+        self.assertTrue(all(obj.sample_id is not None for obj in all_past_due))
+        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in all_past_due))
+
+        self.clear_table_after_test('genomic_cvl_result_past_due')
 
     def test_get_samples_for_resolved(self):
         num_samples = 5
@@ -1490,6 +1545,8 @@ class GenomicCVLReconcileTest(BaseTestCase):
         self.assertTrue(current_job_run.jobId == GenomicJob.RECONCILE_CVL_RESOLVE)
         self.assertTrue(current_job_run.jobIdStr == GenomicJob.RECONCILE_CVL_RESOLVE.name)
         self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
+
+        self.clear_table_after_test('genomic_cvl_result_past_due')
 
     @mock.patch('rdr_service.services.email_service.EmailService.send_email')
     def test_send_emails_for_past_due_samples(self, email_mock):
@@ -1550,5 +1607,5 @@ class GenomicCVLReconcileTest(BaseTestCase):
         self.assertTrue(current_job_run.jobIdStr == GenomicJob.RECONCILE_CVL_ALERTS.name)
         self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
 
-
+        self.clear_table_after_test('genomic_cvl_result_past_due')
 

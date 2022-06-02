@@ -3601,44 +3601,47 @@ class GenomicCVLResultPastDueDao(UpdatableDao):
         return obj.id
 
     def get_past_due_samples(self, result_type):
+        now = clock.CLOCK.now()
         cvl_limits = config.getSettingJson(config.GENOMIC_CVL_RECONCILE_LIMITS, {})
         if not cvl_limits:
             return []
 
         genomic_past_due_alias = aliased(GenomicCVLResultPastDue)
         result_attributes = {
-            'hdr': {
-               'w1il_run_id': GenomicSetMember.cvlW1ilHdrJobRunId,
-               'analysis_type': ResultsModuleType.HDRV1
+            GenomicJob.RECONCILE_CVL_HDR_RESULTS: {
+                'w1il_run_id': GenomicSetMember.cvlW1ilHdrJobRunId,
+                'analysis_type': ResultsModuleType.HDRV1
             },
-            'pgx': {
+            GenomicJob.RECONCILE_CVL_PGX_RESULTS: {
                 'w1il_run_id': GenomicSetMember.cvlW1ilPgxJobRunId,
                 'analysis_type': ResultsModuleType.PGXV1
             }
         }[result_type]
 
         with self.session() as session:
-            records = session.query(
-                GenomicSetMember.id,
-                GenomicSetMember.sampleId
-            ).outerjoin(
-                genomic_past_due_alias,
-                genomic_past_due_alias.sample_id == GenomicSetMember.sampleId
-            ).outerjoin(
+            if result_type == GenomicJob.RECONCILE_CVL_PGX_RESULTS:
+                records = session.query(
+                    GenomicSetMember.id.label('genomicSetMemberId'),
+                    GenomicSetMember.sampleId,
+                    GenomicSetMember.gcSiteId.label('cvlSiteId'),
+                    literal(result_attributes.get('analysis_type').name).label('resultsType')
+                ).outerjoin(
+                    genomic_past_due_alias,
+                    genomic_past_due_alias.sample_id == GenomicSetMember.sampleId
+                ).outerjoin(
                     GenomicW4WRRaw,
                     and_(
                         GenomicW4WRRaw.sample_id == GenomicSetMember.sampleId,
                         GenomicW4WRRaw.clinical_analysis_type == result_attributes.get('analysis_type')
                     )
-            )
-
-            if result_type == 'hdr':
-                records = records.outerjoin(
-                    GenomicW2WRaw,
-                    GenomicW2WRaw.sample_id == GenomicSetMember.sampleId,
+                ).join(
+                    GenomicJobRun,
+                    GenomicJobRun.id == result_attributes.get('w1il_run_id')
+                ).filter(
+                    GenomicJobRun.created < (now - timedelta(days=cvl_limits.get('pgx_time_limit')))
                 )
-            elif result_type == 'pgx':
-                pass
+            elif result_type == GenomicJob.RECONCILE_CVL_HDR_RESULTS:
+                ...
 
             records = records.filter(
                 result_attributes.get('w1il_run_id').isnot(None),
@@ -3702,3 +3705,4 @@ class GenomicCVLResultPastDueDao(UpdatableDao):
                 setattr(current_record, key, value)
 
             self.update(current_record)
+
