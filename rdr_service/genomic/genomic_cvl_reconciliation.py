@@ -39,7 +39,7 @@ class GenomicCVLReconcile:
             result_type=self.reconcile_type
         )
         if not past_due_samples:
-            logging.info(f'There are no CVL past due samples to flag')
+            logging.info('There are no CVL past due samples to flag')
             return
 
         logging.info(f'Flagging/Storing {len(past_due_samples)} past due samples')
@@ -79,7 +79,7 @@ class GenomicCVLReconcile:
 
         reconcile_alerts = self.result_dao.get_samples_for_notifications()
         if not reconcile_alerts:
-            logging.info(f'There are no CVL reconciled alerts to send')
+            logging.info('There are no CVL reconciled alerts to send')
             return
 
         logging.info(f'{len(reconcile_alerts)} alerts found. Sending...')
@@ -111,7 +111,7 @@ class GenomicCVLReconcile:
     def resolve_reconciled_samples(self):
         samples_to_resolve = self.result_dao.get_samples_to_resolve()
         if not samples_to_resolve:
-            logging.info(f'There are no CVL reconciled samples to resolve')
+            logging.info('There are no CVL reconciled samples to resolve')
             return
 
         logging.info(f'Resolving {len(samples_to_resolve)} past due samples')
@@ -119,4 +119,3 @@ class GenomicCVLReconcile:
             update_type=self.reconcile_type,
             _ids=[obj.id for obj in samples_to_resolve]
         )
-
