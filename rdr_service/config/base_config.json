@@ -132,7 +132,9 @@
     }
   },
   "genomic_cvl_reconcile_limits": {
-    "pgx_time_limit": 3
+    "pgx_time_limit": 3,
+    "hdr_time_limit": 3,
+    "w3sc_extension": 2
   },
   "genomic_set_member_blocklists": {
     "block_research": [

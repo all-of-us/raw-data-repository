@@ -3619,29 +3619,57 @@ class GenomicCVLResultPastDueDao(UpdatableDao):
         }[result_type]
 
         with self.session() as session:
+            records = session.query(
+                GenomicSetMember.id.label('genomicSetMemberId'),
+                GenomicSetMember.sampleId,
+                GenomicSetMember.gcSiteId.label('cvlSiteId'),
+                literal(result_attributes.get('analysis_type').name).label('resultsType')
+            ).outerjoin(
+                genomic_past_due_alias,
+                genomic_past_due_alias.sample_id == GenomicSetMember.sampleId
+            ).outerjoin(
+                GenomicW4WRRaw,
+                and_(
+                    GenomicW4WRRaw.sample_id == GenomicSetMember.sampleId,
+                    GenomicW4WRRaw.clinical_analysis_type == result_attributes.get('analysis_type')
+                )
+            ).join(
+                GenomicJobRun,
+                GenomicJobRun.id == result_attributes.get('w1il_run_id')
+            )
             if result_type == GenomicJob.RECONCILE_CVL_PGX_RESULTS:
-                records = session.query(
-                    GenomicSetMember.id.label('genomicSetMemberId'),
-                    GenomicSetMember.sampleId,
-                    GenomicSetMember.gcSiteId.label('cvlSiteId'),
-                    literal(result_attributes.get('analysis_type').name).label('resultsType')
-                ).outerjoin(
-                    genomic_past_due_alias,
-                    genomic_past_due_alias.sample_id == GenomicSetMember.sampleId
-                ).outerjoin(
-                    GenomicW4WRRaw,
-                    and_(
-                        GenomicW4WRRaw.sample_id == GenomicSetMember.sampleId,
-                        GenomicW4WRRaw.clinical_analysis_type == result_attributes.get('analysis_type')
-                    )
-                ).join(
-                    GenomicJobRun,
-                    GenomicJobRun.id == result_attributes.get('w1il_run_id')
-                ).filter(
-                    GenomicJobRun.created < (now - timedelta(days=cvl_limits.get('pgx_time_limit')))
+                pgx_time_limit = cvl_limits.get('pgx_time_limit')
+                records = records.filter(
+                    GenomicJobRun.created < (now - timedelta(days=pgx_time_limit))
                 )
             elif result_type == GenomicJob.RECONCILE_CVL_HDR_RESULTS:
-                ...
+                hdr_time_limit = cvl_limits.get('hdr_time_limit')
+
+                no_w3sc = and_(
+                    GenomicW3SCRaw.id.is_(None),
+                    GenomicJobRun.created < (now - timedelta(days=hdr_time_limit))
+                ).self_group()
+
+                w3sc_with_ext = and_(
+                    GenomicW3SCRaw.id.isnot(None),
+                    GenomicJobRun.created < (now - timedelta(days=hdr_time_limit) - timedelta(
+                        days=cvl_limits.get('w3sc_extension')))
+                ).self_group()
+
+                records = records.outerjoin(
+                    GenomicW2WRaw,
+                    and_(
+                        GenomicW2WRaw.sample_id == GenomicSetMember.sampleId
+                    )
+                ).outerjoin(
+                    GenomicW3SCRaw,
+                    and_(
+                        GenomicW3SCRaw.sample_id == GenomicSetMember.sampleId
+                    )
+                ).filter(
+                    GenomicW2WRaw.id.is_(None),
+                    or_(*[no_w3sc, w3sc_with_ext])
+                )
 
             records = records.filter(
                 result_attributes.get('w1il_run_id').isnot(None),
