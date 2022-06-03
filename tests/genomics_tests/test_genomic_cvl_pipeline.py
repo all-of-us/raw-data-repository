@@ -1505,6 +1505,7 @@ class GenomicCVLReconcileTest(BaseTestCase):
         fake_date = parser.parse('2020-05-28T08:00:01-05:00')
         fake_plus_one = fake_date + datetime.timedelta(days=1)
         fake_plus_four = fake_date + datetime.timedelta(days=4)
+        fake_plus_six = fake_date + datetime.timedelta(days=6)
 
         gen_job_run_one = self.data_generator.create_database_genomic_job_run(
             jobId=GenomicJob.CVL_W1IL_WORKFLOW,
@@ -1535,7 +1536,7 @@ class GenomicCVLReconcileTest(BaseTestCase):
         all_past_due = self.result_dao.get_all()
         self.assertEqual(len(all_past_due), 0)
 
-        # config item => 3 => should find samples
+        # config item => 3 => should find samples => criteria 1
         with clock.FakeClock(fake_plus_four):
             genomic_pipeline.reconcile_cvl_results(
                 reconcile_job_type=GenomicJob.RECONCILE_CVL_HDR_RESULTS
@@ -1549,6 +1550,56 @@ class GenomicCVLReconcileTest(BaseTestCase):
         self.assertTrue(all(obj.cvl_site_id in ('co', 'rdr') for obj in all_past_due))
         self.assertTrue(all(obj.sample_id is not None for obj in all_past_due))
         self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in all_past_due))
+
+        gen_job_run_two = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.CVL_W1IL_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        job_run = self.job_run_dao.get(gen_job_run_two.id)
+        job_run.created = fake_date
+        self.job_run_dao.update(job_run)
+
+        for num in range(num_samples):
+            member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                sampleId=f'{num}211111',
+                cvlW1ilHdrJobRunId=gen_job_run_two.id,
+                genomeType=config.GENOME_TYPE_WGS,
+                gcSiteId='bi' if num % 2 == 0 else 'rdr'
+            )
+            self.data_generator.create_database_genomic_w3sc_raw(
+                sample_id=member.sampleId,
+            )
+
+        # config item => 3 + 2 => should find samples => criteria 2
+        with clock.FakeClock(fake_plus_six):
+            genomic_pipeline.reconcile_cvl_results(
+                reconcile_job_type=GenomicJob.RECONCILE_CVL_HDR_RESULTS
+            )
+
+        # sample list should be doubled
+        all_past_due = self.result_dao.get_all()
+        member_ids = [obj.id for obj in self.member_dao.get_all()]
+
+        self.assertEqual(len(all_past_due), num_samples * 2)
+        self.assertEqual(len(member_ids), num_samples * 2)
+
+        self.assertTrue(all(obj.results_type == 'HDRV1' for obj in all_past_due))
+        self.assertTrue(all(obj.cvl_site_id in ('co', 'rdr') for obj in all_past_due))
+        self.assertTrue(all(obj.sample_id is not None for obj in all_past_due))
+        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in all_past_due))
+
+        new_member_ids = [obj.id for obj in self.member_dao.get_all() if obj.id > 4]
+        new_member_samples = [obj.sampleId for obj in self.member_dao.get_all() if obj.id > 4]
+        criteria_two_samples = [obj for obj in all_past_due if obj.id > 4]
+
+        self.assertTrue(all(obj.results_type == 'HDRV1' for obj in criteria_two_samples))
+        self.assertTrue(all(obj.cvl_site_id in ('co', 'rdr') for obj in criteria_two_samples))
+        self.assertTrue(all(obj.sample_id is not None for obj in criteria_two_samples))
+        self.assertTrue(all(obj.sample_id in new_member_samples for obj in criteria_two_samples))
+        self.assertTrue(all(obj.genomic_set_member_id in new_member_ids for obj in criteria_two_samples))
 
         self.clear_table_after_test('genomic_cvl_result_past_due')
 

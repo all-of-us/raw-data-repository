@@ -3644,6 +3644,7 @@ class GenomicCVLResultPastDueDao(UpdatableDao):
                 )
             elif result_type == GenomicJob.RECONCILE_CVL_HDR_RESULTS:
                 hdr_time_limit = cvl_limits.get('hdr_time_limit')
+                w3sc_extension = cvl_limits.get('w3sc_extension')
 
                 no_w3sc = and_(
                     GenomicW3SCRaw.id.is_(None),
@@ -3653,7 +3654,7 @@ class GenomicCVLResultPastDueDao(UpdatableDao):
                 w3sc_with_ext = and_(
                     GenomicW3SCRaw.id.isnot(None),
                     GenomicJobRun.created < (now - timedelta(days=hdr_time_limit) - timedelta(
-                        days=cvl_limits.get('w3sc_extension')))
+                        days=w3sc_extension))
                 ).self_group()
 
                 records = records.outerjoin(
