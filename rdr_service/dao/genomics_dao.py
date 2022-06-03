@@ -1250,6 +1250,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             members = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId.in_(biobank_ids),
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.ignoreFlag == 0
             )
 
             if genome_type:
@@ -3053,8 +3054,8 @@ class GcDataFileStagingDao(BaseDao):
             ).filter(
                 GenomicGcDataFile.id.is_(None)
             )
-            if sample_ids is not None:
-                query.filter(
+            if sample_ids:
+                query = query.filter(
                     GenomicGcDataFile.identifier_type == 'sample_id',
                     GenomicGcDataFile.identifier_value.in_(sample_ids)
                 )

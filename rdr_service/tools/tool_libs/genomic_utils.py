@@ -36,6 +36,7 @@ from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStora
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessResult, GenomicManifestTypes
+from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes
 from rdr_service.tools.tool_libs.tool_base import ToolBase
 from rdr_service.services.system_utils import JSONObject
 
@@ -2162,43 +2163,32 @@ class UnblockSamples(ToolBase):
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super().__init__(args, gcp_env)
+        self.server_config = self.get_server_config()
+        self.aw1_raw_dao = None
+        self.aw2_raw_dao = None
+        self.metrics_dao = None
 
     def run(self):
         self.gcp_env.activate_sql_proxy()
-        server_config = self.get_server_config()
 
         member_dao = GenomicSetMemberDao()
-        metrics_dao = GenomicGCValidationMetricsDao()
-        aw1_raw_dao = GenomicAW1RawDao()
-        aw2_raw_dao = GenomicAW2RawDao()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.aw1_raw_dao = GenomicAW1RawDao()
+        self.aw2_raw_dao = GenomicAW2RawDao()
 
-        no_aw1_data = []
-        no_aw2_data = []
-        needs_data_file_reconciliation = []
-
-        if self.args.file_path:
-            if not os.path.exists(self.args.file_path):
-                _logger.error(f'File {self.args.file_path} was not found.')
-                return 1
-        else:
-            _logger.error('Need --file-path')
+        if not os.path.exists(self.args.file_path):
+            _logger.error(f'File {self.args.file_path} was not found.')
             return 1
-        if self.args.results_only is True and self.args.research_only is True:
+
+        if self.args.results_only and self.args.research_only:
             _logger.error('Can only set one of --research-only or --results-only')
             return 1
-
-        unblock_results = True
-        unblock_research = True
-        if self.args.results_only is True:
-            unblock_research = False
-        elif self.args.research_only is True:
-            unblock_results = False
 
         with open(self.args.file_path, encoding='utf-8-sig') as file:
             csv_reader = csv.reader(file)
             id_list = []
             header = next(csv_reader)[0]
-            if header == 'sample_id' or header == 'biobank_id':
+            if header in ('sample_id', 'biobank_id'):
                 id_type = header
             else:
                 _logger.error('File header must be sample_id or biobank_id')
@@ -2207,81 +2197,104 @@ class UnblockSamples(ToolBase):
             for row in csv_reader:
                 id_list.append(row[0])
 
-            if id_type == 'sample_id':
-                set_members = member_dao.get_members_from_sample_ids(id_list)  # will not return results in IGNORE state
+        if id_type == 'sample_id':
+            set_members = member_dao.get_members_from_sample_ids(id_list)  # will not return results in IGNORE state
+        else:
+            set_members = member_dao.get_members_from_biobank_ids(id_list)
+        for set_member in set_members:
+            if self.args.results_only:
+                set_member.blockResults = 0
+            elif self.args.research_only:
+                set_member.blockResearch = 0
             else:
-                set_members = member_dao.get_members_from_biobank_ids(id_list)
-            for set_member in set_members:
-                if set_member.ignoreFlag == 1:
-                    continue
-                if unblock_results:
-                    set_member.blockResults = 0
-                if unblock_research:
-                    set_member.blockResearch = 0
-                if not self.args.dryrun:
-                    member_dao.update(set_member)
-                else:
-                    _logger.info(f"Will unblock genomic_set_member {set_member.id}")
-                if id_type == 'biobank_id' and set_member.sampleId is None:
-                    # attempt aw1 ingestion
-                    try:
-                        pre = server_config[config.BIOBANK_ID_PREFIX][0]
-                    except KeyError:
-                        # Set default for unit tests
-                        pre = "A"
-                    bid = f"{pre}{set_member.biobankId}"
-                    result = aw1_raw_dao.get_raw_record_from_identifier_genome_type(identifier=bid,
-                                                                                    genome_type=set_member.genomeType)
-                    if result is not None:
-                        if not self.args.dryrun:
-                            self._ingest_member('AW1_MANIFEST', server_config, set_member)
-                        else:
-                            _logger.info(f"Will try AW1 ingestion for {set_member.id}")
-                    else:
-                        no_aw1_data.append(set_member.biobankId)
-                vmetric = metrics_dao.get_metrics_by_member_id(set_member.id)
-                if vmetric is None:
-                    # Look up AW2 data
-                    aw2_record = aw2_raw_dao.get_raw_record_from_identifier_genome_type(
-                        identifier=set_member.sampleId, genome_type=set_member.genomeType)
-                    if aw2_record is not None:
-                        # Perform AW2 ingestion
-                        if not self.args.dryrun:
-                            self._ingest_member('METRICS_INGESTION', server_config, set_member)
-                        else:
-                            _logger.info(f"Will try AW2 ingestion for {set_member.id}")
-                    else:
-                        no_aw2_data.append(set_member.sampleId)
-                else:
-                    if set_member.genomeType == 'aou_array':
-                        if vmetric.idatRedReceived != 1 or vmetric.idatGreenReceived != 1 \
-                                or vmetric.idatRedMd5Received != 1 or vmetric.idatGreenMd5Received != 1 \
-                                or vmetric.vcfReceived != 1 or vmetric.vcfMd5Received != 1:
-                            needs_data_file_reconciliation.append(set_member.sampleId)
-                    elif set_member.genomeType == 'aou_wgs':
-                        if vmetric.hf_vcf_received != 1 or vmetric.hf_vcf_tbi_received != 1 \
-                                or vmetric.cramReceived != 1 or vmetric.cramMd5Received != 1 \
-                                or vmetric.craiReceived != 1 or vmetric.gvcfReceived != 1 \
-                                or vmetric.gvcfMd5Received != 1:
-                            needs_data_file_reconciliation.append(set_member.sampleId)
-            if len(needs_data_file_reconciliation) > 0:
-                if not self.args.dryrun:
-                    with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE) as controller:
-                        controller.reconcile_gc_data_file_to_table(sample_ids=needs_data_file_reconciliation)
-                else:
-                    _logger.info(f"Will try to reconcile sample ids: {needs_data_file_reconciliation}")
+                set_member.blockResults = 0
+                set_member.blockResearch = 0
+            if not self.args.dryrun:
+                member_dao.update(set_member)
+            else:
+                _logger.info(f"Will unblock genomic_set_member {set_member.id}")
+
+        no_aw1_data = self._check_aw1(set_members)
+        no_aw2_data = self._check_aw2(set_members)
+        self._check_gc_data_files(set_members)
+
         _logger.info(f"No AW1 data:\n {no_aw1_data}\n")
         _logger.info(f"No AW2 data:\n {no_aw2_data}\n")
 
-    def _ingest_member(self, job_type, server_config, set_member):
+    def _ingest_member(self, job_type, set_members):
         with GenomicJobController(GenomicJob.__dict__[job_type],
                                   bq_project_id=self.gcp_env.project,
-                                  server_config=server_config,
+                                  server_config=self.server_config,
                                   storage_provider=None
                                   ) as controller:
             controller.bypass_record_count = True
-            results = controller.ingest_member_ids_from_awn_raw_table([set_member.id])
+            results = controller.ingest_member_ids_from_awn_raw_table(set_members)
             _logger.info(results)
+
+    def _check_aw1(self, set_members):
+        no_aw1_data = []
+        ingest_members = []
+        for set_member in set_members:
+            # attempt aw1 ingestion
+            try:
+                pre = self.server_config[config.BIOBANK_ID_PREFIX][0]
+            except KeyError:
+                # Set default for unit tests
+                pre = "A"
+            bid = f"{pre}{set_member.biobankId}"
+            result = self.aw1_raw_dao.get_raw_record_from_identifier_genome_type(identifier=bid,
+                                                                                 genome_type=set_member.genomeType)
+            if result:
+                ingest_members.append(set_member.id)
+            else:
+                no_aw1_data.append(set_member.id)
+        if not self.args.dryrun:
+            self._ingest_member('AW1_MANIFEST', ingest_members)
+        else:
+            _logger.info(f"Will try AW1 ingestion for {ingest_members}")
+        return no_aw1_data
+
+    def _check_aw2(self, set_members):
+        ingest_members = []
+        no_aw2_data = []
+        for set_member in set_members:
+            vmetric = self.metrics_dao.get_metrics_by_member_id(set_member.id)
+            if vmetric is None:
+                aw2_record = self.aw2_raw_dao.get_raw_record_from_identifier_genome_type(
+                    identifier=set_member.sampleId, genome_type=set_member.genomeType)
+                if aw2_record:
+                    ingest_members.append(set_member.id)
+                else:
+                    no_aw2_data.append(set_member.id)
+        # Perform AW2 ingestion
+        if not self.args.dryrun:
+            self._ingest_member('METRICS_INGESTION', ingest_members)
+        else:
+            _logger.info(f"Will try AW2 ingestion for {ingest_members}")
+        return no_aw2_data
+
+    def _check_gc_data_files(self, set_members):
+        needs_data_file_reconciliation = []
+        array_required_file_types = [file_type['file_received_attribute'] for file_type in array_file_types_attributes
+                                     if file_type['required']]
+        wgs_required_file_types = [file_type['file_received_attribute'] for file_type in wgs_file_types_attributes
+                                   if file_type['required']]
+
+        for set_member in set_members:
+            vmetric = self.metrics_dao.get_metrics_by_member_id(set_member.id)
+            if vmetric:
+                if set_member.genomeType == 'aou_array':
+                    if any(getattr(vmetric, file_type) != 1 for file_type in array_required_file_types):
+                        needs_data_file_reconciliation.append(set_member.sampleId)
+                elif set_member.genomeType == 'aou_wgs':
+                    if any(getattr(vmetric, file_type) != 1 for file_type in wgs_required_file_types):
+                        needs_data_file_reconciliation.append(set_member.sampleId)
+        if needs_data_file_reconciliation:
+            if not self.args.dryrun:
+                with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE) as controller:
+                    controller.reconcile_gc_data_file_to_table(sample_ids=needs_data_file_reconciliation)
+            else:
+                _logger.info(f"Will try to reconcile sample ids: {needs_data_file_reconciliation}")
 
 
 def get_process_for_run(args, gcp_env):
