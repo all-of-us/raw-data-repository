@@ -179,11 +179,6 @@ cron:
   timezone: America/New_York
   schedule: every tuesday 02:00
   target: offline
-- description: Reconcile Raw AW1 to Genomic Set Member Table
-  url: /offline/ReconcileRawToAw1Ingested
-  timezone: America/New_York
-  schedule: every friday 02:00
-  target: offline
 - description: Reconcile Raw AW2 to Validation Metrics
   url: /offline/ReconcileRawToAw2Ingested
   timezone: America/New_York

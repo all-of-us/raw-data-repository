@@ -392,10 +392,10 @@ def reconcile_gc_data_file_to_table():
     with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE) as controller:
         controller.reconcile_gc_data_file_to_table()
 
-
-def reconcile_raw_to_aw1_ingested():
-    with GenomicJobController(GenomicJob.RECONCILE_RAW_AW1_INGESTED) as controller:
-        controller.reconcile_raw_to_aw1_ingested()
+# Disabling job until further notice
+# def reconcile_raw_to_aw1_ingested():
+#     with GenomicJobController(GenomicJob.RECONCILE_RAW_AW1_INGESTED) as controller:
+#         controller.reconcile_raw_to_aw1_ingested()
 
 
 def reconcile_raw_to_aw2_ingested():

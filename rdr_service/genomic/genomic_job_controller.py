@@ -726,29 +726,30 @@ class GenomicJobController:
 
                 self.staging_dao.insert_filenames_bulk(files)
 
-    def reconcile_raw_to_aw1_ingested(self):
+    # Disabling job until further notice.
+    # def reconcile_raw_to_aw1_ingested(self):
         # Compare AW1 Raw to Genomic Set Member
-        raw_dao = GenomicAW1RawDao()
-        deltas = raw_dao.get_set_member_deltas()
+        # raw_dao = GenomicAW1RawDao()
+        # deltas = raw_dao.get_set_member_deltas()
+        #
+        # # Update Genomic Set Member records for deltas
+        # for record in deltas:
+        #     member = self.member_dao.get_member_from_raw_aw1_record(record)
+        #     if member:
+        #         member = self.set_aw1_attributes_from_raw((member, record))
+        #
+        #         # Set additional attributes
+        #         member.gcSiteId = record.site_name
+        #         member.aw1FileProcessedId = (
+        #             self.file_processed_dao.get_max_file_processed_for_filepath(record.file_path).id
+        #         )
+        #         member.genomicWorkflowState = GenomicWorkflowState.AW1
+        #         member.genomicWorkflowStateStr = GenomicWorkflowState.AW1.name
+        #
+        #         with self.member_dao.session() as session:
+        #             session.merge(member)
 
-        # Update Genomic Set Member records for deltas
-        for record in deltas:
-            member = self.member_dao.get_member_from_raw_aw1_record(record)
-            if member:
-                member = self.set_aw1_attributes_from_raw((member, record))
-
-                # Set additional attributes
-                member.gcSiteId = record.site_name
-                member.aw1FileProcessedId = (
-                    self.file_processed_dao.get_max_file_processed_for_filepath(record.file_path).id
-                )
-                member.genomicWorkflowState = GenomicWorkflowState.AW1
-                member.genomicWorkflowStateStr = GenomicWorkflowState.AW1.name
-
-                with self.member_dao.session() as session:
-                    session.merge(member)
-
-        self.job_result = GenomicSubProcessResult.SUCCESS
+        # self.job_result = GenomicSubProcessResult.SUCCESS
 
     def reconcile_raw_to_aw2_ingested(self):
         # Compare AW2 Raw to genomic_gc_validation_metrics
@@ -770,6 +771,7 @@ class GenomicJobController:
                     if proceed:
                         metrics_obj = self.set_validation_metrics_from_raw((member, record))
                         metrics_obj = session.merge(metrics_obj)
+                        self.member_dao.update(member)
                         session.commit()
                         inserted_metric_ids.append(metrics_obj.id)
 
