@@ -74,3 +74,4 @@ class OfflineAppTest(BaseTestCase):
         })
         self.send_cron_request('GenomicAW3ArrayWorkflow')
         pipeline_mock.aw3_array_manifest_workflow.assert_called()
+
