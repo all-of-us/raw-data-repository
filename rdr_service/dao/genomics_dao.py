@@ -2244,13 +2244,6 @@ class GenomicOutreachDaoV2(BaseDao):
                         mappings.extend(value)
         return mappings
 
-    def set_globals(self, module, req_type):
-        if module:
-            self.module = [module]
-            self.report_query_state = self.get_report_state_query_config()
-        if req_type:
-            self.req_type = [req_type]
-
 
 class GenomicManifestFileDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
