@@ -1102,7 +1102,6 @@ class WorkbenchResearcherDao(UpdatableDao):
         new_researcher_source_ids = []
         new_researchers = []
         new_researchers_map = {}
-        researcher_snapshot_dao = WorkbenchResearcherHistoryDao()
 
         if self.is_backfill:
             for researcher in researchers:
@@ -1112,8 +1111,9 @@ class WorkbenchResearcherDao(UpdatableDao):
             return new_researchers
 
         for researcher in researchers:
-            is_snapshot_exist = researcher_snapshot_dao.is_snapshot_exist_with_session(session, researcher.userSourceId,
-                                                                                       researcher.modifiedTime)
+            is_snapshot_exist = self.researcher_history_dao.is_snapshot_exist_with_session(session,
+                                                                                           researcher.userSourceId,
+                                                                                           researcher.modifiedTime)
             if is_snapshot_exist:
                 continue
             new_researchers_map[researcher.userSourceId] = researcher
