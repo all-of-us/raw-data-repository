@@ -309,6 +309,144 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(result.dsv2SexAtBirth, WorkbenchResearcherSexAtBirthV2('PREFER_NOT_TO_ANSWER'))
         self.assertEqual(result.dsv2Education, WorkbenchResearcherEducationV2('DOCTORATE'))
 
+    def test_backfill_researchers(self):
+        # test create new
+        request_json = [
+            {
+                "userId": 1,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "string",
+                "familyName": "string",
+                "email": "xxx@xxx.com",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "HISPANIC",
+                "sexAtBirth": ["FEMALE", "INTERSEX"],
+                "identifiesAsLgbtq": False,
+                "lgbtqIdentity": "string",
+                "gender": ["MAN", "WOMAN"],
+                "race": ["AIAN", "WHITE"],
+                "education": "COLLEGE_GRADUATE",
+                "degree": ["PHD", "MBA"],
+                "accessTierShortNames": ["REGISTERED"],
+                "disability": "YES",
+                ""
+                "affiliations": [
+                    {
+                        "institution": "string",
+                        "role": "string",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ],
+                "verifiedInstitutionalAffiliation": {
+                    "institutionDisplayName": "display name",
+                    "institutionShortName": "string name",
+                    "institutionalRole": "string role"
+                }
+            }
+        ]
+
+        self.send_post('workbench/directory/researchers', request_data=request_json)
+
+        researcher_dao = WorkbenchResearcherDao()
+        self.assertEqual(researcher_dao.count(), 1)
+        results = researcher_dao.get_all_with_children()
+        self.assertEqual(results[0].userSourceId, 1)
+        self.assertEqual(results[0].givenName, 'string')
+        self.assertEqual(results[0].accessTierShortNames, [1])
+
+        researcher_history_dao = WorkbenchResearcherHistoryDao()
+        results = researcher_history_dao.get_all_with_children()
+        self.assertEqual(researcher_history_dao.count(), 1)
+        self.assertEqual(results[0].userSourceId, 1)
+        self.assertEqual(results[0].givenName, 'string')
+        self.assertEqual(results[0].accessTierShortNames, [1])
+
+        # test backfill with same modifiedTime
+        update_json = [
+            {
+                "userId": 1,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "string_modify",
+                "familyName": "string_modify",
+                "email": "yyy@yyy.com",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "NOT_HISPANIC",
+                "gender": ["WOMAN", "NONE_DESCRIBE_ME"],
+                "race": ["NHOPI", "WHITE"],
+                "accessTierShortNames": ["REGISTERED", "CONTROLLED"],
+                "sexAtBirth": ["INTERSEX"],
+                "identifiesAsLgbtq": True,
+                "lgbtqIdentity": "string",
+                "affiliations": [
+                    {
+                        "institution": "string_modify",
+                        "role": "string",
+                        "nonAcademicAffiliation": "EDUCATIONAL_INSTITUTION"
+                    }
+                ],
+                "verifiedInstitutionalAffiliation": {
+                    "institutionDisplayName": "modified display name",
+                    "institutionShortName": "modified string name",
+                    "institutionalRole": "modified string role"
+                }
+            },
+            {
+                "userId": 2,
+                # test creationTime can be NULL
+                # "creationTime": "2019-11-27T21:21:13.056Z",
+                "modifiedTime": "2019-11-27T21:21:14.056Z",
+                "givenName": "string2",
+                "familyName": "string2",
+                "streetAddress1": "string2",
+                "streetAddress2": "string2",
+                "city": "string2",
+                "state": "string2",
+                "zipCode": "string2",
+                "country": "string2",
+                "ethnicity": "PREFER_NOT_TO_ANSWER",
+                # "gender": ["MALE", "INTERSEX"], # test no gender in the payload, will store None in DB
+                # "race": ["WHITE", "AA"], # test no race in the payload, will store None in DB
+                "affiliations": [
+                    {
+                        "institution": "string2",
+                        "role": "string2",
+                        "nonAcademicAffiliation": "EDUCATIONAL_INSTITUTION"
+                    },
+                    {
+                        "institution": "string22",
+                        "role": "string22",
+                        "nonAcademicAffiliation": "CITIZEN_SCIENTIST"
+                    }
+                ]
+            }
+        ]
+        self.send_post('workbench/directory/researchers?backfill=true', request_data=update_json)
+
+        researcher_dao = WorkbenchResearcherDao()
+        self.assertEqual(researcher_dao.count(), 1)
+        results = researcher_dao.get_all_with_children()
+        self.assertEqual(results[0].userSourceId, 1)
+        self.assertEqual(results[0].givenName, 'string_modify')
+        self.assertEqual(results[0].accessTierShortNames, [1, 2])
+
+        researcher_history_dao = WorkbenchResearcherHistoryDao()
+        self.assertEqual(researcher_history_dao.count(), 1)
+        results = researcher_history_dao.get_all_with_children()
+        self.assertEqual(results[0].userSourceId, 1)
+        self.assertEqual(results[0].givenName, 'string_modify')
+        self.assertEqual(results[0].accessTierShortNames, [1, 2])
 
     def test_invalid_input_for_researchers(self):
         request_json = [
