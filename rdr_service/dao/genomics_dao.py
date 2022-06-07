@@ -1988,9 +1988,21 @@ class GenomicOutreachDaoV2(BaseDao):
         self.req_allowed_types = ['result', 'informingLoop']
         self.req_type = self.req_allowed_types
 
+        self.report_state_map = {
+            'gem': [GenomicReportState.GEM_RPT_READY,
+                    GenomicReportState.GEM_RPT_PENDING_DELETE,
+                    GenomicReportState.GEM_RPT_DELETED],
+            'pgx': [GenomicReportState.PGX_RPT_READY,
+                    GenomicReportState.PGX_RPT_PENDING_DELETE,
+                    GenomicReportState.PGX_RPT_DELETED],
+            'hdr': [GenomicReportState.HDR_RPT_UNINFORMATIVE,
+                    GenomicReportState.HDR_RPT_POSITIVE,
+                    GenomicReportState.HDR_RPT_PENDING_DELETE,
+                    GenomicReportState.HDR_RPT_DELETED]
+        }
+
         self.genome_types = []
         self.report_query_state = self.get_report_state_query_config()
-        self.result_viewed_dao = GenomicResultViewedDao()
 
     def get_id(self, obj):
         pass
@@ -2186,62 +2198,26 @@ class GenomicOutreachDaoV2(BaseDao):
 
             return informing_loops + results
 
-    @staticmethod
-    def _determine_report_state(status):
-        report_state_mapping = {
-            'gem': {
-                GenomicReportState.GEM_RPT_READY: "ready",
-                GenomicReportState.GEM_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.GEM_RPT_DELETED: "deleted"
-            },
-            'pgx': {
-                GenomicReportState.PGX_RPT_READY: "ready",
-                GenomicReportState.PGX_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.PGX_RPT_DELETED: "deleted",
-                GenomicReportState.CVL_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.CVL_RPT_DELETED: "deleted"
-            },
-            'hdr': {
-                GenomicReportState.HDR_RPT_UNINFORMATIVE: "uninformative",
-                GenomicReportState.HDR_RPT_POSITIVE: "positive",
-                GenomicReportState.HDR_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.HDR_RPT_DELETED: "deleted",
-                GenomicReportState.CVL_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.CVL_RPT_DELETED: "deleted"
-            }
-        }
+    def _determine_report_state(self, status):
         p_status, p_module = None, None
-
-        for key, value in report_state_mapping.items():
-            if status in value.keys():
-                p_status = value[status]
+        for key, report_values in self.report_state_map.items():
+            if status in report_values:
+                p_status = status.name.split('_', 2)[-1].lower()
                 p_module = key
                 break
-
         return p_status, p_module
 
     def get_report_state_query_config(self):
-        report_state_query_mapping = {
-            'gem': [GenomicReportState.GEM_RPT_READY,
-                    GenomicReportState.GEM_RPT_PENDING_DELETE,
-                    GenomicReportState.GEM_RPT_DELETED],
-            'pgx': [GenomicReportState.PGX_RPT_READY,
-                    GenomicReportState.PGX_RPT_PENDING_DELETE,
-                    GenomicReportState.PGX_RPT_DELETED],
-            'hdr': [GenomicReportState.HDR_RPT_UNINFORMATIVE,
-                    GenomicReportState.HDR_RPT_POSITIVE,
-                    GenomicReportState.HDR_RPT_PENDING_DELETE,
-                    GenomicReportState.HDR_RPT_DELETED]
-        }
         mappings = []
         if not self.module:
-            for value in report_state_query_mapping.values():
+            for value in self.report_state_map.values():
                 mappings.extend(value)
-        else:
-            for mod in self.module:
-                for key, value in report_state_query_mapping.items():
-                    if mod == key:
-                        mappings.extend(value)
+            return mappings
+
+        for mod in self.module:
+            for key, value in self.report_state_map.items():
+                if mod == key:
+                    mappings.extend(value)
         return mappings
 
 
