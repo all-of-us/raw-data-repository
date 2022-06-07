@@ -1994,11 +1994,15 @@ class GenomicOutreachDaoV2(BaseDao):
                     GenomicReportState.GEM_RPT_DELETED],
             'pgx': [GenomicReportState.PGX_RPT_READY,
                     GenomicReportState.PGX_RPT_PENDING_DELETE,
-                    GenomicReportState.PGX_RPT_DELETED],
+                    GenomicReportState.PGX_RPT_DELETED,
+                    GenomicReportState.CVL_RPT_PENDING_DELETE,
+                    GenomicReportState.CVL_RPT_DELETED],
             'hdr': [GenomicReportState.HDR_RPT_UNINFORMATIVE,
                     GenomicReportState.HDR_RPT_POSITIVE,
                     GenomicReportState.HDR_RPT_PENDING_DELETE,
-                    GenomicReportState.HDR_RPT_DELETED]
+                    GenomicReportState.HDR_RPT_DELETED,
+                    GenomicReportState.CVL_RPT_PENDING_DELETE,
+                    GenomicReportState.CVL_RPT_DELETED]
         }
 
         self.genome_types = []
