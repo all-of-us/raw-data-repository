@@ -830,6 +830,8 @@ class WorkbenchWorkspaceHistoryDao(UpdatableDao):
 class WorkbenchResearcherDao(UpdatableDao):
     def __init__(self):
         super().__init__(WorkbenchResearcher, order_by_ending=["id"])
+        self.is_backfill = False
+        self.researcher_history_dao = WorkbenchResearcherHistoryDao()
 
     def get_id(self, obj):
         return obj.id
@@ -1080,14 +1082,38 @@ class WorkbenchResearcherDao(UpdatableDao):
             affiliations.append(verified_affiliation_obj)
         return affiliations
 
+    def backfill_researcher_with_session(self, session, backfilled_researcher):
+        exist = self.get_researcher_by_user_id_with_session(session, backfilled_researcher.userSourceId)
+        if exist:
+            for k, v in backfilled_researcher:
+                if k not in ('id', 'workbenchInstitutionalAffiliations'):
+                    setattr(exist, k, v)
+
+        exist_history = self.researcher_history_dao.get_snapshot_exist_with_session(
+            session, backfilled_researcher.userSourceId, backfilled_researcher.modifiedTime)
+        if exist_history:
+            for k, v in backfilled_researcher:
+                if k not in ('id', 'workbenchInstitutionalAffiliations'):
+                    setattr(exist_history, k, v)
+
+        return exist_history
+
     def insert_with_session(self, session, researchers):
         new_researcher_source_ids = []
         new_researchers = []
         new_researchers_map = {}
-        researcher_snapshot_dao = WorkbenchResearcherHistoryDao()
+
+        if self.is_backfill:
+            for researcher in researchers:
+                backfilled_snapshot = self.backfill_researcher_with_session(session, researcher)
+                if backfilled_snapshot:
+                    new_researchers.append(backfilled_snapshot)
+            return new_researchers
+
         for researcher in researchers:
-            is_snapshot_exist = researcher_snapshot_dao.is_snapshot_exist_with_session(session, researcher.userSourceId,
-                                                                                       researcher.modifiedTime)
+            is_snapshot_exist = self.researcher_history_dao.is_snapshot_exist_with_session(session,
+                                                                                           researcher.userSourceId,
+                                                                                           researcher.modifiedTime)
             if is_snapshot_exist:
                 continue
             new_researchers_map[researcher.userSourceId] = researcher
@@ -1220,11 +1246,16 @@ class WorkbenchResearcherHistoryDao(UpdatableDao):
                 .order_by(desc(WorkbenchResearcherHistory.created)).first()
 
     def is_snapshot_exist_with_session(self, session, user_source_id, modified_time):
+        record = self.get_snapshot_exist_with_session(session, user_source_id, modified_time)
+        return True if record else False
+
+    def get_snapshot_exist_with_session(self, session, user_source_id, modified_time):
         record = session.query(WorkbenchResearcherHistory) \
+            .options(subqueryload(WorkbenchResearcherHistory.workbenchInstitutionalAffiliations)) \
             .filter(WorkbenchResearcherHistory.userSourceId == user_source_id,
                     WorkbenchResearcherHistory.modifiedTime == modified_time) \
             .first()
-        return True if record else False
+        return record
 
     def get_researcher_history_by_id_with_session(self, researcher_history_id):
         with self.session() as session:
