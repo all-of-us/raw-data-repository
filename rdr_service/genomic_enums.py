@@ -114,6 +114,10 @@ class GenomicJob(messages.Enum):
     RETRY_MANIFEST_INGESTIONS = 57
     UPDATE_REPORT_STATES_FOR_CONSENT_REMOVAL = 58
     CALCULATE_INFORMING_LOOP_READY = 59
+    RECONCILE_CVL_PGX_RESULTS = 60
+    RECONCILE_CVL_HDR_RESULTS = 61
+    RECONCILE_CVL_ALERTS = 62
+    RECONCILE_CVL_RESOLVE = 63
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

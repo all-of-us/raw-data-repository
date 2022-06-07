@@ -2,6 +2,8 @@ import csv
 import datetime
 import mock
 import os
+
+from dateutil import parser
 from typing import Tuple
 
 from rdr_service import clock, config
@@ -9,7 +11,7 @@ from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
     GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicCVLAnalysisDao, \
     GenomicW3SCRawDao, GenomicResultWorkflowStateDao, GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, \
-    GenomicCVLSecondSampleDao, GenomicW1ILRawDao, GenomicW2WRawDao
+    GenomicCVLSecondSampleDao, GenomicW1ILRawDao, GenomicW2WRawDao, GenomicCVLResultPastDueDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicQcStatus, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicWorkflowState, ResultsWorkflowState, ResultsModuleType
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
@@ -697,86 +699,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.health_related_data_file_name is not None for obj in w5nf_raw_records))
         self.assertTrue(all(obj.clinical_analysis_type is not None for obj in w5nf_raw_records))
 
-    def test_cvl_skip_week_manifest_generation(self):
-
-        from rdr_service.offline.main import app, OFFLINE_PREFIX
-        offline_test_client = app.test_client()
-
-        # create initial job run
-        initial_job_run = self.data_generator.create_database_genomic_job_run(
-            jobId=GenomicJob.CVL_W3SR_WORKFLOW,
-            jobIdStr=GenomicJob.CVL_W3SR_WORKFLOW.name,
-            startTime=clock.CLOCK.now(),
-            endTime=clock.CLOCK.now(),
-            runResult=GenomicSubProcessResult.SUCCESS,
-            runStatus=GenomicSubProcessStatus.COMPLETED,
-        )
-
-        response = self.send_get(
-            'GenomicCVLW3SRWorkflow',
-            test_client=offline_test_client,
-            prefix=OFFLINE_PREFIX,
-            headers={'X-Appengine-Cron': True},
-            expected_status=500
-        )
-
-        self.assertTrue(response.status_code == 500)
-
-        current_job_runs = self.job_run_dao.get_all()
-        # remove initial
-        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
-        self.assertTrue(len(current_job_runs) == 0)
-
-        today_plus_seven = clock.CLOCK.now() + datetime.timedelta(days=7)
-
-        with clock.FakeClock(today_plus_seven):
-            response = self.send_get(
-                'GenomicCVLW3SRWorkflow',
-                test_client=offline_test_client,
-                prefix=OFFLINE_PREFIX,
-                headers={'X-Appengine-Cron': True},
-                expected_status=500
-            )
-
-        self.assertTrue(response.status_code == 500)
-
-        current_job_runs = self.job_run_dao.get_all()
-        # remove initial
-        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
-        self.assertTrue(len(current_job_runs) == 0)
-
-        today_plus_fourteen = clock.CLOCK.now() + datetime.timedelta(days=14)
-
-        with clock.FakeClock(today_plus_fourteen):
-            response = self.send_get(
-                'GenomicCVLW3SRWorkflow',
-                test_client=offline_test_client,
-                prefix=OFFLINE_PREFIX,
-                headers={'X-Appengine-Cron': True}
-            )
-
-        self.assertTrue(response['success'] == 'true')
-
-        current_job_runs = self.job_run_dao.get_all()
-        # remove initial
-        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
-
-        self.assertEqual(len(current_job_runs), len(config.GENOMIC_CVL_SITES))
-        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.NO_FILES for obj in current_job_runs))
-
-        today_plus_fourteen_plus_seven = today_plus_fourteen + datetime.timedelta(days=7)
-
-        with clock.FakeClock(today_plus_fourteen_plus_seven):
-            response = self.send_get(
-                'GenomicCVLW3SRWorkflow',
-                test_client=offline_test_client,
-                prefix=OFFLINE_PREFIX,
-                headers={'X-Appengine-Cron': True},
-                expected_status=500
-            )
-
-        self.assertTrue(response.status_code == 500)
-
 
 class ManifestGenerationTestMixin:
     def assert_manifest_has_rows(self, manifest_cloud_writer_mock, expected_rows):
@@ -1424,3 +1346,369 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             str(set_member.sampleId),
             summary.withdrawalAuthored.strftime('%Y-%m-%dT%H:%M:%S+00:00')
         )
+
+
+class GenomicCVLMiscPipelineTest(BaseTestCase):
+    def setUp(self):
+        super(GenomicCVLMiscPipelineTest, self).setUp()
+
+    def test_cvl_skip_week_manifest_generation(self):
+
+        from rdr_service.offline.main import app, OFFLINE_PREFIX
+        offline_test_client = app.test_client()
+
+        job_run_dao = GenomicJobRunDao()
+
+        # create initial job run
+        initial_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.CVL_W3SR_WORKFLOW,
+            jobIdStr=GenomicJob.CVL_W3SR_WORKFLOW.name,
+            startTime=clock.CLOCK.now(),
+            endTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS,
+            runStatus=GenomicSubProcessStatus.COMPLETED,
+        )
+
+        response = self.send_get(
+            'GenomicCVLW3SRWorkflow',
+            test_client=offline_test_client,
+            prefix=OFFLINE_PREFIX,
+            headers={'X-Appengine-Cron': True},
+            expected_status=500
+        )
+
+        self.assertTrue(response.status_code == 500)
+
+        current_job_runs = job_run_dao.get_all()
+        # remove initial
+        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
+        self.assertTrue(len(current_job_runs) == 0)
+
+        today_plus_seven = clock.CLOCK.now() + datetime.timedelta(days=7)
+
+        with clock.FakeClock(today_plus_seven):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True},
+                expected_status=500
+            )
+
+        self.assertTrue(response.status_code == 500)
+
+        current_job_runs = job_run_dao.get_all()
+        # remove initial
+        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
+        self.assertTrue(len(current_job_runs) == 0)
+
+        today_plus_fourteen = clock.CLOCK.now() + datetime.timedelta(days=14)
+
+        with clock.FakeClock(today_plus_fourteen):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True}
+            )
+
+        self.assertTrue(response['success'] == 'true')
+
+        current_job_runs = job_run_dao.get_all()
+        # remove initial
+        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
+
+        self.assertEqual(len(current_job_runs), len(config.GENOMIC_CVL_SITES))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.NO_FILES for obj in current_job_runs))
+
+        today_plus_fourteen_plus_seven = today_plus_fourteen + datetime.timedelta(days=7)
+
+        with clock.FakeClock(today_plus_fourteen_plus_seven):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True},
+                expected_status=500
+            )
+
+        self.assertTrue(response.status_code == 500)
+
+
+class GenomicCVLReconcileTest(BaseTestCase):
+    def setUp(self):
+        super(GenomicCVLReconcileTest, self).setUp()
+        self.job_run_dao = GenomicJobRunDao()
+        self.member_dao = GenomicSetMemberDao()
+        self.result_dao = GenomicCVLResultPastDueDao()
+
+        self.gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+    def test_pgx_set_past_due_records(self):
+        num_samples = 4
+        fake_date = parser.parse('2020-05-28T08:00:01-05:00')
+        fake_plus_one = fake_date + datetime.timedelta(days=1)
+        fake_plus_four = fake_date + datetime.timedelta(days=4)
+
+        gen_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.CVL_W1IL_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        job_run = self.job_run_dao.get(gen_job_run.id)
+        job_run.created = fake_date
+        self.job_run_dao.update(job_run)
+
+        # pgx run
+        for num in range(num_samples):
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                sampleId=f'{num}111111',
+                cvlW1ilPgxJobRunId=gen_job_run.id,
+                genomeType=config.GENOME_TYPE_WGS,
+                gcSiteId='bi' if num % 2 == 0 else 'rdr'
+            )
+
+        # config item => 3 => should not find samples
+        with clock.FakeClock(fake_plus_one):
+            genomic_pipeline.reconcile_cvl_results(
+                reconcile_job_type=GenomicJob.RECONCILE_CVL_PGX_RESULTS
+            )
+
+        all_past_due = self.result_dao.get_all()
+        self.assertEqual(len(all_past_due), 0)
+
+        # config item => 3 => should find samples
+        with clock.FakeClock(fake_plus_four):
+            genomic_pipeline.reconcile_cvl_results(
+                reconcile_job_type=GenomicJob.RECONCILE_CVL_PGX_RESULTS
+            )
+
+        all_past_due = self.result_dao.get_all()
+        member_ids = [obj.id for obj in self.member_dao.get_all()]
+
+        self.assertEqual(len(all_past_due), num_samples)
+        self.assertTrue(all(obj.results_type == 'PGXV1' for obj in all_past_due))
+        self.assertTrue(all(obj.cvl_site_id in ('co', 'rdr') for obj in all_past_due))
+        self.assertTrue(all(obj.sample_id is not None for obj in all_past_due))
+        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in all_past_due))
+
+        self.clear_table_after_test('genomic_cvl_result_past_due')
+
+    def test_hdr_set_past_due_records(self):
+        num_samples = 4
+        fake_date = parser.parse('2020-05-28T08:00:01-05:00')
+        fake_plus_one = fake_date + datetime.timedelta(days=1)
+        fake_plus_four = fake_date + datetime.timedelta(days=4)
+        fake_plus_six = fake_date + datetime.timedelta(days=6)
+
+        gen_job_run_one = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.CVL_W1IL_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        job_run = self.job_run_dao.get(gen_job_run_one.id)
+        job_run.created = fake_date
+        self.job_run_dao.update(job_run)
+
+        # hdr run
+        for num in range(num_samples):
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                sampleId=f'{num}111111',
+                cvlW1ilHdrJobRunId=gen_job_run_one.id,
+                genomeType=config.GENOME_TYPE_WGS,
+                gcSiteId='bi' if num % 2 == 0 else 'rdr'
+            )
+
+        # config item => 3 => should not find samples
+        with clock.FakeClock(fake_plus_one):
+            genomic_pipeline.reconcile_cvl_results(
+                reconcile_job_type=GenomicJob.RECONCILE_CVL_HDR_RESULTS
+            )
+
+        all_past_due = self.result_dao.get_all()
+        self.assertEqual(len(all_past_due), 0)
+
+        # config item => 3 => should find samples => criteria 1
+        with clock.FakeClock(fake_plus_four):
+            genomic_pipeline.reconcile_cvl_results(
+                reconcile_job_type=GenomicJob.RECONCILE_CVL_HDR_RESULTS
+            )
+
+        all_past_due = self.result_dao.get_all()
+        member_ids = [obj.id for obj in self.member_dao.get_all()]
+
+        self.assertEqual(len(all_past_due), num_samples)
+        self.assertTrue(all(obj.results_type == 'HDRV1' for obj in all_past_due))
+        self.assertTrue(all(obj.cvl_site_id in ('co', 'rdr') for obj in all_past_due))
+        self.assertTrue(all(obj.sample_id is not None for obj in all_past_due))
+        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in all_past_due))
+
+        gen_job_run_two = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.CVL_W1IL_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        job_run = self.job_run_dao.get(gen_job_run_two.id)
+        job_run.created = fake_date
+        self.job_run_dao.update(job_run)
+
+        for num in range(num_samples):
+            member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                sampleId=f'{num}211111',
+                cvlW1ilHdrJobRunId=gen_job_run_two.id,
+                genomeType=config.GENOME_TYPE_WGS,
+                gcSiteId='bi' if num % 2 == 0 else 'rdr'
+            )
+            self.data_generator.create_database_genomic_w3sc_raw(
+                sample_id=member.sampleId,
+            )
+
+        # config item => 3 + 2 => should find samples => criteria 2
+        with clock.FakeClock(fake_plus_six):
+            genomic_pipeline.reconcile_cvl_results(
+                reconcile_job_type=GenomicJob.RECONCILE_CVL_HDR_RESULTS
+            )
+
+        # sample list should be doubled
+        all_past_due = self.result_dao.get_all()
+        member_ids = [obj.id for obj in self.member_dao.get_all()]
+
+        self.assertEqual(len(all_past_due), num_samples * 2)
+        self.assertEqual(len(member_ids), num_samples * 2)
+
+        self.assertTrue(all(obj.results_type == 'HDRV1' for obj in all_past_due))
+        self.assertTrue(all(obj.cvl_site_id in ('co', 'rdr') for obj in all_past_due))
+        self.assertTrue(all(obj.sample_id is not None for obj in all_past_due))
+        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in all_past_due))
+
+        new_member_ids = [obj.id for obj in self.member_dao.get_all() if obj.id > 4]
+        new_member_samples = [obj.sampleId for obj in self.member_dao.get_all() if obj.id > 4]
+        criteria_two_samples = [obj for obj in all_past_due if obj.id > 4]
+
+        self.assertTrue(all(obj.results_type == 'HDRV1' for obj in criteria_two_samples))
+        self.assertTrue(all(obj.cvl_site_id in ('co', 'rdr') for obj in criteria_two_samples))
+        self.assertTrue(all(obj.sample_id is not None for obj in criteria_two_samples))
+        self.assertTrue(all(obj.sample_id in new_member_samples for obj in criteria_two_samples))
+        self.assertTrue(all(obj.genomic_set_member_id in new_member_ids for obj in criteria_two_samples))
+
+        self.clear_table_after_test('genomic_cvl_result_past_due')
+
+    def test_get_samples_for_resolved(self):
+        num_samples = 5
+        result_type = ResultsModuleType.HDRV1
+
+        for num in range(num_samples):
+            member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                sampleId=f'{num}111111'
+            )
+            self.data_generator.create_database_genomic_cvl_past_due(
+                genomic_set_member_id=member.id,
+                sample_id=member.sampleId,
+                results_type=result_type,
+                cvl_site_id='rdr'
+            )
+
+        genomic_pipeline.reconcile_cvl_results(
+            reconcile_job_type=GenomicJob.RECONCILE_CVL_RESOLVE
+        )
+
+        all_past_due = self.result_dao.get_all()
+        self.assertTrue(all(obj.resolved == 0 and obj.resolved_date is None for obj in all_past_due))
+
+        all_members = self.member_dao.get_all()
+        for member in all_members:
+            self.data_generator.create_database_genomic_w4wr_raw(
+                sample_id=member.sampleId,
+                clinical_analysis_type=result_type
+            )
+
+        genomic_pipeline.reconcile_cvl_results(
+            reconcile_job_type=GenomicJob.RECONCILE_CVL_RESOLVE
+        )
+
+        all_past_due_resolved = self.result_dao.get_all()
+        self.assertTrue(all(obj.resolved == 1 and obj.resolved_date is not None for obj in all_past_due_resolved))
+
+        # job run checks
+        current_job_runs = self.job_run_dao.get_all()
+        self.assertTrue(len(current_job_runs), 1)
+
+        current_job_run = current_job_runs[0]
+        self.assertTrue(current_job_run.jobId == GenomicJob.RECONCILE_CVL_RESOLVE)
+        self.assertTrue(current_job_run.jobIdStr == GenomicJob.RECONCILE_CVL_RESOLVE.name)
+        self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
+
+        self.clear_table_after_test('genomic_cvl_result_past_due')
+
+    @mock.patch('rdr_service.services.email_service.EmailService.send_email')
+    def test_send_emails_for_past_due_samples(self, email_mock):
+        num_samples = 8
+        cvl_site_ids = ['co', 'bcm']
+
+        for num in range(num_samples):
+            result_type = ResultsModuleType.HDRV1 if num % 2 == 0 \
+                else ResultsModuleType.PGXV1
+            cvl_site_id = cvl_site_ids[0] if num > 3 else cvl_site_ids[1]
+
+            member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                sampleId=f'{num}111111'
+            )
+            self.data_generator.create_database_genomic_cvl_past_due(
+                genomic_set_member_id=member.id,
+                sample_id=member.sampleId,
+                results_type=result_type,
+                cvl_site_id=cvl_site_id
+            )
+
+        genomic_pipeline.reconcile_cvl_results(
+            reconcile_job_type=GenomicJob.RECONCILE_CVL_ALERTS
+        )
+
+        # mock checks
+        self.assertEqual(email_mock.call_count, len(cvl_site_ids))
+
+        email_config = config.getSettingJson(config.GENOMIC_CVL_RECONCILE_EMAILS)
+        config_recipients = [obj for obj in email_config['recipients'].values()]
+        cc_config_recipients = [obj for obj in email_config['cc_recipients']]
+
+        call_args = email_mock.call_args_list
+
+        for call_arg in call_args:
+            recipient_called_list = call_arg.args[0].recipients
+            cc_recipients_list = call_arg.args[0].cc_recipients
+            plain_text = call_arg.args[0].plain_text_content
+
+            self.assertTrue(recipient_called_list in config_recipients)
+            self.assertTrue(cc_config_recipients == cc_recipients_list)
+            self.assertEqual('no-reply@pmi-ops.org', call_arg.args[0].from_email)
+            self.assertEqual('GHR3 Weekly Past Due Samples Report', call_arg.args[0].subject)
+            self.assertTrue(plain_text is not None)
+
+        # data checks
+        all_past_due_emails_sent = self.result_dao.get_all()
+        self.assertTrue(all(obj.email_notification_sent == 1 and obj.email_notification_sent_date is
+                            not None for obj in all_past_due_emails_sent))
+
+        # job run checks
+        current_job_runs = self.job_run_dao.get_all()
+        self.assertTrue(len(current_job_runs), 1)
+
+        current_job_run = current_job_runs[0]
+        self.assertTrue(current_job_run.jobId == GenomicJob.RECONCILE_CVL_ALERTS)
+        self.assertTrue(current_job_run.jobIdStr == GenomicJob.RECONCILE_CVL_ALERTS.name)
+        self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
+
+        self.clear_table_after_test('genomic_cvl_result_past_due')
+

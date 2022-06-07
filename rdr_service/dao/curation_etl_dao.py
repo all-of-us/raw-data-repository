@@ -6,7 +6,6 @@ from rdr_service.model.curation_etl import CdrEtlRunHistory, CdrEtlSurveyHistory
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.participant_enums import CdrEtlCodeType, CdrEtlSurveyStatus
-from rdr_service.model.code import Code
 from rdr_service.etl.model.src_clean import SrcClean
 
 
@@ -131,14 +130,13 @@ class CdrEtlSurveyHistoryDao(BaseDao):
             CdrEtlSurveyHistory.created: literal(now),
             CdrEtlSurveyHistory.modified: literal(now),
             CdrEtlSurveyHistory.etlRunId: literal(run_id),
-            CdrEtlSurveyHistory.codeId: Code.codeId,
+            CdrEtlSurveyHistory.codeId: literal(None),
             CdrEtlSurveyHistory.codeValue: SrcClean.survey_name,
             CdrEtlSurveyHistory.codeType: literal(int(CdrEtlCodeType.MODULE)),
             CdrEtlSurveyHistory.status: literal(int(CdrEtlSurveyStatus.INCLUDE))
         }
 
-        select_module_code_query = session.query(*column_map.values()).join(
-            Code, SrcClean.survey_name == Code.value).distinct()
+        select_module_code_query = session.query(*column_map.values()).distinct()
         insert_query = insert(CdrEtlSurveyHistory).from_select(column_map.keys(), select_module_code_query)
         session.execute(insert_query)
         # included question codes
@@ -147,14 +145,13 @@ class CdrEtlSurveyHistoryDao(BaseDao):
             CdrEtlSurveyHistory.modified: literal(now),
             CdrEtlSurveyHistory.etlRunId: literal(run_id),
             CdrEtlSurveyHistory.codeId: SrcClean.question_code_id,
-            CdrEtlSurveyHistory.codeValue: Code.value,
+            CdrEtlSurveyHistory.codeValue: SrcClean.question_ppi_code,
             CdrEtlSurveyHistory.codeType: literal(int(CdrEtlCodeType.QUESTION)),
             CdrEtlSurveyHistory.status: literal(int(CdrEtlSurveyStatus.INCLUDE))
         }
 
-        select_module_code_query = session.query(*column_map.values()).join(
-            Code, SrcClean.question_code_id == Code.codeId).distinct()
-        insert_query = insert(CdrEtlSurveyHistory).from_select(column_map.keys(), select_module_code_query)
+        select_question_code_query = session.query(*column_map.values()).distinct()
+        insert_query = insert(CdrEtlSurveyHistory).from_select(column_map.keys(), select_question_code_query)
         session.execute(insert_query)
         # included answer codes
         column_map = {
@@ -162,14 +159,13 @@ class CdrEtlSurveyHistoryDao(BaseDao):
             CdrEtlSurveyHistory.modified: literal(now),
             CdrEtlSurveyHistory.etlRunId: literal(run_id),
             CdrEtlSurveyHistory.codeId: SrcClean.value_code_id,
-            CdrEtlSurveyHistory.codeValue: Code.value,
+            CdrEtlSurveyHistory.codeValue: SrcClean.value_ppi_code,
             CdrEtlSurveyHistory.codeType: literal(int(CdrEtlCodeType.ANSWER)),
             CdrEtlSurveyHistory.status: literal(int(CdrEtlSurveyStatus.INCLUDE))
         }
 
-        select_module_code_query = session.query(*column_map.values()).join(
-            Code, SrcClean.value_code_id == Code.codeId).distinct()
-        insert_query = insert(CdrEtlSurveyHistory).from_select(column_map.keys(), select_module_code_query)
+        select_answer_code_query = session.query(*column_map.values()).distinct()
+        insert_query = insert(CdrEtlSurveyHistory).from_select(column_map.keys(), select_answer_code_query)
         session.execute(insert_query)
 
 

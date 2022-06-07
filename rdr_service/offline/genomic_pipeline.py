@@ -4,6 +4,7 @@ from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicAW3RawDao, GenomicAW4RawDao, \
     GenomicJobRunDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao, GenomicW3NSRawDao, \
     GenomicW5NFRawDao, GenomicW3SSRawDao, GenomicW2WRawDao, GenomicW1ILRawDao
+from rdr_service.genomic.genomic_cvl_reconciliation import GenomicCVLReconcile
 from rdr_service.services.system_utils import JSONObject
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
@@ -424,6 +425,15 @@ def create_aw2f_manifest(feedback_record):
         controller.generate_manifest(GenomicManifestTypes.AW2F,
                                      _genome_type=None,
                                      feedback_record=feedback_record)
+
+
+def reconcile_cvl_results(reconcile_job_type):
+    with GenomicJobController(reconcile_job_type) as controller:
+        cvl_reconciler = GenomicCVLReconcile(
+            reconcile_type=reconcile_job_type
+        )
+        cvl_reconciler.run_reconcile()
+        controller.job_result = GenomicSubProcessResult.SUCCESS
 
 
 def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):

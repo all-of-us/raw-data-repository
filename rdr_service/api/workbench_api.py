@@ -52,6 +52,9 @@ class WorkbenchResearcherApi(BaseApi):
 
     @app_util.auth_required(WORKBENCH_AND_REDCAP)
     def post(self):
+        backfill_arg = request.args.get('backfill')
+        is_backfill = True if backfill_arg and backfill_arg.lower() == 'true' else False
+        self.dao.is_backfill = is_backfill
         return super().post()
 
     def _do_insert(self, m):
