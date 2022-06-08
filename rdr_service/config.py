@@ -211,6 +211,8 @@ DECEASED_REPORT_FILTER_EXCEPTIONS = "deceased_report_filter_exceptions"
 
 PTSC_SERVICE_DESK_EMAIL = "ptsc_service_desk_email"
 
+SENSITIVE_EHR_RELEASE_DATE = 'sensitive_ehr_release_date'
+
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
 
