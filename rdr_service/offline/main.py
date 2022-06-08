@@ -243,12 +243,13 @@ def find_ghosts():
     return '{"success": "true"}'
 
 
-def _build_validation_controller():
+def _build_validation_controller(session):
     return ConsentValidationController(
         consent_dao=ConsentDao(),
         participant_summary_dao=ParticipantSummaryDao(),
         hpo_dao=HPODao(),
-        storage_provider=GoogleCloudStorageProvider()
+        storage_provider=GoogleCloudStorageProvider(),
+        session=session
     )
 
 
@@ -267,7 +268,7 @@ def validate_consent_files():
         session=session,
         consent_dao=validation_controller.consent_dao
     ) as store_strategy:
-        validation_controller.validate_consent_uploads(session, store_strategy)
+        validation_controller.validate_consent_uploads(store_strategy)
     return '{"success": "true"}'
 
 
@@ -284,16 +285,18 @@ def run_sync_consent_files():
 
 @app_util.auth_required(RDR)
 def manually_trigger_validation():
-    controller = ConsentValidationController(
-        consent_dao=ConsentDao(),
-        participant_summary_dao=ParticipantSummaryDao(),
-        hpo_dao=HPODao(),
-        storage_provider=GoogleCloudStorageProvider()
-    )
-    with controller.consent_dao.session() as session, ReplacementStoringStrategy(
+    consent_dao = ConsentDao()
+    with consent_dao.session() as session, ReplacementStoringStrategy(
         session=session,
-        consent_dao=controller.consent_dao
+        consent_dao=consent_dao
     ) as output_strategy:
+        controller = ConsentValidationController(
+            consent_dao=consent_dao,
+            participant_summary_dao=ParticipantSummaryDao(),
+            hpo_dao=HPODao(),
+            storage_provider=GoogleCloudStorageProvider(),
+            session=session
+        )
         for participant_id in request.json.get('ids'):
             controller.validate_all_for_participant(participant_id=participant_id, output_strategy=output_strategy)
     return '{"success": "true"}'

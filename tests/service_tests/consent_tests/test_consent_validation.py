@@ -31,7 +31,8 @@ class ConsentValidationTesting(BaseTestCase):
         self.validator = ConsentValidator(
             consent_factory=self.consent_factory_mock,
             participant_summary=self.participant_summary,
-            va_hpo_id=self.va_hpo.hpoId
+            va_hpo_id=self.va_hpo.hpoId,
+            session=mock.MagicMock()
         )
 
     def test_primary_file_ready_for_sync(self):
