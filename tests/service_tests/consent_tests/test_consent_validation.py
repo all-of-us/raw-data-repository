@@ -373,8 +373,8 @@ class ConsentValidationTesting(BaseTestCase):
                 {
                     'participant_id': self.participant_summary.participantId,
                     'type': ConsentType.PRIMARY_UPDATE,
-                    'other_errors': ", ".join([ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK,
-                                               ConsentOtherErrors.NON_VETERAN_CONSENT_FOR_VETERAN]),
+                    'other_errors': ", ".join([ConsentOtherErrors.NON_VETERAN_CONSENT_FOR_VETERAN,
+                                               ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK]),
                     'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
                 }
             ],
