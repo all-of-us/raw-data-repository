@@ -342,3 +342,10 @@ class GenomicIncidentStatus(messages.Enum):
     OPEN = 0
     RESOLVED = 1
     UNABLE_TO_RESOLVE = 2
+
+
+class GenomicSampleSwapCategory(messages.Enum):
+    UNSET = 0
+    RESULT_NOT_READY = 1
+    RESULT_READY_NOT_VIEWED = 2
+    RESULT_READY_VIEWED = 3

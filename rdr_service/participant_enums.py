@@ -101,6 +101,7 @@ class QuestionnaireResponseStatus(messages.Enum):
     ENTERED_IN_ERROR = 3
     STOPPED = 4
 
+
 class QuestionnaireResponseClassificationType(messages.Enum):
     """
     Categorize questionnaire response payloads exhibiting known data issues

@@ -42,7 +42,8 @@ from rdr_service.model.genomics import (
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
-    GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue)
+    GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
+    GenomicSampleSwap)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -2004,8 +2005,7 @@ class GenomicOutreachDaoV2(BaseDao):
                     GenomicReportState.CVL_RPT_PENDING_DELETE,
                     GenomicReportState.CVL_RPT_DELETED]
         }
-
-        self.genome_types = []
+        self.sample_swaps = []
         self.report_query_state = self.get_report_state_query_config()
 
     def get_id(self, obj):
@@ -2015,12 +2015,21 @@ class GenomicOutreachDaoV2(BaseDao):
         pass
 
     def to_client_json(self, _dict):
-        report_statuses = []
-        # handle date
-        try:
-            timestamp = pytz.utc.localize(_dict['date'])
-        except ValueError:
-            timestamp = _dict['date']
+
+        def _get_sample_swap_module(sample_swap):
+            if not sample_swap:
+                return ''
+            if sample_swap:
+                swap = list(filter(lambda x: x.id == sample_swap.genomic_sample_swap, self.sample_swaps))[0]
+                return f'_{swap.name}_{sample_swap.category.name}'.lower()
+
+        def _get_sample_swaps(data):
+            if any(hasattr(obj, 'GenomicSampleSwapMember') for obj in data):
+                sample_swap_dao = GenomicSampleSwapDao()
+                return sample_swap_dao.get_all()
+
+        self.sample_swaps, report_statuses, timestamp = _get_sample_swaps(
+            data=_dict.get('data')), [], pytz.utc.localize(_dict.get('date'))
 
         if not _dict.get('data'):
             return {
@@ -2031,16 +2040,18 @@ class GenomicOutreachDaoV2(BaseDao):
         for p in _dict.get('data'):
             pid = p.participant_id
             if 'result' in p.type:
-                p_status, p_module = self._determine_report_state(p.genomic_report_state)
+                report_status, report_module = self._determine_report_state(p.genomic_report_state)
                 genomic_result_viewed = p.GenomicResultViewed
-
-                result_viewed = 'yes' if genomic_result_viewed \
-                                         and genomic_result_viewed.module_type == p_module else 'no'
+                result_viewed = 'yes' if genomic_result_viewed and genomic_result_viewed.module_type \
+                                                == report_module else 'no'
+                genomic_swap_module = _get_sample_swap_module(
+                    sample_swap=p.GenomicSampleSwapMember
+                )
 
                 report_statuses.append({
-                    "module": p_module.lower(),
+                    "module": f'{report_module.lower()}{genomic_swap_module}',
                     "type": 'result',
-                    "status": p_status,
+                    "status": report_status,
                     "viewed": result_viewed,
                     "participant_id": f'P{pid}',
                 })
@@ -2166,6 +2177,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         distinct(GenomicMemberReportState.participant_id).label('participant_id'),
                         GenomicMemberReportState.genomic_report_state,
                         GenomicResultViewed,
+                        GenomicSampleSwapMember,
                         literal('result').label('type')
                     )
                     .join(
@@ -2181,6 +2193,9 @@ class GenomicOutreachDaoV2(BaseDao):
                     ).outerjoin(
                         GenomicResultViewed,
                         GenomicResultViewed.participant_id == GenomicMemberReportState.participant_id
+                    ).outerjoin(
+                        GenomicSampleSwapMember,
+                        GenomicSampleSwapMember.genomic_set_member_id == GenomicSetMember.id
                     ).filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
@@ -3716,3 +3731,14 @@ class GenomicCVLResultPastDueDao(UpdatableDao):
 
             self.update(current_record)
 
+
+class GenomicSampleSwapDao(BaseDao):
+    def __init__(self):
+        super(GenomicSampleSwapDao, self).__init__(
+            GenomicSampleSwap, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
