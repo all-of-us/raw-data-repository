@@ -52,7 +52,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         # Intended to make filtering module response data by test_participant status more efficient in BigQuery
         _participant_module_responses_sql = """
             select qr.questionnaire_id, qr.questionnaire_response_id, qr.created, qr.authored, qr.language,
-                   qr.participant_id, qh2.external_id, qr.status,
+                   qr.participant_id, qh2.external_id, qr.status, qr.answer_hash,
                    CASE
                        WHEN p.is_test_participant = 1  or p.is_ghost_id = 1 or h.name = :test_hpo THEN 1
                        ELSE 0
@@ -71,8 +71,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                       and qc.questionnaire_version = qh.version
                 inner join code c on c.code_id = qc.code_id
                 where c.value = :module_id and c.system = :system
-                order by qr.created DESC
-            );
+            )
+            order by qr.created DESC;
         """
 
         # Query to get questionnaire answers for a specific questionnaire_response_id (no ordering needed)
@@ -113,9 +113,20 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             responses = session.execute(_participant_module_responses_sql, {'module_id': module_id, 'p_id': p_id,
                                                                             'test_hpo': TEST_HPO_NAME,
                                                                             'system': PPI_SYSTEM})
+            answer_hashes_processed = []
             for qr in responses:
+                if qr.answer_hash in answer_hashes_processed:
+                    # PDR-863:  This response is pending being flagged by RDR as a duplicate (same answer hash as
+                    # a more recently created response).  Proactively exclude from PDR data to avoid orphaned records
+                    continue
+
+                answer_hashes_processed.append(qr.answer_hash)
                 # Populate the response metadata (created, authored, etc.) into a data dict
                 data = self.ro_dao.to_dict(qr, result_proxy=responses)
+
+                # Don't include the answer hash in the PDR data dictionary
+                del data['answer_hash']
+
                 # PDR-235:  Adding response FHIR status enum values (IN_PROGRESS, COMPLETED, ...)  to the metadata
                 # dict.  Providing both string and integer key/value pairs, per the PDR BigQuery schema conventions
                 if isinstance(data['status'], int):

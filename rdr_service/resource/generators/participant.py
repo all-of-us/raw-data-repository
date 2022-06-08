@@ -745,7 +745,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 # consent_added == True means we already know it wasn't a replayed response
                 if consent_added or not self.is_replay(last_mod_processed, last_answer_hash,
                                                        module_data, row.answerHash,
-                                                       ignore_keys=['module_created', 'questionnaire_response_id']):
+                                                       ignore_keys=['module_created', 'questionnaire_response_id',
+                                                                    'classification_type', 'classification_type_id',
+                                                                    'semantic_version']):
                     modules.append(module_data)
                     # Find module in ParticipantActivity Enum via a case-insensitive way.
                     mod_found = False
