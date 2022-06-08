@@ -2028,8 +2028,9 @@ class GenomicOutreachDaoV2(BaseDao):
                 sample_swap_dao = GenomicSampleSwapDao()
                 return sample_swap_dao.get_all()
 
-        self.sample_swaps, report_statuses, timestamp = _get_sample_swaps(
-            data=_dict.get('data')), [], pytz.utc.localize(_dict.get('date'))
+        self.sample_swaps = _get_sample_swaps(data=_dict.get('data'))
+        timestamp = pytz.utc.localize(_dict.get('date'))
+        report_statuses = []
 
         if not _dict.get('data'):
             return {
