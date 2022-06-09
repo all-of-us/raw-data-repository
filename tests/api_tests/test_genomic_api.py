@@ -233,6 +233,7 @@ class RhpGenomicPIIApiTest(GenomicApiTestBase):
         self._make_summary(participant)
         self._make_set_member(
             participant=participant,
+            biobankId=participant.biobankId,
             collectionTubeId=11111,
             cvlW4wrHdrManifestJobRunID=1,
             gcManifestSampleSource='Whole Blood'
@@ -243,8 +244,9 @@ class RhpGenomicPIIApiTest(GenomicApiTestBase):
             biobankStoredSampleId=11111,
             confirmed=clock.CLOCK.now()
         )
-        response = self.send_get(f"GenomicPII/RHP/P{participant.participantId}")
+        response = self.send_get(f"GenomicPII/RHP/A{participant.biobankId}")
         self.assertIsNotNone(response)
+
         needed_keys = ['participant_id', 'first_name', 'last_name', 'date_of_birth', 'sample_source', 'collection_date']
         all_keys_values = all(not len(response.keys() - needed_keys) and
                               response.values())
@@ -255,7 +257,7 @@ class RhpGenomicPIIApiTest(GenomicApiTestBase):
         self._make_summary(p, withdrawalStatus=WithdrawalStatus.NO_USE
                            )
         self._make_set_member(p)
-        self.send_get("GenomicPII/RHP/P2", expected_status=404)
+        self.send_get("GenomicPII/RHP/A2", expected_status=404)
 
     def test_get_pii_no_gror_consent(self):
         participant = self._make_participant()
@@ -265,6 +267,7 @@ class RhpGenomicPIIApiTest(GenomicApiTestBase):
         )
         self._make_set_member(
             participant=participant,
+            biobankId=participant.biobankId,
             collectionTubeId=11111,
             cvlW4wrHdrManifestJobRunID=1,
             gcManifestSampleSource='Whole Blood'
@@ -275,7 +278,7 @@ class RhpGenomicPIIApiTest(GenomicApiTestBase):
             biobankStoredSampleId=11111,
             confirmed=clock.CLOCK.now()
         )
-        p2_pii = self.send_get("GenomicPII/RHP/P2")
+        p2_pii = self.send_get(f"GenomicPII/RHP/A{participant.biobankId}")
         self.assertEqual(p2_pii['message'], "No RoR consent.")
 
     def test_get_pii_bad_request(self):

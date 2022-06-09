@@ -25,27 +25,38 @@ class GenomicPiiApi(BaseApi):
         super(GenomicPiiApi, self).__init__(GenomicPiiDao())
 
     @auth_required([GEM, RDR])
-    def get(self, mode=None, p_id=None):
+    def get(self, mode=None, pii_id=None):
         if mode not in ('GP', 'RHP'):
             raise BadRequest("GenomicPII Mode required to be \"GP\" or \"RHP\".")
 
-        if p_id is not None:
-            pii = self.dao.get_by_pid(
-                p_id,
-                mode
-            )
+        if not pii_id:
+            raise BadRequest
 
-            if not pii:
-                raise NotFound(f"Participant with ID {p_id} not found")
+        pii_id = pii_id[1:] if pii_id[0].isalpha() else pii_id
+        biobank_id, participant_id = None, pii_id
 
-            proto_payload = {
-                'mode': mode,
-                'data': pii
-            }
+        if mode == 'RHP':
+            biobank_id = pii_id
+            participant_id = None
 
-            return self._make_response(proto_payload)
+        pii_data = self.dao.get_pii(
+            mode=mode,
+            participant_id=participant_id,
+            biobank_id=biobank_id
+        )
 
-        raise BadRequest
+        if not pii_data:
+            if biobank_id:
+                raise NotFound(f"Participant with biobank_id {pii_id} not found")
+
+            raise NotFound(f"Participant with participant_id {pii_id} not found")
+
+        proto_payload = {
+            'mode': mode,
+            'data': pii_data
+        }
+
+        return self._make_response(proto_payload)
 
 
 class GenomicOutreachApi(BaseApi):
