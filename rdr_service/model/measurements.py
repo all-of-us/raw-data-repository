@@ -4,7 +4,8 @@ from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base
 from rdr_service.model.utils import Enum, UTCDateTime
-from rdr_service.participant_enums import PhysicalMeasurementsStatus
+from rdr_service.participant_enums import PhysicalMeasurementsStatus, PhysicalMeasurementsCollectType, \
+    OriginMeasurementUnit
 
 
 measurement_to_qualifier = Table(
@@ -52,7 +53,12 @@ class PhysicalMeasurements(Base):
     """If measurements are edited or cancelled, user notes to detail change"""
     measurements = relationship("Measurement", cascade="all, delete-orphan")
     origin = Column("origin", String(255))
-    isSelfReported = Column("is_self_reported", Boolean, default=False)
+    collectType = Column("collect_type", Enum(PhysicalMeasurementsCollectType),
+                         default=PhysicalMeasurementsCollectType.UNSET)
+    originMeasurementUnit = Column("origin_measurement_unit", Enum(OriginMeasurementUnit),
+                                   default=OriginMeasurementUnit.UNSET)
+    questionnaireResponseId = Column("questionnaire_response_id", Integer,
+                                     ForeignKey("questionnaire_response.questionnaire_response_id"), nullable=True)
     resource = Column("resource", JSON, nullable=True)
     """Original resource value; whole payload request that was sent"""
 

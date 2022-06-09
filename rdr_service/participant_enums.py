@@ -83,6 +83,13 @@ class PhysicalMeasurementsCollectType(messages.Enum):
     SELF_REPORTED = 2
 
 
+class OriginMeasurementUnit(messages.Enum):
+    """The origin unit type of this measurement record"""
+    UNSET = 0
+    IMPERIAL = 1
+    METRICS = 2
+
+
 class QuestionnaireStatus(messages.Enum):
     """The status of a given questionnaire for this participant"""
 
