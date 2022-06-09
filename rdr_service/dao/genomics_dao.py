@@ -1763,11 +1763,11 @@ class GenomicPiiDao(BaseDao):
 
         return {self.camel_to_snake(k): v for k, v in participant_dict.items()}
 
-    def get_by_pid(self, pid, mode):
+    def get_pii(self, mode, participant_id=None, biobank_id=None):
         """
-        Returns Biobank ID, First Name, and Last Name for requested PID
-        :param pid:
         :param mode:
+        :param participant_id:
+        :param biobank_id:
         :return: query results for PID
         """
         mode = mode.lower()
@@ -1777,7 +1777,7 @@ class GenomicPiiDao(BaseDao):
         ).subquery()
 
         with self.session() as session:
-            if mode == 'gp':
+            if mode == 'gp' and participant_id:
                 record = session.query(
                     GenomicSetMember.biobankId,
                     ParticipantSummary.firstName,
@@ -1797,8 +1797,10 @@ class GenomicPiiDao(BaseDao):
                 ).outerjoin(
                     informing_loop_ready,
                     informing_loop_ready.c.participant_id == GenomicSetMember.participantId
+                ).filter(
+                    GenomicSetMember.participantId == participant_id
                 )
-            elif mode == 'rhp':
+            elif mode == 'rhp' and biobank_id:
                 record = session.query(
                     GenomicSetMember.participantId,
                     ParticipantSummary.firstName,
@@ -1817,11 +1819,11 @@ class GenomicPiiDao(BaseDao):
                     or_(
                         GenomicSetMember.cvlW4wrHdrManifestJobRunID.isnot(None),
                         GenomicSetMember.cvlW4wrPgxManifestJobRunID.isnot(None)
-                    )
+                    ),
+                    GenomicSetMember.biobankId == biobank_id
                 )
 
             record = record.filter(
-                GenomicSetMember.participantId == pid,
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE

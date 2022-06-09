@@ -304,7 +304,7 @@ api.add_resource(RedcapResearcherAuditApi,
                  methods=['GET'])
 
 api.add_resource(GenomicPiiApi,
-                 API_PREFIX + "GenomicPII/<string:mode>/<participant_id:p_id>",
+                 API_PREFIX + "GenomicPII/<string:mode>/<string:pii_id>",
                  endpoint='genomic.pii',
                  methods=['GET'])
 
