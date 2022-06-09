@@ -1763,10 +1763,10 @@ class GenomicPiiDao(BaseDao):
 
         return {self.camel_to_snake(k): v for k, v in participant_dict.items()}
 
-    def get_pii(self, mode, participant_id, biobank_id):
+    def get_pii(self, mode, participant_id=None, biobank_id=None):
         """
-        :param participant_id:
         :param mode:
+        :param participant_id:
         :param biobank_id:
         :return: query results for PID
         """
