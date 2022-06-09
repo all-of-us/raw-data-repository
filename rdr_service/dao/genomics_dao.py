@@ -1802,7 +1802,7 @@ class GenomicPiiDao(BaseDao):
                 )
             elif mode == 'rhp' and biobank_id:
                 record = session.query(
-                    GenomicSetMember.participantId,
+                    func.concat('P', GenomicSetMember.participantId).label('participantId'),
                     ParticipantSummary.firstName,
                     ParticipantSummary.lastName,
                     ParticipantSummary.consentForGenomicsROR,
