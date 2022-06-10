@@ -323,10 +323,17 @@ class GenomicOutreachApiV2(UpdatableApi):
                 raise BadRequest(f"GenomicOutreachV2 GET accepted types: {' | '.join(self.dao.req_allowed_types)}")
             current_type = req_type
 
-        self.dao.set_globals(
+        self._set_dao_globals(
             module=current_module,
             req_type=current_type
         )
+
+    def _set_dao_globals(self, module, req_type):
+        if module:
+            self.dao.module = [module]
+            self.dao.report_query_state = self.dao.get_report_state_query_config()
+        if req_type:
+            self.dao.req_type = [req_type]
 
     @staticmethod
     def validate_post_data():

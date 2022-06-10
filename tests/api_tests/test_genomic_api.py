@@ -23,7 +23,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicGcDataFileDao, GenomicResultViewedDao
 )
 from rdr_service.genomic_enums import GenomicJob, GenomicReportState, GenomicWorkflowState, GenomicManifestTypes, \
-    GenomicQcStatus
+    GenomicQcStatus, GenomicSampleSwapCategory
 from rdr_service.model.participant import Participant
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -1380,6 +1380,74 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         for pid in members_pid_resp_set:
             loops = list(filter(lambda x: x['participant_id'] == pid, resp['data']))
             self.assertEqual(len(loops), 3)
+
+    def test_get_sample_swap_result(self):
+        module = 'gem'
+        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
+        report_state = GenomicReportState.GEM_RPT_READY
+        genome_type = config.GENOME_TYPE_ARRAY
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        sample_swap = self.data_generator.create_database_genomic_sample_swap(
+            name='daSwap'
+        )
+
+        participant = self.data_generator.create_database_participant()
+
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            consentForGenomicsRORAuthored=fake_date_one,
+            consentForStudyEnrollmentAuthored=fake_date_one
+        )
+
+        gen_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId="21042005280",
+            genomeType=genome_type,
+            genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+            participantId=participant.participantId,
+            genomicWorkflowStateModifiedTime=fake_date_one
+        )
+
+        self.data_generator.create_database_genomic_member_report_state(
+            genomic_set_member_id=gen_member.id,
+            participant_id=participant.participantId,
+            module=module,
+            genomic_report_state=report_state
+        )
+
+        # initial result ready
+        resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
+
+        result_keys = ['module', 'type', 'status', 'viewed', 'participant_id']
+
+        all_result_keys_data = all(not len(obj.keys() - result_keys) and obj.values() for obj in resp['data'])
+        self.assertTrue(all_result_keys_data)
+        self.assertEqual(len(resp['data']), 1)
+        self.assertTrue(all(obj['type'] == 'result' for obj in resp['data']))
+        self.assertTrue(all(obj['module'] == module for obj in resp['data']))
+
+        # denoted as being part of sample swap
+        self.data_generator.create_database_genomic_sample_swap_member(
+            genomic_sample_swap=sample_swap.id,
+            genomic_set_member_id=gen_member.id,
+            category=GenomicSampleSwapCategory.RESULT_READY_NOT_VIEWED
+        )
+
+        resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
+
+        self.assertTrue(all_result_keys_data)
+        self.assertEqual(len(resp['data']), 1)
+        self.assertTrue(all(obj['type'] == 'result' for obj in resp['data']))
+        swap_module_name = f'{module}_{sample_swap.name}_' \
+                           f'{GenomicSampleSwapCategory.RESULT_READY_NOT_VIEWED.name}'.lower()
+        self.assertTrue(all(obj['module'] == swap_module_name for obj in resp['data']))
 
     # POST/PUT
     def test_validate_post_put_data(self):
