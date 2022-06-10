@@ -243,9 +243,9 @@ def find_ghosts():
     return '{"success": "true"}'
 
 
-def _build_validation_controller(session):
+def _build_validation_controller(session, consent_dao):
     return ConsentValidationController(
-        consent_dao=ConsentDao(),
+        consent_dao=consent_dao,
         participant_summary_dao=ParticipantSummaryDao(),
         hpo_dao=HPODao(),
         storage_provider=GoogleCloudStorageProvider(),
@@ -263,11 +263,15 @@ def check_for_consent_corrections():
 
 @app_util.auth_required_cron
 def validate_consent_files():
-    validation_controller = _build_validation_controller()
-    with validation_controller.consent_dao.session() as session, StoreResultStrategy(
+    consent_dao = ConsentDao()
+    with consent_dao.session() as session, StoreResultStrategy(
         session=session,
-        consent_dao=validation_controller.consent_dao
+        consent_dao=consent_dao
     ) as store_strategy:
+        validation_controller = _build_validation_controller(
+            session=session,
+            consent_dao=consent_dao
+        )
         validation_controller.validate_consent_uploads(store_strategy)
     return '{"success": "true"}'
 
