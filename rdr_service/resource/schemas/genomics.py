@@ -93,12 +93,11 @@ class GenomicSetMemberSchema(Schema):
     cvl_w4f_manifest_job_run_id = fields.Int32()
     genomic_workflow_state = fields.EnumString(enum=GenomicWorkflowState)
     genomic_workflow_state_id = fields.EnumInteger(enum=GenomicWorkflowState)
-
-    genomic_workflow_state_history = fields.JSON()
+    # genomic_workflow_state_history = fields.JSON()
     collection_tube_id = fields.String(validate=validate.Length(max=80))
     gc_site_id = fields.String(validate=validate.Length(max=11))
-    arr_aw3_manifest_job_run_id = fields.Int32()
-    wgs_aw3_manifest_job_run_id = fields.Int32()
+    # arr_aw3_manifest_job_run_id = fields.Int32()
+    # wgs_aw3_manifest_job_run_id = fields.Int32()
     genomic_workflow_state_modified_time = fields.DateTime()
     report_consent_removal_date = fields.DateTime()
     qc_status = fields.EnumString(enum=GenomicQcStatus)
@@ -107,8 +106,43 @@ class GenomicSetMemberSchema(Schema):
     dev_note = fields.String(validate=validate.Length(max=255))
     aw1_file_processed_id = fields.Int32()
     aw2_file_processed_id = fields.Int32()
-    biobank_id_str = fields.String(validate=validate.Length(max=128))
+    # biobank_id_str = fields.String(validate=validate.Length(max=128))
     aw2f_job_run_id = fields.Int32()
+
+    aw0_manifest_file_id = fields.Int32()
+    aw2f_manifest_job_run_id = fields.Int32()
+    aw3_manifest_file_id = fields.Int32()
+    block_research = fields.Int16()
+    block_research_reason = fields.String(validate=validate.Length(max=255))
+    block_results = fields.Int16()
+    block_results_reason = fields.String(validate=validate.Length(max=255))
+    color_metrics_job_run_id = fields.Int32()
+    cvl_secondary_conf_failure = fields.String(validate=validate.Length(max=255))
+    cvl_w1il_hdr_job_run_id = fields.Int32()
+    cvl_w1il_pgx_job_run_id = fields.Int32()
+    cvl_w2sc_manifest_job_run_id = fields.Int32()
+    cvl_w2w_job_run_id = fields.Int32()
+    cvl_w3ns_manifest_job_run_id = fields.Int32()
+    cvl_w3sc_manifest_job_run_id = fields.Int32()
+    cvl_w3sr_manifest_job_run_id = fields.Int32()
+    cvl_w3ss_manifest_job_run_id = fields.Int32()
+    cvl_w4wr_hdr_manifest_job_run_id = fields.Int32()
+    cvl_w4wr_pgx_manifest_job_run_id = fields.Int32()
+    cvl_w5nf_hdr_manifest_job_run_id = fields.Int32()
+    cvl_w5nf_pgx_manifest_job_run_id = fields.Int32()
+    diversion_pouch_site_flag = fields.Int16()
+    gem_date_of_import = fields.DateTime()
+    gem_metrics_ancestry_loop_response = fields.String(validate=validate.Length(max=10))
+    gem_metrics_available_results = fields.String(validate=validate.Length(max=255))
+    gem_metrics_results_released_at = fields.Int32()
+    genomic_workflow_state_str = fields.Int32()
+    ignore_flag = fields.Int16()
+    informing_loop_ready_flag = fields.Int32()
+    informing_loop_ready_flag_modified = fields.DateTime()
+    participant_origin = fields.String(validate=validate.Length(max=80))
+    qc_status_str = fields.String(validate=validate.Length(max=64))
+    replated_member_id = fields.Int32()
+
 
     class Meta:
         schema_id = SchemaID.genomic_set_member
@@ -130,6 +164,9 @@ class GenomicJobRunSchema(Schema):
     run_result = fields.EnumString(enum=GenomicSubProcessResult)
     run_result_id = fields.EnumInteger(enum=GenomicSubProcessResult)
     result_message = fields.String(validate=validate.Length(max=150))
+    job_id_str = fields.String(validate=validate.Length(max=64))
+    created = fields.DateTime()
+    modified = fields.DateTime()
 
     class Meta:
         schema_id = SchemaID.genomic_job_run
@@ -153,6 +190,8 @@ class GenomicFileProcessedSchema(Schema):
     file_result_id = fields.EnumInteger(enum=GenomicSubProcessResult)
     upload_date = fields.DateTime()
     genomic_manifest_file_id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
 
     class Meta:
         schema_id = SchemaID.genomic_file_processed
@@ -177,6 +216,7 @@ class GenomicManifestFileSchema(Schema):
     rdr_processing_complete_date = fields.DateTime()
     ignore_flag = fields.Int16()
     file_name = fields.String(validate=validate.Length(max=255))
+    manifest_type_id_str = fields.String(validate=validate.Length(max=64))
 
     class Meta:
         schema_id = SchemaID.genomic_manifest_file
@@ -198,6 +238,7 @@ class GenomicManifestFeedbackSchema(Schema):
     feedback_complete = fields.Int16()
     feedback_complete_date = fields.DateTime()
     ignore_flag = fields.Int16()
+    version = fields.Int32()
 
     class Meta:
         schema_id = SchemaID.genomic_manifest_feedback
@@ -321,6 +362,27 @@ class GenomicUserEventMetricsSchema(Schema):
     class Meta:
         schema_id = SchemaID.genomic_user_event_metrics
         resource_uri = 'GenomicUserEventMetrics'
+        resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
+
+
+class GenomicInformingLoopSchema(Schema):
+
+    id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
+    message_record_id = fields.Int32()
+    participant_id = fields.Int32()
+    event_type = fields.String(validate=validate.Length(max=256))
+    event_authored_time = fields.DateTime()
+    module_type = fields.String(validate=validate.Length(max=128))
+    decision_value = fields.String(validate=validate.Length(max=128))
+    sample_id = fields.String(validate=validate.Length(max=80))
+
+    class Meta:
+        schema_id = SchemaID.genomic_informing_loop
+        resource_uri = 'GenomicInformingLoop'
         resource_pk_field = 'id'
         pii_fields = ()  # List fields that contain PII data.
         pii_filter = {}  # dict(field: lambda function).

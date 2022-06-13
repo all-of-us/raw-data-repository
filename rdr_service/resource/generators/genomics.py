@@ -462,3 +462,50 @@ def genomic_user_event_metrics_batch_update(_pk_ids):
     w_dao = ResourceDataDao()
     for _pk in _pk_ids:
         genomic_user_event_metrics_update(_pk, gen=gen, w_dao=w_dao)
+
+
+class GenomicInformingLoopSchemaGenerator(generators.BaseGenerator):
+    """
+    Generate a GenomicInformingLoop resource object
+    """
+    ro_dao = None
+
+    def make_resource(self, _pk, backup=False):
+        """
+        Build a resource object from the given primary key id.
+        :param _pk: Primary key value from rdr table.
+        :param backup: if True, get from backup database instead of Primary.
+        :return: resource object
+        """
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
+            row = ro_session.execute(text('select * from genomic_informing_loop where id = :id'),
+                                     {'id': _pk}).first()
+            data = self.ro_dao.to_dict(row)
+            return generators.ResourceRecordSet(schemas.GenomicInformingLoopSchema, data)
+
+
+def genomic_informing_loop_update(_pk, gen=None, w_dao=None):
+    """
+    Generate GenomicInformingLoop resource record.
+    :param _pk: Primary Key
+    :param gen: GenomicInformingLoopSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicInformingLoopSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_informing_loop_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
+    """
+    gen = GenomicInformingLoopSchemaGenerator()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_informing_loop_update(_pk, gen=gen, w_dao=w_dao)
