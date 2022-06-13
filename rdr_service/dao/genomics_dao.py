@@ -1636,7 +1636,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoUtils):
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                    GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                    GenomicSetMember.genomeType.in_((config.GENOME_TYPE_ARRAY, config.GENOME_TYPE_ARRAY_INVESTIGATION)),
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
@@ -1685,7 +1685,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoUtils):
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                    GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                    GenomicSetMember.genomeType.in_((config.GENOME_TYPE_WGS, config.GENOME_TYPE_WGS_INVESTIGATION)),
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
