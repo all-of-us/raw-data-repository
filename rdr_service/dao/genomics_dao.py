@@ -2879,7 +2879,7 @@ class GenomicMemberReportStateDao(UpdatableDao):
         return None
 
 
-class GenomicInformingLoopDao(UpdatableDao):
+class GenomicInformingLoopDao(UpdatableDao, GenomicDaoUtils):
     validate_version_match = False
 
     def __init__(self):
