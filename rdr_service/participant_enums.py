@@ -87,7 +87,7 @@ class OriginMeasurementUnit(messages.Enum):
     """The origin unit type of this measurement record"""
     UNSET = 0
     IMPERIAL = 1
-    METRICS = 2
+    METRIC = 2
 
 
 class QuestionnaireStatus(messages.Enum):

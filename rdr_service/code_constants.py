@@ -168,6 +168,7 @@ PERSONAL_AND_FAMILY_HEALTH_HISTORY_MODULE = 'personalfamilyhistory'
 PERSONAL_MEDICAL_HISTORY_MODULE = "PersonalMedicalHistory"
 MEDICATIONS_MODULE = "MedicationsPPI"
 REMOTE_PM_MODULE = 'pm_height_weight'
+REMOTE_PM_UNIT = 'measurement_unit'
 # TODO: UPDATE THIS TO REAL CODEBOOK VALUES WHEN PRESENT
 HEALTHCARE_ACCESS_MODULE = "HealthcareAccess"
 # COVID Experience surveys:
