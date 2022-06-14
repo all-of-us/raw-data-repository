@@ -72,7 +72,8 @@ from rdr_service.code_constants import (
     THE_BASICS_PPI_MODULE,
     BASICS_PROFILE_UPDATE_QUESTION_CODES,
     REMOTE_PM_MODULE,
-    REMOTE_PM_UNIT
+    REMOTE_PM_UNIT,
+    MEASUREMENT_SYS
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -117,8 +118,6 @@ _SIGNED_CONSENT_EXTENSION = "http://terminology.pmi-ops.org/StructureDefinition/
 _LANGUAGE_EXTENSION = "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language"
 
 _CATI_EXTENSION = "http://all-of-us.org/fhir/forms/non-participant-author"
-
-MEASUREMENT_SYS = 'http://terminology.pmi-ops.org/CodeSystem/physical-measurements'
 
 
 def count_completed_baseline_ppi_modules(participant_summary):
@@ -626,7 +625,7 @@ class QuestionnaireResponseDao(BaseDao):
             # convert to METRIC
             height_cm_decimal = round(self_reported_int_value_map['self_reported_height_ft'] * 30.48
                                       + self_reported_int_value_map['self_reported_height_in'] * 2.54, 1)
-            weight_kg_decimal = round(self_reported_int_value_map['self_reported_weight_pounds'] / 0.453592, 1)
+            weight_kg_decimal = round(self_reported_int_value_map['self_reported_weight_pounds'] * 0.453592, 1)
             self_reported_int_value_map['self_reported_height_cm'] = height_cm_decimal
             self_reported_int_value_map['self_reported_weight_kg'] = weight_kg_decimal
         elif origin_measurement_unit == OriginMeasurementUnit.METRIC:
@@ -664,8 +663,7 @@ class QuestionnaireResponseDao(BaseDao):
             origin='vibrent',
             collectType=PhysicalMeasurementsCollectType.SELF_REPORTED,
             originMeasurementUnit=origin_measurement_unit,
-            questionnaireResponseId=questionnaire_response.questionnaireResponseId,
-            resource=json.loads(questionnaire_response.resource)
+            questionnaireResponseId=questionnaire_response.questionnaireResponseId
         )
         pm_dao.insert_remote_pm(pm)
 

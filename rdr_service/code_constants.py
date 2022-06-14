@@ -5,6 +5,7 @@ PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 # System for codes that are used in questionnaires but we don't need for analysis purposes;
 # these codes are ignored by RDR.
 PPI_EXTRA_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi-extra"
+MEASUREMENT_SYS = 'http://terminology.pmi-ops.org/CodeSystem/physical-measurements'
 
 SITE_ID_SYSTEM = "https://www.pmi-ops.org/site-id"
 QUEST_SITE_ID_SYSTEM = "https://www.pmi-ops.org/quest-site"

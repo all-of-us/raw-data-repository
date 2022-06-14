@@ -249,6 +249,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
     def insert_remote_pm_with_session(self, session, obj):
         self.set_measurement_ids(obj)
+        self.set_self_reported_pm_resource_json(obj)
         self._update_participant_summary(session, obj, is_amendment=False, is_self_reported=True)
         return super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
 
@@ -635,10 +636,13 @@ class PhysicalMeasurementsDao(UpdatableDao):
         Subclasses must implement this unless their model store a model.resource attribute.
         """
 
-        if model.collectType == PhysicalMeasurementsCollectType.SELF_REPORTED:
-            doc = self.load_self_reported_pm_client_json(model)
-        else:
-            doc, composition = self.load_record_fhir_doc(model)  # pylint: disable=unused-variable
+        doc, composition = self.load_record_fhir_doc(model)  # pylint: disable=unused-variable
+
+        doc['collectType'] = str(model.collectType if model.collectType is not None else
+                                 PhysicalMeasurementsCollectType.UNSET)
+        doc['originMeasurementUnit'] = str(model.originMeasurementUnit if model.originMeasurementUnit is not None else
+                                           OriginMeasurementUnit.UNSET)
+        doc['origin'] = model.origin
 
         return doc
 
@@ -764,10 +768,70 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
         return site_id, author, reason
 
-    @staticmethod
-    def load_self_reported_pm_client_json(record):
-        pass
-        return ""
+    def set_self_reported_pm_resource_json(self, record):
+        doc = {
+            "id": record.physicalMeasurementsId,
+            "type": "document",
+            "resourceType": "Bundle",
+            "entry": []
+
+        }
+
+        coding_map = {
+            'height': {
+                "text": "Height",
+                "coding": [
+                    {
+                        "code": "8302-2",
+                        "system": "http://loinc.org",
+                        "display": "Body height"
+                    },
+                    {
+                        "code": "height",
+                        "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+                        "display": "Height"
+                    }
+                ]
+            },
+            'weight': {
+                "text": "Weight",
+                "coding": [
+                    {
+                        "code": "29463-7",
+                        "system": "http://loinc.org",
+                        "display": "Body weight"
+                    },
+                    {
+                        "code": "weight",
+                        "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+                        "display": "Weight"
+                    }
+                ]
+            }
+        }
+
+        for measurement in record.measurements:
+            entry = {
+                "fullUrl": "",
+                "resource": {
+                    "code": coding_map.get(measurement.codeValue, None),
+                    "status": "final",
+                    "subject": {
+                        "reference": "Patient/P" + str(record.participantId)
+                    },
+                    "resourceType": "Observation",
+                    "valueQuantity": {
+                        "code": measurement.valueUnit,
+                        "unit": measurement.valueUnit,
+                        "value": measurement.valueDecimal,
+                        "system": "http://unitsofmeasure.org"
+                    },
+                    "effectiveDateTime": record.finalized.strftime('%Y-%m-%dT%H:%M:%S')
+                }
+            }
+            doc['entry'].append(entry)
+
+        record.resource = doc
 
     @staticmethod
     def load_record_fhir_doc(record):
@@ -782,12 +846,6 @@ class PhysicalMeasurementsDao(UpdatableDao):
         else:
             doc = json.loads(record.resource)
 
-        doc['collectType'] = str(record.collectType if record.collectType is not None else
-                                 PhysicalMeasurementsCollectType.UNSET)
-        doc['originMeasurementUnit'] = str(record.originMeasurementUnit if record.originMeasurementUnit is not None else
-                                           OriginMeasurementUnit.UNSET)
-        doc['origin'] = record.origin
-        doc['questionnaireResponseId'] = record.questionnaireResponseId
         composition = None
         entries = doc.get('entry', list())
 

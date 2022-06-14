@@ -34,18 +34,17 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         path_1 = "Participant/%s/PhysicalMeasurements" % self.participant_id
         self.send_post(path_1, measurements_1, expected_status=http.client.BAD_REQUEST)
 
-    def test_get_remote_pm_info(self):
+    def test_get_collect_type_info(self):
         self.send_consent(self.participant_id)
         self.send_consent(self.participant_id_2)
         now = self.time1
         self._insert_measurements(now.isoformat())
         response = self.send_get("Participant/%s/PhysicalMeasurements" % self.participant_id)
+        print(json.dumps(response))
         self.assertEqual(1, len(response["entry"]))
         self.assertEqual(response["entry"][0]["resource"]["collectType"], 'SITE')
         self.assertEqual(response["entry"][0]["resource"]["originMeasurementUnit"], 'UNSET')
         self.assertEqual(response["entry"][0]["resource"]["origin"], 'hpro')
-        self.assertEqual(response["entry"][0]["resource"]["questionnaireResponseId"], None)
-        print(json.dumps(response))
 
     def test_insert(self):
         self.send_consent(self.participant_id)

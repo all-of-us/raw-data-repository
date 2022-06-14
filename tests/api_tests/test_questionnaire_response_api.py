@@ -149,7 +149,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('baselineQuestionnairesFirstCompleteAuthored'), TIME_3.isoformat())
 
-    def test_remote_pm_response(self):
+    def test_remote_pm_imperial_response(self):
         participant_id = self.create_participant()
         authored_1 = datetime.datetime(2019, 3, 16, 1, 39, 33, tzinfo=pytz.utc)
         created = datetime.datetime(2019, 3, 16, 1, 51, 22)
@@ -172,8 +172,84 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(summary['physicalMeasurementsTime'], '2016-01-02T00:00:00')
 
         response = self.send_get("Participant/{0}/PhysicalMeasurements".format(participant_id))
+        self.assertEqual(1, len(response["entry"]))
+        self.assertEqual(response["entry"][0]["resource"]["collectType"], 'SELF_REPORTED')
+        self.assertEqual(response["entry"][0]["resource"]["originMeasurementUnit"], 'IMPERIAL')
+        self.assertEqual(response["entry"][0]["resource"]["origin"], 'vibrent')
+        self.assertEqual(len(response["entry"][0]["resource"]["entry"]), 2)
+        self.assertEqual(response["entry"][0]["resource"]["entry"][0]['resource']['status'], 'final')
+        self.assertEqual(response["entry"][0]["resource"]["entry"][0]['resource']['valueQuantity'],
+                         {
+                             "code": "cm",
+                             "unit": "cm",
+                             "value": 172.7,
+                             "system": "http://unitsofmeasure.org"
+                         }
+                         )
+        self.assertEqual(response["entry"][0]["resource"]["entry"][0]['resource']['effectiveDateTime'],
+                         '2022-06-01T18:23:57')
+        self.assertEqual(response["entry"][0]["resource"]["entry"][1]['resource']['status'], 'final')
+        self.assertEqual(response["entry"][0]["resource"]["entry"][1]['resource']['valueQuantity'],
+                         {
+                             "code": "kg",
+                             "unit": "kg",
+                             "value": 72.6,
+                             "system": "http://unitsofmeasure.org"
+                         }
+                         )
+        self.assertEqual(response["entry"][0]["resource"]["entry"][1]['resource']['effectiveDateTime'],
+                         '2022-06-01T18:23:57')
 
-        print(str(response))
+    def test_remote_pm_metric_response(self):
+        participant_id = self.create_participant()
+        authored_1 = datetime.datetime(2019, 3, 16, 1, 39, 33, tzinfo=pytz.utc)
+        created = datetime.datetime(2019, 3, 16, 1, 51, 22)
+        with FakeClock(created):
+            self.send_consent(participant_id, authored=authored_1)
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary["physicalMeasurementsStatus"], 'UNSET')
+
+        remote_pm_questionnaire_id = self.create_questionnaire("remote_pm_questionnaire.json")
+
+        resource = self._load_response_json("remote_pm_response_metric.json", remote_pm_questionnaire_id,
+                                            participant_id)
+        with FakeClock(TIME_2):
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary['physicalMeasurementsStatus'], 'COMPLETED')
+        self.assertEqual(summary['physicalMeasurementsCollectType'], 'SELF_REPORTED')
+        self.assertEqual(summary['physicalMeasurementsFinalizedTime'], '2022-06-01T18:26:08')
+        self.assertEqual(summary['physicalMeasurementsTime'], '2016-01-02T00:00:00')
+
+        response = self.send_get("Participant/{0}/PhysicalMeasurements".format(participant_id))
+        self.assertEqual(1, len(response["entry"]))
+        self.assertEqual(response["entry"][0]["resource"]["collectType"], 'SELF_REPORTED')
+        self.assertEqual(response["entry"][0]["resource"]["originMeasurementUnit"], 'METRIC')
+        self.assertEqual(response["entry"][0]["resource"]["origin"], 'vibrent')
+        self.assertEqual(len(response["entry"][0]["resource"]["entry"]), 2)
+        self.assertEqual(response["entry"][0]["resource"]["entry"][0]['resource']['status'], 'final')
+        self.assertEqual(response["entry"][0]["resource"]["entry"][0]['resource']['valueQuantity'],
+                         {
+                             "code": "cm",
+                             "unit": "cm",
+                             "value": 170,
+                             "system": "http://unitsofmeasure.org"
+                         }
+                         )
+        self.assertEqual(response["entry"][0]["resource"]["entry"][0]['resource']['effectiveDateTime'],
+                         '2022-06-01T18:26:08')
+        self.assertEqual(response["entry"][0]["resource"]["entry"][1]['resource']['status'], 'final')
+        self.assertEqual(response["entry"][0]["resource"]["entry"][1]['resource']['valueQuantity'],
+                         {
+                             "code": "kg",
+                             "unit": "kg",
+                             "value": 60,
+                             "system": "http://unitsofmeasure.org"
+                         }
+                         )
+        self.assertEqual(response["entry"][0]["resource"]["entry"][1]['resource']['effectiveDateTime'],
+                         '2022-06-01T18:26:08')
 
     def test_ehr_consent_expired(self):
         participant_id = self.create_participant()
