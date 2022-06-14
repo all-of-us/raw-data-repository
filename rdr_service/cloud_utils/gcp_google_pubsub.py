@@ -31,19 +31,19 @@ class GCPGooglePubSubTopic:
     """ Represents a Google PubSub topic """
 
     service = None
-    project_id = None
+    project = None
     topic = None
     topic_path = None
 
-    def __init__(self, project: str, topic: str):
+    def __init__(self, project_id: str, topic: str):
         """
-        :param project: Google project id to use
+        :param project_id: Google project id to use
         :param topic: Pub-sub topic id
         """
         self.service = discovery.build('pubsub', 'v1', cache_discovery=False)
-        self.project_id = project
+        self.project = project_id
         self.topic = topic
-        self.topic_path = f'projects/{self.project_id}/topics/{self.topic}'
+        self.topic_path = f'projects/{self.project}/topics/{self.topic}'
 
     def publish(self, message: dict):
         """
@@ -64,7 +64,7 @@ class GCPGooglePubSubTopic:
         return resp
 
 
-def publish_pdr_pubsub(table: str, action: str, pk_column: str, ids: list):
+def publish_pdr_pubsub(table: str, action: str, pk_column: str, ids: (list, tuple)):
     """
     Publish database table updates to the 'data-pipeline' pub-sub topic.
     :param table: Table name
@@ -72,8 +72,16 @@ def publish_pdr_pubsub(table: str, action: str, pk_column: str, ids: list):
     :param pk_column: Name of primary key column in table
     :param ids: List of primary key ids
     """
+    if GAE_PROJECT not in _ALLOWED_PROJECTS:
+        return None
+
     if action not in ['insert', 'update', 'delete', 'upsert']:
-        logging.error('Invalid pub-sub database action value')
+        logging.error('Invalid database action value')
+        return None
+
+    if not ids or not isinstance(ids, (list, tuple)):
+        logging.error('Ids argument is invalid or empty')
+        return None
 
     # Both "int_ids" and "str_ids" must be list objects even if there are no values.
     int_ids = list()
@@ -84,23 +92,22 @@ def publish_pdr_pubsub(table: str, action: str, pk_column: str, ids: list):
         str_ids = [str(i) for i in ids]
 
     # Publish PubSub event for new RDR to PDR pipeline
-    if GAE_PROJECT in _ALLOWED_PROJECTS:
-        topic = GCPGooglePubSubTopic(GAE_PROJECT, 'data-pipeline')
-        # Payload data will be validated by the pub-sub topic schema.
-        data = {
-            "instance": _INSTANCE_MAPPING[GAE_PROJECT],
-            "database": "rdr",
-            "table": table,
-            "timestamp": datetime.utcnow().isoformat(),
-            "action": action,
-            "pk_column": pk_column,
-            "int_ids": int_ids,
-            "str_ids": str_ids
-        }
-        try:
-            resp = retry_func(topic.publish, backoff_amount=0.1, message=data)
-            return resp
-        except errors.HttpError as e:
-            logging.error(e)
+    topic = GCPGooglePubSubTopic(GAE_PROJECT, 'data-pipeline')
+    # Payload data will be validated by the pub-sub topic schema.
+    data = {
+        "instance": _INSTANCE_MAPPING[GAE_PROJECT],
+        "database": "rdr",
+        "table": table,
+        "timestamp": datetime.utcnow().isoformat(),
+        "action": action,
+        "pk_column": pk_column,
+        "int_ids": int_ids,
+        "str_ids": str_ids
+    }
+    try:
+        resp = retry_func(topic.publish, backoff_amount=0.1, message=data)
+        return resp
+    except errors.HttpError as e:
+        logging.error(e)
 
     return None
