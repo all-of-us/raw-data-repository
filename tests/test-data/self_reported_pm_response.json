@@ -1,0 +1,114 @@
+{
+  "resourceType": "Bundle",
+  "type": "searchset",
+  "entry": [
+    {
+      "fullUrl": "http://localhost/rdr/v1/Participant/P843502277/PhysicalMeasurements/815510637",
+      "resource": {
+        "id": "815510637",
+        "type": "document",
+        "entry": [
+          {
+            "fullUrl": "urn:example:report",
+            "resource": {
+              "date": "2018-01-01T00:00:00",
+              "type": {
+                "text": "PMI Intake Evaluation v0.0.1",
+                "coding": [
+                  {
+                    "code": "intake-exam-v0.0.1",
+                    "system": "http://terminology.pmi-ops.org/CodeSystem/document-type",
+                    "display": "PMI Intake Evaluation v0.0.1"
+                  }
+                ]
+              },
+              "title": "PMI Intake Evaluation",
+              "author": [
+                {
+                  "display": "N/A"
+                }
+              ],
+              "status": "final",
+              "section": [
+                {
+                  "entry": [
+                    {
+                      "reference": "urn:example:height"
+                    },
+                    {
+                      "reference": "urn:example:weight"
+                    }
+                  ]
+                }
+              ],
+              "subject": {
+                "reference": "Patient/P843502277"
+              },
+              "extension": [],
+              "resourceType": "Composition"
+            }
+          },
+          {
+            "fullUrl": "urn:example:height",
+            "resource": {
+              "code": {
+                "text": "Body height",
+                "coding": [
+                  {
+                    "code": "8302-2",
+                    "system": "http://loinc.org",
+                    "display": "Body height"
+                  }
+                ]
+              },
+              "status": "final",
+              "subject": {
+                "reference": "Patient/P843502277"
+              },
+              "resourceType": "Observation",
+              "valueQuantity": {
+                "code": "cm",
+                "unit": "cm",
+                "value": 111.5,
+                "system": "http://unitsofmeasure.org"
+              },
+              "effectiveDateTime": "2018-01-01T00:00:00"
+            }
+          },
+          {
+            "fullUrl": "urn:example:weight",
+            "resource": {
+              "code": {
+                "text": "Body weight",
+                "coding": [
+                  {
+                    "code": "29463-7",
+                    "system": "http://loinc.org",
+                    "display": "Body weight"
+                  }
+                ]
+              },
+              "status": "final",
+              "subject": {
+                "reference": "Patient/P843502277"
+              },
+              "resourceType": "Observation",
+              "valueQuantity": {
+                "code": "kg",
+                "unit": "kg",
+                "value": 30.1,
+                "system": "http://unitsofmeasure.org"
+              },
+              "effectiveDateTime": "2018-01-01T00:00:00"
+            }
+          }
+        ],
+        "resourceType": "Bundle",
+        "collectType": "SITE",
+        "originMeasurementUnit": "UNSET",
+        "origin": "hpro",
+        "questionnaireResponseId": null
+      }
+    }
+  ]
+}

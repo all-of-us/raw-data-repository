@@ -45,6 +45,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.assertEqual(response["entry"][0]["resource"]["originMeasurementUnit"], 'UNSET')
         self.assertEqual(response["entry"][0]["resource"]["origin"], 'hpro')
         self.assertEqual(response["entry"][0]["resource"]["questionnaireResponseId"], None)
+        print(json.dumps(response))
 
     def test_insert(self):
         self.send_consent(self.participant_id)

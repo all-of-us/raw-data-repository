@@ -496,7 +496,7 @@ class BaseDao(object):
     def _get_random_research_id():
         return random.randint(_MIN_RESEARCH_ID, _MAX_RESEARCH_ID)
 
-    def _insert_with_random_id(self, obj, fields):
+    def _insert_with_random_id(self, obj, fields, insert_fun=None):
         """Attempts to insert an entity with randomly assigned ID(s) repeatedly until success
     or a maximum number of attempts are performed."""
         all_tried_ids = []
@@ -512,7 +512,10 @@ class BaseDao(object):
             all_tried_ids.append(tried_ids)
             try:
                 with self.session() as session:
-                    return self.insert_with_session(session, obj)
+                    if not insert_fun:
+                        return self.insert_with_session(session, obj)
+                    else:
+                        return insert_fun(session, obj)
             except IntegrityError as e:
                 result = self.handle_integrity_error(tried_ids, e, obj)
                 if result:

@@ -149,6 +149,32 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('baselineQuestionnairesFirstCompleteAuthored'), TIME_3.isoformat())
 
+    def test_remote_pm_response(self):
+        participant_id = self.create_participant()
+        authored_1 = datetime.datetime(2019, 3, 16, 1, 39, 33, tzinfo=pytz.utc)
+        created = datetime.datetime(2019, 3, 16, 1, 51, 22)
+        with FakeClock(created):
+            self.send_consent(participant_id, authored=authored_1)
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary["physicalMeasurementsStatus"], 'UNSET')
+
+        remote_pm_questionnaire_id = self.create_questionnaire("remote_pm_questionnaire.json")
+
+        resource = self._load_response_json("remote_pm_response_imperial.json", remote_pm_questionnaire_id,
+                                            participant_id)
+        with FakeClock(TIME_2):
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary['physicalMeasurementsStatus'], 'COMPLETED')
+        self.assertEqual(summary['physicalMeasurementsCollectType'], 'SELF_REPORTED')
+        self.assertEqual(summary['physicalMeasurementsFinalizedTime'], '2022-06-01T18:23:57')
+        self.assertEqual(summary['physicalMeasurementsTime'], '2016-01-02T00:00:00')
+
+        response = self.send_get("Participant/{0}/PhysicalMeasurements".format(participant_id))
+
+        print(str(response))
+
     def test_ehr_consent_expired(self):
         participant_id = self.create_participant()
         authored_1 = datetime.datetime(2019, 3, 16, 1, 39, 33, tzinfo=pytz.utc)

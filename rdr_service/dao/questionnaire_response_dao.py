@@ -118,6 +118,8 @@ _LANGUAGE_EXTENSION = "http://hl7.org/fhir/StructureDefinition/iso21090-ST-langu
 
 _CATI_EXTENSION = "http://all-of-us.org/fhir/forms/non-participant-author"
 
+MEASUREMENT_SYS = 'http://terminology.pmi-ops.org/CodeSystem/physical-measurements'
+
 
 def count_completed_baseline_ppi_modules(participant_summary):
     baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
@@ -477,6 +479,7 @@ class QuestionnaireResponseDao(BaseDao):
         elif questionnaire_response.status == QuestionnaireResponseStatus.IN_PROGRESS:
             questionnaire_response.classificationType = QuestionnaireResponseClassificationType.PARTIAL
 
+
         # IMPORTANT: update the participant summary first to grab an exclusive lock on the participant
         # row. If you instead do this after the insert of the questionnaire response, MySQL will get a
         # shared lock on the participant row due the foreign key, and potentially deadlock later trying
@@ -493,11 +496,6 @@ class QuestionnaireResponseDao(BaseDao):
                 self._update_participant_summary(
                     new_session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
                 )
-
-                # update physical measurement for remote self reported physical measurement response
-                if module == REMOTE_PM_MODULE:
-                    self._update_physical_measurement(new_session, questionnaire_response, questions, code_ids,
-                                                      resource_json)
 
         self.create_consent_responses(
             questionnaire_response=questionnaire_response,
@@ -555,7 +553,20 @@ class QuestionnaireResponseDao(BaseDao):
         else:
             return 'Feb'
 
-    def _update_physical_measurement(self, session, questionnaire_response, questions, code_ids, resource_json):
+    def _add_physical_measurement(self, questionnaire_response):
+        with self.session() as session:
+            questionnaire_history = QuestionnaireHistoryDao().get_with_children_with_session(
+                session, [questionnaire_response.questionnaireId, questionnaire_response.questionnaireSemanticVersion]
+            )
+
+            module = self._get_module_name(questionnaire_history)
+            if module != REMOTE_PM_MODULE:
+                return
+
+            question_ids = [answer.questionId for answer in questionnaire_response.answers]
+            questions = QuestionnaireQuestionDao().get_all_with_session(session, question_ids)
+            code_ids = [question.codeId for question in questions]
+
         code_dao = CodeDao()
         pm_unite_code = code_dao.get_code(PPI_SYSTEM, REMOTE_PM_UNIT)
         if not pm_unite_code:
@@ -625,16 +636,16 @@ class QuestionnaireResponseDao(BaseDao):
                 raise BadRequest(f'invalid physical measurement value for participant {participant_id}')
 
         pm_height = Measurement(
-            codeSystem=PPI_SYSTEM,
-            codeValue='self_reported_height_cm',
+            codeSystem=MEASUREMENT_SYS,
+            codeValue='height',
             measurementTime=authored,
             valueDecimal=self_reported_int_value_map['self_reported_height_cm'],
             valueUnit='cm',
         )
 
         pm_weight = Measurement(
-            codeSystem=PPI_SYSTEM,
-            codeValue='self_reported_weight_kg',
+            codeSystem=MEASUREMENT_SYS,
+            codeValue='weight',
             measurementTime=authored,
             valueDecimal=self_reported_int_value_map['self_reported_weight_kg'],
             valueUnit='kg',
@@ -654,9 +665,9 @@ class QuestionnaireResponseDao(BaseDao):
             collectType=PhysicalMeasurementsCollectType.SELF_REPORTED,
             originMeasurementUnit=origin_measurement_unit,
             questionnaireResponseId=questionnaire_response.questionnaireResponseId,
-            resource=json.dumps(resource_json)
+            resource=json.loads(questionnaire_response.resource)
         )
-        pm_dao.insert_remote_pm_with_session(session, pm)
+        pm_dao.insert_remote_pm(pm)
 
     def _update_participant_summary(
         self, session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
@@ -1115,8 +1126,14 @@ class QuestionnaireResponseDao(BaseDao):
 
     def insert(self, obj):
         if obj.questionnaireResponseId:
-            return super(QuestionnaireResponseDao, self).insert(obj)
-        return self._insert_with_random_id(obj, ["questionnaireResponseId"])
+            response = super(QuestionnaireResponseDao, self).insert(obj)
+        else:
+            response = self._insert_with_random_id(obj, ["questionnaireResponseId"])
+
+        # add physical measurement record for remote self reported physical measurement response
+        self._add_physical_measurement(response)
+
+        return response
 
     def read_status(self, fhir_response: fhir_questionnaireresponse.QuestionnaireResponse):
         status_map = {

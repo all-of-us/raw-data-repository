@@ -240,9 +240,17 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 PhysicalMeasurements.finalized == finalized,
                 PhysicalMeasurements.collectType == PhysicalMeasurementsCollectType.SELF_REPORTED).first()
 
+    def insert_remote_pm(self, obj):
+        if obj.physicalMeasurementsId:
+            with self.session() as session:
+                return self.insert_remote_pm_with_session(session, obj)
+        else:
+            return self._insert_with_random_id(obj, ["physicalMeasurementsId"], self.insert_remote_pm_with_session)
+
     def insert_remote_pm_with_session(self, session, obj):
+        self.set_measurement_ids(obj)
         self._update_participant_summary(session, obj, is_amendment=False, is_self_reported=True)
-        super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
+        return super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
 
     def insert_with_session(self, session, obj):
         is_amendment = False
@@ -626,9 +634,13 @@ class PhysicalMeasurementsDao(UpdatableDao):
         """Converts the given model to a JSON object to be returned to API clients.
         Subclasses must implement this unless their model store a model.resource attribute.
         """
-        doc, composition = self.load_record_fhir_doc(model)  # pylint: disable=unused-variable
-        return doc
 
+        if model.collectType == PhysicalMeasurementsCollectType.SELF_REPORTED:
+            doc = self.load_self_reported_pm_client_json(model)
+        else:
+            doc, composition = self.load_record_fhir_doc(model)  # pylint: disable=unused-variable
+
+        return doc
 
     def from_client_json(self, resource_json, participant_id=None, **unused_kwargs):
         # pylint: disable=unused-argument
@@ -753,6 +765,11 @@ class PhysicalMeasurementsDao(UpdatableDao):
         return site_id, author, reason
 
     @staticmethod
+    def load_self_reported_pm_client_json(record):
+        pass
+        return ""
+
+    @staticmethod
     def load_record_fhir_doc(record):
         """
         Retrieve the FHIR document from the DB record.
@@ -764,6 +781,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
             doc = record.resource
         else:
             doc = json.loads(record.resource)
+
         doc['collectType'] = str(record.collectType if record.collectType is not None else
                                  PhysicalMeasurementsCollectType.UNSET)
         doc['originMeasurementUnit'] = str(record.originMeasurementUnit if record.originMeasurementUnit is not None else
