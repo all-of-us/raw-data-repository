@@ -41,6 +41,7 @@ class SchemaID(IntEnum):
     genomic_manifest_file = 3050
     genomic_manifest_feedback = 3060
     genomic_user_event_metrics = 3070
+    genomic_informing_loop = 3080
 
     # Workbench
     workbench_researcher = 4000

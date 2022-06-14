@@ -28,7 +28,10 @@ bq_field_exclusions = {
     'GenomicManifestFileSchema': ['orig_id'],
     'GenomicManifestFeedbackSchema': ['orig_id'],
     'GenomicGCValidationMetricsSchema': ['orig_id', 'orig_created', 'orig_modified'],
-    'ParticipantSchema': ['addr_state', 'addr_zip', 'biospec', 'consents']
+    'ParticipantSchema': ['addr_state', 'addr_zip', 'biospec', 'consents'],
+    'GenomicJobRunSchema': ['orig_id'],
+    'GenomicFileProcessedSchema': ['orig_id'],
+
 }
 
 # Fields from the resource schemas that do not exist in the BQ schema
@@ -40,7 +43,9 @@ rsc_field_exclusions = {
     'GenomicGCValidationMetricsSchema': _default_exclusions,
     'WorkbenchResearcherSchema': list(rschemas.WorkbenchResearcherSchema.Meta.pii_fields),
     'ParticipantSchema': list(rschemas.ParticipantSchema.Meta.pii_fields) +
-                         ['addresses']
+                         ['addresses'],
+    'GenomicJobRunSchema': _default_exclusions,
+    'GenomicFileProcessedSchema': _default_exclusions,
 }
 
 # For field name translations that have been vetted after verifying the differences between BQ schemas

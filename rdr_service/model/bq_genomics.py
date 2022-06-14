@@ -3,7 +3,6 @@
 # file 'LICENSE', which is part of this source code package.
 #
 from enum import Enum
-from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQField, BQFieldTypeEnum, BQFieldModeEnum
 
 from rdr_service.genomic_enums import GenomicSetStatus as _GenomicSetStatus, \
     GenomicSetMemberStatus as _GenomicSetMemberStatus, GenomicValidationFlag as _GenomicValidationFlag, \
@@ -11,6 +10,7 @@ from rdr_service.genomic_enums import GenomicSetStatus as _GenomicSetStatus, \
     GenomicSubProcessStatus as _GenomicSubProcessStatus, GenomicSubProcessResult as _GenomicSubProcessResult, \
     GenomicManifestTypes as _GenomicManifestTypes, GenomicContaminationCategory as _GenomicContaminationCategory, \
     GenomicQcStatus as _GenomicQcStatus
+from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQField, BQFieldTypeEnum, BQFieldModeEnum
 
 # Convert weird participant_enums to standard python enums.
 GenomicSetStatusEnum = Enum('GenomicSetStatusEnum', _GenomicSetStatus.to_dict())
@@ -145,15 +145,8 @@ class BQGenomicSetMemberSchema(BQSchema):
                                      fld_enum=GenomicWorkflowStateEnum)
     genomic_workflow_state_modified_time = BQField('genomic_workflow_state_modified_time', BQFieldTypeEnum.DATETIME,
                                                    BQFieldModeEnum.NULLABLE)
-    genomic_workflow_state_history = BQField('genomic_workflow_state_history', BQFieldTypeEnum.STRING,
-                                             BQFieldModeEnum.NULLABLE)
-
     collection_tube_id = BQField('collection_tube_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     gc_site_id = BQField('gc_site_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-    arr_aw3_manifest_job_run_id = BQField('arr_aw3_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
-                                          BQFieldModeEnum.NULLABLE)
-    wgs_aw3_manifest_job_run_id = BQField('wgs_aw3_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
-                                          BQFieldModeEnum.NULLABLE)
     report_consent_removal_date = BQField('report_consent_removal_date',
                                           BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     qc_status = BQField('qc_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
@@ -164,8 +157,52 @@ class BQGenomicSetMemberSchema(BQSchema):
     aw1_file_processed_id = BQField('aw1_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     aw2_file_processed_id = BQField('aw2_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-    biobank_id_str = BQField('biobank_id_str', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     aw2f_job_run_id = BQField('aw2f_job_run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
+    aw0_manifest_file_id = BQField('aw0_manifest_file_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    aw2f_manifest_job_run_id = BQField('aw2f_manifest_job_run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    aw3_manifest_file_id = BQField('aw3_manifest_file_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    block_research = BQField('block_research', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    block_research_reason = BQField('block_research_reason', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    block_results = BQField('block_results', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    block_results_reason = BQField('block_results_reason', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    color_metrics_job_run_id = BQField('color_metrics_job_run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    cvl_secondary_conf_failure = BQField('cvl_secondary_conf_failure', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    cvl_w1il_hdr_job_run_id = BQField('cvl_w1il_hdr_job_run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    cvl_w1il_pgx_job_run_id = BQField('cvl_w1il_pgx_job_run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    cvl_w2sc_manifest_job_run_id = BQField('cvl_w2sc_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
+                                           BQFieldModeEnum.NULLABLE)
+    cvl_w2w_job_run_id = BQField('cvl_w2w_job_run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    cvl_w3ns_manifest_job_run_id = BQField('cvl_w3ns_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
+                                           BQFieldModeEnum.NULLABLE)
+    cvl_w3sc_manifest_job_run_id = BQField('cvl_w3sc_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
+                                           BQFieldModeEnum.NULLABLE)
+    cvl_w3sr_manifest_job_run_id = BQField('cvl_w3sr_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
+                                           BQFieldModeEnum.NULLABLE)
+    cvl_w3ss_manifest_job_run_id = BQField('cvl_w3ss_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
+                                           BQFieldModeEnum.NULLABLE)
+    cvl_w4wr_hdr_manifest_job_run_id = BQField('cvl_w4wr_hdr_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
+                                               BQFieldModeEnum.NULLABLE)
+    cvl_w4wr_pgx_manifest_job_run_id = BQField('cvl_w4wr_pgx_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
+                                               BQFieldModeEnum.NULLABLE)
+    cvl_w5nf_hdr_manifest_job_run_id = BQField('cvl_w5nf_hdr_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
+                                               BQFieldModeEnum.NULLABLE)
+    cvl_w5nf_pgx_manifest_job_run_id = BQField('cvl_w5nf_pgx_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
+                                               BQFieldModeEnum.NULLABLE)
+    diversion_pouch_site_flag = BQField('diversion_pouch_site_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    gem_date_of_import = BQField('gem_date_of_import', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    gem_metrics_ancestry_loop_response = BQField('gem_metrics_ancestry_loop_response', BQFieldTypeEnum.STRING,
+                                                 BQFieldModeEnum.NULLABLE)
+    gem_metrics_available_results = BQField('gem_metrics_available_results', BQFieldTypeEnum.STRING,
+                                            BQFieldModeEnum.NULLABLE)
+    gem_metrics_results_released_at = BQField('gem_metrics_results_released_at', BQFieldTypeEnum.INTEGER,
+                                              BQFieldModeEnum.NULLABLE)
+    ignore_flag = BQField('ignore_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    informing_loop_ready_flag = BQField('informing_loop_ready_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    informing_loop_ready_flag_modified = BQField('informing_loop_ready_flag_modified', BQFieldTypeEnum.DATETIME,
+                                                 BQFieldModeEnum.REQUIRED)
+    participant_origin = BQField('participant_origin', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    replated_member_id = BQField('replated_member_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicSetMember(BQTable):
@@ -310,6 +347,7 @@ class BQGenomicManifestFeedbackSchema(BQSchema):
     feedback_complete = BQField('feedback_complete', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     feedback_complete_date = BQField('feedback_complete_date', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     ignore_flag = BQField('ignore_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    version = BQField('version', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
 
 
 class BQGenomicManifestFeedback(BQTable):
