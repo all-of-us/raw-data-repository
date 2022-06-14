@@ -31,6 +31,7 @@ SEXUAL_ORIENTATION_QUESTION_CODE = "TheBasics_SexualOrientation"
 EDUCATION_QUESTION_CODE = "EducationLevel_HighestGrade"
 INCOME_QUESTION_CODE = "Income_AnnualIncome"
 EHR_CONSENT_QUESTION_CODE = "EHRConsentPII_ConsentPermission"
+EHR_SENSITIVE_CONSENT_QUESTION_CODE = "ehrconsentpii_sensitivetype2"
 EHR_CONSENT_EXPIRED_QUESTION_CODE = "EHRConsentPII_ConsentExpired"
 DVEHR_SHARING_QUESTION_CODE = "DVEHRSharing_AreYouInterested"
 CABOR_SIGNATURE_QUESTION_CODE = "ExtraConsent_CABoRSignature"
@@ -109,6 +110,7 @@ CONSENT_PERMISSION_YES_CODE = "ConsentPermission_Yes"
 CONSENT_PERMISSION_NO_CODE = "ConsentPermission_No"
 CONSENT_PERMISSION_NOT_SURE = "ConsentPermission_NotSure"
 EHR_CONSENT_EXPIRED_YES = "EHRConsentPII_ConsentExpired_Yes"
+SENSITIVE_EHR_YES = "sensitivetype2__agree"
 
 # Consent GROR Answer Codes
 CONSENT_GROR_YES_CODE = "CheckDNA_Yes"
@@ -178,6 +180,16 @@ COPE_DEC_MODULE = "cope_dec"
 COPE_FEB_MODULE = "cope_feb"
 GENETIC_ANCESTRY_MODULE = 'GeneticAncestry'
 
+# ConsentPII Questions
+RECEIVE_CARE_STATE = "ReceiveCare_PIIState"
+
+# ConsentPII Answers
+OR_CARE_STATE = "PIIStateCare_OR"
+TX_CARE_STATE = "PIIStateCare_TX"
+AK_CARE_STATE = "PIIStateCare_AK"
+MA_CARE_STATE = "PIIStateCare_MA"
+MI_CARE_STATE = "PIIStateCare_MI"
+
 # DVEHR ANSWERS
 DVEHRSHARING_CONSENT_CODE_YES = "DVEHRSharing_Yes"
 DVEHRSHARING_CONSENT_CODE_NO = "DVEHRSharing_No"
@@ -241,4 +253,10 @@ AW2_BUCKETS = [
 # Source of a created participant
 ORIGINATING_SOURCES = ['vibrent', 'careevolution', 'example']
 
-
+SENSITIVE_EHR_STATES = [
+    OR_CARE_STATE,
+    TX_CARE_STATE,
+    AK_CARE_STATE,
+    MA_CARE_STATE,
+    MI_CARE_STATE
+]

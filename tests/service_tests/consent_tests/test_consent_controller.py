@@ -46,7 +46,8 @@ class ConsentControllerTest(BaseTestCase):
             consent_dao=self.consent_dao_mock,
             hpo_dao=self.hpo_dao_mock,
             participant_summary_dao=self.participant_summary_dao_mock,
-            storage_provider=mock.MagicMock()
+            storage_provider=mock.MagicMock(),
+            session=mock.MagicMock()
         )
         self.store_strategy = StoreResultStrategy(session=mock.MagicMock(), consent_dao=self.consent_dao_mock)
 
@@ -94,10 +95,7 @@ class ConsentControllerTest(BaseTestCase):
             ParticipantSummary(participantId=cabor_participant_id)
         ]
 
-        self.consent_controller.validate_consent_uploads(
-            session=mock.MagicMock(),
-            output_strategy=self.store_strategy
-        )
+        self.consent_controller.validate_consent_uploads(output_strategy=self.store_strategy)
         self.store_strategy.process_results()
         self.assertConsentValidationResultsUpdated(
             expected_updates=[

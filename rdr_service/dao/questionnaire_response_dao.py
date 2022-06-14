@@ -32,11 +32,13 @@ from rdr_service.code_constants import (
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
     CONSENT_PERMISSION_YES_CODE,
+    SENSITIVE_EHR_YES,
     DATE_OF_BIRTH_QUESTION_CODE,
     DVEHRSHARING_CONSENT_CODE_NOT_SURE,
     DVEHRSHARING_CONSENT_CODE_YES,
     DVEHR_SHARING_QUESTION_CODE,
     EHR_CONSENT_QUESTION_CODE,
+    EHR_SENSITIVE_CONSENT_QUESTION_CODE,
     EHR_CONSENT_EXPIRED_QUESTION_CODE,
     GENDER_IDENTITY_QUESTION_CODE,
     LANGUAGE_OF_CONSENT,
@@ -639,20 +641,20 @@ class QuestionnaireResponseDao(BaseDao):
                             dvehr_consent = QuestionnaireStatus.SUBMITTED
                         elif code and code.value == DVEHRSHARING_CONSENT_CODE_NOT_SURE:
                             dvehr_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
-                    elif code.value == EHR_CONSENT_QUESTION_CODE:
+                    elif code.value in [EHR_CONSENT_QUESTION_CODE, EHR_SENSITIVE_CONSENT_QUESTION_CODE]:
                         code = code_dao.get(answer.valueCodeId)
                         if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED and \
-                            authored > participant_summary.ehrConsentExpireAuthored:
+                                authored > participant_summary.ehrConsentExpireAuthored:
                             participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.UNSET
                             participant_summary.ehrConsentExpireAuthored = None
                             participant_summary.ehrConsentExpireTime = None
-                        if code and code.value == CONSENT_PERMISSION_YES_CODE:
+                        if code and code.value in [CONSENT_PERMISSION_YES_CODE, SENSITIVE_EHR_YES]:
                             self.consents_provided.append(ConsentType.EHR)
                             ehr_consent = True
                             if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
                                 participant_summary.consentForElectronicHealthRecordsFirstYesAuthored = authored
                             if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED and \
-                                authored < participant_summary.ehrConsentExpireAuthored:
+                                    authored < participant_summary.ehrConsentExpireAuthored:
                                 ehr_consent = False
                     elif code.value == EHR_CONSENT_EXPIRED_QUESTION_CODE:
                         if answer.valueString and answer.valueString == EHR_CONSENT_EXPIRED_YES:
