@@ -14,6 +14,7 @@ import shlex
 import signal
 import subprocess
 import sys
+import time
 from datetime import datetime, date
 from json import JSONDecodeError
 
@@ -763,3 +764,27 @@ def is_valid_release_git_tag(git_tag):
         _logger.error(se if se else f'Git tag {git_tag} not found on remote origin')
 
     return False
+
+
+def retry_func(func, retries=25, backoff_amount=2.0, **kwargs):
+    """
+    Retry a function call multiple times, delaying more each retry.
+    :param func: function to retry
+    :param retries: Integer, number of retries
+    :param backoff_amount: Float, number of seconds to add to backoff for next retry.
+    :return: function return
+    """
+    result = None
+    count = abs(retries)
+    backoff = 0.1
+    while count >= 0:
+        try:
+            result = func(**kwargs)
+            break
+        except Exception as e:  # pylint: disable=broad-except
+            if count == 0:
+                raise e
+            time.sleep(backoff)
+            count -= 1
+            backoff += backoff_amount
+    return result

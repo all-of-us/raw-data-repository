@@ -31,7 +31,8 @@ class ConsentValidationTesting(BaseTestCase):
         self.validator = ConsentValidator(
             consent_factory=self.consent_factory_mock,
             participant_summary=self.participant_summary,
-            va_hpo_id=self.va_hpo.hpoId
+            va_hpo_id=self.va_hpo.hpoId,
+            session=mock.MagicMock()
         )
 
     def test_primary_file_ready_for_sync(self):
@@ -372,8 +373,8 @@ class ConsentValidationTesting(BaseTestCase):
                 {
                     'participant_id': self.participant_summary.participantId,
                     'type': ConsentType.PRIMARY_UPDATE,
-                    'other_errors': ", ".join([ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK,
-                                               ConsentOtherErrors.NON_VETERAN_CONSENT_FOR_VETERAN]),
+                    'other_errors': ", ".join([ConsentOtherErrors.NON_VETERAN_CONSENT_FOR_VETERAN,
+                                               ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK]),
                     'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
                 }
             ],

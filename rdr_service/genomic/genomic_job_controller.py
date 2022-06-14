@@ -674,7 +674,7 @@ class GenomicJobController:
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 
-    def reconcile_gc_data_file_to_table(self):
+    def reconcile_gc_data_file_to_table(self, sample_ids=None):
         """
         Entrypoint for reconciliation of GC data buckets to
         genomic_gc_data_file table.
@@ -686,7 +686,7 @@ class GenomicJobController:
         self.load_gc_data_file_staging()
 
         # compare genomic_gc_data_file to temp table
-        missing_records = self.staging_dao.get_missing_gc_data_file_records()
+        missing_records = self.staging_dao.get_missing_gc_data_file_records(sample_ids=sample_ids)
 
         # create genomic_gc_data_file records for missing files
         for missing_file in missing_records:

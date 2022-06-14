@@ -394,6 +394,12 @@ class EhrConsentFile(ConsentFile, ABC):
     def get_is_va_consent(self):
         return self.pdf.get_page_number_of_text(['We may ask you to go to a local clinic to be measured']) is not None
 
+    def is_sensitive_form(self):
+        return False
+
+    def has_valid_sensitive_form_initials(self):
+        return False
+
 
 class GrorConsentFile(ConsentFile, ABC):
     def is_confirmation_selected(self):
@@ -504,13 +510,75 @@ class VibrentCaborConsentFile(CaborConsentFile):
 
 class VibrentEhrConsentFile(EhrConsentFile):
     def _get_signature_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=250, bottom=160, top=165), page=6)
+        signature_page_number = self._get_signature_page_number()
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=130, right=250, bottom=160, top=165),
+            page=signature_page_number
+        )
 
     def _get_date_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=250, bottom=110, top=115), page=6)
+        signature_page_number = self._get_signature_page_number()
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=130, right=250, bottom=110, top=115),
+            page=signature_page_number
+        )
 
     def _get_printed_name_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=350, right=500, bottom=45, top=50), page=6)
+        signature_page_number = self._get_signature_page_number()
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50),
+            page=signature_page_number
+        )
+
+    def is_sensitive_form(self):
+        return self.pdf.get_page_number_of_text([
+            ('I agree to release sensitive information from my EHRs', )
+        ]) is not None
+
+    def _get_signature_page_number(self):
+        if self.is_sensitive_form():
+            return 9
+        else:
+            return 6
+
+    def has_valid_sensitive_form_initials(self):
+        initial_location_list = [
+            Rect.from_edges(left=82, right=130, bottom=345, top=350),
+            Rect.from_edges(left=82, right=130, bottom=390, top=395),
+            Rect.from_edges(left=82, right=130, bottom=445, top=450),
+            Rect.from_edges(left=82, right=130, bottom=490, top=495),
+            Rect.from_edges(left=82, right=130, bottom=540, top=545),
+        ]
+        initial_text_found = None
+
+        for location in initial_location_list:
+            element_list = self.pdf.get_elements_intersecting_box(location, page=7)
+
+            initial_text_at_location = None
+            for element in element_list:
+                first_child = Pdf.get_first_child_of_element(element)
+
+                if isinstance(first_child, LTChar):
+                    initial_from_element = ''.join([char_child.get_text() for char_child in element]).strip()
+                    if not initial_from_element:
+                        # Move to the next element to check if nothing was found here
+                        continue
+
+                    if initial_text_found is None:
+                        # If no initials were parsed yet, set the first initial string found as the expected value
+                        initial_text_found = initial_from_element
+                    elif initial_text_found.lower() != initial_from_element.lower():
+                        # If the initials don't all match with each other, report that they weren't valid
+                        return False
+
+                    initial_text_at_location = initial_from_element
+                    break
+
+            if not initial_text_at_location:
+                # If a given location doesn't have an initial, return that the initials are invalid
+                return False
+
+        return bool(initial_text_found)
 
 
 class VibrentGrorConsentFile(GrorConsentFile):

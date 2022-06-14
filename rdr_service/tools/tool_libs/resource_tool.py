@@ -41,7 +41,7 @@ from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource import generators
 from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update, \
-    genomic_manifest_file_update, genomic_manifest_feedback_update
+    genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_informing_loop_update
 from rdr_service.resource.constants import SKIP_TEST_PIDS_FOR_PDR
 from rdr_service.resource.tasks import batch_rebuild_consent_metrics_task
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
@@ -64,7 +64,8 @@ PDR_PROJECT_ID_MAP = {
 }
 
 GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'genomic_gc_validation_metrics',
-                     'genomic_file_processed', 'genomic_manifest_file', 'genomic_manifest_feedback')
+                     'genomic_file_processed', 'genomic_manifest_file', 'genomic_manifest_feedback',
+                     'genomic_informing_loop')
 
 RESEARCH_WORKBENCH_TABLES = ('workspace', 'workspace_user', 'researcher', 'institutional_affiliations')
 
@@ -482,6 +483,8 @@ class GenomicResourceClass(object):
             elif table == 'genomic_gc_validation_metrics':
                 bq_genomic_gc_validation_metrics_update(_id, project_id=self.gcp_env.project)
                 genomic_gc_validation_metrics_update(_id)
+            elif table == 'genomic_informing_loop':
+                genomic_informing_loop_update(_id)
         except NotFound:
             return 1
         return 0

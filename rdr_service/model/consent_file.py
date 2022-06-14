@@ -13,6 +13,9 @@ class ConsentOtherErrors:
     NON_VETERAN_CONSENT_FOR_VETERAN = 'non-veteran consent for veteran participant'
     VETERAN_CONSENT_FOR_NON_VETERAN = 'veteran consent for non-veteran participant'
     INVALID_PRINTED_NAME = 'invalid printed name'
+    SENSITIVE_EHR_EXPECTED = 'non-sensitive ehr consent given when sensitive version expected'
+    NONSENSITIVE_EHR_EXPECTED = 'sensitive ehr consent given when non-sensitive version expected'
+    INITIALS_MISSING_ON_SENSITIVE_EHR = 'missing expected initials on sensitive ehr'
 
 
 class ConsentType(messages.Enum):
