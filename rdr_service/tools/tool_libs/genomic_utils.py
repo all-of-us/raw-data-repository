@@ -36,6 +36,7 @@ from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStora
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessResult, GenomicManifestTypes
+from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes
 from rdr_service.tools.tool_libs.tool_base import ToolBase
 from rdr_service.services.system_utils import JSONObject
 
@@ -135,7 +136,7 @@ class ResendSamplesClass(GenomicManifestBase):
         :return: the members' records for the samples
         """
         with self.dao.session() as session:
-            return session.query(GenomicSetMember)\
+            return session.query(GenomicSetMember) \
                 .filter(GenomicSetMember.collectionTubeId.in_(samples)).all()
 
     def update_members_genomic_set(self, members, set_id):
@@ -302,9 +303,9 @@ class GenerateManifestClass(GenomicManifestBase):
                 _logger.info('Running saliva samples workflow')
                 s_dict = {
                     'origin': args.saliva_origin if args.saliva_origin is not None
-                    and args.saliva_origin >= 0 else None,
+                                                    and args.saliva_origin >= 0 else None,
                     'ror': args.saliva_ror if args.saliva_ror is not None
-                    and args.saliva_ror >= 0 else None
+                                              and args.saliva_ror >= 0 else None
                 }
                 return self.generate_local_saliva_manifest(s_dict)
 
@@ -345,8 +346,8 @@ class GenerateManifestClass(GenomicManifestBase):
 
         with GenomicJobController(GenomicJob.C2_PARTICIPANT_WORKFLOW,
                                   bq_project_id=self.gcp_env.project) as controller:
-            GenomicBiobankSamplesCoupler(controller.job_run.id, controller=controller)\
-                              .create_long_read_genomic_participants(limit)
+            GenomicBiobankSamplesCoupler(controller.job_run.id, controller=controller) \
+                .create_long_read_genomic_participants(limit)
             new_set_id = self.dao.get_max_set()
             _type = 'long_read'
             self.export_manifest_to_local_file(
@@ -385,13 +386,13 @@ class GenerateManifestClass(GenomicManifestBase):
         _filename = f'{folder_name}/{self.DRC_BIOBANK_PREFIX}-{self.nowf}{output_str_type}-{str(set_id)}.csv'
 
         create_and_upload_genomic_biobank_manifest_file(
-                set_id,
-                self.nowts,
-                bucket_name=bucket_name,
-                filename=_filename,
-                prefix=prefix,
-                project=project,
-            )
+            set_id,
+            self.nowts,
+            bucket_name=bucket_name,
+            filename=_filename,
+            prefix=prefix,
+            project=project,
+        )
 
         # Handle Genomic States for manifests
         if update:
@@ -485,6 +486,7 @@ class ManualSampleClass(GenomicManifestBase):
     """
     Class for inserting arbitrary genomic samples manually. Used for E2E testing.
     """
+
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(ManualSampleClass, self).__init__(args, gcp_env)
 
@@ -557,6 +559,7 @@ class ManualSampleClass(GenomicManifestBase):
 
 class JobRunResult(GenomicManifestBase):
     """Class to set a genomic_job_run.run_result to a particular status."""
+
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(JobRunResult, self).__init__(args, gcp_env)
         self.valid_job_results = GenomicSubProcessResult.names()
@@ -610,6 +613,7 @@ class JobRunResult(GenomicManifestBase):
 
 class UpdateGenomicMembersState(GenomicManifestBase):
     """Class update a genomic_set_member to a particular state."""
+
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(UpdateGenomicMembersState, self).__init__(args, gcp_env)
         self.valid_genomic_states = GenomicWorkflowState.names()
@@ -862,6 +866,7 @@ class UpdateGcMetricsClass(GenomicManifestBase):
     """
     Class for updating GC Metrics records
     """
+
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(UpdateGcMetricsClass, self).__init__(args, gcp_env)
 
@@ -1001,7 +1006,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                             if result != 0:
                                 return 1
 
-            except Exception as e:   # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-except
                 _logger.error(e)
                 return 1
 
@@ -1076,7 +1081,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                     _logger.error(f'A manifest file or csv is required for this job.')
                     return 1
 
-            except Exception as e:   # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-except
                 _logger.error(e)
                 return 1
 
@@ -1091,7 +1096,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                     controller.bucket_name_list = server_config[config.GENOMIC_CENTER_DATA_BUCKET_NAME]
                     controller.run_reconciliation_to_data(genome_type='aou_array')
 
-            except Exception as e:   # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-except
                 _logger.error(e)
                 return 1
 
@@ -1106,7 +1111,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                     controller.bucket_name_list = server_config[config.GENOMIC_CENTER_DATA_BUCKET_NAME]
                     controller.run_reconciliation_to_data(genome_type='aou_wgs')
 
-            except Exception as e:   # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-except
                 _logger.error(e)
                 return 1
 
@@ -1248,7 +1253,6 @@ class GenomicProcessRunner(GenomicManifestBase):
         with GenomicJobController(job_id=job,
                                   max_num=4000,
                                   bq_project_id=self.gcp_env.project) as controller:
-
             controller.bucket_name = server_config[config.DRC_BROAD_BUCKET_NAME][0]
 
             controller.generate_manifest(
@@ -1334,7 +1338,7 @@ class FileUploadDateClass(GenomicManifestBase):
 
                     counter += 1
 
-                except Exception as e:   # pylint: disable=broad-except
+                except Exception as e:  # pylint: disable=broad-except
                     _logger.error(e)
                     return 1
 
@@ -1362,6 +1366,7 @@ class BackfillGenomicSetMemberFileProcessedID(GenomicManifestBase):
     from the genomic_set_member.package_id field and the
     package_id in the file name.
     """
+
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(BackfillGenomicSetMemberFileProcessedID, self).__init__(args, gcp_env)
 
@@ -1456,6 +1461,7 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
     Recalculate contamination category for an arbitrary set of participants
     Provides the option to use a Cloud Task
     """
+
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(CalculateContaminationCategoryClass, self).__init__(args, gcp_env)
         self.member_ids = []
@@ -1689,6 +1695,7 @@ class CompareIngestionAW2Class(GenomicManifestBase):
     """
     Performs a comparison on AW2 file counts and counts in database
     """
+
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(CompareIngestionAW2Class, self).__init__(args, gcp_env)
         self.data_objs = []
@@ -1905,6 +1912,7 @@ class LoadRawManifest(GenomicManifestBase):
     Loads a manifest in GCS to the raw manifest table
     currently only supports AW1/AW2 manifests
     """
+
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(LoadRawManifest, self).__init__(args, gcp_env)
 
@@ -2155,8 +2163,148 @@ class ArbitraryReplates(GenomicManifestBase):
         return set_dao.insert(new_set)
 
 
-def get_process_for_run(args, gcp_env):
+class UnblockSamples(ToolBase):
+    """
+    Unblocks a set of samples.
+    """
 
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super().__init__(args, gcp_env)
+        self.server_config = self.get_server_config()
+        self.aw1_raw_dao = None
+        self.aw2_raw_dao = None
+        self.metrics_dao = None
+
+    def run(self):
+        self.gcp_env.activate_sql_proxy()
+
+        member_dao = GenomicSetMemberDao()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.aw1_raw_dao = GenomicAW1RawDao()
+        self.aw2_raw_dao = GenomicAW2RawDao()
+
+        if not os.path.exists(self.args.file_path):
+            _logger.error(f'File {self.args.file_path} was not found.')
+            return 1
+
+        if self.args.results_only and self.args.research_only:
+            _logger.error('Can only set one of --research-only or --results-only')
+            return 1
+
+        with open(self.args.file_path, encoding='utf-8-sig') as file:
+            csv_reader = csv.reader(file)
+            id_list = []
+            header = next(csv_reader)[0]
+            if header in ('sample_id', 'biobank_id'):
+                id_type = header
+            else:
+                _logger.error('File header must be sample_id or biobank_id')
+                return 1
+
+            for row in csv_reader:
+                id_list.append(row[0])
+
+        if id_type == 'sample_id':
+            set_members = member_dao.get_members_from_sample_ids(id_list)  # will not return results in IGNORE state
+        else:
+            set_members = member_dao.get_members_from_biobank_ids(id_list)
+        for set_member in set_members:
+            if self.args.results_only:
+                set_member.blockResults = 0
+            elif self.args.research_only:
+                set_member.blockResearch = 0
+            else:
+                set_member.blockResults = 0
+                set_member.blockResearch = 0
+            if not self.args.dryrun:
+                member_dao.update(set_member)
+            else:
+                _logger.info(f"Will unblock genomic_set_member {set_member.id}")
+
+        no_aw1_data = self._check_aw1(set_members)
+        no_aw2_data = self._check_aw2(set_members)
+        self._check_gc_data_files(set_members)
+
+        _logger.info(f"No AW1 data:\n {no_aw1_data}\n")
+        _logger.info(f"No AW2 data:\n {no_aw2_data}\n")
+
+    def _ingest_member(self, job_type, set_members):
+        with GenomicJobController(GenomicJob.__dict__[job_type],
+                                  bq_project_id=self.gcp_env.project,
+                                  server_config=self.server_config,
+                                  storage_provider=None
+                                  ) as controller:
+            controller.bypass_record_count = True
+            results = controller.ingest_member_ids_from_awn_raw_table(set_members)
+            _logger.info(results)
+
+    def _check_aw1(self, set_members):
+        no_aw1_data = []
+        ingest_members = []
+        for set_member in set_members:
+            # attempt aw1 ingestion
+            try:
+                pre = self.server_config[config.BIOBANK_ID_PREFIX][0]
+            except KeyError:
+                # Set default for unit tests
+                pre = "A"
+            bid = f"{pre}{set_member.biobankId}"
+            result = self.aw1_raw_dao.get_raw_record_from_identifier_genome_type(identifier=bid,
+                                                                                 genome_type=set_member.genomeType)
+            if result:
+                ingest_members.append(set_member.id)
+            else:
+                no_aw1_data.append(set_member.id)
+        if not self.args.dryrun:
+            self._ingest_member('AW1_MANIFEST', ingest_members)
+        else:
+            _logger.info(f"Will try AW1 ingestion for {ingest_members}")
+        return no_aw1_data
+
+    def _check_aw2(self, set_members):
+        ingest_members = []
+        no_aw2_data = []
+        for set_member in set_members:
+            vmetric = self.metrics_dao.get_metrics_by_member_id(set_member.id)
+            if vmetric is None:
+                aw2_record = self.aw2_raw_dao.get_raw_record_from_identifier_genome_type(
+                    identifier=set_member.sampleId, genome_type=set_member.genomeType)
+                if aw2_record:
+                    ingest_members.append(set_member.id)
+                else:
+                    no_aw2_data.append(set_member.id)
+        # Perform AW2 ingestion
+        if not self.args.dryrun:
+            self._ingest_member('METRICS_INGESTION', ingest_members)
+        else:
+            _logger.info(f"Will try AW2 ingestion for {ingest_members}")
+        return no_aw2_data
+
+    def _check_gc_data_files(self, set_members):
+        needs_data_file_reconciliation = []
+        array_required_file_types = [file_type['file_received_attribute'] for file_type in array_file_types_attributes
+                                     if file_type['required']]
+        wgs_required_file_types = [file_type['file_received_attribute'] for file_type in wgs_file_types_attributes
+                                   if file_type['required']]
+
+        for set_member in set_members:
+            vmetric = self.metrics_dao.get_metrics_by_member_id(set_member.id)
+            if vmetric:
+                if set_member.genomeType == 'aou_array':
+                    if any(getattr(vmetric, file_type) != 1 for file_type in array_required_file_types):
+                        needs_data_file_reconciliation.append(set_member.sampleId)
+                elif set_member.genomeType == 'aou_wgs':
+                    if any(getattr(vmetric, file_type) != 1 for file_type in wgs_required_file_types):
+                        needs_data_file_reconciliation.append(set_member.sampleId)
+        if needs_data_file_reconciliation:
+            if not self.args.dryrun:
+                with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE) as controller:
+                    controller.reconcile_gc_data_file_to_table(sample_ids=needs_data_file_reconciliation)
+            else:
+                _logger.info(f"Will try to reconcile sample ids: {needs_data_file_reconciliation}")
+
+
+def get_process_for_run(args, gcp_env):
     util = args.util
 
     process_config = {
@@ -2219,6 +2367,9 @@ def get_process_for_run(args, gcp_env):
         },
         'arbitrary-replates': {
             'process': ArbitraryReplates(args, gcp_env)
+        },
+        'unblock-samples': {
+            'process': UnblockSamples(args, gcp_env)
         }
     }
 
@@ -2507,6 +2658,27 @@ def run():
         default=None,
         required=False
     )  # noqa
+
+    unblock_samples = subparser.add_parser('unblock-samples')
+    unblock_samples.add_argument(
+        "--file-path",
+        help="A newline separated list of sample ids or biobank ids." \
+             "Must have 'sample_id' or 'biobank_id' as the header",
+        default=None,
+        required=True
+    )
+    unblock_samples.add_argument(
+        "--results-only",
+        default=False,
+        required=False,
+        action="store_true"
+    )
+    unblock_samples.add_argument(
+        "--research-only",
+        default=False,
+        required=False,
+        action="store_true"
+    )
 
     args = parser.parse_args()
 
