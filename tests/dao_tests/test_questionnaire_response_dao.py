@@ -214,7 +214,6 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             )
             self.basics_profile_update_codes.append(code.codeId)
 
-
     def check_response(self, expected_qr):
         qr = self.questionnaire_response_dao.get_with_children(expected_qr.questionnaireResponseId)
         self.assertResponseDictEquals(expected_qr.asdict(follow=ANSWERS), qr.asdict(follow=ANSWERS))
