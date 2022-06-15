@@ -689,16 +689,11 @@ class ConsentValidator:
         if result.expected_sign_date < sensitive_form_release_date or consent.get_is_va_consent():
             return  # Skip the following checks for sensitive release fields
 
-        # get latest response to consentpii
-        consentpii_response_collection = QuestionnaireResponseDao.get_responses_to_surveys(
+        state_of_care_answer_str = QuestionnaireResponseDao.get_latest_answer_for_state_receiving_care(
             session=self._session,
-            survey_codes=[code_constants.CONSENT_FOR_STUDY_ENROLLMENT_MODULE],
-            participant_ids=[self.participant_summary.participantId]
-        )[self.participant_summary.participantId]
-        latest_consentpii_response = consentpii_response_collection.in_authored_order[0]
-
-        state_of_care_answer = latest_consentpii_response.get_single_answer_for(code_constants.RECEIVE_CARE_STATE)
-        if state_of_care_answer.value in code_constants.SENSITIVE_EHR_STATES:
+            participant_id=self.participant_summary.participantId
+        )
+        if state_of_care_answer_str in code_constants.SENSITIVE_EHR_STATES:
             if not consent.is_sensitive_form():
                 self._append_other_error(ConsentOtherErrors.SENSITIVE_EHR_EXPECTED, result)
                 result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING

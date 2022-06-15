@@ -23,7 +23,7 @@ from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPA
     PARTICIPANT_COHORT_3_START_TIME
 from rdr_service.app_util import get_account_origin_id, is_self_request
 from rdr_service import storage
-from rdr_service import clock, config
+from rdr_service import clock, code_constants, config
 from rdr_service.code_constants import (
     CABOR_SIGNATURE_QUESTION_CODE,
     CONSENT_COHORT_GROUP_CODE,
@@ -1398,6 +1398,32 @@ class QuestionnaireResponseDao(BaseDao):
             )
 
         return dict(participant_response_map)
+
+    @classmethod
+    def get_latest_answer_for_state_receiving_care(cls, session: Session, participant_id) -> str:
+        answer_code = aliased(Code)
+        question_code = aliased(Code)
+        query = (
+            session.query(answer_code.value)
+            .select_from(QuestionnaireResponse)
+            .join(QuestionnaireResponseAnswer)
+            .join(QuestionnaireQuestion)
+            .join(
+                question_code,
+                and_(
+                    question_code.codeId == QuestionnaireQuestion.codeId,
+                    question_code.value == code_constants.RECEIVE_CARE_STATE
+                )
+            )
+            .join(
+                answer_code,
+                answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId
+            )
+            .order_by(QuestionnaireResponse.authored.desc())
+            .filter(QuestionnaireResponse.participantId == participant_id)
+        )
+
+        return query.scalar()
 
 
 def _validate_consent_pdfs(resource):
