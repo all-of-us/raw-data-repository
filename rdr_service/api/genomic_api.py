@@ -262,20 +262,18 @@ class GenomicOutreachApiV2(UpdatableApi, GenomicApiMixin):
             raise BadRequest('Participant ID or Start Date is required for GenomicOutreach lookup.')
 
         if participant_id:
-            if participant_id.startswith("P"):
-                participant_id = participant_id[1:]
-            # prefix, pid = self._extract_pid(participant_id)
-            # self._validate_participant(
-            #     prefix=prefix,
-            #     participant_id=pid
-            # )
+            prefix, participant_id = self._extract_pid(participant_id)
+            self._validate_participant(
+                prefix=prefix,
+                participant_id=participant_id
+            )
 
             participant_data = self.dao.outreach_lookup(pid=participant_id)
             if participant_data:
                 payload['data'] = participant_data
                 return self._make_response(payload)
 
-            raise NotFound(f'Participant with ID {participant_id} did not pass validation check')
+            raise NotFound(f'Participant with ID {prefix}{participant_id} did not pass validation check')
 
         if start_date:
             start_date = parser.parse(start_date)

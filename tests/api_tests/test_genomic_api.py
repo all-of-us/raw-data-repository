@@ -134,8 +134,71 @@ class GPGenomicPIIApiTest(GenomicApiTestBase):
     def setUp(self):
         super(GPGenomicPIIApiTest, self).setUp()
 
-    def test_pid_validation(self):
-        pass
+    def test_full_participant_validation_lookup(self):
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+        participant = self.data_generator.create_database_participant()
+
+        # no summary / no set member
+        resp = self.send_get(
+            f"GenomicPII/GP/P{participant.participantId}",
+            expected_status=http.client.NOT_FOUND
+        )
+        self.assertEqual(
+            resp.json['message'],
+            f'Participant with ID P{participant.participantId} not found in RDR'
+        )
+        self.assertEqual(resp.status_code, 404)
+
+        # summary / no set member
+        self.data_generator.create_database_participant_summary(
+            participant=participant
+        )
+        resp = self.send_get(
+            f"GenomicPII/GP/P{participant.participantId}",
+            expected_status=http.client.NOT_FOUND
+        )
+        self.assertEqual(resp.json['message'],
+                         f'Participant with ID P{participant.participantId} '
+                         f'not found in Genomics system'
+                         )
+        self.assertEqual(resp.status_code, 404)
+
+        # summary / set member / failed validation in query
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            participantId=participant.participantId,
+            biobankId=participant.biobankId,
+            sampleId="21042005280",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW0
+        )
+
+        resp = self.send_get(
+            f"GenomicPII/GP/P{participant.participantId}",
+            expected_status=http.client.NOT_FOUND
+        )
+
+        self.assertEqual(resp.json['message'], f'Participant with ID P{participant.participantId} '
+                                               f'did not pass validation check')
+        self.assertEqual(resp.status_code, 404)
+
+        # add consent correct validation
+        summaries = self.ps_dao.get_all()
+        current_summary = list(filter(lambda x: x.participantId == participant.participantId, summaries))[0]
+        current_summary.consentForGenomicsROR = 1
+        self.ps_dao.update(current_summary)
+
+        resp = self.send_get(
+            f"GenomicPII/GP/P{participant.participantId}"
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(resp.get('biobank_id'), str(participant.biobankId))
 
     def test_get_pii_valid_pid(self):
         p1_pii = self.send_get("GenomicPII/GP/P1")
@@ -233,6 +296,75 @@ class GPGenomicPIIApiTest(GenomicApiTestBase):
 class RhpGenomicPIIApiTest(GenomicApiTestBase):
     def setUp(self):
         super(RhpGenomicPIIApiTest, self).setUp()
+
+    def test_full_participant_validation_lookup(self):
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+        participant = self.data_generator.create_database_participant()
+
+        # no summary / no set member
+        resp = self.send_get(
+            f"GenomicPII/RHP/A{participant.biobankId}",
+            expected_status=http.client.NOT_FOUND
+        )
+        self.assertEqual(
+            resp.json['message'],
+            f'Participant with ID A{participant.biobankId} not found in RDR'
+        )
+        self.assertEqual(resp.status_code, 404)
+
+        # summary / no set member
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            consentForGenomicsROR=1
+        )
+        resp = self.send_get(
+            f"GenomicPII/RHP/A{participant.biobankId}",
+            expected_status=http.client.NOT_FOUND
+        )
+        self.assertEqual(resp.json['message'],
+                         f'Participant with ID A{participant.biobankId} '
+                         f'not found in Genomics system'
+                         )
+        self.assertEqual(resp.status_code, 404)
+
+        # summary / set member / failed validation in query
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            participantId=participant.participantId,
+            biobankId=participant.biobankId,
+            collectionTubeId=11111,
+            cvlW4wrHdrManifestJobRunID=1,
+            gcManifestSampleSource='Whole Blood'
+        )
+
+        resp = self.send_get(
+            f"GenomicPII/RHP/A{participant.biobankId}",
+            expected_status=http.client.NOT_FOUND
+        )
+
+        self.assertEqual(resp.json['message'], f'Participant with ID A{participant.biobankId} '
+                                               f'did not pass validation check')
+        self.assertEqual(resp.status_code, 404)
+
+        # add biobank stored sample fix validation
+        self.data_generator.create_database_biobank_stored_sample(
+            biobankId=participant.biobankId,
+            biobankOrderIdentifier=self.fake.pyint(),
+            biobankStoredSampleId=11111,
+            confirmed=clock.CLOCK.now()
+        )
+
+        resp = self.send_get(
+            f"GenomicPII/RHP/A{participant.biobankId}"
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertTrue(str(participant.participantId) in resp.get('participant_id'))
 
     def test_get_pii_valid_pid(self):
         participant = self._make_participant()
@@ -500,6 +632,73 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.num_participants = 5
 
     # GET
+    def test_full_participant_validation_lookup(self):
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+        participant = self.data_generator.create_database_participant()
+
+        # no summary / no set member
+        resp = self.send_get(
+            f"GenomicOutreachV2?participant_id=P{participant.participantId}",
+            expected_status=http.client.NOT_FOUND
+        )
+        self.assertEqual(
+            resp.json['message'],
+            f'Participant with ID P{participant.participantId} not found in RDR'
+        )
+        self.assertEqual(resp.status_code, 404)
+
+        # summary / no set member
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            consentForGenomicsROR=1
+        )
+        resp = self.send_get(
+            f"GenomicOutreachV2?participant_id=P{participant.participantId}",
+            expected_status=http.client.NOT_FOUND
+        )
+        self.assertEqual(resp.json['message'],
+                         f'Participant with ID P{participant.participantId} '
+                         f'not found in Genomics system'
+                         )
+        self.assertEqual(resp.status_code, 404)
+
+        # summary / set member / failed validation in query
+        gen_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            participantId=participant.participantId,
+            genomeType='aou_array'
+        )
+
+        resp = self.send_get(
+            f"GenomicOutreachV2?participant_id=P{participant.participantId}",
+            expected_status=http.client.NOT_FOUND
+        )
+
+        self.assertEqual(resp.json['message'], f'Participant with ID P{participant.participantId} '
+                                               f'did not pass validation check')
+        self.assertEqual(resp.status_code, 404)
+
+        # add result ready for gem fix validation
+        self.data_generator.create_database_genomic_member_report_state(
+            genomic_set_member_id=gen_member.id,
+            participant_id=participant.participantId,
+            module='gem',
+            genomic_report_state=GenomicReportState.GEM_RPT_READY
+        )
+
+        resp = self.send_get(
+            f"GenomicOutreachV2?participant_id=P{participant.participantId}"
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(len(resp.get('data')), 1)
+        self.assertTrue(str(participant.participantId) in resp.get('data')[0]['participant_id'])
+
     def test_validate_params(self):
         bad_response = 'GenomicOutreachV2 GET accepted params: start_date | end_date | participant_id | module | type'
 
@@ -670,17 +869,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.assertEqual(len(resp['data']), 2)
         self.assertEqual(len(resp['data'][0]), 5)
         self.assertEqual(expected, resp)
-
-    # def test_get_not_found_participant(self):
-    #     fake_now = clock.CLOCK.now().replace(microsecond=0)
-    #     bad_id = 111111111
-    #     bad_response = f'Participant P{bad_id} does not exist in the Genomic system.'
-    #
-    #     with clock.FakeClock(fake_now):
-    #         resp = self.send_get(f'GenomicOutreachV2?participant_id={bad_id}', expected_status=http.client.NOT_FOUND)
-    #
-    #     self.assertEqual(resp.json['message'], bad_response)
-    #     self.assertEqual(resp.status_code, 404)
 
     def test_get_by_type(self):
         self.num_participants = 10
