@@ -11,7 +11,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
     GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
     GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState, \
-    ResultsWorkflowState, ResultsModuleType
+    ResultsWorkflowState, ResultsModuleType, GenomicSampleSwapCategory
 
 
 class GenomicSet(Base):
@@ -1495,6 +1495,7 @@ class GenomicSampleSwapMember(Base):
     modified = Column(DateTime)
     genomic_sample_swap = Column(Integer, ForeignKey("genomic_sample_swap.id"), nullable=False)
     genomic_set_member_id = Column(Integer, ForeignKey('genomic_set_member.id'), nullable=False)
+    category = Column(Enum(GenomicSampleSwapCategory), default=GenomicSampleSwapCategory.UNSET)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
 
 

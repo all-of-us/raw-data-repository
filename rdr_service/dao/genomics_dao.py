@@ -42,7 +42,8 @@ from rdr_service.model.genomics import (
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
-    GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue)
+    GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
+    GenomicSampleSwap)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -1239,6 +1240,26 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
     def _is_valid_set_member_job_field(cls, job_field_name):
         return job_field_name is not None and hasattr(GenomicSetMember, job_field_name)
 
+    def get_members_from_biobank_ids(self, biobank_ids, genome_type=None):
+        """
+        Returns genomicSetMember objects for list of Biobank IDs.
+        :param biobank_ids:
+        :param genome_type:
+        :return:
+        """
+        with self.session() as session:
+            members = session.query(GenomicSetMember).filter(
+                GenomicSetMember.biobankId.in_(biobank_ids),
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.ignoreFlag == 0
+            )
+
+            if genome_type:
+                members = members.filter(
+                    GenomicSetMember.genomeType == genome_type
+                )
+            return members.all()
+
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoUtils):
     """ Stub for GenomicJobRun model """
@@ -1635,7 +1656,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoUtils):
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                    GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                    GenomicSetMember.genomeType.in_((config.GENOME_TYPE_ARRAY, config.GENOME_TYPE_ARRAY_INVESTIGATION)),
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
@@ -1684,7 +1705,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoUtils):
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                    GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                    GenomicSetMember.genomeType.in_((config.GENOME_TYPE_WGS, config.GENOME_TYPE_WGS_INVESTIGATION)),
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
@@ -1990,9 +2011,24 @@ class GenomicOutreachDaoV2(BaseDao):
         self.req_allowed_types = ['result', 'informingLoop']
         self.req_type = self.req_allowed_types
 
-        self.genome_types = []
+        self.report_state_map = {
+            'gem': [GenomicReportState.GEM_RPT_READY,
+                    GenomicReportState.GEM_RPT_PENDING_DELETE,
+                    GenomicReportState.GEM_RPT_DELETED],
+            'pgx': [GenomicReportState.PGX_RPT_READY,
+                    GenomicReportState.PGX_RPT_PENDING_DELETE,
+                    GenomicReportState.PGX_RPT_DELETED,
+                    GenomicReportState.CVL_RPT_PENDING_DELETE,
+                    GenomicReportState.CVL_RPT_DELETED],
+            'hdr': [GenomicReportState.HDR_RPT_UNINFORMATIVE,
+                    GenomicReportState.HDR_RPT_POSITIVE,
+                    GenomicReportState.HDR_RPT_PENDING_DELETE,
+                    GenomicReportState.HDR_RPT_DELETED,
+                    GenomicReportState.CVL_RPT_PENDING_DELETE,
+                    GenomicReportState.CVL_RPT_DELETED]
+        }
+        self.sample_swaps = []
         self.report_query_state = self.get_report_state_query_config()
-        self.result_viewed_dao = GenomicResultViewedDao()
 
     def get_id(self, obj):
         pass
@@ -2001,12 +2037,22 @@ class GenomicOutreachDaoV2(BaseDao):
         pass
 
     def to_client_json(self, _dict):
+
+        def _get_sample_swap_module(sample_swap):
+            if not sample_swap:
+                return ''
+            if sample_swap:
+                swap = list(filter(lambda x: x.id == sample_swap.genomic_sample_swap, self.sample_swaps))[0]
+                return f'_{swap.name}_{sample_swap.category.name}'.lower()
+
+        def _get_sample_swaps(data):
+            if any(hasattr(obj, 'GenomicSampleSwapMember') for obj in data):
+                sample_swap_dao = GenomicSampleSwapDao()
+                return sample_swap_dao.get_all()
+
+        self.sample_swaps = _get_sample_swaps(data=_dict.get('data'))
+        timestamp = pytz.utc.localize(_dict.get('date'))
         report_statuses = []
-        # handle date
-        try:
-            timestamp = pytz.utc.localize(_dict['date'])
-        except ValueError:
-            timestamp = _dict['date']
 
         if not _dict.get('data'):
             return {
@@ -2017,16 +2063,18 @@ class GenomicOutreachDaoV2(BaseDao):
         for p in _dict.get('data'):
             pid = p.participant_id
             if 'result' in p.type:
-                p_status, p_module = self._determine_report_state(p.genomic_report_state)
+                report_status, report_module = self._determine_report_state(p.genomic_report_state)
                 genomic_result_viewed = p.GenomicResultViewed
-
-                result_viewed = 'yes' if genomic_result_viewed \
-                                         and genomic_result_viewed.module_type == p_module else 'no'
+                result_viewed = 'yes' if genomic_result_viewed and genomic_result_viewed.module_type \
+                                                == report_module else 'no'
+                genomic_swap_module = _get_sample_swap_module(
+                    sample_swap=p.GenomicSampleSwapMember
+                )
 
                 report_statuses.append({
-                    "module": p_module.lower(),
+                    "module": f'{report_module.lower()}{genomic_swap_module}',
                     "type": 'result',
-                    "status": p_status,
+                    "status": report_status,
                     "viewed": result_viewed,
                     "participant_id": f'P{pid}',
                 })
@@ -2152,6 +2200,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         distinct(GenomicMemberReportState.participant_id).label('participant_id'),
                         GenomicMemberReportState.genomic_report_state,
                         GenomicResultViewed,
+                        GenomicSampleSwapMember,
                         literal('result').label('type')
                     )
                     .join(
@@ -2167,6 +2216,9 @@ class GenomicOutreachDaoV2(BaseDao):
                     ).outerjoin(
                         GenomicResultViewed,
                         GenomicResultViewed.participant_id == GenomicMemberReportState.participant_id
+                    ).outerjoin(
+                        GenomicSampleSwapMember,
+                        GenomicSampleSwapMember.genomic_set_member_id == GenomicSetMember.id
                     ).filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
@@ -2188,70 +2240,27 @@ class GenomicOutreachDaoV2(BaseDao):
 
             return informing_loops + results
 
-    @staticmethod
-    def _determine_report_state(status):
-        report_state_mapping = {
-            'gem': {
-                GenomicReportState.GEM_RPT_READY: "ready",
-                GenomicReportState.GEM_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.GEM_RPT_DELETED: "deleted"
-            },
-            'pgx': {
-                GenomicReportState.PGX_RPT_READY: "ready",
-                GenomicReportState.PGX_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.PGX_RPT_DELETED: "deleted",
-                GenomicReportState.CVL_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.CVL_RPT_DELETED: "deleted"
-            },
-            'hdr': {
-                GenomicReportState.HDR_RPT_UNINFORMATIVE: "uninformative",
-                GenomicReportState.HDR_RPT_POSITIVE: "positive",
-                GenomicReportState.HDR_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.HDR_RPT_DELETED: "deleted",
-                GenomicReportState.CVL_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.CVL_RPT_DELETED: "deleted"
-            }
-        }
+    def _determine_report_state(self, status):
         p_status, p_module = None, None
-
-        for key, value in report_state_mapping.items():
-            if status in value.keys():
-                p_status = value[status]
+        for key, report_values in self.report_state_map.items():
+            if status in report_values:
+                p_status = status.name.split('_', 2)[-1].lower()
                 p_module = key
                 break
-
         return p_status, p_module
 
     def get_report_state_query_config(self):
-        report_state_query_mapping = {
-            'gem': [GenomicReportState.GEM_RPT_READY,
-                    GenomicReportState.GEM_RPT_PENDING_DELETE,
-                    GenomicReportState.GEM_RPT_DELETED],
-            'pgx': [GenomicReportState.PGX_RPT_READY,
-                    GenomicReportState.PGX_RPT_PENDING_DELETE,
-                    GenomicReportState.PGX_RPT_DELETED],
-            'hdr': [GenomicReportState.HDR_RPT_UNINFORMATIVE,
-                    GenomicReportState.HDR_RPT_POSITIVE,
-                    GenomicReportState.HDR_RPT_PENDING_DELETE,
-                    GenomicReportState.HDR_RPT_DELETED]
-        }
         mappings = []
         if not self.module:
-            for value in report_state_query_mapping.values():
+            for value in self.report_state_map.values():
                 mappings.extend(value)
-        else:
-            for mod in self.module:
-                for key, value in report_state_query_mapping.items():
-                    if mod == key:
-                        mappings.extend(value)
-        return mappings
+            return mappings
 
-    def set_globals(self, module, req_type):
-        if module:
-            self.module = [module]
-            self.report_query_state = self.get_report_state_query_config()
-        if req_type:
-            self.req_type = [req_type]
+        for mod in self.module:
+            for key, value in self.report_state_map.items():
+                if mod == key:
+                    mappings.extend(value)
+        return mappings
 
 
 class GenomicManifestFileDao(BaseDao, GenomicDaoUtils):
@@ -3036,16 +3045,22 @@ class GcDataFileStagingDao(BaseDao):
         with self.session() as session:
             session.execute("DELETE FROM gc_data_file_staging WHERE TRUE")
 
-    def get_missing_gc_data_file_records(self):
+    def get_missing_gc_data_file_records(self, sample_ids=None):
         with self.session() as session:
-            return session.query(
+            query = session.query(
                 GcDataFileStaging
             ).outerjoin(
                 GenomicGcDataFile,
                 GcDataFileStaging.file_path == GenomicGcDataFile.file_path
             ).filter(
                 GenomicGcDataFile.id.is_(None)
-            ).all()
+            )
+            if sample_ids:
+                query = query.filter(
+                    GenomicGcDataFile.identifier_type == 'sample_id',
+                    GenomicGcDataFile.identifier_value.in_(sample_ids)
+                )
+            return query.all()
 
     def insert_filenames_bulk(self, files):
         with self.session() as session:
@@ -3745,3 +3760,14 @@ class GenomicCVLResultPastDueDao(UpdatableDao):
 
             self.update(current_record)
 
+
+class GenomicSampleSwapDao(BaseDao):
+    def __init__(self):
+        super(GenomicSampleSwapDao, self).__init__(
+            GenomicSampleSwap, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass

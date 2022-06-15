@@ -83,6 +83,8 @@ GENOMIC_AW1F_SUBFOLDER = "post_accessioning_results"
 GENOME_TYPE_ARRAY = "aou_array"
 GENOME_TYPE_WGS = "aou_wgs"
 GENOME_TYPE_CVL = "aou_cvl"
+GENOME_TYPE_ARRAY_INVESTIGATION = "aou_array_investigation"
+GENOME_TYPE_WGS_INVESTIGATION = "aou_wgs_investigation"
 AW1F_ALERT_RECIPIENTS = "aw1f_alert_recipients"
 GENOMIC_AW3_ARRAY_SUBFOLDER = "AW3_array_manifest"
 GENOMIC_AW3_WGS_SUBFOLDER = "AW3_wgs_manifest"
@@ -210,6 +212,8 @@ RDR_VALIDATION_WEBHOOK = "rdr_validation_webhook"
 DECEASED_REPORT_FILTER_EXCEPTIONS = "deceased_report_filter_exceptions"
 
 PTSC_SERVICE_DESK_EMAIL = "ptsc_service_desk_email"
+
+SENSITIVE_EHR_RELEASE_DATE = 'sensitive_ehr_release_date'
 
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}

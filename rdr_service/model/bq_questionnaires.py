@@ -422,7 +422,14 @@ class BQPDREHRConsentPIISchema(_BQModuleSchema):
         'EHRConsentPII_ILHIPPAWitnessSignature',
         'EHRConsentPII_HelpWithConsentSignature',
         '12MoEHRConsentPII_EmailCopy',
-        '30MoEHRConsentPII_EmailCopy'
+        '30MoEHRConsentPII_EmailCopy',
+        'sensitivetype2_mentalhealth',
+        'sensitivetype2_hivaids',
+        'sensitivetype2_substanceuse',
+        'sensitivetype2_genetictesting',
+        'sensitivetype2_domesticviolence',
+        'signature_type',
+        'signature_draw'
     )
 
 

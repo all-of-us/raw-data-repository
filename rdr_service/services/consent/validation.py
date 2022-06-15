@@ -6,11 +6,14 @@ import logging
 import pytz
 from typing import Collection, List
 
+from dateutil.parser import parse
 from sqlalchemy.orm import Session
 
+from rdr_service import code_constants, config
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType,\
     ConsentOtherErrors
 from rdr_service.model.consent_response import ConsentResponse
@@ -305,20 +308,22 @@ class _ValidationOutputHelper:
 
 class ConsentValidationController:
     def __init__(self, consent_dao: ConsentDao, participant_summary_dao: ParticipantSummaryDao,
-                 hpo_dao: HPODao, storage_provider: GoogleCloudStorageProvider):
+                 hpo_dao: HPODao, storage_provider: GoogleCloudStorageProvider, session: Session):
         self.consent_dao = consent_dao
         self.participant_summary_dao = participant_summary_dao
         self.storage_provider = storage_provider
 
         self.va_hpo_id = hpo_dao.get_by_name('VA').hpoId
+        self._session = session
 
     @classmethod
-    def build_controller(cls):
+    def build_controller(cls, session):
         return ConsentValidationController(
             consent_dao=ConsentDao(),
             participant_summary_dao=ParticipantSummaryDao(),
             hpo_dao=HPODao(),
-            storage_provider=GoogleCloudStorageProvider()
+            storage_provider=GoogleCloudStorageProvider(),
+            session=session
         )
 
     def check_for_corrections(self, session):
@@ -405,7 +410,7 @@ class ConsentValidationController:
         ):
             output_strategy.add_all(self._process_validation_results(validator.get_primary_update_validation_results()))
 
-    def validate_consent_uploads(self, session: Session, output_strategy: ValidationOutputStrategy,
+    def validate_consent_uploads(self, output_strategy: ValidationOutputStrategy,
                                  min_consent_date=None, max_consent_date=None):
         """
         Find all the expected consents (filtering by dates if provided) and check the files that have been uploaded
@@ -420,12 +425,12 @@ class ConsentValidationController:
         is_last_batch = False
         while not is_last_batch:
             participant_id_consent_map, is_last_batch = self.consent_dao.get_consent_responses_to_validate(
-                session=session
+                session=self._session
             )
             self._process_id_consent_map(
                 participant_id_consent_map=participant_id_consent_map,
                 output_strategy=output_strategy,
-                session=session,
+                session=self._session,
                 min_consent_date=min_consent_date,
                 max_consent_date=max_consent_date
             )
@@ -522,7 +527,8 @@ class ConsentValidationController:
         return ConsentValidator(
             consent_factory=consent_factory,
             participant_summary=participant_summary,
-            va_hpo_id=self.va_hpo_id
+            va_hpo_id=self.va_hpo_id,
+            session=self._session
         )
 
     @classmethod
@@ -560,10 +566,12 @@ class ConsentValidationController:
 class ConsentValidator:
     def __init__(self, consent_factory: files.ConsentFileAbstractFactory,
                  participant_summary: ParticipantSummary,
-                 va_hpo_id: int):
+                 va_hpo_id: int,
+                 session: Session):
         self.factory = consent_factory
         self.participant_summary = participant_summary
         self.va_hpo_id = va_hpo_id
+        self._session = session
 
         self._central_time = pytz.timezone('America/Chicago')
 
@@ -641,15 +649,16 @@ class ConsentValidator:
         )[0]
 
     def _get_extra_validation_function_by_type(self, consent_type: ConsentType):
-        if consent_type in [ConsentType.PRIMARY, consent_type.EHR]:
+        if consent_type == ConsentType.PRIMARY:
             return self._validate_is_va_file
+        elif consent_type == ConsentType.EHR:
+            return self._additional_ehr_checks
         elif consent_type == ConsentType.GROR:
             return self._check_for_checkmark
         elif consent_type == ConsentType.PRIMARY_UPDATE:
             return self._additional_primary_update_checks
         else:
             return None
-
 
     def _check_for_va_version_mismatch(self, consent):
         is_va_consent = consent.get_is_va_consent()
@@ -671,19 +680,40 @@ class ConsentValidator:
             self._append_other_error(ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK, result)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
+    def _additional_ehr_checks(self, consent: files.EhrConsentFile, result: ParsingResult):
+        self._validate_is_va_file(consent, result)
+
+        sensitive_form_release_date_str = config.getSettingJson(config.SENSITIVE_EHR_RELEASE_DATE)
+        sensitive_form_release_date = parse(sensitive_form_release_date_str).date()
+
+        if result.expected_sign_date < sensitive_form_release_date or consent.get_is_va_consent():
+            return  # Skip the following checks for sensitive release fields
+
+        # get latest response to consentpii
+        consentpii_response_collection = QuestionnaireResponseDao.get_responses_to_surveys(
+            session=self._session,
+            survey_codes=[code_constants.CONSENT_FOR_STUDY_ENROLLMENT_MODULE],
+            participant_ids=[self.participant_summary.participantId]
+        )[self.participant_summary.participantId]
+        latest_consentpii_response = consentpii_response_collection.in_authored_order[0]
+
+        state_of_care_answer = latest_consentpii_response.get_single_answer_for(code_constants.RECEIVE_CARE_STATE)
+        if state_of_care_answer.value in code_constants.SENSITIVE_EHR_STATES:
+            if not consent.is_sensitive_form():
+                self._append_other_error(ConsentOtherErrors.SENSITIVE_EHR_EXPECTED, result)
+                result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
+            elif not consent.has_valid_sensitive_form_initials():
+                self._append_other_error(ConsentOtherErrors.INITIALS_MISSING_ON_SENSITIVE_EHR, result)
+                result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
+        elif consent.is_sensitive_form():
+            self._append_other_error(ConsentOtherErrors.NONSENSITIVE_EHR_EXPECTED, result)
+            result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
+
     def _additional_primary_update_checks(self, consent: files.PrimaryConsentUpdateFile, result: ParsingResult):
-        errors_detected = False
+        self._validate_is_va_file(consent, result)
 
         if not consent.is_agreement_selected():
             self._append_other_error(ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK, result)
-            errors_detected = True
-
-        va_version_error_str = self._check_for_va_version_mismatch(consent)
-        if va_version_error_str:
-            self._append_other_error(va_version_error_str, result)
-            errors_detected = True
-
-        if errors_detected:
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
     def _generate_validation_results(self, consent_files: List[files.ConsentFile], consent_type: ConsentType,

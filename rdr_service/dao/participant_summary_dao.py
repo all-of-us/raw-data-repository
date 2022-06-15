@@ -1101,7 +1101,6 @@ class ParticipantSummaryDao(UpdatableDao):
         if strip_none_values is True:
             result = {k: v for k, v in list(result.items()) if v is not None}
 
-
         return result
 
     @staticmethod
