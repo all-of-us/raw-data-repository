@@ -1511,22 +1511,17 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                   consent_status:  BQModuleStatusEnum
         """
         # If a module doesn't have defined consent questions that determine status, it defaults to SUBMITTED status
-        if module not in _consent_module_question_map.keys():
+        if _consent_module_question_map[module] is None:
             return None, BQModuleStatusEnum.SUBMITTED
 
         answer_code = None
-        consent_status = None
 
-        codes = _consent_module_question_map[module]
-        if isinstance(codes, str):
-            # A single consent question code applies to all versions of the module codebooks
-            answer_code = response_rec.get(codes, None)
-        elif isinstance(codes, list):
-            # Same module code can have different codebook versions that have different consent question codes
-            for code in codes:
-                answer_code = response_rec.get(code, None)
-                if answer_code:
-                    break
+        consent_question_codes = _consent_module_question_map[module]
+        code_list = [consent_question_codes, ] if isinstance(consent_question_codes, str) else consent_question_codes
+        for code in code_list:
+            answer_code = response_rec.get(code, None)
+            if answer_code:
+                break
 
         consent_status = _consent_answer_status_map.get(answer_code, None) if answer_code else None
         if not consent_status:
