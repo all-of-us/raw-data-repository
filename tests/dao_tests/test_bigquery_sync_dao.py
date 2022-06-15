@@ -76,7 +76,7 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         with FakeClock(response_time or self.TIME_1):
             self.send_post(f"Participant/P{participant_id}/QuestionnaireResponse", qr)
 
-    def _submit_sensitive_ehr(self, participant_id, response_data=dict(), response_time=None):
+    def _submit_sensitive_ehr(self, participant_id, response_data={}, response_time=None):
         if not self.qn_ehrconsent_id:
             self.qn_ehrconsent_id = self.create_questionnaire("ehr_consent_questionnaire.json")
 
