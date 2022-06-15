@@ -3636,8 +3636,7 @@ class GenomicQueriesDao(BaseDao):
         return new_query
 
     def get_w1il_yes_no_yes_participants(self, start_datetime):
-        # Find W1IL participants that have given a No response to GROR after being included in a W1IL,
-        # and that have recently switched back to a Yes to the GROR consent.
+        # Find W1IL participants that have re-submitted a Yes response to GROR after being included in a W1IL.
         with self.session() as session:
             query = session.query(
                 ParticipantSummary.participantId
@@ -3660,7 +3659,8 @@ class GenomicQueriesDao(BaseDao):
             )
 
             # For each of the participants found, check to see if they have a No response to the GROR after the W1IL.
-            # (Just to filter out any strange double-Yes's we got)
+            # (Just to filter out any strange double-Yes's we got, ie. participants that had a Yes before the W1IL
+            #  and then submitted another Yes afterwards with no revocation in between)
             query = self._join_gror_answer(
                 query=query,
                 answer_code_str_list=[
