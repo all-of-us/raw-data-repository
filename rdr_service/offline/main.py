@@ -635,6 +635,13 @@ def reconcile_gc_data_file_to_table():
     genomic_pipeline.reconcile_gc_data_file_to_table()
     return '{"success": "true"}'
 
+
+@app_util.auth_required_cron
+def check_for_yes_no_yes_w1il_gror_participants():
+    a_week_ago = datetime.utcnow() - timedelta(weeks=1)
+    genomic_pipeline.notify_email_group_of_yes_no_yes_w1il_participants(since_datetime=a_week_ago)
+    return '{"success": "true"}'
+
 # Disabling job until further notice
 # @app_util.auth_required_cron
 # @run_genomic_cron_job('reconcile_raw_to_aw1_ingested_workflow')
@@ -1063,6 +1070,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "ReconcileGCDataFileToTable",
         endpoint="reconcile_gc_data_file_to_table",
         view_func=reconcile_gc_data_file_to_table,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "CheckForYesNoYesW1ilGrorParticipants",
+        endpoint="check_for_yes_no_yes_w1il_gror",
+        view_func=check_for_yes_no_yes_w1il_gror_participants,
         methods=["GET"]
     )
     # Disabling job until further notice

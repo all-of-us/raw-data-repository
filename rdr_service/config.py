@@ -210,6 +210,7 @@ RDR_VALIDATION_WEBHOOK = "rdr_validation_webhook"
 DECEASED_REPORT_FILTER_EXCEPTIONS = "deceased_report_filter_exceptions"
 
 PTSC_SERVICE_DESK_EMAIL = "ptsc_service_desk_email"
+RDR_GENOMICS_NOTIFICATION_EMAIL = "rdr_genomics_notification_email"
 
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}

@@ -1,14 +1,14 @@
 import logging
 
-from rdr_service import clock
-from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicAW3RawDao, GenomicAW4RawDao, \
-    GenomicJobRunDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao, GenomicW3NSRawDao, \
-    GenomicW5NFRawDao, GenomicW3SSRawDao, GenomicW2WRawDao, GenomicW1ILRawDao
+from rdr_service import clock, config
+from rdr_service.dao.genomics_dao import GenomicQueriesDao, GenomicAW1RawDao, GenomicAW2RawDao, GenomicAW3RawDao, \
+    GenomicAW4RawDao, GenomicJobRunDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao, \
+    GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, GenomicW2WRawDao, GenomicW1ILRawDao
 from rdr_service.genomic.genomic_cvl_reconciliation import GenomicCVLReconcile
-from rdr_service.services.system_utils import JSONObject
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
-import rdr_service.config as config
+from rdr_service.services.email_service import Email, EmailService
+from rdr_service.services.system_utils import JSONObject
 
 
 def run_genomic_cron_job(val):
@@ -603,4 +603,29 @@ def load_awn_manifest_into_raw_table(
             file_path,
             raw_job.get('dao'),
             cvl_site_id=cvl_site_id
+        )
+
+
+def notify_email_group_of_yes_no_yes_w1il_participants(since_datetime):
+    dao = GenomicQueriesDao()
+    participant_list = dao.get_w1il_yes_no_yes_participants(start_datetime=since_datetime)
+
+    logging.warning(
+        f'The following {len(participant_list)} participants '
+        f'switched back to a Yes consent for GROR after being in W1IL: ' +
+        ','.join([f'{participant.participantId}' for participant in participant_list])
+    )
+
+    notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
+    if notification_email_address:
+        message = 'The following participants recently provided GROR consent again ' \
+                  '(after having appeared in a W1IL manifest and then revoking their GROR consent):\n\n'
+        message += '\n'.join([f'P{participant.participantId}' for participant in participant_list])
+
+        EmailService.send_email(
+            Email(
+                recipients=[notification_email_address],
+                subject='GHR3 participants recently re-submitting GROR consent',
+                plain_text_content=message
+            )
         )
