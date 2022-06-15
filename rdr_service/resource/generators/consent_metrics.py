@@ -39,7 +39,10 @@ METRICS_ERROR_TYPES = {
     'va_consent_for_non_va': 'VA consent version for non-VA participant',
     'invalid_dob': 'Invalid date of birth',
     'invalid_age_at_consent': 'Invalid age at consent',
-    'invalid_printed_name': 'Invalid printed name'
+    'invalid_printed_name': 'Invalid printed name',
+    'sensitive_ehr_expected': 'Non-sensitive EHR consent version when sensitive EHR expected',
+    'non_sensitive_ehr_expected': 'Sensitive EHR consent version when non-sensitive EHR expected',
+    'sensitive_ehr_missing_initials': 'Missing expected initials on sensitive EHR'
 }
 
 class ConsentMetricGenerator(generators.BaseGenerator):
@@ -283,6 +286,9 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                 'invalid_dob': False,
                 'invalid_age_at_consent': False,
                 'invalid_printed_name': False,
+                'sensitive_ehr_expected': False,
+                'non_sensitive_ehr_expected': False,
+                'sensitive_ehr_missing_initials': False,
                 'test_participant': False,
                 'ignore': False
         }
@@ -312,6 +318,12 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                 row.other_errors.find(ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN) != -1
             data['invalid_printed_name'] =\
                 row.other_errors.find(ConsentOtherErrors.INVALID_PRINTED_NAME) != -1
+            data['sensitive_ehr_expected'] =\
+                row.other_errors.find(ConsentOtherErrors.SENSITIVE_EHR_EXPECTED) != -1
+            data['non_sensitive_ehr_expected'] =\
+                row.other_errors.find(ConsentOtherErrors.NONSENSITIVE_EHR_EXPECTED) != -1
+            data['sensitive_ehr_missing_initials'] =\
+                row.other_errors.find(ConsentOtherErrors.INITIALS_MISSING_ON_SENSITIVE_EHR) != -1
 
         # DOB-related errors are not tracked in the RDR consent_file table.  They are derived from
         # participant_summary data and only apply to the primary consent.  invalid_age_at_consent will only be true
