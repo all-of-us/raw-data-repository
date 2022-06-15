@@ -72,6 +72,7 @@ class BQGenomicSetMemberSchema(BQSchema):
     sex_at_birth = BQField('sex_at_birth', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     genome_type = BQField('genome_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     biobank_id = BQField('biobank_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    biobank_id_str = BQField('biobank_id_str', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     package_id = BQField('package_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     validation_status = BQField('validation_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                                 fld_enum=GenomicSetMemberStatusEnum)
