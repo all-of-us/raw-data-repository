@@ -33,7 +33,8 @@ from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
-from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
+from rdr_service.model.measurements import (PhysicalMeasurements, PhysicalMeasurementsStatus,
+                                            PhysicalMeasurementsCollectType, OriginMeasurementUnit)
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
@@ -859,6 +860,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         query = ro_session.query(PhysicalMeasurements.physicalMeasurementsId, PhysicalMeasurements.created,
                                  PhysicalMeasurements.createdSiteId, PhysicalMeasurements.final,
                                  PhysicalMeasurements.finalized, PhysicalMeasurements.finalizedSiteId,
+                                 PhysicalMeasurements.collectType, PhysicalMeasurements.origin,
+                                 PhysicalMeasurements.originMeasurementUnit,
+                                 PhysicalMeasurements.questionnaireResponseId,
                                  PhysicalMeasurements.status, PhysicalMeasurements.amendedMeasurementsId). \
             filter(PhysicalMeasurements.participantId == p_id). \
             order_by(desc(PhysicalMeasurements.created))
@@ -868,10 +872,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         for row in results:
             # Imitate some of the RDR 'participant_summary' table logic, the PM status value defaults to COMPLETED
             # unless PM status is CANCELLED.  So we set all NULL values to COMPLETED status here.
-            pm_status = PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.COMPLETED
+            pm_status = PhysicalMeasurementsStatus(row.status or PhysicalMeasurementsStatus.COMPLETED)
+            collection_type = PhysicalMeasurementsCollectType(row.collectType or PhysicalMeasurementsCollectType.UNSET)
+            origin_measurements_type = OriginMeasurementUnit(row.originMeasurementUnit or OriginMeasurementUnit.UNSET)
 
             pm_list.append({
                 'physical_measurements_id': row.physicalMeasurementsId,
+                'questionnaire_response_id': row.questionnaireResponseId,
                 'status': str(pm_status),
                 'status_id': int(pm_status),
                 'created': row.created,
@@ -882,13 +889,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
                 'finalized_site_id': row.finalizedSiteId,
                 'amended_measurements_id': row.amendedMeasurementsId,
+                'collect_type':  str(collection_type),
+                'collect_type_id': int(collection_type),
+                'origin': row.origin,
+                'origin_measurement_unit': str(origin_measurements_type),
+                'origin_measurement_unit_type': int(origin_measurements_type),
                 # If status == UNSET in data, then the record has been cancelled and then restored. PM status is
                 # only set to UNSET in this scenario.
                 'restored': 1 if row.status == 0 else 0
             })
             activity.append(_act(row.finalized or row.created, ActivityGroupEnum.Profile,
-                                ParticipantEventEnum.PhysicalMeasurements,
-                                **{'status': str(pm_status), 'status_id': int(pm_status)}))
+                                 ParticipantEventEnum.PhysicalMeasurements,
+                                 **{'status': str(pm_status), 'status_id': int(pm_status)}))
 
         if len(pm_list) > 0:
             data['pm'] = pm_list

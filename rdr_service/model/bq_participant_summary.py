@@ -147,7 +147,15 @@ class BQPhysicalMeasurements(BQSchema):
                                          BQFieldModeEnum.NULLABLE)
     pm_final = BQField('pm_final', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     pm_restored = BQField('pm_restored', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-
+    pm_questionnaire_response_id = BQField('pm_questionnaire_response_id',
+                                           BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    pm_collect_type = BQField('pm_collect_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    pm_collect_type_id = BQField('pm_collect_type_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    pm_origin = BQField('pm_origin', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    pm_origin_measurement_unit = BQField('pm_origin_measurement_unit', BQFieldTypeEnum.STRING,
+                                         BQFieldModeEnum.NULLABLE)
+    pm_origin_measurement_unit_id = BQField('pm_origin_measurement_unit_id', BQFieldTypeEnum.STRING,
+                                            BQFieldModeEnum.NULLABLE)
 
 class BQBiobankSampleSchema(BQSchema):
     """
