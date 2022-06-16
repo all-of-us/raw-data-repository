@@ -10,7 +10,7 @@ from rdr_service.participant_enums import QuestionnaireStatus, ParticipantCohort
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
     SuspensionStatus, QuestionnaireResponseStatus, QuestionnaireResponseClassificationType, \
     DeceasedStatus, ParticipantCohortPilotFlag, WithdrawalAIANCeremonyStatus, BiobankOrderStatus, \
-    SampleCollectionMethod
+    SampleCollectionMethod, PhysicalMeasurementsCollectType, OriginMeasurementUnit
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
@@ -171,6 +171,7 @@ class SexualOrientationSchema(Schema):
 class PhysicalMeasurementsSchema(Schema):
     """ Participant Physical Measurements """
     physical_measurements_id = fields.Int32()
+    questionnaire_response_id = fields.Int32()
     status = fields.EnumString(enum=PhysicalMeasurementsStatus)
     status_id = fields.EnumInteger(enum=PhysicalMeasurementsStatus)
     created = fields.DateTime()
@@ -181,6 +182,11 @@ class PhysicalMeasurementsSchema(Schema):
     finalized_site_id = fields.Int32()
     finalized = fields.DateTime()
     amended_measurements_id = fields.Int32()
+    collect_type = fields.EnumString(enum=PhysicalMeasurementsCollectType)
+    collect_type_id = fields.EnumInteger(enum=PhysicalMeasurementsCollectType)
+    origin = fields.String(validate=validate.Length(max=255))
+    origin_measurement_unit = fields.EnumString(enum=OriginMeasurementUnit)
+    origin_measurement_unit_id = fields.EnumInteger(enum=OriginMeasurementUnit)
     restored = fields.Boolean()
 
     class Meta:
