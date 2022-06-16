@@ -1330,58 +1330,55 @@ class GenomicJobController:
         """
         Compare latest non-reconciled user_event_metrics records
         to the latest participant states in genomic_informing_loop
-        Currently only support GEM since no HDR or PGx.
+        Currently supports GEM, HDR or PGx.
         """
+        modules = {key.split('.')[0] for key in informing_loop_event_mappings.keys()}
+        event_mappings = informing_loop_event_mappings
+        for module in modules:
+            # Get unreconciled user_event_metrics records
+            latest_events = self.event_dao.get_latest_events(module)
 
-        # TODO: handle multiple modules (HDR, PGx)
-        module = 'gem'
-        # Get unreconciled user_event_metrics records
-        latest_events = self.event_dao.get_latest_events()
+            # compare to latest state by participant in genomic_informing_loop
+            if latest_events:
+                update_pids = []
+                for event in latest_events:
+                    incident_message = f'{self.job_id.name}: Informing Loop out of sync with User Events! ' \
+                                       f'PID: {event.participant_id}'
+                    incident_params = {
+                        "source_job_run_id": self.job_run.id,
+                        "code": GenomicIncidentCode.INFORMING_LOOP_TO_EVENTS_MISMATCH.name,
+                        "message": incident_message,
+                        "participant_id": event.participant_id,
+                        "save_incident": True,
+                        "slack": True
+                    }
 
-        # compare to latest state by participant in genomic_informing_loop
-        if latest_events:
-            event_mappings = informing_loop_event_mappings
-            update_pids = []
-
-            for event in latest_events:
-                incident_message = f'{self.job_id.name}: Informing Loop out of sync with User Events! ' \
-                                   f'PID: {event.participant_id}'
-                incident_params = {
-                    "source_job_run_id": self.job_run.id,
-                    "code": GenomicIncidentCode.INFORMING_LOOP_TO_EVENTS_MISMATCH.name,
-                    "message": incident_message,
-                    "participant_id": event.participant_id,
-                    "save_incident": True,
-                    "slack": True
-                }
-
-                latest_state = self.informing_loop_dao.get_latest_state_for_pid(event.participant_id)
-                if latest_state:
-                    # Parse informing loop state
-                    latest_state = [x for x in latest_state[0] if x]
-                    lookup_state = f"{module}.{'.'.join(latest_state)}"
-
-                    try:
-                        if event.event_name != event_mappings[lookup_state]:
-                            # create incident
+                    latest_state = self.informing_loop_dao.get_latest_state_for_pid(event.participant_id)
+                    if latest_state:
+                        # Parse informing loop state
+                        latest_state = [x for x in latest_state[0] if x]
+                        lookup_state = f"{module}.{'.'.join(latest_state)}"
+                        try:
+                            if event.event_name != event_mappings[lookup_state]:
+                                # create incident
+                                self.create_incident(**incident_params)
+                            else:
+                                # add to update_pids reconcile_job_run_id
+                                update_pids.append(event.participant_id)
+                        except KeyError:
+                            incident_params['message'] = f'{self.job_id.name}: Key Error on IL lookup.' \
+                                                         f'PID: {event.participant_id}'
                             self.create_incident(**incident_params)
-
-                        else:
-                            # add to update_pids reconcile_job_run_id
-                            update_pids.append(event.participant_id)
-                    except KeyError:
-                        incident_params['message'] = f'{self.job_id.name}: Key Error on IL lookup.' \
-                                                     f'PID: {event.participant_id}'
+                    else:
+                        # No informing loop for pid, create incident
                         self.create_incident(**incident_params)
 
-                else:
-                    # No informing loop for pid, create incident
-                    self.create_incident(**incident_params)
-
-            if update_pids:
-                self.event_dao.update_reconcile_job_pids(pid_list=update_pids,
-                                                    job_run_id=self.job_run.id,
-                                                    module=module)
+                if update_pids:
+                    self.event_dao.update_reconcile_job_pids(
+                        pid_list=update_pids,
+                        job_run_id=self.job_run.id,
+                        module=module
+                    )
 
     def delete_old_gp_user_event_metrics(self, days=7):
         self.event_dao.delete_old_events(days=days)

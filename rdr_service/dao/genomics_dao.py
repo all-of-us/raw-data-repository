@@ -3240,7 +3240,7 @@ class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
     def get_id(self, obj):
         pass
 
-    def get_latest_events(self, module="gem"):
+    def get_latest_events(self,module="gem"):
         """
         Returns participant_ID and latest event_name for unreconciled events
         :param module: gem (default), hdr, or pgx

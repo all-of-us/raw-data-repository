@@ -6603,6 +6603,7 @@ class GenomicPipelineTest(BaseTestCase):
                   'gem.informing_loop.screen8_yes',
                   'hdr.informing_loop.started',
                   'gem.informing_loop.screen3']
+
         for p in range(4):
             for i in range(len(events)):
                 self.data_generator.create_database_genomic_user_event_metrics(
@@ -6680,7 +6681,6 @@ class GenomicPipelineTest(BaseTestCase):
         )
 
         # Run reconcile job
-
         genomic_pipeline.reconcile_informing_loop_responses()
 
         # Test no incident created for "started" event mismatch
