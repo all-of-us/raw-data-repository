@@ -228,4 +228,10 @@ informing_loop_event_mappings = {
     'gem.informing_loop_decision.no': 'gem.informing_loop.screen8_no',
     'gem.informing_loop_decision.yes': 'gem.informing_loop.screen8_yes',
     'gem.informing_loop_decision.maybe_later': 'gem.informing_loop.screen8_maybe_later',
+    'pgx.informing_loop_decision.no': 'pgx.informing_loop.screen8_no',
+    'pgx.informing_loop_decision.yes': 'pgx.informing_loop.screen8_yes',
+    'pgx.informing_loop_decision.maybe_later': 'pgx.informing_loop.screen8_maybe_later',
+    'hdr.informing_loop_decision.no': 'hdr.informing_loop.screen10_no',
+    'hdr.informing_loop_decision.yes': 'hdr.informing_loop.screen10_yes',
+    'hdr.informing_loop_decision.maybe_later': 'hdr.informing_loop.screen10_maybe_later'
 }
