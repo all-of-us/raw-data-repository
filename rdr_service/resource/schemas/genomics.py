@@ -45,6 +45,7 @@ class GenomicSetMemberSchema(Schema):
     sex_at_birth = fields.String(validate=validate.Length(max=20))
     genome_type = fields.String(validate=validate.Length(max=80))
     biobank_id = fields.Int32()
+    biobank_id_str = fields.String(validate=validate.Length(max=128))
     package_id = fields.String(validate=validate.Length(max=80))
     validation_status = fields.EnumString(enum=GenomicSetMemberStatus)
     validation_status_id = fields.EnumInteger(enum=GenomicSetMemberStatus)

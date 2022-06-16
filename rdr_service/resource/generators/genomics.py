@@ -2,6 +2,8 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
+import re
+
 from dateutil.parser import parse as dt_parse
 from sqlalchemy.sql import text
 
@@ -91,7 +93,7 @@ class GenomicSetMemberSchemaGenerator(generators.BaseGenerator):
             # Set biobank_id_str and delete biobank_id
             try:
                 data['biobank_id_str'] = data['biobank_id']
-                del data['biobank_id']
+                data['biobank_id'] = int(re.sub("[^0-9]", "", data['biobank_id']))
             except KeyError:
                 pass
 
