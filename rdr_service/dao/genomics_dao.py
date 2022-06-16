@@ -1158,6 +1158,14 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                   GenomicSetMember.genomeType == genome_type
             ).first()
 
+    def get_record_from_attr(self, *, attr, value):
+        with self.session() as session:
+            record = session.query(GenomicSetMember) \
+                .filter(getattr(GenomicSetMember, attr) == value,
+                        getattr(GenomicSetMember, attr).isnot(None)
+                        )
+            return record.all()
+
     def update_loop_ready_attrs(self, member, **kwargs):
         informing_loop_ready_flag = kwargs.get('informing_loop_ready_flag', 1)
         informing_loop_ready_flag_modified = kwargs.get('informing_loop_ready_flag_modified', clock.CLOCK.now())
@@ -1777,12 +1785,7 @@ class GenomicPiiDao(BaseDao):
 
     def to_client_json(self, result):
         participant_data = result.get('data')
-        if participant_data.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED:
-            return {"message": "No RoR consent."}
-
         participant_dict = participant_data._asdict()
-        del participant_dict['consentForGenomicsROR']
-
         return {self.camel_to_snake(k): v for k, v in participant_dict.items()}
 
     def get_pii(self, mode, participant_id=None, biobank_id=None):
@@ -1804,7 +1807,6 @@ class GenomicPiiDao(BaseDao):
                     GenomicSetMember.biobankId,
                     ParticipantSummary.firstName,
                     ParticipantSummary.lastName,
-                    ParticipantSummary.consentForGenomicsROR,
                     ParticipantSummary.dateOfBirth,
                     GenomicSetMember.sexAtBirth,
                     sqlalchemy.case(
@@ -1827,7 +1829,6 @@ class GenomicPiiDao(BaseDao):
                     func.concat('P', GenomicSetMember.participantId).label('participantId'),
                     ParticipantSummary.firstName,
                     ParticipantSummary.lastName,
-                    ParticipantSummary.consentForGenomicsROR,
                     ParticipantSummary.dateOfBirth,
                     GenomicSetMember.gcManifestSampleSource.label('sampleSource'),
                     BiobankStoredSample.confirmed.label('collectionDate')
@@ -1846,6 +1847,7 @@ class GenomicPiiDao(BaseDao):
                 )
 
             record = record.filter(
+                ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE

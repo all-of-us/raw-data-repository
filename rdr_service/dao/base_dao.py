@@ -620,6 +620,11 @@ class BaseDao(object):
     def camel_to_snake(string_value):
         return re.sub(r'(?<!^)(?=[A-Z])', '_', string_value).lower()
 
+    @staticmethod
+    def snake_to_camel(string_value):
+        mod_string = string_value.split('_')
+        return mod_string[0] + ''.join(x.title() for x in mod_string[1:])
+
     def to_dict(self, obj, result_proxy=None):
         """
     Dump a sqlalchemy model or query result object to python dict. Converts

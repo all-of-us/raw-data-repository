@@ -10,6 +10,7 @@ from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
 from rdr_service.app_util import auth_required, restrict_to_gae_project
 from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicSetMemberDao, GenomicOutreachDao, GenomicOutreachDaoV2
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.services.genomic_datagen import ParticipantGenerator
 
 PTC_ALLOWED_ENVIRONMENTS = [
@@ -20,7 +21,44 @@ PTC_ALLOWED_ENVIRONMENTS = [
 ]
 
 
-class GenomicPiiApi(BaseApi):
+class GenomicApiMixin:
+
+    @staticmethod
+    def _extract_pid(_id):
+        char, _id = '', _id
+        if _id[0].isalpha():
+            char = _id[:1]
+            _id = _id[1:]
+
+        return char, _id
+
+    @staticmethod
+    def _validate_participant(prefix, **kwargs):
+        participant_summary_dao = ParticipantSummaryDao()
+        member_dao = GenomicSetMemberDao()
+        has_summary, has_member, checked_value = None, None, None
+
+        for key, value in kwargs.items():
+            if value:
+                key = participant_summary_dao.snake_to_camel(key)
+                checked_value = value
+
+                has_summary = participant_summary_dao.get_record_from_attr(
+                    attr=key,
+                    value=value
+                )
+                has_member = member_dao.get_record_from_attr(
+                    attr=key,
+                    value=value
+                )
+
+        if not has_summary:
+            raise NotFound(f"Participant with ID {prefix}{checked_value} not found in RDR")
+        if not has_member:
+            raise NotFound(f"Participant with ID {prefix}{checked_value} not found in Genomics system")
+
+
+class GenomicPiiApi(BaseApi, GenomicApiMixin):
     def __init__(self):
         super(GenomicPiiApi, self).__init__(GenomicPiiDao())
 
@@ -32,12 +70,18 @@ class GenomicPiiApi(BaseApi):
         if not pii_id:
             raise BadRequest
 
-        pii_id = pii_id[1:] if pii_id[0].isalpha() else pii_id
+        prefix, pii_id = self._extract_pid(pii_id)
         biobank_id, participant_id = None, pii_id
 
         if mode == 'RHP':
             biobank_id = pii_id
             participant_id = None
+
+        self._validate_participant(
+            prefix=prefix,
+            participant_id=participant_id,
+            biobank_id=biobank_id
+        )
 
         pii_data = self.dao.get_pii(
             mode=mode,
@@ -46,10 +90,7 @@ class GenomicPiiApi(BaseApi):
         )
 
         if not pii_data:
-            if biobank_id:
-                raise NotFound(f"Participant with biobank_id {pii_id} not found")
-
-            raise NotFound(f"Participant with participant_id {pii_id} not found")
+            raise NotFound(f"Participant with ID {prefix}{pii_id} did not pass validation check")
 
         proto_payload = {
             'mode': mode,
@@ -171,7 +212,7 @@ class GenomicOutreachApi(BaseApi):
             raise BadRequest(f"GenomicOutreach Mode required to be one of {modes}.")
 
 
-class GenomicOutreachApiV2(UpdatableApi):
+class GenomicOutreachApiV2(UpdatableApi, GenomicApiMixin):
     def __init__(self):
         super(GenomicOutreachApiV2, self).__init__(GenomicOutreachDaoV2())
         self.validate_params()
@@ -208,7 +249,7 @@ class GenomicOutreachApiV2(UpdatableApi):
         :return:
         """
         start_date = request.args.get("start_date", None)
-        pid = request.args.get("participant_id", None)
+        participant_id = request.args.get("participant_id", None)
         end_date = clock.CLOCK.now() \
             if not request.args.get("end_date") \
             else parser.parse(request.args.get("end_date"))
@@ -217,18 +258,22 @@ class GenomicOutreachApiV2(UpdatableApi):
             'date': clock.CLOCK.now()
         }
 
-        if not pid and not start_date:
+        if not participant_id and not start_date:
             raise BadRequest('Participant ID or Start Date is required for GenomicOutreach lookup.')
 
-        if pid:
-            if pid.startswith("P"):
-                pid = pid[1:]
-            participant_data = self.dao.outreach_lookup(pid=pid)
+        if participant_id:
+            prefix, participant_id = self._extract_pid(participant_id)
+            self._validate_participant(
+                prefix=prefix,
+                participant_id=participant_id
+            )
+
+            participant_data = self.dao.outreach_lookup(pid=participant_id)
             if participant_data:
                 payload['data'] = participant_data
                 return self._make_response(payload)
 
-            raise NotFound(f'Participant P{pid} does not exist in the Genomic system.')
+            raise NotFound(f'Participant with ID {prefix}{participant_id} did not pass validation check')
 
         if start_date:
             start_date = parser.parse(start_date)
