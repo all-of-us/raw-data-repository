@@ -118,6 +118,7 @@ class GenomicJob(messages.Enum):
     RECONCILE_CVL_HDR_RESULTS = 61
     RECONCILE_CVL_ALERTS = 62
     RECONCILE_CVL_RESOLVE = 63
+    CHECK_FOR_W1IL_GROR_RESUBMIT = 64
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

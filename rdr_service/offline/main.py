@@ -637,9 +637,9 @@ def reconcile_gc_data_file_to_table():
 
 
 @app_util.auth_required_cron
-def check_for_yes_no_yes_w1il_gror_participants():
+def check_for_w1il_gror_resubmit_participants():
     a_week_ago = datetime.utcnow() - timedelta(weeks=1)
-    genomic_pipeline.notify_email_group_of_yes_no_yes_w1il_participants(since_datetime=a_week_ago)
+    genomic_pipeline.notify_email_group_of_w1il_gror_resubmit_participants(since_datetime=a_week_ago)
     return '{"success": "true"}'
 
 # Disabling job until further notice
@@ -1073,9 +1073,9 @@ def _build_pipeline_app():
         methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "CheckForYesNoYesW1ilGrorParticipants",
-        endpoint="check_for_yes_no_yes_w1il_gror",
-        view_func=check_for_yes_no_yes_w1il_gror_participants,
+        OFFLINE_PREFIX + "CheckForW1ilGrorResubmitParticipants",
+        endpoint="check_for_w1il_gror_resubmit",
+        view_func=check_for_w1il_gror_resubmit_participants,
         methods=["GET"]
     )
     # Disabling job until further notice
