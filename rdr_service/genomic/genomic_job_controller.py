@@ -787,7 +787,8 @@ class GenomicJobController:
             self.file_processed_dao,
             self.metrics_dao,
             self.manifest_file_dao,
-            self.manifest_feedback_dao
+            self.manifest_feedback_dao,
+            self.informing_loop_dao
         ]
 
         for dao in reconcile_daos:

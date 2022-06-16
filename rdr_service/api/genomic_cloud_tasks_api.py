@@ -21,7 +21,9 @@ from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetr
 from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
-    genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, genomic_user_event_metrics_batch_update
+    genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, \
+    genomic_user_event_metrics_batch_update, \
+    genomic_informing_loop_batch_update
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -538,20 +540,40 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
         logging.info(f'Rebuilding {len(batch)} records for table {table}.')
 
         rebuild_map = {
-            'genomic_set': [bq_genomic_set_batch_update, genomic_set_batch_update],
-            'genomic_set_member': [bq_genomic_set_member_batch_update, genomic_set_member_batch_update],
-            'genomic_job_run': [bq_genomic_job_run_batch_update, genomic_job_run_batch_update],
-            'genomic_file_processed': [bq_genomic_file_processed_batch_update, genomic_file_processed_batch_update],
+            'genomic_set': [
+                bq_genomic_set_batch_update,
+                genomic_set_batch_update
+            ],
+            'genomic_set_member': [
+                bq_genomic_set_member_batch_update,
+                genomic_set_member_batch_update
+            ],
+            'genomic_job_run': [
+                bq_genomic_job_run_batch_update,
+                genomic_job_run_batch_update
+            ],
+            'genomic_file_processed': [
+                bq_genomic_file_processed_batch_update,
+                genomic_file_processed_batch_update
+            ],
             'genomic_gc_validation_metrics': [
                 bq_genomic_gc_validation_metrics_batch_update,
                 genomic_gc_validation_metrics_batch_update
             ],
-            'genomic_manifest_file': [bq_genomic_manifest_file_batch_update, genomic_manifest_file_batch_update],
+            'genomic_informing_loop': [
+                genomic_informing_loop_batch_update
+            ],
+            'genomic_manifest_file': [
+                bq_genomic_manifest_file_batch_update,
+                genomic_manifest_file_batch_update
+            ],
             'genomic_manifest_feedback': [
                 bq_genomic_manifest_feedback_batch_update,
                 genomic_manifest_feedback_batch_update
             ],
-            'user_event_metrics': [genomic_user_event_metrics_batch_update]
+            'user_event_metrics': [
+                genomic_user_event_metrics_batch_update
+            ]
         }
 
         try:
