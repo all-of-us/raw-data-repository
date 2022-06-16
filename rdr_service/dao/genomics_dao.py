@@ -16,7 +16,7 @@ from sqlalchemy.sql.expression import literal, distinct, delete
 
 from werkzeug.exceptions import BadRequest, NotFound
 
-from rdr_service import clock, config
+from rdr_service import clock, code_constants, config
 from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT, GENOMIC_MEMBER_BLOCKLISTS
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus, \
@@ -44,6 +44,7 @@ from rdr_service.model.genomics import (
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap)
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -3609,6 +3610,93 @@ class GenomicQueriesDao(BaseDao):
                 )
 
             return query.all()
+
+    def _join_gror_answer(self, query, answer_code_str_list, start_datetime):
+        questionnaire_response = aliased(QuestionnaireResponse)
+        questionnaire_concept = aliased(QuestionnaireConcept)
+        answer = aliased(QuestionnaireResponseAnswer)
+        question = aliased(QuestionnaireQuestion)
+
+        survey_code = aliased(Code)
+        question_code = aliased(Code)
+        answer_code = aliased(Code)
+
+        new_query = query.join(
+            questionnaire_response,
+            and_(
+                questionnaire_response.participantId == ParticipantSummary.participantId,
+                questionnaire_response.authored > start_datetime
+            )
+        ).join(
+            questionnaire_concept,
+            and_(
+                questionnaire_concept.questionnaireId == questionnaire_response.questionnaireId,
+                questionnaire_concept.questionnaireVersion == questionnaire_response.questionnaireVersion
+            )
+        ).join(
+            survey_code,
+            and_(
+                survey_code.codeId == questionnaire_concept.codeId,
+                survey_code.value.ilike(code_constants.CONSENT_FOR_GENOMICS_ROR_MODULE)
+            )
+        ).join(
+            answer,
+            answer.questionnaireResponseId == questionnaire_response.questionnaireResponseId
+        ).join(
+            question,
+            question.questionnaireQuestionId == answer.questionId
+        ).join(
+            question_code,
+            and_(
+                question_code.codeId == question.codeId,
+                question_code.value.ilike(code_constants.GROR_CONSENT_QUESTION_CODE)
+            )
+        ).join(
+            answer_code,
+            and_(
+                answer_code.codeId == answer.valueCodeId,
+                answer_code.value.in_(answer_code_str_list)
+            )
+        )
+
+        return new_query
+
+    def get_w1il_yes_no_yes_participants(self, start_datetime):
+        # Find W1IL participants that have re-submitted a Yes response to GROR after being included in a W1IL.
+        with self.session() as session:
+            query = session.query(
+                ParticipantSummary.participantId
+            ).join(
+                GenomicSetMember,
+                GenomicSetMember.participantId == ParticipantSummary.participantId
+            ).join(
+                GenomicJobRun,
+                GenomicJobRun.id.in_([
+                    GenomicSetMember.cvlW1ilHdrJobRunId,
+                    GenomicSetMember.cvlW1ilPgxJobRunId
+                ])
+            ).filter(
+                ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED
+            )
+            query = self._join_gror_answer(
+                query=query,
+                answer_code_str_list=[code_constants.CONSENT_GROR_YES_CODE],
+                start_datetime=func.greatest(GenomicJobRun.startTime, start_datetime)
+            )
+
+            # For each of the participants found, check to see if they have a No response to the GROR after the W1IL.
+            # (Just to filter out any strange double-Yes's we got, ie. participants that had a Yes before the W1IL
+            #  and then submitted another Yes afterwards with no revocation in between)
+            query = self._join_gror_answer(
+                query=query,
+                answer_code_str_list=[
+                    code_constants.CONSENT_GROR_NO_CODE,
+                    code_constants.CONSENT_GROR_NOT_SURE
+                ],
+                start_datetime=GenomicJobRun.startTime
+            )
+
+            return query.distinct().all()
 
 
 class GenomicCVLResultPastDueDao(UpdatableDao):

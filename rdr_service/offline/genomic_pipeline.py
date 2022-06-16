@@ -1,14 +1,13 @@
 import logging
 
-from rdr_service import clock
-from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicAW3RawDao, GenomicAW4RawDao, \
-    GenomicJobRunDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao, GenomicW3NSRawDao, \
-    GenomicW5NFRawDao, GenomicW3SSRawDao, GenomicW2WRawDao, GenomicW1ILRawDao
+from rdr_service import clock, config
+from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicAW3RawDao, \
+    GenomicAW4RawDao, GenomicJobRunDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao, \
+    GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, GenomicW2WRawDao, GenomicW1ILRawDao
 from rdr_service.genomic.genomic_cvl_reconciliation import GenomicCVLReconcile
-from rdr_service.services.system_utils import JSONObject
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
-import rdr_service.config as config
+from rdr_service.services.system_utils import JSONObject
 
 
 def run_genomic_cron_job(val):
@@ -604,3 +603,8 @@ def load_awn_manifest_into_raw_table(
             raw_job.get('dao'),
             cvl_site_id=cvl_site_id
         )
+
+
+def notify_email_group_of_w1il_gror_resubmit_participants(since_datetime):
+    with GenomicJobController(GenomicJob.CHECK_FOR_W1IL_GROR_RESUBMIT) as controller:
+        controller.check_w1il_gror_resubmit(since_datetime=since_datetime)

@@ -1,9 +1,10 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
-from rdr_service import clock
-from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicSetMemberDao
+from rdr_service import clock, code_constants
+from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicQueriesDao, GenomicSetMemberDao
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicIncidentCode, GenomicIncidentStatus
 from rdr_service.model.genomics import GenomicIncident
+from rdr_service.participant_enums import QuestionnaireStatus
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -316,3 +317,93 @@ class GenomicDaoTest(BaseTestCase):
         self.assertFalse(GenomicSetMemberDao._is_valid_set_member_job_field(None))
         self.assertFalse(GenomicSetMemberDao._is_valid_set_member_job_field('notARealField'))
         self.assertTrue(GenomicSetMemberDao._is_valid_set_member_job_field('aw2fManifestJobRunID'))
+
+    def test_w1il_yes_no_yes(self):
+        # Set up GROR questionnaire data
+        questionnaire = self.data_generator.create_database_questionnaire_history()
+        module_code = self.data_generator.create_database_code(value=code_constants.CONSENT_FOR_GENOMICS_ROR_MODULE)
+        self.data_generator.create_database_questionnaire_concept(
+            questionnaireId=questionnaire.questionnaireId,
+            questionnaireVersion=questionnaire.version,
+            codeId=module_code.codeId
+        )
+        question_code = self.data_generator.create_database_code(value=code_constants.GROR_CONSENT_QUESTION_CODE)
+        question = self.data_generator.create_database_questionnaire_question(
+            codeId=question_code.codeId
+        )
+        yes_answer_code = self.data_generator.create_database_code(value=code_constants.CONSENT_GROR_YES_CODE)
+        no_answer_code = self.data_generator.create_database_code(value=code_constants.CONSENT_GROR_NO_CODE)
+
+        # Create a participant that should not appear in results because they didn't give a No response to GROR
+        self._generate_participant_data(
+            questionnaire=questionnaire,
+            question=question,
+            is_gror_consented=True,
+            w1il_run_datetime=datetime(2022, 1, 7),
+            gror_responses=[
+                (datetime(2021, 12, 11), yes_answer_code.codeId),
+                (datetime(2022, 1, 21), yes_answer_code.codeId)
+            ]
+        )
+
+        # Create a participant that should appear because they have a No and then a Yes after the W1IL
+        yes_no_yes_participant_id = self._generate_participant_data(
+            questionnaire=questionnaire,
+            question=question,
+            is_gror_consented=True,
+            w1il_run_datetime=datetime(2022, 1, 7),
+            gror_responses=[
+                (datetime(2021, 12, 11), yes_answer_code.codeId),
+                (datetime(2022, 1, 13), no_answer_code.codeId),
+                (datetime(2022, 1, 21), yes_answer_code.codeId)
+            ]
+        )
+
+        # Create a participant that should not show up because they never switch back to providing GROR consent
+        self._generate_participant_data(
+            questionnaire=questionnaire,
+            question=question,
+            is_gror_consented=False,
+            w1il_run_datetime=datetime(2022, 1, 7),
+            gror_responses=[
+                (datetime(2021, 12, 11), yes_answer_code.codeId),
+                (datetime(2022, 1, 13), no_answer_code.codeId)
+            ]
+        )
+
+        dao = GenomicQueriesDao()
+        yes_no_yes_participant_list = dao.get_w1il_yes_no_yes_participants(start_datetime=datetime(2022, 1, 9))
+
+        self.assertEqual(1, len(yes_no_yes_participant_list))
+        self.assertEqual(yes_no_yes_participant_id, yes_no_yes_participant_list[0].participantId)
+
+    def _generate_participant_data(self, questionnaire, question, gror_responses, w1il_run_datetime, is_gror_consented):
+        job_run = self.data_generator.create_database_genomic_job_run(
+            startTime=w1il_run_datetime
+        )
+
+        participant_summary = self.data_generator.create_database_participant_summary(
+            consentForGenomicsROR=(
+                QuestionnaireStatus.SUBMITTED if is_gror_consented else QuestionnaireStatus.UNSET
+            )
+        )
+        self.data_generator.create_database_genomic_set_member(
+            cvlW1ilHdrJobRunId=job_run.id,
+            genomicSetId=self.gen_set.id,
+            participantId=participant_summary.participantId
+        )
+
+        for authored_datetime, answer_code_id in gror_responses:
+            response = self.data_generator.create_database_questionnaire_response(
+                participantId=participant_summary.participantId,
+                authored=authored_datetime,
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version
+            )
+            self.data_generator.create_database_questionnaire_response_answer(
+                questionnaireResponseId=response.questionnaireResponseId,
+                valueCodeId=answer_code_id,
+                questionId=question.questionnaireQuestionId
+            )
+
+        return participant_summary.participantId

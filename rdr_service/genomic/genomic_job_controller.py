@@ -51,7 +51,9 @@ from rdr_service.dao.genomics_dao import (
     GcDataFileStagingDao,
     GenomicSetDao,
     UserEventMetricsDao,
-    GenomicResultViewedDao)
+    GenomicResultViewedDao,
+    GenomicQueriesDao
+)
 from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
 
@@ -1520,6 +1522,31 @@ class GenomicJobController:
             file_attr = attributes_map[manifest_type]
 
         return file_attr
+
+    @staticmethod
+    def check_w1il_gror_resubmit(since_datetime):
+        dao = GenomicQueriesDao()
+        participant_list = dao.get_w1il_yes_no_yes_participants(start_datetime=since_datetime)
+
+        logging.warning(
+            f'The following {len(participant_list)} participants '
+            f'switched back to a Yes consent for GROR after being in W1IL: ' +
+            ','.join([f'{participant.participantId}' for participant in participant_list])
+        )
+
+        notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
+        if notification_email_address and participant_list:
+            message = 'The following participants recently provided GROR consent again ' \
+                      '(after having appeared in a W1IL manifest and then revoking their GROR consent):\n\n'
+            message += '\n'.join([f'P{participant.participantId}' for participant in participant_list])
+
+            EmailService.send_email(
+                Email(
+                    recipients=[notification_email_address],
+                    subject='GHR3 participants recently re-submitting GROR consent',
+                    plain_text_content=message
+                )
+            )
 
     @staticmethod
     def execute_cloud_task(payload, endpoint):
