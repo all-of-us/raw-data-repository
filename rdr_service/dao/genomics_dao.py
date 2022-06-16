@@ -61,7 +61,7 @@ from rdr_service.genomic.genomic_mappings import informing_loop_event_mappings
 from rdr_service.resource.generators.genomics import genomic_user_event_metrics_batch_update
 
 
-class GenomicDaoUtils:
+class GenomicDaoMixin:
 
     ingestion_job_ids = [
         GenomicJob.METRICS_INGESTION,
@@ -105,7 +105,7 @@ class GenomicDaoUtils:
             ).all()
 
 
-class GenomicSetDao(UpdatableDao, GenomicDaoUtils):
+class GenomicSetDao(UpdatableDao, GenomicDaoMixin):
     """ Stub for GenomicSet model """
 
     validate_version_match = False
@@ -217,7 +217,7 @@ class GenomicSetDao(UpdatableDao, GenomicDaoUtils):
         )
 
 
-class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
+class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
     """ Stub for GenomicSetMember model """
 
     validate_version_match = False
@@ -1261,7 +1261,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             return members.all()
 
 
-class GenomicJobRunDao(UpdatableDao, GenomicDaoUtils):
+class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
     """ Stub for GenomicJobRun model """
 
     def from_client_json(self):
@@ -1335,7 +1335,7 @@ class GenomicJobRunDao(UpdatableDao, GenomicDaoUtils):
         return session.execute(query, query_params)
 
 
-class GenomicFileProcessedDao(UpdatableDao, GenomicDaoUtils):
+class GenomicFileProcessedDao(UpdatableDao, GenomicDaoMixin):
     """ Stub for GenomicFileProcessed model """
 
     def from_client_json(self):
@@ -1517,7 +1517,7 @@ class GenomicFileProcessedDao(UpdatableDao, GenomicDaoUtils):
         return session.execute(query, query_params)
 
 
-class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoUtils):
+class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
     """ Stub for GenomicGCValidationMetrics model """
 
     def from_client_json(self):
@@ -2263,7 +2263,7 @@ class GenomicOutreachDaoV2(BaseDao):
         return mappings
 
 
-class GenomicManifestFileDao(BaseDao, GenomicDaoUtils):
+class GenomicManifestFileDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicManifestFileDao, self).__init__(
             GenomicManifestFile, order_by_ending=['id'])
@@ -2311,7 +2311,7 @@ class GenomicManifestFileDao(BaseDao, GenomicDaoUtils):
             session.merge(manifest_file_obj)
 
 
-class GenomicManifestFeedbackDao(UpdatableDao, GenomicDaoUtils):
+class GenomicManifestFeedbackDao(UpdatableDao, GenomicDaoMixin):
     validate_version_match = False
 
     def __init__(self):
@@ -2443,7 +2443,7 @@ class GenomicManifestFeedbackDao(UpdatableDao, GenomicDaoUtils):
             return feedback_records.all()
 
 
-class GenomicAW1RawDao(BaseDao, GenomicDaoUtils):
+class GenomicAW1RawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicAW1RawDao, self).__init__(
             GenomicAW1Raw, order_by_ending=['id'])
@@ -2504,7 +2504,7 @@ class GenomicAW1RawDao(BaseDao, GenomicDaoUtils):
             ).delete()
 
 
-class GenomicAW2RawDao(BaseDao, GenomicDaoUtils):
+class GenomicAW2RawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicAW2RawDao, self).__init__(
             GenomicAW2Raw, order_by_ending=['id'])
@@ -2565,7 +2565,7 @@ class GenomicAW2RawDao(BaseDao, GenomicDaoUtils):
                 session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
 
-class GenomicAW3RawDao(BaseDao, GenomicDaoUtils):
+class GenomicAW3RawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicAW3RawDao, self).__init__(
             GenomicAW3Raw, order_by_ending=['id'])
@@ -2577,7 +2577,7 @@ class GenomicAW3RawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
-class GenomicAW4RawDao(BaseDao, GenomicDaoUtils):
+class GenomicAW4RawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicAW4RawDao, self).__init__(
             GenomicAW4Raw, order_by_ending=['id'])
@@ -2589,7 +2589,7 @@ class GenomicAW4RawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
-class GenomicW1ILRawDao(BaseDao, GenomicDaoUtils):
+class GenomicW1ILRawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicW1ILRawDao, self).__init__(
             GenomicW1ILRaw, order_by_ending=['id'])
@@ -2601,7 +2601,7 @@ class GenomicW1ILRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
-class GenomicW2WRawDao(BaseDao, GenomicDaoUtils):
+class GenomicW2WRawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicW2WRawDao, self).__init__(
             GenomicW2WRaw, order_by_ending=['id'])
@@ -2613,7 +2613,7 @@ class GenomicW2WRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
-class GenomicW2SCRawDao(BaseDao, GenomicDaoUtils):
+class GenomicW2SCRawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicW2SCRawDao, self).__init__(
             GenomicW2SCRaw, order_by_ending=['id'])
@@ -2625,7 +2625,7 @@ class GenomicW2SCRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
-class GenomicW3NSRawDao(BaseDao, GenomicDaoUtils):
+class GenomicW3NSRawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicW3NSRawDao, self).__init__(
             GenomicW3NSRaw, order_by_ending=['id'])
@@ -2637,7 +2637,7 @@ class GenomicW3NSRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
-class GenomicW3SCRawDao(BaseDao, GenomicDaoUtils):
+class GenomicW3SCRawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicW3SCRawDao, self).__init__(
             GenomicW3SCRaw, order_by_ending=['id'])
@@ -2649,7 +2649,7 @@ class GenomicW3SCRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
-class GenomicW3SRRawDao(BaseDao, GenomicDaoUtils):
+class GenomicW3SRRawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicW3SRRawDao, self).__init__(
             GenomicW3SRRaw, order_by_ending=['id'])
@@ -2661,7 +2661,7 @@ class GenomicW3SRRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
-class GenomicW3SSRawDao(BaseDao, GenomicDaoUtils):
+class GenomicW3SSRawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicW3SSRawDao, self).__init__(
             GenomicW3SSRaw, order_by_ending=['id'])
@@ -2673,7 +2673,7 @@ class GenomicW3SSRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
-class GenomicW4WRRawDao(BaseDao, GenomicDaoUtils):
+class GenomicW4WRRawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicW4WRRawDao, self).__init__(
             GenomicW4WRRaw, order_by_ending=['id'])
@@ -2685,7 +2685,7 @@ class GenomicW4WRRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
-class GenomicW5NFRawDao(BaseDao, GenomicDaoUtils):
+class GenomicW5NFRawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicW5NFRawDao, self).__init__(
             GenomicW5NFRaw, order_by_ending=['id'])
@@ -2697,7 +2697,7 @@ class GenomicW5NFRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
-class GenomicIncidentDao(UpdatableDao, GenomicDaoUtils):
+class GenomicIncidentDao(UpdatableDao, GenomicDaoMixin):
     validate_version_match = False
 
     def __init__(self):
@@ -2899,7 +2899,7 @@ class GenomicMemberReportStateDao(UpdatableDao):
         return None
 
 
-class GenomicInformingLoopDao(UpdatableDao, GenomicDaoUtils):
+class GenomicInformingLoopDao(UpdatableDao, GenomicDaoMixin):
     validate_version_match = False
 
     def __init__(self):
@@ -3224,7 +3224,7 @@ class GemToGpMigrationDao(BaseDao):
             session.bulk_insert_mappings(self.model_type, batch)
 
 
-class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
+class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(UserEventMetricsDao, self).__init__(
             UserEventMetrics, order_by_ending=['id'])
