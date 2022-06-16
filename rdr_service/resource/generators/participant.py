@@ -65,7 +65,10 @@ _consent_module_question_map = {
     # { module: question code string }
     'ConsentPII': None,
     'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
-    'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
+    # PDR-979: The sensitive EHR shares the same EHRConsentPII module code but has a different consent question
+    # TODO:  Determine if we also need to check for the "opt out" questions/no consent  answers
+    #  (ehrconsentpii_proceedtoform, ehrconsentpii_sensitivetype1, decisionoptions).
+    'EHRConsentPII': ['EHRConsentPII_ConsentPermission', 'ehrconsentpii_sensitivetype2'],
     'GROR': 'ResultsConsent_CheckDNA',
     'PrimaryConsentUpdate': 'Reconsent_ReviewConsentAgree',
     'ProgramUpdate': None,
@@ -110,8 +113,11 @@ _consent_answer_status_map = {
     'Decision_Yes': BQModuleStatusEnum.SUBMITTED,
     'Decision_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     'WEAR_Yes': BQModuleStatusEnum.SUBMITTED,
-    'WEAR_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
-
+    'WEAR_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    # TODO:  May need to add "opt out" question sensitive EHR answers that will map to SUBMITTED_NO_CONSENT (e.g.,
+    # removeauthorization answer code for decisionchangeoptions question code)
+    'sensitivetype2__agree': BQModuleStatusEnum.SUBMITTED,
+    'sensitivetype2__donotagree': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
 }
 
 # PDR-252:  When RDR starts accepting QuestionnaireResponse payloads for withdrawal screens, AIAN participants
@@ -681,11 +687,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                     if qnans:
                         qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
+                        consent_answer_value, module_status = self._find_consent_response(qnan, module_name)
                         # TODO: Consent table depreciated, remove consent field sets after BigQuery table support
                         #  is removed.
                         consent = {
-                            'consent': _consent_module_question_map[module_name],
-                            'consent_id': self._lookup_code_id(_consent_module_question_map[module_name], ro_session),
+                            'consent': consent_answer_value,
+                            'consent_id': self._lookup_code_id(consent_answer_value, ro_session),
                             'consent_date': parser.parse(qnan['authored']).date() if qnan['authored'] else None,
                             'consent_module': module_name,
                             'consent_module_authored': row.authored,
@@ -699,35 +706,27 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         # associated answer options (like ConsentPII or ProgramUpdate), any submitted response is given
                         # an implicit ConsentPermission_Yes value.   May need adjusting if there are ever modules where
                         # that may no longer be true
-                        if _consent_module_question_map[module_name] is None:
+                        if consent_answer_value is None:
                             consent['consent'] = module_name
                             consent['consent_id'] = self._lookup_code_id(module_name, ro_session)
                             consent['consent_value'] = module_data['consent_value'] = 'ConsentPermission_Yes'
                             consent['consent_value_id'] = module_data['consent_value_id'] = \
                                 self._lookup_code_id('ConsentPermission_Yes', ro_session)
                         else:
-                            consent_value = qnan.get(_consent_module_question_map[module_name], None)
-                            consent['consent_value'] = module_data['consent_value'] = consent_value
+                            if module_status == BQModuleStatusEnum.SUBMITTED_INVALID:
+                                logging.warning("""
+                                    No consent answer for module {0}.  Defaulting status to SUBMITTED_INVALID
+                                    (pid {1}, response {2})
+                                    """.format(module_name, p_id, row.questionnaireResponseId))
+
+                            consent['consent_value'] = module_data['consent_value'] = consent_answer_value
                             consent['consent_value_id'] = module_data['consent_value_id'] = \
-                                self._lookup_code_id(consent_value, ro_session)
+                                self._lookup_code_id(consent_answer_value, ro_session)
                             if module_name in _consent_expired_question_map:
                                 consent['consent_expired'] = module_data['consent_expired'] = \
                                     qnan.get(_consent_expired_question_map[module_name] or 'None', None)
                             # TODO: Should we have also have a 'consent_expired_id', if so what would the integer
                             #  value be (there is only a question code_id in the code table, no answer code_id)?
-
-                            # Note: Currently, consent_expired only applies for EHRConsentPII.  Expired EHR consent
-                            # (EHRConsentPII_ConsentExpired_Yes) is always accompanied by consent_value
-                            # ConsentPermission_No so we can rely on consent_value alone to map the module_status
-                            module_status = _consent_answer_status_map.get(consent_value, None)
-                            if not module_status:
-                                # This seems the appropriate status for cases where there wasn't any recognized
-                                #  consent answer found in the payload (not even PMI_SKIP, which maps to UNSET)
-                                module_status = BQModuleStatusEnum.SUBMITTED_INVALID
-                                logging.warning("""
-                                    No consent answer for module {0}.  Defaulting status to SUBMITTED_INVALID
-                                    (pid {1}, response {2})
-                                """.format(module_name, p_id, row.questionnaireResponseId))
 
                         module_data['status'] = module_status.name
                         module_data['status_id'] = module_status.value
@@ -776,7 +775,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 except TypeError:
                     data['consents'].sort(key=lambda consent_data: consent_data['consent_module_created'],
                                           reverse=True)
-
         data['activity'] = activity
         return data
 
@@ -1502,6 +1500,41 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             return rtn_data, answers
         else:
             return rtn_data
+
+    def _find_consent_response(self, response_rec: BQRecord, module: str):
+        """
+        Look for the participant provided answer value that determines consent status for a module
+        :param response_rec: A BQRecord object derived from a QuestionnaireResponse record
+        :param module:  The module name (e.g., EHRConsentPII, GROR...)
+        :returns: answer_code, consent_status
+                  answer_code:  answer code string value
+                  consent_status:  BQModuleStatusEnum
+        """
+        # If a module doesn't have defined consent questions that determine status, it defaults to SUBMITTED status
+        if _consent_module_question_map[module] is None:
+            return None, BQModuleStatusEnum.SUBMITTED
+
+        answer_code = None
+
+        consent_question_codes = _consent_module_question_map[module]
+        code_list = [consent_question_codes, ] if isinstance(consent_question_codes, str) else consent_question_codes
+        for code in code_list:
+            answer_code = response_rec.get(code, None)
+            if answer_code:
+                break
+
+        consent_status = _consent_answer_status_map.get(answer_code, None) if answer_code else None
+        if not consent_status:
+            if module == 'EHRConsentPII':
+                # PDR-979:  Match RDR by defaulting to SUBMITTED_NO_CONSENT for (sensitive) EHRConsentPII if
+                # there was not a recognized "yes" consent answer
+                consent_status = BQModuleStatusEnum.SUBMITTED_NO_CONSENT
+            else:
+                # For other modules/cases where there wasn't any recognized consent answer found in the payload
+                # (not even PMI_SKIP, which maps to UNSET)
+                consent_status = BQModuleStatusEnum.SUBMITTED_INVALID
+
+        return answer_code, consent_status
 
     @staticmethod
     def is_replay(prev_data_dict, prev_answer_hash,

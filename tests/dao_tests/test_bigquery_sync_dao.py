@@ -76,6 +76,19 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         with FakeClock(response_time or self.TIME_1):
             self.send_post(f"Participant/P{participant_id}/QuestionnaireResponse", qr)
 
+    def _submit_sensitive_ehr(self, participant_id, response_data={}, response_time=None):
+        if not self.qn_ehrconsent_id:
+            self.qn_ehrconsent_id = self.create_questionnaire("ehr_consent_questionnaire.json")
+
+        code_answers = list()
+        for key, value in response_data.items():
+            code_answers.append(self.make_code_answer(key, value))
+
+        qr = self.make_questionnaire_response_json(participant_id, self.qn_ehrconsent_id,
+                                                   code_answers=code_answers)
+        with FakeClock(response_time or self.TIME_1):
+            self.send_post(f"Participant/P{participant_id}/QuestionnaireResponse", qr)
+
     def _submit_ehrconsent_expired(self, participant_id, response_code=CONSENT_PERMISSION_NO_CODE, response_time=None):
         """ Submit the EHRConsent questionnaire """
         if not self.qn_ehrconsent_id:
@@ -218,8 +231,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
 
         return biobank_order
 
-
-
     def test_registered_participant_gen(self):
         """ Test a BigQuery after initial participant creation """
         ps_json = self.make_bq_participant_summary(self.participant_id)
@@ -238,7 +249,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(ps_json.get('suspension_status', None), 'NOT_SUSPENDED')
         self.assertEqual(ps_json.get('withdrawn_status'), None, 'NOT_WITHDRAWN')
         self.assertEqual(ps_json.get('enrollment_status', None), 'PARTICIPANT')
-
 
     def test_member_participant_status(self):
         """ Member Participant Test"""
@@ -266,7 +276,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
             self.dao = BiobankOrderDao()
             self.bio_order = BiobankOrderDao().insert(
                 self._make_biobank_order(participantId=self.participant_id))
-
 
     def test_full_participant_status(self):
         """ Full Participant Test"""
@@ -312,6 +321,39 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         # once CORE, always CORE
         self.assertEqual(ps_json['enrollment_status'], 'CORE_PARTICIPANT')
 
+    def test_sensitive_ehr_consent_no(self):
+        p_response = self.create_participant(self.provider_link)
+        p_id = int(p_response['participantId'].replace('P', ''))
+        self.send_consent(p_id, authored=self.TIME_1)
+        # Participant opts out at ehrconsentpii_sensitivestype2 question
+        self._submit_sensitive_ehr(p_id, response_time=self.TIME_1,
+                                   response_data={
+                                       'sensitiveEhrProceedToForm': 'readytoshare_yes',
+                                       'sensitiveEhrAgreeToRelease': 'sensitivetype2__donotagree'
+                                        })
+        ps_json = self.make_bq_participant_summary(p_id)
+        self.assertIsNotNone(ps_json['modules'])
+        ehr_module_data = self.get_generated_items(ps_json['modules'], item_key='mod_module',
+                                                   item_value='EHRConsentPII')
+        self.assertEqual(ehr_module_data[0]['mod_status'], 'SUBMITTED_NO_CONSENT')
+        self.assertEqual(ehr_module_data[0]['mod_consent_value'], 'sensitivetype2__donotagree')
+
+    def test_sensitive_ehr_consent_yes(self):
+        p_response = self.create_participant(self.provider_link)
+        p_id = int(p_response['participantId'].replace('P', ''))
+        self.send_consent(p_id, authored=self.TIME_1)
+        self._submit_sensitive_ehr(p_id, response_time=self.TIME_1,
+                                   response_data={
+                                       'sensitiveEhrProceedToForm': 'readytoshare_yes',
+                                       'sensitiveEhrAgreeToRelease': 'sensitivetype2__agree'
+                                   })
+        ps_json = self.make_bq_participant_summary(p_id)
+        self.assertIsNotNone(ps_json['modules'])
+        ehr_module_data = self.get_generated_items(ps_json['modules'], item_key='mod_module',
+                                                   item_value='EHRConsentPII')
+        self.assertEqual(ehr_module_data[0]['mod_status'], 'SUBMITTED')
+        self.assertEqual(ehr_module_data[0]['mod_consent_value'], 'sensitivetype2__agree')
+
     def test_cohort_3_without_gror(self):
         self._set_up_participant_data(fake_time=datetime(2020, 6, 1))
         ps_json = self.make_bq_participant_summary(self.participant_id)
@@ -354,7 +396,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertIn('mod_external_id', gror_modules[0])
         self.assertEqual('SUBMITTED', gror_modules[0]['mod_status'])
         self.assertEqual('SUBMITTED_NO_CONSENT', gror_modules[1]['mod_status'])
-
 
     def test_previous_ehr_and_dv_ehr_reverted(self):
         # Scenario: a participant previously reached core participant status with EHR and DV EHR consent both YES

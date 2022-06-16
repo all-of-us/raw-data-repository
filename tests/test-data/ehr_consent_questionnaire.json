@@ -47,6 +47,111 @@
         "text": "EHRConsentPII_ConsentExpired",
         "type": "text",
         "required": false
+      },
+      {
+        "linkId": "sensitiveEhrProceed",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "ehrconsentpii_proceedtoform"
+          }
+        ],
+        "text": "ehrconsentpii_proceedtoform",
+        "type": "choice",
+        "required": false,
+        "repeats": false,
+        "option": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "readytoshare_yes",
+            "display": "Yes, I'm ready to proceed"
+          },
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "readytoshare_no",
+            "display": "No, I do not wish to proceed"
+          }
+        ]
+      },
+      {
+        "linkId": "sensitiveEhrAgreeToShare",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "ehrconsentpii_sensitivetype1"
+          }
+        ],
+        "text": "ehrconsentpii_sensitivetype1",
+        "type": "choice",
+        "required": false,
+        "repeats": false,
+        "option": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "sensitivetype1_agree",
+            "display": "I agree to to share"
+          },
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "sensitivetype1_dontagree",
+            "display": "I do not agree to share"
+          }
+        ]
+      },
+      {
+        "linkId": "sensitiveEhrAgreeToRelease",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "ehrconsentpii_sensitivetype2"
+          }
+        ],
+        "text": "ehrconsentpii_sensitivetype2",
+        "type": "choice",
+        "required": false,
+        "repeats": false,
+        "option": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "sensitivetype2__agree",
+            "display": "I agree to release"
+          },
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "sensitivetype2__donotagree",
+            "display": "I do not agree to release"
+          }
+        ]
+      },
+      {
+        "linkId": "sensitiveEhrChangeOptions",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "decisionchangeoptions"
+          }
+        ],
+        "text": "decisionchangeoptions",
+        "type": "choice",
+        "required": false,
+        "repeats": false,
+        "option": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "viewform",
+            "display": "View a copy of my authorization form"
+          },
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "emailform",
+            "display": "Email a copy of my authorization form"
+          },
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "removeauthorization",
+            "display": "Remove my authorization to share"
+          }
+        ]
       }
     ]
   }
