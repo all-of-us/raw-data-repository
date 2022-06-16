@@ -16,7 +16,8 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.measurements import Measurement, PhysicalMeasurements
-from rdr_service.participant_enums import PhysicalMeasurementsStatus
+from rdr_service.participant_enums import PhysicalMeasurementsStatus, PhysicalMeasurementsCollectType, \
+    OriginMeasurementUnit
 
 _AMENDMENT_URL = "http://terminology.pmi-ops.org/StructureDefinition/amends"
 _OBSERVATION_RESOURCE_TYPE = "Observation"
@@ -209,6 +210,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
         del result["physicalMeasurementsId"]
         del result["created"]
         del result["logPositionId"]
+        del result["origin"]
+        del result["collectType"]
+        del result["originMeasurementUnit"]
+        del result["questionnaireResponseId"]
 
         if result["resource"].get("id", None):
             del result["resource"]["id"]
@@ -227,6 +232,26 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 sub_measurement.physicalMeasurementsId = pm_id
                 sub_measurement.measurementId = PhysicalMeasurementsDao.make_measurement_id(pm_id, measurement_count)
                 measurement_count += 1
+
+    def get_exist_remote_pm(self, participant_id, finalized):
+        with self.session() as session:
+            return session.query(PhysicalMeasurements).filter(
+                PhysicalMeasurements.participantId == participant_id,
+                PhysicalMeasurements.finalized == finalized,
+                PhysicalMeasurements.collectType == PhysicalMeasurementsCollectType.SELF_REPORTED).first()
+
+    def insert_remote_pm(self, obj):
+        if obj.physicalMeasurementsId:
+            with self.session() as session:
+                return self.insert_remote_pm_with_session(session, obj)
+        else:
+            return self._insert_with_random_id(obj, ["physicalMeasurementsId"], self.insert_remote_pm_with_session)
+
+    def insert_remote_pm_with_session(self, session, obj):
+        self.set_measurement_ids(obj)
+        self.set_self_reported_pm_resource_json(obj)
+        self._update_participant_summary(session, obj, is_amendment=False, is_self_reported=True)
+        return super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
 
     def insert_with_session(self, session, obj):
         is_amendment = False
@@ -276,8 +301,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         obj = self.store_record_fhir_doc(obj, resource_json)
         return obj
 
-
-    def _update_participant_summary(self, session, obj, is_amendment=False):
+    def _update_participant_summary(self, session, obj, is_amendment=False, is_self_reported=False):
         participant_id = obj.participantId
         if participant_id is None:
             raise BadRequest("participantId is required")
@@ -290,51 +314,57 @@ class PhysicalMeasurementsDao(UpdatableDao):
             raise BadRequest(f"Can't submit physical measurements for participant {participant_id} without consent")
         raise_if_withdrawn(participant_summary)
         participant_summary.lastModified = clock.CLOCK.now()
-        is_distinct_visit = participant_summary_dao.calculate_distinct_visits(
-            participant_id, obj.finalized, obj.physicalMeasurementsId
-        )
-        if (
-            obj.status
-            and obj.status == PhysicalMeasurementsStatus.CANCELLED
-            and is_distinct_visit
-            and not is_amendment
-        ):
-            participant_summary.numberDistinctVisits -= 1
+        if not is_self_reported:
+            is_distinct_visit = participant_summary_dao.calculate_distinct_visits(
+                participant_id, obj.finalized, obj.physicalMeasurementsId
+            )
+            if (
+                obj.status
+                and obj.status == PhysicalMeasurementsStatus.CANCELLED
+                and is_distinct_visit
+                and not is_amendment
+            ):
+                participant_summary.numberDistinctVisits -= 1
 
-        # These fields set on measurement that is cancelled and doesn't have a previous good measurement
-        if (
-            obj.status
-            and obj.status == PhysicalMeasurementsStatus.CANCELLED
-            and not self.has_uncancelled_pm(session, participant)
-        ):
+            # These fields set on measurement that is cancelled and doesn't have a previous good measurement
+            if (
+                obj.status
+                and obj.status == PhysicalMeasurementsStatus.CANCELLED
+                and not self.has_uncancelled_pm(session, participant)
+            ):
 
-            participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
-            participant_summary.physicalMeasurementsTime = None
-            participant_summary.physicalMeasurementsFinalizedTime = None
-            participant_summary.physicalMeasurementsFinalizedSiteId = None
+                participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
+                participant_summary.physicalMeasurementsTime = None
+                participant_summary.physicalMeasurementsFinalizedTime = None
+                participant_summary.physicalMeasurementsFinalizedSiteId = None
 
-        # These fields set on any measurement not cancelled
-        elif obj.status != PhysicalMeasurementsStatus.CANCELLED:
-            # new PM or if a PM was restored, it is complete again.
+            # These fields set on any measurement not cancelled
+            elif obj.status != PhysicalMeasurementsStatus.CANCELLED:
+                # new PM or if a PM was restored, it is complete again.
+                participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+                participant_summary.physicalMeasurementsTime = obj.created
+                participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
+                participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
+                participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
+                if is_distinct_visit and not is_amendment:
+                    participant_summary.numberDistinctVisits += 1
+
+            elif (
+                obj.status
+                and obj.status == PhysicalMeasurementsStatus.CANCELLED
+                and self.has_uncancelled_pm(session, participant)
+            ):
+
+                get_latest_pm = self.get_latest_pm(session, participant)
+                participant_summary.physicalMeasurementsFinalizedTime = get_latest_pm.finalized
+                participant_summary.physicalMeasurementsTime = get_latest_pm.created
+                participant_summary.physicalMeasurementsCreatedSiteId = get_latest_pm.createdSiteId
+                participant_summary.physicalMeasurementsFinalizedSiteId = get_latest_pm.finalizedSiteId
+        else:
             participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
             participant_summary.physicalMeasurementsTime = obj.created
             participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
-            participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
-            participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
-            if is_distinct_visit and not is_amendment:
-                participant_summary.numberDistinctVisits += 1
-
-        elif (
-            obj.status
-            and obj.status == PhysicalMeasurementsStatus.CANCELLED
-            and self.has_uncancelled_pm(session, participant)
-        ):
-
-            get_latest_pm = self.get_latest_pm(session, participant)
-            participant_summary.physicalMeasurementsFinalizedTime = get_latest_pm.finalized
-            participant_summary.physicalMeasurementsTime = get_latest_pm.created
-            participant_summary.physicalMeasurementsCreatedSiteId = get_latest_pm.createdSiteId
-            participant_summary.physicalMeasurementsFinalizedSiteId = get_latest_pm.finalizedSiteId
+            participant_summary.physicalMeasurementsCollectType = PhysicalMeasurementsCollectType.SELF_REPORTED
 
         participant_summary_dao.update_enrollment_status(participant_summary)
         session.merge(participant_summary)
@@ -605,9 +635,16 @@ class PhysicalMeasurementsDao(UpdatableDao):
         """Converts the given model to a JSON object to be returned to API clients.
         Subclasses must implement this unless their model store a model.resource attribute.
         """
-        doc, composition = self.load_record_fhir_doc(model)  # pylint: disable=unused-variable
-        return doc
 
+        doc, composition = self.load_record_fhir_doc(model)  # pylint: disable=unused-variable
+
+        doc['collectType'] = str(model.collectType if model.collectType is not None else
+                                 PhysicalMeasurementsCollectType.UNSET)
+        doc['originMeasurementUnit'] = str(model.originMeasurementUnit if model.originMeasurementUnit is not None else
+                                           OriginMeasurementUnit.UNSET)
+        doc['origin'] = model.origin
+
+        return doc
 
     def from_client_json(self, resource_json, participant_id=None, **unused_kwargs):
         # pylint: disable=unused-argument
@@ -682,6 +719,9 @@ class PhysicalMeasurementsDao(UpdatableDao):
             createdUsername=created_username,
             finalizedSiteId=finalized_site_id,
             finalizedUsername=finalized_username,
+            origin='hpro',
+            collectType=PhysicalMeasurementsCollectType.SITE,
+            originMeasurementUnit=OriginMeasurementUnit.UNSET
         )
         record = self.store_record_fhir_doc(record, resource_json)
         return record
@@ -727,6 +767,71 @@ class PhysicalMeasurementsDao(UpdatableDao):
             author = self.get_author_username(_AUTHOR_PREFIX + resource["restoredInfo"]["author"]["value"])
 
         return site_id, author, reason
+
+    def set_self_reported_pm_resource_json(self, record):
+        doc = {
+            "id": record.physicalMeasurementsId,
+            "type": "document",
+            "resourceType": "Bundle",
+            "entry": []
+
+        }
+
+        coding_map = {
+            'height': {
+                "text": "Height",
+                "coding": [
+                    {
+                        "code": "8302-2",
+                        "system": "http://loinc.org",
+                        "display": "Body height"
+                    },
+                    {
+                        "code": "height",
+                        "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+                        "display": "Height"
+                    }
+                ]
+            },
+            'weight': {
+                "text": "Weight",
+                "coding": [
+                    {
+                        "code": "29463-7",
+                        "system": "http://loinc.org",
+                        "display": "Body weight"
+                    },
+                    {
+                        "code": "weight",
+                        "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+                        "display": "Weight"
+                    }
+                ]
+            }
+        }
+
+        for measurement in record.measurements:
+            entry = {
+                "fullUrl": "",
+                "resource": {
+                    "code": coding_map.get(measurement.codeValue, None),
+                    "status": "final",
+                    "subject": {
+                        "reference": "Patient/P" + str(record.participantId)
+                    },
+                    "resourceType": "Observation",
+                    "valueQuantity": {
+                        "code": measurement.valueUnit,
+                        "unit": measurement.valueUnit,
+                        "value": measurement.valueDecimal,
+                        "system": "http://unitsofmeasure.org"
+                    },
+                    "effectiveDateTime": record.finalized.strftime('%Y-%m-%dT%H:%M:%S')
+                }
+            }
+            doc['entry'].append(entry)
+
+        record.resource = doc
 
     @staticmethod
     def load_record_fhir_doc(record):
