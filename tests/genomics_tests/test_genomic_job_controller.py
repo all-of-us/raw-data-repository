@@ -819,6 +819,14 @@ class GenomicJobControllerTest(BaseTestCase):
                     run_id=1,
                 )
 
+                self.data_generator.create_database_genomic_informing_loop(
+                    message_record_id=1,
+                    event_type='informing_loop_decision',
+                    module_type='gem',
+                    participant_id=participant.participantId,
+                    decision_value='maybe_later',
+                    event_authored_time=clock.CLOCK.now()
+                )
         # gets new records that were created with last job run from above
         with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
             controller.reconcile_pdr_data()
@@ -831,11 +839,14 @@ class GenomicJobControllerTest(BaseTestCase):
             'genomic_gc_validation_metrics',
             'genomic_manifest_file',
             'genomic_manifest_feedback',
+            'genomic_informing_loop'
         ]
 
-        self.assertEqual(mock_cloud_task.call_count, 8)
+        num_calls = len(affected_tables) + 1
+
+        self.assertEqual(mock_cloud_task.call_count, num_calls)
         call_args = mock_cloud_task.call_args_list
-        self.assertEqual(len(call_args), 8)
+        self.assertEqual(len(call_args), num_calls)
 
         mock_tables = set([obj[0][0]['table'] for obj in call_args])
         mock_endpoint = [obj[0][1] for obj in call_args]

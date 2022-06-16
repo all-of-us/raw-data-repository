@@ -79,7 +79,11 @@ class ConsentMetricGeneratorTest(BaseTestCase):
                                 'non_va_consent_for_va': ('non_va_consent_for_va' in expected_errors),
                                 'va_consent_for_non_va': ('va_consent_for_non_va' in expected_errors),
                                 'invalid_dob': ('invalid_dob' in expected_errors),
-                                'invalid_age_at_consent': ('invalid_age_at_consent' in expected_errors)
+                                'invalid_age_at_consent': ('invalid_age_at_consent' in expected_errors),
+                                'invalid_printed_name': ('invalid_printed_name' in expected_errors),
+                                'sensitive_ehr_expected': ('sensitive_ehr_expected' in expected_errors),
+                                'non_sensitive_ehr_expected': ('non_sensitive_ehr_expected' in expected_errors),
+                                'sensitive_ehr_missing_initials': ('sensitive_ehr_missing_initials' in expected_errors)
                                 }
 
         return expected_values_dict

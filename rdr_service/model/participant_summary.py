@@ -38,7 +38,8 @@ from rdr_service.participant_enums import (
     ConsentExpireStatus,
     DeceasedStatus,
     RetentionStatus,
-    RetentionType)
+    RetentionType,
+    PhysicalMeasurementsCollectType)
 
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
@@ -394,6 +395,16 @@ class ParticipantSummary(Base):
     """An indicator for the site where the physical measurements were finalized for each participant"""
     physicalMeasurementsFinalizedSite = None  # placeholder for docs, API sets on model using corresponding ID field
     """An indicator for the site where the physical measurements were finalized for each participant"""
+
+    physicalMeasurementsCollectType = Column(
+        "physical_measurements_collect_type", Enum(PhysicalMeasurementsCollectType),
+        default=PhysicalMeasurementsCollectType.UNSET
+    )
+    """
+    Indicates whether this physical measurements is collected by site or self reported
+
+    :ref:`Enumerated values <physical_measurements_collect_type>`
+    """
 
     numberDistinctVisits = Column("number_distinct_visits", Integer, default=0)
     """The number of distinct visits to a health care provider that the participant has made that supplied data"""

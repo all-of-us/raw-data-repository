@@ -72,23 +72,29 @@ from rdr_service.code_constants import (
     FITBIT_SHARING_MODULE,
     FITBIT_STOP_SHARING_MODULE,
     THE_BASICS_PPI_MODULE,
-    BASICS_PROFILE_UPDATE_QUESTION_CODES
+    BASICS_PROFILE_UPDATE_QUESTION_CODES,
+    REMOTE_PM_MODULE,
+    REMOTE_PM_UNIT,
+    MEASUREMENT_SYS
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.dao.participant_summary_dao import (
     ParticipantGenderAnswersDao,
     ParticipantRaceAnswersDao,
     ParticipantSummaryDao,
 )
+from rdr_service.model.log_position import LogPosition
 from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD, \
     QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
 from rdr_service.model.participant import Participant
+from rdr_service.model.measurements import PhysicalMeasurements, Measurement
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension, QuestionnaireResponseClassificationType
@@ -100,7 +106,10 @@ from rdr_service.participant_enums import (
     get_gender_identity,
     get_race,
     ParticipantCohort,
-    ConsentExpireStatus)
+    ConsentExpireStatus,
+    OriginMeasurementUnit,
+    PhysicalMeasurementsCollectType
+)
 
 _QUESTIONNAIRE_PREFIX = "Questionnaire/"
 _QUESTIONNAIRE_HISTORY_SEGMENT = "/_history/"
@@ -471,6 +480,7 @@ class QuestionnaireResponseDao(BaseDao):
         elif questionnaire_response.status == QuestionnaireResponseStatus.IN_PROGRESS:
             questionnaire_response.classificationType = QuestionnaireResponseClassificationType.PARTIAL
 
+
         # IMPORTANT: update the participant summary first to grab an exclusive lock on the participant
         # row. If you instead do this after the insert of the questionnaire response, MySQL will get a
         # shared lock on the participant row due the foreign key, and potentially deadlock later trying
@@ -543,6 +553,121 @@ class QuestionnaireResponseDao(BaseDao):
             return 'Dec'
         else:
             return 'Feb'
+
+    def _add_physical_measurement(self, questionnaire_response):
+        with self.session() as session:
+            questionnaire_history = QuestionnaireHistoryDao().get_with_children_with_session(
+                session, [questionnaire_response.questionnaireId, questionnaire_response.questionnaireSemanticVersion]
+            )
+
+            module = self._get_module_name(questionnaire_history)
+            if module != REMOTE_PM_MODULE:
+                return
+
+            question_ids = [answer.questionId for answer in questionnaire_response.answers]
+            questions = QuestionnaireQuestionDao().get_all_with_session(session, question_ids)
+            code_ids = [question.codeId for question in questions]
+
+        code_dao = CodeDao()
+        pm_unite_code = code_dao.get_code(PPI_SYSTEM, REMOTE_PM_UNIT)
+        if not pm_unite_code:
+            raise BadRequest("No measurement unit code found in code table")
+        if pm_unite_code.codeId not in code_ids:
+            raise BadRequest(
+                f"Can't update physical measurement data for participant {questionnaire_response.participantId}, "
+                f"no measurement unit answer found"
+            )
+
+        participant_id = questionnaire_response.participantId
+        authored = questionnaire_response.authored
+        measurements = []
+        pm_dao = PhysicalMeasurementsDao()
+        exist_pm = pm_dao.get_exist_remote_pm(participant_id, authored)
+        if exist_pm:
+            logging.info(f'Remote physical measurement for pid {participant_id} finalized at '
+                         f'{str(authored)} already exist')
+            return
+
+        origin_measurement_unit = OriginMeasurementUnit.UNSET
+        self_reported_int_value_map = {
+            'self_reported_height_ft': None,
+            'self_reported_height_in': None,
+            'self_reported_weight_pounds': None,
+            'self_reported_height_cm': None,
+            'self_reported_weight_kg': None
+        }
+
+        codes = code_dao.get_with_ids(code_ids)
+        code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
+        question_map = {question.questionnaireQuestionId: question for question in questions}
+        for answer in questionnaire_response.answers:
+            question = question_map.get(answer.questionId)
+            if question:
+                question_code = code_map.get(question.codeId)
+                if question_code:
+                    if question_code.value == REMOTE_PM_UNIT:
+                        answer_code_value = code_dao.get(answer.valueCodeId).value
+                        if answer_code_value == 'pm_1':
+                            origin_measurement_unit = OriginMeasurementUnit.IMPERIAL
+                        elif answer_code_value == 'pm_2':
+                            origin_measurement_unit = OriginMeasurementUnit.METRIC
+                        else:
+                            raise BadRequest(f'unknown measurement unit {answer_code_value} for participant '
+                                             f'{participant_id}')
+                    elif question_code.value in self_reported_int_value_map:
+                        if answer.valueInteger:
+                            self_reported_int_value_map[question_code.value] = round(answer.valueInteger, 1)
+
+        if origin_measurement_unit == OriginMeasurementUnit.IMPERIAL:
+            # validation
+            if self_reported_int_value_map['self_reported_height_ft'] is None or \
+                self_reported_int_value_map['self_reported_height_in'] is None or \
+                self_reported_int_value_map['self_reported_weight_pounds'] is None:
+                raise BadRequest(f'invalid physical measurement value for participant {participant_id}')
+            # convert to METRIC
+            height_cm_decimal = round(self_reported_int_value_map['self_reported_height_ft'] * 30.48
+                                      + self_reported_int_value_map['self_reported_height_in'] * 2.54, 1)
+            weight_kg_decimal = round(self_reported_int_value_map['self_reported_weight_pounds'] * 0.453592, 1)
+            self_reported_int_value_map['self_reported_height_cm'] = height_cm_decimal
+            self_reported_int_value_map['self_reported_weight_kg'] = weight_kg_decimal
+        elif origin_measurement_unit == OriginMeasurementUnit.METRIC:
+            # validation
+            if self_reported_int_value_map['self_reported_height_cm'] is None or \
+                self_reported_int_value_map['self_reported_weight_kg'] is None:
+                raise BadRequest(f'invalid physical measurement value for participant {participant_id}')
+
+        pm_height = Measurement(
+            codeSystem=MEASUREMENT_SYS,
+            codeValue='height',
+            measurementTime=authored,
+            valueDecimal=self_reported_int_value_map['self_reported_height_cm'],
+            valueUnit='cm',
+        )
+
+        pm_weight = Measurement(
+            codeSystem=MEASUREMENT_SYS,
+            codeValue='weight',
+            measurementTime=authored,
+            valueDecimal=self_reported_int_value_map['self_reported_weight_kg'],
+            valueUnit='kg',
+        )
+
+        measurements.append(pm_height)
+        measurements.append(pm_weight)
+
+        pm = PhysicalMeasurements(
+            participantId=participant_id,
+            created=clock.CLOCK.now(),
+            final=True,
+            logPosition=LogPosition(),
+            finalized=authored,
+            measurements=measurements,
+            origin='vibrent',
+            collectType=PhysicalMeasurementsCollectType.SELF_REPORTED,
+            originMeasurementUnit=origin_measurement_unit,
+            questionnaireResponseId=questionnaire_response.questionnaireResponseId
+        )
+        pm_dao.insert_remote_pm(pm)
 
     def _update_participant_summary(
         self, session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
@@ -1001,8 +1126,14 @@ class QuestionnaireResponseDao(BaseDao):
 
     def insert(self, obj):
         if obj.questionnaireResponseId:
-            return super(QuestionnaireResponseDao, self).insert(obj)
-        return self._insert_with_random_id(obj, ["questionnaireResponseId"])
+            response = super(QuestionnaireResponseDao, self).insert(obj)
+        else:
+            response = self._insert_with_random_id(obj, ["questionnaireResponseId"])
+
+        # add physical measurement record for remote self reported physical measurement response
+        self._add_physical_measurement(response)
+
+        return response
 
     def read_status(self, fhir_response: fhir_questionnaireresponse.QuestionnaireResponse):
         status_map = {

@@ -5,6 +5,7 @@ PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 # System for codes that are used in questionnaires but we don't need for analysis purposes;
 # these codes are ignored by RDR.
 PPI_EXTRA_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi-extra"
+MEASUREMENT_SYS = 'http://terminology.pmi-ops.org/CodeSystem/physical-measurements'
 
 SITE_ID_SYSTEM = "https://www.pmi-ops.org/site-id"
 QUEST_SITE_ID_SYSTEM = "https://www.pmi-ops.org/quest-site"
@@ -169,6 +170,8 @@ SOCIAL_DETERMINANTS_OF_HEALTH_MODULE = "sdoh"
 PERSONAL_AND_FAMILY_HEALTH_HISTORY_MODULE = 'personalfamilyhistory'
 PERSONAL_MEDICAL_HISTORY_MODULE = "PersonalMedicalHistory"
 MEDICATIONS_MODULE = "MedicationsPPI"
+REMOTE_PM_MODULE = 'pm_height_weight'
+REMOTE_PM_UNIT = 'measurement_unit'
 # TODO: UPDATE THIS TO REAL CODEBOOK VALUES WHEN PRESENT
 HEALTHCARE_ACCESS_MODULE = "HealthcareAccess"
 # COVID Experience surveys:

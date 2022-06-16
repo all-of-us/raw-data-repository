@@ -52,7 +52,6 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         self.order = BiobankOrderDao()
 
         self._ehr_questionnaire_id = None
-
         build_validator_patch = mock.patch(
             'rdr_service.services.consent.validation.ConsentValidationController._build_validator'
         )
@@ -808,7 +807,6 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertTrue(
             all([file.sync_status == ConsentSyncStatus.READY_FOR_SYNC for file in participant_consent_files])
         )
-
 
 def _add_code_answer(code_answers, link_id, code):
     if code:

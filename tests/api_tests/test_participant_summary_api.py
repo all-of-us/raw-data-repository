@@ -143,7 +143,8 @@ participant_summary_default_values = {
     "questionnaireOnCopeVaccineMinute1": "UNSET",
     "questionnaireOnCopeVaccineMinute2": "UNSET",
     "questionnaireOnCopeVaccineMinute3": "UNSET",
-    "questionnaireOnCopeVaccineMinute4": "UNSET"
+    "questionnaireOnCopeVaccineMinute4": "UNSET",
+    "physicalMeasurementsCollectType": "UNSET",
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)

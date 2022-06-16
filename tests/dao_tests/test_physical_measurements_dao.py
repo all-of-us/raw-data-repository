@@ -11,7 +11,8 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.participant import Participant
-from rdr_service.participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus
+from rdr_service.participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus, \
+    PhysicalMeasurementsCollectType, OriginMeasurementUnit
 from rdr_service.query import FieldFilter, Operator, Query
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -158,6 +159,9 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             ("participantId", self.participant.participantId),
             ("createdSiteId", 1),
             ("finalizedSiteId", 2),
+            ("origin", 'hpro'),
+            ("collectType", PhysicalMeasurementsCollectType.SITE),
+            ("originMeasurementUnit", OriginMeasurementUnit.UNSET)
         ):
             if k not in kwargs:
                 kwargs[k] = default_value
@@ -202,6 +206,9 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             logPositionId=1,
             createdSiteId=1,
             finalizedSiteId=2,
+            collectType=PhysicalMeasurementsCollectType.SITE,
+            originMeasurementUnit=OriginMeasurementUnit.UNSET,
+            origin='hpro'
         )
 
         doc = json.loads(self._with_id(self.measurement_json, "1"))
@@ -245,7 +252,6 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             measurements = self.dao.insert(self._make_physical_measurements())
         with FakeClock(TIME_3):
             measurements_2 = self.dao.insert(self._make_physical_measurements())
-
         self.assertEqual(self.dao._measurements_as_dict(measurements), self.dao._measurements_as_dict(measurements_2))
 
     def testInsert_amend(self):
