@@ -44,10 +44,12 @@ class ResponseValidationController:
         if validator:
             for error_list in validator.get_errors_in_response(response).values():
                 for error in error_list:
-                    self._error_list[(response.survey_code, error.question_code, error.reason)].append(
-                        f'P{participant_id} {response.survey_code} answer id {error.answer_id[0]} '
-                        f'- question "{error.question_code}" Error: {error.reason}'
-                    )
+                    if response.survey_code != 'EHRConsentPII':
+                        # TODO: implement a way to detect when validation needed for sensitive EHR
+                        self._error_list[(response.survey_code, error.question_code, error.reason)].append(
+                            f'{response.survey_code} - question "{error.question_code}" '
+                            f'Error: {error.reason} (P{participant_id}, ansID {error.answer_id[0]})'
+                        )
 
     def _build_validator(self, survey_code):
         query = (
