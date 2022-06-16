@@ -3240,7 +3240,7 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
     def get_id(self, obj):
         pass
 
-    def get_latest_events(self,module="gem"):
+    def get_latest_events(self, module="gem"):
         """
         Returns participant_ID and latest event_name for unreconciled events
         :param module: gem (default), hdr, or pgx
@@ -3284,7 +3284,6 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
 
     def update_reconcile_job_pids(self, pid_list, job_run_id, module):
         id_list = [i[0] for i in list(self.get_all_event_ids_for_pid_list(pid_list, module))]
-
         update_mappings = [{
             'id': i,
             'reconcile_job_run_id': job_run_id
