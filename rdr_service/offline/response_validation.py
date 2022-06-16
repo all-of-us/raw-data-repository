@@ -82,15 +82,14 @@ class ResponseValidationController:
             for key, error_list in self._error_list.items():
                 survey_code, question_code, error_str = key
                 result_list.append(
-                    f'{survey_code} "{question_code}" Error: {error_str}, number affected answers: {len(error_list)}\n'
+                    f'{survey_code} "{question_code}" Error: {error_str}, number affected answers: {len(error_list)}'
                 )
-            result_text += ''.join(sorted(result_list))
         else:
             for error_list in self._error_list.values():
                 for error in error_list:
                     result_list.append(error)
-            result_text += '\n'.join(sorted(result_list))
 
+        result_text += '\n'.join(sorted(result_list))
         self._output_result(result_text)
 
     def _output_result(self, result_str):
