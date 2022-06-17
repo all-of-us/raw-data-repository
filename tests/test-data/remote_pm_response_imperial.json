@@ -75,7 +75,7 @@
         "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
         "answer": [
           {
-            "valueInteger": 160
+            "valueString": "160.6"
           }
         ]
       }

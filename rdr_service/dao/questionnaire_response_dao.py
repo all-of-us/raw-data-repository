@@ -614,9 +614,12 @@ class QuestionnaireResponseDao(BaseDao):
                         else:
                             raise BadRequest(f'unknown measurement unit {answer_code_value} for participant '
                                              f'{participant_id}')
-                    elif question_code.value in self_reported_int_value_map:
-                        if answer.valueInteger:
-                            self_reported_int_value_map[question_code.value] = round(answer.valueInteger, 1)
+                    elif question_code.value in ['self_reported_height_ft', 'self_reported_height_in',
+                                                 'self_reported_height_cm'] and answer.valueInteger:
+                        self_reported_int_value_map[question_code.value] = round(answer.valueInteger, 1)
+                    elif question_code.value in ['self_reported_weight_pounds',
+                                                 'self_reported_weight_kg'] and answer.valueString:
+                        self_reported_int_value_map[question_code.value] = round(float(answer.valueString), 1)
 
         if origin_measurement_unit == OriginMeasurementUnit.IMPERIAL:
             # validation
