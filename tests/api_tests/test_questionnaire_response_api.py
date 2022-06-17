@@ -193,7 +193,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
                          {
                              "code": "kg",
                              "unit": "kg",
-                             "value": 72.6,
+                             "value": 72.8,
                              "system": "http://unitsofmeasure.org"
                          }
                          )
@@ -244,7 +244,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
                          {
                              "code": "kg",
                              "unit": "kg",
-                             "value": 60,
+                             "value": 60.6,
                              "system": "http://unitsofmeasure.org"
                          }
                          )

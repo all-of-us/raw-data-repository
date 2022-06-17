@@ -66,7 +66,7 @@
         "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
         "answer": [
           {
-            "valueInteger": 60
+            "valueString": "60.6"
           }
         ]
       }
