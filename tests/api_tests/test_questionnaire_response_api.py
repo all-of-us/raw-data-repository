@@ -4,6 +4,7 @@ import http.client
 import json
 import mock
 import pytz
+import unittest
 from sqlalchemy import or_
 from sqlalchemy.orm.session import make_transient
 
@@ -148,6 +149,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
 
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('baselineQuestionnairesFirstCompleteAuthored'), TIME_3.isoformat())
+
 
     def test_remote_pm_imperial_response(self):
         participant_id = self.create_participant()
@@ -370,6 +372,45 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
                                  "&consentForElectronicHealthRecords=SUBMITTED&ehrConsentExpireStatus=UNSET"
                                  "&_includeTotal=true")
         self.assertEqual(len(summary2.get('entry')), 1)
+
+    @unittest.skip('Test should be skipped until fix for DA-2732 is implemented')
+    def test_ehr_conflicting_responses_received_out_of_order(self):
+        """
+        DA-2732: multiple EHR with conflicting consent responses received in inverse order of authored
+        """
+        participant_id = self.create_participant()
+        authored_1 = datetime.datetime(2022, 1, 1, 0, 0, 0, tzinfo=pytz.utc)
+        created = datetime.datetime(2022, 1, 1, 0, 0, 0)
+        with FakeClock(created):
+            self.send_consent(participant_id, authored=authored_1)
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(parse(summary["consentForStudyEnrollmentTime"]), created.replace(tzinfo=None))
+        self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored_1.replace(tzinfo=None))
+
+        self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), None)
+        self.assertEqual(summary.get('enrollmentStatusMemberTime'), None)
+        self.assertEqual(summary.get('enrollmentStatus'), 'INTERESTED')
+
+        self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
+
+        # send ConsentPermission_No questionnaire response first (but later authored than next Yes payload)
+        with FakeClock(datetime.datetime(2022, 3, 12)):
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_NO_CODE, None,
+                                          datetime.datetime(2022, 2, 12))
+
+        # send ConsentPermission_Yes questionnaire response last (but earlier authored than previous No payload)
+        with FakeClock(datetime.datetime(2022, 3, 12, 5)):
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE, None,
+                                          datetime.datetime(2022, 2, 11))
+
+        # Expect the later authored "No" payload to be reflected in participant summary current EHR status fields
+        # (but have a "first yes" matching the earlier authored "yes" payload)
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary.get('consentForElectronicHealthRecordsFirstYesAuthored'), '2022-02-11T00:00:00')
+        self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2022-02-12T00:00:00')
+        self.assertEqual(summary.get('consentForElectronicHealthRecords'), 'SUBMITTED_NO_CONSENT')
+
+
 
     def submit_ehr_questionnaire(self, participant_id, ehr_response_code, string_answers, authored):
         if not self._ehr_questionnaire_id:
