@@ -366,7 +366,7 @@ class GenomicInformingLoopSchema(Schema):
     created = fields.DateTime()
     modified = fields.DateTime()
     message_record_id = fields.Int32()
-    participant_id = fields.Int32()
+    participant_id = fields.String(validate=validate.Length(max=10))
     event_type = fields.String(validate=validate.Length(max=256))
     event_authored_time = fields.DateTime()
     module_type = fields.String(validate=validate.Length(max=128))
