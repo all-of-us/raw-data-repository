@@ -154,7 +154,7 @@ class BQPhysicalMeasurements(BQSchema):
     pm_origin = BQField('pm_origin', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     pm_origin_measurement_unit = BQField('pm_origin_measurement_unit', BQFieldTypeEnum.STRING,
                                          BQFieldModeEnum.NULLABLE)
-    pm_origin_measurement_unit_id = BQField('pm_origin_measurement_unit_id', BQFieldTypeEnum.STRING,
+    pm_origin_measurement_unit_id = BQField('pm_origin_measurement_unit_id', BQFieldTypeEnum.INTEGER,
                                             BQFieldModeEnum.NULLABLE)
 
 class BQBiobankSampleSchema(BQSchema):
