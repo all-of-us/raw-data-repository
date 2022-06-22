@@ -893,7 +893,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'collect_type_id': int(collection_type),
                 'origin': row.origin,
                 'origin_measurement_unit': str(origin_measurements_type),
-                'origin_measurement_unit_type': int(origin_measurements_type),
+                'origin_measurement_unit_id': int(origin_measurements_type),
                 # If status == UNSET in data, then the record has been cancelled and then restored. PM status is
                 # only set to UNSET in this scenario.
                 'restored': 1 if row.status == 0 else 0
