@@ -1456,15 +1456,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 qnans = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
                 # Save answers into data dict.  Ignore duplicate answers to the same question from the same response
                 # (See: questionnaire_response_id 680418686 as an example)
-                last_question_id = None
+                last_question_code_id = None
                 last_answer = None
                 skipped_duplicates = 0
                 for qnan in qnans:
-                    if last_question_id == qnan.question_id and last_answer == qnan.answer:
+                    if last_question_code_id == qnan.code_id and last_answer == qnan.answer:
                         skipped_duplicates += 1
                         continue
                     else:
-                        last_question_id = qnan.question_id
+                        last_question_code_id = qnan.code_id
                         last_answer = qnan.answer
 
                     # For question codes with multiple distinct responses, created comma-separated list of answers
