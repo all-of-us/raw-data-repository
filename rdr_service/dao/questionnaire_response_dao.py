@@ -579,7 +579,7 @@ class QuestionnaireResponseDao(BaseDao):
             )
 
         participant_id = questionnaire_response.participantId
-        authored = questionnaire_response.authored
+        authored = questionnaire_response.authored.replace(tzinfo=None)
         measurements = []
         pm_dao = PhysicalMeasurementsDao()
         exist_pm = pm_dao.get_exist_remote_pm(participant_id, authored)
