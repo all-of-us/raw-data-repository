@@ -66,10 +66,7 @@ _consent_module_question_map = {
     # { module: question code string }
     'ConsentPII': None,
     'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
-    # PDR-979: The sensitive EHR shares the same EHRConsentPII module code but has a different consent question
-    # TODO:  Determine if we also need to check for the "opt out" questions/no consent  answers
-    #  (ehrconsentpii_proceedtoform, ehrconsentpii_sensitivetype1, decisionoptions).
-    'EHRConsentPII': ['EHRConsentPII_ConsentPermission', 'ehrconsentpii_sensitivetype2'],
+    'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
     'GROR': 'ResultsConsent_CheckDNA',
     'PrimaryConsentUpdate': 'Reconsent_ReviewConsentAgree',
     'ProgramUpdate': None,
@@ -115,10 +112,6 @@ _consent_answer_status_map = {
     'Decision_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     'WEAR_Yes': BQModuleStatusEnum.SUBMITTED,
     'WEAR_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
-    # TODO:  May need to add "opt out" question sensitive EHR answers that will map to SUBMITTED_NO_CONSENT (e.g.,
-    # removeauthorization answer code for decisionchangeoptions question code)
-    'sensitivetype2__agree': BQModuleStatusEnum.SUBMITTED,
-    'sensitivetype2__donotagree': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
 }
 
 # PDR-252:  When RDR starts accepting QuestionnaireResponse payloads for withdrawal screens, AIAN participants
