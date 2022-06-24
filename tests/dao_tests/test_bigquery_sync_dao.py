@@ -321,39 +321,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         # once CORE, always CORE
         self.assertEqual(ps_json['enrollment_status'], 'CORE_PARTICIPANT')
 
-    def test_sensitive_ehr_consent_no(self):
-        p_response = self.create_participant(self.provider_link)
-        p_id = int(p_response['participantId'].replace('P', ''))
-        self.send_consent(p_id, authored=self.TIME_1)
-        # Participant opts out at ehrconsentpii_sensitivestype2 question
-        self._submit_sensitive_ehr(p_id, response_time=self.TIME_1,
-                                   response_data={
-                                       'sensitiveEhrProceedToForm': 'readytoshare_yes',
-                                       'sensitiveEhrAgreeToRelease': 'sensitivetype2__donotagree'
-                                        })
-        ps_json = self.make_bq_participant_summary(p_id)
-        self.assertIsNotNone(ps_json['modules'])
-        ehr_module_data = self.get_generated_items(ps_json['modules'], item_key='mod_module',
-                                                   item_value='EHRConsentPII')
-        self.assertEqual(ehr_module_data[0]['mod_status'], 'SUBMITTED_NO_CONSENT')
-        self.assertEqual(ehr_module_data[0]['mod_consent_value'], 'sensitivetype2__donotagree')
-
-    def test_sensitive_ehr_consent_yes(self):
-        p_response = self.create_participant(self.provider_link)
-        p_id = int(p_response['participantId'].replace('P', ''))
-        self.send_consent(p_id, authored=self.TIME_1)
-        self._submit_sensitive_ehr(p_id, response_time=self.TIME_1,
-                                   response_data={
-                                       'sensitiveEhrProceedToForm': 'readytoshare_yes',
-                                       'sensitiveEhrAgreeToRelease': 'sensitivetype2__agree'
-                                   })
-        ps_json = self.make_bq_participant_summary(p_id)
-        self.assertIsNotNone(ps_json['modules'])
-        ehr_module_data = self.get_generated_items(ps_json['modules'], item_key='mod_module',
-                                                   item_value='EHRConsentPII')
-        self.assertEqual(ehr_module_data[0]['mod_status'], 'SUBMITTED')
-        self.assertEqual(ehr_module_data[0]['mod_consent_value'], 'sensitivetype2__agree')
-
     def test_cohort_3_without_gror(self):
         self._set_up_participant_data(fake_time=datetime(2020, 6, 1))
         ps_json = self.make_bq_participant_summary(self.participant_id)
