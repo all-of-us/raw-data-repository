@@ -14,6 +14,8 @@ from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, PPI_SYSTEM, 
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao, \
     ParticipantSummaryDao
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao, QuestionnaireResponseDao
 from rdr_service.model.code import Code
@@ -28,9 +30,10 @@ from rdr_service.participant_enums import QuestionnaireDefinitionStatus, Questio
 
 from tests.api_tests.test_participant_summary_api import participant_summary_default_values,\
     participant_summary_default_values_no_basics
-from tests.test_data import data_path
-from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
+from tests.test_data import data_path, load_biobank_order_json
+from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin, BiobankTestMixin
 from rdr_service.concepts import Concept
+from rdr_service.code_constants import RACE_NONE_OF_THESE_CODE
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -41,11 +44,12 @@ def _questionnaire_response_url(participant_id):
     return "Participant/%s/QuestionnaireResponse" % participant_id
 
 
-class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
+class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorTestMixin):
 
     def setUp(self):
         super(QuestionnaireResponseApiTest, self).setUp()
         self._ehr_questionnaire_id = None
+        self.dao = QuestionnaireResponseDao()
 
     def test_duplicate_consent_submission(self):
         """
@@ -150,14 +154,64 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(summary.get('baselineQuestionnairesFirstCompleteAuthored'), TIME_3.isoformat())
 
     def test_remote_pm_imperial_response(self):
-        participant_id = self.create_participant()
+        questionnaire_id = self.create_questionnaire("questionnaire3.json")
+        questionnaire_id_1 = self.create_questionnaire("all_consents_questionnaire.json")
+        questionnaire_id_2 = self.create_questionnaire("questionnaire4.json")
+        participant_1 = self.send_post("Participant", {})
+        participant_id = participant_1["participantId"]
         authored_1 = datetime.datetime(2019, 3, 16, 1, 39, 33, tzinfo=pytz.utc)
         created = datetime.datetime(2019, 3, 16, 1, 51, 22)
         with FakeClock(created):
             self.send_consent(participant_id, authored=authored_1)
+
+        self._submit_consent_questionnaire_response(
+            participant_id, questionnaire_id_1, CONSENT_PERMISSION_YES_CODE, time=created
+        )
+
+        # Send a biobank order for participant
+        order_json = load_biobank_order_json(int(participant_id[1:]))
+        self._send_biobank_order(participant_id, order_json, time=TIME_1)
+
+        self.submit_response(
+            participant_id,
+            questionnaire_id,
+            RACE_NONE_OF_THESE_CODE,
+            "male",
+            "Fred",
+            "T",
+            "Smith",
+            "78752",
+            None,
+            self.streetAddress,
+            self.streetAddress2,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            datetime.date(1978, 10, 10),
+            None,
+            time=TIME_2,
+        )
+        # completing the baseline PPI modules.
+        self._submit_empty_questionnaire_response(participant_id, questionnaire_id_2)
+        # Store samples for DNA for participants
+        self._store_biobank_sample(participant_1, "1SAL", time=TIME_1)
+        self._store_biobank_sample(participant_1, "2ED10", time=TIME_1)
+        # Update participant summaries based on these changes
+        # So it could trigger the participant_summary_dao.calculate_max_core_sample_time to compare the
+        # physicalMeasurementsFinalizedTime with other times to cover the bug scenario:
+        # TypeError("can't compare offset-naive and offset-aware datetimes")
+        ps_dao = ParticipantSummaryDao()
+        ps_dao.update_from_biobank_stored_samples()
+
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary["physicalMeasurementsStatus"], 'UNSET')
-
+        self.assertEqual(summary["enrollmentStatus"], 'CORE_MINUS_PM')
         remote_pm_questionnaire_id = self.create_questionnaire("remote_pm_questionnaire.json")
 
         resource = self._load_response_json("remote_pm_response_imperial.json", remote_pm_questionnaire_id,
@@ -170,6 +224,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(summary['physicalMeasurementsCollectType'], 'SELF_REPORTED')
         self.assertEqual(summary['physicalMeasurementsFinalizedTime'], '2022-06-01T18:23:57')
         self.assertEqual(summary['physicalMeasurementsTime'], '2016-01-02T00:00:00')
+        self.assertEqual(summary["enrollmentStatus"], 'FULL_PARTICIPANT')
 
         response = self.send_get("Participant/{0}/PhysicalMeasurements".format(participant_id))
         self.assertEqual(1, len(response["entry"]))
@@ -1540,9 +1595,98 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
 
         return resource
 
+    def _submit_consent_questionnaire_response(
+        self, participant_id, questionnaire_id, ehr_consent_answer, time=TIME_1
+    ):
+        code_answers = []
+        _add_code_answer(code_answers, "ehrConsent", ehr_consent_answer)
+        qr = self.make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=code_answers)
+        with FakeClock(time):
+            self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
+
+    def _send_biobank_order(self, participant_id, order, time=TIME_1):
+        with FakeClock(time):
+            self.send_post("Participant/%s/BiobankOrder" % participant_id, order)
+
+    def _store_biobank_sample(self, participant, test_code, time=TIME_1):
+        BiobankStoredSampleDao().insert(
+            BiobankStoredSample(
+                biobankStoredSampleId="s" + participant["participantId"] + test_code,
+                biobankId=participant["biobankId"][1:],
+                test=test_code,
+                biobankOrderIdentifier="KIT",
+                confirmed=time,
+            )
+        )
+
+    def submit_response(
+        self,
+        participant_id,
+        questionnaire_id,
+        race_code,
+        gender_code,
+        first_name,
+        middle_name,
+        last_name,
+        zip_code,
+        state_code,
+        street_address,
+        street_address2,
+        city,
+        sex_code,
+        login_phone_number,
+        sexual_orientation_code,
+        phone_number,
+        recontact_method_code,
+        language_code,
+        education_code,
+        income_code,
+        date_of_birth,
+        cabor_signature_uri,
+        time=TIME_1,
+    ):
+        code_answers = []
+        _add_code_answer(code_answers, "race", race_code)
+        _add_code_answer(code_answers, "genderIdentity", gender_code)
+        _add_code_answer(code_answers, "state", state_code)
+        _add_code_answer(code_answers, "sex", sex_code)
+        _add_code_answer(code_answers, "sexualOrientation", sexual_orientation_code)
+        _add_code_answer(code_answers, "recontactMethod", recontact_method_code)
+        _add_code_answer(code_answers, "language", language_code)
+        _add_code_answer(code_answers, "education", education_code)
+        _add_code_answer(code_answers, "income", income_code)
+
+        qr = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire_id,
+            code_answers=code_answers,
+            string_answers=[
+                ("firstName", first_name),
+                ("middleName", middle_name),
+                ("lastName", last_name),
+                ("streetAddress", street_address),
+                ("streetAddress2", street_address2),
+                ("city", city),
+                ("phoneNumber", phone_number),
+                ("loginPhoneNumber", login_phone_number),
+                ("zipCode", zip_code),
+            ],
+            date_answers=[("dateOfBirth", date_of_birth)],
+            uri_answers=[("CABoRSignature", cabor_signature_uri)],
+        )
+        with FakeClock(time):
+            self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
+
+    def _submit_empty_questionnaire_response(self, participant_id, questionnaire_id, time=TIME_1):
+        qr = self.make_questionnaire_response_json(participant_id, questionnaire_id)
+        with FakeClock(time):
+            self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
+
+
 def _add_code_answer(code_answers, link_id, code):
     if code:
         code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
+
 
 def _get_pdr_module_dict(ps_data, module_id, key_name=None):
     """
