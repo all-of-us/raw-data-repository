@@ -35,6 +35,7 @@ from rdr_service.concepts import Concept
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
 TIME_3 = datetime.datetime(2016, 1, 3)
+TIME_4 = datetime.datetime(2016, 1, 4)
 
 
 def _questionnaire_response_url(participant_id):
@@ -148,6 +149,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
 
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('baselineQuestionnairesFirstCompleteAuthored'), TIME_3.isoformat())
+
 
     def test_remote_pm_imperial_response(self):
         participant_id = self.create_participant()
@@ -370,6 +372,44 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
                                  "&consentForElectronicHealthRecords=SUBMITTED&ehrConsentExpireStatus=UNSET"
                                  "&_includeTotal=true")
         self.assertEqual(len(summary2.get('entry')), 1)
+
+    def test_ehr_conflicting_responses_received_out_of_order(self):
+        """
+        DA-2732: multiple EHR with conflicting consent responses received in inverse order of authored
+        """
+        participant_id = self.create_participant()
+        authored_1 = datetime.datetime(2022, 1, 1, 0, 0, 0, tzinfo=pytz.utc)
+        created = datetime.datetime(2022, 1, 1, 0, 0, 0)
+        with FakeClock(created):
+            self.send_consent(participant_id, authored=authored_1)
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(parse(summary["consentForStudyEnrollmentTime"]), created.replace(tzinfo=None))
+        self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored_1.replace(tzinfo=None))
+
+        self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), None)
+        self.assertEqual(summary.get('enrollmentStatusMemberTime'), None)
+        self.assertEqual(summary.get('enrollmentStatus'), 'INTERESTED')
+
+        self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
+
+        # send ConsentPermission_No questionnaire response first (but later authored than next Yes payload)
+        with FakeClock(datetime.datetime(2022, 3, 12)):
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_NO_CODE, None,
+                                          datetime.datetime(2022, 2, 12))
+
+        # send ConsentPermission_Yes questionnaire response last (but earlier authored than previous No payload)
+        with FakeClock(datetime.datetime(2022, 3, 12, 5)):
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE, None,
+                                          datetime.datetime(2022, 2, 11))
+
+        # Expect the later authored "No" payload to be reflected in participant summary current EHR status fields
+        # (but have a "first yes" matching the earlier authored "yes" payload)
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary.get('consentForElectronicHealthRecordsFirstYesAuthored'), '2022-02-11T00:00:00')
+        self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2022-02-12T00:00:00')
+        self.assertEqual(summary.get('consentForElectronicHealthRecords'), 'SUBMITTED_NO_CONSENT')
+
+
 
     def submit_ehr_questionnaire(self, participant_id, ehr_response_code, string_answers, authored):
         if not self._ehr_questionnaire_id:
@@ -748,6 +788,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
         questionnaire_id = self.create_questionnaire("consent_for_genomic_ror_question.json")
 
         resource = self._load_response_json("consent_for_genomic_ror_resp.json", questionnaire_id, participant_id)
+        resource['authored'] = TIME_1.isoformat()
 
         self._save_codes(resource)
         self.send_post(_questionnaire_response_url(participant_id), resource)
@@ -760,6 +801,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
             questionnaire_id,
             participant_id
         )
+        dont_know_resp['authored'] = TIME_2.isoformat()
 
         with FakeClock(TIME_2):
             self._save_codes(dont_know_resp)
@@ -768,25 +810,28 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['semanticVersionForPrimaryConsent'], 'v1')
         self.assertEqual(summary['consentForGenomicsRORTime'], TIME_2.isoformat())
-        self.assertEqual(summary['consentForGenomicsRORAuthored'], '2019-12-12T09:30:44')
+        self.assertEqual(summary['consentForGenomicsRORAuthored'], TIME_2.isoformat())
         self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED_NOT_SURE')
 
         resource = self._load_response_json("consent_for_genomic_ror_no.json", questionnaire_id, participant_id)
+        resource['authored'] = TIME_3.isoformat()
 
-        with FakeClock(TIME_2):
+        with FakeClock(TIME_3):
             self._save_codes(resource)
             self.send_post(_questionnaire_response_url(participant_id), resource)
 
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['semanticVersionForPrimaryConsent'], 'v1')
         self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED_NO_CONSENT')
-        self.assertEqual(summary['consentForGenomicsRORTime'], TIME_2.isoformat())
-        self.assertEqual(summary['consentForGenomicsRORAuthored'], '2019-12-12T09:30:44')
+        self.assertEqual(summary['consentForGenomicsRORTime'], TIME_3.isoformat())
+        self.assertEqual(summary['consentForGenomicsRORAuthored'], TIME_3.isoformat())
 
         # Test Bad Code Value Sent returns 400
-        resource = self._load_response_json("consent_for_genomic_ror_bad_request.json", questionnaire_id, participant_id)
+        resource = self._load_response_json("consent_for_genomic_ror_bad_request.json",
+                                            questionnaire_id, participant_id)
+        resource['authored'] = TIME_4.isoformat()
 
-        with FakeClock(TIME_2):
+        with FakeClock(TIME_4):
             self._save_codes(resource)
             self.send_post(_questionnaire_response_url(participant_id),
                            resource,
