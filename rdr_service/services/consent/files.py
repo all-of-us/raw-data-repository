@@ -265,10 +265,14 @@ class CeConsentFactory(ConsentFileAbstractFactory):
 
     def _is_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         pdf = blob_wrapper.get_parsed_pdf()
-        return pdf.has_text([(
-            'HIPAA Authorization for Research EHR',
-            'Autorización para Investigación de HIPAA'
-        )])
+        return pdf.has_text([
+            (
+                'HIPAA Authorization for Research EHR',
+                'Autorización para Investigación de HIPAA',
+                'Authorization to Share My EHRs for Research',
+                'Autorización para compartir mis EHR para propósitos de investigación'
+            )
+        ])
 
     def _is_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         pdf = blob_wrapper.get_parsed_pdf()
