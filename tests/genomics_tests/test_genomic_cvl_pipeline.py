@@ -840,8 +840,9 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
         # Check that the PGX headers appear as expected
         self.assertTupleEqual(
-            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path', 'cram_name',
-             'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror', 'genome_type', 'informing_loop_pgx',
+            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path',
+             'gvcf_path', 'gvcf_md5_path', 'cram_name', 'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror',
+             'genome_type', 'informing_loop_pgx',
              'aou_hdr_coverage', 'contamination'),
             self.get_manifest_headers(bcm_pgx_w1il_manifest)
         )
@@ -915,9 +916,9 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
         # Check that the headers appear as expected
         self.assertTupleEqual(
-            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path', 'cram_name',
-             'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror', 'genome_type', 'informing_loop_hdr',
-             'aou_hdr_coverage', 'contamination'),
+            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path', 'gvcf_path', 'gvcf_md5_path',
+             'cram_name', 'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror', 'genome_type',
+             'informing_loop_hdr', 'aou_hdr_coverage', 'contamination'),
             self.get_manifest_headers(bcm_hdr_w1il_manifest)
         )
 
@@ -985,6 +986,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         self.assertTrue(all(obj.vcf_raw_path is not None for obj in pgx_raw_records))
         self.assertTrue(all(obj.vcf_raw_index_path is not None for obj in pgx_raw_records))
         self.assertTrue(all(obj.vcf_raw_md5_path is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.gvcf_path is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.gvcf_md5_path is not None for obj in pgx_raw_records))
         self.assertTrue(all(obj.sex_at_birth is not None for obj in pgx_raw_records))
         self.assertTrue(all(obj.ny_flag is not None for obj in pgx_raw_records))
         self.assertTrue(all(obj.genome_type == 'aou_cvl' for obj in pgx_raw_records))
@@ -1016,6 +1019,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         self.assertTrue(all(obj.vcf_raw_path is not None for obj in hdr_raw_records))
         self.assertTrue(all(obj.vcf_raw_index_path is not None for obj in hdr_raw_records))
         self.assertTrue(all(obj.vcf_raw_md5_path is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.gvcf_path is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.gvcf_md5_path is not None for obj in hdr_raw_records))
         self.assertTrue(all(obj.sex_at_birth is not None for obj in hdr_raw_records))
         self.assertTrue(all(obj.ny_flag is not None for obj in hdr_raw_records))
         self.assertTrue(all(obj.genome_type == 'aou_cvl' for obj in hdr_raw_records))
@@ -1119,6 +1124,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
                 'hfVcfPath': self.fake.pystr(),
                 'hfVcfTbiPath': self.fake.pystr(),
                 'hfVcfMd5Path': self.fake.pystr(),
+                'gvcfPath': self.fake.pystr(),
+                'gvcfMd5Path': self.fake.pystr(),
                 'cramPath': self.fake.pystr(),
                 'aouHdrCoverage': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
                 'contamination': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100)
@@ -1140,6 +1147,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             validation_metrics.hfVcfPath,
             validation_metrics.hfVcfTbiPath,
             validation_metrics.hfVcfMd5Path,
+            validation_metrics.gvcfPath,
+            validation_metrics.gvcfMd5Path,
             validation_metrics.cramPath,
             set_member.sexAtBirth,
             'Y' if set_member.nyFlag == 1 else 'N',
