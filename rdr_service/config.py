@@ -169,7 +169,8 @@ PUBSUB_NOTIFICATION_BUCKETS_STABLE = [
     "genomics-baylor-dryrun",
     "genomics-color-dryrun",
     "genomics-northwest-dryrun",
-    "genomics-broad-dryrun"
+    "genomics-broad-dryrun",
+    "color-rhp-stable"
 ]
 
 PUBSUB_NOTIFICATION_BUCKETS_SANDBOX = [
