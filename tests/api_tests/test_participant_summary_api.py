@@ -1780,11 +1780,13 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 break
 
     def _submit_consent_questionnaire_response(
-        self, participant_id, questionnaire_id, ehr_consent_answer, time=TIME_1
+        self, participant_id, questionnaire_id, ehr_consent_answer, time=TIME_1, authored=None
     ):
         code_answers = []
         _add_code_answer(code_answers, "ehrConsent", ehr_consent_answer)
-        qr = self.make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=code_answers)
+        qr = self.make_questionnaire_response_json(
+            participant_id, questionnaire_id, code_answers=code_answers, authored=authored
+        )
         with FakeClock(time):
             self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
@@ -1812,30 +1814,39 @@ class ParticipantSummaryApiTest(BaseTestCase):
         questionnaire_id = self.create_questionnaire("all_consents_questionnaire.json")
         participant_1 = self.send_post("Participant", {})
         participant_id_1 = participant_1["participantId"]
-        self.send_consent(participant_id_1)
+        self.send_consent(participant_id_1, authored=datetime.datetime(2015, 11, 8))
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("UNSET", ps_1["consentForElectronicHealthRecords"])
         self.assertEqual(None, ps_1.get("enrollmentStatusMemberTime"))
 
-        self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id, "NOPE")
+        self._submit_consent_questionnaire_response(
+            participant_id_1, questionnaire_id, "NOPE",
+            authored=datetime.datetime(2015, 11, 10)
+        )
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("SUBMITTED_NO_CONSENT", ps_1["consentForElectronicHealthRecords"])
         self.assertEqual(None, ps_1.get("enrollmentStatusMemberTime"))
 
         # DA-2732:  Make sure the test assigns a more recent timestamp for the YES response.  An identical authored
         # time for both YES/NO responses will not guarantee the consent status changes
-        self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id, CONSENT_PERMISSION_YES_CODE,
-                                                    time=TIME_2)
+        self._submit_consent_questionnaire_response(
+            participant_id_1, questionnaire_id, CONSENT_PERMISSION_YES_CODE, time=TIME_2
+        )
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("SUBMITTED", ps_1["consentForElectronicHealthRecords"])
         self.assertEqual(TIME_2.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
 
     def _submit_dvehr_consent_questionnaire_response(
-        self, participant_id, questionnaire_id, dvehr_consent_answer, time=TIME_1
+        self, participant_id, questionnaire_id, dvehr_consent_answer, time=TIME_1, authored=None
     ):
         code_answers = []
         _add_code_answer(code_answers, "DVEHRSharing_AreYouInterested", dvehr_consent_answer)
-        qr = self.make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=code_answers)
+        qr = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire_id,
+            code_answers=code_answers,
+            authored=authored
+        )
         with FakeClock(time):
             self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
@@ -1843,30 +1854,36 @@ class ParticipantSummaryApiTest(BaseTestCase):
         questionnaire_id = self.create_questionnaire("all_consents_questionnaire.json")
         participant_1 = self.send_post("Participant", {})
         participant_id_1 = participant_1["participantId"]
-        self.send_consent(participant_id_1)
+        self.send_consent(participant_id_1, authored=datetime.datetime.utcnow() - datetime.timedelta(days=20))
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("UNSET", ps_1["consentForDvElectronicHealthRecordsSharing"])
 
         self._submit_dvehr_consent_questionnaire_response(
-            participant_id_1, questionnaire_id, DVEHRSHARING_CONSENT_CODE_NO, time=TIME_1
+            participant_id_1, questionnaire_id, DVEHRSHARING_CONSENT_CODE_NO, time=TIME_1,
+            authored=datetime.datetime.utcnow() - datetime.timedelta(days=18)
         )
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("SUBMITTED_NO_CONSENT", ps_1["consentForDvElectronicHealthRecordsSharing"])
 
         self._submit_dvehr_consent_questionnaire_response(
-            participant_id_1, questionnaire_id, DVEHRSHARING_CONSENT_CODE_YES, time=TIME_2
+            participant_id_1, questionnaire_id, DVEHRSHARING_CONSENT_CODE_YES, time=TIME_2,
+            authored=datetime.datetime.utcnow() - datetime.timedelta(days=16)
         )
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("SUBMITTED", ps_1["consentForDvElectronicHealthRecordsSharing"])
 
         self._submit_dvehr_consent_questionnaire_response(
-            participant_id_1, questionnaire_id, DVEHRSHARING_CONSENT_CODE_NOT_SURE, time=TIME_3
+            participant_id_1, questionnaire_id, DVEHRSHARING_CONSENT_CODE_NOT_SURE, time=TIME_3,
+            authored=datetime.datetime.utcnow() - datetime.timedelta(days=14)
         )
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("SUBMITTED_NOT_SURE", ps_1["consentForDvElectronicHealthRecordsSharing"])
 
-        self._submit_dvehr_consent_questionnaire_response(participant_id_1, questionnaire_id, "", time=TIME_4)
+        self._submit_dvehr_consent_questionnaire_response(
+            participant_id_1, questionnaire_id, "", time=TIME_4,
+            authored=datetime.datetime.utcnow() - datetime.timedelta(days=12)
+        )
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("SUBMITTED_NO_CONSENT", ps_1["consentForDvElectronicHealthRecordsSharing"])

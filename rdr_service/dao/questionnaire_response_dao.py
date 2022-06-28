@@ -742,7 +742,7 @@ class QuestionnaireResponseDao(BaseDao):
                 )
                 if survey_name in QUESTIONNAIRE_MODULE_CODE_TO_FIELD:
                     summary_field_name = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(survey_name) + 'Authored'
-                    existing_authored_datetime = getattr(participant_summary, summary_field_name)
+                    existing_authored_datetime = getattr(participant_summary, summary_field_name, None)
                     if existing_authored_datetime and authored < existing_authored_datetime:
                         logging.warning(
                             f'Skipping summary update for {module_code.value} response authored on {authored} '
