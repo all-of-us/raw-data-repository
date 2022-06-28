@@ -523,6 +523,14 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(EnrollmentStatus.CORE_MINUS_PM, summary.enrollmentStatus)
         self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
 
+        summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+        self.dao.update_enrollment_status(summary)
+        self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, summary.enrollmentStatus)
+        self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
+        # calculate again, enrollmentStatusCoreMinusPMTime should still there
+        self.dao.update_enrollment_status(summary)
+        self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
+
     def testDowngradeCoreMinusPm(self):
         ehr_consent_authored_time = datetime.datetime(2018, 3, 1)
         sample_time = datetime.datetime(2019, 3, 1)
