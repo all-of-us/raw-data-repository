@@ -1599,11 +1599,11 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
         self.assertEqual({
             't_1': [Answer(id=mock.ANY, value='one', data_type=DataType.STRING)],
             't_2': [Answer(id=mock.ANY, value='two', data_type=DataType.STRING)]
-        }, responses.latest_response_per_survey_in_authored_order[0].answered_codes)
+        }, responses.in_authored_order[0].answered_codes)
         self.assertEqual({
             'x_1': [Answer(id=mock.ANY, value='nine', data_type=DataType.STRING)],
             'x_2': [Answer(id=mock.ANY, value='ten', data_type=DataType.STRING)]
-        }, responses.latest_response_per_survey_in_authored_order[1].answered_codes)
+        }, responses.in_authored_order[1].answered_codes)
 
     def _generate_response(self, questionnaire, answers, participant_id=None, authored_date=None, created_date=None):
         response = self.data_generator.create_database_questionnaire_response(
