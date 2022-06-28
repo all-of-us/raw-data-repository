@@ -735,18 +735,19 @@ class QuestionnaireResponseDao(BaseDao):
         if questionnaire_history.concepts:
             concept = questionnaire_history.concepts[0]
             module_code = code_map.get(concept.codeId)
-            summary_field_name = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(
-                module_code.value.lower()
-                if self._is_digital_health_share_code(module_code.value)
-                else module_code.value
-            ) + 'Authored'
-            existing_authored_datetime = getattr(participant_summary, summary_field_name)
-            if existing_authored_datetime and authored < existing_authored_datetime:
-                logging.warning(
-                    f'Skipping summary update for {module_code.value} response authored on {authored} '
-                    f'(previous response recorded was authored {existing_authored_datetime})'
-                )
-                return
+            if module_code:
+                summary_field_name = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(
+                    module_code.value.lower()
+                    if self._is_digital_health_share_code(module_code.value)
+                    else module_code.value
+                ) + 'Authored'
+                existing_authored_datetime = getattr(participant_summary, summary_field_name)
+                if existing_authored_datetime and authored < existing_authored_datetime:
+                    logging.warning(
+                        f'Skipping summary update for {module_code.value} response authored on {authored} '
+                        f'(previous response recorded was authored {existing_authored_datetime})'
+                    )
+                    return
 
         # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
         for answer in questionnaire_response.answers:
