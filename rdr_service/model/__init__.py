@@ -107,6 +107,10 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherSexAtBirthView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherDegreeView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBInstitutionalAffiliationsView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQAccessTierShortNameView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQDSV2EthnicCategoryView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQDSV2GenderIdentityView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQDSV2SexualOrientationView'),
 
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceView'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceRaceEthnicityView'),
