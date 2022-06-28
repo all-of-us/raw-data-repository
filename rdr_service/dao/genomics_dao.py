@@ -3515,6 +3515,8 @@ class GenomicQueriesDao(BaseDao):
                 GenomicGCValidationMetrics.hfVcfPath.label('vcf_raw_path'),
                 GenomicGCValidationMetrics.hfVcfTbiPath.label('vcf_raw_index_path'),
                 GenomicGCValidationMetrics.hfVcfMd5Path.label('vcf_raw_md5_path'),
+                GenomicGCValidationMetrics.gvcfPath.label('gvcf_path'),
+                GenomicGCValidationMetrics.gvcfMd5Path.label('gvcf_md5_path'),
                 GenomicGCValidationMetrics.cramPath.label('cram_name'),
                 GenomicSetMember.sexAtBirth.label('sex_at_birth'),
                 func.IF(
@@ -3557,13 +3559,11 @@ class GenomicQueriesDao(BaseDao):
                 GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
-
                 ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
                 GenomicGCValidationMetrics.drcFpConcordance.ilike('pass'),
                 GenomicSetMember.diversionPouchSiteFlag != 1,
                 GenomicSetMember.gcSiteId.ilike(gc_site_id),
                 ParticipantSummary.participantOrigin != 'careevolution',
-
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY,
                 previous_w1il_job_field.is_(None)

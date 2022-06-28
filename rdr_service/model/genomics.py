@@ -729,6 +729,8 @@ class GenomicW1ILRaw(Base):
     vcf_raw_path = Column(String(255), nullable=True)
     vcf_raw_index_path = Column(String(255), nullable=True)
     vcf_raw_md5_path = Column(String(255), nullable=True)
+    gvcf_path = Column(String(255), nullable=True)
+    gvcf_md5_path = Column(String(255), nullable=True)
     sex_at_birth = Column(String(255), nullable=True)
     ny_flag = Column(String(255), nullable=True)
     genome_center = Column(String(255), nullable=True)
