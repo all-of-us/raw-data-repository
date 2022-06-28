@@ -746,6 +746,7 @@ class QuestionnaireResponseDao(BaseDao):
                     f'Skipping summary update for {module_code.value} response authored on {authored} '
                     f'(previous response recorded was authored {existing_authored_datetime})'
                 )
+                return
 
         # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
         for answer in questionnaire_response.answers:
@@ -894,11 +895,10 @@ class QuestionnaireResponseDao(BaseDao):
         for concept in questionnaire_history.concepts:
             code = code_map.get(concept.codeId)
             if code:
-                current_authored = self._check_for_current_module_authored(participant_summary, code.value)
                 # the digital health code in code table is in lowercase, but in questionnaire payload is in CamelCased
                 summary_field = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(
                     code.value.lower() if self._is_digital_health_share_code(code.value) else code.value)
-                if summary_field and (current_authored is None or authored > current_authored):
+                if summary_field:
                     new_status = QuestionnaireStatus.SUBMITTED
                     if code.value == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE and not ehr_consent:
                         new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
@@ -1078,21 +1078,6 @@ class QuestionnaireResponseDao(BaseDao):
 
             if is_new_consent:
                 session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
-
-    def _check_for_current_module_authored(self, ps_rec, module):
-        """ Checks if a participant_summary record already has an authored time for a given field """
-        current_authored = None
-        module_to_authored_field = {
-            'ConsentPII': 'consentForStudyEnrollmentAuthored',
-            'EHRConsentPII': 'consentForElectronicHealthRecordsAuthored',
-            'DVEHRSharing': 'consentForDvElectronicHealthRecordsSharingAuthored',
-            'GROR': 'consentForGenomicsRORAuthored'
-        }
-        if module in module_to_authored_field.keys():
-            current_authored = getattr(ps_rec, module_to_authored_field[module])
-
-        return current_authored
-
 
     @classmethod
     def _authored_times_match(cls, new_authored_time: datetime, current_authored_item: datetime):
