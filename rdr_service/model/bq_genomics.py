@@ -191,7 +191,7 @@ class BQGenomicSetMemberSchema(BQSchema):
     cvl_w5nf_pgx_manifest_job_run_id = BQField('cvl_w5nf_pgx_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
                                                BQFieldModeEnum.NULLABLE)
     diversion_pouch_site_flag = BQField('diversion_pouch_site_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    gem_date_of_import = BQField('gem_date_of_import', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    gem_date_of_import = BQField('gem_date_of_import', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     gem_metrics_ancestry_loop_response = BQField('gem_metrics_ancestry_loop_response', BQFieldTypeEnum.STRING,
                                                  BQFieldModeEnum.NULLABLE)
     gem_metrics_available_results = BQField('gem_metrics_available_results', BQFieldTypeEnum.STRING,
@@ -201,7 +201,7 @@ class BQGenomicSetMemberSchema(BQSchema):
     ignore_flag = BQField('ignore_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     informing_loop_ready_flag = BQField('informing_loop_ready_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     informing_loop_ready_flag_modified = BQField('informing_loop_ready_flag_modified', BQFieldTypeEnum.DATETIME,
-                                                 BQFieldModeEnum.REQUIRED)
+                                                 BQFieldModeEnum.NULLABLE)
     participant_origin = BQField('participant_origin', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     replated_member_id = BQField('replated_member_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
