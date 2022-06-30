@@ -273,7 +273,7 @@ class MessageBrokerApiTest(BaseTestCase):
         from rdr_service.resource import main as resource_main
 
         # result_viewed events use result_type instead of module_type
-        request_json_decision = {
+        request_json_result_viewed = {
             "event": event_type,
             "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
             "participantId": to_client_participant_id(participant_one.participantId),
@@ -282,7 +282,7 @@ class MessageBrokerApiTest(BaseTestCase):
             }
         }
 
-        self.send_post("MessageBroker", request_json_decision)
+        self.send_post("MessageBroker", request_json_result_viewed)
 
         records = self.record_dao.get_all()
         record = records[0]
@@ -315,6 +315,125 @@ class MessageBrokerApiTest(BaseTestCase):
             self.assertEqual(format_datetime(result.eventAuthoredTime), event_time)
             self.assertEqual(result.valueString, 'gem')
             self.assertEqual(result.fieldName, 'result_type')
+
+    @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id')
+    @mock.patch('rdr_service.message_broker.message_broker.PtscMessageBroker.send_request')
+    def test_result_ready(self, send_request, request_origin):
+        send_request.return_value = 200, {'result': 'mocked result'}, ''
+        request_origin.return_value = 'color'
+
+        participant_one = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        event_type = 'result_ready'
+
+        from rdr_service.resource import main as resource_main
+
+        # hdr result ready => optional hdr_result_status field
+        request_json_result_ready = {
+            "event": event_type,
+            "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
+            "participantId": to_client_participant_id(participant_one.participantId),
+            "messageBody": {
+                'result_type': 'hdr_v1',
+                'hdr_result_status': 'positive',
+                'report_revision_number': 0
+            }
+        }
+        self.send_post("MessageBroker", request_json_result_ready)
+
+        records = self.record_dao.get_all()
+        record = records[0]
+        event_time = format_datetime(record.eventAuthoredTime)
+
+        payload = {
+            'id': record.id,
+            'eventType': record.eventType,
+            'eventAuthoredTime': event_time,
+            'participantId': record.participantId,
+            'requestBody': record.requestBody
+        }
+
+        self.send_post(
+            local_path='StoreMessageBrokerEventDataTaskApi',
+            request_data=payload,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        result_ready_records = self.event_data_dao.get_result_ready(
+            record.id
+        )
+
+        self.assertIsNotNone(result_ready_records)
+        self.assertEqual(
+            len(result_ready_records),
+            len(request_json_result_ready['messageBody'])
+        )
+
+        for result in result_ready_records:
+            if result.fieldName == 'report_revision_number':
+                self.assertTrue(result.valueInteger is not None)
+            if result.fieldName != 'report_revision_number':
+                self.assertTrue(result.valueString is not None)
+            if result.fieldName == 'result_type':
+                self.assertTrue(result.valueString == 'hdr_v1')
+
+            self.assertEqual(format_datetime(result.eventAuthoredTime), event_time)
+            self.assertEqual(result.eventType, 'result_ready')
+            self.assertTrue(result.fieldName in request_json_result_ready['messageBody'].keys())
+
+        # pgx result ready
+        request_json_result_ready = {
+            "event": event_type,
+            "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
+            "participantId": to_client_participant_id(participant_one.participantId),
+            "messageBody": {
+                'result_type': 'pgx_v1',
+                'report_revision_number': 0
+            }
+        }
+
+        self.send_post("MessageBroker", request_json_result_ready)
+
+        records = self.record_dao.get_all()
+        record = records[1]
+        event_time = format_datetime(record.eventAuthoredTime)
+
+        payload = {
+            'id': record.id,
+            'eventType': record.eventType,
+            'eventAuthoredTime': event_time,
+            'participantId': record.participantId,
+            'requestBody': record.requestBody
+        }
+
+        self.send_post(
+            local_path='StoreMessageBrokerEventDataTaskApi',
+            request_data=payload,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        result_ready_records = self.event_data_dao.get_result_ready(
+            record.id
+        )
+
+        self.assertIsNotNone(result_ready_records)
+        self.assertEqual(
+            len(result_ready_records),
+            len(request_json_result_ready['messageBody'])
+        )
+
+        for result in result_ready_records:
+            if result.fieldName == 'report_revision_number':
+                self.assertTrue(result.valueInteger is not None)
+            if result.fieldName != 'report_revision_number':
+                self.assertTrue(result.valueString is not None)
+            if result.fieldName == 'result_type':
+                self.assertTrue(result.valueString == 'pgx_v1')
+
+            self.assertEqual(format_datetime(result.eventAuthoredTime), event_time)
+            self.assertEqual(result.eventType, 'result_ready')
+            self.assertTrue(result.fieldName in request_json_result_ready['messageBody'].keys())
 
     @mock.patch('rdr_service.message_broker.message_broker.requests')
     def test_token_refresh_retry(self, requests_mock):

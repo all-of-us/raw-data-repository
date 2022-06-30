@@ -1279,11 +1279,15 @@ class GenomicMemberReportState(Base):
                 primary_key=True, autoincrement=True, nullable=False)
     created = Column(DateTime)
     modified = Column(DateTime)
+    message_record_id = Column(Integer, nullable=True)
     genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False)
     genomic_report_state = Column(Enum(GenomicReportState), default=GenomicReportState.UNSET)
     genomic_report_state_str = Column(String(64), default="UNSET")
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=True)
+    event_type = Column(String(256), nullable=True)
+    event_authored_time = Column(UTCDateTime6, nullable=True)
     module = Column(String(80), nullable=False)
+    sample_id = Column(String(80), nullable=True, index=True)
 
 
 event.listen(GenomicMemberReportState, 'before_insert', model_insert_listener)

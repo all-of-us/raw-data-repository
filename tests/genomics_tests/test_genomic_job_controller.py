@@ -5,10 +5,11 @@ from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
-    GenomicInformingLoopDao, GenomicResultViewedDao, GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao
+    GenomicInformingLoopDao, GenomicResultViewedDao, GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao, \
+    GenomicMemberReportStateDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult, \
-    GenomicSubProcessStatus, GenomicManifestTypes, GenomicQcStatus
+    GenomicSubProcessStatus, GenomicManifestTypes, GenomicQcStatus, GenomicReportState
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics
@@ -28,6 +29,7 @@ class GenomicJobControllerTest(BaseTestCase):
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.user_event_metrics_dao = UserEventMetricsDao()
         self.job_run_dao = GenomicJobRunDao()
+        self.report_state_dao = GenomicMemberReportStateDao()
 
     def test_incident_with_long_message(self):
         """Make sure the length of incident messages doesn't cause issues when recording them"""
@@ -578,6 +580,189 @@ class GenomicJobControllerTest(BaseTestCase):
 
         self.assertEqual(result_viewed_genomic_record.first_viewed, message_broker_record_two.eventAuthoredTime)
         self.assertEqual(result_viewed_genomic_record.last_viewed, message_broker_record_two.eventAuthoredTime)
+
+    def test_result_ready_ingestion_message_broker(self):
+        event_type = 'result_ready'
+        participant = self.data_generator.create_database_participant()
+        # https://docs.google.com/document/d/1E1tNSi1mWwhBSCs9Syprbzl5E0SH3c_9oLduG1mzlcY/edit#heading=h.dtikttz25h22
+        result_module_types = ['hdr_v1', 'pgx_v1']
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        sample_id = '2222222'
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            sampleId=sample_id,
+            participantId=participant.participantId,
+            biobankId="1",
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.AW0
+        )
+
+        # HDR Positive Records
+        message_broker_record_hdr_positive = self.data_generator.create_database_message_broker_record(
+            participantId=participant.participantId,
+            eventType=event_type,
+            eventAuthoredTime=clock.CLOCK.now(),
+            messageOrigin='example@example.com',
+            requestBody={
+                'result_type': result_module_types[0],
+                'hdr_result_status': 'positive',
+                'report_revision_number': 0
+            },
+            requestTime=clock.CLOCK.now(),
+            responseError='',
+            responseCode='200',
+            responseTime=clock.CLOCK.now()
+        )
+
+        for key, value in message_broker_record_hdr_positive.requestBody.items():
+            self.data_generator.create_database_message_broker_event_data(
+                participantId=message_broker_record_hdr_positive.participantId,
+                messageRecordId=message_broker_record_hdr_positive.id,
+                eventType=message_broker_record_hdr_positive.eventType,
+                eventAuthoredTime=message_broker_record_hdr_positive.eventAuthoredTime,
+                fieldName=key,
+                valueString=value
+            )
+
+        with GenomicJobController(GenomicJob.INGEST_RESULT_READY) as controller:
+            controller.ingest_records_from_message_broker_data(
+                message_record_id=message_broker_record_hdr_positive.id,
+                event_type=event_type
+            )
+
+        result_ready_genomic_record = self.report_state_dao.get_all()
+
+        self.assertIsNotNone(result_ready_genomic_record)
+        self.assertEqual(len(result_ready_genomic_record), 1)
+
+        result_ready_genomic_record = result_ready_genomic_record[0]
+
+        self.assertIsNotNone(result_ready_genomic_record.event_type)
+        self.assertIsNotNone(result_ready_genomic_record.module)
+
+        self.assertEqual(result_ready_genomic_record.message_record_id, message_broker_record_hdr_positive.id)
+        self.assertEqual(result_ready_genomic_record.participant_id, message_broker_record_hdr_positive.participantId)
+        self.assertEqual(result_ready_genomic_record.event_type, event_type)
+        self.assertTrue(result_ready_genomic_record.module == result_module_types[0])
+        self.assertEqual(result_ready_genomic_record.sample_id, sample_id)
+
+        # check for correct report state
+        self.assertEqual(result_ready_genomic_record.genomic_report_state, GenomicReportState.HDR_RPT_POSITIVE)
+        self.assertEqual(result_ready_genomic_record.genomic_report_state_str, GenomicReportState.HDR_RPT_POSITIVE.name)
+
+        # HDR Uninformative Records
+        message_broker_record_hdr_uninformative = self.data_generator.create_database_message_broker_record(
+            participantId=participant.participantId,
+            eventType=event_type,
+            eventAuthoredTime=clock.CLOCK.now(),
+            messageOrigin='example@example.com',
+            requestBody={
+                'result_type': result_module_types[0],
+                'hdr_result_status': 'uninformative',
+                'report_revision_number': 0
+            },
+            requestTime=clock.CLOCK.now(),
+            responseError='',
+            responseCode='200',
+            responseTime=clock.CLOCK.now()
+        )
+
+        for key, value in message_broker_record_hdr_uninformative.requestBody.items():
+            self.data_generator.create_database_message_broker_event_data(
+                participantId=message_broker_record_hdr_uninformative.participantId,
+                messageRecordId=message_broker_record_hdr_uninformative.id,
+                eventType=message_broker_record_hdr_uninformative.eventType,
+                eventAuthoredTime=message_broker_record_hdr_uninformative.eventAuthoredTime,
+                fieldName=key,
+                valueString=value
+            )
+
+        with GenomicJobController(GenomicJob.INGEST_RESULT_READY) as controller:
+            controller.ingest_records_from_message_broker_data(
+                message_record_id=message_broker_record_hdr_uninformative.id,
+                event_type=event_type
+            )
+
+        result_ready_genomic_record = self.report_state_dao.get_all()
+
+        self.assertIsNotNone(result_ready_genomic_record)
+        self.assertEqual(len(result_ready_genomic_record), 2)
+
+        result_ready_genomic_record = result_ready_genomic_record[1]
+
+        self.assertIsNotNone(result_ready_genomic_record.event_type)
+        self.assertIsNotNone(result_ready_genomic_record.module)
+
+        self.assertEqual(result_ready_genomic_record.message_record_id, message_broker_record_hdr_uninformative.id)
+        self.assertEqual(result_ready_genomic_record.participant_id,
+                         message_broker_record_hdr_uninformative.participantId)
+        self.assertEqual(result_ready_genomic_record.event_type, event_type)
+        self.assertTrue(result_ready_genomic_record.module == result_module_types[0])
+        self.assertEqual(result_ready_genomic_record.sample_id, sample_id)
+
+        # check for correct report state
+        self.assertEqual(result_ready_genomic_record.genomic_report_state, GenomicReportState.HDR_RPT_UNINFORMATIVE)
+        self.assertEqual(result_ready_genomic_record.genomic_report_state_str,
+                         GenomicReportState.HDR_RPT_UNINFORMATIVE.name)
+
+        # PGX Records
+        message_broker_record_pgx = self.data_generator.create_database_message_broker_record(
+            participantId=participant.participantId,
+            eventType=event_type,
+            eventAuthoredTime=clock.CLOCK.now(),
+            messageOrigin='example@example.com',
+            requestBody={
+                'result_type': result_module_types[1],
+                'report_revision_number': 0
+            },
+            requestTime=clock.CLOCK.now(),
+            responseError='',
+            responseCode='200',
+            responseTime=clock.CLOCK.now()
+        )
+
+        for key, value in message_broker_record_pgx.requestBody.items():
+            self.data_generator.create_database_message_broker_event_data(
+                participantId=message_broker_record_pgx.participantId,
+                messageRecordId=message_broker_record_pgx.id,
+                eventType=message_broker_record_pgx.eventType,
+                eventAuthoredTime=message_broker_record_pgx.eventAuthoredTime,
+                fieldName=key,
+                valueString=value
+            )
+
+        with GenomicJobController(GenomicJob.INGEST_RESULT_READY) as controller:
+            controller.ingest_records_from_message_broker_data(
+                message_record_id=message_broker_record_pgx.id,
+                event_type=event_type
+            )
+
+        result_ready_genomic_record = self.report_state_dao.get_all()
+
+        self.assertIsNotNone(result_ready_genomic_record)
+        self.assertEqual(len(result_ready_genomic_record), 3)
+
+        result_ready_genomic_record = result_ready_genomic_record[2]
+
+        self.assertIsNotNone(result_ready_genomic_record.event_type)
+        self.assertIsNotNone(result_ready_genomic_record.module)
+
+        self.assertEqual(result_ready_genomic_record.message_record_id, message_broker_record_pgx.id)
+        self.assertEqual(result_ready_genomic_record.participant_id, message_broker_record_pgx.participantId)
+        self.assertEqual(result_ready_genomic_record.event_type, event_type)
+        self.assertTrue(result_ready_genomic_record.module == result_module_types[1])
+        self.assertEqual(result_ready_genomic_record.sample_id, sample_id)
+
+        # check for correct report state
+        self.assertEqual(result_ready_genomic_record.genomic_report_state, GenomicReportState.PGX_RPT_READY)
+        self.assertEqual(result_ready_genomic_record.genomic_report_state_str, GenomicReportState.PGX_RPT_READY.name)
 
     def test_updating_members_blocklists(self):
 

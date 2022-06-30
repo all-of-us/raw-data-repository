@@ -2434,6 +2434,22 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(result_viewed_post['success'], True)
         self.assertEqual(ingest_called.call_count, 3)
 
+        data = {
+            'message_record_id': 2,
+            'event_type': 'result_ready'
+        }
+
+        result_viewed_post = self.send_post(
+            local_path='IngestFromMessageBrokerDataApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(result_viewed_post)
+        self.assertEqual(result_viewed_post['success'], True)
+        self.assertEqual(ingest_called.call_count, 4)
+
     def test_batch_data_file_task_api(self):
 
         test_bucket_baylor = "fake-data-bucket-baylor"
