@@ -27,7 +27,7 @@ def check_ppi_data():
           'email@address.com|5555555555': {
             'PIIName_First': 'Alex',
             'Insurance_HealthInsurance': 'HealthInsurance_Yes',
-            'EmplymentWorkAddress_AddressLineOne': '',
+            'EmploymentWorkAddress_AddressLineOne': '',
             'Race_WhatRaceEthnicity': 'WhatRaceEthnicity_Hispanic|WhatRaceEthnicity_Black',
             ...
           },
@@ -78,6 +78,7 @@ class _ValidationResult(object):
 
     def to_json(self):
         return {"tests_count": self.tests_count, "errors_count": self.errors_count, "error_messages": self.messages}
+
 
 def _answers_match(expected_answer: str, actual_answer):
     """
@@ -148,7 +149,7 @@ def _get_validation_result(key, codes_to_answers):
                 try:
                     qra_values.add(_get_value_for_qra(qra, question_code, code_dao, session))
                 except ValueError as e:
-                    result.add_error(e.message)
+                    result.add_error(str(e))
                     continue
 
             if answer_string:
@@ -199,4 +200,6 @@ def _get_value_for_qra(qra, question_code, code_dao, session):
                 f"Unexpected value {code.value} with non-PPI system {code.system} for question {question_code}."
             )
         return code
+    if qra.valueUri is not None:
+        return qra.valueUri
     raise ValueError(f"Answer for question {question_code} has no value set.")

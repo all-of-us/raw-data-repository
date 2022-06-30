@@ -868,6 +868,8 @@ class ParticipantSummaryDao(UpdatableDao):
                 return participant_summary.enrollmentStatusCoreStoredSampleTime
             else:
                 return max_core_sample_time
+        elif participant_summary.enrollmentStatusCoreMinusPMTime is not None:
+            return participant_summary.enrollmentStatusCoreMinusPMTime
         else:
             return None
 
