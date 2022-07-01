@@ -1268,6 +1268,10 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 )
             return members.all()
 
+    def update(self, obj):
+        self.update_member_gem_report_states(obj)
+        super(GenomicSetMemberDao, self).update(obj)
+
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
     """ Stub for GenomicJobRun model """

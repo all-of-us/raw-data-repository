@@ -822,7 +822,6 @@ class GenomicFileIngester:
                     member.genomicWorkflowStateStr = member.genomicWorkflowState.name
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
-                self.member_dao.update_member_gem_report_states(member)
                 self.member_dao.update(member)
 
             return GenomicSubProcessResult.SUCCESS
