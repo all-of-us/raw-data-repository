@@ -1216,7 +1216,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
 
         return self.insert(new_member_obj)
 
-    def update_member_wf_states(self, member):
+    def update_member_gem_report_states(self, member):
         gem_wf_states = (
             GenomicWorkflowState.GEM_RPT_READY,
             GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
@@ -1224,26 +1224,25 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             GenomicWorkflowState.CVL_RPT_PENDING_DELETE,
             GenomicWorkflowState.CVL_RPT_DELETED,
         )
+
         if member.genomicWorkflowState and member.genomicWorkflowState in gem_wf_states:
             state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
             report = self.report_state_dao.get_from_member_id(member.id)
-            if not report:
-                report_obj = GenomicMemberReportState(
-                    genomic_set_member_id=member.id,
-                    genomic_report_state=state,
-                    genomic_report_state_str=state.name,
-                    participant_id=member.participantId,
-                    module='gem'
-                )
-                self.report_state_dao.insert(report_obj)
-            else:
+
+            if report:
                 report.genomic_report_state = state
                 report.genomic_report_state_str = state.name
                 self.report_state_dao.update(report)
+                return
 
-    def update(self, obj):
-        self.update_member_wf_states(obj)
-        super(GenomicSetMemberDao, self).update(obj)
+            report_obj = self.report_state_dao.model_type(
+                genomic_set_member_id=member.id,
+                genomic_report_state=state,
+                genomic_report_state_str=state.name,
+                participant_id=member.participantId,
+                module='gem'
+            )
+            self.report_state_dao.insert(report_obj)
 
     @classmethod
     def _is_valid_set_member_job_field(cls, job_field_name):
@@ -1268,6 +1267,10 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                     GenomicSetMember.genomeType == genome_type
                 )
             return members.all()
+
+    def update(self, obj):
+        self.update_member_gem_report_states(obj)
+        super(GenomicSetMemberDao, self).update(obj)
 
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
@@ -2213,8 +2216,8 @@ class GenomicOutreachDaoV2(BaseDao):
                     .join(
                         GenomicSetMember,
                         and_(
-                            GenomicSetMember.participantId == GenomicMemberReportState.participant_id,
-                            GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY
+                            GenomicSetMember.id == GenomicMemberReportState.genomic_set_member_id,
+                            GenomicSetMember.genomeType.in_(query_genome_types)
                         )
                     ).outerjoin(
                         GenomicResultViewed,
@@ -2897,7 +2900,7 @@ class GenomicMemberReportStateDao(UpdatableDao):
     @staticmethod
     def get_report_state_from_wf_state(wf_state):
         for value in GenomicReportState:
-            if value.name == wf_state.name:
+            if value.name.lower() == wf_state.name.lower():
                 return value
         return None
 

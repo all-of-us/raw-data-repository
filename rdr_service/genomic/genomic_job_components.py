@@ -806,11 +806,10 @@ class GenomicFileIngester:
                 if member is None:
                     logging.warning(f'Invalid sample ID: {sample_id}')
                     continue
-                member.gemPass = row['success']
 
+                member.gemPass = row['success']
                 member.gemA2ManifestJobRunId = self.job_run_id
                 member.gemDateOfImport = parse(row['date_of_import'])
-
                 _signal = 'a2-gem-pass' if member.gemPass.lower() == 'y' else 'a2-gem-fail'
 
                 # update state and state modifed time only if changed

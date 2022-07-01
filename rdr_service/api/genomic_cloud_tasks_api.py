@@ -396,6 +396,7 @@ class IngestFromMessageBrokerDataApi(BaseGenomicTaskApi):
         ingest_method_map = {
             'informing_loop': GenomicJob.INGEST_INFORMING_LOOP,
             'result_viewed': GenomicJob.INGEST_RESULT_VIEWED,
+            'result_ready': GenomicJob.INGEST_RESULT_READY
         }
 
         job_type = ingest_method_map[

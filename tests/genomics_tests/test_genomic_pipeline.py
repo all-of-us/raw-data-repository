@@ -5016,8 +5016,11 @@ class GenomicPipelineTest(BaseTestCase):
         # Set up test A2 manifest
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
 
-        create_ingestion_test_file('AoU_GEM_metrics_aggregate_2020-08-28-10-43-21.csv',
-                                         bucket_name, include_timestamp=False)
+        create_ingestion_test_file(
+            'AoU_GEM_metrics_aggregate_2020-08-28-10-43-21.csv',
+            bucket_name,
+            include_timestamp=False
+        )
         # Run Workflow
         genomic_pipeline.gem_metrics_ingest()  # run_id 1
 

@@ -188,7 +188,7 @@ class GenomicOutreachApi(BaseApi):
         # Create GenomicSetMember with report state
         model = self.dao.from_client_json(resource, participant_id=p_id, mode='gem')
         m = self._do_insert(model)
-        self.member_dao.update_member_wf_states(m)
+        self.member_dao.update_member_gem_report_states(m)
 
         response_data = {
             'date': m.genomicWorkflowStateModifiedTime,

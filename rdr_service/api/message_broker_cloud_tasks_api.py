@@ -32,8 +32,8 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
 
         for key, value in message_body.items():
             field_name = key
-
             value_date_time = None
+
             if isinstance(value, str):
                 try:
                     value_date_time = parse(value)
@@ -68,7 +68,8 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
         acceptable_event_types = [
             'informing_loop_started',
             'informing_loop_decision',
-            'result_viewed'
+            'result_viewed',
+            'result_ready'
         ]
 
         if self.event_type in acceptable_event_types \

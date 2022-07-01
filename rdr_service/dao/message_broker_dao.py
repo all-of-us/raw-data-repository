@@ -88,7 +88,6 @@ class MessageBrokerDao(BaseDao):
 
 
 class MessageBrokenEventDataDao(BaseDao):
-
     def __init__(self):
         super(MessageBrokenEventDataDao, self).__init__(MessageBrokerEventData, order_by_ending=['id'])
 
@@ -115,4 +114,14 @@ class MessageBrokenEventDataDao(BaseDao):
                 MessageBrokerEventData.messageRecordId == message_record_id,
                 MessageBrokerEventData.eventType == 'result_viewed'
             ).all()
+
+    def get_result_ready(self, message_record_id):
+        with self.session() as session:
+            return session.query(
+                MessageBrokerEventData
+            ).filter(
+                MessageBrokerEventData.messageRecordId == message_record_id,
+                MessageBrokerEventData.eventType == 'result_ready'
+            ).all()
+
 
