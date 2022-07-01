@@ -2,15 +2,13 @@
 
 This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
-# pylint: disable=unused-import
-import rdr_service.activate_debugger
 
 import logging
 
-from flask import got_request_exception, Response
+from flask import got_request_exception
 from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
-from werkzeug.exceptions import HTTPException, InternalServerError
+from werkzeug.exceptions import HTTPException
 
 from rdr_service import app_util, config_api, version_api
 from rdr_service.api import metrics_ehr_api

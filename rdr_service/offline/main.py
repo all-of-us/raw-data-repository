@@ -1,5 +1,4 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
-import rdr_service.activate_debugger  # pylint: disable=unused-import
 
 from rdr_service.genomic_enums import GenomicJob
 

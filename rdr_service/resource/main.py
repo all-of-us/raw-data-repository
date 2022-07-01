@@ -1,7 +1,5 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
 
-import rdr_service.activate_debugger  # pylint: disable=unused-import
-
 from flask import Flask, got_request_exception
 from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
