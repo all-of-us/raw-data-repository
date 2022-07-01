@@ -771,19 +771,21 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
             module = 'gem'
             report_state = GenomicReportState.GEM_RPT_READY
+            genome_type = 'aou_array'
 
             if num == 0:
                 first_participant = participant
             elif num == 1:
                 second_participant = participant
-                module = 'pgx'
+                module = 'pgx_v1'
+                genome_type = 'aou_wgs'
                 report_state = GenomicReportState.PGX_RPT_PENDING_DELETE
 
             gen_member = self.data_generator.create_database_genomic_set_member(
                 genomicSetId=gen_set.id,
                 biobankId="100153482",
                 sampleId="21042005280",
-                genomeType="aou_array",
+                genomeType=genome_type,
                 genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
                 participantId=participant.participantId
             )
@@ -997,11 +999,13 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
         for num in range(self.num_participants):
             if num % 2 == 0:
-                module = 'pgx'
+                result_module = 'pgx_v1'
+                loop_module = 'pgx'
                 report_state = GenomicReportState.PGX_RPT_READY
                 genome_type = config.GENOME_TYPE_WGS
             else:
-                module = 'gem'
+                result_module = 'gem'
+                loop_module = 'gem'
                 report_state = GenomicReportState.GEM_RPT_READY
                 genome_type = config.GENOME_TYPE_ARRAY
 
@@ -1026,14 +1030,14 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             self.data_generator.create_database_genomic_member_report_state(
                 genomic_set_member_id=gen_member.id,
                 participant_id=participant.participantId,
-                module=module,
+                module=result_module,
                 genomic_report_state=report_state
             )
 
             self.data_generator.create_database_genomic_informing_loop(
                 message_record_id=1,
                 event_type='informing_loop_decision',
-                module_type=module,
+                module_type=loop_module,
                 participant_id=participant.participantId,
                 decision_value='maybe_later',
                 event_authored_time=fake_date_one + datetime.timedelta(days=1)
@@ -1057,26 +1061,30 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 f'GenomicOutreachV2?start_date={fake_date_one}&module=GEM'
             )
 
-        self.assertEqual(len(resp['data']), len(total_num_set) / 2)
+        self.assertEqual(len(resp['data']), len(total_num_set) // 2)
 
         all_gem = all(obj['module'] == 'gem' for obj in resp['data'])
-        loop_and_result = all(obj['type'] == 'informingLoop' or obj['type'] == 'result' for obj in resp['data'])
+        gem_result = any(obj['type'] == 'result' for obj in resp['data'])
+        gem_loop = any(obj['type'] == 'informingLoop' for obj in resp['data'])
 
         self.assertTrue(all_gem)
-        self.assertTrue(loop_and_result)
+        self.assertTrue(gem_result)
+        self.assertTrue(gem_loop)
 
         with clock.FakeClock(fake_now):
             resp = self.send_get(
                 f'GenomicOutreachV2?start_date={fake_date_one}&module=PGX'
             )
 
-        self.assertEqual(len(resp['data']), 5)
+        self.assertEqual(len(resp['data']), len(total_num_set) // 2)
 
-        all_pgx = all(obj for obj in resp['data'] if obj['module'] == 'pgx')
-        loop_and_result = all(obj['type'] == 'informingLoop' or obj['type'] == 'result' for obj in resp['data'])
+        all_pgx = all(obj['module'] == 'pgx' for obj in resp['data'])
+        pgx_result = any(obj['type'] == 'result' for obj in resp['data'])
+        pgx_loop = any(obj['type'] == 'informingLoop' for obj in resp['data'])
 
         self.assertTrue(all_pgx)
-        self.assertTrue(loop_and_result)
+        self.assertTrue(pgx_result)
+        self.assertTrue(pgx_loop)
 
     def test_get_by_date_range(self):
         self.num_participants = 10

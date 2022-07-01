@@ -2212,8 +2212,8 @@ class GenomicOutreachDaoV2(BaseDao):
                     .join(
                         GenomicSetMember,
                         and_(
-                            GenomicSetMember.participantId == GenomicMemberReportState.participant_id,
-                            GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY
+                            GenomicSetMember.id == GenomicMemberReportState.genomic_set_member_id,
+                            GenomicSetMember.genomeType.in_(query_genome_types)
                         )
                     ).outerjoin(
                         GenomicResultViewed,
