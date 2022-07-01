@@ -348,7 +348,7 @@ class BQGenomicManifestFeedbackSchema(BQSchema):
     feedback_complete = BQField('feedback_complete', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     feedback_complete_date = BQField('feedback_complete_date', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     ignore_flag = BQField('ignore_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
-    version = BQField('version', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    version = BQField('version', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicManifestFeedback(BQTable):

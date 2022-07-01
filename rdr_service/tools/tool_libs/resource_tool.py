@@ -86,7 +86,6 @@ class CleanPDRDataClass(object):
         else:
             self.pk_id_list = pk_id_list
 
-
     def delete_pk_ids_from_bigquery_sync(self, table_id):
         """
         Delete the requested records from the bigquery_sync table.  Note, that to restore an unintentional delete,
