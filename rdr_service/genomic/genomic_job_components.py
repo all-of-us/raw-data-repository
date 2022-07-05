@@ -2199,8 +2199,7 @@ class GenomicFileValidator:
                 filename_components[3] == 'w5nf' and
                 filename_components[4] in
                 [k.lower() for k in ResultsModuleType.to_dict().keys()]
-                and filename_components[5].isalnum() and
-                filename.lower().endswith('csv')
+                and filename.lower().endswith('csv')
             )
 
         def gem_a2_manifest_name_rule():

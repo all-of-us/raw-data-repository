@@ -612,12 +612,13 @@ class GenomicCVLPipelineTest(BaseTestCase):
     def test_w5nf_manifest_ingestion(self):
 
         self.execute_base_cvl_ingestion(
-            test_file='RDR_AoU_CVL_W5NF_HDRV1_1.csv',
+            test_file='RDR_AoU_CVL_W5NF_HDRV1.csv',
             job_id=GenomicJob.CVL_W5NF_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W5NF,
             current_results_workflow_state=ResultsWorkflowState.CVL_W4WR,
             results_module=ResultsModuleType.HDRV1,
-            set_cvl_analysis_records=True  # need to set initial cvl analysis records from W4WR
+            set_cvl_analysis_records=True,  # need to set initial cvl analysis records from W4WR
+            include_sub_num=True
         )
 
         current_members = self.member_dao.get_all()

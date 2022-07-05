@@ -125,7 +125,6 @@ def create_ingestion_test_file(
         '_1' if include_sub_num else '',
         '.csv' if not extension else extension
     )
-
     write_cloud_csv(
         input_filename,
         test_data_file,
