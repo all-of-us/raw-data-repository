@@ -672,11 +672,12 @@ class GenomicCVLPipelineTest(BaseTestCase):
     def test_w5nf_manifest_to_raw_ingestion(self):
 
         self.execute_base_cvl_ingestion(
-            test_file='RDR_AoU_CVL_W5NF_HDRV1_1.csv',
+            test_file='RDR_AoU_CVL_W5NF_HDRV1.csv',
             job_id=GenomicJob.CVL_W5NF_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W5NF,
             current_results_workflow_state=ResultsWorkflowState.CVL_W1IL,
-            results_module=ResultsModuleType.HDRV1
+            results_module=ResultsModuleType.HDRV1,
+            include_sub_num=True
         )
 
         w5nf_raw_dao = GenomicW5NFRawDao()
