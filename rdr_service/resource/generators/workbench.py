@@ -333,6 +333,7 @@ class WBResearcherGenerator(generators.BaseGenerator):
             data['dsv2_ethnicity_mena_other'] = 1 if row.dsv2_ethnicity_mena_other else 0
             data['dsv2_ethnicity_nhpi_other'] = 1 if row.dsv2_ethnicity_nhpi_other else 0
             data['dsv2_ethnicity_white_other'] = 1 if row.dsv2_ethnicity_white_other else 0
+            data['dsv2_survey_comments'] = 1 if row.dsv2_survey_comments else 0
 
             return generators.ResourceRecordSet(schemas.WorkbenchResearcherSchema, data)
 

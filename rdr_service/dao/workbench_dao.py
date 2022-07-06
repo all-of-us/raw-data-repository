@@ -18,6 +18,7 @@ from rdr_service.model.workbench_workspace import (
 )
 from rdr_service.model.workbench_researcher import (
     WorkbenchResearcher,
+    WorkbenchResearcher,
     WorkbenchResearcherHistory,
     WorkbenchInstitutionalAffiliations,
     WorkbenchInstitutionalAffiliationsHistory
@@ -1211,6 +1212,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 'dsv2DisabilityOther': survey.get('disabilityOtherText'),
                 'dsv2Education': WorkbenchResearcherEducationV2(survey.get('education', 'UNSET')),
                 'dsv2Disadvantaged': WorkbenchResearcherYesNoPreferNot(survey.get('disadvantaged', 'UNSET')),
+                'dsv2SurveyComments': survey.get('surveyComments'),
             }
         else:
             survey_params = {
@@ -1240,6 +1242,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 'dsv2DisabilityOther': None,
                 'dsv2Education': WorkbenchResearcherEducationV2('UNSET'),
                 'dsv2Disadvantaged': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2SurveyComments': None,
             }
         return survey_params
 
