@@ -77,7 +77,7 @@ class WorkbenchGeneratorTest(BaseTestCase):
 
         data = res.get_resource()
         self.assertIsInstance(data, dict)
-        self.assertEqual(len(data.keys()), 58)
+        self.assertEqual(len(data.keys()), 59)
         self.assertEqual(data['user_source_id'], 1)
         self.assertEqual(data['given_name'], 'test')
         self.assertEqual(data['genders'], [{'gender': 'MAN', 'gender_id': 1}, {'gender': 'WOMAN', 'gender_id': 2}])
