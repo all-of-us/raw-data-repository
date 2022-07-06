@@ -131,6 +131,7 @@ class BQRWBResearcherSchema(BQSchema):
     dsv2_ethnicity_nhpi_other = BQField('dsv2_ethnicity_nhpi_other', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     dsv2_ethnicity_white_other = BQField('dsv2_ethnicity_white_other', BQFieldTypeEnum.INTEGER,
                                          BQFieldModeEnum.NULLABLE)
+    dsv2_survey_comments = BQField('dsv2_survey_comments', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQRWBResearcher(BQTable):
