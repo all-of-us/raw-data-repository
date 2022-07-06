@@ -1489,8 +1489,6 @@ class GenomicFileIngester:
                     current_analysis.failed_request_reason_free = row_copy['requestreasonfree']
                     self.cvl_analysis_dao.update(current_analysis)
 
-                self._base_cvl_analysis_ingestion(row_copy, member)
-
             return GenomicSubProcessResult.SUCCESS
 
         except (RuntimeError, KeyError):
