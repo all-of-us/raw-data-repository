@@ -258,7 +258,9 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             genomeType="aou_array",
             genomicWorkflowState=GenomicWorkflowState.AW1,
             blockResearch=True,
-            blockResults=True
+            blockResults=True,
+            blockResearchReason="test reason1",
+            blockResultsReason="test reason2"
         )
 
         self.data_generator.create_database_genomic_set_member(
@@ -355,6 +357,8 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         self.assertEqual(sid_member.blockResults, 0)
         self.assertEqual(sid_member.blockResearch, 0)
         self.assertIsNot(sid_member.aw2FileProcessedId, None)
+        self.assertEqual(sid_member.blockResultsReason, "Formerly blocked due to 'test reason2'")
+        self.assertEqual(sid_member.blockResearchReason, "Formerly blocked due to 'test reason1'")
 
         sid_member2 = member_dao.get_member_from_sample_id("1013", "aou_array")
         self.assertEqual(sid_member2.blockResults, 1)

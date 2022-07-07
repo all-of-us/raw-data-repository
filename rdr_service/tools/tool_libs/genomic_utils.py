@@ -2211,11 +2211,15 @@ class UnblockSamples(ToolBase):
         for set_member in set_members:
             if self.args.results_only:
                 set_member.blockResults = 0
+                set_member.blockResultsReason = f"Formerly blocked due to '{set_member.blockResultsReason}'"
             elif self.args.research_only:
                 set_member.blockResearch = 0
+                set_member.blockResearchReason = f"Formerly blocked due to '{set_member.blockResearchReason}'"
             else:
                 set_member.blockResults = 0
                 set_member.blockResearch = 0
+                set_member.blockResultsReason = f"Formerly blocked due to '{set_member.blockResultsReason}'"
+                set_member.blockResearchReason = f"Formerly blocked due to '{set_member.blockResearchReason}'"
             if not self.args.dryrun:
                 member_dao.update(set_member)
             else:
