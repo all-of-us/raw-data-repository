@@ -652,11 +652,9 @@ class GenomicCVLPipelineTest(BaseTestCase):
         current_analysis_results = cvl_analysis_dao.get_all()
 
         failed_analysis_records = list(filter(lambda x: x.failed == 1, current_analysis_results))
-        new_analysis_records = list(filter(lambda x: x.failed == 0, current_analysis_results))
-
         member_ids = [obj.id for obj in current_members]
 
-        self.assertEqual(len(current_analysis_results), len(current_members) * 2)
+        self.assertEqual(len(current_analysis_results), len(current_members))
         self.assertTrue(all(obj.clinical_analysis_type is not None for obj in current_analysis_results))
         self.assertTrue(all(obj.health_related_data_file_name is not None for obj in current_analysis_results))
         self.assertTrue(all(obj.clinical_analysis_type == 'HDRV1' for obj in current_analysis_results))
@@ -664,10 +662,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in failed_analysis_records))
         self.assertTrue(all(obj.failed_request_reason is not None for obj in failed_analysis_records))
         self.assertTrue(all(obj.failed_request_reason_free is not None for obj in failed_analysis_records))
-
-        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in new_analysis_records))
-        self.assertTrue(all(obj.failed_request_reason is None for obj in new_analysis_records))
-        self.assertTrue(all(obj.failed_request_reason_free is None for obj in new_analysis_records))
 
     def test_w5nf_manifest_to_raw_ingestion(self):
 
