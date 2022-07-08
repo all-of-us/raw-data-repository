@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 import http.client
 import mock
+import requests
 
 from rdr_service import clock
 from rdr_service.model.utils import to_client_participant_id
@@ -23,6 +24,14 @@ class MockedTokenResponse:
             'access_token': 'new_token',
             'expires_in': 600
         }
+
+
+class MockedMessageResponse:
+    status_code: int = 200
+
+    @staticmethod
+    def json():
+        return {'result': 'mocked result'}
 
 
 class MessageBrokerApiTest(BaseTestCase):
@@ -460,3 +469,33 @@ class MessageBrokerApiTest(BaseTestCase):
         self._create_auth_info_record('vibrent', 'current_token', expired_at)
 
         self.assertEqual('new_token', message_broker.get_access_token())
+
+    @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id')
+    @mock.patch('rdr_service.message_broker.message_broker.PtscMessageBroker._get_message_dest_url')
+    @mock.patch('rdr_service.message_broker.message_broker.PtscMessageBroker.get_access_token')
+    @mock.patch('rdr_service.message_broker.message_broker.PtscMessageBroker.make_request_body')
+    @mock.patch('rdr_service.message_broker.message_broker.requests')
+    def test_message_send_retry(self, requests_mock, request_body, access_token, dest_url, request_origin):
+        request_origin.return_value = 'color'
+        request_body.return_value = {}
+        access_token.return_value = 'mock_token'
+        dest_url.return_value = 'mock_url'
+
+        first_request = True
+
+        def generate_response(*_, **__):
+            nonlocal first_request
+            if first_request:
+                first_request = False
+                raise requests.exceptions.ConnectionError(mock.Mock(status=500), 'error')
+            else:
+                return MockedMessageResponse()
+
+        requests_mock.post.side_effect = generate_response
+
+        message = MessageBrokerRecord(messageDest='vibrent')
+        message_broker = MessageBrokerFactory.create(message)
+        status_code, response_json, error = message_broker.send_request()
+        self.assertEqual(status_code, 200)
+        self.assertEqual(response_json, {'result': 'mocked result'})
+        self.assertEqual(error, '')
