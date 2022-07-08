@@ -2210,16 +2210,21 @@ class UnblockSamples(ToolBase):
             set_members = member_dao.get_members_from_biobank_ids(id_list)
         for set_member in set_members:
             if self.args.results_only:
+                if set_member.blockResults == 1:
+                    set_member.blockResultsReason = f"Formerly blocked due to '{set_member.blockResultsReason}'"
                 set_member.blockResults = 0
-                set_member.blockResultsReason = f"Formerly blocked due to '{set_member.blockResultsReason}'"
             elif self.args.research_only:
+                if set_member.blockResearch == 1:
+                    set_member.blockResearchReason = f"Formerly blocked due to '{set_member.blockResearchReason}'"
                 set_member.blockResearch = 0
-                set_member.blockResearchReason = f"Formerly blocked due to '{set_member.blockResearchReason}'"
             else:
+                if set_member.blockResults == 1:
+                    set_member.blockResultsReason = f"Formerly blocked due to '{set_member.blockResultsReason}'"
+                if set_member.blockResearch == 1:
+                    set_member.blockResearchReason = f"Formerly blocked due to '{set_member.blockResearchReason}'"
                 set_member.blockResults = 0
                 set_member.blockResearch = 0
-                set_member.blockResultsReason = f"Formerly blocked due to '{set_member.blockResultsReason}'"
-                set_member.blockResearchReason = f"Formerly blocked due to '{set_member.blockResearchReason}'"
+
             if not self.args.dryrun:
                 member_dao.update(set_member)
             else:
