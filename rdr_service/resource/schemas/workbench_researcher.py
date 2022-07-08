@@ -197,6 +197,7 @@ class WorkbenchResearcherSchema(Schema):
     dsv2_ethnicity_mena_other = fields.Boolean()
     dsv2_ethnicity_nhpi_other = fields.Boolean()
     dsv2_ethnicity_white_other = fields.Boolean()
+    dsv2_survey_comments = fields.Boolean()
 
     class Meta:
         schema_id = SchemaID.workbench_researcher
