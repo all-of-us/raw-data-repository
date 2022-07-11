@@ -1,4 +1,8 @@
+from datetime import datetime
+
 from tests.helpers.unittest_base import BaseTestCase
+
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 
 
 class OnsiteVerificationApiTest(BaseTestCase):
@@ -12,7 +16,11 @@ class OnsiteVerificationApiTest(BaseTestCase):
         self.p = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
         self.p2 = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
         self.p3 = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
-        self.ps = self.data_generator.create_database_participant_summary(participant=self.p)
+        self.data_generator.create_database_participant_summary(participant=self.p)
+        self.data_generator.create_database_participant_summary(participant=self.p2)
+        self.data_generator.create_database_participant_summary(participant=self.p3)
+
+        self.ps_dao = ParticipantSummaryDao()
 
     def test_onsite_verification(self):
         path = 'Onsite/Id/Verification'
@@ -129,4 +137,7 @@ class OnsiteVerificationApiTest(BaseTestCase):
                               'verificationType': 'UNSET',
                               'visitType': 'UNSET'}
                          ]})
+
+        ps = self.ps_dao.get_by_participant_id(self.p.participantId)
+        self.assertEqual(ps.onsiteIdVerificationTime, datetime(2022, 2, 22, 6, 7, 8))
 
