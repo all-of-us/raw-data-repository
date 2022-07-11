@@ -74,6 +74,8 @@ class GenomicDaoMixin:
         GenomicJob.AW5_WGS_MANIFEST
     ]
 
+    exclude_states = [GenomicWorkflowState.IGNORE]
+
     def get_last_updated_records(self, from_date, _ids=True):
         from_date = from_date.replace(microsecond=0)
 
@@ -451,7 +453,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.sampleId == sample_id,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
             )
 
             if genome_type:
@@ -1251,6 +1253,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
     def get_members_from_biobank_ids(self, biobank_ids, genome_type=None):
         """
         Returns genomicSetMember objects for list of Biobank IDs.
+        :param exclude_states:
         :param biobank_ids:
         :param genome_type:
         :return:
@@ -1258,7 +1261,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         with self.session() as session:
             members = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId.in_(biobank_ids),
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicSetMember.ignoreFlag == 0
             )
 
