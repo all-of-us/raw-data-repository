@@ -18,7 +18,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, code_constants, config
 from rdr_service.clock import CLOCK
-from rdr_service.config import GAE_PROJECT, GENOMIC_MEMBER_BLOCKLISTS
+from rdr_service.config import GAE_PROJECT
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus, \
     ResultsWorkflowState, ResultsModuleType
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
@@ -764,70 +764,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 member = self.get(m_id)
                 setattr(member, field, job_run_id)
                 self.update(member)
-
-            return GenomicSubProcessResult.SUCCESS
-
-        # pylint: disable=broad-except
-        except Exception as e:
-            logging.error(e)
-            return GenomicSubProcessResult.ERROR
-
-    def update_member_blocklists(self, member):
-        member_blocklists_config = config.getSettingJson(GENOMIC_MEMBER_BLOCKLISTS, {})
-
-        if not member_blocklists_config:
-            return
-
-        blocklists_map = {
-            'block_research': {
-                'block_attributes': [
-                    {
-                        'key': 'blockResearch',
-                        'value': 1
-                    },
-                    {
-                        'key': 'blockResearchReason',
-                        'value': None
-                    }
-                ],
-            },
-            'block_results': {
-                'block_attributes': [
-                    {
-                        'key': 'blockResults',
-                        'value': 1
-                    },
-                    {
-                        'key': 'blockResultsReason',
-                        'value': None
-                    }
-                ]
-            }
-        }
-
-        try:
-            for block_map_type, block_map_type_config in blocklists_map.items():
-                blocklist_config_items = member_blocklists_config.get(block_map_type, None)
-
-                for item in blocklist_config_items:
-
-                    if not hasattr(member, item.get('attribute')):
-                        continue
-
-                    current_attr_value = getattr(member, item.get('attribute'))
-                    evaluate_value = item.get('value')
-
-                    if (isinstance(item.get('value'), list) and
-                        current_attr_value in evaluate_value) or \
-                            current_attr_value == evaluate_value:
-
-                        for attr in block_map_type_config.get('block_attributes'):
-                            value = item.get('reason_string') if not attr['value'] else attr['value']
-
-                            if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
-                                setattr(member, attr['key'], value)
-
-                        super(GenomicSetMemberDao, self).update(member)
 
             return GenomicSubProcessResult.SUCCESS
 
