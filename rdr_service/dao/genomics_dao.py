@@ -14,11 +14,13 @@ from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import literal, distinct, delete
 
+from typing import List, Dict
+
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, code_constants, config
 from rdr_service.clock import CLOCK
-from rdr_service.config import GAE_PROJECT, GENOMIC_MEMBER_BLOCKLISTS
+from rdr_service.config import GAE_PROJECT
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus, \
     ResultsWorkflowState, ResultsModuleType
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
@@ -774,70 +776,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             logging.error(e)
             return GenomicSubProcessResult.ERROR
 
-    def update_member_blocklists(self, member):
-        member_blocklists_config = config.getSettingJson(GENOMIC_MEMBER_BLOCKLISTS, {})
-
-        if not member_blocklists_config:
-            return
-
-        blocklists_map = {
-            'block_research': {
-                'block_attributes': [
-                    {
-                        'key': 'blockResearch',
-                        'value': 1
-                    },
-                    {
-                        'key': 'blockResearchReason',
-                        'value': None
-                    }
-                ],
-            },
-            'block_results': {
-                'block_attributes': [
-                    {
-                        'key': 'blockResults',
-                        'value': 1
-                    },
-                    {
-                        'key': 'blockResultsReason',
-                        'value': None
-                    }
-                ]
-            }
-        }
-
-        try:
-            for block_map_type, block_map_type_config in blocklists_map.items():
-                blocklist_config_items = member_blocklists_config.get(block_map_type, None)
-
-                for item in blocklist_config_items:
-
-                    if not hasattr(member, item.get('attribute')):
-                        continue
-
-                    current_attr_value = getattr(member, item.get('attribute'))
-                    evaluate_value = item.get('value')
-
-                    if (isinstance(item.get('value'), list) and
-                        current_attr_value in evaluate_value) or \
-                            current_attr_value == evaluate_value:
-
-                        for attr in block_map_type_config.get('block_attributes'):
-                            value = item.get('reason_string') if not attr['value'] else attr['value']
-
-                            if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
-                                setattr(member, attr['key'], value)
-
-                        super(GenomicSetMemberDao, self).update(member)
-
-            return GenomicSubProcessResult.SUCCESS
-
-        # pylint: disable=broad-except
-        except Exception as e:
-            logging.error(e)
-            return GenomicSubProcessResult.ERROR
-
     def batch_update_member_field(
         self,
         member_ids,
@@ -892,13 +830,14 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         member.resultsWorkflowStateModifiedTime = clock.CLOCK.now()
         self.update(member)
 
-    def get_members_from_date(self, from_days=1):
+    def get_blocklist_members_from_date(self, *, attributes, from_days=1):
         from_date = (clock.CLOCK.now() - timedelta(days=from_days)).replace(microsecond=0)
+        attributes.add('GenomicSetMember.id')
+        eval_attrs = [eval(obj) for obj in attributes]
+        members = sqlalchemy.orm.Query(eval_attrs)
 
         with self.session() as session:
-            members = session.query(
-                GenomicSetMember
-            ).filter(
+            members = members.filter(
                 or_(
                     and_(
                         GenomicSetMember.created >= from_date,
@@ -906,9 +845,9 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                     ),
                     GenomicSetMember.modified >= from_date
                 )
-            ).all()
+            )
 
-            return members
+            return members.with_session(session).all()
 
     def get_members_for_cvl_reconciliation(self):
         """
@@ -1271,7 +1210,11 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 )
             return members.all()
 
-    def update(self, obj):
+    def bulk_update_members(self, members: List[Dict]):
+        with self.session() as session:
+            session.bulk_update_mappings(GenomicSetMember, members)
+
+    def update(self, obj: GenomicSetMember):
         self.update_member_gem_report_states(obj)
         super(GenomicSetMemberDao, self).update(obj)
 

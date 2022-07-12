@@ -17,7 +17,7 @@ from rdr_service.config import (
     GENOME_TYPE_ARRAY,
     MissingConfigException,
     RDR_SLACK_WEBHOOKS,
-    GENOME_TYPE_WGS)
+    GENOME_TYPE_WGS, GENOMIC_MEMBER_BLOCKLISTS)
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
@@ -1571,17 +1571,106 @@ class GenomicJobController:
         logging.warning(message)
 
     def update_members_blocklists(self):
-        members = self.member_dao.get_members_from_date()
+
+        def _get_blocklist_str_attributes(all_values, map_values):
+            attrs = []
+            for values in all_values:
+                for val in values:
+                    attrs.append(f'GenomicSetMember.{val.get("attribute")}')
+            for values in map_values:
+                for val in values:
+                    attrs.append(f'GenomicSetMember.{val.get("key")}')
+            return set(attrs)
+
+        member_blocklists_config = config.getSettingJson(GENOMIC_MEMBER_BLOCKLISTS, {})
+
+        if not member_blocklists_config:
+            self.job_result = GenomicSubProcessResult.MISSING_CONFIG
+            return
+
+        blocklists_map = {
+            'block_research': {
+                'block_attributes': [
+                    {
+                        'key': 'blockResearch',
+                        'value': 1
+                    },
+                    {
+                        'key': 'blockResearchReason',
+                        'value': None
+                    }
+                ],
+            },
+            'block_results': {
+                'block_attributes': [
+                    {
+                        'key': 'blockResults',
+                        'value': 1
+                    },
+                    {
+                        'key': 'blockResultsReason',
+                        'value': None
+                    }
+                ]
+            }
+        }
+
+        member_values = member_blocklists_config.values()
+        block_attr_values = [obj['block_attributes'] for obj in blocklists_map.values()]
+
+        members = self.member_dao.get_blocklist_members_from_date(
+            attributes=_get_blocklist_str_attributes(
+                member_values,
+                block_attr_values
+            )
+        )
 
         if not members:
+            self.job_result = GenomicSubProcessResult.NO_RESULTS
             return
 
         logging.info(f'Checking {len(members)} newly added/modified genomic member(s) for updating blocklists')
 
-        for member in members:
-            self.member_dao.update_member_blocklists(member)
+        try:
+            updated_members = []
+            for member in members:
+                member_dict = {'id': member.id}
 
-        self.job_result = GenomicSubProcessResult.SUCCESS
+                for block_map_type, block_map_type_config in blocklists_map.items():
+                    blocklist_config_items = member_blocklists_config.get(block_map_type, None)
+
+                    for item in blocklist_config_items:
+                        if not hasattr(member, item.get('attribute')):
+                            continue
+
+                        current_attr_value, evaluate_value = getattr(member, item.get('attribute')), item.get('value')
+
+                        if (isinstance(item.get('value'), list) and
+                            current_attr_value in evaluate_value) or \
+                                current_attr_value == evaluate_value:
+
+                            for attr in block_map_type_config.get('block_attributes'):
+                                value = item.get('reason_string') if not attr['value'] else attr['value']
+
+                                if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
+                                    member_dict[attr['key']] = value
+
+                if member_dict:
+                    updated_members.append(member_dict)
+
+            if not updated_members:
+                self.job_result = GenomicSubProcessResult.NO_RESULTS
+                return
+
+            logging.info(f'Updating {len(updated_members)} genomic member(s) blocklists')
+            self.member_dao.bulk_update_members(updated_members)
+
+            self.job_result = GenomicSubProcessResult.SUCCESS
+
+        # pylint: disable=broad-except
+        except Exception as e:
+            logging.error(e)
+            self.job_result = GenomicSubProcessResult.ERROR
 
     @staticmethod
     def update_member_file_record(manifest_type):
