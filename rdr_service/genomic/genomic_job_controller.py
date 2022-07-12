@@ -1626,7 +1626,7 @@ class GenomicJobController:
         )
 
         if not members:
-            self.job_result = GenomicSubProcessResult.NO_FILES
+            self.job_result = GenomicSubProcessResult.NO_RESULTS
             return
 
         logging.info(f'Checking {len(members)} newly added/modified genomic member(s) for updating blocklists')
