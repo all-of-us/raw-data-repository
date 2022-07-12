@@ -1571,15 +1571,22 @@ class GenomicJobController:
         logging.warning(message)
 
     def update_members_blocklists(self):
+
+        def _get_blocklist_str_attributes(all_values, map_values):
+            attrs = []
+            for values in all_values:
+                for val in values:
+                    attrs.append(f'GenomicSetMember.{val.get("attribute")}')
+            for values in map_values:
+                for val in values:
+                    attrs.append(f'GenomicSetMember.{val.get("key")}')
+            return set(attrs)
+
         member_blocklists_config = config.getSettingJson(GENOMIC_MEMBER_BLOCKLISTS, {})
+
         if not member_blocklists_config:
+            self.job_result = GenomicSubProcessResult.MISSING_CONFIG
             return
-
-        members = self.member_dao.get_members_from_date()
-        if not members:
-            return
-
-        logging.info(f'Checking {len(members)} newly added/modified genomic member(s) for updating blocklists')
 
         blocklists_map = {
             'block_research': {
@@ -1607,8 +1614,28 @@ class GenomicJobController:
                 ]
             }
         }
+
+        member_values = member_blocklists_config.values()
+        block_attr_values = [obj['block_attributes'] for obj in blocklists_map.values()]
+
+        members = self.member_dao.get_blocklist_members_from_date(
+            attributes=_get_blocklist_str_attributes(
+                member_values,
+                block_attr_values
+            )
+        )
+
+        if not members:
+            self.job_result = GenomicSubProcessResult.NO_FILES
+            return
+
+        logging.info(f'Checking {len(members)} newly added/modified genomic member(s) for updating blocklists')
+
         try:
+            updated_members = []
             for member in members:
+                member_dict = {'id': member.id}
+
                 for block_map_type, block_map_type_config in blocklists_map.items():
                     blocklist_config_items = member_blocklists_config.get(block_map_type, None)
 
@@ -1626,9 +1653,17 @@ class GenomicJobController:
                                 value = item.get('reason_string') if not attr['value'] else attr['value']
 
                                 if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
-                                    setattr(member, attr['key'], value)
+                                    member_dict[attr['key']] = value
 
-                            self.member_dao.update(member)
+                if member_dict:
+                    updated_members.append(member_dict)
+
+            if not updated_members:
+                self.job_result = GenomicSubProcessResult.NO_RESULTS
+                return
+
+            logging.info(f'Updating {len(updated_members)} genomic member(s) blocklists')
+            self.member_dao.bulk_update_members(updated_members)
 
             self.job_result = GenomicSubProcessResult.SUCCESS
 

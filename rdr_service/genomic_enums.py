@@ -275,6 +275,8 @@ class GenomicSubProcessResult(messages.Enum):
     INVALID_FILE_NAME = 3
     INVALID_FILE_STRUCTURE = 4
     ERROR = 5
+    MISSING_CONFIG = 6
+    NO_RESULTS = 7
 
 
 class GenomicManifestTypes(messages.Enum):

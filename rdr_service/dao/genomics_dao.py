@@ -14,6 +14,8 @@ from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import literal, distinct, delete
 
+from typing import List, Dict
+
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, code_constants, config
@@ -826,13 +828,14 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         member.resultsWorkflowStateModifiedTime = clock.CLOCK.now()
         self.update(member)
 
-    def get_members_from_date(self, from_days=1):
+    def get_blocklist_members_from_date(self, *, attributes, from_days=1):
         from_date = (clock.CLOCK.now() - timedelta(days=from_days)).replace(microsecond=0)
+        attributes.add('GenomicSetMember.id')
+        eval_attrs = [eval(obj) for obj in attributes]
+        members = sqlalchemy.orm.Query(eval_attrs)
 
         with self.session() as session:
-            members = session.query(
-                GenomicSetMember
-            ).filter(
+            members = members.filter(
                 or_(
                     and_(
                         GenomicSetMember.created >= from_date,
@@ -840,9 +843,9 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                     ),
                     GenomicSetMember.modified >= from_date
                 )
-            ).all()
+            )
 
-            return members
+            return members.with_session(session).all()
 
     def get_members_for_cvl_reconciliation(self):
         """
@@ -1204,7 +1207,11 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 )
             return members.all()
 
-    def update(self, obj):
+    def bulk_update_members(self, members: List[Dict]):
+        with self.session() as session:
+            session.bulk_update_mappings(GenomicSetMember, members)
+
+    def update(self, obj: GenomicSetMember):
         self.update_member_gem_report_states(obj)
         super(GenomicSetMemberDao, self).update(obj)
 
