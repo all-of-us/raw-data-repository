@@ -1783,6 +1783,8 @@ class GenomicPiiDao(BaseDao):
         super(GenomicPiiDao, self).__init__(
             GenomicSetMember, order_by_ending=['id'])
 
+        self.exclude_states = [GenomicWorkflowState.IGNORE]
+
     def get_id(self, obj):
         pass
 
