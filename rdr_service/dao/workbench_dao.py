@@ -939,7 +939,7 @@ class WorkbenchResearcherDao(UpdatableDao):
             if item.get("demographicSurveyV2") is not None:
                 survey = item.get("demographicSurveyV2")
                 current_year = clock.CLOCK.now().year
-                if current_year - int(survey.get("yearOfBirth")) > 125:
+                if survey.get("yearOfBirth") and current_year - int(survey.get("yearOfBirth")) > 125:
                     raise BadRequest(f"Invalid birth year: {survey.get('yearOfBirth')} more than 125 years ago")
                 ethnic_categories = []
                 if survey.get("ethnicCategories") is not None:
@@ -1200,7 +1200,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 'dsv2OrientationOther': survey.get('orientationOtherText'),
                 'dsv2SexAtBirth': WorkbenchResearcherSexAtBirthV2(survey.get('sexAtBirth', 'UNSET')),
                 'dsv2SexAtBirthOther': survey.get('sexAtBirthOtherText'),
-                'dsv2YearOfBirth': int(survey.get('yearOfBirth')),
+                'dsv2YearOfBirth': int(survey.get('yearOfBirth')) if survey.get('yearOfBirth') else None,
                 'dsv2YearOfBirthPreferNot': survey.get('yearOfBirthPreferNot'),
                 'dsv2DisabilityHearing': WorkbenchResearcherYesNoPreferNot(survey.get('disabilityHearing', 'UNSET')),
                 'dsv2DisabilitySeeing': WorkbenchResearcherYesNoPreferNot(survey.get('disabilitySeeing', 'UNSET')),
