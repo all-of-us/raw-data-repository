@@ -2285,7 +2285,7 @@ class UnblockSamples(ToolBase):
                 no_aw1_data.append(set_member.id)
 
         _logger.info(f"No AW1 data:\n {no_aw1_data}\n")
-        _logger.info(f"Member IDs Skipped due to workflow state EXTRACT_REQUETED:\n {skipped_members}")
+        _logger.info(f"Member IDs Skipped due to workflow state EXTRACT_REQUESTED:\n {skipped_members}")
 
         if not self.args.dryrun:
             self._ingest_member('AW1_MANIFEST', ingest_members)
