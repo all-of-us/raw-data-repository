@@ -275,8 +275,7 @@ class WorkbenchApiTest(BaseTestCase):
                     "orientationOtherText": None,
                     "sexAtBirth": "PREFER_NOT_TO_ANSWER",
                     "sexAtBirthOtherText": None,
-                    "yearOfBirth": 1970,
-                    "yearOfBirthPreferNot": None,
+                    "yearOfBirthPreferNot": True,
                     "disabilityHearing": "YES",
                     "disabilitySeeing": "NO",
                     "disabilityConcentrating": "PREFER_NOT_TO_ANSWER",
@@ -315,6 +314,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(result.dsv2SexAtBirth, WorkbenchResearcherSexAtBirthV2('PREFER_NOT_TO_ANSWER'))
         self.assertEqual(result.dsv2Education, WorkbenchResearcherEducationV2('DOCTORATE'))
         self.assertEqual(result.dsv2SurveyComments, "a string")
+        self.assertEqual(result.dsv2YearOfBirth, None)
 
     def test_backfill_researchers(self):
         # test create new
