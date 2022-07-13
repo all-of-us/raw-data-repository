@@ -138,6 +138,5 @@ class OnsiteVerificationApiTest(BaseTestCase):
                               'visitType': 'UNSET'}
                          ]})
 
-        ps = self.ps_dao.get_by_participant_id(self.p.participantId)
-        self.assertEqual(ps.onsiteIdVerificationTime, datetime(2022, 2, 22, 6, 7, 8))
-
+        participant_summary = self.ps_dao.get_by_participant_id(self.p.participantId)
+        self.assertEqual(participant_summary.onsiteIdVerificationTime, datetime(2022, 2, 22, 6, 7, 8))

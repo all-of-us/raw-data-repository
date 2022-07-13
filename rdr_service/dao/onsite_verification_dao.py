@@ -78,10 +78,9 @@ class OnsiteVerificationDao(BaseDao):
 
         # update participant summary with id verification timestamp
         participant_summary_dao = ParticipantSummaryDao()
-        ps = participant_summary_dao.get_by_participant_id(obj.participantId)
-        ps.onsiteIdVerificationTime = obj.verifiedTime
-        ps.lastModified = clock.CLOCK.now()
-        participant_summary_dao.update(ps)
+        participant_summary = participant_summary_dao.get_by_participant_id(obj.participantId)
+        participant_summary.onsiteIdVerificationTime = obj.verifiedTime
+        participant_summary.lastModified = clock.CLOCK.now()
+        participant_summary_dao.update(participant_summary)
 
         return response
-
