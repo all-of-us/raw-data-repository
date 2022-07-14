@@ -354,8 +354,10 @@ class ConsentValidationController:
         validator = self._build_validator(summary)
         validation_method_map = {
             ConsentType.PRIMARY: validator.get_primary_validation_results,
+            ConsentType.PRIMARY_RECONSENT: validator.get_primary_reconsent_validation_results,
             ConsentType.CABOR: validator.get_cabor_validation_results,
             ConsentType.EHR: validator.get_ehr_validation_results,
+            ConsentType.EHR_RECONSENT: validator.get_ehr_reconsent_validation_results,
             ConsentType.GROR: validator.get_gror_validation_results,
             ConsentType.PRIMARY_UPDATE: validator.get_primary_update_validation_results,
             ConsentType.WEAR: validator.get_wear_validation_results
@@ -585,6 +587,16 @@ class ConsentValidator:
             expected_sign_datetime=expected_signing_date
         )
 
+    def get_primary_reconsent_validation_results(self, expected_signing_date: datetime = None) -> List[ParsingResult]:
+        if expected_signing_date is None:
+            expected_signing_date = self.participant_summary.consentForStudyEnrollmentFirstYesAuthored
+
+        return self._generate_validation_results(
+            consent_files=self.factory.get_primary_consents(),
+            consent_type=ConsentType.PRIMARY_RECONSENT,
+            expected_sign_datetime=expected_signing_date
+        )
+
     def get_ehr_validation_results(self, expected_signing_date: datetime = None) -> List[ParsingResult]:
         if expected_signing_date is None:
             expected_signing_date = self.participant_summary.consentForElectronicHealthRecordsAuthored
@@ -592,6 +604,16 @@ class ConsentValidator:
         return self._generate_validation_results(
             consent_files=self.factory.get_ehr_consents(),
             consent_type=ConsentType.EHR,
+            expected_sign_datetime=expected_signing_date
+        )
+
+    def get_ehr_reconsent_validation_results(self, expected_signing_date: datetime = None) -> List[ParsingResult]:
+        if expected_signing_date is None:
+            expected_signing_date = self.participant_summary.consentForElectronicHealthRecordsAuthored
+
+        return self._generate_validation_results(
+            consent_files=self.factory.get_ehr_consents(),
+            consent_type=ConsentType.EHR_RECONSENT,
             expected_sign_datetime=expected_signing_date
         )
 
@@ -649,9 +671,9 @@ class ConsentValidator:
         )[0]
 
     def _get_extra_validation_function_by_type(self, consent_type: ConsentType):
-        if consent_type == ConsentType.PRIMARY:
+        if consent_type in [ConsentType.PRIMARY, ConsentType.PRIMARY_RECONSENT]:
             return self._validate_is_va_file
-        elif consent_type == ConsentType.EHR:
+        elif consent_type in [ConsentType.EHR, ConsentType.EHR_RECONSENT]:
             return self._additional_ehr_checks
         elif consent_type == ConsentType.GROR:
             return self._check_for_checkmark
