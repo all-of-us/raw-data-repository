@@ -76,7 +76,6 @@ from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.config import (
     getSetting,
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
-    CVL_W3_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
     GENOME_TYPE_ARRAY,
@@ -3304,50 +3303,15 @@ class ManifestDefinitionProvider:
         self.bucket_name = bucket_name
         self.cvl_site_id = cvl_site_id
         self.kwargs = kwargs
+        self.genome_type = genome_type
 
         self.query = GenomicQueryClass(
             input_manifest=self.kwargs['kwargs'].get('input_manifest'),
-            genome_type=genome_type
+            genome_type=self.genome_type
         )
         self.query_dao = GenomicQueriesDao()
 
         self.manifest_columns_config = {
-            GenomicManifestTypes.CVL_W1: (
-                "genomic_set_name",
-                "biobank_id",
-                "sample_id",
-                "sex_at_birth",
-                "ny_flag",
-                "site_id",
-                "secondary_validation",
-                "date_submitted",
-                "test_name",
-            ),
-            GenomicManifestTypes.AW3_ARRAY: (
-                "chipwellbarcode",
-                "biobank_id",
-                "sample_id",
-                "biobankidsampleid",
-                "sex_at_birth",
-                "site_id",
-                "red_idat_path",
-                "red_idat_md5_path",
-                "green_idat_path",
-                "green_idat_md5_path",
-                "vcf_path",
-                "vcf_index_path",
-                "vcf_md5_path",
-                "callrate",
-                "sex_concordance",
-                "contamination",
-                "processing_status",
-                "research_id",
-                "sample_source",
-                "pipeline_id",
-                "ai_an",
-                "blocklisted",
-                "blocklisted_reason"
-            ),
             GenomicManifestTypes.GEM_A1: (
                 'biobank_id',
                 'sample_id',
@@ -3361,19 +3325,6 @@ class ManifestDefinitionProvider:
                 'biobank_id',
                 'sample_id',
                 'date_of_consent_removal',
-            ),
-            GenomicManifestTypes.CVL_W3: (
-                "value",
-                "sample_id",
-                "biobank_id",
-                "collection_tubeid",
-                "sex_at_birth",
-                "genome_type",
-                "ny_flag",
-                "request_id",
-                "package_id",
-                "ai_an",
-                "site_id",
             ),
             GenomicManifestTypes.CVL_W1IL_PGX: (
                 'biobank_id',
@@ -3426,6 +3377,31 @@ class ManifestDefinitionProvider:
                 "genome_type",
                 "site_name",
                 "ai_an"
+            ),
+            GenomicManifestTypes.AW3_ARRAY: (
+                "chipwellbarcode",
+                "biobank_id",
+                "sample_id",
+                "biobankidsampleid",
+                "sex_at_birth",
+                "site_id",
+                "red_idat_path",
+                "red_idat_md5_path",
+                "green_idat_path",
+                "green_idat_md5_path",
+                "vcf_path",
+                "vcf_index_path",
+                "vcf_md5_path",
+                "callrate",
+                "sex_concordance",
+                "contamination",
+                "processing_status",
+                "research_id",
+                "sample_source",
+                "pipeline_id",
+                "ai_an",
+                "blocklisted",
+                "blocklisted_reason"
             ),
             GenomicManifestTypes.AW3_WGS: (
                 "biobank_id",
@@ -3516,11 +3492,6 @@ class ManifestDefinitionProvider:
                 'output_filename': f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_A3_manifest_{now_formatted}.csv',
                 'signal': 'manifest-generated'
             },
-            GenomicManifestTypes.CVL_W3: {
-                'job_run_field': 'cvlW3ManifestJobRunID',
-                'output_filename': f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
-                'signal': 'manifest-generated'
-            },
             GenomicManifestTypes.CVL_W1IL_PGX: {
                 'job_run_field': 'cvlW1ilPgxJobRunId',
                 'output_filename':
@@ -3568,7 +3539,11 @@ class ManifestDefinitionProvider:
             GenomicManifestTypes.AW3_ARRAY: {
                 'job_run_field': 'aw3ManifestJobRunID',
                 'output_filename': f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
-                'signal': 'bypass'
+                'signal': 'bypass',
+                'query': self.query_dao.get_aw3_array_records,
+                'params': {
+                    'genome_type': self.genome_type
+                }
             },
             GenomicManifestTypes.AW3_WGS: {
                 'job_run_field': 'aw3ManifestJobRunID',

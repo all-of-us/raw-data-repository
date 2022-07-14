@@ -3382,6 +3382,79 @@ class GenomicQueriesDao(BaseDao):
 
         return site_id_map[site_id]
 
+    # AW pipeline start
+    def get_aw3_array_records(self, **kwargs):
+        # should be only array genome but query also
+        # used for array investigation workflow
+        genome_type = kwargs.get('genome_type', config.GENOME_TYPE_ARRAY)
+        with self.session() as session:
+            return session.query(
+                GenomicGCValidationMetrics.chipwellbarcode,
+                func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
+                GenomicSetMember.sampleId,
+                func.concat(get_biobank_id_prefix(),
+                            GenomicSetMember.biobankId, '_',
+                            GenomicSetMember.sampleId),
+                GenomicSetMember.sexAtBirth,
+                GenomicSetMember.gcSiteId,
+                GenomicGCValidationMetrics.idatRedPath,
+                GenomicGCValidationMetrics.idatRedMd5Path,
+                GenomicGCValidationMetrics.idatGreenPath,
+                GenomicGCValidationMetrics.idatGreenMd5Path,
+                GenomicGCValidationMetrics.vcfPath,
+                GenomicGCValidationMetrics.vcfTbiPath,
+                GenomicGCValidationMetrics.vcfMd5Path,
+                GenomicGCValidationMetrics.callRate,
+                GenomicGCValidationMetrics.sexConcordance,
+                GenomicGCValidationMetrics.contamination,
+                GenomicGCValidationMetrics.processingStatus,
+                Participant.researchId,
+                GenomicSetMember.gcManifestSampleSource,
+                GenomicGCValidationMetrics.pipelineId,
+                func.IF(
+                    GenomicSetMember.ai_an == 'Y',
+                    sqlalchemy.sql.expression.literal("True"),
+                    sqlalchemy.sql.expression.literal("False")),
+                func.IF(
+                    GenomicSetMember.blockResearch == 1,
+                    sqlalchemy.sql.expression.literal("True"),
+                    sqlalchemy.sql.expression.literal("False")),
+                GenomicSetMember.blockResearchReason
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).join(
+                Participant,
+                Participant.participantId == ParticipantSummary.participantId
+            ).outerjoin(
+                GenomicAW3Raw,
+                and_(
+                    GenomicAW3Raw.sample_id == GenomicSetMember.sampleId,
+                    GenomicAW3Raw.genome_type == genome_type
+                )
+            ).filter(
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomeType == genome_type,
+                GenomicSetMember.aw3ManifestJobRunID.is_(None),
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+                GenomicGCValidationMetrics.ignoreFlag != 1,
+                GenomicGCValidationMetrics.idatRedReceived == 1,
+                GenomicGCValidationMetrics.idatGreenReceived == 1,
+                GenomicGCValidationMetrics.idatRedMd5Received == 1,
+                GenomicGCValidationMetrics.idatGreenMd5Received == 1,
+                GenomicGCValidationMetrics.vcfReceived == 1,
+                GenomicGCValidationMetrics.vcfMd5Received == 1,
+                GenomicGCValidationMetrics.vcfTbiReceived == 1,
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                GenomicAW3Raw.id.is_(None)
+            ).distinct().all()
+
+    # CVL pipeline start
     def get_w3sr_records(self, **kwargs):
         gc_site_id = self.transform_cvl_site_id(kwargs.get('site_id'))
         sample_ids = kwargs.get('sample_ids')
@@ -3563,7 +3636,8 @@ class GenomicQueriesDao(BaseDao):
 
             return query.all()
 
-    def _join_gror_answer(self, query, answer_code_str_list, start_datetime):
+    @staticmethod
+    def _join_gror_answer(query, answer_code_str_list, start_datetime):
         questionnaire_response = aliased(QuestionnaireResponse)
         questionnaire_concept = aliased(QuestionnaireConcept)
         answer = aliased(QuestionnaireResponseAnswer)
