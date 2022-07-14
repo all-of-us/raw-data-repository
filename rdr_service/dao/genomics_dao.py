@@ -3383,6 +3383,17 @@ class GenomicQueriesDao(BaseDao):
         return site_id_map[site_id]
 
     # AW pipeline start
+    @staticmethod
+    def wgs_parent_sample():
+        return (
+            sqlalchemy.orm.Query(
+                GenomicSetMember.gcManifestParentSampleId
+            ).filter(
+                GenomicSetMember.aw3ManifestJobRunID.isnot(None),
+                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY
+            )
+        )
+
     def get_aw3_array_records(self, **kwargs):
         # should be only array genome but query also
         # used for array investigation workflow
@@ -3449,6 +3460,81 @@ class GenomicQueriesDao(BaseDao):
                 GenomicGCValidationMetrics.vcfReceived == 1,
                 GenomicGCValidationMetrics.vcfMd5Received == 1,
                 GenomicGCValidationMetrics.vcfTbiReceived == 1,
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                GenomicAW3Raw.id.is_(None)
+            ).distinct().all()
+
+    def get_aw3_wgs_records(self, **kwargs):
+        # should be only wgs genome but query also
+        # used for wgs investigation workflow
+        genome_type = kwargs.get('genome_type', config.GENOME_TYPE_WGS)
+        wgs_parent_sample = self.wgs_parent_sample().subquery()
+        with self.session() as session:
+            return session.query(
+                func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
+                GenomicSetMember.sampleId,
+                sqlalchemy.func.concat(get_biobank_id_prefix(),
+                                       GenomicSetMember.biobankId, '_',
+                                       GenomicSetMember.sampleId),
+                GenomicSetMember.sexAtBirth,
+                GenomicSetMember.gcSiteId,
+                GenomicGCValidationMetrics.hfVcfPath,
+                GenomicGCValidationMetrics.hfVcfTbiPath,
+                GenomicGCValidationMetrics.hfVcfMd5Path,
+                GenomicGCValidationMetrics.cramPath,
+                GenomicGCValidationMetrics.cramMd5Path,
+                GenomicGCValidationMetrics.craiPath,
+                GenomicGCValidationMetrics.gvcfPath,
+                GenomicGCValidationMetrics.gvcfMd5Path,
+                GenomicGCValidationMetrics.contamination,
+                GenomicGCValidationMetrics.sexConcordance,
+                GenomicGCValidationMetrics.processingStatus,
+                GenomicGCValidationMetrics.meanCoverage,
+                Participant.researchId,
+                GenomicSetMember.gcManifestSampleSource,
+                GenomicGCValidationMetrics.mappedReadsPct,
+                GenomicGCValidationMetrics.sexPloidy,
+                sqlalchemy.func.IF(
+                    GenomicSetMember.ai_an == 'Y',
+                    sqlalchemy.sql.expression.literal("True"),
+                    sqlalchemy.sql.expression.literal("False")),
+                sqlalchemy.func.IF(
+                    GenomicSetMember.blockResearch == 1,
+                    sqlalchemy.sql.expression.literal("True"),
+                    sqlalchemy.sql.expression.literal("False")),
+                GenomicSetMember.blockResearchReason
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).join(
+                Participant,
+                Participant.participantId == ParticipantSummary.participantId
+            ).outerjoin(
+                GenomicAW3Raw,
+                and_(
+                    GenomicAW3Raw.sample_id == GenomicSetMember.sampleId,
+                    GenomicAW3Raw.genome_type == genome_type
+                )
+            ).filter(
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomeType == genome_type,
+                GenomicSetMember.aw3ManifestJobRunID.is_(None),
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.gcManifestParentSampleId.in_(wgs_parent_sample),
+                GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+                GenomicGCValidationMetrics.ignoreFlag != 1,
+                GenomicGCValidationMetrics.hfVcfReceived == 1,
+                GenomicGCValidationMetrics.hfVcfTbiReceived == 1,
+                GenomicGCValidationMetrics.hfVcfMd5Received == 1,
+                GenomicGCValidationMetrics.cramReceived == 1,
+                GenomicGCValidationMetrics.cramMd5Received == 1,
+                GenomicGCValidationMetrics.craiReceived == 1,
+                GenomicGCValidationMetrics.gvcfReceived == 1,
+                GenomicGCValidationMetrics.gvcfMd5Received == 1,
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 GenomicAW3Raw.id.is_(None)

@@ -3548,7 +3548,11 @@ class ManifestDefinitionProvider:
             GenomicManifestTypes.AW3_WGS: {
                 'job_run_field': 'aw3ManifestJobRunID',
                 'output_filename': f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
-                'signal': 'bypass'
+                'signal': 'bypass',
+                'query': self.query_dao.get_aw3_wgs_records,
+                'params': {
+                    'genome_type': self.genome_type
+                }
             },
             GenomicManifestTypes.AW2F: {
                 'job_run_field': 'aw2fManifestJobRunID',
