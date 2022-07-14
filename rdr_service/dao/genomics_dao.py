@@ -14,11 +14,13 @@ from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import literal, distinct, delete
 
+from typing import List, Dict
+
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, code_constants, config
 from rdr_service.clock import CLOCK
-from rdr_service.config import GAE_PROJECT, GENOMIC_MEMBER_BLOCKLISTS
+from rdr_service.config import GAE_PROJECT
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus, \
     ResultsWorkflowState, ResultsModuleType
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
@@ -73,6 +75,8 @@ class GenomicDaoMixin:
         GenomicJob.AW5_ARRAY_MANIFEST,
         GenomicJob.AW5_WGS_MANIFEST
     ]
+
+    exclude_states = [GenomicWorkflowState.IGNORE]
 
     def get_last_updated_records(self, from_date, _ids=True):
         from_date = from_date.replace(microsecond=0)
@@ -418,7 +422,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.biobankId == biobank_id,
                 GenomicSetMember.sampleId == sample_id,
                 GenomicSetMember.ignoreFlag != 1,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
             ).one_or_none()
         return member
 
@@ -451,7 +455,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.sampleId == sample_id,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
             )
 
             if genome_type:
@@ -470,7 +474,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         with self.session() as session:
             members = session.query(GenomicSetMember).filter(
                 GenomicSetMember.sampleId.in_(sample_ids),
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
             )
 
             if genome_type:
@@ -510,7 +514,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.sampleId == sample_id,
                 GenomicSetMember.genomeType == genome_type,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicSetMember.genomicWorkflowState == state,
             ).first()
         return member
@@ -525,7 +529,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.sampleId == sample_id,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicSetMember.ignoreFlag == 0,
                 GenomicSetMember.aw3ManifestJobRunID.isnot(None)
             ).one_or_none()
@@ -544,7 +548,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.collectionTubeId == tube_id,
                 GenomicSetMember.genomeType == genome_type,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
             )
             if state:
                 member = member.filter(
@@ -565,7 +569,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.collectionTubeId == tube_id,
                 GenomicSetMember.genomeType == genome_type,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicSetMember.sampleId.is_(None)
             ).first()
         return member
@@ -580,7 +584,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         with self.session() as session:
             members_query = session.query(GenomicSetMember).filter(
                 GenomicSetMember.genomicSetId == set_id,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states)
             )
             if bids:
                 members_query = members_query.filter(
@@ -653,7 +657,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 GenomicManifestFile,
                 GenomicManifestFile.id == GenomicFileProcessed.genomicManifestFileId
             ).filter(
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicManifestFile.filePath == filepath
             ).one_or_none()
 
@@ -721,7 +725,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 replated.replatedMemberId == GenomicSetMember.id
             ).filter(
                 GenomicGCValidationMetrics.contaminationCategory.in_(reextract_states),
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicGCValidationMetrics.ignoreFlag == 0,
                 replated.id.is_(None)
             ).all()
@@ -764,70 +768,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 member = self.get(m_id)
                 setattr(member, field, job_run_id)
                 self.update(member)
-
-            return GenomicSubProcessResult.SUCCESS
-
-        # pylint: disable=broad-except
-        except Exception as e:
-            logging.error(e)
-            return GenomicSubProcessResult.ERROR
-
-    def update_member_blocklists(self, member):
-        member_blocklists_config = config.getSettingJson(GENOMIC_MEMBER_BLOCKLISTS, {})
-
-        if not member_blocklists_config:
-            return
-
-        blocklists_map = {
-            'block_research': {
-                'block_attributes': [
-                    {
-                        'key': 'blockResearch',
-                        'value': 1
-                    },
-                    {
-                        'key': 'blockResearchReason',
-                        'value': None
-                    }
-                ],
-            },
-            'block_results': {
-                'block_attributes': [
-                    {
-                        'key': 'blockResults',
-                        'value': 1
-                    },
-                    {
-                        'key': 'blockResultsReason',
-                        'value': None
-                    }
-                ]
-            }
-        }
-
-        try:
-            for block_map_type, block_map_type_config in blocklists_map.items():
-                blocklist_config_items = member_blocklists_config.get(block_map_type, None)
-
-                for item in blocklist_config_items:
-
-                    if not hasattr(member, item.get('attribute')):
-                        continue
-
-                    current_attr_value = getattr(member, item.get('attribute'))
-                    evaluate_value = item.get('value')
-
-                    if (isinstance(item.get('value'), list) and
-                        current_attr_value in evaluate_value) or \
-                            current_attr_value == evaluate_value:
-
-                        for attr in block_map_type_config.get('block_attributes'):
-                            value = item.get('reason_string') if not attr['value'] else attr['value']
-
-                            if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
-                                setattr(member, attr['key'], value)
-
-                        super(GenomicSetMemberDao, self).update(member)
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -890,13 +830,14 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         member.resultsWorkflowStateModifiedTime = clock.CLOCK.now()
         self.update(member)
 
-    def get_members_from_date(self, from_days=1):
+    def get_blocklist_members_from_date(self, *, attributes, from_days=1):
         from_date = (clock.CLOCK.now() - timedelta(days=from_days)).replace(microsecond=0)
+        attributes.add('GenomicSetMember.id')
+        eval_attrs = [eval(obj) for obj in attributes]
+        members = sqlalchemy.orm.Query(eval_attrs)
 
         with self.session() as session:
-            members = session.query(
-                GenomicSetMember
-            ).filter(
+            members = members.filter(
                 or_(
                     and_(
                         GenomicSetMember.created >= from_date,
@@ -904,9 +845,9 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                     ),
                     GenomicSetMember.modified >= from_date
                 )
-            ).all()
+            )
 
-            return members
+            return members.with_session(session).all()
 
     def get_members_for_cvl_reconciliation(self):
         """
@@ -917,7 +858,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             members = session.query(GenomicSetMember).filter(
                 GenomicSetMember.reconcileCvlJobRunId == None,
                 GenomicSetMember.sequencingFileName != None,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
             ).all()
         return members
 
@@ -932,7 +873,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 (ParticipantSummary,
                  GenomicSetMember.participantId == ParticipantSummary.participantId)
             ).filter(
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicSetMember.genomicWorkflowState.in_(workflow_states) &
                 (
                     (ParticipantSummary.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED)
@@ -956,7 +897,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 (ParticipantSummary,
                  GenomicSetMember.participantId == ParticipantSummary.participantId)
             ).filter(
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicSetMember.genomicWorkflowState.in_((
                     GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
                     GenomicWorkflowState.GEM_RPT_DELETED,
@@ -1011,7 +952,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.gcSiteId == _site,
                 GenomicSetMember.biobankId == biobank_id,
                 GenomicSetMember.collectionTubeId == collection_tube_id,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states)
             ).one_or_none()
 
     def get_new_participants(
@@ -1216,7 +1157,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
 
         return self.insert(new_member_obj)
 
-    def update_member_wf_states(self, member):
+    def update_member_gem_report_states(self, member):
         gem_wf_states = (
             GenomicWorkflowState.GEM_RPT_READY,
             GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
@@ -1224,26 +1165,25 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             GenomicWorkflowState.CVL_RPT_PENDING_DELETE,
             GenomicWorkflowState.CVL_RPT_DELETED,
         )
+
         if member.genomicWorkflowState and member.genomicWorkflowState in gem_wf_states:
             state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
             report = self.report_state_dao.get_from_member_id(member.id)
-            if not report:
-                report_obj = GenomicMemberReportState(
-                    genomic_set_member_id=member.id,
-                    genomic_report_state=state,
-                    genomic_report_state_str=state.name,
-                    participant_id=member.participantId,
-                    module='gem'
-                )
-                self.report_state_dao.insert(report_obj)
-            else:
+
+            if report:
                 report.genomic_report_state = state
                 report.genomic_report_state_str = state.name
                 self.report_state_dao.update(report)
+                return
 
-    def update(self, obj):
-        self.update_member_wf_states(obj)
-        super(GenomicSetMemberDao, self).update(obj)
+            report_obj = self.report_state_dao.model_type(
+                genomic_set_member_id=member.id,
+                genomic_report_state=state,
+                genomic_report_state_str=state.name,
+                participant_id=member.participantId,
+                module='gem'
+            )
+            self.report_state_dao.insert(report_obj)
 
     @classmethod
     def _is_valid_set_member_job_field(cls, job_field_name):
@@ -1252,6 +1192,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
     def get_members_from_biobank_ids(self, biobank_ids, genome_type=None):
         """
         Returns genomicSetMember objects for list of Biobank IDs.
+        :param exclude_states:
         :param biobank_ids:
         :param genome_type:
         :return:
@@ -1259,7 +1200,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         with self.session() as session:
             members = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId.in_(biobank_ids),
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicSetMember.ignoreFlag == 0
             )
 
@@ -1268,6 +1209,14 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                     GenomicSetMember.genomeType == genome_type
                 )
             return members.all()
+
+    def bulk_update_members(self, members: List[Dict]):
+        with self.session() as session:
+            session.bulk_update_mappings(GenomicSetMember, members)
+
+    def update(self, obj: GenomicSetMember):
+        self.update_member_gem_report_states(obj)
+        super(GenomicSetMemberDao, self).update(obj)
 
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
@@ -1664,7 +1613,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                          GenomicGcDataFileMissing.ignore_flag == 0)
                 )
                 .filter(
-                    GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                    GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                     GenomicSetMember.genomeType.in_((config.GENOME_TYPE_ARRAY, config.GENOME_TYPE_ARRAY_INVESTIGATION)),
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
@@ -1713,7 +1662,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                          GenomicGcDataFileMissing.ignore_flag == 0)
                 )
                 .filter(
-                    GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                    GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                     GenomicSetMember.genomeType.in_((config.GENOME_TYPE_WGS, config.GENOME_TYPE_WGS_INVESTIGATION)),
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
@@ -1776,6 +1725,8 @@ class GenomicPiiDao(BaseDao):
     def __init__(self):
         super(GenomicPiiDao, self).__init__(
             GenomicSetMember, order_by_ending=['id'])
+
+        self.exclude_states = [GenomicWorkflowState.IGNORE]
 
     def get_id(self, obj):
         pass
@@ -1850,7 +1801,7 @@ class GenomicPiiDao(BaseDao):
                 ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states)
             )
 
             return record.first()
@@ -2213,8 +2164,8 @@ class GenomicOutreachDaoV2(BaseDao):
                     .join(
                         GenomicSetMember,
                         and_(
-                            GenomicSetMember.participantId == GenomicMemberReportState.participant_id,
-                            GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY
+                            GenomicSetMember.id == GenomicMemberReportState.genomic_set_member_id,
+                            GenomicSetMember.genomeType.in_(query_genome_types)
                         )
                     ).outerjoin(
                         GenomicResultViewed,
@@ -2383,7 +2334,7 @@ class GenomicManifestFeedbackDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
             ).filter(
                 GenomicSetMember.aw2fManifestJobRunID.is_(None),
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicManifestFeedback.feedbackManifestFileId.isnot(None),
             ).all()
         return results
@@ -2430,7 +2381,7 @@ class GenomicManifestFeedbackDao(UpdatableDao, GenomicDaoMixin):
                 GenomicGCValidationMetrics.contamination.isnot(None),
                 GenomicGCValidationMetrics.contamination != '',
                 GenomicSetMember.genomeType.notin_(["saliva_array", "saliva_wgs"]),
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicGCValidationMetrics.ignoreFlag == 0,
             ).group_by(
                 GenomicManifestFeedback.id,
@@ -2897,7 +2848,7 @@ class GenomicMemberReportStateDao(UpdatableDao):
     @staticmethod
     def get_report_state_from_wf_state(wf_state):
         for value in GenomicReportState:
-            if value.name == wf_state.name:
+            if value.name.lower() == wf_state.name.lower():
                 return value
         return None
 
@@ -3515,6 +3466,8 @@ class GenomicQueriesDao(BaseDao):
                 GenomicGCValidationMetrics.hfVcfPath.label('vcf_raw_path'),
                 GenomicGCValidationMetrics.hfVcfTbiPath.label('vcf_raw_index_path'),
                 GenomicGCValidationMetrics.hfVcfMd5Path.label('vcf_raw_md5_path'),
+                GenomicGCValidationMetrics.gvcfPath.label('gvcf_path'),
+                GenomicGCValidationMetrics.gvcfMd5Path.label('gvcf_md5_path'),
                 GenomicGCValidationMetrics.cramPath.label('cram_name'),
                 GenomicSetMember.sexAtBirth.label('sex_at_birth'),
                 func.IF(
@@ -3557,13 +3510,11 @@ class GenomicQueriesDao(BaseDao):
                 GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
-
                 ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
                 GenomicGCValidationMetrics.drcFpConcordance.ilike('pass'),
                 GenomicSetMember.diversionPouchSiteFlag != 1,
                 GenomicSetMember.gcSiteId.ilike(gc_site_id),
                 ParticipantSummary.participantOrigin != 'careevolution',
-
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY,
                 previous_w1il_job_field.is_(None)

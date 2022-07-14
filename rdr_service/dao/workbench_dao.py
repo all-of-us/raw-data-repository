@@ -18,6 +18,7 @@ from rdr_service.model.workbench_workspace import (
 )
 from rdr_service.model.workbench_researcher import (
     WorkbenchResearcher,
+    WorkbenchResearcher,
     WorkbenchResearcherHistory,
     WorkbenchInstitutionalAffiliations,
     WorkbenchInstitutionalAffiliationsHistory
@@ -938,7 +939,7 @@ class WorkbenchResearcherDao(UpdatableDao):
             if item.get("demographicSurveyV2") is not None:
                 survey = item.get("demographicSurveyV2")
                 current_year = clock.CLOCK.now().year
-                if current_year - int(survey.get("yearOfBirth")) > 125:
+                if survey.get("yearOfBirth") and current_year - int(survey.get("yearOfBirth")) > 125:
                     raise BadRequest(f"Invalid birth year: {survey.get('yearOfBirth')} more than 125 years ago")
                 ethnic_categories = []
                 if survey.get("ethnicCategories") is not None:
@@ -1199,7 +1200,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 'dsv2OrientationOther': survey.get('orientationOtherText'),
                 'dsv2SexAtBirth': WorkbenchResearcherSexAtBirthV2(survey.get('sexAtBirth', 'UNSET')),
                 'dsv2SexAtBirthOther': survey.get('sexAtBirthOtherText'),
-                'dsv2YearOfBirth': int(survey.get('yearOfBirth')),
+                'dsv2YearOfBirth': int(survey.get('yearOfBirth')) if survey.get('yearOfBirth') else None,
                 'dsv2YearOfBirthPreferNot': survey.get('yearOfBirthPreferNot'),
                 'dsv2DisabilityHearing': WorkbenchResearcherYesNoPreferNot(survey.get('disabilityHearing', 'UNSET')),
                 'dsv2DisabilitySeeing': WorkbenchResearcherYesNoPreferNot(survey.get('disabilitySeeing', 'UNSET')),
@@ -1211,6 +1212,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 'dsv2DisabilityOther': survey.get('disabilityOtherText'),
                 'dsv2Education': WorkbenchResearcherEducationV2(survey.get('education', 'UNSET')),
                 'dsv2Disadvantaged': WorkbenchResearcherYesNoPreferNot(survey.get('disadvantaged', 'UNSET')),
+                'dsv2SurveyComments': survey.get('surveyComments'),
             }
         else:
             survey_params = {
@@ -1240,6 +1242,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 'dsv2DisabilityOther': None,
                 'dsv2Education': WorkbenchResearcherEducationV2('UNSET'),
                 'dsv2Disadvantaged': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2SurveyComments': None,
             }
         return survey_params
 

@@ -25,6 +25,7 @@ def _grep_prop(filename, prop_name):
         return obj.group(1)
     return None
 
+
 def _run_tool(lib_paths, import_path):
     """
     Run the tools from the given path.

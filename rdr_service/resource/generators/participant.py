@@ -66,10 +66,7 @@ _consent_module_question_map = {
     # { module: question code string }
     'ConsentPII': None,
     'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
-    # PDR-979: The sensitive EHR shares the same EHRConsentPII module code but has a different consent question
-    # TODO:  Determine if we also need to check for the "opt out" questions/no consent  answers
-    #  (ehrconsentpii_proceedtoform, ehrconsentpii_sensitivetype1, decisionoptions).
-    'EHRConsentPII': ['EHRConsentPII_ConsentPermission', 'ehrconsentpii_sensitivetype2'],
+    'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
     'GROR': 'ResultsConsent_CheckDNA',
     'PrimaryConsentUpdate': 'Reconsent_ReviewConsentAgree',
     'ProgramUpdate': None,
@@ -115,10 +112,6 @@ _consent_answer_status_map = {
     'Decision_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     'WEAR_Yes': BQModuleStatusEnum.SUBMITTED,
     'WEAR_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
-    # TODO:  May need to add "opt out" question sensitive EHR answers that will map to SUBMITTED_NO_CONSENT (e.g.,
-    # removeauthorization answer code for decisionchangeoptions question code)
-    'sensitivetype2__agree': BQModuleStatusEnum.SUBMITTED,
-    'sensitivetype2__donotagree': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
 }
 
 # PDR-252:  When RDR starts accepting QuestionnaireResponse payloads for withdrawal screens, AIAN participants
@@ -893,7 +886,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'collect_type_id': int(collection_type),
                 'origin': row.origin,
                 'origin_measurement_unit': str(origin_measurements_type),
-                'origin_measurement_unit_type': int(origin_measurements_type),
+                'origin_measurement_unit_id': int(origin_measurements_type),
                 # If status == UNSET in data, then the record has been cancelled and then restored. PM status is
                 # only set to UNSET in this scenario.
                 'restored': 1 if row.status == 0 else 0
@@ -1456,15 +1449,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 qnans = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
                 # Save answers into data dict.  Ignore duplicate answers to the same question from the same response
                 # (See: questionnaire_response_id 680418686 as an example)
-                last_question_id = None
+                last_question_code_id = None
                 last_answer = None
                 skipped_duplicates = 0
                 for qnan in qnans:
-                    if last_question_id == qnan.question_id and last_answer == qnan.answer:
+                    if last_question_code_id == qnan.code_id and last_answer == qnan.answer:
                         skipped_duplicates += 1
                         continue
                     else:
-                        last_question_id = qnan.question_id
+                        last_question_code_id = qnan.code_id
                         last_answer = qnan.answer
 
                     # For question codes with multiple distinct responses, created comma-separated list of answers

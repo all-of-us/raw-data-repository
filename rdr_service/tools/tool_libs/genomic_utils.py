@@ -2171,14 +2171,16 @@ class UnblockSamples(ToolBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super().__init__(args, gcp_env)
         self.server_config = self.get_server_config()
+        self.set_members = None
         self.aw1_raw_dao = None
         self.aw2_raw_dao = None
         self.metrics_dao = None
+        self.member_dao = None
 
     def run(self):
         self.gcp_env.activate_sql_proxy()
 
-        member_dao = GenomicSetMemberDao()
+        self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.aw1_raw_dao = GenomicAW1RawDao()
         self.aw2_raw_dao = GenomicAW2RawDao()
@@ -2187,10 +2189,22 @@ class UnblockSamples(ToolBase):
             _logger.error(f'File {self.args.file_path} was not found.')
             return 1
 
-        if self.args.results_only and self.args.research_only:
-            _logger.error('Can only set one of --research-only or --results-only')
+        if not any([self.args.results, self.args.research]):
+            _logger.error('At least one of --results or --research is required.')
             return 1
 
+        if not self._set_members_from_file():
+            return 1
+
+        self._unblock_members()
+
+        if self.args.reingest and not self.args.dryrun:
+            self._reingest_aw1_from_raw()
+            self._reingest_aw2_from_raw()
+            # Skipping gc data files until new process is implemented
+            # self._check_gc_data_files()
+
+    def _set_members_from_file(self):
         with open(self.args.file_path, encoding='utf-8-sig') as file:
             csv_reader = csv.reader(file)
             id_list = []
@@ -2199,34 +2213,39 @@ class UnblockSamples(ToolBase):
                 id_type = header
             else:
                 _logger.error('File header must be sample_id or biobank_id')
-                return 1
+                return False
 
             for row in csv_reader:
                 id_list.append(row[0])
 
         if id_type == 'sample_id':
-            set_members = member_dao.get_members_from_sample_ids(id_list)  # will not return results in IGNORE state
+            self.set_members = self.member_dao.get_members_from_sample_ids(id_list)
         else:
-            set_members = member_dao.get_members_from_biobank_ids(id_list)
-        for set_member in set_members:
-            if self.args.results_only:
-                set_member.blockResults = 0
-            elif self.args.research_only:
-                set_member.blockResearch = 0
-            else:
-                set_member.blockResults = 0
-                set_member.blockResearch = 0
+            self.set_members = self.member_dao.get_members_from_biobank_ids(id_list)
+
+        return True
+
+    def _unblock_members(self):
+        unblock_operations = []
+        if self.args.results:
+            unblock_operations.append('Results')
+
+        if self.args.research:
+            unblock_operations.append('Research')
+
+        for set_member in self.set_members:
+            for operation in unblock_operations:
+                # Un-block set member record
+                setattr(set_member, f"block{operation}", 0)
+                current_reason = getattr(set_member, f"block{operation}Reason")
+                if current_reason:
+                    setattr(set_member, f"block{operation}Reason",
+                            f"Formerly blocked due to '{current_reason}'")
+
             if not self.args.dryrun:
-                member_dao.update(set_member)
+                self.member_dao.update(set_member)
             else:
                 _logger.info(f"Will unblock genomic_set_member {set_member.id}")
-
-        no_aw1_data = self._check_aw1(set_members)
-        no_aw2_data = self._check_aw2(set_members)
-        self._check_gc_data_files(set_members)
-
-        _logger.info(f"No AW1 data:\n {no_aw1_data}\n")
-        _logger.info(f"No AW2 data:\n {no_aw2_data}\n")
 
     def _ingest_member(self, job_type, set_members):
         with GenomicJobController(GenomicJob.__dict__[job_type],
@@ -2238,16 +2257,25 @@ class UnblockSamples(ToolBase):
             results = controller.ingest_member_ids_from_awn_raw_table(set_members)
             _logger.info(results)
 
-    def _check_aw1(self, set_members):
+    def _reingest_aw1_from_raw(self):
         no_aw1_data = []
         ingest_members = []
-        for set_member in set_members:
+        skipped_members = []
+
+        for set_member in self.set_members:
+
+            # exclude any in EXTRACT_REQUESTED state
+            if set_member.genomicWorkflowState == GenomicWorkflowState.EXTRACT_REQUESTED:
+                skipped_members.append(set_member.id)
+                continue
+
             # attempt aw1 ingestion
             try:
                 pre = self.server_config[config.BIOBANK_ID_PREFIX][0]
             except KeyError:
                 # Set default for unit tests
                 pre = "A"
+
             bid = f"{pre}{set_member.biobankId}"
             result = self.aw1_raw_dao.get_raw_record_from_identifier_genome_type(identifier=bid,
                                                                                  genome_type=set_member.genomeType)
@@ -2255,16 +2283,26 @@ class UnblockSamples(ToolBase):
                 ingest_members.append(set_member.id)
             else:
                 no_aw1_data.append(set_member.id)
+
+        _logger.info(f"No AW1 data:\n {no_aw1_data}\n")
+        _logger.info(f"Member IDs Skipped due to workflow state EXTRACT_REQUESTED:\n {skipped_members}")
+
         if not self.args.dryrun:
             self._ingest_member('AW1_MANIFEST', ingest_members)
         else:
             _logger.info(f"Will try AW1 ingestion for {ingest_members}")
-        return no_aw1_data
 
-    def _check_aw2(self, set_members):
+    def _reingest_aw2_from_raw(self):
         ingest_members = []
         no_aw2_data = []
-        for set_member in set_members:
+        skipped_members = []
+
+        for set_member in self.set_members:
+            # exclude any in EXTRACT_REQUESTED state
+            if set_member.genomicWorkflowState == GenomicWorkflowState.EXTRACT_REQUESTED:
+                skipped_members.append(set_member.id)
+                continue
+
             vmetric = self.metrics_dao.get_metrics_by_member_id(set_member.id)
             if vmetric is None:
                 aw2_record = self.aw2_raw_dao.get_raw_record_from_identifier_genome_type(
@@ -2273,21 +2311,23 @@ class UnblockSamples(ToolBase):
                     ingest_members.append(set_member.id)
                 else:
                     no_aw2_data.append(set_member.id)
+
+        _logger.info(f"No AW2 data:\n {no_aw2_data}\n")
+
         # Perform AW2 ingestion
         if not self.args.dryrun:
             self._ingest_member('METRICS_INGESTION', ingest_members)
         else:
             _logger.info(f"Will try AW2 ingestion for {ingest_members}")
-        return no_aw2_data
 
-    def _check_gc_data_files(self, set_members):
+    def _check_gc_data_files(self):
         needs_data_file_reconciliation = []
         array_required_file_types = [file_type['file_received_attribute'] for file_type in array_file_types_attributes
                                      if file_type['required']]
         wgs_required_file_types = [file_type['file_received_attribute'] for file_type in wgs_file_types_attributes
                                    if file_type['required']]
 
-        for set_member in set_members:
+        for set_member in self.set_members:
             vmetric = self.metrics_dao.get_metrics_by_member_id(set_member.id)
             if vmetric:
                 if set_member.genomeType == 'aou_array':
@@ -2668,13 +2708,19 @@ def run():
         required=True
     )
     unblock_samples.add_argument(
-        "--results-only",
+        "--results",
         default=False,
         required=False,
         action="store_true"
     )
     unblock_samples.add_argument(
-        "--research-only",
+        "--research",
+        default=False,
+        required=False,
+        action="store_true"
+    )
+    unblock_samples.add_argument(
+        "--reingest",
         default=False,
         required=False,
         action="store_true"

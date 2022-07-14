@@ -17,7 +17,7 @@ from rdr_service.config import (
     GENOME_TYPE_ARRAY,
     MissingConfigException,
     RDR_SLACK_WEBHOOKS,
-    GENOME_TYPE_WGS)
+    GENOME_TYPE_WGS, GENOMIC_MEMBER_BLOCKLISTS)
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
@@ -26,9 +26,9 @@ from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_f
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, \
-    GenomicGCValidationMetrics, GenomicInformingLoop, GenomicGcDataFile, GenomicResultViewed
+    GenomicGCValidationMetrics, GenomicGcDataFile
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
-    GenomicSubProcessResult, GenomicIncidentCode, GenomicManifestTypes
+    GenomicSubProcessResult, GenomicIncidentCode, GenomicManifestTypes, GenomicReportState
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicReconciler,
@@ -52,7 +52,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicSetDao,
     UserEventMetricsDao,
     GenomicResultViewedDao,
-    GenomicQueriesDao
+    GenomicQueriesDao, GenomicMemberReportStateDao
 )
 from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
@@ -108,6 +108,7 @@ class GenomicJobController:
         self.member_dao = GenomicSetMemberDao()
         self.informing_loop_dao = GenomicInformingLoopDao()
         self.result_viewed_dao = GenomicResultViewedDao()
+        self.report_state_dao = GenomicMemberReportStateDao()
         self.missing_files_dao = GenomicGcDataFileMissingDao()
         self.message_broker_event_dao = MessageBrokenEventDataDao()
         self.event_dao = UserEventMetricsDao()
@@ -442,6 +443,39 @@ class GenomicJobController:
                 'pgx_v1': config.GENOME_TYPE_WGS
             }[module.lower()]
 
+        def _set_report_type(records):
+            # API currently doesnt support deletes for CVL samples
+            # https://docs.google.com/document/d/1E1tNSi1mWwhBSCs9Syprbzl5E0SH3c_9oLduG1mzlcY/edit#
+            report_state = GenomicReportState.UNSET
+            try:
+                result_record = list(filter(lambda x: x.fieldName == 'result_type', records))[0]
+                result_type = result_record.valueString.split('_')[0] \
+                    if '_' in result_record.valueString else result_record.valueString
+
+                report_map = {
+                    'pgx': [
+                        GenomicReportState.PGX_RPT_READY
+                    ],
+                    'hdr': [
+                        GenomicReportState.HDR_RPT_UNINFORMATIVE,
+                        GenomicReportState.HDR_RPT_POSITIVE
+                    ]
+                }[result_type]
+
+                hdr_result = list(filter(lambda x: x.fieldName == 'hdr_result_status', records))
+                if not hdr_result:
+                    report_state = report_map[0]
+                    return report_state
+
+                field_name = hdr_result[0].valueString.lower()
+                report_state = list(filter(lambda x: field_name in x.name.lower(), report_map))[0]
+                return report_state
+
+            # pylint: disable=broad-except
+            except Exception as e:
+                logging.warning(f'Cannot set report state type: message record{records[0].messageRecordId}: {e}')
+                return report_state
+
         if 'informing_loop' in event_type:
             loop_type = event_type
             informing_records = self.message_broker_event_dao.get_informing_loop(
@@ -472,7 +506,7 @@ class GenomicJobController:
                     self.job_result = GenomicSubProcessResult.ERROR
                     return
 
-                loop_obj = GenomicInformingLoop(
+                loop_obj = self.informing_loop_dao.model_type(
                         participant_id=first_record.participantId,
                         message_record_id=first_record.messageRecordId,
                         event_type=loop_type,
@@ -516,7 +550,7 @@ class GenomicJobController:
                     return
 
                 if not current_record:
-                    result_obj = GenomicResultViewed(
+                    result_obj = self.result_viewed_dao.model_type(
                         participant_id=first_record.participantId,
                         message_record_id=first_record.messageRecordId,
                         event_type=event_type,
@@ -533,6 +567,48 @@ class GenomicJobController:
                 current_record.last_viewed = first_record.eventAuthoredTime
                 self.result_viewed_dao.update(current_record)
 
+                self.job_result = GenomicSubProcessResult.SUCCESS
+
+        elif 'result_ready' in event_type:
+            result_records = self.message_broker_event_dao.get_result_ready(
+                message_record_id
+            )
+            if result_records:
+                module_type = _set_module_type(result_records)
+                if not module_type:
+                    logging.warning(f'Cannot find module type in message record id: '
+                                    f'{result_records[0].messageRecordId}')
+                    self.job_result = GenomicSubProcessResult.ERROR
+                    return
+
+                first_record = result_records[0]
+                logging.info(f'Inserting result_ready for Participant: {first_record.participantId}')
+
+                member = self.member_dao.get_member_by_participant_id(
+                    participant_id=first_record.participantId,
+                    genome_type=_set_genome_type(module_type)
+                )
+
+                if not member:
+                    logging.warning(f'Cannot find member for result ready insert: '
+                                    f'{result_records[0].messageRecordId}')
+                    self.job_result = GenomicSubProcessResult.ERROR
+                    return
+
+                report_type = _set_report_type(result_records)
+
+                report_obj = self.report_state_dao.model_type(
+                    genomic_set_member_id=member.id,
+                    genomic_report_state=report_type,
+                    genomic_report_state_str=report_type.name,
+                    participant_id=member.participantId,
+                    module=module_type,
+                    message_record_id=first_record.messageRecordId,
+                    event_type=event_type,
+                    event_authored_time=first_record.eventAuthoredTime,
+                    sample_id=member.sampleId
+                )
+                self.report_state_dao.insert(report_obj)
                 self.job_result = GenomicSubProcessResult.SUCCESS
 
     def accession_data_files(self, file_path, bucket_name):
@@ -1495,17 +1571,106 @@ class GenomicJobController:
         logging.warning(message)
 
     def update_members_blocklists(self):
-        members = self.member_dao.get_members_from_date()
+
+        def _get_blocklist_str_attributes(all_values, map_values):
+            attrs = []
+            for values in all_values:
+                for val in values:
+                    attrs.append(f'GenomicSetMember.{val.get("attribute")}')
+            for values in map_values:
+                for val in values:
+                    attrs.append(f'GenomicSetMember.{val.get("key")}')
+            return set(attrs)
+
+        member_blocklists_config = config.getSettingJson(GENOMIC_MEMBER_BLOCKLISTS, {})
+
+        if not member_blocklists_config:
+            self.job_result = GenomicSubProcessResult.MISSING_CONFIG
+            return
+
+        blocklists_map = {
+            'block_research': {
+                'block_attributes': [
+                    {
+                        'key': 'blockResearch',
+                        'value': 1
+                    },
+                    {
+                        'key': 'blockResearchReason',
+                        'value': None
+                    }
+                ],
+            },
+            'block_results': {
+                'block_attributes': [
+                    {
+                        'key': 'blockResults',
+                        'value': 1
+                    },
+                    {
+                        'key': 'blockResultsReason',
+                        'value': None
+                    }
+                ]
+            }
+        }
+
+        member_values = member_blocklists_config.values()
+        block_attr_values = [obj['block_attributes'] for obj in blocklists_map.values()]
+
+        members = self.member_dao.get_blocklist_members_from_date(
+            attributes=_get_blocklist_str_attributes(
+                member_values,
+                block_attr_values
+            )
+        )
 
         if not members:
+            self.job_result = GenomicSubProcessResult.NO_RESULTS
             return
 
         logging.info(f'Checking {len(members)} newly added/modified genomic member(s) for updating blocklists')
 
-        for member in members:
-            self.member_dao.update_member_blocklists(member)
+        try:
+            updated_members = []
+            for member in members:
+                member_dict = {'id': member.id}
 
-        self.job_result = GenomicSubProcessResult.SUCCESS
+                for block_map_type, block_map_type_config in blocklists_map.items():
+                    blocklist_config_items = member_blocklists_config.get(block_map_type, None)
+
+                    for item in blocklist_config_items:
+                        if not hasattr(member, item.get('attribute')):
+                            continue
+
+                        current_attr_value, evaluate_value = getattr(member, item.get('attribute')), item.get('value')
+
+                        if (isinstance(item.get('value'), list) and
+                            current_attr_value in evaluate_value) or \
+                                current_attr_value == evaluate_value:
+
+                            for attr in block_map_type_config.get('block_attributes'):
+                                value = item.get('reason_string') if not attr['value'] else attr['value']
+
+                                if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
+                                    member_dict[attr['key']] = value
+
+                if member_dict:
+                    updated_members.append(member_dict)
+
+            if not updated_members:
+                self.job_result = GenomicSubProcessResult.NO_RESULTS
+                return
+
+            logging.info(f'Updating {len(updated_members)} genomic member(s) blocklists')
+            self.member_dao.bulk_update_members(updated_members)
+
+            self.job_result = GenomicSubProcessResult.SUCCESS
+
+        # pylint: disable=broad-except
+        except Exception as e:
+            logging.error(e)
+            self.job_result = GenomicSubProcessResult.ERROR
 
     @staticmethod
     def update_member_file_record(manifest_type):

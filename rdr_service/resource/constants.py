@@ -54,6 +54,10 @@ class SchemaID(IntEnum):
     workbench_researcher_degree = 4070
     workbench_workspace_age = 4080
     workbench_workspace_ethnicity = 4090
+    workbench_researcher_short_tier_names = 4100
+    workbench_researcher_dsv2_ethnic_category = 4110
+    workbench_researcher_dsv2_gender_identity = 4120
+    workbench_researcher_dsv2_sexual_orientation = 4130
 
     # Covid study
     biobank_covid_antibody_sample = 5000

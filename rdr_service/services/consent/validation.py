@@ -683,6 +683,9 @@ class ConsentValidator:
     def _additional_ehr_checks(self, consent: files.EhrConsentFile, result: ParsingResult):
         self._validate_is_va_file(consent, result)
 
+        if self.participant_summary.participantOrigin == 'careevolution':
+            return
+
         sensitive_form_release_date_str = config.getSettingJson(config.SENSITIVE_EHR_RELEASE_DATE)
         sensitive_form_release_date = parse(sensitive_form_release_date_str).date()
 

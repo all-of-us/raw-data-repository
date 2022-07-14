@@ -480,7 +480,6 @@ class QuestionnaireResponseDao(BaseDao):
         elif questionnaire_response.status == QuestionnaireResponseStatus.IN_PROGRESS:
             questionnaire_response.classificationType = QuestionnaireResponseClassificationType.PARTIAL
 
-
         # IMPORTANT: update the participant summary first to grab an exclusive lock on the participant
         # row. If you instead do this after the insert of the questionnaire response, MySQL will get a
         # shared lock on the participant row due the foreign key, and potentially deadlock later trying
@@ -579,7 +578,7 @@ class QuestionnaireResponseDao(BaseDao):
             )
 
         participant_id = questionnaire_response.participantId
-        authored = questionnaire_response.authored
+        authored = questionnaire_response.authored.replace(tzinfo=None)
         measurements = []
         pm_dao = PhysicalMeasurementsDao()
         exist_pm = pm_dao.get_exist_remote_pm(participant_id, authored)
@@ -730,6 +729,26 @@ class QuestionnaireResponseDao(BaseDao):
         dvehr_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
         street_address_submitted = False
         street_address2_submitted = False
+
+        # Skip updating the summary if the response being stored has an authored
+        # date earlier than one that's already been recorded
+        if questionnaire_history.concepts:
+            concept = questionnaire_history.concepts[0]
+            module_code = code_map.get(concept.codeId)
+            if module_code:
+                survey_name = (
+                    module_code.value.lower() if self._is_digital_health_share_code(module_code.value)
+                    else module_code.value
+                )
+                if survey_name in QUESTIONNAIRE_MODULE_CODE_TO_FIELD:
+                    summary_field_name = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(survey_name) + 'Authored'
+                    existing_authored_datetime = getattr(participant_summary, summary_field_name, None)
+                    if existing_authored_datetime and authored < existing_authored_datetime:
+                        logging.warning(
+                            f'Skipping summary update for {module_code.value} response authored on {authored} '
+                            f'(previous response recorded was authored {existing_authored_datetime})'
+                        )
+                        return
 
         # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
         for answer in questionnaire_response.answers:

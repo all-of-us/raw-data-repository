@@ -119,6 +119,7 @@ class GenomicJob(messages.Enum):
     RECONCILE_CVL_ALERTS = 62
     RECONCILE_CVL_RESOLVE = 63
     CHECK_FOR_W1IL_GROR_RESUBMIT = 64
+    INGEST_RESULT_READY = 65
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
@@ -239,25 +240,20 @@ class ResultsModuleType(messages.Enum):
 
 
 class GenomicReportState(messages.Enum):
-
     UNSET = 0
-
     # GEM Reporting States
     GEM_RPT_READY = 1
     GEM_RPT_PENDING_DELETE = 2
     GEM_RPT_DELETED = 3
-
     # PGX Reporting States
     PGX_RPT_READY = 4
     PGX_RPT_PENDING_DELETE = 5
     PGX_RPT_DELETED = 6
-
     # HDR Reporting States
     HDR_RPT_UNINFORMATIVE = 7
     HDR_RPT_POSITIVE = 8
     HDR_RPT_PENDING_DELETE = 9
     HDR_RPT_DELETED = 10
-
     # CVL Generic Reporting States
     CVL_RPT_PENDING_DELETE = 11
     CVL_RPT_DELETED = 12
@@ -279,6 +275,8 @@ class GenomicSubProcessResult(messages.Enum):
     INVALID_FILE_NAME = 3
     INVALID_FILE_STRUCTURE = 4
     ERROR = 5
+    MISSING_CONFIG = 6
+    NO_RESULTS = 7
 
 
 class GenomicManifestTypes(messages.Enum):

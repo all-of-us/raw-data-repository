@@ -75,12 +75,40 @@ class BaseMessageBroker:
         token = self.get_access_token()
         request_body = self.make_request_body()
 
-        # Token should be included in the HTTP Authorization header using the Bearer scheme.
-        response = requests.post(dest_url, json=request_body, headers={"Authorization": "Bearer " + token})
+        response = self.send_request_with_retry_on_conn_error(dest_url, request_body, token)
         if response.status_code == 200:
             return response.status_code, response.json(), ''
         else:
             return response.status_code, response.text, response.text
+
+    @backoff.on_exception(backoff.constant, requests.exceptions.ConnectionError, max_tries=3)
+    def send_request_with_retry_on_conn_error(self, url, request_body, token):
+        # retry 3 time for the following error:
+        # urllib3.exceptions.ProtocolError:
+        # ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
+
+        # Traceback:
+        # response = requests.post(url, json=request_body, headers={"Authorization": "Bearer " + token})
+        # "/layers/google.python.pip/pip/lib/python3.7/site-packages/requests/api.py", line
+        # in post
+        # return request('post', url, data=data, json=json, **kwargs)
+        # "/layers/google.python.pip/pip/lib/python3.7/site-packages/requests/api.py", line
+        # in request
+        # return session.request(method=method, url=url, **kwargs)
+        # "/layers/google.python.pip/pip/lib/python3.7/site-packages/requests/sessions.py", line
+        # in request
+        # resp = self.send(prep, **send_kwargs)
+        # "/layers/google.python.pip/pip/lib/python3.7/site-packages/requests/sessions.py", line
+        # in send
+        # r = adapter.send(request, **kwargs)
+        # "/layers/google.python.pip/pip/lib/python3.7/site-packages/requests/adapters.py", line
+        # in send
+        # raise ConnectionError(err, request=request)
+        # requests.exceptions.ConnectionError:
+        # ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
+
+        # Token should be included in the HTTP Authorization header using the Bearer scheme.
+        return requests.post(url, json=request_body, headers={"Authorization": "Bearer " + token})
 
 
 class PtscMessageBroker(BaseMessageBroker):

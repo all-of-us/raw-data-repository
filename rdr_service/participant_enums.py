@@ -921,6 +921,10 @@ class WorkbenchResearcherEthnicCategory(messages.Enum):
     WHITE_SCOTTISH = 75
     WHITE_SPANISH = 76
     WHITE_OTHER = 77
+    AI_AN_AMERICAN_INDIAN = 78
+    AI_AN_ALASKA_NATIVE = 79
+    BLACK_SOUTH_AFRICAN = 80
+    MENA_LEBANESE = 81
 
 
 class WorkbenchResearcherGenderIdentity(messages.Enum):

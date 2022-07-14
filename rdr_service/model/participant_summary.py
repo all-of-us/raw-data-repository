@@ -1360,6 +1360,9 @@ class ParticipantSummary(Base):
     Present the retention type: ACTIVE, PASSIVE or ACTIVE_AND_PASSIVE
     """
 
+    onsiteIdVerificationTime = Column("onsite_id_verification_time", UTCDateTime)
+    "Timestamp of the most recent id verification"
+
     lastModified = Column("last_modified", UTCDateTime6)
     """UTC timestamp of the last time the participant summary was modified"""
 

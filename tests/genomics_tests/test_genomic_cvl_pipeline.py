@@ -612,12 +612,13 @@ class GenomicCVLPipelineTest(BaseTestCase):
     def test_w5nf_manifest_ingestion(self):
 
         self.execute_base_cvl_ingestion(
-            test_file='RDR_AoU_CVL_W5NF_HDRV1_1.csv',
+            test_file='RDR_AoU_CVL_W5NF_HDRV1.csv',
             job_id=GenomicJob.CVL_W5NF_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W5NF,
             current_results_workflow_state=ResultsWorkflowState.CVL_W4WR,
             results_module=ResultsModuleType.HDRV1,
-            set_cvl_analysis_records=True  # need to set initial cvl analysis records from W4WR
+            set_cvl_analysis_records=True,  # need to set initial cvl analysis records from W4WR
+            include_sub_num=True
         )
 
         current_members = self.member_dao.get_all()
@@ -651,11 +652,9 @@ class GenomicCVLPipelineTest(BaseTestCase):
         current_analysis_results = cvl_analysis_dao.get_all()
 
         failed_analysis_records = list(filter(lambda x: x.failed == 1, current_analysis_results))
-        new_analysis_records = list(filter(lambda x: x.failed == 0, current_analysis_results))
-
         member_ids = [obj.id for obj in current_members]
 
-        self.assertEqual(len(current_analysis_results), len(current_members) * 2)
+        self.assertEqual(len(current_analysis_results), len(current_members))
         self.assertTrue(all(obj.clinical_analysis_type is not None for obj in current_analysis_results))
         self.assertTrue(all(obj.health_related_data_file_name is not None for obj in current_analysis_results))
         self.assertTrue(all(obj.clinical_analysis_type == 'HDRV1' for obj in current_analysis_results))
@@ -664,18 +663,15 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.failed_request_reason is not None for obj in failed_analysis_records))
         self.assertTrue(all(obj.failed_request_reason_free is not None for obj in failed_analysis_records))
 
-        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in new_analysis_records))
-        self.assertTrue(all(obj.failed_request_reason is None for obj in new_analysis_records))
-        self.assertTrue(all(obj.failed_request_reason_free is None for obj in new_analysis_records))
-
     def test_w5nf_manifest_to_raw_ingestion(self):
 
         self.execute_base_cvl_ingestion(
-            test_file='RDR_AoU_CVL_W5NF_HDRV1_1.csv',
+            test_file='RDR_AoU_CVL_W5NF_HDRV1.csv',
             job_id=GenomicJob.CVL_W5NF_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W5NF,
             current_results_workflow_state=ResultsWorkflowState.CVL_W1IL,
-            results_module=ResultsModuleType.HDRV1
+            results_module=ResultsModuleType.HDRV1,
+            include_sub_num=True
         )
 
         w5nf_raw_dao = GenomicW5NFRawDao()
@@ -840,8 +836,9 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
         # Check that the PGX headers appear as expected
         self.assertTupleEqual(
-            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path', 'cram_name',
-             'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror', 'genome_type', 'informing_loop_pgx',
+            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path',
+             'gvcf_path', 'gvcf_md5_path', 'cram_name', 'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror',
+             'genome_type', 'informing_loop_pgx',
              'aou_hdr_coverage', 'contamination'),
             self.get_manifest_headers(bcm_pgx_w1il_manifest)
         )
@@ -915,9 +912,9 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
         # Check that the headers appear as expected
         self.assertTupleEqual(
-            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path', 'cram_name',
-             'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror', 'genome_type', 'informing_loop_hdr',
-             'aou_hdr_coverage', 'contamination'),
+            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path', 'gvcf_path', 'gvcf_md5_path',
+             'cram_name', 'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror', 'genome_type',
+             'informing_loop_hdr', 'aou_hdr_coverage', 'contamination'),
             self.get_manifest_headers(bcm_hdr_w1il_manifest)
         )
 
@@ -985,6 +982,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         self.assertTrue(all(obj.vcf_raw_path is not None for obj in pgx_raw_records))
         self.assertTrue(all(obj.vcf_raw_index_path is not None for obj in pgx_raw_records))
         self.assertTrue(all(obj.vcf_raw_md5_path is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.gvcf_path is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.gvcf_md5_path is not None for obj in pgx_raw_records))
         self.assertTrue(all(obj.sex_at_birth is not None for obj in pgx_raw_records))
         self.assertTrue(all(obj.ny_flag is not None for obj in pgx_raw_records))
         self.assertTrue(all(obj.genome_type == 'aou_cvl' for obj in pgx_raw_records))
@@ -1016,6 +1015,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         self.assertTrue(all(obj.vcf_raw_path is not None for obj in hdr_raw_records))
         self.assertTrue(all(obj.vcf_raw_index_path is not None for obj in hdr_raw_records))
         self.assertTrue(all(obj.vcf_raw_md5_path is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.gvcf_path is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.gvcf_md5_path is not None for obj in hdr_raw_records))
         self.assertTrue(all(obj.sex_at_birth is not None for obj in hdr_raw_records))
         self.assertTrue(all(obj.ny_flag is not None for obj in hdr_raw_records))
         self.assertTrue(all(obj.genome_type == 'aou_cvl' for obj in hdr_raw_records))
@@ -1119,6 +1120,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
                 'hfVcfPath': self.fake.pystr(),
                 'hfVcfTbiPath': self.fake.pystr(),
                 'hfVcfMd5Path': self.fake.pystr(),
+                'gvcfPath': self.fake.pystr(),
+                'gvcfMd5Path': self.fake.pystr(),
                 'cramPath': self.fake.pystr(),
                 'aouHdrCoverage': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
                 'contamination': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100)
@@ -1140,6 +1143,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             validation_metrics.hfVcfPath,
             validation_metrics.hfVcfTbiPath,
             validation_metrics.hfVcfMd5Path,
+            validation_metrics.gvcfPath,
+            validation_metrics.gvcfMd5Path,
             validation_metrics.cramPath,
             set_member.sexAtBirth,
             'Y' if set_member.nyFlag == 1 else 'N',

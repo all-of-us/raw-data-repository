@@ -8,13 +8,12 @@ from rdr_service.model.bq_workbench_researcher import BQRWBResearcherSchema, BQR
     BQRWBResearcher, BQRWBInstitutionalAffiliations
 from rdr_service.model.bq_workbench_workspace import BQRWBWorkspaceSchema, BQRWBWorkspaceUsersSchema, \
     BQRWBWorkspace, BQRWBWorkspaceUsers
-from rdr_service.participant_enums import WorkbenchResearcherDegree, WorkbenchResearcherSexAtBirth, \
-    WorkbenchResearcherEthnicity, WorkbenchResearcherDisability, WorkbenchResearcherEducation, \
-    WorkbenchResearcherRace, WorkbenchResearcherGender, WorkbenchWorkspaceUserRole, WorkbenchWorkspaceStatus, \
+from rdr_service.participant_enums import WorkbenchResearcherDisability, WorkbenchWorkspaceUserRole, \
     WorkbenchInstitutionNonAcademic, WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, \
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceAccessToCare, \
     WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchWorkspaceAge, \
-    WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAccessTier
+    WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAccessTier, WorkbenchWorkspaceStatus
+from rdr_service.resource.generators import WBResearcherGenerator
 
 
 class BQRWBWorkspaceGenerator(BigQueryGenerator):
@@ -187,44 +186,10 @@ class BQRWBResearcherGenerator(BigQueryGenerator):
         :param convert_to_enum: If schema field description includes Enum class info, convert value to Enum.
         :return: BQRecord object
         """
-        ro_dao = BigQuerySyncDao(backup=True)
-        with ro_dao.session() as ro_session:
-            row = ro_session.execute(
-                text('select * from rdr.workbench_researcher where id = :id'), {'id': src_pk_id}).first()
-            if not row:
-                return None
-            data = ro_dao.to_dict(row)
+        res = WBResearcherGenerator().make_resource(src_pk_id)
+        data = res.get_data()
 
-            if row.zip_code and len(row.zip_code) > 3:
-                data['zip_code'] = row.zip_code[:3]
-
-            data['ethnicity'] = str(WorkbenchResearcherEthnicity(row.ethnicity))
-            data['ethnicity_id'] = int(WorkbenchResearcherEthnicity(row.ethnicity))
-
-            genders = json.loads(row.gender if row.gender and row.gender != 'null' else '[]')
-            data['genders'] = [{'gender': str(WorkbenchResearcherGender(v)),
-                               'gender_id': int(WorkbenchResearcherGender(v))} for v in genders]
-
-            races = json.loads(row.race if row.race and row.race != 'null' else '[]')
-            data['races'] = [{'race': str(WorkbenchResearcherRace(v)),
-                             'race_id': int(WorkbenchResearcherRace(v))} for v in races]
-
-            sex_at_birth = json.loads(row.sex_at_birth if row.sex_at_birth and row.sex_at_birth != 'null' else '[]')
-            data['sex_at_birth'] = [{'sex_at_birth': str(WorkbenchResearcherSexAtBirth(v)),
-                                     'sex_at_birth_id': int(WorkbenchResearcherSexAtBirth(v))} for v in
-                                    sex_at_birth]
-
-            data['education'] = str(WorkbenchResearcherEducation(row.education))
-            data['education_id'] = int(WorkbenchResearcherEducation(row.education))
-
-            degrees = json.loads(row.degree if row.degree and row.degree != 'null' else '[]')
-            data['degrees'] = [{'degree': str(WorkbenchResearcherDegree(v)),
-                               'degree_id': int(WorkbenchResearcherDegree(v))} for v in degrees]
-
-            data['disability'] = str(WorkbenchResearcherDisability(row.disability))
-            data['disability_id'] = int(WorkbenchResearcherDisability(row.disability))
-
-            return BQRecord(schema=BQRWBResearcherSchema, data=data, convert_to_enum=convert_to_enum)
+        return BQRecord(schema=BQRWBResearcherSchema, data=data, convert_to_enum=convert_to_enum)
 
 
 def bq_researcher_update(_id, project_id=None, gen=None, w_dao=None):

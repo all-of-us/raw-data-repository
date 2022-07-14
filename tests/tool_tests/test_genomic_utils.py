@@ -258,7 +258,9 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             genomeType="aou_array",
             genomicWorkflowState=GenomicWorkflowState.AW1,
             blockResearch=True,
-            blockResults=True
+            blockResults=True,
+            blockResearchReason="test reason1",
+            blockResultsReason="test reason2"
         )
 
         self.data_generator.create_database_genomic_set_member(
@@ -269,6 +271,29 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             genomicWorkflowState=GenomicWorkflowState.AW1,
             blockResearch=True,
             blockResults=True
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="16",
+            sampleId="1016",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW1,
+            blockResearch=True,
+            blockResults=True
+        )
+
+        # Sample that was replated
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="14",
+            sampleId="1012",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
+            blockResearch=True,
+            blockResults=True,
+            blockResearchReason="test reason1",
+            blockResultsReason="test reason2"
         )
 
         test_aw1 = "test-bucket/test_folder/testunblock_GEN_sample_manifest.csv"
@@ -314,6 +339,26 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             test_name="aou_array",
         )
 
+        self.data_generator.create_database_genomic_aw1_raw(
+            file_path=test_aw1,
+            package_id="pkg-1",
+            well_position="A16",
+            sample_id="1016",
+            collection_tube_id="211016",
+            biobank_id="A16",
+            test_name="aou_array",
+        )
+
+        self.data_generator.create_database_genomic_aw1_raw(
+            file_path=test_aw1,
+            package_id="pkg-1",
+            well_position="A14",
+            sample_id="1012",
+            collection_tube_id="211012",
+            biobank_id="A14",
+            test_name="aou_array",
+        )
+
         self.data_generator.create_database_genomic_aw2_raw(
             file_path=test_aw2,
             biobank_id="A14",
@@ -327,34 +372,56 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         test_sampleid_file = test_data.data_path("unblock_sampleids.txt")
         test_sampleid_file_2 = test_data.data_path("unblock_sampleids_2.txt")
         test_biobankid_file = test_data.data_path("unblock_biobankids.txt")
+        test_no_ingestion_file = test_data.data_path("unblock_sampleids_no_ingestion.txt")
+
         GenomicUtilsGeneralTest.run_tool(UnblockSamples, tool_args={
             "command": "unblock-samples",
             "file_path": test_sampleid_file,
-            "research_only": False,
-            "results_only": False,
+            "research": True,
+            "results": True,
+            "reingest": True,
             "dryrun": False
         })
 
         GenomicUtilsGeneralTest.run_tool(UnblockSamples, tool_args={
             "command": "unblock-samples",
             "file_path": test_sampleid_file_2,
-            "research_only": True,
-            "results_only": False,
+            "research": True,
+            "results": False,
+            "reingest": True,
             "dryrun": False
         })
 
         GenomicUtilsGeneralTest.run_tool(UnblockSamples, tool_args={
             "command": "unblock-samples",
             "file_path": test_biobankid_file,
-            "research_only": False,
-            "results_only": False,
+            "research": True,
+            "results": True,
+            "reingest": True,
             "dryrun": False
         })
+
+        GenomicUtilsGeneralTest.run_tool(UnblockSamples, tool_args={
+            "command": "unblock-samples",
+            "file_path": test_no_ingestion_file,
+            "research": False,
+            "results": True,
+            "reingest": False,
+            "dryrun": False
+        })
+
         member_dao = GenomicSetMemberDao()
+        member_dao.exclude_states.append(GenomicWorkflowState.EXTRACT_REQUESTED)
         sid_member = member_dao.get_member_from_sample_id("1012", "aou_array")
         self.assertEqual(sid_member.blockResults, 0)
         self.assertEqual(sid_member.blockResearch, 0)
         self.assertIsNot(sid_member.aw2FileProcessedId, None)
+        self.assertEqual(sid_member.blockResultsReason, "Formerly blocked due to 'test reason2'")
+        self.assertEqual(sid_member.blockResearchReason, "Formerly blocked due to 'test reason1'")
+
+        replate_member = member_dao.get(6)
+        self.assertIsNone(replate_member.aw1FileProcessedId)
+        self.assertIsNone(replate_member.aw2FileProcessedId)
 
         sid_member2 = member_dao.get_member_from_sample_id("1013", "aou_array")
         self.assertEqual(sid_member2.blockResults, 1)
@@ -364,3 +431,9 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         self.assertEqual(bid_member.blockResults, 0)
         self.assertEqual(bid_member.blockResearch, 0)
         self.assertEqual(bid_member.sampleId, "1011")
+
+        # Test Not Ingested
+        sid_member16 = member_dao.get_member_from_sample_id("1016", "aou_array")
+        self.assertEqual(sid_member16.blockResults, 0)
+        self.assertEqual(sid_member16.blockResearch, 1)
+        self.assertEqual(sid_member16.gcManifestWellPosition, None)

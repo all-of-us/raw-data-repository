@@ -154,7 +154,7 @@ class BQPhysicalMeasurements(BQSchema):
     pm_origin = BQField('pm_origin', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     pm_origin_measurement_unit = BQField('pm_origin_measurement_unit', BQFieldTypeEnum.STRING,
                                          BQFieldModeEnum.NULLABLE)
-    pm_origin_measurement_unit_id = BQField('pm_origin_measurement_unit_id', BQFieldTypeEnum.STRING,
+    pm_origin_measurement_unit_id = BQField('pm_origin_measurement_unit_id', BQFieldTypeEnum.INTEGER,
                                             BQFieldModeEnum.NULLABLE)
 
 class BQBiobankSampleSchema(BQSchema):
@@ -241,9 +241,9 @@ class BQPairingHistorySchema(BQSchema):
     """
     Participant pairing history
     """
-    last_modified = BQField('last_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
-    hpo = BQField('hpo', BQFieldTypeEnum.STRING, BQFieldModeEnum.REQUIRED)
-    hpo_id = BQField('hpo_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    last_modified = BQField('last_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    hpo = BQField('hpo', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    hpo_id = BQField('hpo_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     organization = BQField('organization', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     organization_id = BQField('organization_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     site = BQField('site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)

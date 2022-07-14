@@ -65,6 +65,28 @@ class CurationExportClass(ToolBase):
         self.cdr_etl_run_history_dao = CdrEtlRunHistoryDao()
         self.cdr_etl_survey_history_dao = CdrEtlSurveyHistoryDao()
 
+    @classmethod
+    def _render_export_select(cls, export_sql, column_name_list):
+        return f"""
+            SELECT {', '.join(column_name_list)}
+            FROM
+            (
+                (
+                    SELECT
+                      1 as sort_col,
+                      {', '.join([f"'{column_name}'" for column_name in column_name_list])}
+                )
+                UNION ALL
+                (
+                    SELECT
+                      2 as sort_col,
+                      data.*
+                    FROM ({export_sql}) as data
+                )
+            ) a
+            ORDER BY a.sort_col ASC
+        """
+
     def get_field_names(self, table, exclude=None):
         """
         Run a query and get the field list.
@@ -139,30 +161,19 @@ class CurationExportClass(ToolBase):
 
             external_id_to_month_cases.append(f"when qh.external_id in ({','.join(quoted_ids)}) then '{month.lower()}'")
 
-        export_sql = f"""
-            SELECT participant_id, questionnaire_response_id, semantic_version, cope_month
-            FROM
-            (
-                (
-                    SELECT
-                      1 as sort_col,
-                      'participant_id', 'questionnaire_response_id', 'semantic_version', 'cope_month'
-                )
-                UNION ALL
-                (
-                    SELECT
-                      2 as sort_col,
-                      participant_id, questionnaire_response_id, semantic_version,
-                      CASE {' '.join(external_id_to_month_cases)}
-                      END AS 'cope_month'
-                    FROM questionnaire_history qh
-                    INNER JOIN questionnaire_response qr ON qr.questionnaire_id = qh.questionnaire_id
-                        AND qr.questionnaire_version = qh.version
-                    WHERE qh.external_id IN ({','.join(cope_external_id_flat_list)})
-                )
-            ) a
-            ORDER BY a.sort_col ASC
-        """
+        export_sql = self._render_export_select(
+            export_sql=f"""
+                SELECT
+                  participant_id, questionnaire_response_id, semantic_version,
+                  CASE {' '.join(external_id_to_month_cases)}
+                  END AS 'cope_month'
+                FROM questionnaire_history qh
+                INNER JOIN questionnaire_response qr ON qr.questionnaire_id = qh.questionnaire_id
+                    AND qr.questionnaire_version = qh.version
+                WHERE qh.external_id IN ({','.join(cope_external_id_flat_list)})
+            """,
+            column_name_list=['participant_id', 'questionnaire_response_id', 'semantic_version', 'cope_month']
+        )
         export_name = 'cope_survey_semantic_version_map'
         cloud_file = f'gs://{self.args.export_path}/{export_name}.csv'
 
@@ -195,6 +206,66 @@ class CurationExportClass(ToolBase):
         _logger.info(f'exporting {code_info_export_name}')
         gcp_sql_export_csv(self.args.project, etl_run_code_info, cloud_file, database='rdr')
 
+    def export_survey_conduct(self):
+        export_sql = self._render_export_select(
+            export_sql=f"""
+                SELECT qr.questionaire_response_id survey_conduct_id,
+                        p.participant_id person_id,
+                        voc_c.concept_id survey_concept_id,
+                        mc.code_id survey_source_concept_id,
+                        mc.value survey_source_value,
+                        qr.questionnaire_response_id survey_source_identifier,
+                        p.participant_origin provider_id,
+                        CASE WHEN
+                            qr.non_participant_author = 'CATI' THEN     42530794
+                            ELSE                                        0
+                        END assisted_concept_id,
+                        CASE WHEN
+                            qr.non_participant_author = 'CATI' THEN     'Telephone'
+                            ELSE                                        'No matching concept'
+                        END assisted_source_value,
+                        CASE WHEN
+                            qr.non_participant_author = 'CATI' THEN     42530794
+                            ELSE                                        42531021
+                        END collection_method_concept_id,
+                        CASE WHEN
+                            qr.non_participant_author = 'CATI' THEN     'Telephone'
+                            ELSE                                        'Electronic'
+                        END collection_method_source_value,
+                        DATE(qr.authored) survey_end_date,
+                        qr.authored survey_end_datetime,
+                        0 timing_concept_id,
+                        '' timing_source_value,
+                        0 validated_survey_concept_id,
+                        '' validated_survey_source_value,
+                        '' visit_occurence_id,
+                        '' response_visit_occurrence_id
+                FROM questionnaire_response qr
+                -- join to src_clean to filter down to only responses going into etl
+                INNER JOIN cdm.src_clean sc ON sc.questionnaire_response_id = qr.questionnaire_response_id
+                INNER JOIN questionnaire_concept qc
+                    ON qc.questionnaire_id = qr.questionnaire_id AND qc.questionnaire_version = qr.questionnaire_version
+                INNER JOIN code mc ON mc.code_id = qc.code_id
+                INNER JOIN participant p ON p.participant_id = qr.participant_id
+                LEFT JOIN voc.concept voc_c
+                    ON voc_c.concept_code = mc.value AND voc_c.vocabulary_id = 'PPI'
+                    AND voc_c.domain_id = 'observation' AND voc_c.concept_class_id = 'module'
+            """,
+            column_name_list=[
+                'survey_conduct_id', 'person_id', 'survey_concept_id', 'survey_source_concept_id',
+                'survey_source_value', 'survey_source_identifier', 'provider_id',
+                'assisted_concept_id', 'assisted_source_value', 'collection_method_concept_id',
+                'collection_method_source_value', 'survey_end_date', 'survey_end_datetime',
+                'timing_concept_id', 'timing_source_value', 'validated_survey_concept_id',
+                'validated_survey_source_value', 'visit_occurence_id', 'response_visit_occurrence_id'
+            ]
+        )
+        export_name = 'survey_conduct'
+        cloud_file = f'gs://{self.args.export_path}/{export_name}.csv'
+
+        _logger.info(f'exporting {export_name}')
+        gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
+
     def run_curation_export(self):
         # Because there are no models for the data stored in the 'cdm' database, we'll
         # just use a standard MySQLDB connection.
@@ -216,6 +287,7 @@ class CurationExportClass(ToolBase):
 
         self.export_cope_map()
         self.export_participant_id_map()
+        self.export_survey_conduct()
         self.export_etl_run_info()
 
         for table in self.problematic_tables:

@@ -1,11 +1,13 @@
 from werkzeug.exceptions import BadRequest
 from sqlalchemy import desc
 
+from rdr_service import clock
 from rdr_service.dao.database_utils import parse_datetime
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.onsite_id_verification import OnsiteIdVerification
 from rdr_service.dao.site_dao import SiteDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.participant_enums import OnSiteVerificationType, OnSiteVerificationVisitType
 
 
@@ -70,3 +72,15 @@ class OnsiteVerificationDao(BaseDao):
         }
 
         return response_json
+
+    def insert(self, obj):
+        response = super().insert(obj)
+
+        # update participant summary with id verification timestamp
+        participant_summary_dao = ParticipantSummaryDao()
+        participant_summary = participant_summary_dao.get_by_participant_id(obj.participantId)
+        participant_summary.onsiteIdVerificationTime = obj.verifiedTime
+        participant_summary.lastModified = clock.CLOCK.now()
+        participant_summary_dao.update(participant_summary)
+
+        return response

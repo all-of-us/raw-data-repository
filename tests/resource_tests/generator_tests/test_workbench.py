@@ -66,7 +66,7 @@ class WorkbenchGeneratorTest(BaseTestCase):
         # Test that the number of fields in the DAO model has not changed.
         # This test is to make sure the resource model is updated when the SA model has been changed.
         column_count = len(WorkbenchResearcher.__table__.columns)
-        self.assertEqual(column_count, 53)
+        self.assertEqual(column_count, 54)
 
         self.session.add(self.researcher)
         self.session.commit()
@@ -77,7 +77,7 @@ class WorkbenchGeneratorTest(BaseTestCase):
 
         data = res.get_resource()
         self.assertIsInstance(data, dict)
-        self.assertEqual(len(data.keys()), 21)
+        self.assertEqual(len(data.keys()), 59)
         self.assertEqual(data['user_source_id'], 1)
         self.assertEqual(data['given_name'], 'test')
         self.assertEqual(data['genders'], [{'gender': 'MAN', 'gender_id': 1}, {'gender': 'WOMAN', 'gender_id': 2}])

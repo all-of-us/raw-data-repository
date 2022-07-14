@@ -806,11 +806,10 @@ class GenomicFileIngester:
                 if member is None:
                     logging.warning(f'Invalid sample ID: {sample_id}')
                     continue
-                member.gemPass = row['success']
 
+                member.gemPass = row['success']
                 member.gemA2ManifestJobRunId = self.job_run_id
                 member.gemDateOfImport = parse(row['date_of_import'])
-
                 _signal = 'a2-gem-pass' if member.gemPass.lower() == 'y' else 'a2-gem-fail'
 
                 # update state and state modifed time only if changed
@@ -1489,8 +1488,6 @@ class GenomicFileIngester:
                     current_analysis.failed_request_reason = row_copy['requestreason']
                     current_analysis.failed_request_reason_free = row_copy['requestreasonfree']
                     self.cvl_analysis_dao.update(current_analysis)
-
-                self._base_cvl_analysis_ingestion(row_copy, member)
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -2200,8 +2197,7 @@ class GenomicFileValidator:
                 filename_components[3] == 'w5nf' and
                 filename_components[4] in
                 [k.lower() for k in ResultsModuleType.to_dict().keys()]
-                and filename_components[5].isalnum() and
-                filename.lower().endswith('csv')
+                and filename.lower().endswith('csv')
             )
 
         def gem_a2_manifest_name_rule():
@@ -3385,6 +3381,8 @@ class ManifestDefinitionProvider:
                 'vcf_raw_path',
                 'vcf_raw_index_path',
                 'vcf_raw_md5_path',
+                'gvcf_path',
+                'gvcf_md5_path',
                 'cram_name',
                 'sex_at_birth',
                 'ny_flag',
@@ -3401,6 +3399,8 @@ class ManifestDefinitionProvider:
                 'vcf_raw_path',
                 'vcf_raw_index_path',
                 'vcf_raw_md5_path',
+                'gvcf_path',
+                'gvcf_md5_path',
                 'cram_name',
                 'sex_at_birth',
                 'ny_flag',
