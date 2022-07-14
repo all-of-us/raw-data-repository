@@ -583,7 +583,7 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
             logging.info('Rebuild complete.')
 
             # Publish PDR data-pipeline pub-sub event.
-            publish_pdr_pubsub(table, action='upsert', pk_column='id', ids=batch)
+            publish_pdr_pubsub(table, action='upsert', pk_columns=['id'], pk_values=batch)
             logging.info('PubSub notification sent.')
 
             self.create_cloud_record()
