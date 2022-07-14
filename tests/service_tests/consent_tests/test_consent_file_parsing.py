@@ -417,6 +417,10 @@ class ConsentFileParsingTest(BaseTestCase):
         basic_ehr_pdf = self._build_pdf(pages=[
             *six_empty_pages,
             [
+                self._build_pdf_element(
+                    cls=LTTextLineHorizontal,
+                    text='You will have access to a signed copy of this form',
+                ),
                 self._build_form_element(text='Test ehr', bbox=(125, 150, 450, 180)),
                 self._build_form_element(text='Dec 21, 2019', bbox=(125, 100, 450, 130))
             ]
@@ -430,6 +434,10 @@ class ConsentFileParsingTest(BaseTestCase):
         va_ehr_pdf = self._build_pdf(pages=[
             *six_empty_pages,
             [
+                self._build_pdf_element(
+                    cls=LTTextLineHorizontal,
+                    text='You will have access to a signed copy of this form',
+                ),
                 self._build_pdf_element(
                     cls=LTTextLineHorizontal,
                     text='We may ask you to go to a local clinic to be measured'

@@ -530,20 +530,21 @@ class VibrentEhrConsentFile(EhrConsentFile):
     def _get_printed_name_elements(self):
         signature_page_number = self._get_signature_page_number()
         return self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=350, right=500, bottom=45, top=50),
+            Rect.from_edges(left=350, right=500, bottom=45, top=55),
             page=signature_page_number
         )
 
     def is_sensitive_form(self):
-        return self.pdf.get_page_number_of_text([
-            ('I agree to release sensitive information from my EHRs', )
-        ]) is not None
+        return self.pdf.get_page_number_of_text([(
+            'I agree to release sensitive information from my EHRs',
+            'Acepto compartir información confidencial de mis EHR'
+        )]) is not None
 
     def _get_signature_page_number(self):
-        if self.is_sensitive_form():
-            return 9
-        else:
-            return 6
+        return self.pdf.get_page_number_of_text([(
+            'You will have access to a signed copy of this form',
+            'Usted tendrá acceso a una copia firmada de este documento'
+        )])
 
     def has_valid_sensitive_form_initials(self):
         initial_location_list = [
@@ -568,13 +569,7 @@ class VibrentEhrConsentFile(EhrConsentFile):
                         # Move to the next element to check if nothing was found here
                         continue
 
-                    if initial_text_found is None:
-                        # If no initials were parsed yet, set the first initial string found as the expected value
-                        initial_text_found = initial_from_element
-                    elif initial_text_found.lower() != initial_from_element.lower():
-                        # If the initials don't all match with each other, report that they weren't valid
-                        return False
-
+                    initial_text_found = initial_from_element
                     initial_text_at_location = initial_from_element
                     break
 
