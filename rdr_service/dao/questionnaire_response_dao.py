@@ -75,7 +75,11 @@ from rdr_service.code_constants import (
     BASICS_PROFILE_UPDATE_QUESTION_CODES,
     REMOTE_PM_MODULE,
     REMOTE_PM_UNIT,
-    MEASUREMENT_SYS
+    MEASUREMENT_SYS,
+    VA_PRIMARY_RECONSENT_C1_C2,
+    VA_PRIMARY_RECONSENT_C3,
+    VA_EHR_RECONSENT,
+    NON_VA_PRIMARY_RECONSENT
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -1000,6 +1004,13 @@ class QuestionnaireResponseDao(BaseDao):
                         setattr(participant_summary, mod_submitted, QuestionnaireStatus.SUBMITTED)
                         setattr(participant_summary, mod_authored, authored)
                         module_changed = True
+                elif self._code_in_list(
+                    code.value,
+                    [VA_PRIMARY_RECONSENT_C1_C2, VA_PRIMARY_RECONSENT_C3, NON_VA_PRIMARY_RECONSENT]
+                ):
+                    self.consents_provided.append(ConsentType.PRIMARY_RECONSENT)
+                elif self._code_in_list(code.value, [VA_EHR_RECONSENT]):
+                    self.consents_provided.append(ConsentType.EHR_RECONSENT)
 
         if module_changed:
             participant_summary.numCompletedBaselinePPIModules = count_completed_baseline_ppi_modules(
@@ -1577,6 +1588,10 @@ class QuestionnaireResponseDao(BaseDao):
         )
 
         return query.scalar()
+
+    @classmethod
+    def _code_in_list(cls, code_value: str, code_list: List[str]):
+        return code_value.lower in [list_value.lower for list_value in code_list]
 
 
 def _validate_consent_pdfs(resource):

@@ -172,7 +172,6 @@ PERSONAL_MEDICAL_HISTORY_MODULE = "PersonalMedicalHistory"
 MEDICATIONS_MODULE = "MedicationsPPI"
 REMOTE_PM_MODULE = 'pm_height_weight'
 REMOTE_PM_UNIT = 'measurement_unit'
-# TODO: UPDATE THIS TO REAL CODEBOOK VALUES WHEN PRESENT
 HEALTHCARE_ACCESS_MODULE = "HealthcareAccess"
 # COVID Experience surveys:
 # The COPE module covers the May/June/July (2020) COPE Survey questionnaires
@@ -182,6 +181,11 @@ COPE_NOV_MODULE = 'cope_nov'
 COPE_DEC_MODULE = "cope_dec"
 COPE_FEB_MODULE = "cope_feb"
 GENETIC_ANCESTRY_MODULE = 'GeneticAncestry'
+
+VA_PRIMARY_RECONSENT_C1_C2 = 'vaprimaryreconsent_c1_2'
+VA_PRIMARY_RECONSENT_C3 = 'vaprimaryreconsent_c3'
+VA_EHR_RECONSENT = 'vaehrreconsent'
+NON_VA_PRIMARY_RECONSENT = 'nonvaprimaryreconsent'
 
 # ConsentPII Questions
 RECEIVE_CARE_STATE = "ReceiveCare_PIIState"
