@@ -64,7 +64,7 @@ class GCPGooglePubSubTopic:
         resp = req.execute()
         return resp
 
-def _validate_pk_values(values_list: list, expected_len=1) -> List[List[str]] or None:
+def _validate_pk_values(values_list: List, expected_len=1) -> List[List[str]] or None:
     """
     Helper function to verify/convert the pk_values into expected nested list of strings for the pubsub event
     :param values_list:  An object containing the primary key values
@@ -87,10 +87,10 @@ def _validate_pk_values(values_list: list, expected_len=1) -> List[List[str]] or
     if all(isinstance(v, (int, str)) for v in values_list):
         converted_list = [[str(val)] for val in values_list]
     # Received a list of lists/tuples, but confirm all elements of the sublists are ints or strings; convert to all str
-    elif all(isinstance(v, list) or isinstance(v, tuple) for v in values_list):
+    elif all(isinstance(v, (list, tuple)) for v in values_list):
         for sub_list in values_list:
             if all(isinstance(v, (int, str)) for v in sub_list):
-                converted_list.append([str(val) for val in sub_list])
+                converted_list.append([str(el) for el in sub_list])
             else:
                 return None
     else:
@@ -106,8 +106,7 @@ def _validate_pk_values(values_list: list, expected_len=1) -> List[List[str]] or
     return converted_list
 
 def publish_pdr_pubsub(table: str, action: str, pk_columns : List[str] = [],
-                       pk_values: List = [],
-                       project=GAE_PROJECT):
+                       pk_values: List = [], project=GAE_PROJECT):
     """
     Publish database table updates to the 'data-pipeline' pub-sub topic.
     :param table: Table name
@@ -116,6 +115,7 @@ def publish_pdr_pubsub(table: str, action: str, pk_columns : List[str] = [],
     :param pk_values: A list object containing the primary key values, which may represent compound primary keys.
                       If the caller did not provide the expected nested list, this method will attempt to convert
                       the pk_values data into its expected format for the pubsub data schema
+    :param project:  The project name.  Default is the GAE_PROJECT from the local app config
     """
     last_response = None
     if project not in _ALLOWED_PROJECTS:
@@ -134,11 +134,9 @@ def publish_pdr_pubsub(table: str, action: str, pk_columns : List[str] = [],
         logging.error(f'pk_values argument {pk_values} contains invalid data types or is empty')
         return None
 
-    # Publish PubSub event for new RDR to PDR pipeline
+    # Publish PubSub event for new RDR to PDR pipeline. Payload data will be validated by the pub-sub topic schema.
     topic = GCPGooglePubSubTopic(project, 'data-pipeline')
-    # Payload data will be validated by the pub-sub topic schema.
-    # list_chunks will yield smaller batches of pk_values (limit of 500) so each pubsub event covers no more than
-    # 500 corresponding RDR table record ids
+    # Limit the number of pk_values passed in any pubsub event to 500 at a time
     for pk_values_batch in list_chunks(validated_pk_values, 500):
         data = {
             "instance": _INSTANCE_MAPPING[project],
