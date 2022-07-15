@@ -52,7 +52,7 @@ from rdr_service.model.genomics import (
     GenomicSetMember,
     GenomicJobRun,
     GenomicGCValidationMetrics,
-    GenomicSampleContamination
+    GenomicSampleContamination, GenomicAW3Raw
 )
 from rdr_service.model.participant import Participant
 from rdr_service.model.code import Code
@@ -3372,7 +3372,6 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(1, len(a1_members))
         config.override_setting(config.A1_LIMIT, [1000])  # reset for full testing
 
-
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_aw3_array_manifest_generation(self, cloud_task):
         # Need GC Manifest for source query : run_id = 1
@@ -3556,13 +3555,13 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test run record is success
         run_obj = self.job_run_dao.get(4)
-
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
         # Set up 'investigation' test
-        member.genomeType = 'aou_array_investigation'
-        member.blockResearch = 1
-        self.member_dao.update(member)
+        investigation_member = member
+        investigation_member.genomeType = 'aou_array_investigation'
+        investigation_member.blockResearch = 1
+        self.member_dao.update(investigation_member)
 
         fake_dt = datetime.datetime(2020, 8, 4, 0, 0, 0, 0)
         with clock.FakeClock(fake_dt):
@@ -4217,11 +4216,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-
         # Set up 'investigation' test
-        member.genomeType = 'aou_wgs_investigation'
-        member.blockResearch = 1
-        self.member_dao.update(member)
+        investigation_member = member
+        investigation_member.genomeType = 'aou_wgs_investigation'
+        investigation_member.blockResearch = 1
+        self.member_dao.update(investigation_member)
 
         fake_dt = datetime.datetime(2020, 8, 4, 0, 0, 0, 0)
         with clock.FakeClock(fake_dt):
@@ -4453,7 +4452,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow() # run_id = 4
+            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 4
+
+        # clear aw3 raw records so query finds source data
+        with self.member_dao.session() as session:
+            session.query(GenomicAW3Raw).delete()
 
         # still is success with same sample_ids becuase of distinct on query
         run_obj = self.job_run_dao.get(4)
