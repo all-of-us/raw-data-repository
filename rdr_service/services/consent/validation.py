@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from io import StringIO
-import logging
 import pytz
 from typing import Collection, List
 
@@ -412,8 +411,7 @@ class ConsentValidationController:
         ):
             output_strategy.add_all(self._process_validation_results(validator.get_primary_update_validation_results()))
 
-    def validate_consent_uploads(self, output_strategy: ValidationOutputStrategy,
-                                 min_consent_date=None, max_consent_date=None):
+    def validate_consent_uploads(self, output_strategy: ValidationOutputStrategy):
         """
         Find all the expected consents (filtering by dates if provided) and check the files that have been uploaded
         """
@@ -432,13 +430,10 @@ class ConsentValidationController:
             self._process_id_consent_map(
                 participant_id_consent_map=participant_id_consent_map,
                 output_strategy=output_strategy,
-                session=self._session,
-                min_consent_date=min_consent_date,
-                max_consent_date=max_consent_date
+                session=self._session
             )
 
-    def _process_id_consent_map(self, participant_id_consent_map, output_strategy,
-                                session, min_consent_date=None, max_consent_date=None):
+    def _process_id_consent_map(self, participant_id_consent_map, output_strategy, session):
         participant_summaries = self.participant_summary_dao.get_by_ids_with_session(
             session=session,
             obj_ids=participant_id_consent_map.keys()
@@ -450,17 +445,6 @@ class ConsentValidationController:
                 consent_responses=participant_id_consent_map[summary.participantId]
             )
         output_strategy.process_results()
-
-        # Use the legacy query for the day that the updated check is released (and in case any are missed)
-        summaries_needing_validated = self.consent_dao.get_participants_with_unvalidated_files(session)
-        logging.info(f'{len(summaries_needing_validated)} participants still needed validation')
-        for summary in summaries_needing_validated:
-            self.validate_participant_consents(
-                summary=summary,
-                output_strategy=output_strategy,
-                min_authored_date=min_consent_date,
-                max_authored_date=max_consent_date
-            )
 
     def validate_all_for_participant(self, participant_id: int, output_strategy: ValidationOutputStrategy):
         summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)
