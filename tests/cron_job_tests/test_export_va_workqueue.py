@@ -48,6 +48,15 @@ class ExportVaWorkQueueTest(BaseTestCase, PDRGeneratorTestMixin):
                 ps.dateOfBirth = datetime.date(1979, 3, 11)
                 ps.questionnaireOnCopeDec = 1
                 ps.questionnaireOnCopeDecAuthored = datetime.datetime(2022, 1, 3, 13, 23)
+                ps.digitalHealthSharingStatus = {'fitbit':{'status':'YES', 'authoredTime': '2022-04-03T17:12:34'}}
+                ps.patientStatus = [{'status': 'YES', 'organization': 'VA_BOSTON_VAMC'}]
+                ps.consentCohort = 2
+                ps.cohort2PilotFlag = 1
+                ps.consentForElectronicHealthRecords = 1
+                ps.ehrConsentExpireStatus = 2
+                ps.primaryLanguage = 'en'
+                ps.enrollmentStatus = 2
+
                 summary_dao.update(ps)
             elif pid == 9:
                 ps.withdrawalStatus = WithdrawalStatus.NO_USE
@@ -61,10 +70,15 @@ class ExportVaWorkQueueTest(BaseTestCase, PDRGeneratorTestMixin):
             for item in reader:
                 row_count += 1
                 if item['PMI ID'] == 'P'+test_participant_id:
-                    self.assertEqual(item["Date of Birth"], "1979-03-11")
-                    self.assertEqual(item["Age Range"], "36-45")
-                    self.assertEqual(item["COPE Dec PPI Survey Complete"], "SUBMITTED")
-                    self.assertEqual(item["COPE Dec PPI Survey Completion Date"], "2022-01-03T13:23:00")
+                    self.assertEqual(item["Date of Birth"], "03/11/1979")
+                    self.assertEqual(item["COPE Dec PPI Survey Complete"], "1")
+                    self.assertEqual(item["COPE Dec PPI Survey Completion Date"], "01/03/2022 13:23:00")
+                    self.assertEqual(item["Fitbit Consent"], "1")
+                    self.assertEqual(item["Patient Status: Yes"], "VA_BOSTON_VAMC")
+                    self.assertEqual(item["Consent Cohort"], "Cohort 2.1")
+                    self.assertEqual(item["EHR Expiration Status"], "1")
+                    self.assertEqual(item["Language of Primary Consent"], "English")
+                    self.assertEqual(item["Participant Status"], "Participant + EHR Consent")
             self.assertEqual(row_count, nids - 2)
 
     @mock.patch('rdr_service.offline.export_va_workqueue.clock.CLOCK')
