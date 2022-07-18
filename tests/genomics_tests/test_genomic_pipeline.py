@@ -2720,6 +2720,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("Created from AW1 with investigation genome type.", member.blockResearchReason)
             self.assertEqual(1, member.blockResults)
             self.assertEqual("Created from AW1 with investigation genome type.", member.blockResultsReason)
+            self.assertEqual("F", member.sexAtBirth)
 
         # Test the end result code is recorded
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)

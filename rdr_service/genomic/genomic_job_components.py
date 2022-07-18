@@ -537,6 +537,7 @@ class GenomicFileIngester:
             participantId=participant.participantId,
             reconcileGCManifestJobRunId=self.job_run_id,
             genomeType=aw1_data['genometype'],
+            sexAtBirth=aw1_data['sexatbirth'],
             blockResearch=1,
             blockResearchReason="Created from AW1 with investigation genome type.",
             blockResults=1,
