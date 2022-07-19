@@ -3749,7 +3749,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         ma_participant_id = generate_participant_with_state("Massachusetts")
         mt_participant_id = generate_participant_with_state("Montana")
         ms_participant_id = generate_participant_with_state("Mississippi")
-        null_state_participant_id = to_client_participant_id(self.data_generator.create_database_participant_summary())
+        null_state_participant_id = to_client_participant_id(
+            self.data_generator.create_database_participant_summary().participantId)
 
         response = self.send_get('ParticipantSummary?_sort=state')
         response_ids = [entry['resource']['participantId'] for entry in response['entry']]
