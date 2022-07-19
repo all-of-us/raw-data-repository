@@ -68,6 +68,7 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
     get_bucketed_age
 )
+from rdr_service.model.code import Code
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
@@ -606,7 +607,17 @@ class ParticipantSummaryDao(UpdatableDao):
             return super(ParticipantSummaryDao, self)._add_order_by(
                 query, OrderBy(order_by.field_name + "Id", order_by.ascending), field_names, fields
             )
+        elif order_by.field_name == 'state':
+            return self._add_order_by_state(order_by, query)
         return super(ParticipantSummaryDao, self)._add_order_by(query, order_by, field_names, fields)
+
+    @staticmethod
+    def _add_order_by_state(order_by, query):
+        query = query.outerjoin(Code, ParticipantSummary.stateId == Code.codeId)
+        if order_by.ascending:
+            return query.order_by(Code.display)
+        else:
+            return query.order_by(Code.display.desc())
 
     def _make_query(self, session, query_def):
         query, order_by_field_names = super(ParticipantSummaryDao, self)._make_query(session, query_def)

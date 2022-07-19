@@ -19,6 +19,7 @@ from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERM
                                         RACE_NONE_OF_THESE_CODE, RACE_WHITE_CODE, UNSET)
 from rdr_service.concepts import Concept
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.site_dao import SiteDao
@@ -3725,6 +3726,40 @@ class ParticipantSummaryApiTest(BaseTestCase):
             jan_participant_id,
             feb_participant_id,
             mar_participant_id
+        ], response_ids)
+
+    def test_api_sort_with_state_field(self):
+        """Check that state field can be used as a sort argument through the API"""
+        code_dao = CodeDao()
+
+        with FakeClock(TIME_1):
+            self.setup_codes(
+                ["Washington", "Montana", "Missouri", "Mississippi", "Massachusetts"],
+                code_type=CodeType.ANSWER,
+            )
+
+        def generate_participant_with_state(state):
+            summary = self.data_generator.create_database_participant_summary(
+                stateId=code_dao.get_code(PPI_SYSTEM, state).codeId
+            )
+            return to_client_participant_id(summary.participantId)
+
+        wa_participant_id = generate_participant_with_state("Washington")
+        mo_participant_id = generate_participant_with_state("Missouri")
+        ma_participant_id = generate_participant_with_state("Massachusetts")
+        mt_participant_id = generate_participant_with_state("Montana")
+        ms_participant_id = generate_participant_with_state("Mississippi")
+        null_state_participant_id = to_client_participant_id(self.data_generator.create_database_participant_summary())
+
+        response = self.send_get('ParticipantSummary?_sort=state')
+        response_ids = [entry['resource']['participantId'] for entry in response['entry']]
+        self.assertEqual([
+            null_state_participant_id,
+            ma_participant_id,
+            ms_participant_id,
+            mo_participant_id,
+            mt_participant_id,
+            wa_participant_id
         ], response_ids)
 
     #### begin POST to ParticipantSummary API
