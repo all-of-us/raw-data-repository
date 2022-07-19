@@ -53,12 +53,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
                 genomeType="aou_wgs"
             )
 
-            self.data_generator.create_database_genomic_result_workflow_state(
-                genomic_set_member_id=member.id,
-                results_workflow_state=kwargs.get('current_results_workflow_state'),
-                results_module=kwargs.get('results_module')
-            )
-
             if kwargs.get('set_cvl_analysis_records'):
                 self.data_generator.create_database_genomic_cvl_analysis(
                     genomic_set_member_id=member.id,
@@ -94,7 +88,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
             test_file='RDR_AoU_CVL_W2SC.csv',
             job_id=GenomicJob.CVL_W2SC_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W2SC,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W1IL,
             results_module=ResultsModuleType.HDRV1
         )
 
@@ -130,7 +123,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
             test_file='RDR_AoU_CVL_W2SC.csv',
             job_id=GenomicJob.CVL_W2SC_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W2SC,
-            results_workflow_state=ResultsWorkflowState.CVL_W1IL,
             results_module=ResultsModuleType.HDRV1
         )
 
@@ -166,7 +158,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
                 consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
                 consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
             )
-            member = self.data_generator.create_database_genomic_set_member(
+            self.data_generator.create_database_genomic_set_member(
                 genomicSetId=self.gen_set.id,
                 biobankId=summary.biobankId,
                 sampleId=f"100{num}",
@@ -178,12 +170,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
                 genomeType="aou_wgs",
                 participantId=summary.participantId,
                 cvlW2scManifestJobRunID=cvl_w2sc_gen_job_run.id
-            )
-
-            self.data_generator.create_database_genomic_result_workflow_state(
-                genomic_set_member_id=member.id,
-                results_workflow_state=ResultsWorkflowState.CVL_W2SC,
-                results_module=ResultsModuleType.HDRV1
             )
 
         gc_site_ids = ['bi', 'uw', 'bcm']
@@ -335,7 +321,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
             test_file='RDR_AoU_CVL_W3NS.csv',
             job_id=GenomicJob.CVL_W3NS_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W3NS,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
             results_module=ResultsModuleType.HDRV1
         )
 
@@ -371,7 +356,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
             test_file='RDR_AoU_CVL_W3NS.csv',
             job_id=GenomicJob.CVL_W3NS_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W3NS,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
             results_module=ResultsModuleType.HDRV1
         )
 
@@ -399,7 +383,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
             test_file='RDR_AoU_CVL_W3SC.csv',
             job_id=GenomicJob.CVL_W3SC_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W3SC,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
             results_module=ResultsModuleType.HDRV1
         )
 
@@ -437,7 +420,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
             test_file='RDR_AoU_CVL_W3SC.csv',
             job_id=GenomicJob.CVL_W3SC_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W3SC,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
             results_module=ResultsModuleType.HDRV1
         )
 
@@ -465,7 +447,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
             test_file='RDR_AoU_CVL_PKG-1911-229228.csv',
             job_id=GenomicJob.CVL_W3SS_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W3SS,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W3NS,
             results_module=ResultsModuleType.HDRV1,
             include_timestamp=False
         )
@@ -537,7 +518,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
             test_file='RDR_AoU_CVL_W4WR_HDRV1.csv',
             job_id=GenomicJob.CVL_W4WR_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W4WR,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W1IL,
             results_module=ResultsModuleType.HDRV1
         )
 
@@ -586,7 +566,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
             test_file='RDR_AoU_CVL_W4WR_HDRV1.csv',
             job_id=GenomicJob.CVL_W4WR_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W4WR,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W1IL,
             results_module=ResultsModuleType.HDRV1
         )
 
@@ -615,7 +594,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
             test_file='RDR_AoU_CVL_W5NF_HDRV1.csv',
             job_id=GenomicJob.CVL_W5NF_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W5NF,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W4WR,
             results_module=ResultsModuleType.HDRV1,
             set_cvl_analysis_records=True,  # need to set initial cvl analysis records from W4WR
             include_sub_num=True
@@ -1170,26 +1148,14 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         self.first_withdrawn_member, self.first_summary = self._generate_participant_data(
             set_member_params={'gcSiteId': 'bcm'},
             withdrawal_status=WithdrawalStatus.NO_USE,
-            results_workflow_state_params={
-                'results_workflow_state': ResultsWorkflowState.CVL_W2SC,
-                'results_module': ResultsModuleType.HDRV1,
-            }
         )
         self.second_withdrawn_member, self.second_summary = self._generate_participant_data(
             set_member_params={'gcSiteId': 'bcm'},
             withdrawal_status=WithdrawalStatus.NO_USE,
-            results_workflow_state_params={
-                'results_workflow_state': ResultsWorkflowState.CVL_W2SC,
-                'results_module': ResultsModuleType.HDRV1,
-            }
         )
         self.co_withdrawal, self.co_summary = self._generate_participant_data(
             set_member_params={'gcSiteId': 'bi'},
             withdrawal_status=WithdrawalStatus.EARLY_OUT,
-            results_workflow_state_params={
-                'results_workflow_state': ResultsWorkflowState.CVL_W2SC,
-                'results_module': ResultsModuleType.HDRV1,
-            }
         )
 
         # Generate some participants that should not appear on the W2W manifest

@@ -3343,7 +3343,7 @@ class GenomicResultWorkflowStateDao(UpdatableDao):
 
             return records
 
-    def insert_new_result_record(self, member_id, module_type, state=None):
+    def insert_new_result_record(self, *, member_id, module_type, state=None):
         inserted_state = ResultsWorkflowState.CVL_W1IL if not state else state
         self.insert(GenomicResultWorkflowState(
             genomic_set_member_id=member_id,
@@ -3352,11 +3352,6 @@ class GenomicResultWorkflowStateDao(UpdatableDao):
             results_module=module_type,
             results_module_str=module_type.name
         ))
-
-    def update_results_workflow_state_record(self, obj, new_state):
-        obj.results_workflow_state = new_state
-        obj.results_workflow_state_str = new_state.name
-        self.update(obj)
 
 
 class GenomicQueriesDao(BaseDao):

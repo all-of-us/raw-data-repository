@@ -1,6 +1,6 @@
 import abc
 
-from rdr_service.genomic_enums import GenomicWorkflowState, ResultsWorkflowState
+from rdr_service.genomic_enums import GenomicWorkflowState
 
 
 class GenomicStateBase:
@@ -205,68 +205,6 @@ class CVLReadyState(GenomicStateBase):
         return GenomicWorkflowState.CVL_READY
 
 
-class W1State(GenomicStateBase):
-    """State representing the W1 manifest state"""
-    def transition_function(self, signal):
-        if signal == 'w2-ingestion-success':
-            return GenomicWorkflowState.W2
-
-
-class W2State(GenomicStateBase):
-    """State representing the W2 manifest state"""
-    def transition_function(self, signal):
-        if signal == 'manifest-generated':
-            return GenomicWorkflowState.W3
-
-
-class W3State(GenomicStateBase):
-    """State representing the W3 manifest state"""
-    def transition_function(self, signal):
-        if signal == 'aw1c-reconciled':
-            return GenomicWorkflowState.AW1C
-
-        if signal == 'aw1c-failed':
-            # TODO: There may be a pre-accessioning state as well
-            return GenomicWorkflowState.AW1CF_POST
-
-
-class W1ILState(GenomicStateBase):
-    def transition_function(self, signal):
-        if signal == 'secondary-confirmation':
-            return ResultsWorkflowState.CVL_W2SC
-
-        return ResultsWorkflowState.CVL_W4WR
-
-
-class W2SCState(GenomicStateBase):
-    def transition_function(self, signal):
-        if signal == 'withdrawal-manifest-generated':
-            return ResultsWorkflowState.CVL_W2W
-
-        if signal == 'manifest-generated':
-            return ResultsWorkflowState.CVL_W3SR
-
-
-class W3NSState(GenomicStateBase):
-    def transition_function(self, signal):
-        if signal == 'second-sample':
-            return ResultsWorkflowState.CVL_W3SS
-
-
-class W3SRState(GenomicStateBase):
-    def transition_function(self, signal):
-        if signal == 'sample-failed':
-            return ResultsWorkflowState.CVL_W3SC
-        if signal == 'sample-unavailable':
-            return ResultsWorkflowState.CVL_W3NS
-
-
-class W4WRState(GenomicStateBase):
-    def transition_function(self, signal):
-        if signal == 'sample-failed':
-            return ResultsWorkflowState.CVL_W5NF
-
-
 class GenomicStateHandler:
     """
     Basic FSM for Genomic States. Returns call to state's transition_function()
@@ -280,9 +218,6 @@ class GenomicStateHandler:
         GenomicWorkflowState.AW2: AW2State(),
         GenomicWorkflowState.GC_DATA_FILES_MISSING: AW2MissingState(),
         GenomicWorkflowState.CVL_READY: CVLReadyState(),
-        GenomicWorkflowState.W1: W1State(),
-        GenomicWorkflowState.W2: W2State(),
-        GenomicWorkflowState.W3: W3State(),
         GenomicWorkflowState.GEM_READY: GEMReadyState(),
         GenomicWorkflowState.A1: A1State(),
         GenomicWorkflowState.A2: A2PassState(),
@@ -293,11 +228,6 @@ class GenomicStateHandler:
         GenomicWorkflowState.GEM_RPT_DELETED: GEMReportDeleted(),
         # Replating is functionally equivalent to AW0
         GenomicWorkflowState.EXTRACT_REQUESTED: AW0State(),
-        ResultsWorkflowState.CVL_W1IL: W1ILState(),
-        ResultsWorkflowState.CVL_W2SC: W2SCState(),
-        ResultsWorkflowState.CVL_W3NS: W3NSState(),
-        ResultsWorkflowState.CVL_W3SR: W3SRState(),
-        ResultsWorkflowState.CVL_W4WR: W4WRState()
     }
 
     @classmethod
