@@ -3314,8 +3314,7 @@ class GenomicCVLAnalysisDao(UpdatableDao):
             ).one_or_none()
 
 
-class GenomicResultWorkflowStateDao(UpdatableDao):
-    validate_version_match = False
+class GenomicResultWorkflowStateDao(BaseDao):
 
     def __init__(self):
         super(GenomicResultWorkflowStateDao, self).__init__(
@@ -3325,7 +3324,7 @@ class GenomicResultWorkflowStateDao(UpdatableDao):
         pass
 
     def get_id(self, obj):
-        return obj.id
+        pass
 
     def get_by_member_id(self, member_id, module_type=None):
         with self.session() as session:
