@@ -579,6 +579,19 @@ class ParticipantSummary(Base):
     semanticVersionForPrimaryConsent = Column("semantic_version_for_primary_consent", String(100))
     """The human readable version of primary consent the participant signed"""
 
+    reconsentForStudyEnrollment = Column(
+        "reconsent_for_study_enrollment", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
+    )
+    """
+    Indicates whether the participant has re-consented for to the program
+    (generally needed if there was an error with their original consent form)
+
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+
+    reconsentForStudyEnrollmentAuthored = Column("reconsent_for_study_enrollment_authored", UTCDateTime)
+    """The UTC date time of when the participant re-consented to the program"""
+
     consentForElectronicHealthRecords = Column(
         "consent_for_electronic_health_records", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
@@ -619,6 +632,22 @@ class ParticipantSummary(Base):
     Indicates the time at which the participant completed an EHR consent
     which may be subject to expiration in certain states
     """
+
+    reconsentForElectronicHealthRecords = Column(
+        "reconsent_for_electronic_health_records", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
+    )
+    """
+    Indicates whether the participant has re-consented for sharing electronic health
+    (generally needed if there was an error with their original consent form)
+
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+
+    reconsentForElectronicHealthRecordsAuthored = Column(
+        "reconsent_for_electronic_health_records_authored",
+        UTCDateTime
+    )
+    """The UTC date time of when the participant re-consented for sharing electronic health records"""
 
     consentForDvElectronicHealthRecordsSharing = Column(
         "consent_for_dv_electronic_health_records_sharing",
