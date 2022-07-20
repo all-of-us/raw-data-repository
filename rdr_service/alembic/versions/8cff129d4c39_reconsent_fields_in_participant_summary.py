@@ -38,9 +38,7 @@ def downgrade(engine_name):
 def upgrade_rdr():
     op.execute("""
         ALTER TABLE participant_summary
-        ADD COLUMN reconsent_for_study_enrollment SMALLINT,
         ADD COLUMN reconsent_for_study_enrollment_authored DATETIME,
-        ADD COLUMN reconsent_for_electronic_health_records SMALLINT,
         ADD COLUMN reconsent_for_electronic_health_records_authored DATETIME
     """)
 

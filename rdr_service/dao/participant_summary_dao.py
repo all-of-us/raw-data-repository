@@ -994,7 +994,9 @@ class ParticipantSummaryDao(UpdatableDao):
             ConsentType.PRIMARY: 'consentForStudyEnrollment',
             ConsentType.CABOR: 'consentForCABoR',
             ConsentType.EHR: 'consentForElectronicHealthRecords',
-            ConsentType.GROR: 'consentForGenomicsROR'
+            ConsentType.GROR: 'consentForGenomicsROR',
+            ConsentType.PRIMARY_RECONSENT: 'reconsentForStudyEnrollement',
+            ConsentType.EHR_RECONSENT: 'reconsentForElectronicHealthRecords'
         }
         participant_id = result['participantId']
         records = list(filter(lambda obj: obj.participant_id == participant_id, self.hpro_consents))
