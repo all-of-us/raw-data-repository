@@ -39,7 +39,7 @@ from rdr_service.participant_enums import (
     DeceasedStatus,
     RetentionStatus,
     RetentionType,
-    PhysicalMeasurementsCollectType)
+    SelfReportedPhysicalMeasurementsStatus)
 
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
@@ -271,7 +271,8 @@ class ParticipantSummary(Base):
     * questionnaireOnTheBasicsTime
     * questionnaireOnLifestyleTime
     * questionnaireOnOverallHealthTime
-    * physicalMeasurementsFinalizedTime
+    * clinicPhysicalMeasurementsFinalizedTime
+    * selfReportedPhysicalMeasurementsAuthored
     """
 
     # The time when we get a DNA order
@@ -286,7 +287,8 @@ class ParticipantSummary(Base):
     * questionnaireOnTheBasicsTime
     * questionnaireOnLifestyleTime
     * questionnaireOnOverallHealthTime
-    * physicalMeasurementsFinalizedTime
+    * clinicPhysicalMeasurementsFinalizedTime
+    * selfReportedPhysicalMeasurementsAuthored
     """
 
     consentCohort = Column("consent_cohort", Enum(ParticipantCohort), default=ParticipantCohort.UNSET)
@@ -365,46 +367,49 @@ class ParticipantSummary(Base):
     UTC timestamp indicating the latest time RDR was aware of signed and uploaded EHR documents
     """
 
-    physicalMeasurementsStatus = Column(
-        "physical_measurements_status", Enum(PhysicalMeasurementsStatus), default=PhysicalMeasurementsStatus.UNSET
+    clinicPhysicalMeasurementsStatus = Column(
+        "clinic_physical_measurements_status", Enum(PhysicalMeasurementsStatus),
+        default=PhysicalMeasurementsStatus.UNSET
     )
     """
     Indicates whether this participant has completed physical measurements.
 
-    :ref:`Enumerated values <physical_measurements_status>`
+    :ref:`Enumerated values <clinic_physical_measurements_status>`
     """
 
     # The first time that physical measurements were submitted for the participant.
-    physicalMeasurementsTime = Column("physical_measurements_time", UTCDateTime)
+    clinicPhysicalMeasurementsTime = Column("clinic_physical_measurements_time", UTCDateTime)
     """Indicates the latest time physical measurements were submitted for the participant"""
 
     # The time that physical measurements were finalized (before submission to the RDR)
-    physicalMeasurementsFinalizedTime = Column("physical_measurements_finalized_time", UTCDateTime)
+    clinicPhysicalMeasurementsFinalizedTime = Column("clinic_physical_measurements_finalized_time", UTCDateTime)
     """Indicates the latest time physical measurements were finalized for the participant"""
 
-    physicalMeasurementsCreatedSiteId = Column(
-        "physical_measurements_created_site_id", Integer, ForeignKey("site.site_id")
+    clinicPhysicalMeasurementsCreatedSiteId = Column(
+        "clinic_physical_measurements_created_site_id", Integer, ForeignKey("site.site_id")
     )
     """An indicator for the site where the physical measurements were created for each participant"""
-    physicalMeasurementsCreatedSite = None  # placeholder for docs, API sets on model using corresponding ID field
+    clinicPhysicalMeasurementsCreatedSite = None  # placeholder for docs, API sets on model using corresponding ID field
     """An indicator for the site where the physical measurements were created for each participant"""
 
-    physicalMeasurementsFinalizedSiteId = Column(
-        "physical_measurements_finalized_site_id", Integer, ForeignKey("site.site_id")
+    clinicPhysicalMeasurementsFinalizedSiteId = Column(
+        "clinic_physical_measurements_finalized_site_id", Integer, ForeignKey("site.site_id")
     )
     """An indicator for the site where the physical measurements were finalized for each participant"""
-    physicalMeasurementsFinalizedSite = None  # placeholder for docs, API sets on model using corresponding ID field
+    clinicPhysicalMeasurementsFinalizedSite = None
+    # placeholder for docs, API sets on model using corresponding ID field
     """An indicator for the site where the physical measurements were finalized for each participant"""
 
-    physicalMeasurementsCollectType = Column(
-        "physical_measurements_collect_type", Enum(PhysicalMeasurementsCollectType),
-        default=PhysicalMeasurementsCollectType.UNSET
-    )
+    selfReportedPhysicalMeasurementsStatus = Column("self_reported_physical_measurements_status",
+                                                    Enum(SelfReportedPhysicalMeasurementsStatus),
+                                                    default=SelfReportedPhysicalMeasurementsStatus.UNSET)
     """
-    Indicates whether this physical measurements is collected by site or self reported
+    Indicates whether this participant has completed self-reported physical measurements
 
-    :ref:`Enumerated values <physical_measurements_collect_type>`
+    :ref:`Enumerated values <self_reported_physical_measurements_status>`
     """
+    selfReportedPhysicalMeasurementsAuthored = Column("self_reported_physical_measurements_authored", UTCDateTime)
+    """Indicates the latest time the participant authored the survey for self-reporting physical measurements"""
 
     numberDistinctVisits = Column("number_distinct_visits", Integer, default=0)
     """The number of distinct visits to a health care provider that the participant has made that supplied data"""

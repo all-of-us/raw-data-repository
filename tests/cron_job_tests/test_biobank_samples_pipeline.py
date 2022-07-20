@@ -214,8 +214,8 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         core_summary.questionnaireOnTheBasicsTime = '2016-11-29 12:16:00'
         core_summary.questionnaireOnOverallHealthTime = '2016-11-29 12:16:00'
         core_summary.questionnaireOnLifestyleTime = '2016-11-29 12:16:00'
-        core_summary.physicalMeasurementsStatus = 1
-        core_summary.physicalMeasurementsFinalizedTime = '2016-11-29 12:16:00'
+        core_summary.clinicPhysicalMeasurementsStatus = 1
+        core_summary.clinicPhysicalMeasurementsFinalizedTime = '2016-11-29 12:16:00'
         participant_summary_dao.update(core_summary)
 
         samples_file = test_data.open_biobank_samples(biobank_ids=biobank_ids, tests=test_codes)

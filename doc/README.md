@@ -230,6 +230,8 @@ The summary includes the following fields:
 * `physicalMeasurementsTime`: indicates the latest time physical measurements were submitted for the participant
 * `physicalMeasurementsCreatedSite`: indicates the site where physical measurements were created for the participant
 * `physicalMeasurementsFinalizedSite`: indicates the site where physical measurements were finalized for the participant
+* `selfReportedPhysicalMeasurementsStatus`: indicates whether this participant has completed self-reported physical measurements
+* `selfReportedPhysicalMeasurementsAuthored`: indicates the latest time the participant authored the survey for self-reporting physical measurements
 * `signUpTime`: the time at which the participant initially signed up for All Of Us
 * `hpoId`: HPO marked as `primary` for this participant, if any (just the resource id, like `PITT` — not a reference like `Organization/PITT`)
 * `awardee`: An awardee a participant is paired with or "unset" if none.

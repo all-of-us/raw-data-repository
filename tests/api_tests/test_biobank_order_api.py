@@ -597,8 +597,8 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual(s_paired.biospecimenCollectedSiteId, s_paired.siteId)
         self.assertNotEqual(s_paired.biospecimenCollectedSiteId, s_paired.biospecimenFinalizedSiteId)
 
-        self.assertNotEqual(s_paired.siteId, s_paired.physicalMeasurementsCreatedSiteId)
-        self.assertNotEqual(s_paired.siteId, s_paired.physicalMeasurementsFinalizedSiteId)
+        self.assertNotEqual(s_paired.siteId, s_paired.clinicPhysicalMeasurementsCreatedSiteId)
+        self.assertNotEqual(s_paired.siteId, s_paired.clinicPhysicalMeasurementsFinalizedSiteId)
 
     def test_not_pairing_at_pm_when_has_bio(self):
         self.participant_id = self.create_participant()
@@ -612,7 +612,7 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual(participant_paired.siteId, participant_paired.biospecimenCollectedSiteId)
         self.path = "Participant/%s/PhysicalMeasurements" % to_client_participant_id(pid_numeric)
         self._insert_measurements(datetime.datetime.utcnow().isoformat())
-        self.assertNotEqual(participant_paired.siteId, participant_paired.physicalMeasurementsFinalizedSiteId)
+        self.assertNotEqual(participant_paired.siteId, participant_paired.clinicPhysicalMeasurementsFinalizedSiteId)
 
     def test_bio_after_cancelled_pm(self):
         self.participant_id = self.create_participant()
@@ -653,8 +653,8 @@ class BiobankOrderApiTest(BaseTestCase):
         # fetch participant summary
         ps = self.send_get("ParticipantSummary?participantId=%s" % _id)
 
-        self.assertTrue(ps["entry"][0]["resource"]["physicalMeasurementsFinalizedTime"])
-        self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
+        self.assertTrue(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsFinalizedTime"])
+        self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
         self.assertIsNotNone("biobankId", ps["entry"][0]["resource"])
 
     def _insert_measurements(self, now=None):

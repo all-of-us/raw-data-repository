@@ -66,7 +66,8 @@ from rdr_service.participant_enums import (
     SampleStatus,
     SuspensionStatus,
     WithdrawalStatus,
-    get_bucketed_age
+    get_bucketed_age,
+    SelfReportedPhysicalMeasurementsStatus
 )
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
 
@@ -76,8 +77,8 @@ _ORDER_BY_ENDING = ("lastName", "firstName", "dateOfBirth", "participantId")
 _WITHDRAWN_ORDER_BY_ENDING = ("withdrawalTime", "participantId")
 _CODE_FILTER_FIELDS = ("organization", "site", "awardee")
 _SITE_FIELDS = (
-    "physicalMeasurementsCreatedSite",
-    "physicalMeasurementsFinalizedSite",
+    "clinicPhysicalMeasurementsCreatedSite",
+    "clinicPhysicalMeasurementsFinalizedSite",
     "biospecimenSourceSite",
     "biospecimenCollectedSite",
     "biospecimenProcessedSite",
@@ -104,7 +105,8 @@ _ENROLLMENT_STATUS_CASE_SQL = """
                         (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
                        )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
-                   AND physical_measurements_status = :completed
+                   AND (clinic_physical_measurements_status = :completed OR
+                   self_reported_physical_measurements_status = :completed)
                    AND samples_to_isolate_dna = :received) OR
                   (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :unset
@@ -113,7 +115,8 @@ _ENROLLMENT_STATUS_CASE_SQL = """
                         (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
                        )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
-                   AND physical_measurements_status = :completed
+                   AND (clinic_physical_measurements_status = :completed OR
+                   self_reported_physical_measurements_status = :completed)
                    AND samples_to_isolate_dna = :received)
              THEN :full_participant
              WHEN (consent_for_study_enrollment = :submitted
@@ -122,7 +125,8 @@ _ENROLLMENT_STATUS_CASE_SQL = """
                         (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
                        )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
-                   AND physical_measurements_status != :completed
+                   AND (clinic_physical_measurements_status != :completed
+                   OR self_reported_physical_measurements_status != :completed)
                    AND samples_to_isolate_dna = :received) OR
                   (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :unset
@@ -131,7 +135,7 @@ _ENROLLMENT_STATUS_CASE_SQL = """
                         (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
                        )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
-                   AND physical_measurements_status != :completed
+                   AND clinic_physical_measurements_status != :completed
                    AND samples_to_isolate_dna = :received)
              THEN :core_minus_pm
              WHEN (consent_for_study_enrollment = :submitted
@@ -362,7 +366,15 @@ def _get_sample_status_time_sql_and_params():
         CASE WHEN enrollment_status_member_time IS NOT NULL THEN enrollment_status_member_time
              ELSE consent_for_electronic_health_records_time
         END,
-        physical_measurements_finalized_time,
+        CASE WHEN GREATEST(
+                COALESCE(clinic_physical_measurements_finalized_time, 0),
+                COALESCE(self_reported_physical_measurements_authored, 0)
+            ) = 0 THEN NULL
+            ELSE GREATEST(
+                COALESCE(clinic_physical_measurements_finalized_time, 0),
+                COALESCE(self_reported_physical_measurements_authored, 0)
+            )
+        END,
         {baseline_ppi_module_sql},
         CASE WHEN
             LEAST(
@@ -781,7 +793,8 @@ class ParticipantSummaryDao(UpdatableDao):
         enrollment_status = self.calculate_enrollment_status(
             consent,
             summary.numCompletedBaselinePPIModules,
-            summary.physicalMeasurementsStatus,
+            summary.clinicPhysicalMeasurementsStatus,
+            summary.selfReportedPhysicalMeasurementsStatus,
             summary.samplesToIsolateDNA,
             summary.consentCohort,
             summary.consentForGenomicsROR,
@@ -804,8 +817,9 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.enrollmentStatusMemberTime = self.calculate_member_time(consent, summary)
 
     def calculate_enrollment_status(
-        self, consent, num_completed_baseline_ppi_modules, physical_measurements_status, samples_to_isolate_dna,
-        consent_cohort, gror_consent, consent_expire_status=ConsentExpireStatus.NOT_EXPIRED
+        self, consent, num_completed_baseline_ppi_modules, physical_measurements_status,
+        self_reported_physical_measurements_status, samples_to_isolate_dna, consent_cohort, gror_consent,
+        consent_expire_status=ConsentExpireStatus.NOT_EXPIRED
     ):
         """
           2021-07 Note on enrollment status calculations and GROR:
@@ -815,7 +829,8 @@ class ParticipantSummaryDao(UpdatableDao):
         if consent:
             if (
                 num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules()
-                and physical_measurements_status == PhysicalMeasurementsStatus.COMPLETED
+                and (physical_measurements_status == PhysicalMeasurementsStatus.COMPLETED or
+                     self_reported_physical_measurements_status == SelfReportedPhysicalMeasurementsStatus.COMPLETED)
                 and samples_to_isolate_dna == SampleStatus.RECEIVED
                 and (consent_cohort != ParticipantCohort.COHORT_3 or
                      # All response status enum values other than UNSET or SUBMITTED_INVALID meet the GROR requirement
@@ -826,6 +841,7 @@ class ParticipantSummaryDao(UpdatableDao):
             elif (
                 num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules()
                 and physical_measurements_status != PhysicalMeasurementsStatus.COMPLETED
+                and self_reported_physical_measurements_status != SelfReportedPhysicalMeasurementsStatus.COMPLETED
                 and samples_to_isolate_dna == SampleStatus.RECEIVED
                 and (consent_cohort != ParticipantCohort.COHORT_3 or
                      (gror_consent and gror_consent != QuestionnaireStatus.UNSET
@@ -854,7 +870,9 @@ class ParticipantSummaryDao(UpdatableDao):
         if (
             consent
             and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
-            and participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.COMPLETED
+            and participant_summary.clinicPhysicalMeasurementsStatus != PhysicalMeasurementsStatus.COMPLETED
+            and participant_summary.selfReportedPhysicalMeasurementsStatus !=
+            SelfReportedPhysicalMeasurementsStatus.COMPLETED
             and participant_summary.samplesToIsolateDNA == SampleStatus.RECEIVED
             and (participant_summary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED
                  or participant_summary.consentCohort != ParticipantCohort.COHORT_3)
@@ -877,7 +895,9 @@ class ParticipantSummaryDao(UpdatableDao):
         if (
             consent
             and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
-            and participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED
+            and (participant_summary.clinicPhysicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED or
+                 participant_summary.selfReportedPhysicalMeasurementsStatus ==
+                 SelfReportedPhysicalMeasurementsStatus.COMPLETED)
             and participant_summary.samplesToIsolateDNA == SampleStatus.RECEIVED
         ) or participant_summary.enrollmentStatus == EnrollmentStatus.FULL_PARTICIPANT:
 
@@ -896,7 +916,11 @@ class ParticipantSummaryDao(UpdatableDao):
         if (
             consent
             and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
-            and participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED
+            and (
+                participant_summary.clinicPhysicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED
+                or participant_summary.selfReportedPhysicalMeasurementsStatus ==
+                SelfReportedPhysicalMeasurementsStatus.COMPLETED
+            )
         ) or participant_summary.enrollmentStatus == EnrollmentStatus.FULL_PARTICIPANT:
 
             max_core_sample_time = self.calculate_max_core_sample_time(
@@ -925,7 +949,8 @@ class ParticipantSummaryDao(UpdatableDao):
                             participant_summary.questionnaireOnTheBasicsTime,
                             participant_summary.questionnaireOnLifestyleTime,
                             participant_summary.questionnaireOnOverallHealthTime,
-                            participant_summary.physicalMeasurementsFinalizedTime,
+                            participant_summary.clinicPhysicalMeasurementsFinalizedTime,
+                            participant_summary.selfReportedPhysicalMeasurementsAuthored
                         ] if time is not None]
             )
         else:

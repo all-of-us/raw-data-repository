@@ -2,7 +2,8 @@ from datetime import datetime, timedelta
 
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, SampleStatus
+from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, SampleStatus,\
+    SelfReportedPhysicalMeasurementsStatus
 from rdr_service.services.jira_utils import JiraTicketHandler
 
 PS_DAO = ParticipantSummaryDao()
@@ -62,8 +63,11 @@ def check_mandatory(member, status_results):
                 'questionnaireOnLifestyle': QuestionnaireStatus.SUBMITTED,
                 'questionnaireOnOverallHealth': QuestionnaireStatus.SUBMITTED,
                 'questionnaireOnTheBasics': QuestionnaireStatus.SUBMITTED,
-                'physicalMeasurementsStatus': PhysicalMeasurementsStatus.COMPLETED,
+                'clinicPhysicalMeasurementsStatus': PhysicalMeasurementsStatus.COMPLETED,
                 'samplesToIsolateDNA': SampleStatus.RECEIVED}
+
+    physical_measurements = {'clinicPhysicalMeasurementsStatus': PhysicalMeasurementsStatus.COMPLETED,
+                  'selfReportedPhysicalMeasurementsStatus': SelfReportedPhysicalMeasurementsStatus.COMPLETED}
 
     for attribute, value in required.items():
         if attribute not in member.__dict__:
@@ -72,6 +76,19 @@ def check_mandatory(member, status_results):
         if getattr(member, attribute) != value:
             status_results['participantId'] = member.participantId
             status_results[attribute] = getattr(member, attribute)
+
+    pm_values = {}
+    for attribute, value in physical_measurements.items():
+        if attribute not in member.__dict__:
+            status_results['participantId'] = member.participantId
+            status_results[attribute] = 'missing'
+        if getattr(member, attribute) != value:
+            pm_values[attribute] = getattr(member, attribute)
+
+    if len(pm_values) == len(physical_measurements):
+        for attribute, value in pm_values.items():
+            status_results['participantId'] = member.participantId
+            status_results[attribute] = value
 
     return status_results or None
 

@@ -170,7 +170,10 @@ _SQL_AGGREGATIONS = [
     _SqlAggregation(
         MetricsKey.PHYSICAL_MEASUREMENTS,
         """
-      SELECT physical_measurements_status, COUNT(*)
+      SELECT
+        IF(clinic_physical_measurements_status = 1 OR self_reported_physical_measurements_status = 1, 1,
+        clinic_physical_measurements_status) physical_measurements_status,
+        COUNT(*)
       FROM participant_summary
       WHERE {summary_filter_sql}
       GROUP BY 1;
