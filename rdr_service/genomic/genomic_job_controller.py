@@ -611,6 +611,9 @@ class GenomicJobController:
                 self.report_state_dao.insert(report_obj)
                 self.job_result = GenomicSubProcessResult.SUCCESS
 
+    def ingest_appointment_from_message_broker_data(self, message_record_id):
+        pass
+
     def accession_data_files(self, file_path, bucket_name):
         data_file_dao = GenomicGcDataFileDao()
 

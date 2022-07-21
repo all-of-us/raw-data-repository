@@ -120,6 +120,7 @@ class GenomicJob(messages.Enum):
     RECONCILE_CVL_RESOLVE = 63
     CHECK_FOR_W1IL_GROR_RESUBMIT = 64
     INGEST_RESULT_READY = 65
+    INGEST_APPOINTMENT = 66
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

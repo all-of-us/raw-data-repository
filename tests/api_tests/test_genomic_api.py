@@ -2384,7 +2384,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         bad_data_post = self.send_post(
-            local_path='IngestFromMessageBrokerDataApi',
+            local_path='IngestGenomicMessageBrokerDataApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -2400,7 +2400,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         informing_loop_post = self.send_post(
-            local_path='IngestFromMessageBrokerDataApi',
+            local_path='IngestGenomicMessageBrokerDataApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -2416,7 +2416,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         informing_loop_post_two = self.send_post(
-            local_path='IngestFromMessageBrokerDataApi',
+            local_path='IngestGenomicMessageBrokerDataApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -2432,7 +2432,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         result_viewed_post = self.send_post(
-            local_path='IngestFromMessageBrokerDataApi',
+            local_path='IngestGenomicMessageBrokerDataApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -2448,7 +2448,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         result_viewed_post = self.send_post(
-            local_path='IngestFromMessageBrokerDataApi',
+            local_path='IngestGenomicMessageBrokerDataApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),

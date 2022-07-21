@@ -1345,6 +1345,36 @@ event.listen(GenomicResultViewed, 'before_insert', model_insert_listener)
 event.listen(GenomicResultViewed, 'before_update', model_update_listener)
 
 
+class GenomicAppointmentEvent(Base):
+    """
+    Used for maintaining normalized value set of
+    appointment events ingested from MessageBrokerEventData
+    """
+
+    __tablename__ = 'genomic_appointment_event'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    message_record_id = Column(Integer)
+    participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False)
+    event_type = Column(String(256), nullable=False)
+    event_authored_time = Column(UTCDateTime6)
+    module_type = Column(String(255))
+    appointment_id = Column(Integer, nullable=False)
+    appointment_time = Column(UTCDateTime6)
+    source = Column(String(255))
+    location = Column(String(255))
+    contact_number = Column(String(255))
+    language = Column(String(255))
+    cancellation_reason = Column(String(255))
+
+
+event.listen(GenomicAppointmentEvent, 'before_insert', model_insert_listener)
+event.listen(GenomicAppointmentEvent, 'before_update', model_update_listener)
+
+
 class GenomicGcDataFile(Base):
     """
     Used for tracking genomic data files produced by the GCs

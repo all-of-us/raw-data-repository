@@ -18,6 +18,7 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
     def __init__(self):
         self.dao = MessageBrokenEventDataDao()
         self.event_type = None
+        self.genomic_ingest = GenomicIngestBrokerData()
 
     @task_auth_required
     def post(self):
@@ -82,7 +83,12 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
 
             _task = GCPCloudTask()
             _task.execute(
-                'ingest_from_message_broker_data_task',
+                'ingest_genomic_message_broker_data_task',
                 payload=payload,
                 queue='genomics'
             )
+
+
+class GenomicIngestBrokerData:
+    cloud_endpoint = None
+

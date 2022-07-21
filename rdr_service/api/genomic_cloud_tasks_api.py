@@ -376,13 +376,14 @@ class IngestDataFilesTaskApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
-class IngestFromMessageBrokerDataApi(BaseGenomicTaskApi):
+class IngestGenomicMessageBrokerDataApi(BaseGenomicTaskApi):
     """
-    Cloud Task endpoint: Ingest informing loop started/decision
-    and result_viewed from Message Broker Event Data
+    Cloud Task endpoint: Ingesting Message Broker event data
+    informing_loop(s), result_viewed, result_ready
     """
+
     def post(self):
-        super(IngestFromMessageBrokerDataApi, self).post()
+        super(IngestGenomicMessageBrokerDataApi, self).post()
 
         if not self.data.get('event_type') or not self.data.get('message_record_id'):
             logging.warning('Event type and message record id is required for ingestion from Message broker')
@@ -405,8 +406,37 @@ class IngestFromMessageBrokerDataApi(BaseGenomicTaskApi):
 
         with GenomicJobController(job_type) as controller:
             controller.ingest_records_from_message_broker_data(
-                message_record_id=self.data['message_record_id'],
+                message_record_id=self.data.get('message_record_id'),
                 event_type=event_type
+            )
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
+class IngestGenomicMessageBrokerAppointmentApi(BaseGenomicTaskApi):
+    """
+    Cloud Task endpoint: Ingesting Message Broker event data
+    appointments only
+    """
+
+    def post(self):
+        super(IngestGenomicMessageBrokerAppointmentApi, self).post()
+
+        if not self.data.get('event_type') or not self.data.get('message_record_id'):
+            logging.warning('Event type and message record id is required for ingestion from Message broker')
+
+            return {"success": False}
+
+        event_type = self.data.get('event_type')
+
+        logging.info(f'Ingesting {event_type}')
+
+        with GenomicJobController(GenomicJob.INGEST_APPOINTMENT) as controller:
+            controller.ingest_appointment_from_message_broker_data(
+                message_record_id=self.data.get('message_record_id')
             )
 
         self.create_cloud_record()
