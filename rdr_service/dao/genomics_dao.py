@@ -2881,7 +2881,8 @@ class GenomicInformingLoopDao(UpdatableDao, GenomicDaoMixin):
                 )
             ).filter(
                 GenomicInformingLoop.module_type == module,
-                later_informing_loop_decision.event_authored_time.is_(None)
+                later_informing_loop_decision.event_authored_time.is_(None),
+                GenomicInformingLoop.event_type == 'informing_loop_decision'
             )
         )
 
