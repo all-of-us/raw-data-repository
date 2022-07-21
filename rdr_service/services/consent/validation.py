@@ -254,7 +254,7 @@ class LogResultStrategy(ValidationOutputStrategy):
         self.logger.info('\n'.join(report_lines))
 
     def set_reconsented_file_as_ready(self, file: ParsingResult):
-        # Not modifying files since this is just to output data
+        # Not modifying files since this class is just meant to write logs about the files
         ...
 
     def _line_output_for_validation(self, file: ParsingResult, verbose: bool):
