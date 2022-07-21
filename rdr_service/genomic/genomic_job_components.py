@@ -17,7 +17,7 @@ from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.genomic import genomic_mappings
-from rdr_service.genomic_enums import ResultsModuleType
+from rdr_service.genomic_enums import ResultsModuleType, ResultsWorkflowState
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
@@ -1288,20 +1288,12 @@ class GenomicFileIngester:
         self.member_dao.update(member)
 
         # result workflow state
-        result_state_obj = self.results_workflow_dao.get_by_member_id(
-            member.id,
-            module_type=kwargs.get('module_type')
-        )
-        if result_state_obj:
-            new_results_state = GenomicStateHandler.get_new_state(
-                result_state_obj.results_workflow_state,
-                signal=kwargs.get('signal')
+        if kwargs.get('result_state') and kwargs.get('module_type'):
+            self.results_workflow_dao.insert_new_result_record(
+                member_id=member.id,
+                module_type=kwargs.get('module_type'),
+                state=kwargs.get('result_state')
             )
-            if new_results_state and (result_state_obj.results_workflow_state != new_results_state):
-                self.results_workflow_dao.update_results_workflow_state_record(
-                    result_state_obj,
-                    new_results_state
-                )
 
         return row_copy, member
 
@@ -1331,7 +1323,7 @@ class GenomicFileIngester:
                 self._base_cvl_ingestion(
                     row=row,
                     run_attr='cvlW2scManifestJobRunID',
-                    signal='secondary-confirmation',
+                    result_state=ResultsWorkflowState.CVL_W2SC,
                     module_type=ResultsModuleType.HDRV1
                 )
 
@@ -1351,7 +1343,7 @@ class GenomicFileIngester:
                 self._base_cvl_ingestion(
                     row=row,
                     run_attr='cvlW3nsManifestJobRunID',
-                    signal='sample-unavailable',
+                    result_state=ResultsWorkflowState.CVL_W3NS,
                     module_type=ResultsModuleType.HDRV1
                 )
 
@@ -1371,7 +1363,7 @@ class GenomicFileIngester:
                 row_copy, member = self._base_cvl_ingestion(
                     row=row,
                     run_attr='cvlW3scManifestJobRunID',
-                    signal='sample-failed',
+                    result_state=ResultsWorkflowState.CVL_W3SC,
                     module_type=ResultsModuleType.HDRV1
                 )
                 if not (row_copy and member):
@@ -1398,7 +1390,7 @@ class GenomicFileIngester:
                 row_copy, member = self._base_cvl_ingestion(
                     row=row,
                     run_attr='cvlW3ssManifestJobRunID',
-                    signal='second-sample',
+                    result_state=ResultsWorkflowState.CVL_W3SS,
                     module_type=ResultsModuleType.HDRV1
                 )
                 if not (row_copy and member):
@@ -1444,6 +1436,7 @@ class GenomicFileIngester:
                 row_copy, member = self._base_cvl_ingestion(
                                         row=row,
                                         run_attr=run_id,
+                                        result_state=ResultsWorkflowState.CVL_W4WR,
                                         module_type=module
                                     )
                 if not (row_copy and member):
@@ -1472,8 +1465,8 @@ class GenomicFileIngester:
                 row_copy, member = self._base_cvl_ingestion(
                                         row=row,
                                         run_attr=run_id,
+                                        result_state=ResultsWorkflowState.CVL_W5NF,
                                         module_type=module,
-                                        signal='sample-failed'
                                     )
                 if not (row_copy and member):
                     continue
@@ -3510,7 +3503,6 @@ class ManifestDefinitionProvider:
                 'output_filename':
                     f'{CVL_W1IL_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_'
                     f'{ResultsModuleType.HDRV1.name}_{now_formatted}.csv',
-                'signal': 'manifest-generated',
                 'query': self.query_dao.get_data_ready_for_w1il_manifest,
                 'params': {
                     'module': 'hdr',
@@ -3521,7 +3513,6 @@ class ManifestDefinitionProvider:
                 'job_run_field': 'cvlW2wJobRunId',
                 'output_filename':
                     f'{CVL_W2W_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W2W_{now_formatted}.csv',
-                'signal': 'withdrawal-manifest-generated',
                 'query': self.query_dao.get_data_ready_for_w2w_manifest,
                 'params': {
                     'cvl_id': self.cvl_site_id
@@ -3531,7 +3522,6 @@ class ManifestDefinitionProvider:
                 'job_run_field': 'cvlW3srManifestJobRunID',
                 'output_filename': f'{CVL_W3SR_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W3SR'
                                    f'_{now_formatted}.csv',
-                'signal': 'manifest-generated',
                 'query': self.query_dao.get_w3sr_records,
                 'params': {
                     'site_id': self.cvl_site_id
@@ -3723,41 +3713,14 @@ class ManifestCompiler:
                 if new_wf_state or new_wf_state != member.genomicWorkflowState:
                     self.member_dao.update_member_workflow_state(member, new_wf_state)
 
-                # result workflow state
-                cvl_manifest_w1il_map = {
-                    GenomicManifestTypes.CVL_W1IL_PGX: ResultsModuleType.PGXV1,
-                    GenomicManifestTypes.CVL_W1IL_HDR: ResultsModuleType.HDRV1
-                }
-
-                # handles transition from genomic wf state to result state in CVL pipeline
-                if cvl_manifest_w1il_map.get(manifest_type):
-                    module_type = cvl_manifest_w1il_map.get(manifest_type)
-                    result_state_obj = self.results_workflow_dao.get_by_member_id(
-                        member.id,
-                        module_type=module_type
-                    )
-                    if not result_state_obj:
-                        self.results_workflow_dao.insert_new_result_record(
-                            member.id,
-                            module_type
-                        )
-                        continue
-
-                result_state_obj = self.results_workflow_dao.get_by_member_id(
-                    member.id,
-                    module_type=ResultsModuleType.HDRV1
+            # result workflow state
+            cvl_manifest_data = CVLManifestData(manifest_type)
+            if cvl_manifest_data.is_cvl_manifest:
+                self.results_workflow_dao.insert_new_result_record(
+                    member_id=member.id,
+                    module_type=cvl_manifest_data.module_type,
+                    state=cvl_manifest_data.result_state
                 )
-                if result_state_obj:
-                    new_results_state = GenomicStateHandler.get_new_state(
-                        result_state_obj.results_workflow_state,
-                        signal=self.manifest_def.signal
-                    )
-                    if new_results_state \
-                            and (result_state_obj.results_workflow_state != new_results_state):
-                        self.results_workflow_dao.update_results_workflow_state_record(
-                            result_state_obj,
-                            new_results_state
-                        )
 
         # Updates job run field on set member
         if self.controller.member_ids_for_update:
@@ -3857,3 +3820,32 @@ class ManifestCompiler:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
+
+class CVLManifestData:
+    result_state = None
+    module_type = ResultsModuleType.HDRV1
+    is_cvl_manifest = True
+
+    def __init__(self, manifest_type: GenomicManifestTypes):
+        self.manifest_type = manifest_type
+        self.get_is_cvl_manifest()
+
+    def get_is_cvl_manifest(self):
+        if 'cvl' not in self.manifest_type.name.lower():
+            self.is_cvl_manifest = False
+            return
+
+        self.get_module_type()
+        self.get_result_state()
+
+    def get_module_type(self) -> ResultsModuleType:
+        if 'pgx' in self.manifest_type.name.lower():
+            self.module_type = ResultsModuleType.PGXV1
+        return self.module_type
+
+    def get_result_state(self) -> ResultsWorkflowState:
+        manifest_name = self.manifest_type.name.rsplit('_', 1)[0] \
+            if self.manifest_type.name.count('_') > 1 else \
+            self.manifest_type.name
+        self.result_state = ResultsWorkflowState.lookup_by_name(manifest_name)
+        return self.result_state
