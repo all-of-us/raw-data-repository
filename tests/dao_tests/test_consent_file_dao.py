@@ -97,13 +97,14 @@ class ConsentFileDaoTest(BaseTestCase):
     def test_finding_validations_needed_by_response(self):
         # Set up a pair of QuestionnaireResponses, one of which needs to be validated
         response_to_validate = self.data_generator.create_database_questionnaire_response()
-        self.session.add(ConsentResponse(response=response_to_validate))
+        self.session.add(ConsentResponse(response=response_to_validate, type=ConsentType.EHR))
 
         ignored_response = self.data_generator.create_database_questionnaire_response()
-        consent_response = ConsentResponse(response=ignored_response)
+        consent_response = ConsentResponse(response=ignored_response, type=ConsentType.PRIMARY)
         self.data_generator.create_database_consent_file(
             consent_response=consent_response,
-            participant_id=ignored_response.participantId
+            participant_id=ignored_response.participantId,
+            type=ConsentType.PRIMARY
         )
 
         self.session.commit()
