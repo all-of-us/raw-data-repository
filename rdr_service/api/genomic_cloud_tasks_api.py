@@ -425,8 +425,8 @@ class IngestGenomicMessageBrokerAppointmentApi(BaseGenomicTaskApi):
     def post(self):
         super(IngestGenomicMessageBrokerAppointmentApi, self).post()
 
-        if not self.data.get('event_type') or not self.data.get('message_record_id'):
-            logging.warning('Event type and message record id is required for ingestion from Message broker')
+        if not self.data.get('message_record_id'):
+            logging.warning('Message record id is required for appointment ingestion from Message broker')
 
             return {"success": False}
 

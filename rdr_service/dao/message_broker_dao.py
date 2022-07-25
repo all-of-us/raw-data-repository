@@ -124,4 +124,12 @@ class MessageBrokenEventDataDao(BaseDao):
                 MessageBrokerEventData.eventType == 'result_ready'
             ).all()
 
+    def get_appointment_event(self, message_record_id):
+        with self.session() as session:
+            return session.query(
+                MessageBrokerEventData
+            ).filter(
+                MessageBrokerEventData.messageRecordId == message_record_id,
+                MessageBrokerEventData.eventType.contains('appointment_')
+            ).all()
 

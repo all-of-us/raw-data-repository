@@ -444,6 +444,74 @@ class MessageBrokerApiTest(BaseTestCase):
             self.assertEqual(result.eventType, 'result_ready')
             self.assertTrue(result.fieldName in request_json_result_ready['messageBody'].keys())
 
+    @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id')
+    @mock.patch('rdr_service.message_broker.message_broker.PtscMessageBroker.send_request')
+    def test_appointment_event(self, send_request, request_origin):
+        send_request.return_value = 200, {'result': 'mocked result'}, ''
+        request_origin.return_value = 'color'
+
+        participant_one = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        event_type = 'appointment_scheduled'
+
+        from rdr_service.resource import main as resource_main
+
+        request_json_appointment_scheduled = {
+            "event": event_type,
+            "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
+            "participantId": to_client_participant_id(participant_one.participantId),
+            "messageBody": {
+                'module_type': 'hdr',
+                'id': 111,
+                'source': 'Color',
+                'appointment_timestamp': format_datetime(clock.CLOCK.now()),
+                'appointment_timezone': '-04',
+                'location': '123 address st',
+                'contact_number': '12121212',
+                'language': 'EN'
+            }
+        }
+
+        self.send_post("MessageBroker", request_json_appointment_scheduled)
+
+        records = self.record_dao.get_all()
+        record = records[0]
+        event_time = format_datetime(record.eventAuthoredTime)
+
+        payload = {
+            'id': record.id,
+            'eventType': record.eventType,
+            'eventAuthoredTime': event_time,
+            'participantId': record.participantId,
+            'requestBody': record.requestBody
+        }
+
+        self.send_post(
+            local_path='StoreMessageBrokerEventDataTaskApi',
+            request_data=payload,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        appointment_records = self.event_data_dao.get_appointment_event(
+            record.id
+        )
+
+        self.assertIsNotNone(appointment_records)
+        self.assertEqual(
+            len(appointment_records),
+            len(request_json_appointment_scheduled['messageBody'])
+        )
+
+        for result in appointment_records:
+            if result.fieldName == 'appointment_scheduled':
+                self.assertTrue(result.valueString == 'hdr_v1')
+            if result.fieldName == 'id':
+                self.assertTrue(result.valueInteger == 111)
+
+            self.assertEqual(format_datetime(result.eventAuthoredTime), event_time)
+            self.assertEqual(result.eventType, 'appointment_scheduled')
+            self.assertTrue(result.fieldName in request_json_appointment_scheduled['messageBody'].keys())
+
     @mock.patch('rdr_service.message_broker.message_broker.requests')
     def test_token_refresh_retry(self, requests_mock):
         """
