@@ -59,8 +59,8 @@ class ConsentMetricGenerator(generators.BaseGenerator):
         :param rec: A result row from ConsentMetricGenerator.get_consent_validation_records()
         :returns:  A dictionary of consent type keys and their authored date values from the result row
         """
-        # Default values, for consent_file records that were created prior to adding links to specific questionnaire
-        # response via the consent_response table
+        # Default values taken from participant_summary fields, in case the consent_file record we're generating the
+        # metric for predates the linking to a questionnaire_response_id (via the added consent_response table).
         consent_authored_values = {
             ConsentType.PRIMARY: rec.consentForStudyEnrollmentFirstYesAuthored\
                                  or rec.consentForStudyEnrollmentAuthored,
@@ -70,15 +70,13 @@ class ConsentMetricGenerator(generators.BaseGenerator):
             ConsentType.GROR: rec.consentForGenomicsRORAuthored,
             ConsentType.PRIMARY_UPDATE: rec.consentForStudyEnrollmentAuthored
         }
-        # Add values for  authored dates for consents not tracked in participant summary.  Can use the related
-        # questionnaire response authored timestamp when available
-        for c_type in [t for t in ConsentType]:
-            if rec.type == c_type:
-                default_authored = consent_authored_values[c_type]
-                consent_authored_values[c_type] = rec.questionnaire_response_authored or default_authored
+        # Add the authored value for the specific record passed, using authored time in the linked
+        # questionnaire_response record if available
+        default_authored = consent_authored_values.get(rec.type, None)
+        consent_authored_values[rec.type] = rec.questionnaire_response_authored or default_authored
 
         if not consent_authored_values[rec.type]:
-            logging.error(f'Unresolved authored timestamp for consent_file id {rec.id}')
+            logging.error(f'Unresolved {str(ConsentType(rec.type))} authored timestamp for consent_file id {rec.id}')
 
         return consent_authored_values
 
