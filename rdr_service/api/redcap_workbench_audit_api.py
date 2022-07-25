@@ -1,7 +1,7 @@
 from flask import request
 from rdr_service.api.base_api import BaseApi
 from werkzeug.exceptions import BadRequest
-from rdr_service.api_util import REDCAP
+from rdr_service.api_util import REDCAP_AND_RDR
 from rdr_service.app_util import auth_required
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchWorkspaceAuditDao
 
@@ -11,7 +11,7 @@ class BaseRedcapApi(BaseApi):
         super().__init__(WorkbenchWorkspaceAuditDao())
         self.get_filters = None
 
-    @auth_required(REDCAP)
+    @auth_required(REDCAP_AND_RDR)
     def get(self):
         get_param_config = {
             'redcapworkbenchauditapi': {
@@ -30,7 +30,7 @@ class BaseRedcapApi(BaseApi):
             get_param_config[self.__class__.__name__.lower()]
         )
 
-    @auth_required(REDCAP)
+    @auth_required(REDCAP_AND_RDR)
     def post(self):
         return super().post()
 
