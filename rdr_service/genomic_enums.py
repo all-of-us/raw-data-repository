@@ -220,6 +220,7 @@ class GenomicWorkflowState(messages.Enum):
     CVL_RPT_PENDING_DELETE = 39
     CVL_RPT_DELETED = 40
 
+
 class ResultsWorkflowState(messages.Enum):
     UNSET = 0
     CVL_W1IL = 1

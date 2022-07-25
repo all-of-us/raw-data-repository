@@ -55,7 +55,7 @@ class CodebookTestMixin:
     def setup_codes(values, code_type):
         code_dao = CodeDao()
         for value in values:
-            code_dao.insert(Code(system=PPI_SYSTEM, value=value, codeType=code_type, mapped=True))
+            code_dao.insert(Code(system=PPI_SYSTEM, value=value, display=value, codeType=code_type, mapped=True))
 
 
 class QuestionnaireTestMixin:

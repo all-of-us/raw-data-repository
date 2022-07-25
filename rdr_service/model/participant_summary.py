@@ -579,6 +579,12 @@ class ParticipantSummary(Base):
     semanticVersionForPrimaryConsent = Column("semantic_version_for_primary_consent", String(100))
     """The human readable version of primary consent the participant signed"""
 
+    reconsentForStudyEnrollmentAuthored = Column("reconsent_for_study_enrollment_authored", UTCDateTime)
+    """
+    The UTC date time of when the participant re-consented to the program
+    (if a reconsent was performed for this participant)
+    """
+
     consentForElectronicHealthRecords = Column(
         "consent_for_electronic_health_records", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
@@ -618,6 +624,15 @@ class ParticipantSummary(Base):
     """
     Indicates the time at which the participant completed an EHR consent
     which may be subject to expiration in certain states
+    """
+
+    reconsentForElectronicHealthRecordsAuthored = Column(
+        "reconsent_for_electronic_health_records_authored",
+        UTCDateTime
+    )
+    """
+    The UTC date time of when the participant re-consented for sharing electronic health records
+    (if a reconsent was performed for this participant)
     """
 
     consentForDvElectronicHealthRecordsSharing = Column(
