@@ -293,21 +293,28 @@ class WBResearcherGenerator(generators.BaseGenerator):
 
             ethnic_categories = json.loads(
                 row.dsv2_ethnic_categories if row.dsv2_ethnic_categories
-                                              and row.dsv2_ethnic_categories != 'null' else '[]')
-            data['dsv2_ethnic_category'] = [{'ethnic_category': str(WorkbenchResearcherEthnicCategory(v)),
-                                             'ethnic_category_id': int(WorkbenchResearcherEthnicCategory(v))} for v in
-                                            ethnic_categories]
+                                              and row.dsv2_ethnic_categories != 'null' else '[]'
+            )
+            data['dsv2_ethnic_category'] = [
+                {
+                    'dsv2_ethnic_category': str(WorkbenchResearcherEthnicCategory(v)),
+                    'dsv2_ethnic_category_id': int(WorkbenchResearcherEthnicCategory(v))
+                } for v in ethnic_categories
+            ]
 
             data['dsv2_ethnicity_aian_other'] = 1 if row.dsv2_ethnicity_aian_other else 0
             data['dsv2_ethnicity_asian_other'] = 1 if row.dsv2_ethnicity_asian_other else 0
             data['dsv2_ethnicity_other'] = 1 if row.dsv2_ethnicity_other else 0
 
-            gender_identity = json.loads(
+            gender_identities = json.loads(
                 row.dsv2_gender_identities if row.dsv2_gender_identities
                                               and row.dsv2_gender_identities != 'null' else '[]')
-            data['dsv2_gender_identity'] = [{'gender_identity': str(WorkbenchResearcherGenderIdentity(v)),
-                                             'gender_identity_id': int(WorkbenchResearcherGenderIdentity(v))} for v in
-                                            gender_identity]
+            data['dsv2_gender_identity'] = [
+                {
+                    'dsv2_gender_identity': str(WorkbenchResearcherGenderIdentity(v)),
+                    'dsv2_gender_identity_id': int(WorkbenchResearcherGenderIdentity(v))
+                } for v in gender_identities
+            ]
 
             data['dsv2_gender_other'] = 1 if row.dsv2_gender_other else 0
             data['dsv2_orientation_other'] = 1 if row.dsv2_orientation_other else 0
@@ -320,10 +327,12 @@ class WBResearcherGenerator(generators.BaseGenerator):
             sexual_orientation = json.loads(
                 row.dsv2_sexual_orientations if row.dsv2_sexual_orientations
                                                 and row.dsv2_sexual_orientations != 'null' else '[]')
-            data['dsv2_sexual_orientation'] = [{'sexual_orientation': str(WorkbenchResearcherSexualOrientationV2(v)),
-                                                'sexual_orientation_id': int(
-                                                    WorkbenchResearcherSexualOrientationV2(v))} for v in
-                                               sexual_orientation]
+            data['dsv2_sexual_orientation'] = [
+                {
+                    'dsv2_sexual_orientation': str(WorkbenchResearcherSexualOrientationV2(v)),
+                    'dsv2_sexual_orientation_id': int(WorkbenchResearcherSexualOrientationV2(v))
+                } for v in sexual_orientation
+            ]
 
             data['dsv2_year_of_birth'] = row.dsv2_year_of_birth
             data['dsv2_year_of_birth_prefer_not'] = row.dsv2_year_of_birth_prefer_not
