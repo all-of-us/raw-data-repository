@@ -117,7 +117,6 @@ class GenomicSetDao(UpdatableDao, GenomicDaoMixin):
 
     def __init__(self):
         super(GenomicSetDao, self).__init__(GenomicSet, order_by_ending=["id"])
-        self.member_dao = GenomicSetMemberDao()
 
     def get_id(self, obj):
         return obj.id
@@ -1221,19 +1220,16 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
     """ Stub for GenomicJobRun model """
-
-    def from_client_json(self):
-        """As of 2019-11-15 There is no API requirement"""
-        pass
-
     validate_version_match = False
 
     def __init__(self):
         super(GenomicJobRunDao, self).__init__(GenomicJobRun, order_by_ending=['id'])
-        self.member_dao = GenomicSetMemberDao()
 
     def get_id(self, obj):
         return obj.id
+
+    def from_client_json(self):
+        pass
 
     def get_last_successful_runtime(self, job_id):
         with self.session() as session:
@@ -1296,19 +1292,17 @@ class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
 class GenomicFileProcessedDao(UpdatableDao, GenomicDaoMixin):
     """ Stub for GenomicFileProcessed model """
 
-    def from_client_json(self):
-        """As of 2019-11-15 There is no API requirement"""
-        pass
-
     validate_version_match = False
 
     def __init__(self):
         super(GenomicFileProcessedDao, self).__init__(
             GenomicFileProcessed, order_by_ending=['id'])
-        self.member_dao = GenomicSetMemberDao()
 
     def get_id(self, obj):
         return obj.id
+
+    def from_client_json(self):
+        pass
 
     def get_record_from_filename(self, file_name):
         with self.session() as session:
@@ -1487,7 +1481,6 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicGCValidationMetricsDao, self).__init__(
             GenomicGCValidationMetrics, order_by_ending=['id'])
-        self.member_dao = GenomicSetMemberDao()
 
         self.data_mappings = {
             'genomicSetMemberId': 'member_id',

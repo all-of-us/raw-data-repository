@@ -52,7 +52,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicSetDao,
     UserEventMetricsDao,
     GenomicResultViewedDao,
-    GenomicQueriesDao, GenomicMemberReportStateDao
+    GenomicQueriesDao, GenomicMemberReportStateDao, GenomicAppointmentEventDao
 )
 from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
@@ -109,6 +109,7 @@ class GenomicJobController:
         self.informing_loop_dao = GenomicInformingLoopDao()
         self.result_viewed_dao = GenomicResultViewedDao()
         self.report_state_dao = GenomicMemberReportStateDao()
+        self.appointment_dao = GenomicAppointmentEventDao()
         self.missing_files_dao = GenomicGcDataFileMissingDao()
         self.message_broker_event_dao = MessageBrokenEventDataDao()
         self.event_dao = UserEventMetricsDao()
@@ -428,7 +429,7 @@ class GenomicJobController:
         except RuntimeError:
             logging.warning('Inserting data file failure')
 
-    def ingest_records_from_message_broker_data(self, *, message_record_id, event_type):
+    def ingest_records_from_message_broker_data(self, *, message_record_id: int, event_type: str):
 
         def _set_module_type(records):
             mod_type = [obj for obj in records if obj.fieldName in ['module_type', 'result_type'] and obj.valueString]
@@ -628,8 +629,15 @@ class GenomicJobController:
             self.report_state_dao.insert(report_obj)
             self.job_result = GenomicSubProcessResult.SUCCESS
 
-    def ingest_appointment_from_message_broker_data(self, message_record_id):
-        pass
+    def ingest_appointment_from_message_broker_data(self, message_record_id: int):
+        appointment_records = self.message_broker_event_dao.get_result_ready(
+            message_record_id
+        )
+        if not appointment_records:
+            logging.warning(f'Cannot find appointment records in message record id: '
+                            f'{message_record_id}')
+            self.job_result = GenomicSubProcessResult.NO_RESULTS
+            return
 
     def accession_data_files(self, file_path, bucket_name):
         data_file_dao = GenomicGcDataFileDao()
