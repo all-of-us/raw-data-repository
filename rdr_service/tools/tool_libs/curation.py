@@ -209,7 +209,7 @@ class CurationExportClass(ToolBase):
     def export_survey_conduct(self):
         export_sql = self._render_export_select(
             export_sql=f"""
-                SELECT qr.questionaire_response_id survey_conduct_id,
+                SELECT qr.questionnaire_response_id survey_conduct_id,
                         p.participant_id person_id,
                         voc_c.concept_id survey_concept_id,
                         mc.code_id survey_source_concept_id,
@@ -261,7 +261,7 @@ class CurationExportClass(ToolBase):
             ]
         )
         export_name = 'survey_conduct'
-        cloud_file = f'gs://{self.args.export_path}/{export_name}.csv'
+        cloud_file = f'{self.args.export_path}/{export_name}.csv'
 
         _logger.info(f'exporting {export_name}')
         gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
