@@ -199,7 +199,8 @@ class ManifestGeneratorTool(ToolBase):
 
 def output_local_csv(filename, data):
     # Create output path if it doesn't exist
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    if os.path.dirname(filename):
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
 
     with open(filename, 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=[k for k in data[0]])
