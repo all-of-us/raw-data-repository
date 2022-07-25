@@ -2881,7 +2881,8 @@ class GenomicInformingLoopDao(UpdatableDao, GenomicDaoMixin):
                 )
             ).filter(
                 GenomicInformingLoop.module_type == module,
-                later_informing_loop_decision.event_authored_time.is_(None)
+                later_informing_loop_decision.event_authored_time.is_(None),
+                GenomicInformingLoop.event_type == 'informing_loop_decision'
             )
         )
 
@@ -3314,8 +3315,7 @@ class GenomicCVLAnalysisDao(UpdatableDao):
             ).one_or_none()
 
 
-class GenomicResultWorkflowStateDao(UpdatableDao):
-    validate_version_match = False
+class GenomicResultWorkflowStateDao(BaseDao):
 
     def __init__(self):
         super(GenomicResultWorkflowStateDao, self).__init__(
@@ -3325,7 +3325,7 @@ class GenomicResultWorkflowStateDao(UpdatableDao):
         pass
 
     def get_id(self, obj):
-        return obj.id
+        pass
 
     def get_by_member_id(self, member_id, module_type=None):
         with self.session() as session:
@@ -3343,7 +3343,7 @@ class GenomicResultWorkflowStateDao(UpdatableDao):
 
             return records
 
-    def insert_new_result_record(self, member_id, module_type, state=None):
+    def insert_new_result_record(self, *, member_id, module_type, state=None):
         inserted_state = ResultsWorkflowState.CVL_W1IL if not state else state
         self.insert(GenomicResultWorkflowState(
             genomic_set_member_id=member_id,
@@ -3352,11 +3352,6 @@ class GenomicResultWorkflowStateDao(UpdatableDao):
             results_module=module_type,
             results_module_str=module_type.name
         ))
-
-    def update_results_workflow_state_record(self, obj, new_state):
-        obj.results_workflow_state = new_state
-        obj.results_workflow_state_str = new_state.name
-        self.update(obj)
 
 
 class GenomicQueriesDao(BaseDao):
