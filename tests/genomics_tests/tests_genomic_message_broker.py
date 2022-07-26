@@ -1,6 +1,7 @@
 import datetime
 
 from rdr_service import clock
+from rdr_service.dao.database_utils import format_datetime
 from rdr_service.dao.genomics_dao import GenomicInformingLoopDao, GenomicResultViewedDao, GenomicMemberReportStateDao, \
     GenomicJobRunDao, GenomicAppointmentEventDao
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
@@ -527,6 +528,107 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
         # check for correct report state
         self.assertEqual(result_ready_genomic_record.genomic_report_state, GenomicReportState.PGX_RPT_READY)
         self.assertEqual(result_ready_genomic_record.genomic_report_state_str, GenomicReportState.PGX_RPT_READY.name)
+
+    def test_appointment_event_ingestion_message_broker(self):
+        scheduled_event_type = 'appointment_scheduled'
+        cancelled_event_type = 'appointment_cancelled'
+        participant = self.data_generator.create_database_participant()
+        appointment_id = 111
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        sample_id = '2222222'
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            sampleId=sample_id,
+            participantId=participant.participantId,
+            biobankId="1",
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.AW0
+        )
+
+        message_broker_record = self.data_generator.create_database_message_broker_record(
+            participantId=participant.participantId,
+            eventType=scheduled_event_type,
+            eventAuthoredTime=clock.CLOCK.now(),
+            messageOrigin='example@example.com',
+            requestBody={
+                'module_type': 'hdr',
+                'id': appointment_id,
+                'source': 'Color',
+                'appointment_timestamp': format_datetime(clock.CLOCK.now()),
+                'appointment_timezone': '-04',
+                'location': '123 address st',
+                'contact_number': '12121212',
+                'language': 'EN'
+            },
+            requestTime=clock.CLOCK.now(),
+            responseError='',
+            responseCode='200',
+            responseTime=clock.CLOCK.now()
+        )
+
+        for key, value in message_broker_record.requestBody.items():
+            self.data_generator.create_database_message_broker_event_data(
+                participantId=message_broker_record.participantId,
+                messageRecordId=message_broker_record.id,
+                eventType=message_broker_record.eventType,
+                eventAuthoredTime=message_broker_record.eventAuthoredTime,
+                fieldName=key,
+                valueString=value if key not in ['id', 'appointment_timestamp'] else None,
+                valueInteger=value if key == 'id' else None,
+                valueDatetime=value if key == 'appointment_timestamp' else None
+            )
+
+        with GenomicJobController(GenomicJob.INGEST_APPOINTMENT) as controller:
+            controller.ingest_records_from_message_broker_data(
+                message_record_id=message_broker_record.id,
+                event_type=scheduled_event_type
+            )
+
+        # current_appointment_data = self.appointment_dao.get_all()
+
+        # cancelled records
+        message_broker_record = self.data_generator.create_database_message_broker_record(
+            participantId=participant.participantId,
+            eventType=cancelled_event_type,
+            eventAuthoredTime=clock.CLOCK.now(),
+            messageOrigin='example@example.com',
+            requestBody={
+                'module_type': 'hdr',
+                'id': appointment_id,
+                'source': 'Color',
+                'reason': 'participant_initiated'
+            },
+            requestTime=clock.CLOCK.now(),
+            responseError='',
+            responseCode='200',
+            responseTime=clock.CLOCK.now()
+        )
+
+        for key, value in message_broker_record.requestBody.items():
+            self.data_generator.create_database_message_broker_event_data(
+                participantId=message_broker_record.participantId,
+                messageRecordId=message_broker_record.id,
+                eventType=message_broker_record.eventType,
+                eventAuthoredTime=message_broker_record.eventAuthoredTime,
+                fieldName=key,
+                valueString=value if key != 'id' else None,
+                valueInteger=value if key == 'id' else None,
+            )
+
+        with GenomicJobController(GenomicJob.INGEST_APPOINTMENT) as controller:
+            controller.ingest_records_from_message_broker_data(
+                message_record_id=message_broker_record.id,
+                event_type=cancelled_event_type
+            )
+
+        # current_appointment_data = self.appointment_dao.get_all()
 
     def test_no_records_from_message_broker_task(self):
         no_records_result = GenomicSubProcessResult.NO_RESULTS

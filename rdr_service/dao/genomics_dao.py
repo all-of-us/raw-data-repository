@@ -117,6 +117,7 @@ class GenomicSetDao(UpdatableDao, GenomicDaoMixin):
 
     def __init__(self):
         super(GenomicSetDao, self).__init__(GenomicSet, order_by_ending=["id"])
+        self.member_dao = GenomicSetMemberDao()
 
     def get_id(self, obj):
         return obj.id
@@ -1224,6 +1225,7 @@ class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
 
     def __init__(self):
         super(GenomicJobRunDao, self).__init__(GenomicJobRun, order_by_ending=['id'])
+        self.member_dao = GenomicSetMemberDao()
 
     def get_id(self, obj):
         return obj.id
@@ -1297,6 +1299,7 @@ class GenomicFileProcessedDao(UpdatableDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicFileProcessedDao, self).__init__(
             GenomicFileProcessed, order_by_ending=['id'])
+        self.member_dao = GenomicSetMemberDao()
 
     def get_id(self, obj):
         return obj.id
@@ -1471,16 +1474,12 @@ class GenomicFileProcessedDao(UpdatableDao, GenomicDaoMixin):
 
 class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
     """ Stub for GenomicGCValidationMetrics model """
-
-    def from_client_json(self):
-        """As of 2019-11-15 There is no API requirement"""
-        pass
-
     validate_version_match = False
 
     def __init__(self):
         super(GenomicGCValidationMetricsDao, self).__init__(
             GenomicGCValidationMetrics, order_by_ending=['id'])
+        self.member_dao = GenomicSetMemberDao()
 
         self.data_mappings = {
             'genomicSetMemberId': 'member_id',
@@ -1527,6 +1526,9 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
 
     def get_id(self, obj):
         return obj.id
+
+    def from_client_json(self):
+        pass
 
     def upsert_gc_validation_metrics_from_dict(self, data_to_upsert, existing_id=None):
         """

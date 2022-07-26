@@ -3,6 +3,7 @@ This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
 import logging
 from datetime import datetime, timedelta
+from typing import List
 
 import pytz
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
@@ -54,6 +55,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicResultViewedDao,
     GenomicQueriesDao, GenomicMemberReportStateDao, GenomicAppointmentEventDao
 )
+from rdr_service.model.message_broker import MessageBrokerEventData
 from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
 
@@ -477,7 +479,7 @@ class GenomicJobController:
                 logging.warning(f'Cannot set report state type: message record{records[0].messageRecordId}: {e}')
                 return report_state
 
-        if 'informing_loop' in event_type:
+        if self.job_id == GenomicJob.INGEST_INFORMING_LOOP:
             loop_type = event_type
             informing_loop_records = self.message_broker_event_dao.get_informing_loop(
                 message_record_id,
@@ -504,13 +506,14 @@ class GenomicJobController:
                 participant_id=first_record.participantId,
                 genome_type=_set_genome_type(module_type)
             )
-            decision_value = [obj for obj in informing_loop_records if obj.fieldName == 'decision_value' and
-                              obj.valueString]
             if not member:
                 logging.warning(f'Cannot find member for informing loop insert: '
-                                f'{informing_loop_records[0].messageRecordId}')
+                                f'{first_record.messageRecordId}')
                 self.job_result = GenomicSubProcessResult.ERROR
                 return
+
+            decision_value = [obj for obj in informing_loop_records if obj.fieldName == 'decision_value' and
+                              obj.valueString]
 
             loop_obj = self.informing_loop_dao.model_type(
                 participant_id=first_record.participantId,
@@ -525,7 +528,7 @@ class GenomicJobController:
             self.informing_loop_dao.insert(loop_obj)
             self.job_result = GenomicSubProcessResult.SUCCESS
 
-        elif 'result_viewed' in event_type:
+        elif self.job_id == GenomicJob.INGEST_RESULT_VIEWED:
             result_viewed_records = self.message_broker_event_dao.get_result_viewed(
                 message_record_id
             )
@@ -557,7 +560,7 @@ class GenomicJobController:
 
             if not member:
                 logging.warning(f'Cannot find member for result viewed insert: '
-                                f'{result_viewed_records[0].messageRecordId}')
+                                f'{first_record.messageRecordId}')
                 self.job_result = GenomicSubProcessResult.ERROR
                 return
 
@@ -581,7 +584,7 @@ class GenomicJobController:
 
             self.job_result = GenomicSubProcessResult.SUCCESS
 
-        elif 'result_ready' in event_type:
+        elif self.job_id == GenomicJob.INGEST_RESULT_READY:
             result_ready_records = self.message_broker_event_dao.get_result_ready(
                 message_record_id
             )
@@ -609,7 +612,7 @@ class GenomicJobController:
 
             if not member:
                 logging.warning(f'Cannot find member for result ready insert: '
-                                f'{result_ready_records[0].messageRecordId}')
+                                f'{first_record.messageRecordId}')
                 self.job_result = GenomicSubProcessResult.ERROR
                 return
 
@@ -629,15 +632,65 @@ class GenomicJobController:
             self.report_state_dao.insert(report_obj)
             self.job_result = GenomicSubProcessResult.SUCCESS
 
-    def ingest_appointment_from_message_broker_data(self, message_record_id: int):
-        appointment_records = self.message_broker_event_dao.get_result_ready(
-            message_record_id
-        )
-        if not appointment_records:
-            logging.warning(f'Cannot find appointment records in message record id: '
-                            f'{message_record_id}')
-            self.job_result = GenomicSubProcessResult.NO_RESULTS
-            return
+        elif self.job_id == GenomicJob.INGEST_APPOINTMENT:
+
+            def _parse_appointment_values(obj: MessageBrokerEventData, field: str, values: List[str]):
+                value = [getattr(obj, key) for key in values if getattr(obj, key) is not None]
+                if obj.fieldName.lower() == field and value:
+                    return value[0]
+                return None
+
+            appointment_records = self.message_broker_event_dao.get_appointment_event(
+                message_record_id
+            )
+
+            if not appointment_records:
+                logging.warning(f'Cannot find appointment records in message record id: '
+                                f'{message_record_id}')
+                self.job_result = GenomicSubProcessResult.NO_RESULTS
+                return
+
+            module_type = _set_module_type(appointment_records)
+            if not module_type:
+                logging.warning(f'Cannot find module type in message record id: '
+                                f'{appointment_records[0].messageRecordId}')
+                self.job_result = GenomicSubProcessResult.ERROR
+                return
+
+            first_record = appointment_records[0]
+            logging.info(f'Inserting appointment event for Participant: {first_record.participantId}')
+
+            member = self.member_dao.get_member_by_participant_id(
+                participant_id=first_record.participantId,
+                genome_type=_set_genome_type(module_type)
+            )
+
+            if not member:
+                logging.warning(f'Cannot find member for appointment event insert: '
+                                f'{first_record.messageRecordId}')
+                self.job_result = GenomicSubProcessResult.ERROR
+                return
+
+            attribute_values = [key for key in first_record.asdict().keys() if 'value' in key]
+            appointment_id = list(filter(lambda x: x.fieldName == 'id', appointment_records))[0]
+            for record in appointment_records:
+                report_obj = self.appointment_dao.model_type(
+                    message_record_id=message_record_id,
+                    participant_id=member.participantId,
+                    event_type=event_type,
+                    event_authored_time=first_record.eventAuthoredTime,
+                    module_type=module_type,
+                    appointment_id=appointment_id.valueInteger,
+                    source=_parse_appointment_values(record, 'source', attribute_values),
+                    location=_parse_appointment_values(record, 'location', attribute_values),
+                    contact_number=_parse_appointment_values(record, 'contact_number', attribute_values),
+                    language=_parse_appointment_values(record, 'language', attribute_values),
+                    cancellation_reason=_parse_appointment_values(record, 'reason', attribute_values)
+                )
+
+                self.appointment_dao.insert(report_obj)
+
+            self.job_result = GenomicSubProcessResult.SUCCESS
 
     def accession_data_files(self, file_path, bucket_name):
         data_file_dao = GenomicGcDataFileDao()

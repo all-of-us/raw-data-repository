@@ -426,7 +426,7 @@ class IngestGenomicMessageBrokerAppointmentApi(BaseGenomicTaskApi):
         super(IngestGenomicMessageBrokerAppointmentApi, self).post()
 
         if not self.data.get('message_record_id'):
-            logging.warning('Message record id is required for appointment ingestion from Message broker')
+            logging.warning('Event type and message record id is required for ingestion from Message broker')
 
             return {"success": False}
 
@@ -435,8 +435,9 @@ class IngestGenomicMessageBrokerAppointmentApi(BaseGenomicTaskApi):
         logging.info(f'Ingesting {event_type}')
 
         with GenomicJobController(GenomicJob.INGEST_APPOINTMENT) as controller:
-            controller.ingest_appointment_from_message_broker_data(
-                message_record_id=self.data.get('message_record_id')
+            controller.ingest_records_from_message_broker_data(
+                message_record_id=self.data.get('message_record_id'),
+                event_type=event_type
             )
 
         self.create_cloud_record()

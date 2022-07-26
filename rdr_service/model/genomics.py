@@ -1353,8 +1353,7 @@ class GenomicAppointmentEvent(Base):
 
     __tablename__ = 'genomic_appointment_event'
 
-    id = Column(Integer,
-                primary_key=True, autoincrement=True, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     created = Column(DateTime)
     modified = Column(DateTime)
     message_record_id = Column(Integer)

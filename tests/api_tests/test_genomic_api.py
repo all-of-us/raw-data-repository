@@ -2459,7 +2459,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(ingest_called.call_count, 4)
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController'
-                '.ingest_appointment_from_message_broker_data')
+                '.ingest_records_from_message_broker_data')
     def test_ingest_message_broker_ingest_appointment_api(self, ingest_called):
 
         from rdr_service.resource import main as resource_main
