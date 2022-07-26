@@ -10,6 +10,7 @@ from tests.helpers.unittest_base import BaseTestCase
 from rdr_service import config
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType, ConsentOtherErrors
+from rdr_service.model.consent_response import ConsentResponse
 import rdr_service.resource.generators
 
 class ConsentMetricGeneratorTest(BaseTestCase):
@@ -578,6 +579,51 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
         # Confirm the consent_metric PDR data generator flagged the test participant
         self.assertTrue(resource_data.get('test_participant'))
+
+    def test_consent_metrics_wear_no_authored(self):
+        """ consent metric record will be missing authored date if the consent_response value is null """
+        # Create a test participant and a consent_file record for them
+        test_hpo = self.data_generator.create_database_hpo(hpoId=2000, name='TEST')
+        participant = self._create_participant_with_all_consents_authored(
+            consentForStudyEnrollmentFirstYesAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
+            consentForStudyEnrollmentAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
+            dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
+            hpoId=test_hpo.hpoId
+        )
+        consent_file_rec = self.data_generator.create_database_consent_file(
+            type=ConsentType.WEAR,
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC,
+            participant_id=participant.participantId,
+            expected_sign_date=date(year=2022, month=1, day=1),
+            file_exists=1,
+            is_signature_valid=1,
+            is_signing_date_valid=1
+        )
+        self.assertIsNotNone(consent_file_rec.id)
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
+        # Confirm no default authored timestamp is available
+        self.assertIsNone(resource_data.get('consent_authored_date'))
+
+    def test_consent_metric_authored_from_questionnaire_response(self):
+        """ Confirm consent_metric record gets authored time from related questionnaire_response record """
+        # Set up a QuestionnaireResponses, with a specific authored date
+        test_authored_date = datetime(year=2022, month=6, day=1)
+        response_to_validate = self.data_generator.create_database_questionnaire_response(authored=test_authored_date)
+
+        # Create the related consent_response and consent_file entries
+        consent_response = ConsentResponse(response=response_to_validate)
+        self.session.add(ConsentResponse(response=response_to_validate))
+        consent_file_rec = self.data_generator.create_database_consent_file(
+            consent_response=consent_response,
+            type=1,
+            sync_status=1,
+            file_exists=0,
+            participant_id=response_to_validate.participantId
+        )
+        self.session.commit()
+
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
+        self.assertEqual(resource_data.get('consent_authored_date'), datetime.date(test_authored_date))
 
     @mock.patch('rdr_service.services.email_service.EmailService.send_email')
     def test_consent_error_report_email_generation(self, email_mock):

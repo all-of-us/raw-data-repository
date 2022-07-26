@@ -76,7 +76,12 @@ _consent_module_question_map = {
     'cope_feb': 'section_participation',
     'GeneticAncestry': 'GeneticAncestry_ConsentAncestryTraits',
     'covid_19_serology_results': 'covid_19_serology_results_decision',
-    'wear_consent': 'resultsconsent_wear'
+    'wear_consent': 'resultsconsent_wear',
+    # Reconsent modules for cases where participant may not have initially completed the expected VA vs. Non-VA version
+    'vaprimaryreconsent_c1_2': 'vaprimaryreconsent_c1_2_agree',
+    'vaprimaryreconsent_c3': 'vaprimaryreconsent_c3_agree',
+    'vaehrreconsent': 'vaehrreconsent_agree',
+    'nonvaprimaryreconsent': 'nonvaprimaryreconsent_agree'
 }
 
 # _consent_expired_question_map, for expired consents. { module: question code string }
@@ -112,6 +117,10 @@ _consent_answer_status_map = {
     'Decision_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     'WEAR_Yes': BQModuleStatusEnum.SUBMITTED,
     'WEAR_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    # VA/Non-VA reconsent modules consent answer options (note:  agree_no is defined but may not be transmitted to RDR,
+    # participants who decline reconsent may be updated to withdrawn status by PTSC instead)
+    'agree_yes': BQModuleStatusEnum.SUBMITTED,
+    'agree_no': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
 }
 
 # PDR-252:  When RDR starts accepting QuestionnaireResponse payloads for withdrawal screens, AIAN participants
