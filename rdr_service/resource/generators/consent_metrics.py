@@ -59,7 +59,8 @@ class ConsentMetricGenerator(generators.BaseGenerator):
         :param rec: A result row from ConsentMetricGenerator.get_consent_validation_records()
         :returns:  A dictionary of consent type keys and their authored date values from the result row
         """
-        # Default values are from participant_summary
+        # Default values taken from participant_summary fields, in case the consent_file record we're generating the
+        # metric for predates the linking to a questionnaire_response_id (via the added consent_response table).
         consent_authored_values = {
             ConsentType.PRIMARY: rec.consentForStudyEnrollmentFirstYesAuthored\
                                  or rec.consentForStudyEnrollmentAuthored,
@@ -67,29 +68,15 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                              or rec.consentForElectronicHealthRecordsAuthored,
             ConsentType.CABOR: rec.consentForCABoRAuthored,
             ConsentType.GROR: rec.consentForGenomicsRORAuthored,
-            ConsentType.PRIMARY_UPDATE: rec.consentForStudyEnrollmentAuthored,
-            ConsentType.WEAR: None   # Should be resolved below, is not part of ParticipantSummary joined fields
+            ConsentType.PRIMARY_UPDATE: rec.consentForStudyEnrollmentAuthored
         }
-        # For validation records that were created after introduction of the ConsentResponse relationship, go
-        # directly to the QuestionnaireResponse to get the authored time
-        authored_result = None
-        if rec.consent_response_id:
-            dao = ResourceDataDao(backup=True)
-            with dao.session() as session:
-                query = session.query(
-                    QuestionnaireResponse.authored
-                ).select_from(ConsentResponse).join(QuestionnaireResponse
-                ).filter(ConsentResponse.id == rec.consent_response_id)
+        # Add the authored value for the specific record passed, using authored time in the linked
+        # questionnaire_response record if available
+        default_authored = consent_authored_values.get(rec.type, None)
+        consent_authored_values[rec.type] = rec.questionnaire_response_authored or default_authored
 
-                authored_result = query.first()
-
-        if authored_result:
-            consent_authored_values[rec.type] = authored_result.authored
-
-        # Defensive check, mostly for WEAR consents if something went wrong resolving the authored time.  Purposely
-        # allow the metrics generation to try and continue
         if not consent_authored_values[rec.type]:
-            logging.error(f'Unresolved authored timestamp for consent_file id {rec.id}')
+            logging.error(f'Unresolved {str(ConsentType(rec.type))} authored timestamp for consent_file id {rec.id}')
 
         return consent_authored_values
 
@@ -293,8 +280,11 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                 'ignore': False
         }
 
-        # Look up the specific authored timestamp associated with this consent
-        authored_ts_from_row = ConsentMetricGenerator._get_authored_timestamps(row).get(consent_type, None)
+        # The record/row will have a questionnaire_response_authored value if there was a related consent_response entry
+        # (true for more recently created consent_file records in RDR).  Otherwise, use the pre-fetched timestamps
+        # from participant_summary to find the one associated with this consent type.
+        authored_ts_from_row = row.questionnaire_response_authored or \
+                               ConsentMetricGenerator._get_authored_timestamps(row).get(consent_type, None)
         if authored_ts_from_row:
             data['consent_authored_date'] = authored_ts_from_row.date()
 
@@ -380,6 +370,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                                   ConsentFile.file_upload_time,
                                   ConsentFile.consent_response_id,
                                   ConsentFile.consent_error_report,
+                                  QuestionnaireResponse.authored.label('questionnaire_response_authored'),
                                   ParticipantSummary.dateOfBirth,
                                   ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored,
                                   ParticipantSummary.consentForStudyEnrollmentAuthored,
@@ -394,9 +385,12 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                                   HPO.name.label('hpo_name'),
                                   Organization.organizationId,
                                   Organization.displayName.label('organization_name'))\
+                .select_from(ConsentFile).outerjoin(ConsentResponse)\
                 .outerjoin(ConsentErrorReport, ConsentFile.id == ConsentErrorReport.consent_file_id)\
-                .outerjoin(ParticipantSummary, ParticipantSummary.participantId == ConsentFile.participant_id)\
-                .outerjoin(Participant, Participant.participantId == ConsentFile.participant_id) \
+                .outerjoin(ParticipantSummary, ConsentFile.participant_id == ParticipantSummary.participantId)\
+                .outerjoin(Participant, ConsentFile.participant_id == Participant.participantId)\
+                .outerjoin(QuestionnaireResponse,
+                           QuestionnaireResponse.questionnaireResponseId == ConsentResponse.questionnaire_response_id) \
                 .outerjoin(HPO, HPO.hpoId == Participant.hpoId)\
                 .outerjoin(Organization, Participant.organizationId == Organization.organizationId)
 
