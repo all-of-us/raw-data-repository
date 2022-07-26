@@ -634,9 +634,9 @@ class GenomicJobController:
 
         elif self.job_id == GenomicJob.INGEST_APPOINTMENT:
 
-            def _parse_appointment_values(obj: MessageBrokerEventData, field: str, values: List[str]):
+            def _parse_appointment_values(obj: MessageBrokerEventData, message_broker_field: str, values: List[str]):
                 value = [getattr(obj, key) for key in values if getattr(obj, key) is not None]
-                if obj.fieldName.lower() == field and value:
+                if obj.fieldName.lower() == message_broker_field and value:
                     return value[0]
                 return None
 
@@ -681,6 +681,7 @@ class GenomicJobController:
                     event_authored_time=first_record.eventAuthoredTime,
                     module_type=module_type,
                     appointment_id=appointment_id.valueInteger,
+                    appointment_time=_parse_appointment_values(record, 'appointment_timestamp', attribute_values),
                     source=_parse_appointment_values(record, 'source', attribute_values),
                     location=_parse_appointment_values(record, 'location', attribute_values),
                     contact_number=_parse_appointment_values(record, 'contact_number', attribute_values),

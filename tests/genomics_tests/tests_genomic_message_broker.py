@@ -562,7 +562,6 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
                 'id': appointment_id,
                 'source': 'Color',
                 'appointment_timestamp': format_datetime(clock.CLOCK.now()),
-                'appointment_timezone': '-04',
                 'location': '123 address st',
                 'contact_number': '12121212',
                 'language': 'EN'
@@ -591,9 +590,30 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
                 event_type=scheduled_event_type
             )
 
-        # current_appointment_data = self.appointment_dao.get_all()
+        current_appointment_data = self.appointment_dao.get_all()
 
-        # cancelled records
+        # record for each line in message body
+        self.assertEqual(len(current_appointment_data), len(message_broker_record.requestBody))
+
+        # should be in every record
+        self.assertTrue(all(obj.appointment_id == appointment_id for obj in current_appointment_data))
+        self.assertTrue(all(obj.message_record_id == message_broker_record.id for obj in current_appointment_data))
+        self.assertTrue(all(obj.module_type == 'hdr' for obj in current_appointment_data))
+        self.assertTrue(all(obj.participant_id == participant.participantId for obj in current_appointment_data))
+        self.assertTrue(all(obj.event_type == scheduled_event_type for obj in current_appointment_data))
+        self.assertTrue(all(obj.event_authored_time is not None for obj in current_appointment_data))
+
+        # should be in some record(s)
+        self.assertTrue(any(obj.source is not None for obj in current_appointment_data))
+        self.assertTrue(any(obj.appointment_time is not None for obj in current_appointment_data))
+        self.assertTrue(any(obj.location is not None for obj in current_appointment_data))
+        self.assertTrue(any(obj.contact_number is not None for obj in current_appointment_data))
+        self.assertTrue(any(obj.language is not None for obj in current_appointment_data))
+
+        # should be None for all
+        self.assertTrue(all(obj.cancellation_reason is None for obj in current_appointment_data))
+
+        # cancelled records, same appointment_id : id
         message_broker_record = self.data_generator.create_database_message_broker_record(
             participantId=participant.participantId,
             eventType=cancelled_event_type,
@@ -628,7 +648,27 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
                 event_type=cancelled_event_type
             )
 
-        # current_appointment_data = self.appointment_dao.get_all()
+        current_appointment_data = self.appointment_dao.get_all()
+        current_appointment_data = list(filter(lambda x: x.message_record_id == message_broker_record.id,
+                                               current_appointment_data))
+
+        # record for each line in message body
+        self.assertEqual(len(current_appointment_data), len(message_broker_record.requestBody))
+
+        # should be in every record
+        self.assertTrue(all(obj.appointment_id == appointment_id for obj in current_appointment_data))
+        self.assertTrue(all(obj.message_record_id == message_broker_record.id for obj in current_appointment_data))
+        self.assertTrue(all(obj.module_type == 'hdr' for obj in current_appointment_data))
+        self.assertTrue(all(obj.participant_id == participant.participantId for obj in current_appointment_data))
+        self.assertTrue(all(obj.event_type == cancelled_event_type for obj in current_appointment_data))
+        self.assertTrue(all(obj.event_authored_time is not None for obj in current_appointment_data))
+
+        # should be in some record(s)
+        self.assertTrue(any(obj.source is not None for obj in current_appointment_data))
+        self.assertTrue(any(obj.cancellation_reason is not None for obj in current_appointment_data))
+
+        self.assertTrue(obj.cancellation_reason == message_broker_record.requestBody['reason'] for obj in
+                        current_appointment_data if obj.cancellation_reason is not None)
 
     def test_no_records_from_message_broker_task(self):
         no_records_result = GenomicSubProcessResult.NO_RESULTS
@@ -670,8 +710,9 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
         self.assertTrue(current_job_run.runResult == no_records_result)
 
         with GenomicJobController(GenomicJob.INGEST_APPOINTMENT) as controller:
-            controller.ingest_appointment_from_message_broker_data(
-                message_record_id=1
+            controller.ingest_records_from_message_broker_data(
+                message_record_id=1,
+                event_type='appointment_scheduled'
             )
 
         all_job_runs = self.job_run_dao.get_all()
