@@ -386,7 +386,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                                   Organization.organizationId,
                                   Organization.displayName.label('organization_name'))\
                 .select_from(ConsentFile).outerjoin(ConsentResponse)\
-                .outerjoin(ConsentErrorReport, ConsentResponse.id == ConsentErrorReport.consent_file_id)\
+                .outerjoin(ConsentErrorReport, ConsentFile.id == ConsentErrorReport.consent_file_id)\
                 .outerjoin(ParticipantSummary, ConsentFile.participant_id == ParticipantSummary.participantId)\
                 .outerjoin(Participant, ConsentFile.participant_id == Participant.participantId)\
                 .outerjoin(QuestionnaireResponse,
