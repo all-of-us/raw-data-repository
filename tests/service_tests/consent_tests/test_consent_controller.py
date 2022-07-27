@@ -4,7 +4,7 @@ from typing import List
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.model.consent_file import ConsentFile, ConsentType, ConsentSyncStatus
+from rdr_service.model.consent_file import ConsentFile, ConsentOtherErrors, ConsentType, ConsentSyncStatus
 from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
@@ -142,6 +142,31 @@ class ConsentControllerTest(BaseTestCase):
         # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
         # values from the expected_updates list
         self.assertDispatchRebuildConsentMetricsCalled([ehr_file.id, gror_file.id])
+
+    @mock.patch('rdr_service.dao.consent_dao.ConsentDao.get_files_for_participant')
+    def test_finding_reconsented_files(self, get_files_mock):
+        original_file = ConsentFile(
+            is_signature_valid=True,
+            is_signing_date_valid=True,
+            other_errors=ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN
+        )
+        unsigned_file = ConsentFile(
+            is_signature_valid=False,
+            is_signing_date_valid=True,
+            other_errors=ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN
+        )
+        get_files_mock.return_value = [unsigned_file, original_file]
+
+        retrieved_file = self.consent_controller._find_original_file_for_reconsent(
+            reconsent_type=ConsentType.EHR_RECONSENT,
+            participant_id=1234
+        )
+        self.assertEqual(original_file, retrieved_file)
+        get_files_mock.assert_called_with(
+            participant_id=1234,
+            consent_type=ConsentType.EHR,
+            session=mock.ANY
+        )
 
     def assertDispatchRebuildConsentMetricsCalled(self, expected_id_list, call_count=1, call_number=1):
         """

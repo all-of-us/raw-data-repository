@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Collection, Dict, List
+from typing import Collection, Dict, List, Optional
 
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import aliased, joinedload, Session
@@ -232,6 +232,22 @@ class ConsentDao(BaseDao):
                 )
         else:
             return self._get_ready_to_sync_with_session(session=session, org_names=org_names, hpo_names=hpo_names)
+
+    @classmethod
+    def get_files_for_participant(cls, participant_id: int, session: Session,
+                                  consent_type: Optional[ConsentType] = None) -> List[ConsentFile]:
+        query = (
+            session.query(ConsentFile)
+            .filter(
+                ConsentFile.participant_id == participant_id
+            )
+        )
+        if consent_type:
+            query = query.filter(
+                ConsentFile.type == consent_type
+            )
+
+        return query.all()
 
     @classmethod
     def set_previously_synced_files_as_ready(cls, session: Session, participant_id: int):

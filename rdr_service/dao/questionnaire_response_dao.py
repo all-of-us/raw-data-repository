@@ -1009,8 +1009,10 @@ class QuestionnaireResponseDao(BaseDao):
                     [VA_PRIMARY_RECONSENT_C1_C2, VA_PRIMARY_RECONSENT_C3, NON_VA_PRIMARY_RECONSENT]
                 ):
                     self.consents_provided.append(ConsentType.PRIMARY_RECONSENT)
+                    participant_summary.reconsentForStudyEnrollmentAuthored = authored
                 elif self._code_in_list(code.value, [VA_EHR_RECONSENT]):
                     self.consents_provided.append(ConsentType.EHR_RECONSENT)
+                    participant_summary.reconsentForElectronicHealthRecordsAuthored = authored
 
         if module_changed:
             participant_summary.numCompletedBaselinePPIModules = count_completed_baseline_ppi_modules(
