@@ -52,7 +52,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicSetDao,
     UserEventMetricsDao,
     GenomicResultViewedDao,
-    GenomicQueriesDao, GenomicMemberReportStateDao
+    GenomicQueriesDao, GenomicMemberReportStateDao,
+    GenomicCVLResultPastDueDao
 )
 from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
@@ -107,6 +108,7 @@ class GenomicJobController:
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.member_dao = GenomicSetMemberDao()
         self.informing_loop_dao = GenomicInformingLoopDao()
+        self.cvl_result_past_due_dao = GenomicCVLResultPastDueDao
         self.result_viewed_dao = GenomicResultViewedDao()
         self.report_state_dao = GenomicMemberReportStateDao()
         self.missing_files_dao = GenomicGcDataFileMissingDao()
@@ -866,7 +868,8 @@ class GenomicJobController:
             self.metrics_dao,
             self.manifest_file_dao,
             self.manifest_feedback_dao,
-            self.informing_loop_dao
+            self.informing_loop_dao,
+            self.cvl_result_past_due_dao
         ]
 
         for dao in reconcile_daos:
