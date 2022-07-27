@@ -223,9 +223,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
 
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary['selfReportedPhysicalMeasurementsStatus'], 'COMPLETED')
-        #self.assertEqual(summary['clinicPhysicalMeasurementsCollectType'], 'SELF_REPORTED')
         self.assertEqual(summary['selfReportedPhysicalMeasurementsAuthored'], '2022-06-01T18:23:57')
-        #self.assertEqual(summary['clinicPhysicalMeasurementsTime'], '2016-01-02T00:00:00')
         self.assertEqual(summary["enrollmentStatus"], 'FULL_PARTICIPANT')
 
         response = self.send_get("Participant/{0}/PhysicalMeasurements".format(participant_id))
