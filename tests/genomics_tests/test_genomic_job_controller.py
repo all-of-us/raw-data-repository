@@ -5,7 +5,7 @@ from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
-    GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao, GenomicCVLResultPastDueDao
+    GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao
 
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult, \
@@ -498,6 +498,15 @@ class GenomicJobControllerTest(BaseTestCase):
                     decision_value='maybe_later',
                     event_authored_time=clock.CLOCK.now()
                 )
+
+                self.data_generator.create_database_genomic_cvl_past_due(
+                    cvl_site_id='co',
+                    email_notification_sent=0,
+                    sample_id='sample_test',
+                    results_type='hdr',
+                    genomic_set_member_id=gen_member.id
+                )
+
         # gets new records that were created with last job run from above
         with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
             controller.reconcile_pdr_data()
@@ -510,7 +519,8 @@ class GenomicJobControllerTest(BaseTestCase):
             'genomic_gc_validation_metrics',
             'genomic_manifest_file',
             'genomic_manifest_feedback',
-            'genomic_informing_loop'
+            'genomic_informing_loop',
+            'genomic_cvl_results_past_due'
         ]
 
         num_calls = len(affected_tables) + 1
