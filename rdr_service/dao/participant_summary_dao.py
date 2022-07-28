@@ -126,8 +126,8 @@ _ENROLLMENT_STATUS_CASE_SQL = """
                         (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
                        )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
-                   AND (clinic_physical_measurements_status != :completed
-                   OR self_reported_physical_measurements_status != :completed)
+                   AND clinic_physical_measurements_status != :completed
+                   AND self_reported_physical_measurements_status != :completed
                    AND samples_to_isolate_dna = :received) OR
                   (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :unset
@@ -137,6 +137,7 @@ _ENROLLMENT_STATUS_CASE_SQL = """
                        )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND clinic_physical_measurements_status != :completed
+                   AND self_reported_physical_measurements_status != :completed
                    AND samples_to_isolate_dna = :received)
              THEN :core_minus_pm
              WHEN (consent_for_study_enrollment = :submitted
