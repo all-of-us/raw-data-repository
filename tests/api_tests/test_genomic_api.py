@@ -2384,7 +2384,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         bad_data_post = self.send_post(
-            local_path='IngestFromMessageBrokerDataApi',
+            local_path='IngestGenomicMessageBrokerDataApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -2400,7 +2400,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         informing_loop_post = self.send_post(
-            local_path='IngestFromMessageBrokerDataApi',
+            local_path='IngestGenomicMessageBrokerDataApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -2416,7 +2416,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         informing_loop_post_two = self.send_post(
-            local_path='IngestFromMessageBrokerDataApi',
+            local_path='IngestGenomicMessageBrokerDataApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -2432,7 +2432,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         result_viewed_post = self.send_post(
-            local_path='IngestFromMessageBrokerDataApi',
+            local_path='IngestGenomicMessageBrokerDataApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -2448,7 +2448,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         result_viewed_post = self.send_post(
-            local_path='IngestFromMessageBrokerDataApi',
+            local_path='IngestGenomicMessageBrokerDataApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -2457,6 +2457,42 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertIsNotNone(result_viewed_post)
         self.assertEqual(result_viewed_post['success'], True)
         self.assertEqual(ingest_called.call_count, 4)
+
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController'
+                '.ingest_records_from_message_broker_data')
+    def test_ingest_message_broker_ingest_appointment_api(self, ingest_called):
+
+        from rdr_service.resource import main as resource_main
+
+        data = {
+            'message_record_id': [],
+        }
+
+        bad_data_post = self.send_post(
+            local_path='IngestGenomicMessageBrokerAppointmentApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(bad_data_post)
+        self.assertEqual(bad_data_post['success'], False)
+        self.assertEqual(ingest_called.call_count, 0)
+
+        data = {
+            'message_record_id': 2,
+        }
+
+        appointment_post = self.send_post(
+            local_path='IngestGenomicMessageBrokerAppointmentApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(appointment_post)
+        self.assertEqual(appointment_post['success'], True)
+        self.assertEqual(ingest_called.call_count, 1)
 
     def test_batch_data_file_task_api(self):
 

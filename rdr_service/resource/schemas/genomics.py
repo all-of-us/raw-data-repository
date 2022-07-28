@@ -400,3 +400,4 @@ class GenomicCVLResultPastDueSchema(Schema):
         resource_pk_field = 'id'
         pii_fields = ()  # List fields that contain PII data.
         pii_filter = {}  # dict(field: lambda function)
+

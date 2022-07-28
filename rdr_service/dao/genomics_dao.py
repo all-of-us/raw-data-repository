@@ -45,7 +45,7 @@ from rdr_service.model.genomics import (
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
-    GenomicSampleSwap)
+    GenomicSampleSwap, GenomicAppointmentEvent)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -1221,11 +1221,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
     """ Stub for GenomicJobRun model """
-
-    def from_client_json(self):
-        """As of 2019-11-15 There is no API requirement"""
-        pass
-
     validate_version_match = False
 
     def __init__(self):
@@ -1234,6 +1229,9 @@ class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
 
     def get_id(self, obj):
         return obj.id
+
+    def from_client_json(self):
+        pass
 
     def get_last_successful_runtime(self, job_id):
         with self.session() as session:
@@ -1296,10 +1294,6 @@ class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
 class GenomicFileProcessedDao(UpdatableDao, GenomicDaoMixin):
     """ Stub for GenomicFileProcessed model """
 
-    def from_client_json(self):
-        """As of 2019-11-15 There is no API requirement"""
-        pass
-
     validate_version_match = False
 
     def __init__(self):
@@ -1309,6 +1303,9 @@ class GenomicFileProcessedDao(UpdatableDao, GenomicDaoMixin):
 
     def get_id(self, obj):
         return obj.id
+
+    def from_client_json(self):
+        pass
 
     def get_record_from_filename(self, file_name):
         with self.session() as session:
@@ -1477,11 +1474,6 @@ class GenomicFileProcessedDao(UpdatableDao, GenomicDaoMixin):
 
 class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
     """ Stub for GenomicGCValidationMetrics model """
-
-    def from_client_json(self):
-        """As of 2019-11-15 There is no API requirement"""
-        pass
-
     validate_version_match = False
 
     def __init__(self):
@@ -1534,6 +1526,9 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
 
     def get_id(self, obj):
         return obj.id
+
+    def from_client_json(self):
+        pass
 
     def upsert_gc_validation_metrics_from_dict(self, data_to_upsert, existing_id=None):
         """
@@ -2948,6 +2943,19 @@ class GenomicResultViewedDao(UpdatableDao):
                 GenomicResultViewed.participant_id == pid,
                 GenomicResultViewed.module_type == module
             ).one_or_none()
+
+
+class GenomicAppointmentEventDao(BaseDao):
+
+    def __init__(self):
+        super(GenomicAppointmentEventDao, self).__init__(
+            GenomicAppointmentEvent, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
 
 
 class GenomicGcDataFileDao(BaseDao):
