@@ -763,6 +763,10 @@ class DataGenerator:
         self._commit_to_database(result_viewed)
         return result_viewed
 
+    @staticmethod
+    def _genomic_result_workflow_state(**kwargs):
+        return GenomicResultWorkflowState(**kwargs)
+
     def create_database_genomic_result_workflow_state(self, **kwargs):
         m = self._genomic_result_workflow_state(**kwargs)
         self._commit_to_database(m)
@@ -785,10 +789,6 @@ class DataGenerator:
         m = self._genomic_datagen_manifest_schema(**kwargs)
         self._commit_to_database(m)
         return m
-
-    @staticmethod
-    def _genomic_result_workflow_state(**kwargs):
-        return GenomicResultWorkflowState(**kwargs)
 
     def create_database_genomic_cvl_analysis(self, **kwargs):
         m = self._genomic_cvl_analysis(**kwargs)
