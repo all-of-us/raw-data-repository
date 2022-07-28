@@ -86,7 +86,7 @@ class WorkbenchResearcherBase(object):
                            default=WorkbenchResearcherEducationV2.UNSET)
     dsv2Disadvantaged = Column("dsv2_disadvantaged", Enum(WorkbenchResearcherYesNoPreferNot),
                                default=WorkbenchResearcherYesNoPreferNot.UNSET)
-    dsv2SurveyComments = Column("dsv2_survey_comments", String(200))
+    dsv2SurveyComments = Column("dsv2_survey_comments", String(1000))
 
     resource = Column("resource", BlobUTF8, nullable=False)
     """The resource payload"""
