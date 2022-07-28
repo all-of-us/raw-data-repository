@@ -3,7 +3,6 @@ This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
 import logging
 from datetime import datetime, timedelta
-from typing import List
 
 import pytz
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
@@ -487,8 +486,13 @@ class GenomicJobController:
             )
 
             if not informing_loop_records:
-                logging.warning(f'Cannot find loop records in message record id: '
-                                f'{message_record_id}')
+                self.create_incident(
+                    source_job_run_id=self.job_run.id,
+                    code=GenomicIncidentCode.UNABLE_TO_RESOLVE_MESSAGE_BROKER_RECORD.name,
+                    message=f'Cannot find informing loop records in message_record_id: '
+                            f'{message_record_id}',
+                    slack=True
+                )
                 self.job_result = GenomicSubProcessResult.NO_RESULTS
                 return
 
@@ -534,8 +538,13 @@ class GenomicJobController:
             )
 
             if not result_viewed_records:
-                logging.warning(f'Cannot find result viewed records in message record id: '
-                                f'{message_record_id}')
+                self.create_incident(
+                    source_job_run_id=self.job_run.id,
+                    code=GenomicIncidentCode.UNABLE_TO_RESOLVE_MESSAGE_BROKER_RECORD.name,
+                    message=f'Cannot find result viewed records in message_record_id: '
+                            f'{message_record_id}',
+                    slack=True
+                )
                 self.job_result = GenomicSubProcessResult.NO_RESULTS
                 return
 
@@ -590,8 +599,13 @@ class GenomicJobController:
             )
 
             if not result_ready_records:
-                logging.warning(f'Cannot find result ready records in message record id: '
-                                f'{message_record_id}')
+                self.create_incident(
+                    source_job_run_id=self.job_run.id,
+                    code=GenomicIncidentCode.UNABLE_TO_RESOLVE_MESSAGE_BROKER_RECORD.name,
+                    message=f'Cannot find result ready records in message_record_id: '
+                            f'{message_record_id}',
+                    slack=True
+                )
                 self.job_result = GenomicSubProcessResult.NO_RESULTS
                 return
 
@@ -634,8 +648,9 @@ class GenomicJobController:
 
         elif self.job_id == GenomicJob.INGEST_APPOINTMENT:
 
-            def _parse_appointment_values(obj: MessageBrokerEventData, message_broker_field: str, values: List[str]):
-                value = [getattr(obj, key) for key in values if getattr(obj, key) is not None]
+            def _parse_appointment_values(obj: MessageBrokerEventData, message_broker_field: str):
+                nonlocal attribute_values
+                value = [getattr(obj, key) for key in attribute_values if getattr(obj, key) is not None]
                 if obj.fieldName.lower() == message_broker_field and value:
                     return value[0]
                 return None
@@ -645,8 +660,13 @@ class GenomicJobController:
             )
 
             if not appointment_records:
-                logging.warning(f'Cannot find appointment records in message record id: '
-                                f'{message_record_id}')
+                self.create_incident(
+                    source_job_run_id=self.job_run.id,
+                    code=GenomicIncidentCode.UNABLE_TO_RESOLVE_MESSAGE_BROKER_RECORD.name,
+                    message=f'Cannot find appointment records in message_record_id: '
+                            f'{message_record_id}',
+                    slack=True
+                )
                 self.job_result = GenomicSubProcessResult.NO_RESULTS
                 return
 
@@ -681,12 +701,12 @@ class GenomicJobController:
                     event_authored_time=first_record.eventAuthoredTime,
                     module_type=module_type,
                     appointment_id=appointment_id.valueInteger,
-                    appointment_time=_parse_appointment_values(record, 'appointment_timestamp', attribute_values),
-                    source=_parse_appointment_values(record, 'source', attribute_values),
-                    location=_parse_appointment_values(record, 'location', attribute_values),
-                    contact_number=_parse_appointment_values(record, 'contact_number', attribute_values),
-                    language=_parse_appointment_values(record, 'language', attribute_values),
-                    cancellation_reason=_parse_appointment_values(record, 'reason', attribute_values)
+                    appointment_time=_parse_appointment_values(record, 'appointment_timestamp'),
+                    source=_parse_appointment_values(record, 'source'),
+                    location=_parse_appointment_values(record, 'location'),
+                    contact_number=_parse_appointment_values(record, 'contact_number'),
+                    language=_parse_appointment_values(record, 'language'),
+                    cancellation_reason=_parse_appointment_values(record, 'reason')
                 )
 
                 self.appointment_dao.insert(report_obj)

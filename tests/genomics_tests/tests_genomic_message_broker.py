@@ -1,11 +1,13 @@
 import datetime
+from unittest import mock
 
 from rdr_service import clock
 from rdr_service.dao.database_utils import format_datetime
 from rdr_service.dao.genomics_dao import GenomicInformingLoopDao, GenomicResultViewedDao, GenomicMemberReportStateDao, \
     GenomicJobRunDao, GenomicAppointmentEventDao
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
-from rdr_service.genomic_enums import GenomicWorkflowState, GenomicJob, GenomicReportState, GenomicSubProcessResult
+from rdr_service.genomic_enums import GenomicWorkflowState, GenomicJob, GenomicReportState, GenomicSubProcessResult, \
+    GenomicIncidentCode
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -670,53 +672,38 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
         self.assertTrue(obj.cancellation_reason == message_broker_record.requestBody['reason'] for obj in
                         current_appointment_data if obj.cancellation_reason is not None)
 
-    def test_no_records_from_message_broker_task(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.create_incident')
+    def test_no_records_from_message_broker_task(self, incident_called):
         no_records_result = GenomicSubProcessResult.NO_RESULTS
+        missing_record = GenomicIncidentCode.UNABLE_TO_RESOLVE_MESSAGE_BROKER_RECORD.name
 
-        with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP) as controller:
-            controller.ingest_records_from_message_broker_data(
-                message_record_id=1,
-                event_type='informing_loop_decision'
-            )
+        ingest_jobs_map = {
+            GenomicJob.INGEST_INFORMING_LOOP: 'informing_loop_decision',
+            GenomicJob.INGEST_RESULT_VIEWED: 'result_viewed',
+            GenomicJob.INGEST_RESULT_READY: 'result_ready',
+            GenomicJob.INGEST_APPOINTMENT: 'appointment_scheduled'
+        }
 
-        all_job_runs = self.job_run_dao.get_all()
-        current_job_run = list(filter(lambda x: x.jobId == GenomicJob.INGEST_INFORMING_LOOP, all_job_runs))[0]
+        for ingest_job, event_type in ingest_jobs_map.items():
+            with GenomicJobController(ingest_job) as controller:
+                controller.ingest_records_from_message_broker_data(
+                    message_record_id=1,
+                    event_type=event_type
+                )
 
-        self.assertIsNotNone(current_job_run)
-        self.assertTrue(current_job_run.runResult == no_records_result)
+            all_job_runs = self.job_run_dao.get_all()
+            current_job_run = list(filter(lambda x: x.jobId == ingest_job, all_job_runs))[0]
 
-        with GenomicJobController(GenomicJob.INGEST_RESULT_VIEWED) as controller:
-            controller.ingest_records_from_message_broker_data(
-                message_record_id=1,
-                event_type='result_viewed'
-            )
+            self.assertIsNotNone(current_job_run)
+            self.assertTrue(current_job_run.runResult == no_records_result)
 
-        all_job_runs = self.job_run_dao.get_all()
-        current_job_run = list(filter(lambda x: x.jobId == GenomicJob.INGEST_RESULT_VIEWED, all_job_runs))[0]
+        ingest_incidents = []
+        for obj in incident_called.call_args_list:
+            if obj[1]['code'] == missing_record:
+                ingest_incidents.append(obj[1])
 
-        self.assertIsNotNone(current_job_run)
-        self.assertTrue(current_job_run.runResult == no_records_result)
+        self.assertTrue(len(ingest_jobs_map.keys()), len(ingest_incidents))
+        self.assertTrue(all(obj['slack'] is True for obj in ingest_incidents))
 
-        with GenomicJobController(GenomicJob.INGEST_RESULT_READY) as controller:
-            controller.ingest_records_from_message_broker_data(
-                message_record_id=1,
-                event_type='result_ready'
-            )
 
-        all_job_runs = self.job_run_dao.get_all()
-        current_job_run = list(filter(lambda x: x.jobId == GenomicJob.INGEST_RESULT_READY, all_job_runs))[0]
 
-        self.assertIsNotNone(current_job_run)
-        self.assertTrue(current_job_run.runResult == no_records_result)
-
-        with GenomicJobController(GenomicJob.INGEST_APPOINTMENT) as controller:
-            controller.ingest_records_from_message_broker_data(
-                message_record_id=1,
-                event_type='appointment_scheduled'
-            )
-
-        all_job_runs = self.job_run_dao.get_all()
-        current_job_run = list(filter(lambda x: x.jobId == GenomicJob.INGEST_APPOINTMENT, all_job_runs))[0]
-
-        self.assertIsNotNone(current_job_run)
-        self.assertTrue(current_job_run.runResult == no_records_result)

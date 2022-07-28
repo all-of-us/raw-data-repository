@@ -336,6 +336,7 @@ class GenomicIncidentCode(messages.Enum):
     FILE_VALIDATION_FAILED_VALUES = 9
     FILE_VALIDATION_INVALID_FILE_NAME = 10
     INFORMING_LOOP_TO_EVENTS_MISMATCH = 11
+    UNABLE_TO_RESOLVE_MESSAGE_BROKER_RECORD = 12
 
 
 class GenomicIncidentStatus(messages.Enum):
