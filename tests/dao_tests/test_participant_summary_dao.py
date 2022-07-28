@@ -23,6 +23,7 @@ from rdr_service.participant_enums import (
     PhysicalMeasurementsStatus,
     QuestionnaireStatus,
     SampleStatus,
+    SelfReportedPhysicalMeasurementsStatus
 )
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from tests.test_data import load_measurement_json
@@ -434,43 +435,49 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(
             EnrollmentStatus.FULL_PARTICIPANT,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED,
+                SelfReportedPhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
                 ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.MEMBER,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES - 1, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                True, NUM_BASELINE_PPI_MODULES - 1, PhysicalMeasurementsStatus.COMPLETED,
+                SelfReportedPhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
                 ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.CORE_MINUS_PM,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.UNSET, SampleStatus.RECEIVED,
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.UNSET,
+                SelfReportedPhysicalMeasurementsStatus.UNSET, SampleStatus.RECEIVED,
                 ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.MEMBER,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.UNSET,
-                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED,
+                SelfReportedPhysicalMeasurementsStatus.COMPLETED, SampleStatus.UNSET, ParticipantCohort.COHORT_1,
+                QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.INTERESTED,
             self.dao.calculate_enrollment_status(
-                False, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                False, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED,
+                SelfReportedPhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
                 ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.MEMBER,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
-                ParticipantCohort.COHORT_3, QuestionnaireStatus.UNSET
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED,
+                SelfReportedPhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED, ParticipantCohort.COHORT_3,
+                QuestionnaireStatus.UNSET
             ),
             "Cohort 3 participants with all other requirements but without GROR consent"
             "are not full participants [DA-1623]"
@@ -478,18 +485,53 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(
             EnrollmentStatus.FULL_PARTICIPANT,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
-                ParticipantCohort.COHORT_3, QuestionnaireStatus.SUBMITTED
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED,
+                SelfReportedPhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED, ParticipantCohort.COHORT_3,
+                QuestionnaireStatus.SUBMITTED
             ),
             "Cohort 3 participants with GROR consent and all other requirements are full participants [DA-1623]"
         )
         self.assertEqual(
             EnrollmentStatus.FULL_PARTICIPANT,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
-                ParticipantCohort.COHORT_2, QuestionnaireStatus.UNSET
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED,
+                SelfReportedPhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED, ParticipantCohort.COHORT_2,
+                QuestionnaireStatus.UNSET
             ),
             "Participants that are not in cohort 3 participants can be full participants without GROR consent [DA-1623]"
+        )
+        # Check only one of clinic or self reported physical measurements required
+        self.assertEqual(
+            EnrollmentStatus.FULL_PARTICIPANT,
+            self.dao.calculate_enrollment_status(
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.UNSET,
+                SelfReportedPhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
+            ),
+        )
+        self.assertEqual(
+            EnrollmentStatus.FULL_PARTICIPANT,
+            self.dao.calculate_enrollment_status(
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED,
+                SelfReportedPhysicalMeasurementsStatus.UNSET, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
+            ),
+        )
+        self.assertEqual(
+            EnrollmentStatus.MEMBER,
+            self.dao.calculate_enrollment_status(
+                True, NUM_BASELINE_PPI_MODULES - 1, PhysicalMeasurementsStatus.UNSET,
+                SelfReportedPhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
+            ),
+        )
+        self.assertEqual(
+            EnrollmentStatus.MEMBER,
+            self.dao.calculate_enrollment_status(
+                True, NUM_BASELINE_PPI_MODULES - 1, PhysicalMeasurementsStatus.COMPLETED,
+                SelfReportedPhysicalMeasurementsStatus.UNSET, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
+            ),
         )
 
     def testUpdateEnrollmentStatus(self):
@@ -515,7 +557,8 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
             numCompletedBaselinePPIModules=NUM_BASELINE_PPI_MODULES,
             samplesToIsolateDNA=SampleStatus.RECEIVED,
-            physicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
+            clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
+            selfReportedPhysicalMeasurementsStatus=SelfReportedPhysicalMeasurementsStatus.UNSET,
             enrollmentStatus=EnrollmentStatus.MEMBER,
             sampleStatus2ED10Time=sample_time
         )
@@ -523,7 +566,47 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(EnrollmentStatus.CORE_MINUS_PM, summary.enrollmentStatus)
         self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
 
-        summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+        summary.clinicPhysicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+        self.dao.update_enrollment_status(summary)
+        self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, summary.enrollmentStatus)
+        self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
+        # calculate again, enrollmentStatusCoreMinusPMTime should still there
+        self.dao.update_enrollment_status(summary)
+        self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
+
+    def testUpdateEnrollmentStatusSelfReportedPm(self):
+        ehr_consent_authored_time = datetime.datetime(2018, 3, 1)
+        summary = ParticipantSummary(
+            participantId=1,
+            biobankId=2,
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
+            enrollmentStatus=EnrollmentStatus.INTERESTED,
+        )
+        self.dao.update_enrollment_status(summary)
+        self.assertEqual(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
+        self.assertEqual(ehr_consent_authored_time, summary.enrollmentStatusMemberTime)
+
+        sample_time = datetime.datetime(2019, 3, 1)
+        summary = ParticipantSummary(
+            participantId=1,
+            biobankId=2,
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
+            numCompletedBaselinePPIModules=NUM_BASELINE_PPI_MODULES,
+            samplesToIsolateDNA=SampleStatus.RECEIVED,
+            clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
+            selfReportedPhysicalMeasurementsStatus=SelfReportedPhysicalMeasurementsStatus.UNSET,
+            enrollmentStatus=EnrollmentStatus.MEMBER,
+            sampleStatus2ED10Time=sample_time
+        )
+        self.dao.update_enrollment_status(summary)
+        self.assertEqual(EnrollmentStatus.CORE_MINUS_PM, summary.enrollmentStatus)
+        self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
+
+        summary.selfReportedPhysicalMeasurementsStatus = SelfReportedPhysicalMeasurementsStatus.COMPLETED
         self.dao.update_enrollment_status(summary)
         self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, summary.enrollmentStatus)
         self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
@@ -542,7 +625,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
             numCompletedBaselinePPIModules=NUM_BASELINE_PPI_MODULES,
             samplesToIsolateDNA=SampleStatus.RECEIVED,
-            physicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
+            clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
             enrollmentStatus=EnrollmentStatus.MEMBER,
             sampleStatus2ED10Time=sample_time
         )
@@ -558,7 +641,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
             numCompletedBaselinePPIModules=NUM_BASELINE_PPI_MODULES,
             samplesToIsolateDNA=SampleStatus.RECEIVED,
-            physicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
+            clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
             enrollmentStatus=EnrollmentStatus.CORE_MINUS_PM,
             sampleStatus2ED10Time=sample_time
         )
@@ -589,7 +672,47 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             summary.lastModified = test_dt
             summary.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED
             summary.consentForElectronicHealthRecords = QuestionnaireStatus.SUBMITTED
-            summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+            summary.clinicPhysicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+            summary.samplesToIsolateDNA = SampleStatus.RECEIVED
+            self.dao.update(summary)
+
+        ## Test Step 1: Validate update_from_biobank_stored_samples() changes lastModified.
+        reset_summary()
+
+        # Update and reload summary record
+        self.dao.update_from_biobank_stored_samples(participant_id=participant.participantId)
+        summary = self.dao.get(participant.participantId)
+
+        # Test that status has changed and lastModified is also different
+        self.assertEqual(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
+        self.assertNotEqual(test_dt, summary.lastModified)
+
+        ## Test Step 2: Validate that update_enrollment_status() changes the lastModified property.
+        reset_summary()
+        summary = self.dao.get(participant.participantId)
+
+        self.assertEqual(test_dt, summary.lastModified)
+
+        # update_enrollment_status() does not touch the db, it only modifies object properties.
+        self.dao.update_enrollment_status(summary)
+
+        self.assertEqual(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
+        self.assertNotEqual(test_dt, summary.lastModified)
+
+    def testUpdateEnrollmentStatusLastModifiedSelfReportedPm(self):
+        """DA-631: enrollment_status update should update last_modified."""
+        participant = self._insert(Participant(participantId=6, biobankId=66))
+        # collect current modified and enrollment status
+        summary = self.dao.get(participant.participantId)
+        test_dt = datetime.datetime(2018, 11, 1)
+
+        def reset_summary():
+            # change summary so enrollment status will be changed from INTERESTED to MEMBER.
+            summary.enrollmentStatus = EnrollmentStatus.INTERESTED
+            summary.lastModified = test_dt
+            summary.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED
+            summary.consentForElectronicHealthRecords = QuestionnaireStatus.SUBMITTED
+            summary.selfReportedPhysicalMeasurementsStatus = SelfReportedPhysicalMeasurementsStatus.COMPLETED
             summary.samplesToIsolateDNA = SampleStatus.RECEIVED
             self.dao.update(summary)
 

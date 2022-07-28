@@ -20,7 +20,8 @@ from rdr_service.field_mappings import (
 from rdr_service.model.base import get_column_name
 from rdr_service.model.code import CodeType
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, SampleStatus
+from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, SampleStatus, \
+    SelfReportedPhysicalMeasurementsStatus
 
 PARTICIPANT_KIND = "Participant"
 FULL_PARTICIPANT_KIND = "FullParticipant"
@@ -29,6 +30,7 @@ CENSUS_REGION_METRIC = "censusRegion"
 BIOSPECIMEN_METRIC = "biospecimen"
 BIOSPECIMEN_SAMPLES_METRIC = "biospecimenSamples"
 PHYSICAL_MEASUREMENTS_METRIC = "physicalMeasurements"
+SELF_REPORTED_PHYSICAL_MEASUREMENTS_METRIC = "selfReportedPhysicalMeasurements"
 RACE_METRIC = "race"
 AGE_RANGE_METRIC = "ageRange"
 SAMPLES_TO_ISOLATE_DNA_METRIC = "samplesToIsolateDNA"
@@ -98,9 +100,13 @@ def _enrollment_status(summary):
     consent = summary.get(CONSENT_FOR_STUDY_ENROLLMENT_AND_EHR_METRIC) == SUBMITTED_VALUE
     num_completed_baseline_ppi_modules = summary.get(NUM_COMPLETED_BASELINE_PPI_MODULES_METRIC)
     physical_measurements = PhysicalMeasurementsStatus(summary.get(PHYSICAL_MEASUREMENTS_METRIC))
+    self_reported_physical_measurements = SelfReportedPhysicalMeasurementsStatus(summary.get(
+        SELF_REPORTED_PHYSICAL_MEASUREMENTS_METRIC
+    ))
     samples_to_isolate_dna = SampleStatus(summary.get(SAMPLES_TO_ISOLATE_DNA_METRIC))
     return ps_dao.calculate_enrollment_status(
-        consent, num_completed_baseline_ppi_modules, physical_measurements, samples_to_isolate_dna
+        consent, num_completed_baseline_ppi_modules, physical_measurements, self_reported_physical_measurements,
+        samples_to_isolate_dna
     )
 
 

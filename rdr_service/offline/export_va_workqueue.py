@@ -425,9 +425,10 @@ def generate_workqueue_report():
                            _export_datetime(participant_filtered.get("questionnaireOnCopeDecAuthored")),
                            participant_filtered.get("site", "").replace("hpo-site-", ""),
                            participant_filtered.get("organization", ""),
-                           PHYSICAL_MEASUREMENTS.get(participant_filtered.get("physicalMeasurementsStatus")),
-                           _export_date(participant_filtered.get("physicalMeasurementsFinalizedTime")),
-                           participant_filtered.get("physicalMeasurementsFinalizedSite", "").replace("hpo-site-", ""),
+                           PHYSICAL_MEASUREMENTS.get(participant_filtered.get("clinicPhysicalMeasurementsStatus")),
+                           _export_date(participant_filtered.get("clinicPhysicalMeasurementsFinalizedTime")),
+                           participant_filtered.get("clinicPhysicalMeasurementsFinalizedSite", "").replace(
+                               "hpo-site-", ""),
                            SAMPLE_STATUS.get(participant_filtered.get("samplesToIsolateDNA", "UNSET")),
                            participant_filtered.get("numBaselineSamplesArrived", ""),
                            participant_filtered.get("biospecimenSourceSite", "").replace("hpo-site-", ""),

@@ -60,7 +60,8 @@ participant_summary_default_values = {
     "numBaselineSamplesArrived": 0,
     "numCompletedPPIModules": 1,
     "numCompletedBaselinePPIModules": 1,
-    "physicalMeasurementsStatus": "UNSET",
+    "clinicPhysicalMeasurementsStatus": "UNSET",
+    "selfReportedPhysicalMeasurementsStatus": "UNSET",
     "consentForGenomicsROR": "UNSET",
     "consentForDvElectronicHealthRecordsSharing": "UNSET",
     "consentForElectronicHealthRecords": "UNSET",
@@ -86,8 +87,8 @@ participant_summary_default_values = {
     "biospecimenFinalizedSite": "UNSET",
     "biospecimenProcessedSite": "UNSET",
     "biospecimenSourceSite": "UNSET",
-    "physicalMeasurementsCreatedSite": "UNSET",
-    "physicalMeasurementsFinalizedSite": "UNSET",
+    "clinicPhysicalMeasurementsCreatedSite": "UNSET",
+    "clinicPhysicalMeasurementsFinalizedSite": "UNSET",
     "biospecimenStatus": "UNSET",
     "sampleOrderStatus1ED04": "UNSET",
     "sampleOrderStatus1ED10": "UNSET",
@@ -145,7 +146,6 @@ participant_summary_default_values = {
     "questionnaireOnCopeVaccineMinute2": "UNSET",
     "questionnaireOnCopeVaccineMinute3": "UNSET",
     "questionnaireOnCopeVaccineMinute4": "UNSET",
-    "physicalMeasurementsCollectType": "UNSET",
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
@@ -2406,7 +2406,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         cancel_info = self.get_restore_or_cancel_info()
         self.send_patch(path, cancel_info)
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
-        self.assertEqual("CANCELLED", ps_1.get("physicalMeasurementsStatus"))
+        self.assertEqual("CANCELLED", ps_1.get("clinicPhysicalMeasurementsStatus"))
         self.assertEqual("2016-01-04T10:55:41", ps_1.get("enrollmentStatusCoreOrderedSampleTime"))
         self.assertEqual(TIME_4.isoformat(), ps_1.get("enrollmentStatusCoreStoredSampleTime"))
 
@@ -2430,7 +2430,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             pm_response2 = self.send_post(path, measurements_2)
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
-        self.assertEqual("COMPLETED", ps_1.get("physicalMeasurementsStatus"))
+        self.assertEqual("COMPLETED", ps_1.get("clinicPhysicalMeasurementsStatus"))
 
         self.ps_dao.update_from_biobank_stored_samples()
 
@@ -2442,11 +2442,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         # status should still be completed because participant has another valid PM
-        self.assertEqual("COMPLETED", ps_1.get("physicalMeasurementsStatus"))
-        self.assertEqual(ps_1.get("physicalMeasurementsFinalizedTime"), TIME_1.isoformat())
-        self.assertEqual(ps_1.get("physicalMeasurementsTime"), TIME_1.isoformat())
-        self.assertEqual(ps_1.get("physicalMeasurementsCreatedSite"), "hpo-site-monroeville")
-        self.assertEqual(ps_1.get("physicalMeasurementsFinalizedSite"), "hpo-site-bannerphoenix")
+        self.assertEqual("COMPLETED", ps_1.get("clinicPhysicalMeasurementsStatus"))
+        self.assertEqual(ps_1.get("clinicPhysicalMeasurementsFinalizedTime"), TIME_1.isoformat())
+        self.assertEqual(ps_1.get("clinicPhysicalMeasurementsTime"), TIME_1.isoformat())
+        self.assertEqual(ps_1.get("clinicPhysicalMeasurementsCreatedSite"), "hpo-site-monroeville")
+        self.assertEqual(ps_1.get("clinicPhysicalMeasurementsFinalizedSite"), "hpo-site-bannerphoenix")
 
     def test_participant_summary_returns_latest_pm(self):
         questionnaire_id_1 = self.create_questionnaire("all_consents_questionnaire.json")
@@ -2468,11 +2468,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.send_post(path, measurements_2)
 
         participant_summary = self.send_get("Participant/%s/Summary" % participant_id_1)
-        self.assertEqual(participant_summary["physicalMeasurementsStatus"], "COMPLETED")
-        self.assertEqual(participant_summary["physicalMeasurementsFinalizedTime"], TIME_2.isoformat())
-        self.assertEqual(participant_summary["physicalMeasurementsTime"], TIME_2.isoformat())
-        self.assertEqual(participant_summary["physicalMeasurementsFinalizedSite"], "hpo-site-clinic-phoenix")
-        self.assertEqual(participant_summary["physicalMeasurementsCreatedSite"], "hpo-site-bannerphoenix")
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsFinalizedTime"], TIME_2.isoformat())
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsTime"], TIME_2.isoformat())
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsFinalizedSite"], "hpo-site-clinic-phoenix")
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsCreatedSite"], "hpo-site-bannerphoenix")
 
     def test_switch_to_test_account(self):
         self.setup_codes(
@@ -2714,18 +2714,18 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("RECEIVED", ps_1["sampleStatus1SAL2"])
         self.assertEqual("RECEIVED", ps_1["samplesToIsolateDNA"])
         self.assertEqual("INTERESTED", ps_1["enrollmentStatus"])
-        self.assertEqual("UNSET", ps_1["physicalMeasurementsStatus"])
-        self.assertIsNone(ps_1.get("physicalMeasurementsTime"))
+        self.assertEqual("UNSET", ps_1["clinicPhysicalMeasurementsStatus"])
+        self.assertIsNone(ps_1.get("clinicPhysicalMeasurementsTime"))
         self.assertEqual("GenderIdentity_Man", ps_1["genderIdentity"])
         self.assertEqual("NOT_WITHDRAWN", ps_1["withdrawalStatus"])
         self.assertEqual("NOT_SUSPENDED", ps_1["suspensionStatus"])
         self.assertEqual("email_code", ps_1["recontactMethod"])
         self.assertIsNone(ps_1.get("withdrawalTime"))
         self.assertIsNone(ps_1.get("suspensionTime"))
-        self.assertEqual("UNSET", ps_1["physicalMeasurementsCreatedSite"])
-        self.assertEqual("UNSET", ps_1["physicalMeasurementsFinalizedSite"])
-        self.assertIsNone(ps_1.get("physicalMeasurementsTime"))
-        self.assertIsNone(ps_1.get("physicalMeasurementsFinalizedTime"))
+        self.assertEqual("UNSET", ps_1["clinicPhysicalMeasurementsCreatedSite"])
+        self.assertEqual("UNSET", ps_1["clinicPhysicalMeasurementsFinalizedSite"])
+        self.assertIsNone(ps_1.get("clinicPhysicalMeasurementsTime"))
+        self.assertIsNone(ps_1.get("clinicPhysicalMeasurementsFinalizedTime"))
         self.assertEqual("FINALIZED", ps_1["biospecimenStatus"])
         self.assertEqual("2016-01-04T09:40:21", ps_1["biospecimenOrderTime"])
         self.assertEqual("hpo-site-monroeville", ps_1["biospecimenSourceSite"])
@@ -2752,18 +2752,18 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", ps_2["sampleStatus2ED10"])
         self.assertEqual("UNSET", ps_2["samplesToIsolateDNA"])
         self.assertEqual("MEMBER", ps_2["enrollmentStatus"])
-        self.assertEqual("COMPLETED", ps_2["physicalMeasurementsStatus"])
-        self.assertEqual(TIME_2.isoformat(), ps_2["physicalMeasurementsTime"])
+        self.assertEqual("COMPLETED", ps_2["clinicPhysicalMeasurementsStatus"])
+        self.assertEqual(TIME_2.isoformat(), ps_2["clinicPhysicalMeasurementsTime"])
         self.assertEqual("GenderIdentity_Woman", ps_2["genderIdentity"])
         self.assertEqual("NO_USE", ps_2["withdrawalStatus"])
         self.assertEqual("DUPLICATE", ps_2["withdrawalReason"])
         self.assertEqual("NOT_SUSPENDED", ps_2["suspensionStatus"])
         self.assertEqual("NO_CONTACT", ps_2["recontactMethod"])
         self.assertIsNotNone(ps_2["withdrawalTime"])
-        self.assertEqual("hpo-site-monroeville", ps_2["physicalMeasurementsCreatedSite"])
-        self.assertEqual("hpo-site-bannerphoenix", ps_2["physicalMeasurementsFinalizedSite"])
-        self.assertEqual(TIME_2.isoformat(), ps_2["physicalMeasurementsTime"])
-        self.assertEqual(TIME_1.isoformat(), ps_2["physicalMeasurementsFinalizedTime"])
+        self.assertEqual("hpo-site-monroeville", ps_2["clinicPhysicalMeasurementsCreatedSite"])
+        self.assertEqual("hpo-site-bannerphoenix", ps_2["clinicPhysicalMeasurementsFinalizedSite"])
+        self.assertEqual(TIME_2.isoformat(), ps_2["clinicPhysicalMeasurementsTime"])
+        self.assertEqual(TIME_1.isoformat(), ps_2["clinicPhysicalMeasurementsFinalizedTime"])
         self.assertEqual("UNSET", ps_2["biospecimenStatus"])
         self.assertIsNone(ps_2.get("biospecimenOrderTime"))
         self.assertEqual("UNSET", ps_2["biospecimenSourceSite"])
@@ -2791,8 +2791,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(TIME_1.isoformat(), ps_3["sampleStatus2ED10Time"])
         self.assertEqual("RECEIVED", ps_3["samplesToIsolateDNA"])
         self.assertEqual("FULL_PARTICIPANT", ps_3["enrollmentStatus"])
-        self.assertEqual("COMPLETED", ps_3["physicalMeasurementsStatus"])
-        self.assertEqual(TIME_2.isoformat(), ps_3["physicalMeasurementsTime"])
+        self.assertEqual("COMPLETED", ps_3["clinicPhysicalMeasurementsStatus"])
+        self.assertEqual(TIME_2.isoformat(), ps_3["clinicPhysicalMeasurementsTime"])
         self.assertEqual("GenderIdentity_NonBinary", ps_3["genderIdentity"])
         self.assertEqual("NOT_WITHDRAWN", ps_3["withdrawalStatus"])
         self.assertEqual("NOT_SUSPENDED", ps_3["suspensionStatus"])
@@ -2850,8 +2850,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "ParticipantSummary?_count=2&consentForStudyEnrollment=SUBMITTED", [[ps_1, ps_2], [ps_3]]
             )
             self.assertResponses("ParticipantSummary?_count=2&consentForCABoR=SUBMITTED", [[ps_1]])
-            self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsStatus=UNSET", [[ps_1]])
-            self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsStatus=COMPLETED", [[ps_2, ps_3]])
+            self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=UNSET", [[ps_1]])
+            self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=COMPLETED", [[ps_2, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=INTERESTED", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=MEMBER", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=FULL_PARTICIPANT", [[ps_3]])
@@ -2863,17 +2863,17 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NO_CONTACT", [[]])
             self.assertResponses("ParticipantSummary?_count=2&suspensionTime=lt2016-01-03", [[]])
             self.assertResponses("ParticipantSummary?_count=2&suspensionTime=ge2016-01-03", [[]])
-            self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsCreatedSite=UNSET", [[ps_1]])
+            self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsCreatedSite=UNSET", [[ps_1]])
             self.assertResponses(
-                "ParticipantSummary?_count=2&" + "physicalMeasurementsCreatedSite=hpo-site-monroeville", [[ps_2, ps_3]]
+                "ParticipantSummary?_count=2&" + "clinicPhysicalMeasurementsCreatedSite=hpo-site-monroeville", [[ps_2, ps_3]]
             )
-            self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsFinalizedSite=UNSET", [[ps_1]])
+            self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsFinalizedSite=UNSET", [[ps_1]])
             self.assertResponses(
-                "ParticipantSummary?_count=2&" + "physicalMeasurementsFinalizedSite=hpo-site-bannerphoenix",
+                "ParticipantSummary?_count=2&" + "clinicPhysicalMeasurementsFinalizedSite=hpo-site-bannerphoenix",
                 [[ps_2, ps_3]],
             )
-            self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsStatus=UNSET", [[ps_1]])
-            self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsStatus=COMPLETED", [[ps_2, ps_3]])
+            self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=UNSET", [[ps_1]])
+            self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=COMPLETED", [[ps_2, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&biospecimenStatus=FINALIZED", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&biospecimenOrderTime=ge2016-01-04", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&biospecimenOrderTime=lt2016-01-04", [[]])
@@ -2919,12 +2919,12 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", new_ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", new_ps_2["samplesToIsolateDNA"])
         self.assertEqual("MEMBER", new_ps_2["enrollmentStatus"])
-        self.assertEqual("UNSET", new_ps_2["physicalMeasurementsStatus"])
+        self.assertEqual("UNSET", new_ps_2["clinicPhysicalMeasurementsStatus"])
         self.assertEqual("SUBMITTED", new_ps_2["consentForStudyEnrollment"])
         self.assertIsNotNone(new_ps_2["consentForStudyEnrollmentAuthored"])
         self.assertEqual("SUBMITTED", new_ps_2["consentForElectronicHealthRecords"])
         self.assertIsNotNone(new_ps_2["consentForElectronicHealthRecordsAuthored"])
-        self.assertIsNone(new_ps_2.get("physicalMeasurementsTime"))
+        self.assertIsNone(new_ps_2.get("clinicPhysicalMeasurementsTime"))
         self.assertEqual("UNSET", new_ps_2["genderIdentity"])
         self.assertEqual("NO_USE", new_ps_2["withdrawalStatus"])
         self.assertEqual(ps_2["biobankId"], new_ps_2["biobankId"])
@@ -3125,18 +3125,18 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("RECEIVED", ps_1["sampleStatus1SAL2"])
         self.assertEqual("RECEIVED", ps_1["samplesToIsolateDNA"])
         self.assertEqual("INTERESTED", ps_1["enrollmentStatus"])
-        self.assertEqual("UNSET", ps_1["physicalMeasurementsStatus"])
-        self.assertIsNone(ps_1.get("physicalMeasurementsTime"))
+        self.assertEqual("UNSET", ps_1["clinicPhysicalMeasurementsStatus"])
+        self.assertIsNone(ps_1.get("clinicPhysicalMeasurementsTime"))
         self.assertEqual("GenderIdentity_Man", ps_1["genderIdentity"])
         self.assertEqual("NOT_WITHDRAWN", ps_1["withdrawalStatus"])
         self.assertEqual("NOT_SUSPENDED", ps_1["suspensionStatus"])
         self.assertEqual("email_code", ps_1["recontactMethod"])
         self.assertIsNone(ps_1.get("withdrawalTime"))
         self.assertIsNone(ps_1.get("suspensionTime"))
-        self.assertEqual("UNSET", ps_1["physicalMeasurementsCreatedSite"])
-        self.assertEqual("UNSET", ps_1["physicalMeasurementsFinalizedSite"])
-        self.assertIsNone(ps_1.get("physicalMeasurementsTime"))
-        self.assertIsNone(ps_1.get("physicalMeasurementsFinalizedTime"))
+        self.assertEqual("UNSET", ps_1["clinicPhysicalMeasurementsCreatedSite"])
+        self.assertEqual("UNSET", ps_1["clinicPhysicalMeasurementsFinalizedSite"])
+        self.assertIsNone(ps_1.get("clinicPhysicalMeasurementsTime"))
+        self.assertIsNone(ps_1.get("clinicPhysicalMeasurementsFinalizedTime"))
         self.assertEqual("FINALIZED", ps_1["biospecimenStatus"])
         self.assertEqual("2016-01-04T09:40:21", ps_1["biospecimenOrderTime"])
         self.assertEqual("hpo-site-monroeville", ps_1["biospecimenSourceSite"])
@@ -3162,18 +3162,18 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", ps_2["sampleStatus2ED10"])
         self.assertEqual("UNSET", ps_2["samplesToIsolateDNA"])
         self.assertEqual("MEMBER", ps_2["enrollmentStatus"])
-        self.assertEqual("COMPLETED", ps_2["physicalMeasurementsStatus"])
-        self.assertEqual(TIME_2.isoformat(), ps_2["physicalMeasurementsTime"])
+        self.assertEqual("COMPLETED", ps_2["clinicPhysicalMeasurementsStatus"])
+        self.assertEqual(TIME_2.isoformat(), ps_2["clinicPhysicalMeasurementsTime"])
         self.assertEqual("GenderIdentity_Woman", ps_2["genderIdentity"])
         self.assertEqual("NO_USE", ps_2["withdrawalStatus"])
         self.assertEqual("DUPLICATE", ps_2["withdrawalReason"])
         self.assertEqual("NOT_SUSPENDED", ps_2["suspensionStatus"])
         self.assertEqual("NO_CONTACT", ps_2["recontactMethod"])
         self.assertIsNotNone(ps_2["withdrawalTime"])
-        self.assertEqual("hpo-site-monroeville", ps_2["physicalMeasurementsCreatedSite"])
-        self.assertEqual("hpo-site-bannerphoenix", ps_2["physicalMeasurementsFinalizedSite"])
-        self.assertEqual(TIME_2.isoformat(), ps_2["physicalMeasurementsTime"])
-        self.assertEqual(TIME_1.isoformat(), ps_2["physicalMeasurementsFinalizedTime"])
+        self.assertEqual("hpo-site-monroeville", ps_2["clinicPhysicalMeasurementsCreatedSite"])
+        self.assertEqual("hpo-site-bannerphoenix", ps_2["clinicPhysicalMeasurementsFinalizedSite"])
+        self.assertEqual(TIME_2.isoformat(), ps_2["clinicPhysicalMeasurementsTime"])
+        self.assertEqual(TIME_1.isoformat(), ps_2["clinicPhysicalMeasurementsFinalizedTime"])
         self.assertEqual("UNSET", ps_2["biospecimenStatus"])
         self.assertIsNone(ps_2.get("biospecimenOrderTime"))
         self.assertEqual("UNSET", ps_2["biospecimenSourceSite"])
@@ -3200,8 +3200,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(TIME_1.isoformat(), ps_3["sampleStatus2ED10Time"])
         self.assertEqual("RECEIVED", ps_3["samplesToIsolateDNA"])
         self.assertEqual("FULL_PARTICIPANT", ps_3["enrollmentStatus"])
-        self.assertEqual("COMPLETED", ps_3["physicalMeasurementsStatus"])
-        self.assertEqual(TIME_2.isoformat(), ps_3["physicalMeasurementsTime"])
+        self.assertEqual("COMPLETED", ps_3["clinicPhysicalMeasurementsStatus"])
+        self.assertEqual(TIME_2.isoformat(), ps_3["clinicPhysicalMeasurementsTime"])
         self.assertEqual("GenderIdentity_Man", ps_3["genderIdentity"])
         self.assertEqual("NOT_WITHDRAWN", ps_3["withdrawalStatus"])
         self.assertEqual("NOT_SUSPENDED", ps_3["suspensionStatus"])
@@ -3257,8 +3257,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "ParticipantSummary?_count=2&consentForStudyEnrollment=SUBMITTED", [[ps_1, ps_2], [ps_3]]
             )
             self.assertResponses("ParticipantSummary?_count=2&consentForCABoR=SUBMITTED", [[ps_1]])
-            self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsStatus=UNSET", [[ps_1]])
-            self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsStatus=COMPLETED", [[ps_2, ps_3]])
+            self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=UNSET", [[ps_1]])
+            self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=COMPLETED", [[ps_2, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=INTERESTED", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=MEMBER", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=FULL_PARTICIPANT", [[ps_3]])
@@ -3270,17 +3270,17 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NO_CONTACT", [[]])
             self.assertResponses("ParticipantSummary?_count=2&suspensionTime=lt2016-01-03", [[]])
             self.assertResponses("ParticipantSummary?_count=2&suspensionTime=ge2016-01-03", [[]])
-            self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsCreatedSite=UNSET", [[ps_1]])
+            self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsCreatedSite=UNSET", [[ps_1]])
             self.assertResponses(
-                "ParticipantSummary?_count=2&" + "physicalMeasurementsCreatedSite=hpo-site-monroeville", [[ps_2, ps_3]]
+                "ParticipantSummary?_count=2&" + "clinicPhysicalMeasurementsCreatedSite=hpo-site-monroeville", [[ps_2, ps_3]]
             )
-            self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsFinalizedSite=UNSET", [[ps_1]])
+            self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsFinalizedSite=UNSET", [[ps_1]])
             self.assertResponses(
-                "ParticipantSummary?_count=2&" + "physicalMeasurementsFinalizedSite=hpo-site-bannerphoenix",
+                "ParticipantSummary?_count=2&" + "clinicPhysicalMeasurementsFinalizedSite=hpo-site-bannerphoenix",
                 [[ps_2, ps_3]],
             )
-            self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsStatus=UNSET", [[ps_1]])
-            self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsStatus=COMPLETED", [[ps_2, ps_3]])
+            self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=UNSET", [[ps_1]])
+            self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=COMPLETED", [[ps_2, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&biospecimenStatus=FINALIZED", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&biospecimenOrderTime=ge2016-01-04", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&biospecimenOrderTime=lt2016-01-04", [[]])
@@ -3333,14 +3333,14 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", new_ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", new_ps_2["samplesToIsolateDNA"])
         self.assertEqual("MEMBER", new_ps_2["enrollmentStatus"])
-        self.assertEqual("UNSET", new_ps_2["physicalMeasurementsStatus"])
+        self.assertEqual("UNSET", new_ps_2["clinicPhysicalMeasurementsStatus"])
         self.assertEqual("SUBMITTED", new_ps_2["consentForStudyEnrollment"])
         self.assertIsNotNone(new_ps_2["consentForStudyEnrollmentAuthored"])
         self.assertEqual("UNSET", new_ps_2["consentForElectronicHealthRecords"])
         self.assertIsNone(new_ps_2.get("consentForElectronicHealthRecordsAuthored"))
         self.assertEqual("UNSET", new_ps_2["consentForDvElectronicHealthRecordsSharing"])
         self.assertIsNone(new_ps_2.get("consentForDvElectronicHealthRecordsSharingTime"))
-        self.assertIsNone(new_ps_2.get("physicalMeasurementsTime"))
+        self.assertIsNone(new_ps_2.get("clinicPhysicalMeasurementsTime"))
         self.assertEqual("UNSET", new_ps_2["genderIdentity"])
         self.assertEqual("NO_USE", new_ps_2["withdrawalStatus"])
         self.assertEqual(ps_2["biobankId"], new_ps_2["biobankId"])
