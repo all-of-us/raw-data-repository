@@ -85,7 +85,7 @@ cron:
   schedule: every day 08:15
   target: offline
 - description: Check for Yes-No-Yes GROR W1IL participants
-  url: /offline/CheckForYesNoYesW1ilGrorParticipants
+  url: /offline/CheckForW1ilGrorResubmitParticipants
   timezone: America/New_York
   schedule: every monday 10:00
   target: offline
