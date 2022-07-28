@@ -1,4 +1,6 @@
 import datetime
+from typing import Optional
+
 from flask import request
 from flask_restful import Resource
 from dateutil.parser import parse
@@ -18,6 +20,7 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
     def __init__(self):
         self.dao = MessageBrokenEventDataDao()
         self.event_type = None
+        self.cloud_task = GCPCloudTask()
 
     @task_auth_required
     def post(self):
@@ -58,31 +61,37 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
             elif isinstance(value, int):
                 message_event_date.valueInteger = value
 
-            inserted_obj = self.dao.insert(message_event_date)
+            self.dao.insert(message_event_date)
 
-        self.call_genomic_ingest_data_task(inserted_obj)
-
+        self.call_genomic_ingest_data_task(message_record_id)
         return '{"success": "true"}'
 
-    def call_genomic_ingest_data_task(self, obj):
-        acceptable_event_types = [
-            'informing_loop_started',
-            'informing_loop_decision',
-            'result_viewed',
-            'result_ready'
-        ]
+    def call_genomic_ingest_data_task(self, message_record_id):
 
-        if self.event_type in acceptable_event_types \
-                and GAE_PROJECT != 'localhost':
+        def _get_task_endpoint() -> Optional[str]:
+            endpoint = None
+            data_event_types = [
+                'informing_loop_started',
+                'informing_loop_decision',
+                'result_viewed',
+                'result_ready'
+            ]
+            if self.event_type in data_event_types:
+                endpoint = 'ingest_genomic_message_broker_data_task'
+            elif 'appointment' in self.event_type:
+                endpoint = 'ingest_genomic_message_broker_appointment_task'
 
-            payload = {
-                'message_record_id': obj.messageRecordId,
-                'event_type': self.event_type
-            }
+            return endpoint
 
-            _task = GCPCloudTask()
-            _task.execute(
-                'ingest_from_message_broker_data_task',
-                payload=payload,
+        task_endpoint = _get_task_endpoint()
+
+        if task_endpoint and GAE_PROJECT != 'localhost':
+            self.cloud_task.execute(
+                task_endpoint,
+                payload={
+                    'message_record_id': message_record_id,
+                    'event_type': self.event_type
+                },
                 queue='genomics'
             )
+
