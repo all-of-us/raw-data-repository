@@ -518,3 +518,49 @@ def genomic_informing_loop_batch_update(_pk_ids):
     w_dao = ResourceDataDao()
     for _pk in _pk_ids:
         genomic_informing_loop_update(_pk, gen=gen, w_dao=w_dao)
+
+class GenomicCVLResultPastDueSchemaGenerator(generators.BaseGenerator):
+    """
+    Generate a GenomicCVLResultPastDue resource object
+    """
+    ro_dao = None
+
+    def make_resource(self, _pk, backup=False):
+        """
+        Build a resource object from the given primary key id.
+        :param _pk: Primary key value from rdr table.
+        :param backup: if True, get from backup database instead of Primary.
+        :return: resource object
+        """
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
+            row = ro_session.execute(text('select * from genomic_cvl_result_past_due where id = :id'),
+                                     {'id': _pk}).first()
+            data = self.ro_dao.to_dict(row)
+            return generators.ResourceRecordSet(schemas.GenomicCVLResultPastDueSchema, data)
+
+
+def genomic_cvl_result_past_due_update(_pk, gen=None, w_dao=None):
+    """
+    Generate GenomicCVLResultPastDue resource record.
+    :param _pk: Primary Key
+    :param gen: GenomicCVLResultPastDueSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicCVLResultPastDueSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_cvl_result_past_due_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
+    """
+    gen = GenomicCVLResultPastDueSchemaGenerator()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_cvl_result_past_due_update(_pk, gen=gen, w_dao=w_dao)

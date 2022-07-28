@@ -379,3 +379,25 @@ class GenomicInformingLoopSchema(Schema):
         resource_pk_field = 'id'
         pii_fields = ()  # List fields that contain PII data.
         pii_filter = {}  # dict(field: lambda function).
+
+class GenomicCVLResultPastDueSchema(Schema):
+
+    id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
+    genomic_set_member_id = fields.Int32()
+    sample_id = fields.String(validate=validate.Length(max=255))
+    results_type = fields.String(validate=validate.Length(max=128))
+    cvl_site_id = fields.String(validate=validate.Length(max=128))
+    email_notification_sent = fields.Int16()
+    email_notification_sent_date = fields.DateTime()
+    resolved = fields.Int16()
+    resolved_date = fields.DateTime()
+
+    class Meta:
+        schema_id = SchemaID.genomic_cvl_result_past_due
+        resource_uri = 'GenomicCVLResultPastDue'
+        resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function)
+

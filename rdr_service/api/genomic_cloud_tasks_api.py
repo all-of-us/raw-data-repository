@@ -22,8 +22,8 @@ from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
     genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, \
-    genomic_user_event_metrics_batch_update, \
-    genomic_informing_loop_batch_update
+    genomic_user_event_metrics_batch_update,  genomic_informing_loop_batch_update, \
+    genomic_cvl_result_past_due_batch_update
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -605,6 +605,9 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
             ],
             'user_event_metrics': [
                 genomic_user_event_metrics_batch_update
+            ],
+            'genomic_cvl_result_past_due' : [
+                genomic_cvl_result_past_due_batch_update
             ]
         }
 
