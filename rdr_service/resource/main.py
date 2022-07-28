@@ -54,6 +54,10 @@ def _build_resource_app():
                       TASK_PREFIX + "RebuildRetentionEligibleMetricsApi",
                       endpoint="batch_rebuild_retention_eligible_task", methods=["POST"])
 
+    _api.add_resource(cloud_tasks_api.PtscHealthDataTransferValidTaskApi,
+                      TASK_PREFIX + "PtscHealthDataTransferValidTaskApi",
+                      endpoint="ptsc_health_data_transfer_valid_task", methods=["POST"])
+
     # Store message broker event data
     _api.add_resource(message_broker_cloud_tasks_api.StoreMessageBrokerEventDataTaskApi,
                       TASK_PREFIX + "StoreMessageBrokerEventDataTaskApi",

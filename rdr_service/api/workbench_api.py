@@ -3,7 +3,7 @@ from rdr_service import clock
 from flask import request
 from rdr_service.config import GAE_PROJECT
 from rdr_service.api.base_api import BaseApi
-from rdr_service.api_util import WORKBENCH_AND_REDCAP
+from rdr_service.api_util import WORKBENCH_AND_REDCAP_AND_RDR
 from rdr_service.dao.bq_workbench_dao import rebuild_bq_workpaces, rebuild_bq_wb_researchers
 from rdr_service.dao.workbench_dao import WorkbenchWorkspaceDao, WorkbenchResearcherDao
 from rdr_service.dao.metadata_dao import WORKBENCH_LAST_SYNC_KEY, MetadataDao
@@ -13,7 +13,7 @@ class WorkbenchWorkspaceApi(BaseApi):
     def __init__(self):
         super().__init__(WorkbenchWorkspaceDao(), get_returns_children=True)
 
-    @app_util.auth_required(WORKBENCH_AND_REDCAP)
+    @app_util.auth_required(WORKBENCH_AND_REDCAP_AND_RDR)
     def post(self):
         now = clock.CLOCK.now()
         metadata_dao = MetadataDao()
@@ -50,7 +50,7 @@ class WorkbenchResearcherApi(BaseApi):
     def __init__(self):
         super().__init__(WorkbenchResearcherDao(), get_returns_children=True)
 
-    @app_util.auth_required(WORKBENCH_AND_REDCAP)
+    @app_util.auth_required(WORKBENCH_AND_REDCAP_AND_RDR)
     def post(self):
         backfill_arg = request.args.get('backfill')
         is_backfill = True if backfill_arg and backfill_arg.lower() == 'true' else False

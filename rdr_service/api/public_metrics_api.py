@@ -4,7 +4,7 @@ from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import BadRequest
 
-from rdr_service.api_util import STOREFRONT, convert_to_datetime, get_awardee_id_from_name
+from rdr_service.api_util import STOREFRONT_AND_RDR, convert_to_datetime, get_awardee_id_from_name
 from rdr_service.app_util import auth_required
 from rdr_service.dao.calendar_dao import INTERVAL_DAY
 from rdr_service.dao.hpo_dao import HPODao
@@ -26,7 +26,7 @@ DAYS_LIMIT_FOR_HISTORY_DATA = 600
 
 
 class PublicMetricsApi(Resource):
-    @auth_required(STOREFRONT)
+    @auth_required(STOREFRONT_AND_RDR)
     def get(self):
         self.hpo_dao = HPODao()
 
