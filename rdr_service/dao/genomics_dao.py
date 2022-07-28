@@ -3806,7 +3806,7 @@ class GenomicQueriesDao(BaseDao):
             return query.distinct().all()
 
 
-class GenomicCVLResultPastDueDao(UpdatableDao):
+class GenomicCVLResultPastDueDao(UpdatableDao, GenomicDaoMixin):
 
     validate_version_match = False
 

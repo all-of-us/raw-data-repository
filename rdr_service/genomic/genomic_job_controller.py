@@ -108,7 +108,7 @@ class GenomicJobController:
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.member_dao = GenomicSetMemberDao()
         self.informing_loop_dao = GenomicInformingLoopDao()
-        self.cvl_result_past_due_dao = GenomicCVLResultPastDueDao
+        self.cvl_result_past_due_dao = GenomicCVLResultPastDueDao()
         self.result_viewed_dao = GenomicResultViewedDao()
         self.report_state_dao = GenomicMemberReportStateDao()
         self.missing_files_dao = GenomicGcDataFileMissingDao()

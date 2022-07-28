@@ -6,7 +6,7 @@ from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
     GenomicInformingLoopDao, GenomicResultViewedDao, GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao, \
-    GenomicMemberReportStateDao
+    GenomicMemberReportStateDao, GenomicCVLResultPastDueDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult, \
     GenomicSubProcessStatus, GenomicManifestTypes, GenomicQcStatus, GenomicReportState
@@ -25,6 +25,7 @@ class GenomicJobControllerTest(BaseTestCase):
         self.incident_dao = GenomicIncidentDao()
         self.informing_loop_dao = GenomicInformingLoopDao()
         self.result_viewed_dao = GenomicResultViewedDao()
+        self.cvl_result_past_due_dao = GenomicCVLResultPastDueDao()
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.user_event_metrics_dao = UserEventMetricsDao()
