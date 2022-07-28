@@ -17,7 +17,7 @@ from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.measurements import Measurement, PhysicalMeasurements
 from rdr_service.participant_enums import PhysicalMeasurementsStatus, PhysicalMeasurementsCollectType, \
-    OriginMeasurementUnit
+    OriginMeasurementUnit, SelfReportedPhysicalMeasurementsStatus
 
 _AMENDMENT_URL = "http://terminology.pmi-ops.org/StructureDefinition/amends"
 _OBSERVATION_RESOURCE_TYPE = "Observation"
@@ -333,19 +333,19 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 and not self.has_uncancelled_pm(session, participant)
             ):
 
-                participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
-                participant_summary.physicalMeasurementsTime = None
-                participant_summary.physicalMeasurementsFinalizedTime = None
-                participant_summary.physicalMeasurementsFinalizedSiteId = None
+                participant_summary.clinicPhysicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
+                participant_summary.clinicPhysicalMeasurementsTime = None
+                participant_summary.clinicPhysicalMeasurementsFinalizedTime = None
+                participant_summary.clinicPhysicalMeasurementsFinalizedSiteId = None
 
             # These fields set on any measurement not cancelled
             elif obj.status != PhysicalMeasurementsStatus.CANCELLED:
                 # new PM or if a PM was restored, it is complete again.
-                participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
-                participant_summary.physicalMeasurementsTime = obj.created
-                participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
-                participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
-                participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
+                participant_summary.clinicPhysicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+                participant_summary.clinicPhysicalMeasurementsTime = obj.created
+                participant_summary.clinicPhysicalMeasurementsFinalizedTime = obj.finalized
+                participant_summary.clinicPhysicalMeasurementsCreatedSiteId = obj.createdSiteId
+                participant_summary.clinicPhysicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
                 if is_distinct_visit and not is_amendment:
                     participant_summary.numberDistinctVisits += 1
 
@@ -356,15 +356,14 @@ class PhysicalMeasurementsDao(UpdatableDao):
             ):
 
                 get_latest_pm = self.get_latest_pm(session, participant)
-                participant_summary.physicalMeasurementsFinalizedTime = get_latest_pm.finalized
-                participant_summary.physicalMeasurementsTime = get_latest_pm.created
-                participant_summary.physicalMeasurementsCreatedSiteId = get_latest_pm.createdSiteId
-                participant_summary.physicalMeasurementsFinalizedSiteId = get_latest_pm.finalizedSiteId
+                participant_summary.clinicPhysicalMeasurementsFinalizedTime = get_latest_pm.finalized
+                participant_summary.clinicPhysicalMeasurementsTime = get_latest_pm.created
+                participant_summary.clinicPhysicalMeasurementsCreatedSiteId = get_latest_pm.createdSiteId
+                participant_summary.clinicPhysicalMeasurementsFinalizedSiteId = get_latest_pm.finalizedSiteId
         else:
-            participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
-            participant_summary.physicalMeasurementsTime = obj.created
-            participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
-            participant_summary.physicalMeasurementsCollectType = PhysicalMeasurementsCollectType.SELF_REPORTED
+            participant_summary.selfReportedPhysicalMeasurementsStatus = \
+                SelfReportedPhysicalMeasurementsStatus.COMPLETED
+            participant_summary.selfReportedPhysicalMeasurementsAuthored = obj.finalized
 
         participant_summary_dao.update_enrollment_status(participant_summary)
         session.merge(participant_summary)

@@ -206,13 +206,13 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_1)
         # Update participant summaries based on these changes
         # So it could trigger the participant_summary_dao.calculate_max_core_sample_time to compare the
-        # physicalMeasurementsFinalizedTime with other times to cover the bug scenario:
+        # clinicPhysicalMeasurementsFinalizedTime with other times to cover the bug scenario:
         # TypeError("can't compare offset-naive and offset-aware datetimes")
         ps_dao = ParticipantSummaryDao()
         ps_dao.update_from_biobank_stored_samples()
 
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
-        self.assertEqual(summary["physicalMeasurementsStatus"], 'UNSET')
+        self.assertEqual(summary["selfReportedPhysicalMeasurementsStatus"], 'UNSET')
         self.assertEqual(summary["enrollmentStatus"], 'CORE_MINUS_PM')
         remote_pm_questionnaire_id = self.create_questionnaire("remote_pm_questionnaire.json")
 
@@ -222,10 +222,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             self.send_post(_questionnaire_response_url(participant_id), resource)
 
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
-        self.assertEqual(summary['physicalMeasurementsStatus'], 'COMPLETED')
-        self.assertEqual(summary['physicalMeasurementsCollectType'], 'SELF_REPORTED')
-        self.assertEqual(summary['physicalMeasurementsFinalizedTime'], '2022-06-01T18:23:57')
-        self.assertEqual(summary['physicalMeasurementsTime'], '2016-01-02T00:00:00')
+        self.assertEqual(summary['selfReportedPhysicalMeasurementsStatus'], 'COMPLETED')
+        self.assertEqual(summary['selfReportedPhysicalMeasurementsAuthored'], '2022-06-01T18:23:57')
         self.assertEqual(summary["enrollmentStatus"], 'FULL_PARTICIPANT')
 
         response = self.send_get("Participant/{0}/PhysicalMeasurements".format(participant_id))
@@ -264,7 +262,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         with FakeClock(created):
             self.send_consent(participant_id, authored=authored_1)
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
-        self.assertEqual(summary["physicalMeasurementsStatus"], 'UNSET')
+        self.assertEqual(summary["selfReportedPhysicalMeasurementsStatus"], 'UNSET')
 
         remote_pm_questionnaire_id = self.create_questionnaire("remote_pm_questionnaire.json")
 
@@ -274,10 +272,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             self.send_post(_questionnaire_response_url(participant_id), resource)
 
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
-        self.assertEqual(summary['physicalMeasurementsStatus'], 'COMPLETED')
-        self.assertEqual(summary['physicalMeasurementsCollectType'], 'SELF_REPORTED')
-        self.assertEqual(summary['physicalMeasurementsFinalizedTime'], '2022-06-01T18:26:08')
-        self.assertEqual(summary['physicalMeasurementsTime'], '2016-01-02T00:00:00')
+        self.assertEqual(summary['selfReportedPhysicalMeasurementsStatus'], 'COMPLETED')
+        self.assertEqual(summary['selfReportedPhysicalMeasurementsAuthored'], '2022-06-01T18:26:08')
 
         response = self.send_get("Participant/{0}/PhysicalMeasurements".format(participant_id))
         self.assertEqual(1, len(response["entry"]))

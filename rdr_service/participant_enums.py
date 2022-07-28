@@ -83,6 +83,13 @@ class PhysicalMeasurementsCollectType(messages.Enum):
     SELF_REPORTED = 2
 
 
+class SelfReportedPhysicalMeasurementsStatus(messages.Enum):
+    """The state of the participants self-reported physical measurements"""
+
+    UNSET = 0
+    COMPLETED = 1
+
+
 class OriginMeasurementUnit(messages.Enum):
     """The origin unit type of this measurement record"""
     UNSET = 0

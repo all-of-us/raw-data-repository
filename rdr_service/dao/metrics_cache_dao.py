@@ -2540,7 +2540,8 @@ class MetricsLifecycleCacheDao(BaseDao):
                     END) AS retention_modules_complete,
                     SUM(CASE
                       WHEN
-                        DATE(ps.physical_measurements_time) <= calendar.day AND
+                        (DATE(ps.clinic_physical_measurements_time) <= calendar.day OR
+                        DATE(ps.self_reported_physical_measurements_authored) <= calendar.day) AND
                         DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                       THEN 1 ELSE 0
                     END) AS physical_measurement,
@@ -2642,7 +2643,8 @@ class MetricsLifecycleCacheDao(BaseDao):
                 END) AS retention_modules_complete,
                 SUM(CASE
                   WHEN
-                    DATE(ps.physical_measurements_time) <= calendar.day AND
+                    (DATE(ps.clinic_physical_measurements_time) <= calendar.day OR
+                    DATE(ps.self_reported_physical_measurements_authored) <= calendar.day) AND
                     DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS physical_measurement,

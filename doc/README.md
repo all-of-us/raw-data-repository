@@ -225,11 +225,13 @@ The summary includes the following fields:
 * `income`: The participants income. Income is defined as a persons salary in a given year.
 * `enrollmentStatus`: `INTERESTED`, `MEMBER`, `FULL_PARTICIPANT` depending on a number of factors including questionnaires and biobank samples completed.
 * `race`: A race is a grouping of humans based on shared physical or social qualities into categories generally viewed as distinct by society. First used to refer to speakers of a common language and then to denote national affiliations, by the 17th century the term race began to refer to physical (phenotypical) traits.
-* `physicalMeasurementsStatus`: indicates whether this participant has completed physical measurements
-* `physicalMeasurementsFinalizedTime`: indicates the latest time physical measurements were finalized for the participant
-* `physicalMeasurementsTime`: indicates the latest time physical measurements were submitted for the participant
-* `physicalMeasurementsCreatedSite`: indicates the site where physical measurements were created for the participant
-* `physicalMeasurementsFinalizedSite`: indicates the site where physical measurements were finalized for the participant
+* `clinicPhysicalMeasurementsStatus`: indicates whether this participant has completed physical measurements
+* `clinicPhysicalMeasurementsFinalizedTime`: indicates the latest time physical measurements were finalized for the participant
+* `clinicPhysicalMeasurementsTime`: indicates the latest time physical measurements were submitted for the participant
+* `clinicPhysicalMeasurementsCreatedSite`: indicates the site where physical measurements were created for the participant
+* `clinicPhysicalMeasurementsFinalizedSite`: indicates the site where physical measurements were finalized for the participant
+* `selfReportedPhysicalMeasurementsStatus`: indicates whether this participant has completed self-reported physical measurements
+* `selfReportedPhysicalMeasurementsAuthored`: indicates the latest time the participant authored the survey for self-reporting physical measurements
 * `signUpTime`: the time at which the participant initially signed up for All Of Us
 * `hpoId`: HPO marked as `primary` for this participant, if any (just the resource id, like `PITT` — not a reference like `Organization/PITT`)
 * `awardee`: An awardee a participant is paired with or "unset" if none.
@@ -365,7 +367,9 @@ For enumeration fields, the following values are defined:
 
 `ageRange`: `0-17`, `18-25`, `26-35`, `36-45`, `46-55`, `56-65`, `66-75`, `76-85`, `86+` 
 
-`physicalMeasurementsStatus`: `UNSET`, `COMPLETED`, `CANCELLED`
+`clinicPhysicalMeasurementsStatus`: `UNSET`, `COMPLETED`, `CANCELLED`
+
+`selfReportedPhysicalMeasurementsStatus`: `UNSET`, `COMPLETED`
 
 `questionnaireOn[x]`: `UNSET`, `SUBMITTED`, `SUBMITTED_NO_CONSENT`, `SUBMITTED_NOT_SURE`, `SUBMITTED_INVALID`
 
