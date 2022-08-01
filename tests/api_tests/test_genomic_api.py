@@ -1297,6 +1297,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.assertTrue(all(obj['participant_id'] == f'P{first_participant.participantId}'
                             for obj in resp['data']))
 
+        self.assertTrue(all(obj['type'] == 'informingLoop' for obj in resp['data']))
         self.assertTrue(all(obj['module'] in ready_modules for obj in resp['data']))
         self.assertTrue(all(obj['status'] == 'ready' for obj in resp['data']))
 
@@ -1311,7 +1312,31 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             len(resp['data']),
             (len(current_members) // 2) * len(ready_modules)
         )
+
+        self.assertTrue(all(obj['type'] == 'informingLoop' for obj in resp['data']))
         self.assertTrue(all(obj['module'] in ready_modules for obj in resp['data']))
+        self.assertTrue(all(obj['status'] == 'ready' for obj in resp['data']))
+
+        # with module param passed | ready modules are only hdr | pgx
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}&module=GEM'
+            )
+
+        self.assertEqual(resp['data'], [])
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}&module=HDR'
+            )
+
+        self.assertEqual(
+            len(resp['data']),
+            (len(current_members) // 2)
+        )
+
+        self.assertTrue(all(obj['type'] == 'informingLoop' for obj in resp['data']))
+        self.assertTrue(all(obj['module'] == 'hdr' for obj in resp['data']))
         self.assertTrue(all(obj['status'] == 'ready' for obj in resp['data']))
 
     def test_get_only_ready_informing_loop_data_updates(self):
