@@ -1479,7 +1479,7 @@ class GenomicFileIngester:
                 if current_analysis:
                     current_analysis.failed = 1
                     current_analysis.failed_request_reason = row_copy['requestreason']
-                    current_analysis.failed_request_reason_free = row_copy['requestreasonfree']
+                    current_analysis.failed_request_reason_free = row_copy['requestreasonfree'][0:512]
                     self.cvl_analysis_dao.update(current_analysis)
 
             return GenomicSubProcessResult.SUCCESS
