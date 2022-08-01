@@ -1383,6 +1383,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.assertTrue(all(obj['participant_id'] == f'P{participant.participantId}'
                             for obj in resp['data']))
 
+        self.assertTrue(all(obj['type'] == 'informingLoop' for obj in resp['data']))
         self.assertTrue(all(obj['module'] in ready_modules for obj in resp['data']))
         self.assertTrue(all(obj['status'] == 'ready' for obj in resp['data']))
 
