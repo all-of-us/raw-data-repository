@@ -258,15 +258,18 @@ class GenomicJobControllerTest(BaseTestCase):
             genomicSetVersion=1
         )
 
+        ids_should_be_updated = []
         # for just created and wf state query and MATCHES criteria
         for i in range(4):
-            self.data_generator.create_database_genomic_set_member(
-                genomicSetId=gen_set.id,
-                biobankId="100153482",
-                sampleId="21042005280",
-                genomeType='test_investigation_one' if i & 2 != 0 else 'aou_wgs',
-                genomicWorkflowState=GenomicWorkflowState.AW0,
-                ai_an='Y' if i & 2 == 0 else 'N'
+            ids_should_be_updated.append(
+                self.data_generator.create_database_genomic_set_member(
+                    genomicSetId=gen_set.id,
+                    biobankId="100153482",
+                    sampleId="21042005280",
+                    genomeType='test_investigation_one' if i & 2 != 0 else 'aou_wgs',
+                    genomicWorkflowState=GenomicWorkflowState.AW0,
+                    ai_an='Y' if i & 2 == 0 else 'N'
+                ).id
             )
 
         # for just created and wf state query and DOES NOT MATCH criteria
@@ -285,6 +288,9 @@ class GenomicJobControllerTest(BaseTestCase):
 
         # current config json in base_config.json
         created_members = self.member_dao.get_all()
+
+        blocklisted = list(filter(lambda x: x.blockResults == 1 or x.blockResearch == 1, created_members))
+        self.assertTrue(ids_should_be_updated.sort() == [obj.id for obj in blocklisted].sort())
 
         # should be RESEARCH blocked
         self.assertTrue(all(
