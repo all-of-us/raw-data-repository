@@ -1738,18 +1738,16 @@ class GenomicJobController:
 
         try:
             updated_members = []
+
             for member in members:
                 member_dict = {'id': member.id}
-
                 for block_map_type, block_map_type_config in blocklists_map.items():
                     blocklist_config_items = member_blocklists_config.get(block_map_type, None)
 
                     for item in blocklist_config_items:
                         if not hasattr(member, item.get('attribute')):
                             continue
-
                         current_attr_value, evaluate_value = getattr(member, item.get('attribute')), item.get('value')
-
                         if (isinstance(item.get('value'), list) and
                             current_attr_value in evaluate_value) or \
                                 current_attr_value == evaluate_value:
@@ -1760,7 +1758,7 @@ class GenomicJobController:
                                 if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
                                     member_dict[attr['key']] = value
 
-                if member_dict:
+                if len(member_dict) > 1:
                     updated_members.append(member_dict)
 
             if not updated_members:
