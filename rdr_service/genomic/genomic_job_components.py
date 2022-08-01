@@ -1109,7 +1109,7 @@ class GenomicFileIngester:
             clean_column = self._clean_row_keys(column)
             row_value = row.get(clean_column)
             if row_value or row_value == "":
-                row_obj[column] = row_value
+                row_obj[column] = row_value[0:512]
 
         row_obj['file_path'] = self.target_file
         row_obj['created'] = clock.CLOCK.now()
@@ -1479,7 +1479,7 @@ class GenomicFileIngester:
                 if current_analysis:
                     current_analysis.failed = 1
                     current_analysis.failed_request_reason = row_copy['requestreason']
-                    current_analysis.failed_request_reason_free = row_copy['requestreasonfree']
+                    current_analysis.failed_request_reason_free = row_copy['requestreasonfree'][0:512]
                     self.cvl_analysis_dao.update(current_analysis)
 
             return GenomicSubProcessResult.SUCCESS
