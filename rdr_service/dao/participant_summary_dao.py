@@ -67,7 +67,8 @@ from rdr_service.participant_enums import (
     SuspensionStatus,
     WithdrawalStatus,
     get_bucketed_age,
-    SelfReportedPhysicalMeasurementsStatus
+    SelfReportedPhysicalMeasurementsStatus,
+    PhysicalMeasurementsCollectType
 )
 from rdr_service.model.code import Code
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
@@ -1057,7 +1058,8 @@ class ParticipantSummaryDao(UpdatableDao):
 
     def to_client_json(self, model: ParticipantSummary, strip_none_values=True):
         result = model.asdict()
-
+        clinic_pm_time = result.get("clinicPhysicalMeasurementsFinalizedTime")
+        self_reported_pm_time = result.get("selfReportedPhysicalMeasurementsAuthored")
         if self.hpro_consents:
             result = self.get_hpro_consent_paths(result)
 
@@ -1137,6 +1139,27 @@ class ParticipantSummaryDao(UpdatableDao):
                 or model.suspensionStatus == SuspensionStatus.NO_CONTACT\
                 or model.deceasedStatus == DeceasedStatus.APPROVED:
             result["recontactMethod"] = "NO_CONTACT"
+
+        # fill in deprecated fields
+        if not clinic_pm_time and not self_reported_pm_time:
+            result["physicalMeasurementsStatus"] = "UNSET"
+            result["physicalMeasurementsCreatedSite"] = "UNSET"
+            result["physicalMeasurementsFinalizedSite"] = "UNSET"
+            result["physicalMeasurementsCollectType"] = str(PhysicalMeasurementsCollectType.UNSET)
+        elif (clinic_pm_time and not self_reported_pm_time) or (clinic_pm_time and (
+              clinic_pm_time >= self_reported_pm_time)):
+            result["physicalMeasurementsStatus"] = result.get("clinicPhysicalMeasurementsStatus")
+            result["physicalMeasurementsTime"] = result.get("clinicPhysicalMeasurementsTime")
+            result["physicalMeasurementsFinalizedTime"] = result.get("clinicPhysicalMeasurementsFinalizedTime")
+            result["physicalMeasurementsCreatedSite"] = result.get("clinicPhysicalMeasurementsCreatedSite")
+            result["physicalMeasurementsFinalizedSite"] = result.get("clinicPhysicalMeasurementsFinalizedSite")
+            result["physicalMeasurementsCollectType"] = str(PhysicalMeasurementsCollectType.SITE)
+        else:
+            result["physicalMeasurementsStatus"] = result.get("selfReportedPhysicalMeasurementsStatus")
+            result["physicalMeasurementsFinalizedTime"] = result.get("selfReportedPhysicalMeasurementsAuthored")
+            result["physicalMeasurementsCreatedSite"] = "UNSET"
+            result["physicalMeasurementsFinalizedSite"] = "UNSET"
+            result["physicalMeasurementsCollectType"] = str(PhysicalMeasurementsCollectType.SELF_REPORTED)
 
         # Strip None values.
         if strip_none_values is True:
