@@ -1386,6 +1386,14 @@ class ParticipantSummary(Base):
     lastModified = Column("last_modified", UTCDateTime6)
     """UTC timestamp of the last time the participant summary was modified"""
 
+    #Placeholder fields for deprecated columns
+    physicalMeasurementsStatus = None
+    physicalMeasurementsTime = None
+    physicalMeasurementsFinalizedTime = None
+    physicalMeasurementsCreatedSite = None
+    physicalMeasurementsFinalizedSite = None
+    physicalMeasurementsCollectType = None
+
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)
 Index("participant_summary_ln_dob", ParticipantSummary.lastName, ParticipantSummary.dateOfBirth)
