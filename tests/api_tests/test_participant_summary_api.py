@@ -30,7 +30,8 @@ from rdr_service.model.hpo import HPO
 from rdr_service.participant_enums import (
     ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType,
     TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus)
-from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id
+from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id,\
+    load_remote_measurement_json
 from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -62,6 +63,10 @@ participant_summary_default_values = {
     "numCompletedBaselinePPIModules": 1,
     "clinicPhysicalMeasurementsStatus": "UNSET",
     "selfReportedPhysicalMeasurementsStatus": "UNSET",
+    "physicalMeasurementsStatus": "UNSET",
+    "physicalMeasurementsCollectType": "UNSET",
+    "physicalMeasurementsCreatedSite": "UNSET",
+    "physicalMeasurementsFinalizedSite": "UNSET",
     "consentForGenomicsROR": "UNSET",
     "consentForDvElectronicHealthRecordsSharing": "UNSET",
     "consentForElectronicHealthRecords": "UNSET",
@@ -4024,3 +4029,62 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertTrue(all(obj['resource']['site'] == monroe.googleGroup for obj in responses))
         self.assertFalse(any(obj['resource']['site'] == phoenix.googleGroup for obj in responses))
 
+    def test_synthetic_pm_fields(self):
+        questionnaire_id = self.create_questionnaire("all_consents_questionnaire.json")
+        remote_pm_questionnaire_id = self.create_questionnaire("remote_pm_questionnaire.json")
+        participant = self.send_post("Participant", {})
+        participant_id = participant["participantId"]
+        with FakeClock(TIME_6):
+            self.send_consent(participant_id)
+
+        self._submit_consent_questionnaire_response(
+            participant_id, questionnaire_id, CONSENT_PERMISSION_YES_CODE, time=TIME_6
+        )
+        # test no pm submitted
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
+
+        self.assertEqual(participant_summary["physicalMeasurementsStatus"], "UNSET")
+        self.assertEqual(participant_summary["physicalMeasurementsFinalizedSite"], "UNSET")
+        self.assertEqual(participant_summary["physicalMeasurementsCreatedSite"], "UNSET")
+        self.assertEqual(participant_summary["physicalMeasurementsCollectType"], "UNSET")
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsStatus"], "UNSET")
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsFinalizedSite"], "UNSET")
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsCreatedSite"], "UNSET")
+
+        measurements_1 = load_measurement_json(participant_id, TIME_1.isoformat())
+        path = "Participant/%s/PhysicalMeasurements" % participant_id
+        with FakeClock(TIME_1):
+            self.send_post(path, measurements_1)
+
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsFinalizedTime"], TIME_1.isoformat())
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsTime"], TIME_1.isoformat())
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsCreatedSite"], "hpo-site-monroeville")
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsStatus"],
+                         participant_summary["physicalMeasurementsStatus"])
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsFinalizedTime"],
+                         participant_summary["physicalMeasurementsFinalizedTime"])
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsTime"],
+                         participant_summary["physicalMeasurementsTime"])
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsFinalizedSite"],
+                         participant_summary["physicalMeasurementsFinalizedSite"])
+        self.assertEqual(participant_summary["clinicPhysicalMeasurementsCreatedSite"],
+                         participant_summary["physicalMeasurementsCreatedSite"])
+
+        resource = load_remote_measurement_json("remote_pm_response_metric.json", remote_pm_questionnaire_id,
+                                                participant_id)
+        remote_pm_path = "Participant/%s/QuestionnaireResponse" % participant_id
+        with FakeClock(TIME_2):
+            self.send_post(remote_pm_path, resource)
+
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(participant_summary["selfReportedPhysicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(participant_summary["selfReportedPhysicalMeasurementsAuthored"], "2022-06-01T18:26:08")
+        self.assertEqual(participant_summary["selfReportedPhysicalMeasurementsStatus"],
+                         participant_summary["physicalMeasurementsStatus"])
+        self.assertEqual(participant_summary["selfReportedPhysicalMeasurementsAuthored"],
+                         participant_summary["physicalMeasurementsFinalizedTime"])
+        self.assertEqual(participant_summary["physicalMeasurementsFinalizedSite"], "UNSET")
+        self.assertEqual(participant_summary["physicalMeasurementsCreatedSite"], "UNSET")
