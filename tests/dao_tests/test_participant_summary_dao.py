@@ -1163,6 +1163,68 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertIsNotNone(participant_summary)
         self.assertEqual(pid, participant_summary.participantId)
 
+    def test_create_synthetic_pm_fields(self):
+        summary_1 = ParticipantSummary(
+            participantId=1
+        )
+        results = self.dao.to_client_json(summary_1)
+        self.assertEqual(results["physicalMeasurementsStatus"], "UNSET")
+        self.assertEqual(results["clinicPhysicalMeasurementsStatus"], "UNSET")
+        self.assertEqual(results["selfReportedPhysicalMeasurementsStatus"], "UNSET")
+        self.assertEqual(results["physicalMeasurementsCollectType"], "UNSET")
+
+        summary_2 = ParticipantSummary(
+            participantId=2,
+            clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.COMPLETED,
+            clinicPhysicalMeasurementsFinalizedTime=TIME_1
+        )
+        results = self.dao.to_client_json(summary_2)
+        self.assertEqual(results["physicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(results["clinicPhysicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(results["selfReportedPhysicalMeasurementsStatus"], "UNSET")
+        self.assertEqual(results["physicalMeasurementsFinalizedTime"], TIME_1.isoformat())
+        self.assertEqual(results["physicalMeasurementsCollectType"], "SITE")
+
+        summary_3 = ParticipantSummary(
+            participantId=3,
+            selfReportedPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.COMPLETED,
+            selfReportedPhysicalMeasurementsAuthored=TIME_2
+        )
+        results = self.dao.to_client_json(summary_3)
+        self.assertEqual(results["physicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(results["clinicPhysicalMeasurementsStatus"], "UNSET")
+        self.assertEqual(results["selfReportedPhysicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(results["physicalMeasurementsFinalizedTime"], TIME_2.isoformat())
+        self.assertEqual(results["physicalMeasurementsCollectType"], "SELF_REPORTED")
+
+        summary_4 = ParticipantSummary(
+            participantId=4,
+            selfReportedPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.COMPLETED,
+            selfReportedPhysicalMeasurementsAuthored=TIME_2,
+            clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.COMPLETED,
+            clinicPhysicalMeasurementsFinalizedTime=TIME_1
+        )
+        results = self.dao.to_client_json(summary_4)
+        self.assertEqual(results["physicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(results["clinicPhysicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(results["selfReportedPhysicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(results["physicalMeasurementsFinalizedTime"], TIME_2.isoformat())
+        self.assertEqual(results["physicalMeasurementsCollectType"], "SELF_REPORTED")
+
+        summary_5 = ParticipantSummary(
+            participantId=5,
+            selfReportedPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.COMPLETED,
+            selfReportedPhysicalMeasurementsAuthored=TIME_4,
+            clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.COMPLETED,
+            clinicPhysicalMeasurementsFinalizedTime=TIME_3
+        )
+        results = self.dao.to_client_json(summary_5)
+        self.assertEqual(results["physicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(results["clinicPhysicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(results["selfReportedPhysicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(results["physicalMeasurementsFinalizedTime"], TIME_3.isoformat())
+        self.assertEqual(results["physicalMeasurementsCollectType"], "SITE")
+
     def test_parse_enums_from_resource(self):
         resource = {
             "withdrawalStatus": "NO_USE",
