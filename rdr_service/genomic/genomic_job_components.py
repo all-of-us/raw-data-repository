@@ -1370,6 +1370,9 @@ class GenomicFileIngester:
                     continue
 
                 member.cvlSecondaryConfFailure = row_copy['cvlsecondaryconffailure']
+                # allows for sample to be resent in subsequent W3SR
+                # https://docs.google.com/presentation/d/1QqXCzwz6MGLMhNwuXlV6ieoMLaJYuYai8csxagF_2-E/edit#slide=id.g10f369a487f_0_0
+                member.cvlW3srManifestJobRunID = None
                 self.member_dao.update(member)
 
             return GenomicSubProcessResult.SUCCESS

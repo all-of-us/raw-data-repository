@@ -50,7 +50,8 @@ class GenomicCVLPipelineTest(BaseTestCase):
                 genomicSetId=self.gen_set.id,
                 biobankId=f"{num}",
                 sampleId=f"100{num}",
-                genomeType="aou_wgs"
+                genomeType="aou_wgs",
+                cvlW3srManifestJobRunID=kwargs.get('cvl_w3sr_manifest_job_run_id')
             )
 
             if kwargs.get('set_cvl_analysis_records'):
@@ -379,11 +380,18 @@ class GenomicCVLPipelineTest(BaseTestCase):
 
     def test_w3sc_manifest_ingestion(self):
 
+        initial_w3sr_job_run_id = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.CVL_W3SR_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        ).id
+
         self.execute_base_cvl_ingestion(
             test_file='RDR_AoU_CVL_W3SC.csv',
             job_id=GenomicJob.CVL_W3SC_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W3SC,
-            results_module=ResultsModuleType.HDRV1
+            results_module=ResultsModuleType.HDRV1,
+            cvl_w3sr_manifest_job_run_id=initial_w3sr_job_run_id
         )
 
         current_members = self.member_dao.get_all()
@@ -398,6 +406,8 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(len(self.file_processed_dao.get_all()), 1)
         w3sc_file_processed = self.file_processed_dao.get(1)
         self.assertTrue(w3sc_file_processed.runId, w3sc_job_run.jobId)
+
+        self.assertTrue(all(obj.cvlW3srManifestJobRunID is None for obj in current_members))
 
         self.assertTrue(all(obj.cvlW3scManifestJobRunID is not None for obj in current_members))
         self.assertTrue(all(obj.cvlW3scManifestJobRunID == w3sc_job_run.id for obj in current_members))
