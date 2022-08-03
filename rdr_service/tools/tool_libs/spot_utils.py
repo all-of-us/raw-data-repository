@@ -6,10 +6,10 @@ import argparse
 import logging
 import json
 import sys
-import datetime
 import uuid
 import itertools
 import re
+from dateutil.parser import parse
 from google.cloud import bigquery
 from sqlalchemy.orm import aliased
 from sqlalchemy import func
@@ -37,6 +37,28 @@ tool_cmd = "spot"
 tool_desc = "tool for loading spot ODS and exporting to data mart."
 
 
+def validate_args(arg_string):
+    """
+    Decorator to validate an argument
+    :param arg_string: string representation of argument attribute
+    :return:
+    """
+    _logger.info('Validating args')
+    def wrapper(meth):
+
+        def inner(obj):
+            if arg_string == "cutoff_date":
+                if obj.args.cutoff_date is None:
+                    _logger.error("--cutoff-date required for operation")
+                    return 1
+                obj.args.cutoff_date = parse(obj.args.cutoff_date)
+
+            return meth(obj)
+
+        return inner
+    return wrapper
+
+
 class SpotTool(ToolBase):
     client = bigquery.Client()
     session = None
@@ -53,7 +75,6 @@ class SpotTool(ToolBase):
 
         process_map = {
             "LOAD_ODS_TABLE": self.load_ods_table,
-            "LOAD_ODS_EXPORT_SCHEMA_DATA_ELEMENT": None,
             "TRANSFER_RDR_SAMPLE_DATA_TO_ODS": self.load_ods_sample_data_element,
             "TRANSFER_RDR_PARTICIPANT_DATA_TO_ODS": self.load_ods_participant_data_element,
             "EXPORT_ODS_TO_DATAMART": self.export_ods_data_to_datamart
@@ -128,17 +149,19 @@ class SpotTool(ToolBase):
             "CALL rdr_ods.test_export_genomic_research_procedure();"
         )
 
+    @validate_args(arg_string="cutoff_date")
     def load_ods_sample_data_element(self):
         """
         Main function for extracting RDR genomic data, pivoting the data,
         and loading it into rdr_ods.sample_data_element
         """
+
         # get data elements from registry
         registered_member_data_elements = list(self.get_data_elements_from_registry("sample_data_element"))
 
         # Get all newly modified members (with aw4)
         modified_members = self.get_modified_member_data(registered_member_data_elements,
-                                                         last_update_date=datetime.datetime(2022, 7, 25, 20))
+                                                         last_update_date=self.args.cutoff_date)
 
         # Pivot registered
         pivoted_data = self.pivot_member_data(registered_member_data_elements, modified_members)
@@ -150,6 +173,7 @@ class SpotTool(ToolBase):
 
         return 0
 
+    @validate_args(arg_string="cutoff_date")
     def load_ods_participant_data_element(self):
         """
         Main function for extracting RDR survey data
@@ -161,7 +185,7 @@ class SpotTool(ToolBase):
 
         # Get all newly modified members (with aw4)
         survey_data = self.get_new_survey_data(survey_data_elements,
-                                               last_update_date=datetime.datetime(2022, 8, 1, 0))
+                                               last_update_date=self.args.cutoff_date)
 
         _logger.info("building survey data element records...")
         rows = self.build_survey_data_element_row(survey_data)
@@ -261,6 +285,7 @@ class SpotTool(ToolBase):
         # Attribute list
         rdr_attributes = [
             QuestionnaireResponse.participantId,
+            Participant.researchId,
             question_code.value.label('question_code'),
             answer_code.value.label('answer_code'),
             QuestionnaireResponse.authored,
@@ -299,7 +324,8 @@ class SpotTool(ToolBase):
             answer_code,
             answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId
         ).join(
-
+            Participant,
+            Participant.participantId == QuestionnaireResponse.participantId
         ).filter(
             GenomicSetMember.genomeType == "aou_wgs",
             GenomicSetMember.aw4ManifestJobRunID.isnot(None),
@@ -321,6 +347,7 @@ class SpotTool(ToolBase):
         for row in survey_data:
             new_row = {
                 'participant_id': row.participantId,
+                'research_id': row.researchId,
                 'data_element_id': row.data_element_id,
                 'value_string': row.answer_code,
                 'created_timestamp': row.created_timestamp.isoformat(),
@@ -419,6 +446,10 @@ def run():
                         default=None,
                         required=False,
                         type=str)
+
+    parser.add_argument("--cutoff-date", help=f"Date to use as cutoff",
+                        default=None,
+                        required=False)
 
     parser.add_argument("--data-file", help="json file to load", default=None)  # noqa
 
