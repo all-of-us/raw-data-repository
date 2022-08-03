@@ -1561,3 +1561,24 @@ class GenomicCVLResultPastDue(Base):
 
 event.listen(GenomicCVLResultPastDue, 'before_insert', model_insert_listener)
 event.listen(GenomicCVLResultPastDue, 'before_update', model_update_listener)
+
+
+class GenomicResultWithdrawals(Base):
+    """
+    Used for storing the samples in results pipeline
+    that have been withdrawn
+    """
+
+    __tablename__ = "genomic_result_withdrawals"
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False, index=True)
+    array_results = Column(SmallInteger, nullable=False, default=0)
+    cvl_results = Column(SmallInteger, nullable=False, default=0)
+
+
+event.listen(GenomicResultWithdrawals, 'before_insert', model_insert_listener)
+event.listen(GenomicResultWithdrawals, 'before_update', model_update_listener)

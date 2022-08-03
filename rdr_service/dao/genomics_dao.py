@@ -45,7 +45,7 @@ from rdr_service.model.genomics import (
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
-    GenomicSampleSwap, GenomicAppointmentEvent)
+    GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -3813,6 +3813,54 @@ class GenomicQueriesDao(BaseDao):
 
             return query.distinct().all()
 
+    def get_results_withdrawn_participants(self):
+        with self.session() as session:
+            array_results = aliased(GenomicSetMember)
+            cvl_results = aliased(GenomicSetMember)
+            return session.query(
+                GenomicSetMember.participantId.label('participant_id'),
+                sqlalchemy.case(
+                    [
+                        (array_results.id.isnot(None), True)
+                    ],
+                    else_=False
+                ).label('array_results'),
+                sqlalchemy.case(
+                    [
+                        (cvl_results.id.isnot(None), True)
+                    ],
+                    else_=False
+                ).label('cvl_results')
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).outerjoin(
+                array_results,
+                and_(
+                    array_results.id == GenomicSetMember.id,
+                    array_results.gemA1ManifestJobRunId.isnot(None)
+                )
+            ).outerjoin(
+                cvl_results,
+                and_(
+                    cvl_results.id == GenomicSetMember.id,
+                    or_(
+                        cvl_results.cvlW1ilHdrJobRunId.isnot(None),
+                        cvl_results.cvlW1ilPgxJobRunId.isnot(None)
+                    ),
+                )
+            ).outerjoin(
+                GenomicResultWithdrawals,
+                GenomicResultWithdrawals.participant_id == GenomicSetMember.participantId
+            ).filter(
+                ParticipantSummary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
+                GenomicResultWithdrawals.id.is_(None),
+                or_(
+                    array_results.id.isnot(None),
+                    cvl_results.id.isnot(None)
+                )
+            ).all()
+
 
 class GenomicCVLResultPastDueDao(UpdatableDao, GenomicDaoMixin):
 
@@ -3974,3 +4022,20 @@ class GenomicSampleSwapDao(BaseDao):
 
     def get_id(self, obj):
         pass
+
+
+class GenomicResultWithdrawalsDao(BaseDao):
+    def __init__(self):
+        super(GenomicResultWithdrawalsDao, self).__init__(
+            GenomicResultWithdrawals, order_by_ending=['id']
+        )
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    def insert_bulk(self, batch):
+        with self.session() as session:
+            session.bulk_insert_mappings(self.model_type, batch)

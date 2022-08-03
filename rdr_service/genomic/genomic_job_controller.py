@@ -53,7 +53,7 @@ from rdr_service.dao.genomics_dao import (
     UserEventMetricsDao,
     GenomicResultViewedDao,
     GenomicQueriesDao, GenomicMemberReportStateDao, GenomicAppointmentEventDao,
-    GenomicCVLResultPastDueDao
+    GenomicCVLResultPastDueDao, GenomicResultWithdrawalsDao
 )
 from rdr_service.model.message_broker import MessageBrokerEventData
 from rdr_service.services.email_service import Email, EmailService
@@ -1788,8 +1788,7 @@ class GenomicJobController:
 
         return file_attr
 
-    @staticmethod
-    def check_w1il_gror_resubmit(since_datetime):
+    def check_w1il_gror_resubmit(self, since_datetime):
         dao = GenomicQueriesDao()
         participant_list = dao.get_w1il_yes_no_yes_participants(start_datetime=since_datetime)
 
@@ -1812,6 +1811,46 @@ class GenomicJobController:
                     plain_text_content=message
                 )
             )
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
+    def check_results_withdrawals(self):
+        query_dao = GenomicQueriesDao()
+        result_withdrawals = query_dao.get_results_withdrawn_participants()
+
+        if not result_withdrawals:
+            logging.info('There are no new withdrawal records in the genomic results pipeline')
+            self.job_result = GenomicSubProcessResult.NO_RESULTS
+            return
+
+        result_withdrawal_dao = GenomicResultWithdrawalsDao()
+
+        logging.warning(f'There are {len(result_withdrawals)} new withdrawal records in the genomics result pipeline')
+
+        batch = []
+        for result in result_withdrawals:
+            result = result._asdict()
+            result['created'] = clock.CLOCK.now()
+            result['modified'] = clock.CLOCK.now()
+            batch.append(result)
+
+        result_withdrawal_dao.insert_bulk(batch)
+
+        notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
+        if notification_email_address:
+            message = 'The following participants have withdrawn from the program and are currently'
+            message += ' in the genomics result pipelines:\n\n'
+            message += '\n'.join([f'P{participant.participant_id}' for participant in result_withdrawals])
+
+            EmailService.send_email(
+                Email(
+                    recipients=[notification_email_address],
+                    subject='Participants that have withdrawn and are currently in results pipeline(s)',
+                    plain_text_content=message
+                )
+            )
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
 
     @staticmethod
     def execute_cloud_task(payload, endpoint):

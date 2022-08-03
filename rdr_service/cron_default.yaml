@@ -239,3 +239,9 @@ cron:
   timezone: America/New_York
   schedule: every monday 10:00
   target: offline
+- description: Genomic Results Pipeline Withdrawals
+  url: /offline/GenomicResultsPipelineWithdrawals
+  timezone: America/New_York
+  schedule: every monday 11:00
+  target: offline
+

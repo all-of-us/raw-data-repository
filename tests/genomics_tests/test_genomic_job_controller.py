@@ -5,7 +5,7 @@ from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
-    GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao
+    GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao, GenomicResultWithdrawalsDao
 
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult, \
@@ -13,6 +13,7 @@ from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWo
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics
+from rdr_service.participant_enums import WithdrawalStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -793,4 +794,65 @@ class GenomicJobControllerTest(BaseTestCase):
 
         members_for_ready_loop = self.member_dao.get_members_for_informing_loop_ready()
         self.assertEqual(len(members_for_ready_loop), 0)
+
+    @mock.patch('rdr_service.services.email_service.EmailService.send_email')
+    def test_getting_results_withdrawn(self, email_mock):
+        num_participants = 4
+        result_withdrawal_dao = GenomicResultWithdrawalsDao()
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+        gen_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        pids = []
+        for _ in range(num_participants):
+            summary = self.data_generator.create_database_participant_summary(
+                consentForStudyEnrollment=1,
+                consentForGenomicsROR=1,
+                withdrawalStatus=WithdrawalStatus.EARLY_OUT
+            )
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                participantId=summary.participantId,
+                genomeType=config.GENOME_TYPE_WGS,
+                cvlW1ilHdrJobRunId=gen_job_run.id
+            )
+            pids.append(summary.participantId)
+
+        config.override_setting(config.RDR_GENOMICS_NOTIFICATION_EMAIL, 'email@test.com')
+
+        with GenomicJobController(GenomicJob.RESULTS_PIPELINE_WITHDRAWALS) as controller:
+            controller.check_results_withdrawals()
+
+        # mock checks
+        self.assertEqual(email_mock.call_count, 1)
+
+        job_runs = self.job_run_dao.get_all()
+        current_job_run = list(filter(lambda x: x.jobId == GenomicJob.RESULTS_PIPELINE_WITHDRAWALS, job_runs))[0]
+        self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
+
+        all_withdrawal_records = result_withdrawal_dao.get_all()
+
+        self.assertTrue(len(all_withdrawal_records) == len(pids))
+        self.assertTrue(all(obj.array_results == 0 for obj in all_withdrawal_records))
+        self.assertTrue(all(obj.cvl_results == 1 for obj in all_withdrawal_records))
+        self.assertTrue(all(obj.participant_id in pids for obj in all_withdrawal_records))
+
+        with GenomicJobController(GenomicJob.RESULTS_PIPELINE_WITHDRAWALS) as controller:
+            controller.check_results_withdrawals()
+
+        # mock checks should still be one on account of no records
+        self.assertEqual(email_mock.call_count, 1)
+
+        job_runs = self.job_run_dao.get_all()
+        current_job_run = list(filter(lambda x: x.jobId == GenomicJob.RESULTS_PIPELINE_WITHDRAWALS, job_runs))[1]
+
+        self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.NO_RESULTS)
 
