@@ -2031,12 +2031,13 @@ class GenomicOutreachDaoV2(BaseDao):
                 if 'ready' in p.type:
                     ready_modules = ['hdr', 'pgx']
                     for module in ready_modules:
-                        report_statuses.append({
-                            "module": module,
-                            "type": 'informingLoop',
-                            "status": 'ready',
-                            "participant_id": f'P{pid}',
-                        })
+                        if module in self.module:
+                            report_statuses.append({
+                                "module": module,
+                                "type": 'informingLoop',
+                                "status": 'ready',
+                                "participant_id": f'P{pid}',
+                            })
                 if 'decision' in p.type:
                     report_statuses.append({
                         "module": p.module_type.lower(),
