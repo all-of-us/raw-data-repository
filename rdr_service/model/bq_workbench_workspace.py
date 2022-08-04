@@ -100,10 +100,11 @@ class BQRWBWorkspaceView(BQView):
             SELECT
                 %%FIELD_LIST%%
             FROM (
-                SELECT *, MAX(modified) OVER (PARTITION BY workspace_source_id) AS max_timestamp
+                SELECT *, 
+                       ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified) AS rn
                   FROM `{project}`.{dataset}.rwb_workspace
               ) t
-              WHERE t.modified = t.max_timestamp
+              WHERE t.rn = 1
         """.replace('%%FIELD_LIST%%', BQRWBWorkspaceSchema.get_sql_field_names(
             exclude_fields=[
                 'race_ethnicities',
@@ -120,10 +121,11 @@ class BQRWBWorkspaceRaceEthnicityView(BQView):
     __sql__ = """
         SELECT t.id, t.created, t.modified, t.workspace_source_id, nt.*
           FROM (
-            SELECT *, MAX(modified) OVER (PARTITION BY workspace_source_id) AS max_timestamp
+            SELECT *, 
+                   ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified) AS rn
               FROM `{project}`.{dataset}.rwb_workspace
           ) t cross join unnest(race_ethnicities) as nt
-          WHERE t.modified = t.max_timestamp
+          WHERE t.rn = 1
     """
 
 
@@ -135,10 +137,11 @@ class BQRWBWorkspaceAgeView(BQView):
     __sql__ = """
         SELECT t.id, t.created, t.modified, t.workspace_source_id, nt.*
           FROM (
-            SELECT *, MAX(modified) OVER (PARTITION BY workspace_source_id) AS max_timestamp
+            SELECT *, 
+                   ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified) AS rn
               FROM `{project}`.{dataset}.rwb_workspace
           ) t cross join unnest(ages) as nt
-          WHERE t.modified = t.max_timestamp
+          WHERE t.rn = 1
     """
 
 

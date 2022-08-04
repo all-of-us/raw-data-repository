@@ -39,6 +39,7 @@ BQ_TABLES = [
 
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcher'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBInstitutionalAffiliations'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQRWBAudit'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspace'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceUsers'),
 
@@ -111,6 +112,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_workbench_researcher', 'BQDSV2EthnicCategoryView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQDSV2GenderIdentityView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQDSV2SexualOrientationView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQRWBAuditView'),
 
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceView'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceRaceEthnicityView'),

@@ -5,7 +5,7 @@ from sqlalchemy.sql import text
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_workbench_researcher import BQRWBResearcherSchema, BQRWBInstitutionalAffiliationsSchema, \
-    BQRWBResearcher, BQRWBInstitutionalAffiliations
+    BQRWBResearcher, BQRWBInstitutionalAffiliations, BQRWBAudit, BQRWBAuditSchema
 from rdr_service.model.bq_workbench_workspace import BQRWBWorkspaceSchema, BQRWBWorkspaceUsersSchema, \
     BQRWBWorkspace, BQRWBWorkspaceUsers
 from rdr_service.participant_enums import WorkbenchResearcherDisability, WorkbenchWorkspaceUserRole, \
@@ -72,8 +72,9 @@ class BQRWBWorkspaceGenerator(BigQueryGenerator):
             data['income_level'] = str(WorkbenchWorkspaceIncomeLevel(row.income_level))
             data['income_level_id'] = int(WorkbenchWorkspaceIncomeLevel(row.income_level))
 
-            data['access_tier'] = str(WorkbenchWorkspaceAccessTier(row.access_tier))
-            data['access_tier_id'] = int(WorkbenchWorkspaceAccessTier(row.access_tier))
+            if row.access_tier:
+                data['access_tier'] = str(WorkbenchWorkspaceAccessTier(row.access_tier))
+                data['access_tier_id'] = int(WorkbenchWorkspaceAccessTier(row.access_tier))
 
             return BQRecord(schema=BQRWBWorkspaceSchema, data=data, convert_to_enum=convert_to_enum)
 
@@ -93,7 +94,7 @@ def bq_workspace_update(_id, project_id=None, gen=None, w_dao=None):
 
     bqr = gen.make_bqrecord(_id)
     with w_dao.session() as w_session:
-        gen.save_bqrecord(bqr.workspace_source_id, bqr, bqtable=BQRWBWorkspace, w_dao=w_dao,
+        gen.save_bqrecord(_id, bqr, bqtable=BQRWBWorkspace, w_dao=w_dao,
                           w_session=w_session, project_id=project_id)
 
 
@@ -207,7 +208,7 @@ def bq_researcher_update(_id, project_id=None, gen=None, w_dao=None):
 
     bqr = gen.make_bqrecord(_id)
     with w_dao.session() as w_session:
-        gen.save_bqrecord(bqr.user_source_id, bqr, bqtable=BQRWBResearcher, w_dao=w_dao,
+        gen.save_bqrecord(_id, bqr, bqtable=BQRWBResearcher, w_dao=w_dao,
                           w_session=w_session, project_id=project_id)
 
 
@@ -238,7 +239,8 @@ class BQRWBInstitutionalAffiliationsGenerator(BigQueryGenerator):
         ro_dao = BigQuerySyncDao(backup=True)
         with ro_dao.session() as ro_session:
             row = ro_session.execute(
-                text('select * from rdr.workbench_institutional_affiliations where id = :id'), {'id': pk_id}).first()
+                text('select * from rdr.workbench_institutional_affiliations_history where id = :id'),
+                        {'id': pk_id}).first()
             data = ro_dao.to_dict(row)
 
             data['non_academic_affiliation'] = str(WorkbenchInstitutionNonAcademic(row.non_academic_affiliation))
@@ -276,6 +278,61 @@ def bq_institutional_affiliations_batch_update(_ids, project_id=None):
     w_dao = BigQuerySyncDao()
     for _id in _ids:
         bq_institutional_affiliations_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
+
+
+class BQRWBAuditGenerator(BigQueryGenerator):
+    """
+    Generate a Research Workbench Audit BQRecord object
+    """
+
+    def make_bqrecord(self, pk_id, convert_to_enum=False):
+        """
+        Build a BQRecord object from the given primary key id.
+        :param pk_id: Primary key value.
+        :param convert_to_enum: If schema field description includes Enum class info, convert value to Enum.
+        :return: BQRecord object
+        """
+        ro_dao = BigQuerySyncDao(backup=True)
+        with ro_dao.session() as ro_session:
+            row = ro_session.execute(
+                text('select * from rdr.workbench_audit where id = :id'), {'id': pk_id}).first()
+            data = ro_dao.to_dict(row)
+
+            data['auditor_pmi_email'] = 1 if data['auditor_pmi_email'] else 0
+            data['audit_notes'] = 1 if data['audit_notes'] else 0
+
+            return BQRecord(schema=BQRWBAuditSchema, data=data, convert_to_enum=convert_to_enum)
+
+
+def bq_audit_update(_id, project_id=None, gen=None, w_dao=None):
+    """
+    Generate Workbench Audit record for BQ.
+    :param _id: Primary Key
+    :param project_id: Override the project_id
+    :param gen: BQRWBAuditGenerator object
+    :param w_dao: writeable dao object.
+    """
+    if not gen:
+        gen = BQRWBAuditGenerator()
+    if not w_dao:
+        w_dao = BigQuerySyncDao()
+
+    bqr = gen.make_bqrecord(_id)
+    with w_dao.session() as w_session:
+        gen.save_bqrecord(_id, bqr, bqtable=BQRWBAudit, w_dao=w_dao,
+                          w_session=w_session, project_id=project_id)
+
+
+def bq_audit_batch_update(_ids, project_id=None):
+    """
+    Update a batch of ids.
+    :param _ids: list of ids
+    :param project_id: Override the project_id
+    """
+    gen = BQRWBAuditGenerator()
+    w_dao = BigQuerySyncDao()
+    for _id in _ids:
+        bq_audit_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
 
 
 def rebuild_bq_workpaces(workspaces):
