@@ -8,6 +8,9 @@ from sqlalchemy.orm import subqueryload, aliased
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
 from datetime import datetime, timedelta
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.config import GAE_PROJECT
+from rdr_service.dao.bq_workbench_dao import rebuild_bq_wb_researchers
 from rdr_service.dao.metadata_dao import MetadataDao, WORKBENCH_LAST_SYNC_KEY
 from rdr_service.model.workbench_workspace import (
     WorkbenchWorkspaceApproved,
@@ -17,7 +20,6 @@ from rdr_service.model.workbench_workspace import (
     WorkbenchAudit
 )
 from rdr_service.model.workbench_researcher import (
-    WorkbenchResearcher,
     WorkbenchResearcher,
     WorkbenchResearcherHistory,
     WorkbenchInstitutionalAffiliations,
@@ -1151,6 +1153,7 @@ class WorkbenchResearcherDao(UpdatableDao):
     @staticmethod
     def _insert_history(session, researchers):
         session.flush()
+        hist_researchers = list()
         for researcher in researchers:
             history = WorkbenchResearcherHistory()
             for k, v in researcher:
@@ -1169,6 +1172,30 @@ class WorkbenchResearcherDao(UpdatableDao):
                 affiliations_history.append(affiliation_obj)
             history.workbenchInstitutionalAffiliations = affiliations_history
             session.add(history)
+            hist_researchers.append(history)
+        session.flush()
+        session.commit()
+
+        # Generate tasks to build PDR records.
+        if GAE_PROJECT == 'localhost':
+            rebuild_bq_wb_researchers(hist_researchers)
+        else:
+            researchers_payload = {'table': 'researcher', 'ids': []}
+            affiliations_payload = {'table': 'institutional_affiliations', 'ids': []}
+            for obj in hist_researchers:
+                researchers_payload['ids'].append(obj.id)
+                if obj.workbenchInstitutionalAffiliations:
+                    for aff in obj.workbenchInstitutionalAffiliations:
+                        affiliations_payload['ids'].append(aff.id)
+
+            task = GCPCloudTask()
+
+            if len(researchers_payload['ids']) > 0:
+                task.execute('rebuild_research_workbench_table_records_task', payload=researchers_payload,
+                                   in_seconds=15, queue='resource-rebuild')
+            if len(affiliations_payload['ids']) > 0:
+                task.execute('rebuild_research_workbench_table_records_task', payload=affiliations_payload,
+                                   in_seconds=15, queue='resource-rebuild')
 
     @staticmethod
     def get_researcher_by_user_id_with_session(session, user_id):

@@ -5,9 +5,9 @@ from sqlalchemy.sql import text
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_workbench_researcher import BQRWBResearcherSchema, BQRWBInstitutionalAffiliationsSchema, \
-    BQRWBResearcher, BQRWBInstitutionalAffiliations, BQRWBAudit, BQRWBAuditSchema
+    BQRWBResearcher, BQRWBInstitutionalAffiliations
 from rdr_service.model.bq_workbench_workspace import BQRWBWorkspaceSchema, BQRWBWorkspaceUsersSchema, \
-    BQRWBWorkspace, BQRWBWorkspaceUsers
+    BQRWBWorkspace, BQRWBWorkspaceUsers, BQRWBAudit, BQRWBAuditSchema
 from rdr_service.participant_enums import WorkbenchResearcherDisability, WorkbenchWorkspaceUserRole, \
     WorkbenchInstitutionNonAcademic, WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, \
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceAccessToCare, \
@@ -335,6 +335,24 @@ def bq_audit_batch_update(_ids, project_id=None):
         bq_audit_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
 
 
+def rebuild_bq_audit(records):
+    """
+    Rebuild BQ workbench audit records.
+    :param records: Array of workbench audit models.
+    """
+    if not records:
+        return
+
+    audit_gen = BQRWBAuditGenerator()
+
+    w_dao = BigQuerySyncDao()
+    with w_dao.session() as w_session:
+
+        for rec in records:
+            bqws_rec = audit_gen.make_bqrecord(rec.id)
+            audit_gen.save_bqrecord(rec.id, bqws_rec, BQRWBAudit, w_dao, w_session)
+
+
 def rebuild_bq_workpaces(workspaces):
     """
     Rebuild BQ workbench workspaces.
@@ -350,7 +368,7 @@ def rebuild_bq_workpaces(workspaces):
 
         for workspace in workspaces:
             bqws_rec = workspace_gen.make_bqrecord(workspace.id)
-            workspace_gen.save_bqrecord(workspace.workspaceSourceId, bqws_rec, BQRWBWorkspace, w_dao, w_session)
+            workspace_gen.save_bqrecord(workspace.id, bqws_rec, BQRWBWorkspace, w_dao, w_session)
 
             if workspace.workbenchWorkspaceUser:
                 for user in workspace.workbenchWorkspaceUser:
@@ -375,7 +393,7 @@ def rebuild_bq_wb_researchers(researchers):
             wb_bqr = researcher_gen.make_bqrecord(obj.id)
             if not wb_bqr:
                 continue
-            researcher_gen.save_bqrecord(obj.userSourceId, wb_bqr, BQRWBResearcher, w_dao, w_session)
+            researcher_gen.save_bqrecord(obj.id, wb_bqr, BQRWBResearcher, w_dao, w_session)
 
             if obj.workbenchInstitutionalAffiliations:
                 for aff in obj.workbenchInstitutionalAffiliations:
