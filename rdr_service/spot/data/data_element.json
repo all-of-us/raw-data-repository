@@ -1,0 +1,376 @@
+[{
+  "id": "6c711285e9444d01b163010a33252043",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.meanCoverage",
+  "value_datatype": "string"
+}, {
+  "id": "9aba013aae86403a8759431bcfed9eff",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.drcMeanCoverage",
+  "value_datatype": "string"
+}, {
+  "id": "2e216bb73b764b559fdb9e7f4a69c068",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.arrayConcordance",
+  "value_datatype": "string"
+}, {
+  "id": "2e5655307ae3465a8d50d18c22496955",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.notes",
+  "value_datatype": "string"
+}, {
+  "id": "41e717a4e3bb483887f3ff84d5e32ed0",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.pipelineId",
+  "value_datatype": "string"
+}, {
+  "id": "f238c7748cab47e191ce3e5156c8b876",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.drcContamination",
+  "value_datatype": "string"
+}, {
+  "id": "ad9b3741eefc4cc3a350ea6ca90246ed",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.sexConcordance",
+  "value_datatype": "string"
+}, {
+  "id": "3fa51043a74a4e27a48bcccf0991a5c4",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.aouHdrCoverage",
+  "value_datatype": "string"
+}, {
+  "id": "801d3c8090d94592943c88ab51b5cda6",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.alignedQ30Bases",
+  "value_datatype": "string"
+}, {
+  "id": "7afea7d9ec5c43558f74130d3af57c4b",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.callRate",
+  "value_datatype": "string"
+}, {
+  "id": "a9e2e56b2d064d88b81298c448fea367",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.siteId",
+  "value_datatype": "string"
+}, {
+  "id": "c999df477edd4c9998621e90d1fc26bb",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.drcFpConcordance",
+  "value_datatype": "string"
+}, {
+  "id": "995c4c6230e24c9b85d65f88250b54cd",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.mappedReadsPct",
+  "value_datatype": "string"
+}, {
+  "id": "6727ed3f093f49f4bc826b3a56446dc3",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.processingStatus",
+  "value_datatype": "string"
+}, {
+  "id": "b254dab0f63e49078ac16dd4105224e0",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.contamination",
+  "value_datatype": "string"
+}, {
+  "id": "5470c845467d4662b12501692785fda5",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.drcSexConcordance",
+  "value_datatype": "string"
+}, {
+  "id": "f50607e2f35945808e8ec2d14ae7aa96",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.genomeCoverage",
+  "value_datatype": "string"
+}, {
+  "id": "097d17e0b1c94eaebbfee9cdf98d1182",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.drcCallRate",
+  "value_datatype": "string"
+}, {
+  "id": "bef4dffcd0754842b1313813fdf976eb",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicGCValidationMetrics.sexPloidy",
+  "value_datatype": "string"
+}, {
+  "id": "ede63e9d82ec45aaaa96ccedba082df5",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicSetMember.qcStatus",
+  "value_datatype": "string"
+}, {
+  "id": "fabb52d4336c438aab4c885cbffe21b8",
+  "source_system": "rdr_genomic",
+  "source_target": "ParticipantSummary.consentForStudyEnrollment",
+  "value_datatype": "string"
+}, {
+  "id": "850ac55298b3492f8759bf2420baae5b",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicSetMember.nyFlag",
+  "value_datatype": "string"
+}, {
+  "id": "c07d2c98e67148d8aad694c745a7261b",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicSetMember.sexAtBirth",
+  "value_datatype": "string"
+}, {
+  "id": "7c4c49b41d974fcf826e9b6183d912b8",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicSetMember.genomeType",
+  "value_datatype": "string"
+}, {
+  "id": "3f00fac0df834cbfbcf359ec36ce9628",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicSetMember.ai_an",
+  "value_datatype": "string"
+}, {
+  "id": "c0ee9dfaac3c40a6b965e6147fcf8041",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicSetMember.gcSiteId",
+  "value_datatype": "string"
+}, {
+  "id": "fec8c6bfe1194388bf4cb864bfd40d70",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicSetMember.gcManifestSampleSource",
+  "value_datatype": "string"
+}, {
+  "id": "1db1d08a88784aefa0b071cf8bb3c242",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicSetMember.blockResearch",
+  "value_datatype": "string"
+}, {
+  "id": "7a3a9d59a35f4cc38439e2f80c95de3e",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicSetMember.blockResearchReason",
+  "value_datatype": "string"
+}, {
+  "id": "0125639035d84482b0ea91acac1df672",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicSetMember.participantOrigin",
+  "value_datatype": "string"
+}, {
+  "id": "d9b4fdfc29c040dbb4160093d146bd9d",
+  "source_system": "rdr_genomic",
+  "source_target": "GenomicSetMember.diversionPouchSiteFlag",
+  "value_datatype": "string"
+}, {
+  "id": "2665a9d530b94e26a55518b2d90697c3",
+  "source_system": "rdr_survey",
+  "source_target": "BiologicalSexAtBirth_SexAtBirth",
+  "value_datatype": "string"
+}, {
+  "id": "e60bc5dbfc2648cc96c8608235160347",
+  "source_system": "rdr_survey",
+  "source_target": "TheBasics_SexualOrientation",
+  "value_datatype": "string"
+}, {
+  "id": "47b91792058b40779955894cca1b9b7c",
+  "source_system": "rdr_survey",
+  "source_target": "Race_WhatRaceEthnicity",
+  "value_datatype": "string"
+}, {
+  "id": "485c166186ef4d22ad6462a29d01939f",
+  "source_system": "rdr_survey",
+  "source_target": "Income_AnnualIncome",
+  "value_datatype": "string"
+}, {
+  "id": "f6ff07d76ece4afcb7ab617c71609d1c",
+  "source_system": "rdr_survey",
+  "source_target": "Gender_GenderIdentity",
+  "value_datatype": "string"
+}, {
+  "id": "ce87d7889f2f4788af24182e9031c074",
+  "source_system": "rdr_survey",
+  "source_target": "EducationLevel_HighestGrade",
+  "value_datatype": "string"
+}, {
+  "id": "ee91d5f794974d5ca082e5d73f634881",
+  "source_system": "rdr_survey",
+  "source_target": "LivingSituation_HowManyLivingYears",
+  "value_datatype": "string"
+}, {
+  "id": "36e775443d444d76a04c86c268d06ec9",
+  "source_system": "rdr_survey",
+  "source_target": "LivingSituation_HowManyPeople",
+  "value_datatype": "string"
+}, {
+  "id": "bcfa1a1283ac4c5580cc3cd44779130c",
+  "source_system": "rdr_survey",
+  "source_target": "LivingSituation_CurrentLiving",
+  "value_datatype": "string"
+}, {
+  "id": "44a6e50d06e5426e961ffb2ea50d1935",
+  "source_system": "rdr_survey",
+  "source_target": "LivingSituation_StableHouseConcern",
+  "value_datatype": "string"
+}, {
+  "id": "543e07dd14f543ee8c3ca450023b10b5",
+  "source_system": "rdr_survey",
+  "source_target": "LivingSituation_PeopleUnder18",
+  "value_datatype": "string"
+}, {
+  "id": "2ee772b505a240cebcc65a5e6c91a48e",
+  "source_system": "rdr_survey",
+  "source_target": "ActiveDuty_AvtiveDutyServeStatus",
+  "value_datatype": "string"
+}, {
+  "id": "b1dd36e8e76546bbbd70173d345c31e5",
+  "source_system": "rdr_survey",
+  "source_target": "SecondContactsAddress_SecondContactState",
+  "value_datatype": "string"
+}, {
+  "id": "29b93e07c7d246dc8ccfeb9516a0418b",
+  "source_system": "rdr_survey",
+  "source_target": "SecondaryContactInfo_PersonOneRelationship",
+  "value_datatype": "string"
+}, {
+  "id": "b56c031dca4948e4959ecca3fc8f533f",
+  "source_system": "rdr_survey",
+  "source_target": "PersonOneAddress_PersonOneAddressState",
+  "value_datatype": "string"
+}, {
+  "id": "0eb654b970474891a8ae96636add2c9a",
+  "source_system": "rdr_survey",
+  "source_target": "SecondaryContactInfo_SecondContactsRelationship",
+  "value_datatype": "string"
+}, {
+  "id": "8e23900a7b4741cb858fd253929ade91",
+  "source_system": "rdr_survey",
+  "source_target": "Asian_AsianSpecific",
+  "value_datatype": "string"
+}, {
+  "id": "49f8bca183384077a0ffc5be547a3442",
+  "source_system": "rdr_survey",
+  "source_target": "Hispanic_HispanicSpecific",
+  "value_datatype": "string"
+}, {
+  "id": "006088c6889e4a4daaffd41ec36450d5",
+  "source_system": "rdr_survey",
+  "source_target": "White_WhiteSpecific",
+  "value_datatype": "string"
+}, {
+  "id": "ee7158429fbe4bc7bedd9cb15df252c9",
+  "source_system": "rdr_survey",
+  "source_target": "NHPI_NHPISpecific",
+  "value_datatype": "string"
+}, {
+  "id": "8598027929514c71bdbe2e7b1e25ed69",
+  "source_system": "rdr_survey",
+  "source_target": "AIAN_AIANSpecific",
+  "value_datatype": "string"
+}, {
+  "id": "bebf4b1a10894bfe8d74db6d5fbbabba",
+  "source_system": "rdr_survey",
+  "source_target": "Black_BlackSpecific",
+  "value_datatype": "string"
+}, {
+  "id": "35fc168379ef46b99997de0bb4b59499",
+  "source_system": "rdr_survey",
+  "source_target": "MENA_MENASpecific",
+  "value_datatype": "string"
+}, {
+  "id": "5007a3522b0d4353bee3e5794b263381",
+  "source_system": "rdr_survey",
+  "source_target": "Insurance_HealthInsurance",
+  "value_datatype": "string"
+}, {
+  "id": "7341e38bc13247ba9d9dfa9c16667207",
+  "source_system": "rdr_survey",
+  "source_target": "HealthInsurance_HealthInsuranceType",
+  "value_datatype": "string"
+}, {
+  "id": "eacb28def2ff42d5910d97dd014e933d",
+  "source_system": "rdr_survey",
+  "source_target": "TheBasics_Birthplace",
+  "value_datatype": "string"
+}, {
+  "id": "a015959d97ff4a199fe6c4f7d2226792",
+  "source_system": "rdr_survey",
+  "source_target": "Gender_CloserGenderDescription",
+  "value_datatype": "string"
+}, {
+  "id": "db8568fbbc4842dbabb1c4cb29ac2a87",
+  "source_system": "rdr_survey",
+  "source_target": "GenderIdentity_SexualityCloserDescription",
+  "value_datatype": "string"
+}, {
+  "id": "485ebe46f9934581ae1fe408edc05c43",
+  "source_system": "rdr_survey",
+  "source_target": "HomeOwn_CurrentHomeOwn",
+  "value_datatype": "string"
+}, {
+  "id": "9722941717dd4b39a03a09e123aaedd2",
+  "source_system": "rdr_survey",
+  "source_target": "Employment_EmploymentWorkAddress",
+  "value_datatype": "string"
+}, {
+  "id": "7d85bd08d7984517974912acfeeb4f2e",
+  "source_system": "rdr_survey",
+  "source_target": "EmploymentWorkAddress_State",
+  "value_datatype": "string"
+}, {
+  "id": "a8642c2a6f464609b49523048bebaffd",
+  "source_system": "rdr_survey",
+  "source_target": "EmploymentWorkAddress_ZipCode",
+  "value_datatype": "string"
+}, {
+  "id": "cf4b3502fcb245d3b8e4a7bfd18e8323",
+  "source_system": "rdr_survey",
+  "source_target": "Employment_EmploymentStatus",
+  "value_datatype": "string"
+}, {
+  "id": "dbb0c83697904ecfb30eebcd8dc4f69c",
+  "source_system": "rdr_survey",
+  "source_target": "MaritalStatus_CurrentMaritalStatus",
+  "value_datatype": "string"
+}, {
+  "id": "c2cda8dc69434ccb86427647039b8b2c",
+  "source_system": "rdr_survey",
+  "source_target": "SecondaryContactInfo_PersonOnePreferNotToAnswer",
+  "value_datatype": "string"
+}, {
+  "id": "dc9c0b75d2234a6991d4308eca8a4064",
+  "source_system": "rdr_survey",
+  "source_target": "SecondaryContactInfo_PersonTwoPreferNotToAnswer",
+  "value_datatype": "string"
+}, {
+  "id": "873f6432576147dbac93aec7ca9582d4",
+  "source_system": "rdr_survey",
+  "source_target": "SocialSecurity_PreferNotToAnswer",
+  "value_datatype": "string"
+}, {
+  "id": "379ca6da6b954b55b2e5dbba7588607f",
+  "source_system": "rdr_survey",
+  "source_target": "HealthInsurance_InsuranceTypeUpdate",
+  "value_datatype": "string"
+}, {
+  "id": "f4150579c05f4393a22b4b6d1d4e4f30",
+  "source_system": "rdr_survey",
+  "source_target": "Disability_Blind",
+  "value_datatype": "string"
+}, {
+  "id": "56ed717396a2432e9eaa92dd7b04d227",
+  "source_system": "rdr_survey",
+  "source_target": "Disability_WalkingClimbing",
+  "value_datatype": "string"
+}, {
+  "id": "e761f87da33745d996b8e932c3fb3cee",
+  "source_system": "rdr_survey",
+  "source_target": "Disability_DressingBathing",
+  "value_datatype": "string"
+}, {
+  "id": "7f75ea8b5646461cadffb9174fa109dd",
+  "source_system": "rdr_survey",
+  "source_target": "Disability_ErrandsAlone",
+  "value_datatype": "string"
+}, {
+  "id": "a50a757fc61040609a5563cff5b54d7c",
+  "source_system": "rdr_survey",
+  "source_target": "Disability_Deaf",
+  "value_datatype": "string"
+}, {
+  "id": "1255cb6a831e47a59eb0aad53a0bfb00",
+  "source_system": "rdr_survey",
+  "source_target": "Disability_DifficultyConcentrating",
+  "value_datatype": "string"
+}]

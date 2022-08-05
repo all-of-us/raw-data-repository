@@ -1,0 +1,5 @@
+[{
+  "schema_name": "genomic_research",
+  "destination_mart": "genomic_research_mart",
+  "destination_target_table": "rdr_genomic_research_export_%eid%"
+}]

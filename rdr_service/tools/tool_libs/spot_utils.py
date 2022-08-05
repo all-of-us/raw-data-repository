@@ -1,6 +1,6 @@
 #! /bin/env python
 #
-# Template for RDR tool python program.
+# Tool for the Single Point of Truth
 #
 import argparse
 import logging
@@ -11,6 +11,7 @@ import itertools
 import re
 from dateutil.parser import parse
 from google.cloud import bigquery
+from google.cloud.exceptions import NotFound
 from sqlalchemy.orm import aliased
 from sqlalchemy import func
 from sqlalchemy import case
@@ -18,16 +19,16 @@ from sqlalchemy import case
 from rdr_service.dao import database_factory
 from rdr_service.clock import Clock
 from rdr_service.model.code import Code
-from rdr_service.model.genomics import GenomicSetMember
+from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from rdr_service.participant_enums import QuestionnaireResponseStatus, QuestionnaireResponseClassificationType
+from rdr_service.participant_enums import QuestionnaireResponseClassificationType
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
 from rdr_service.tools.tool_libs.tool_base import ToolBase
-# from rdr_service.spot.data import default
+from rdr_service.spot.initialization import default_rdr_ods_tables, default_rdr_ods_table_data
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -60,8 +61,7 @@ def validate_args(arg_string):
 
 
 class SpotTool(ToolBase):
-    client = bigquery.Client()
-    session = None
+    client = None
     export_timestamp = None
     loadable_ods_tables = [
         "data_element",
@@ -69,15 +69,17 @@ class SpotTool(ToolBase):
         "export_schema",
         "export_schema_data_element"
     ]
+    default_datasets = ("rdr_ods", "genomic_research_mart")
 
     def run(self):
-        self.gcp_env.activate_sql_proxy()
-
+        self.client = bigquery.Client(project=self.args.project)
         process_map = {
-            "LOAD_ODS_TABLE": self.load_ods_table,
+            "LOAD_ODS_TABLE": self.load_ods_table_from_file,
             "TRANSFER_RDR_SAMPLE_DATA_TO_ODS": self.load_ods_sample_data_element,
             "TRANSFER_RDR_PARTICIPANT_DATA_TO_ODS": self.load_ods_participant_data_element,
-            "EXPORT_ODS_TO_DATAMART": self.export_ods_data_to_datamart
+            "EXPORT_ODS_TO_DATAMART": self.export_ods_data_to_datamart,
+            "INITIALIZE_SYSTEM": self.initialize_system,
+            "SEED_ODS_DATA": self.seed_ods_data,
         }
 
         return process_map[self.args.process]()
@@ -93,7 +95,86 @@ class SpotTool(ToolBase):
         row.update({'id': uuid.uuid4().hex})
         return row
 
-    def load_ods_table(self):
+    def initialize_system(self):
+        for dataset_name in self.default_datasets:
+            dataset_id = f"{self.args.project}.{dataset_name}"
+            try:
+                self.client.get_dataset(dataset_id)  # Make an API request.
+                _logger.warning(f"{dataset_id} already exists. Skipping initialization.")
+                continue
+            except NotFound:
+                _logger.info(f"Initializing {dataset_name}")
+
+            init_method_name = f"initialize_{dataset_name}"
+
+            getattr(self, init_method_name)(dataset_id)
+
+        if self.args.seed_data:
+            _logger.info("Seeding data elements and export schemata...")
+            if not self.args.dryrun:
+                self.seed_ods_data()
+
+        return 0
+
+    def extract_schema(self, table_id):
+        """
+        Utility to get the BQ schema in a copy/pasteable format
+        :param table_id:
+        :return:
+        """
+        table = self.client.get_table(table_id)  # API Request
+
+        # View table properties
+        for a in table.schema:
+            print(f'bigquery.{a},')
+
+    def initialize_rdr_ods(self, dataset_id):
+        # Create the rdr_ods dataset
+        _logger.info(f'Creating dataset...')
+        if not self.args.dryrun:
+            self.create_bq_dataset(dataset_id)
+
+            # Create the rdr_ods tables
+            _logger.info(f'Creating tables...')
+            for table in default_rdr_ods_tables:
+                self.create_bq_table(table_id=f"{dataset_id}.{table['table_name']}",
+                                     fields=table['fields'])
+
+    def initialize_genomic_research_mart(self, dataset_id):
+        if not self.args.dryrun:
+            self.create_bq_dataset(dataset_id)
+
+    def create_bq_dataset(self, dataset_id):
+
+        # Construct a full Dataset object to send to the API.
+        dataset = bigquery.Dataset(dataset_id)
+
+        # Set location
+        dataset.location = "US"
+
+        # Send the dataset to the API for creation, with an explicit timeout.
+        dataset = self.client.create_dataset(dataset, timeout=30)  # Make an API request.
+        _logger.info(f"Created dataset {self.client.project}.{dataset.dataset_id}")
+        return dataset
+
+    def create_bq_table(self, table_id, fields):
+        table = bigquery.Table(table_id, schema=fields)
+        table = self.client.create_table(table)  # Make an API request.
+        _logger.info(
+            f"Created table {table.project}.{table.dataset_id}.{table.table_id}"
+        )
+
+    def seed_ods_data(self):
+        """
+        Loads ODS default data elements and schemata
+        """
+        for table in default_rdr_ods_table_data:
+            _logger.info(f"Seeding: {table['table_name']}")
+            self.args.ods_table = table['table_name']
+            self.args.data_file = table['data']
+            self.load_ods_table_from_file()
+
+    def load_ods_table_from_file(self):
         """
         Wrapper function for populating ODS tables with data.
         Handles validating optional tool args and
@@ -112,7 +193,7 @@ class SpotTool(ToolBase):
             with open(self.args.data_file, "r") as f:
                 data = json.load(f)
 
-                if self.args.ods_table == "data_element":
+                if self.args.ods_table == "data_element" and self.args.new_ids:
                     data = map(self.create_uuid_for_row, data)
 
                 table_id = f"{self.gcp_env.project}.rdr_ods.{self.args.ods_table}"
@@ -126,6 +207,11 @@ class SpotTool(ToolBase):
             return 1
 
     def load_data_to_bq_table(self, table_id, rows_to_insert):
+        """
+        Inserts rows into a BQ table
+        :param table_id: qualified table ID to insert data into
+        :param rows_to_insert: sequence of JSON serializable data to insert
+        """
         errors = self.client.insert_rows_json(table_id, rows_to_insert)  # Make an API request.
         if not errors:
             _logger.info("New rows have been added.")
@@ -135,6 +221,12 @@ class SpotTool(ToolBase):
             return 1
 
     def run_bq_query_job(self, query_string, job_config=None):
+        """
+        Executes a BQ job
+        :param query_string: SQL String to execute in job
+        :param job_config: JobConfig object
+        :return: results of the query job
+        """
         query_job = self.client.query(query_string, job_config=job_config)
         return query_job.result()
 
@@ -146,7 +238,7 @@ class SpotTool(ToolBase):
         # https://cloud.google.com/bigquery/docs/multi-statement-queries#security_constraints
         _logger.info("Exporting Data to intermediate table...")
         return self.run_bq_query_job(
-            "CALL rdr_ods.test_export_genomic_research_procedure();"
+            "CALL rdr_ods.export_genomic_research_procedure();"
         )
 
     @validate_args(arg_string="cutoff_date")
@@ -155,6 +247,7 @@ class SpotTool(ToolBase):
         Main function for extracting RDR genomic data, pivoting the data,
         and loading it into rdr_ods.sample_data_element
         """
+        self.gcp_env.activate_sql_proxy()
 
         # get data elements from registry
         registered_member_data_elements = list(self.get_data_elements_from_registry("sample_data_element"))
@@ -167,7 +260,7 @@ class SpotTool(ToolBase):
         pivoted_data = self.pivot_member_data(registered_member_data_elements, modified_members)
 
         # Load the pivoted data to BQ table
-        table_id = "all-of-us-rdr-sandbox.rdr_ods.sample_data_element"
+        table_id = f"{self.args.project}.rdr_ods.sample_data_element"
 
         self.load_data_to_bq_table(table_id, pivoted_data)
 
@@ -179,6 +272,7 @@ class SpotTool(ToolBase):
         Main function for extracting RDR survey data
         and loading it into rdr_ods.sample_data_element
         """
+        self.gcp_env.activate_sql_proxy()
 
         # get data elements from registry
         survey_data_elements = list(self.get_data_elements_from_registry("participant_data_element"))
@@ -191,7 +285,7 @@ class SpotTool(ToolBase):
         rows = self.build_survey_data_element_row(survey_data)
 
         # Load the rows to BQ table
-        table_id = "all-of-us-rdr-sandbox.rdr_ods.participant_data_element"
+        table_id = f"{self.args.project}.rdr_ods.participant_data_element"
 
         self.load_data_to_bq_table(table_id, rows)
 
@@ -223,19 +317,20 @@ class SpotTool(ToolBase):
                 bigquery.ScalarQueryParameter("target_table", "STRING", target_table),
             ]
         )
-        return self.run_bq_query_job("""
+        return self.run_bq_query_job(f"""
         SELECT reg.data_element_id
           , reg.target_table
           , de.source_system
           , de.source_target
-        FROM `all-of-us-rdr-sandbox.rdr_ods.data_element_registry` reg
-          INNER JOIN `all-of-us-rdr-sandbox.rdr_ods.data_element` de ON de.id = reg.data_element_id
+        FROM `rdr_ods.data_element_registry` reg
+          INNER JOIN `rdr_ods.data_element` de ON de.id = reg.data_element_id
         where true
           and reg.target_table = @target_table
           and reg.active_flag = true
         """, job_config=job_config)
 
-    def get_modified_member_data(self, data_elements, last_update_date):
+    @staticmethod
+    def get_modified_member_data(data_elements, last_update_date):
         """
         Retrieves genomic modified data since last_update_date
         Builds selection columns dynamically based on data_elements
@@ -253,9 +348,9 @@ class SpotTool(ToolBase):
         for data_element in data_elements:
             rdr_attributes.append(eval(data_element.source_target))
 
-        self.session = database_factory.get_database().make_session()
+        session = database_factory.get_database().make_session()
 
-        query = self.session.query(
+        query = session.query(
             *rdr_attributes
         ).join(
             Participant,
@@ -263,14 +358,21 @@ class SpotTool(ToolBase):
         ).join(
             ParticipantSummary,
             Participant.participantId == ParticipantSummary.participantId
+        ).join(
+            GenomicGCValidationMetrics,
+            GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
         ).filter(
             GenomicSetMember.aw4ManifestJobRunID.isnot(None),
+            GenomicSetMember.ignoreFlag == 0,
+            GenomicGCValidationMetrics.ignoreFlag == 0,
             GenomicSetMember.modified > last_update_date,
+            # GenomicSetMember.participantId.in_(),  # TODO: Add param
             GenomicSetMember.genomeType == "aou_wgs"
         )
         return query.all()
 
-    def get_new_survey_data(self, data_elements, last_update_date):
+    @staticmethod
+    def get_new_survey_data(data_elements, last_update_date):
         """
         Retrieves questionnaire response answers since last_update_date
         Builds filters and selection cases dynamically based on data_elements
@@ -302,9 +404,9 @@ class SpotTool(ToolBase):
             ).label('data_element_id')
         )
 
-        self.session = database_factory.get_database().make_session()
+        session = database_factory.get_database().make_session()
 
-        query = self.session.query(
+        query = session.query(
             *rdr_attributes
         ).select_from(
             QuestionnaireResponseAnswer
@@ -328,9 +430,10 @@ class SpotTool(ToolBase):
             Participant.participantId == QuestionnaireResponse.participantId
         ).filter(
             GenomicSetMember.genomeType == "aou_wgs",
+            GenomicSetMember.ignoreFlag == 0,
             GenomicSetMember.aw4ManifestJobRunID.isnot(None),
             QuestionnaireResponse.authored >= last_update_date,
-            QuestionnaireResponse.status == QuestionnaireResponseStatus.COMPLETED,
+            # QuestionnaireResponse.participantId.in_() TODO: Add param
             QuestionnaireResponse.classificationType == QuestionnaireResponseClassificationType.COMPLETE,
             question_code.value.in_([de.source_target for de in data_elements])
         )
@@ -362,12 +465,13 @@ class SpotTool(ToolBase):
 
         def build_new_row(old_row, data_element):
             attribute_name = data_element.source_target.split(".")[-1]
+            de_val = getattr(old_row, attribute_name)
             new_row = {
                 'participant_id': old_row.participantId,
                 'research_id': old_row.researchId,
                 'sample_id': old_row.sampleId,
                 'data_element_id': data_element.data_element_id,
-                'value_string': str(getattr(old_row, attribute_name)),
+                'value_string': de_val if de_val is None else str(de_val),
                 'created_timestamp': old_row.created_timestamp.isoformat()
             }
             return new_row
@@ -401,7 +505,7 @@ class SpotTool(ToolBase):
     def load_datamart_snapshot(self, destination):
         _logger.info(f"Loading data to {destination}...")
         return self.run_bq_query_job(
-            f"CALL rdr_ods.test_load_snapshot_table('{destination}');"
+            f"CALL rdr_ods.create_export_snapshot('{destination}');"
         )
 
     @staticmethod
@@ -430,28 +534,39 @@ def run():
         "TRANSFER_RDR_SAMPLE_DATA_TO_ODS",
         "TRANSFER_RDR_PARTICIPANT_DATA_TO_ODS",
         "EXPORT_ODS_TO_DATAMART",
+        "INITIALIZE_SYSTEM",
+        "SEED_ODS_DATA",
     ]
     # Setup program arguments.
     parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
     parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
+    parser.add_argument("--dryrun", help="use for testing",
+                        action="store_true",
+                        default=False)  # noqa
     parser.add_argument("--process",
                         help="process to run, choose one: {}".format(tool_processes),
                         choices=tool_processes,
                         default=None,
                         required=True,
-                        type=str)
+                        type=str)  # noqa
     parser.add_argument("--ods-table", help=f"ODS table to load",
                         default=None,
                         required=False,
-                        type=str)
+                        type=str)  # noqa
 
     parser.add_argument("--cutoff-date", help=f"Date to use as cutoff",
                         default=None,
-                        required=False)
+                        required=False)  # noqa
 
     parser.add_argument("--data-file", help="json file to load", default=None)  # noqa
+    parser.add_argument("--seed-data", help="load ods tables with data on initialization",
+                        action="store_true",
+                        default=False)  # noqa
+    parser.add_argument("--new-ids", help="creates new uuids if loading rdr_ods.data_element",
+                        action="store_true",
+                        default=False)  # noqa
 
     args = parser.parse_args()
 

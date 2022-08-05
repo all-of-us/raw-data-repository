@@ -1,0 +1,376 @@
+[{
+  "schema_name": "genomic_research",
+  "data_element_id": "7afea7d9ec5c43558f74130d3af57c4b",
+  "display_name": "callRate",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "6c711285e9444d01b163010a33252043",
+  "display_name": "meanCoverage",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "f50607e2f35945808e8ec2d14ae7aa96",
+  "display_name": "genomeCoverage",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "3fa51043a74a4e27a48bcccf0991a5c4",
+  "display_name": "aouHdrCoverage",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "b254dab0f63e49078ac16dd4105224e0",
+  "display_name": "contamination",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "995c4c6230e24c9b85d65f88250b54cd",
+  "display_name": "mappedReadsPct",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "ad9b3741eefc4cc3a350ea6ca90246ed",
+  "display_name": "sexConcordance",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "bef4dffcd0754842b1313813fdf976eb",
+  "display_name": "sexPloidy",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "801d3c8090d94592943c88ab51b5cda6",
+  "display_name": "alignedQ30Bases",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "2e216bb73b764b559fdb9e7f4a69c068",
+  "display_name": "arrayConcordance",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "6727ed3f093f49f4bc826b3a56446dc3",
+  "display_name": "processingStatus",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "2e5655307ae3465a8d50d18c22496955",
+  "display_name": "notes",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "a9e2e56b2d064d88b81298c448fea367",
+  "display_name": "siteId",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "5470c845467d4662b12501692785fda5",
+  "display_name": "drcSexConcordance",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "f238c7748cab47e191ce3e5156c8b876",
+  "display_name": "drcContamination",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "097d17e0b1c94eaebbfee9cdf98d1182",
+  "display_name": "drcCallRate",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "9aba013aae86403a8759431bcfed9eff",
+  "display_name": "drcMeanCoverage",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "c999df477edd4c9998621e90d1fc26bb",
+  "display_name": "drcFpConcordance",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "41e717a4e3bb483887f3ff84d5e32ed0",
+  "display_name": "pipelineId",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "ede63e9d82ec45aaaa96ccedba082df5",
+  "display_name": "drc_qc_status",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "fabb52d4336c438aab4c885cbffe21b8",
+  "display_name": "primary_consent",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "47b91792058b40779955894cca1b9b7c",
+  "display_name": "Race_WhatRaceEthnicity",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "f6ff07d76ece4afcb7ab617c71609d1c",
+  "display_name": "Gender_GenderIdentity",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "e60bc5dbfc2648cc96c8608235160347",
+  "display_name": "TheBasics_SexualOrientation",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "ce87d7889f2f4788af24182e9031c074",
+  "display_name": "EducationLevel_HighestGrade",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "485c166186ef4d22ad6462a29d01939f",
+  "display_name": "Income_AnnualIncome",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "2665a9d530b94e26a55518b2d90697c3",
+  "display_name": "BiologicalSexAtBirth_SexAtBirth",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "850ac55298b3492f8759bf2420baae5b",
+  "display_name": "nyFlag",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "c07d2c98e67148d8aad694c745a7261b",
+  "display_name": "sexAtBirth",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "7c4c49b41d974fcf826e9b6183d912b8",
+  "display_name": "genomeType",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "3f00fac0df834cbfbcf359ec36ce9628",
+  "display_name": "ai_an",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "c0ee9dfaac3c40a6b965e6147fcf8041",
+  "display_name": "gcSiteId",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "fec8c6bfe1194388bf4cb864bfd40d70",
+  "display_name": "gcManifestSampleSource",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "1db1d08a88784aefa0b071cf8bb3c242",
+  "display_name": "blockResearch",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "7a3a9d59a35f4cc38439e2f80c95de3e",
+  "display_name": "blockResearchReason",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "0125639035d84482b0ea91acac1df672",
+  "display_name": "participantOrigin",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "d9b4fdfc29c040dbb4160093d146bd9d",
+  "display_name": "diversionPouchSiteFlag",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "ee91d5f794974d5ca082e5d73f634881",
+  "display_name": "LivingSituation_HowManyLivingYears",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "36e775443d444d76a04c86c268d06ec9",
+  "display_name": "LivingSituation_HowManyPeople",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "bcfa1a1283ac4c5580cc3cd44779130c",
+  "display_name": "LivingSituation_CurrentLiving",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "44a6e50d06e5426e961ffb2ea50d1935",
+  "display_name": "LivingSituation_StableHouseConcern",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "543e07dd14f543ee8c3ca450023b10b5",
+  "display_name": "LivingSituation_PeopleUnder18",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "2ee772b505a240cebcc65a5e6c91a48e",
+  "display_name": "ActiveDuty_AvtiveDutyServeStatus",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "b1dd36e8e76546bbbd70173d345c31e5",
+  "display_name": "SecondContactsAddress_SecondContactState",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "29b93e07c7d246dc8ccfeb9516a0418b",
+  "display_name": "SecondaryContactInfo_PersonOneRelationship",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "b56c031dca4948e4959ecca3fc8f533f",
+  "display_name": "PersonOneAddress_PersonOneAddressState",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "0eb654b970474891a8ae96636add2c9a",
+  "display_name": "SecondaryContactInfo_SecondContactsRelationship",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "8e23900a7b4741cb858fd253929ade91",
+  "display_name": "Asian_AsianSpecific",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "49f8bca183384077a0ffc5be547a3442",
+  "display_name": "Hispanic_HispanicSpecific",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "006088c6889e4a4daaffd41ec36450d5",
+  "display_name": "White_WhiteSpecific",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "ee7158429fbe4bc7bedd9cb15df252c9",
+  "display_name": "NHPI_NHPISpecific",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "8598027929514c71bdbe2e7b1e25ed69",
+  "display_name": "AIAN_AIANSpecific",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "bebf4b1a10894bfe8d74db6d5fbbabba",
+  "display_name": "Black_BlackSpecific",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "35fc168379ef46b99997de0bb4b59499",
+  "display_name": "MENA_MENASpecific",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "5007a3522b0d4353bee3e5794b263381",
+  "display_name": "Insurance_HealthInsurance",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "7341e38bc13247ba9d9dfa9c16667207",
+  "display_name": "HealthInsurance_HealthInsuranceType",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "eacb28def2ff42d5910d97dd014e933d",
+  "display_name": "TheBasics_Birthplace",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "a015959d97ff4a199fe6c4f7d2226792",
+  "display_name": "Gender_CloserGenderDescription",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "db8568fbbc4842dbabb1c4cb29ac2a87",
+  "display_name": "GenderIdentity_SexualityCloserDescription",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "485ebe46f9934581ae1fe408edc05c43",
+  "display_name": "HomeOwn_CurrentHomeOwn",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "9722941717dd4b39a03a09e123aaedd2",
+  "display_name": "Employment_EmploymentWorkAddress",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "7d85bd08d7984517974912acfeeb4f2e",
+  "display_name": "EmploymentWorkAddress_State",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "a8642c2a6f464609b49523048bebaffd",
+  "display_name": "EmploymentWorkAddress_ZipCode",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "cf4b3502fcb245d3b8e4a7bfd18e8323",
+  "display_name": "Employment_EmploymentStatus",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "dbb0c83697904ecfb30eebcd8dc4f69c",
+  "display_name": "MaritalStatus_CurrentMaritalStatus",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "c2cda8dc69434ccb86427647039b8b2c",
+  "display_name": "SecondaryContactInfo_PersonOnePreferNotToAnswer",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "dc9c0b75d2234a6991d4308eca8a4064",
+  "display_name": "SecondaryContactInfo_PersonTwoPreferNotToAnswer",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "873f6432576147dbac93aec7ca9582d4",
+  "display_name": "SocialSecurity_PreferNotToAnswer",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "379ca6da6b954b55b2e5dbba7588607f",
+  "display_name": "HealthInsurance_InsuranceTypeUpdate",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "f4150579c05f4393a22b4b6d1d4e4f30",
+  "display_name": "Disability_Blind",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "56ed717396a2432e9eaa92dd7b04d227",
+  "display_name": "Disability_WalkingClimbing",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "e761f87da33745d996b8e932c3fb3cee",
+  "display_name": "Disability_DressingBathing",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "7f75ea8b5646461cadffb9174fa109dd",
+  "display_name": "Disability_ErrandsAlone",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "a50a757fc61040609a5563cff5b54d7c",
+  "display_name": "Disability_Deaf",
+  "active_flag": "true"
+}, {
+  "schema_name": "genomic_research",
+  "data_element_id": "1255cb6a831e47a59eb0aad53a0bfb00",
+  "display_name": "Disability_DifficultyConcentrating",
+  "active_flag": "true"
+}]
