@@ -580,10 +580,11 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         # Confirm the consent_metric PDR data generator flagged the test participant
         self.assertTrue(resource_data.get('test_participant'))
 
-    def test_consent_metrics_wear_no_authored(self):
-        """ consent metric record will be missing authored date if the consent_response value is null """
+    def test_consent_metrics_wear_no_consent_response(self):
+        """ consent metric record will default to using expected_sign_date as the consent_authored """
         # Create a test participant and a consent_file record for them
         test_hpo = self.data_generator.create_database_hpo(hpoId=2000, name='TEST')
+        expected_sign_date = date(year=2022, month=1, day=1)
         participant = self._create_participant_with_all_consents_authored(
             consentForStudyEnrollmentFirstYesAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
             consentForStudyEnrollmentAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
@@ -594,15 +595,15 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             type=ConsentType.WEAR,
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
             participant_id=participant.participantId,
-            expected_sign_date=date(year=2022, month=1, day=1),
+            expected_sign_date=expected_sign_date,
             file_exists=1,
             is_signature_valid=1,
             is_signing_date_valid=1
         )
         self.assertIsNotNone(consent_file_rec.id)
         resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
-        # Confirm no default authored timestamp is available
-        self.assertIsNone(resource_data.get('consent_authored_date'))
+        # Confirm the authored time defaulted to the expected sign date
+        self.assertEqual(resource_data.get('consent_authored_date'), expected_sign_date)
 
     def test_consent_metric_authored_from_questionnaire_response(self):
         """ Confirm consent_metric record gets authored time from related questionnaire_response record """
