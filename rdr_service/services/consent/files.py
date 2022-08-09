@@ -291,8 +291,12 @@ class CeConsentFactory(ConsentFileAbstractFactory):
         pdf = blob_wrapper.get_parsed_pdf()
         return pdf.has_text([(
             'All of Us WEAR Study',
+            'All of Us WEAR\nStudy',
             'el Estudio WEAR de All of Us',
-            'All of Us Wearable Study'
+            'Estudio del uso desensores portátiles',
+            'Estudio\ndel uso de sensores portátiles',
+            'All of Us Wearable Study',
+            'All of Us Wearable\nStudy'
         )])
 
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':

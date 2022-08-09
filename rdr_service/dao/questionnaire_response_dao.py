@@ -1587,6 +1587,7 @@ class QuestionnaireResponseDao(BaseDao):
             )
             .order_by(QuestionnaireResponse.authored.desc())
             .filter(QuestionnaireResponse.participantId == participant_id)
+            .limit(1)
         )
 
         return query.scalar()
