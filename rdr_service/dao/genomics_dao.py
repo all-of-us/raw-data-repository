@@ -3815,19 +3815,20 @@ class GenomicQueriesDao(BaseDao):
 
     def get_results_withdrawn_participants(self):
         with self.session() as session:
-            array_results = aliased(GenomicSetMember)
-            cvl_results = aliased(GenomicSetMember)
             return session.query(
                 GenomicSetMember.participantId.label('participant_id'),
                 sqlalchemy.case(
                     [
-                        (array_results.id.isnot(None), True)
+                        (GenomicSetMember.gemA1ManifestJobRunId.isnot(None), True)
                     ],
                     else_=False
                 ).label('array_results'),
                 sqlalchemy.case(
                     [
-                        (cvl_results.id.isnot(None), True)
+                        (or_(
+                            GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
+                            GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
+                        ), True)
                     ],
                     else_=False
                 ).label('cvl_results')
@@ -3835,30 +3836,11 @@ class GenomicQueriesDao(BaseDao):
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
             ).outerjoin(
-                array_results,
-                and_(
-                    array_results.id == GenomicSetMember.id,
-                    array_results.gemA1ManifestJobRunId.isnot(None)
-                )
-            ).outerjoin(
-                cvl_results,
-                and_(
-                    cvl_results.id == GenomicSetMember.id,
-                    or_(
-                        cvl_results.cvlW1ilHdrJobRunId.isnot(None),
-                        cvl_results.cvlW1ilPgxJobRunId.isnot(None)
-                    ),
-                )
-            ).outerjoin(
                 GenomicResultWithdrawals,
                 GenomicResultWithdrawals.participant_id == GenomicSetMember.participantId
             ).filter(
                 ParticipantSummary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
                 GenomicResultWithdrawals.id.is_(None),
-                or_(
-                    array_results.id.isnot(None),
-                    cvl_results.id.isnot(None)
-                )
             ).all()
 
 
