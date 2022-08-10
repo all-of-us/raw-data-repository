@@ -6,6 +6,7 @@ from rdr_service.app_util import auth_required
 from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.bq_workbench_dao import rebuild_bq_audit
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchWorkspaceAuditDao
+from rdr_service.services.system_utils import list_chunks
 
 
 class BaseRedcapApi(BaseApi):
@@ -65,13 +66,15 @@ class RedcapWorkbenchAuditApi(BaseRedcapApi):
         if GAE_PROJECT == 'localhost':
             rebuild_bq_audit(audit_records)
         else:
-            payload = {'table': 'audit', 'ids': []}
+            ids = list()
             for obj in audit_records:
-                payload['ids'].append(obj.id)
+                ids.append(obj.id)
 
-            if len(payload['ids']) > 0:
-                self._task.execute('rebuild_research_workbench_table_records_task', payload=payload,
-                             in_seconds=15, queue='resource-rebuild')
+            if len(ids) > 0:
+                for chunk in list_chunks(ids, chunk_size=250):
+                    payload = {'table': 'audit', 'ids': chunk}
+                    self._task.execute('rebuild_research_workbench_table_records_task', payload=payload,
+                                 in_seconds=15, queue='resource-rebuild')
         return audit_records
 
 class RedcapResearcherAuditApi(BaseRedcapApi):
