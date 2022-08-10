@@ -3649,7 +3649,8 @@ class GenomicQueriesDao(BaseDao):
                     else_='N'
                 ).label(f'informing_loop_{module}'),
                 GenomicGCValidationMetrics.aouHdrCoverage.label('aou_hdr_coverage'),
-                GenomicGCValidationMetrics.contamination
+                GenomicGCValidationMetrics.contamination,
+                GenomicGCValidationMetrics.sexPloidy
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
