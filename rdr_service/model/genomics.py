@@ -740,6 +740,7 @@ class GenomicW1ILRaw(Base):
     informing_loop_hdr = Column(String(255), nullable=True)
     aou_hdr_coverage = Column(String(255), nullable=True)
     contamination = Column(String(255), nullable=True)
+    sex_ploidy = Column(String(255), nullable=True)
 
 
 event.listen(GenomicW1ILRaw, 'before_insert', model_insert_listener)
