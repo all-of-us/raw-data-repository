@@ -827,7 +827,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path',
              'gvcf_path', 'gvcf_md5_path', 'cram_name', 'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror',
              'genome_type', 'informing_loop_pgx',
-             'aou_hdr_coverage', 'contamination'),
+             'aou_hdr_coverage', 'contamination', 'sex_ploidy'),
             self.get_manifest_headers(bcm_pgx_w1il_manifest)
         )
 
@@ -902,14 +902,17 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         self.assertTupleEqual(
             ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path', 'gvcf_path', 'gvcf_md5_path',
              'cram_name', 'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror', 'genome_type',
-             'informing_loop_hdr', 'aou_hdr_coverage', 'contamination'),
+             'informing_loop_hdr', 'aou_hdr_coverage', 'contamination', 'sex_ploidy'),
             self.get_manifest_headers(bcm_hdr_w1il_manifest)
         )
 
         self.assert_manifest_has_rows(
             manifest_cloud_writer_mock=bcm_hdr_w1il_manifest,
             expected_rows=[
-                self.expected_w1il_row(self.hdr_and_pgx_set_member, self.hdr_and_pgx_validation_metrics, self.hdr_and_pgx_summary)
+                self.expected_w1il_row(
+                    self.hdr_and_pgx_set_member,
+                    self.hdr_and_pgx_validation_metrics,
+                    self.hdr_and_pgx_summary)
             ]
         )
 
@@ -984,6 +987,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
         self.assertTrue(all(obj.aou_hdr_coverage is not None for obj in pgx_raw_records))
         self.assertTrue(all(obj.contamination is not None for obj in pgx_raw_records))
+        self.assertTrue(all(obj.sex_ploidy is not None for obj in pgx_raw_records))
 
         # HDR manifest
         with clock.FakeClock(clock.CLOCK.now()):
@@ -1017,6 +1021,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
         self.assertTrue(all(obj.aou_hdr_coverage is not None for obj in hdr_raw_records))
         self.assertTrue(all(obj.contamination is not None for obj in hdr_raw_records))
+        self.assertTrue(all(obj.sex_ploidy is not None for obj in hdr_raw_records))
 
     def _generate_cvl_participant(
         self,
@@ -1112,7 +1117,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
                 'gvcfMd5Path': self.fake.pystr(),
                 'cramPath': self.fake.pystr(),
                 'aouHdrCoverage': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
-                'contamination': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100)
+                'contamination': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
+                'sexPloidy': self.fake.pystr(1, 10)
             },
             **validation_metrics_params
         }
@@ -1141,7 +1147,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             'aou_cvl',  # genome type
             'Y',  # informing loop decision
             str(validation_metrics.aouHdrCoverage),
-            str(validation_metrics.contamination)
+            str(validation_metrics.contamination),
+            str(validation_metrics.sexPloidy)
         )
 
 
