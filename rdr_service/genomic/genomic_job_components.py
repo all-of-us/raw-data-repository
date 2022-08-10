@@ -3339,7 +3339,8 @@ class ManifestDefinitionProvider:
                 'genome_type',
                 'informing_loop_pgx',
                 'aou_hdr_coverage',
-                'contamination'
+                'contamination',
+                'sex_ploidy'
             ),
             GenomicManifestTypes.CVL_W1IL_HDR: (
                 'biobank_id',
@@ -3357,7 +3358,8 @@ class ManifestDefinitionProvider:
                 'genome_type',
                 'informing_loop_hdr',
                 'aou_hdr_coverage',
-                'contamination'
+                'contamination',
+                'sex_ploidy'
             ),
             GenomicManifestTypes.CVL_W2W: (
                 'biobank_id',
