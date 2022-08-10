@@ -2052,7 +2052,7 @@ class GenomicOutreachDaoV2(BaseDao):
             "timestamp": timestamp
         }
 
-    def outreach_lookup(self, pid=None, start_date=None, end_date=None):
+    def get_outreach_data(self, participant_id=None, start_date=None, end_date=None):
         informing_loops, results = [], []
         end_date = clock.CLOCK.now() if not end_date else end_date
         informing_loop_ready = GenomicSetMemberDao.base_informing_loop_ready().subquery()
@@ -2073,8 +2073,8 @@ class GenomicOutreachDaoV2(BaseDao):
 
             max_loops, participant_ids = [], {obj.participant_id for obj in decision_loops}
 
-            for participant_id in participant_ids:
-                participant_loops = list(filter(lambda x: x.participant_id == participant_id, decision_loops))
+            for pid in participant_ids:
+                participant_loops = list(filter(lambda x: x.participant_id == pid, decision_loops))
 
                 modules = {obj.module_type for obj in participant_loops}
                 for module in modules:
@@ -2125,12 +2125,12 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.informingLoopReadyFlagModified.isnot(None)
                     )
                 )
-                if pid:
+                if participant_id:
                     decision_loop = decision_loop.filter(
-                        GenomicSetMember.participantId == pid
+                        GenomicSetMember.participantId == participant_id
                     )
                     ready_loop = ready_loop.filter(
-                        GenomicSetMember.participantId == pid
+                        GenomicSetMember.participantId == participant_id
                     )
                 if start_date:
                     decision_loop = decision_loop.filter(
@@ -2176,9 +2176,9 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.ignoreFlag != 1
                     )
                 )
-                if pid:
+                if participant_id:
                     result_query = result_query.filter(
-                        ParticipantSummary.participantId == pid
+                        ParticipantSummary.participantId == participant_id
                     )
                 if start_date:
                     result_query = result_query.filter(
@@ -2211,6 +2211,22 @@ class GenomicOutreachDaoV2(BaseDao):
                 if mod == key:
                     mappings.extend(value)
         return mappings
+
+
+class GenomicSchedulingDao(BaseDao):
+    def __init__(self):
+        super().__init__(GenomicSetMember, order_by_ending=['id'])
+        self.allowed_modules = ['hdr', 'pgx']
+        self.module = self.allowed_modules
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def get_scheduling_data(self):
+        pass
 
 
 class GenomicManifestFileDao(BaseDao, GenomicDaoMixin):

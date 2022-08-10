@@ -23,7 +23,7 @@ from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
 from rdr_service.api.deceased_report_api import DeceasedReportApi, DeceasedReportReviewApi
 from rdr_service.api.mail_kit_order_api import MailKitOrderApi
-from rdr_service.api.genomic_api import GenomicPiiApi, GenomicOutreachApi, GenomicOutreachApiV2
+from rdr_service.api.genomic_api import GenomicPiiApi, GenomicOutreachApi, GenomicOutreachApiV2, GenomicSchedulingApi
 from rdr_service.api.import_codebook_api import import_codebook
 from rdr_service.api.metrics_fields_api import MetricsFieldsApi
 from rdr_service.api.participant_api import ParticipantApi, ParticipantResearchIdApi
@@ -316,6 +316,11 @@ api.add_resource(GenomicOutreachApiV2,
                  API_PREFIX + "GenomicOutreachV2",
                  endpoint='genomic.outreachv2',
                  methods=['GET', 'POST', 'PUT'])
+
+api.add_resource(GenomicSchedulingApi,
+                 API_PREFIX + "GenomicSchedulingApi",
+                 endpoint='genomic.scheduling',
+                 methods=['GET'])
 
 api.add_resource(
     DeceasedReportApi,
