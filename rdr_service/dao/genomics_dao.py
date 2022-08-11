@@ -2240,7 +2240,7 @@ class GenomicSchedulingDao(BaseDao):
                 'status': appointment.event_type.split('_')[-1],
                 'appointment_id': appointment.appointment_id,
                 'participant_id': f'P{appointment.participant_id}',
-                'note_available': False
+                'note_available': appointment.has_appointment_note
             })
 
         return {
@@ -2255,14 +2255,28 @@ class GenomicSchedulingDao(BaseDao):
         ).group_by(
             GenomicAppointmentEvent.participant_id
         ).subquery()
+        note_alias = aliased(GenomicAppointmentEvent)
         with self.session() as session:
             records = session.query(
                 GenomicAppointmentEvent.participant_id,
                 GenomicAppointmentEvent.module_type,
                 GenomicAppointmentEvent.event_type,
-                GenomicAppointmentEvent.appointment_id
+                GenomicAppointmentEvent.appointment_id,
+                sqlalchemy.case(
+                    [
+                        (note_alias.id.isnot(None), True)
+                    ],
+                    else_=False
+                ).label('has_appointment_note'),
+            ).outerjoin(
+                note_alias,
+                and_(
+                    note_alias.appointment_id == GenomicAppointmentEvent.appointment_id,
+                    note_alias.event_type.like('%note_available')
+                )
             ).filter(
-                GenomicAppointmentEvent.appointment_id == max_subquery.c.max_appointment_id
+                GenomicAppointmentEvent.appointment_id == max_subquery.c.max_appointment_id,
+                GenomicAppointmentEvent.event_type.notlike('%note_available')
             )
 
             if module:

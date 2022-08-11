@@ -1944,6 +1944,7 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         # self.result_dao = GenomicResultViewedDao()
         # self.member_dao = GenomicSetMemberDao()
         self.num_participants = 5
+        self.appointment_keys = ['module', 'type', 'status', 'appointment_id', 'participant_id', 'note_available']
 
     def test_full_participant_validation_appointment_lookup(self):
 
@@ -2013,10 +2014,107 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
 
         self.assertIsNotNone(resp)
         self.assertEqual(len(resp.get('data')), 1)
-        self.assertTrue(str(participant.participantId) in resp.get('data')[0]['participant_id'])
 
-        appointment_keys = ['module', 'type', 'status', 'appointment_id', 'participant_id', 'note_available']
-        self.assertTrue(all(not len(obj.keys() - appointment_keys) and obj.values() for obj in resp['data']))
+        self.assertTrue(all(not len(obj.keys() - self.appointment_keys) and obj.values() for obj in resp['data']))
+        self.assertTrue(all(obj['participant_id'] == f'P{participant.participantId}' for obj in resp['data']))
+        self.assertTrue(all(obj['type'] == 'appointment' for obj in resp['data']))
+        self.assertTrue(all(obj['module'] == 'hdr' for obj in resp['data']))
+        self.assertTrue(all(obj['status'] == 'scheduled' for obj in resp['data']))
+        self.assertTrue(all(obj['note_available'] is False for obj in resp['data']))
+
+    def test_validate_params(self):
+        bad_response = 'GenomicScheduling GET accepted params: start_date | end_date | participant_id | module'
+
+        response = self.send_get(
+            "GenomicScheduling?wwqwqw=ewewe",
+            expected_status=http.client.BAD_REQUEST
+        )
+        self.assertEqual(response.json['message'], bad_response)
+        self.assertEqual(response.status_code, 400)
+
+        response = self.send_get(
+            "GenomicScheduling?wwqwqw=ewewe&participant_id=P2",
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(response.json['message'], bad_response)
+        self.assertEqual(response.status_code, 400)
+
+        bad_response = 'Participant ID or Start Date parameter is required for use with GenomicScheduling API.'
+
+        response = self.send_get(
+            "GenomicScheduling?participant_id=",
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(response.json['message'], bad_response)
+        self.assertEqual(response.status_code, 400)
+
+        bad_response = 'GenomicScheduling GET accepted modules: hdr | pgx'
+
+        response = self.send_get(
+            "GenomicScheduling?module=ewewewew",
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(response.json['message'], bad_response)
+        self.assertEqual(response.status_code, 400)
+
+    def test_get_note_available_on_last_appointment_id(self):
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+        participant = self.data_generator.create_database_participant()
+
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            consentForGenomicsROR=1
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            participantId=participant.participantId,
+            genomeType='aou_array'
+        )
+
+        # add appointment record
+        self.data_generator.create_database_genomic_appointment(
+            message_record_id=1,
+            appointment_id=1,
+            event_type='appointment_scheduled',
+            module_type='hdr',
+            participant_id=participant.participantId,
+            event_authored_time=clock.CLOCK.now()
+        )
+
+        resp = self.send_get(
+            f"GenomicScheduling?participant_id=P{participant.participantId}"
+        )
+
+        self.assertTrue(all(not len(obj.keys() - self.appointment_keys) and obj.values() for obj in resp['data']))
+        self.assertTrue(all(obj['status'] == 'scheduled' for obj in resp['data']))
+        self.assertTrue(all(obj['note_available'] is False for obj in resp['data']))
+
+        # add note event on appointment_id: 1
+        self.data_generator.create_database_genomic_appointment(
+            message_record_id=2,
+            appointment_id=1,
+            event_type='appointment_note_available',
+            module_type='hdr',
+            participant_id=participant.participantId,
+            event_authored_time=clock.CLOCK.now()
+        )
+
+        resp = self.send_get(
+            f"GenomicScheduling?participant_id=P{participant.participantId}"
+        )
+
+        self.assertTrue(all(not len(obj.keys() - self.appointment_keys) and obj.values() for obj in resp['data']))
+        # should still be scheduled as the status, note event should be filtered out
+        self.assertTrue(all(obj['status'] == 'scheduled' for obj in resp['data']))
+        self.assertTrue(all(obj['note_available'] is True for obj in resp['data']))
 
 
 class GenomicCloudTasksApiTest(BaseTestCase):
