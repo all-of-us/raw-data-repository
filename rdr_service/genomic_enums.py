@@ -121,6 +121,7 @@ class GenomicJob(messages.Enum):
     CHECK_FOR_W1IL_GROR_RESUBMIT = 64
     INGEST_RESULT_READY = 65
     INGEST_APPOINTMENT = 66
+    RESULTS_PIPELINE_WITHDRAWALS = 67
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

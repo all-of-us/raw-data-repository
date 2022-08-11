@@ -435,6 +435,11 @@ def reconcile_cvl_results(reconcile_job_type):
         controller.job_result = GenomicSubProcessResult.SUCCESS
 
 
+def results_pipeline_withdrawals():
+    with GenomicJobController(GenomicJob.RESULTS_PIPELINE_WITHDRAWALS) as controller:
+        controller.check_results_withdrawals()
+
+
 def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
     """
     Entrypoint for new genomic manifest file pipelines

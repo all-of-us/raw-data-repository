@@ -711,6 +711,7 @@ def genomic_reconcile_pdr_data():
     genomic_pipeline.reconcile_pdr_data()
     return '{"success": "true"}'
 
+
 @app_util.auth_required_cron
 @run_genomic_cron_job('reconcile_cvl_pgx_results')
 def genomic_reconcile_cvl_pgx_results():
@@ -718,6 +719,7 @@ def genomic_reconcile_cvl_pgx_results():
         reconcile_job_type=GenomicJob.RECONCILE_CVL_PGX_RESULTS
     )
     return '{"success": "true"}'
+
 
 @app_util.auth_required_cron
 @run_genomic_cron_job('reconcile_cvl_hdr_results')
@@ -727,6 +729,7 @@ def genomic_reconcile_cvl_hdr_results():
     )
     return '{"success": "true"}'
 
+
 @app_util.auth_required_cron
 @run_genomic_cron_job('reconcile_cvl_alerts')
 def genomic_reconcile_cvl_alerts():
@@ -735,12 +738,20 @@ def genomic_reconcile_cvl_alerts():
     )
     return '{"success": "true"}'
 
+
 @app_util.auth_required_cron
 @run_genomic_cron_job('reconcile_cvl_resolved')
 def genomic_reconcile_cvl_resolve():
     genomic_pipeline.reconcile_cvl_results(
         reconcile_job_type=GenomicJob.RECONCILE_CVL_RESOLVE
     )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('results_pipeline_withdrawals')
+def genomic_results_pipeline_withdrawals():
+    genomic_pipeline.results_pipeline_withdrawals()
     return '{"success": "true"}'
 
 
@@ -1160,6 +1171,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicGHR3ResolveSamples",
         endpoint="genomic_ghr3_resolve_samples",
         view_func=genomic_reconcile_cvl_resolve,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicResultsPipelineWithdrawals",
+        endpoint="genomic_results_pipeline_withdrawals",
+        view_func=genomic_results_pipeline_withdrawals,
         methods=["GET"]
     )
     # END Genomic Pipeline Jobs
