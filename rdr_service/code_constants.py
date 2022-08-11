@@ -40,6 +40,7 @@ GROR_CONSENT_QUESTION_CODE = "ResultsConsent_CheckDNA"
 COPE_CONSENT_QUESTION_CODE = "section_participation"
 WEAR_CONSENT_QUESTION_CODE = "resultsconsent_wear"
 PRIMARY_CONSENT_UPDATE_QUESTION_CODE = "Reconsent_ReviewConsentAgree"
+VA_EHR_RECONSENT_QUESTION_CODE = "vaehrreconsent_agree"
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
@@ -214,6 +215,10 @@ APPLE_HEALTH_KIT_SHARING_MODULE = "participantintendstoshareapplehealthkit"
 APPLE_HEALTH_KIT_STOP_SHARING_MODULE = "participantintendstostopsharingapplehealthkit"
 FITBIT_SHARING_MODULE = "participantintendstosharefitbit"
 FITBIT_STOP_SHARING_MODULE = "participantintendstostopsharingfitbit"
+
+# General response answer codes
+AGREE_YES = "agree_yes"
+AGREE_NO = "agree_no"
 
 BIOBANK_TESTS = [
     "1ED10",

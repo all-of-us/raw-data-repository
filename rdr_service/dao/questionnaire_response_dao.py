@@ -79,7 +79,9 @@ from rdr_service.code_constants import (
     VA_PRIMARY_RECONSENT_C1_C2,
     VA_PRIMARY_RECONSENT_C3,
     VA_EHR_RECONSENT,
-    NON_VA_PRIMARY_RECONSENT
+    NON_VA_PRIMARY_RECONSENT,
+    VA_EHR_RECONSENT_QUESTION_CODE,
+    AGREE_NO
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -734,6 +736,8 @@ class QuestionnaireResponseDao(BaseDao):
         street_address_submitted = False
         street_address2_submitted = False
 
+        rejected_reconsent = False
+
         # Skip updating the summary if the response being stored has an authored
         # date earlier than one that's already been recorded
         if questionnaire_history.concepts:
@@ -870,6 +874,14 @@ class QuestionnaireResponseDao(BaseDao):
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value.lower() == WEAR_YES_ANSWER_CODE:
                             self.consents_provided.append(ConsentType.WEAR)
+                    elif code.value.lower() == VA_EHR_RECONSENT_QUESTION_CODE:
+                        answer_value = code_dao.get(answer.valueCodeId).value
+                        if answer_value.lower() == AGREE_NO:
+                            rejected_reconsent = module_changed = something_changed = True
+                            participant_summary.consentForElectronicHealthRecords = \
+                                QuestionnaireStatus.SUBMITTED_NO_CONSENT
+                            participant_summary.consentForElectronicHealthRecordsAuthored = authored
+                            participant_summary.consentForElectronicHealthRecordsTime = questionnaire_response.created
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
         # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.
@@ -1010,7 +1022,7 @@ class QuestionnaireResponseDao(BaseDao):
                 ):
                     self.consents_provided.append(ConsentType.PRIMARY_RECONSENT)
                     participant_summary.reconsentForStudyEnrollmentAuthored = authored
-                elif self._code_in_list(code.value, [VA_EHR_RECONSENT]):
+                elif self._code_in_list(code.value, [VA_EHR_RECONSENT]) and not rejected_reconsent:
                     self.consents_provided.append(ConsentType.EHR_RECONSENT)
                     participant_summary.reconsentForElectronicHealthRecordsAuthored = authored
 
