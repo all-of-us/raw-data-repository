@@ -5,7 +5,7 @@
 from tests.helpers.unittest_base import BaseTestCase
 
 from rdr_service.model.workbench_workspace import WorkbenchWorkspaceSnapshot
-from rdr_service.model.workbench_researcher import WorkbenchResearcher
+from rdr_service.model.workbench_researcher import WorkbenchResearcherHistory
 from rdr_service.resource.generators import WBWorkspaceGenerator, WBResearcherGenerator
 
 
@@ -25,7 +25,7 @@ class WorkbenchGeneratorTest(BaseTestCase):
             resource='test'
         )
 
-        self.researcher = WorkbenchResearcher(
+        self.researcher = WorkbenchResearcherHistory(
             id=1,
             created=None,
             modified=None,
@@ -65,7 +65,7 @@ class WorkbenchGeneratorTest(BaseTestCase):
 
         # Test that the number of fields in the DAO model has not changed.
         # This test is to make sure the resource model is updated when the SA model has been changed.
-        column_count = len(WorkbenchResearcher.__table__.columns)
+        column_count = len(WorkbenchResearcherHistory.__table__.columns)
         self.assertEqual(column_count, 54)
 
         self.session.add(self.researcher)
