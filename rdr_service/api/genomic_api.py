@@ -476,7 +476,7 @@ class GenomicSchedulingApi(BaseApi):
             raise BadRequest('Participant ID or Start Date parameter is required for use with GenomicScheduling API.')
 
         api_payload = GenomicAPIPayload(
-            self.dao.get_scheduling_data,
+            self.dao.get_latest_scheduling_data,
             participant_id=participant_id,
             start_date=start_date,
             end_date=end_date,

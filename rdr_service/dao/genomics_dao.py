@@ -2216,8 +2216,6 @@ class GenomicOutreachDaoV2(BaseDao):
 class GenomicSchedulingDao(BaseDao):
     def __init__(self):
         super().__init__(GenomicSetMember, order_by_ending=['id'])
-        self.allowed_modules = ['hdr', 'pgx']
-        self.module = self.allowed_modules
 
     def get_id(self, obj):
         pass
@@ -2225,8 +2223,63 @@ class GenomicSchedulingDao(BaseDao):
     def from_client_json(self):
         pass
 
-    def get_scheduling_data(self):
-        pass
+    def to_client_json(self, payload_dict):
+        timestamp = pytz.utc.localize(payload_dict.get('date'))
+        appointments = []
+
+        if not payload_dict.get('data'):
+            return {
+                "data": appointments,
+                "timestamp": timestamp
+            }
+
+        for appointment in payload_dict.get('data'):
+            appointments.append({
+                'module': appointment.module_type,
+                'type': 'appointment',
+                'status': appointment.event_type.split('_')[-1],
+                'appointment_id': appointment.appointment_id,
+                'participant_id': f'P{appointment.participant_id}',
+                'note_available': False
+            })
+
+        return {
+            "data": appointments,
+            "timestamp": timestamp
+        }
+
+    def get_latest_scheduling_data(self, participant_id=None, start_date=None, end_date=None, module=None):
+        max_subquery = sqlalchemy.orm.Query(
+            functions.max(GenomicAppointmentEvent.appointment_id).label(
+                'max_appointment_id')
+        ).group_by(
+            GenomicAppointmentEvent.participant_id
+        ).subquery()
+        with self.session() as session:
+            records = session.query(
+                GenomicAppointmentEvent.participant_id,
+                GenomicAppointmentEvent.module_type,
+                GenomicAppointmentEvent.event_type,
+                GenomicAppointmentEvent.appointment_id
+            ).filter(
+                GenomicAppointmentEvent.appointment_id == max_subquery.c.max_appointment_id
+            )
+
+            if module:
+                records = records.filter(
+                    GenomicAppointmentEvent.module_type.ilike(module)
+                )
+            if participant_id:
+                records = records.filter(
+                    GenomicAppointmentEvent.participant_id == participant_id
+                )
+            if start_date:
+                records = records.filter(
+                    GenomicAppointmentEvent.event_authored_time > start_date,
+                    GenomicAppointmentEvent.event_authored_time < end_date
+                )
+
+            return records.all()
 
 
 class GenomicManifestFileDao(BaseDao, GenomicDaoMixin):

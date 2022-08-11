@@ -1936,129 +1936,87 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.clear_table_after_test('genomic_datagen_member_run')
 
 
-# class GenomicSchedulingApiTest(GenomicApiTestBase):
-#     def setUp(self):
-#         super().setUp()
-#         self.loop_dao = GenomicInformingLoopDao()
-#         self.report_dao = GenomicMemberReportStateDao()
-#         self.result_dao = GenomicResultViewedDao()
-#         self.member_dao = GenomicSetMemberDao()
-#         self.num_participants = 5
-#
-#     def test_full_participant_validation_lookup(self):
-#
-#         gen_set = self.data_generator.create_database_genomic_set(
-#             genomicSetName=".",
-#             genomicSetCriteria=".",
-#             genomicSetVersion=1
-#         )
-#         participant = self.data_generator.create_database_participant()
-#
-#         # no summary / no set member
-#         resp = self.send_get(
-#             f"GenomicOutreachV2?participant_id=P{participant.participantId}",
-#             expected_status=http.client.NOT_FOUND
-#         )
-#         self.assertEqual(
-#             resp.json['message'],
-#             f'Participant with ID P{participant.participantId} not found in RDR'
-#         )
-#         self.assertEqual(resp.status_code, 404)
-#
-#         # summary / no set member
-#         self.data_generator.create_database_participant_summary(
-#             participant=participant,
-#             consentForGenomicsROR=1
-#         )
-#         resp = self.send_get(
-#             f"GenomicOutreachV2?participant_id=P{participant.participantId}",
-#             expected_status=http.client.NOT_FOUND
-#         )
-#         self.assertEqual(resp.json['message'],
-#                          f'Participant with ID P{participant.participantId} '
-#                          f'not found in Genomics system'
-#                          )
-#         self.assertEqual(resp.status_code, 404)
-#
-#         # summary / set member / failed validation in query
-#         gen_member = self.data_generator.create_database_genomic_set_member(
-#             genomicSetId=gen_set.id,
-#             participantId=participant.participantId,
-#             genomeType='aou_array'
-#         )
-#
-#         resp = self.send_get(
-#             f"GenomicOutreachV2?participant_id=P{participant.participantId}",
-#             expected_status=http.client.NOT_FOUND
-#         )
-#
-#         self.assertEqual(resp.json['message'], f'Participant with ID P{participant.participantId} '
-#                                                f'did not pass validation check')
-#         self.assertEqual(resp.status_code, 404)
-#
-#         # add result ready for gem fix validation
-#         self.data_generator.create_database_genomic_member_report_state(
-#             genomic_set_member_id=gen_member.id,
-#             participant_id=participant.participantId,
-#             module='gem',
-#             genomic_report_state=GenomicReportState.GEM_RPT_READY
-#         )
-#
-#         resp = self.send_get(
-#             f"GenomicOutreachV2?participant_id=P{participant.participantId}"
-#         )
-#
-#         self.assertIsNotNone(resp)
-#         self.assertEqual(len(resp.get('data')), 1)
-#         self.assertTrue(str(participant.participantId) in resp.get('data')[0]['participant_id'])
-#
-#     def test_validate_params(self):
-#         bad_response = 'GenomicOutreachV2 GET accepted params: start_date | end_date | participant_id | module | type'
-#
-#         response_one = self.send_get(
-#             "GenomicOutreachV2?wwqwqw=ewewe",
-#             expected_status=http.client.BAD_REQUEST
-#         )
-#         self.assertEqual(response_one.json['message'], bad_response)
-#         self.assertEqual(response_one.status_code, 400)
-#
-#         response_two = self.send_get(
-#             "GenomicOutreachV2?wwqwqw=ewewe&participant_id=P2",
-#             expected_status=http.client.BAD_REQUEST
-#         )
-#
-#         self.assertEqual(response_two.json['message'], bad_response)
-#         self.assertEqual(response_two.status_code, 400)
-#
-#         bad_response = 'Participant ID or Start Date is required for GenomicOutreach lookup.'
-#
-#         response_three = self.send_get(
-#             "GenomicOutreachV2?participant_id=",
-#             expected_status=http.client.BAD_REQUEST
-#         )
-#
-#         self.assertEqual(response_three.json['message'], bad_response)
-#         self.assertEqual(response_three.status_code, 400)
-#
-#         bad_response = 'GenomicOutreachV2 GET accepted modules: gem | hdr | pgx'
-#
-#         response_four = self.send_get(
-#             "GenomicOutreachV2?module=ewewewew",
-#             expected_status=http.client.BAD_REQUEST
-#         )
-#
-#         self.assertEqual(response_four.json['message'], bad_response)
-#         self.assertEqual(response_four.status_code, 400)
-#
-#         bad_response = 'GenomicOutreachV2 GET accepted types: result | informingLoop'
-#
-#         response_five = self.send_get(
-#             "GenomicOutreachV2?type=ewewewew",
-#             expected_status=http.client.BAD_REQUEST
-#         )
-#
-#         self.assertEqual(response_five.json['message'], bad_response)
-#         self.assertEqual(response_five.status_code, 400)
+class GenomicSchedulingApiTest(GenomicApiTestBase):
+    def setUp(self):
+        super().setUp()
+        # self.loop_dao = GenomicInformingLoopDao()
+        # self.report_dao = GenomicMemberReportStateDao()
+        # self.result_dao = GenomicResultViewedDao()
+        # self.member_dao = GenomicSetMemberDao()
+        self.num_participants = 5
+
+    def test_full_participant_validation_appointment_lookup(self):
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+        participant = self.data_generator.create_database_participant()
+
+        # no appointments / no set member
+        resp = self.send_get(
+            f"GenomicScheduling?participant_id=P{participant.participantId}",
+            expected_status=http.client.NOT_FOUND
+        )
+        self.assertEqual(
+            resp.json['message'],
+            f'Participant with ID P{participant.participantId} not found in RDR'
+        )
+        self.assertEqual(resp.status_code, 404)
+
+        # summary / no set member
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            consentForGenomicsROR=1
+        )
+
+        resp = self.send_get(
+            f"GenomicScheduling?participant_id=P{participant.participantId}",
+            expected_status=http.client.NOT_FOUND
+        )
+        self.assertEqual(resp.json['message'],
+                         f'Participant with ID P{participant.participantId} '
+                         f'not found in Genomics system'
+                         )
+        self.assertEqual(resp.status_code, 404)
+
+        # summary / set member / failed validation in query
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            participantId=participant.participantId,
+            genomeType='aou_array'
+        )
+
+        resp = self.send_get(
+            f"GenomicScheduling?participant_id=P{participant.participantId}",
+            expected_status=http.client.NOT_FOUND
+        )
+
+        self.assertEqual(resp.json['message'], f'Participant with ID P{participant.participantId} '
+                                               f'did not pass validation check')
+        self.assertEqual(resp.status_code, 404)
+
+        # add appointment record
+        self.data_generator.create_database_genomic_appointment(
+            message_record_id=1,
+            appointment_id=1,
+            event_type='appointment_scheduled',
+            module_type='hdr',
+            participant_id=participant.participantId,
+            event_authored_time=clock.CLOCK.now()
+        )
+
+        resp = self.send_get(
+            f"GenomicScheduling?participant_id=P{participant.participantId}"
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(len(resp.get('data')), 1)
+        self.assertTrue(str(participant.participantId) in resp.get('data')[0]['participant_id'])
+
+        appointment_keys = ['module', 'type', 'status', 'appointment_id', 'participant_id', 'note_available']
+        self.assertTrue(all(not len(obj.keys() - appointment_keys) and obj.values() for obj in resp['data']))
 
 
 class GenomicCloudTasksApiTest(BaseTestCase):
