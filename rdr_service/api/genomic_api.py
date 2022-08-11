@@ -75,25 +75,25 @@ class GenomicAPIPayload(GenomicApiMixin):
         self.payload = {'date': clock.CLOCK.now()}
         self.participant_id = kwargs.get('participant_id')
         self.start_date = kwargs.get('start_date')
-
         self.kwargs = kwargs
 
     def make_payload(self):
-        prefix = None
+        prefix, cleaned_participant_id = None, None
         if self.participant_id:
-            prefix, participant_id = self._extract_pid(self.participant_id)
+            prefix, cleaned_participant_id = self._extract_pid(self.participant_id)
             self._validate_participant(
                 prefix=prefix,
-                participant_id=participant_id
+                participant_id=cleaned_participant_id
             )
+            self.kwargs['participant_id'] = cleaned_participant_id
 
         if self.start_date:
             self.kwargs['start_date'] = parser.parse(self.kwargs['start_date'])
 
         participant_data = self.lookup_method(**self.kwargs)
 
-        if not participant_data and self.participant_id:
-            raise NotFound(f'Participant with ID {prefix}{self.participant_id} did not pass validation check')
+        if not participant_data and cleaned_participant_id:
+            raise NotFound(f'Participant with ID {prefix}{cleaned_participant_id} did not pass validation check')
 
         self.payload['data'] = participant_data
         return self.payload
@@ -455,11 +455,19 @@ class GenomicSchedulingApi(BaseApi):
 
     @auth_required(RDR_AND_PTC)
     def get(self):
+        self._check_global_args(
+            request.args.get('module')
+        )
         return self.get_scheduling()
 
     def get_scheduling(self):
+        """
+        Returns the genomic scheduling resource based on the request parameters
+        :return:
+        """
         start_date = request.args.get("start_date", None)
         participant_id = request.args.get("participant_id", None)
+        module = request.args.get('module', None)
         end_date = clock.CLOCK.now() \
             if not request.args.get("end_date") \
             else parser.parse(request.args.get("end_date"))
@@ -471,32 +479,23 @@ class GenomicSchedulingApi(BaseApi):
             self.dao.get_scheduling_data,
             participant_id=participant_id,
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
+            module=module
         )
         payload = api_payload.make_payload()
 
         return self._make_response(payload)
 
-    def _check_global_args(self, module):
+    @staticmethod
+    def _check_global_args(module):
         """
         Checks that the mode in the endpoint is valid
         :param module: "PGX" / "HDR"
         """
-        current_module = None
-
-        if module:
-            if module.lower() not in self.dao.allowed_modules:
-                raise BadRequest(
-                    f"GenomicScheduling GET accepted modules: {' | '.join(self.dao.allowed_modules)}")
-            current_module = module.lower()
-
-        self._set_dao_globals(
-            module=current_module,
-        )
-
-    def _set_dao_globals(self, module):
-        if module:
-            self.dao.module = [module]
+        allowed_modules = ['hdr', 'pgx']
+        if module and module.lower() not in allowed_modules:
+            raise BadRequest(
+                f"GenomicScheduling GET accepted modules: {' | '.join(allowed_modules)}")
 
     @staticmethod
     def validate_scheduling_params():
