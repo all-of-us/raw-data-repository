@@ -3,7 +3,10 @@ from rdr_service.api.base_api import BaseApi
 from werkzeug.exceptions import BadRequest
 from rdr_service.api_util import REDCAP_AND_RDR
 from rdr_service.app_util import auth_required
+from rdr_service.config import GAE_PROJECT
+from rdr_service.dao.bq_workbench_dao import rebuild_bq_audit
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchWorkspaceAuditDao
+from rdr_service.services.system_utils import list_chunks
 
 
 class BaseRedcapApi(BaseApi):
@@ -57,6 +60,22 @@ class RedcapWorkbenchAuditApi(BaseRedcapApi):
         super(RedcapWorkbenchAuditApi, self).get()
         return self.dao.workspace_dao.get_redcap_audit_workspaces(**self.get_filters)
 
+    def _do_insert(self, m):
+        audit_records = super()._do_insert(m)
+        # Generate tasks to build PDR records.
+        if GAE_PROJECT == 'localhost':
+            rebuild_bq_audit(audit_records)
+        else:
+            ids = list()
+            for obj in audit_records:
+                ids.append(obj.id)
+
+            if len(ids) > 0:
+                for chunk in list_chunks(ids, chunk_size=250):
+                    payload = {'table': 'audit', 'ids': chunk}
+                    self._task.execute('rebuild_research_workbench_table_records_task', payload=payload,
+                                 in_seconds=15, queue='resource-rebuild')
+        return audit_records
 
 class RedcapResearcherAuditApi(BaseRedcapApi):
     def __init__(self):

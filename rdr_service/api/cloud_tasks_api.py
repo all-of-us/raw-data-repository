@@ -11,7 +11,7 @@ from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
-    bq_institutional_affiliations_batch_update, bq_researcher_batch_update
+    bq_institutional_affiliations_batch_update, bq_researcher_batch_update, bq_audit_batch_update
 from rdr_service.offline import retention_eligible_import
 from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
@@ -165,6 +165,8 @@ class RebuildResearchWorkbenchTableRecordsApi(Resource):
         elif table == 'researcher':
             bq_researcher_batch_update(batch)
             res_researcher_batch_update(batch)
+        elif table == 'audit':
+            bq_audit_batch_update(batch)
 
         logging.info(f'Rebuild complete.')
         return '{"success": "true"}'

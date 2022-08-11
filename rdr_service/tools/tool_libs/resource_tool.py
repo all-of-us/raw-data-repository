@@ -26,7 +26,7 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_se
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update, \
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
 from rdr_service.dao.bq_workbench_dao import bq_workspace_update, bq_workspace_user_update, \
-    bq_institutional_affiliations_update, bq_researcher_update
+    bq_institutional_affiliations_update, bq_researcher_update, bq_audit_update
 from rdr_service.dao.bq_hpo_dao import bq_hpo_update, bq_hpo_update_by_id
 from rdr_service.dao.bq_organization_dao import bq_organization_update, bq_organization_update_by_id
 from rdr_service.dao.bq_site_dao import bq_site_update, bq_site_update_by_id
@@ -68,7 +68,7 @@ GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'ge
                      'genomic_file_processed', 'genomic_manifest_file', 'genomic_manifest_feedback',
                      'genomic_informing_loop', 'genomic_cvl_result_past_due')
 
-RESEARCH_WORKBENCH_TABLES = ('workspace', 'workspace_user', 'researcher', 'institutional_affiliations')
+RESEARCH_WORKBENCH_TABLES = ('workspace', 'workspace_user', 'researcher', 'institutional_affiliations', 'audit')
 
 SITE_TABLES = ('hpo', 'site', 'organization')
 
@@ -743,6 +743,8 @@ class ResearchWorkbenchResourceClass(object):
                 bq_institutional_affiliations_update(_id, project_id=self.gcp_env.project)
             elif table == 'researcher':
                 bq_researcher_update(_id, project_id=self.gcp_env.project)
+            elif table == 'audit':
+                bq_audit_update(_id, project_id=self.gcp_env.project)
         except NotFound:
             return 1
         return 0
@@ -825,9 +827,10 @@ class ResearchWorkbenchResourceClass(object):
 
         table_map = {
             'workspace': 'workbench_workspace_snapshot',
-            'workspace_user': 'workbench_workspace_user',
-            'researcher': 'workbench_researcher',
-            'institutional_affiliations': 'workbench_institutional_affiliations'
+            'workspace_user': 'workbench_workspace_user_history',
+            'researcher': 'workbench_researcher_history',
+            'institutional_affiliations': 'workbench_institutional_affiliations_history',
+            'audit': 'workbench_audit'
         }
 
         if self.args.all_ids or self.args.all_tables:

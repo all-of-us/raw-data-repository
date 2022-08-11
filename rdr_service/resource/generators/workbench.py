@@ -215,7 +215,7 @@ class WBResearcherGenerator(generators.BaseGenerator):
 
         with self.ro_dao.session() as ro_session:
             row = ro_session.execute(
-                text('select * from rdr.workbench_researcher where id = :id'), {'id': src_pk_id}).first()
+                text('select * from rdr.workbench_researcher_history where id = :id'), {'id': src_pk_id}).first()
             if not row:
                 return None
             data = self.ro_dao.to_dict(row)

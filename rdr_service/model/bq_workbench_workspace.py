@@ -100,10 +100,11 @@ class BQRWBWorkspaceView(BQView):
             SELECT
                 %%FIELD_LIST%%
             FROM (
-                SELECT *, MAX(modified) OVER (PARTITION BY workspace_source_id) AS max_timestamp
+                SELECT *, 
+                       ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified) AS rn
                   FROM `{project}`.{dataset}.rwb_workspace
               ) t
-              WHERE t.modified = t.max_timestamp
+              WHERE t.rn = 1
         """.replace('%%FIELD_LIST%%', BQRWBWorkspaceSchema.get_sql_field_names(
             exclude_fields=[
                 'race_ethnicities',
@@ -120,10 +121,11 @@ class BQRWBWorkspaceRaceEthnicityView(BQView):
     __sql__ = """
         SELECT t.id, t.created, t.modified, t.workspace_source_id, nt.*
           FROM (
-            SELECT *, MAX(modified) OVER (PARTITION BY workspace_source_id) AS max_timestamp
+            SELECT *, 
+                   ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified) AS rn
               FROM `{project}`.{dataset}.rwb_workspace
           ) t cross join unnest(race_ethnicities) as nt
-          WHERE t.modified = t.max_timestamp
+          WHERE t.rn = 1
     """
 
 
@@ -135,10 +137,11 @@ class BQRWBWorkspaceAgeView(BQView):
     __sql__ = """
         SELECT t.id, t.created, t.modified, t.workspace_source_id, nt.*
           FROM (
-            SELECT *, MAX(modified) OVER (PARTITION BY workspace_source_id) AS max_timestamp
+            SELECT *, 
+                   ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified) AS rn
               FROM `{project}`.{dataset}.rwb_workspace
           ) t cross join unnest(ages) as nt
-          WHERE t.modified = t.max_timestamp
+          WHERE t.rn = 1
     """
 
 
@@ -169,3 +172,31 @@ class BQRWBWorkspaceUsersView(BQView):
     __viewdescr__ = 'Research Workbench Workspace Users View'
     __pk_id__ = 'id'
     __table__ = BQRWBWorkspaceUsers
+
+
+class BQRWBAuditSchema(BQSchema):
+    id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+
+    workspace_snapshot_id = BQField('workspace_snapshot_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    auditor_pmi_email = BQField('auditor_pmi_email', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    audit_review_type = BQField('audit_review_type', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    audit_workspace_display_decision = BQField('audit_workspace_display_decision', BQFieldTypeEnum.INTEGER,
+                                               BQFieldModeEnum.REQUIRED)
+    audit_workspace_access_decision = BQField('audit_workspace_access_decision', BQFieldTypeEnum.INTEGER,
+                                              BQFieldModeEnum.REQUIRED)
+    audit_notes = BQField('audit_notes', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+
+
+class BQRWBAudit(BQTable):
+    """ Research Workbench Audit BigQuery Table """
+    __tablename__ = 'rwb_audit'
+    __schema__ = BQRWBAuditSchema
+
+
+class BQRWBAuditView(BQView):
+    __viewname__ = 'v_rwb_audit'
+    __viewdescr__ = 'Research Workbench Audit View'
+    __pk_id__ = 'id'
+    __table__ = BQRWBAudit
