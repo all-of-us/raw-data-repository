@@ -3,6 +3,7 @@ from datetime import datetime
 from tests.helpers.unittest_base import BaseTestCase
 
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.participant_enums import OnSiteVerificationType, OnSiteVerificationVisitType
 
 
 class OnsiteVerificationApiTest(BaseTestCase):
@@ -140,3 +141,6 @@ class OnsiteVerificationApiTest(BaseTestCase):
 
         participant_summary = self.ps_dao.get_by_participant_id(self.p.participantId)
         self.assertEqual(participant_summary.onsiteIdVerificationTime, datetime(2022, 2, 22, 6, 7, 8))
+        self.assertEqual(participant_summary.onsiteIdVerificationType, OnSiteVerificationType.TWO_OF_PII)
+        self.assertEqual(participant_summary.onsiteIdVerificationVisitType,
+                         OnSiteVerificationVisitType.PHYSICAL_MEASUREMENTS_ONLY)
