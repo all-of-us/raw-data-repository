@@ -2253,7 +2253,8 @@ class GenomicSchedulingDao(BaseDao):
             functions.max(GenomicAppointmentEvent.appointment_id).label(
                 'max_appointment_id')
         ).group_by(
-            GenomicAppointmentEvent.participant_id
+            GenomicAppointmentEvent.participant_id,
+            GenomicAppointmentEvent.module_type
         ).subquery()
         note_alias = aliased(GenomicAppointmentEvent)
         with self.session() as session:
@@ -2274,9 +2275,6 @@ class GenomicSchedulingDao(BaseDao):
                     note_alias.appointment_id == GenomicAppointmentEvent.appointment_id,
                     note_alias.event_type.like('%note_available')
                 )
-            ).filter(
-                GenomicAppointmentEvent.appointment_id == max_subquery.c.max_appointment_id,
-                GenomicAppointmentEvent.event_type.notlike('%note_available')
             )
 
             if module:
@@ -2292,6 +2290,11 @@ class GenomicSchedulingDao(BaseDao):
                     GenomicAppointmentEvent.event_authored_time > start_date,
                     GenomicAppointmentEvent.event_authored_time < end_date
                 )
+
+            records = records.filter(
+                GenomicAppointmentEvent.appointment_id == max_subquery.c.max_appointment_id,
+                GenomicAppointmentEvent.event_type.notlike('%note_available')
+            )
 
             return records.all()
 

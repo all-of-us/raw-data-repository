@@ -462,7 +462,7 @@ class GenomicSchedulingApi(BaseApi):
 
     def get_scheduling(self):
         """
-        Returns the g[enomic scheduling resource based on the request parameters
+        Returns the genomic scheduling resource based on the request parameters
         :return:
         """
         start_date = request.args.get("start_date", None)
