@@ -39,7 +39,9 @@ from rdr_service.participant_enums import (
     DeceasedStatus,
     RetentionStatus,
     RetentionType,
-    SelfReportedPhysicalMeasurementsStatus)
+    SelfReportedPhysicalMeasurementsStatus,
+    OnSiteVerificationType,
+    OnSiteVerificationVisitType)
 
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
@@ -1382,6 +1384,11 @@ class ParticipantSummary(Base):
 
     onsiteIdVerificationTime = Column("onsite_id_verification_time", UTCDateTime)
     "Timestamp of the most recent id verification"
+
+    onsiteIdVerificationType = Column("onsite_id_verification_type", Enum(OnSiteVerificationType),
+                                      default=OnSiteVerificationType.UNSET)
+    onsiteIdVerificationVisitType = Column("onsite_id_verification_visit_type", Enum(OnSiteVerificationVisitType),
+                               default=OnSiteVerificationVisitType.UNSET)
 
     lastModified = Column("last_modified", UTCDateTime6)
     """UTC timestamp of the last time the participant summary was modified"""
