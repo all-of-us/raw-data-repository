@@ -2249,9 +2249,22 @@ class GenomicSchedulingDao(BaseDao):
         }
 
     def get_latest_scheduling_data(self, participant_id=None, start_date=None, end_date=None, module=None):
-        max_subquery = sqlalchemy.orm.Query(
+        max_appointment_id_subquery = sqlalchemy.orm.Query(
             functions.max(GenomicAppointmentEvent.appointment_id).label(
-                'max_appointment_id')
+                'max_appointment_id'
+            )
+        ).filter(
+            GenomicAppointmentEvent.event_type.notlike('%note_available')
+        ).group_by(
+            GenomicAppointmentEvent.participant_id,
+            GenomicAppointmentEvent.module_type
+        ).subquery()
+        max_event_authored_time_subquery = sqlalchemy.orm.Query(
+            functions.max(GenomicAppointmentEvent.event_authored_time).label(
+                'max_event_authored_time'
+            )
+        ).filter(
+            GenomicAppointmentEvent.event_type.notlike('%note_available')
         ).group_by(
             GenomicAppointmentEvent.participant_id,
             GenomicAppointmentEvent.module_type
@@ -2292,8 +2305,11 @@ class GenomicSchedulingDao(BaseDao):
                 )
 
             records = records.filter(
-                GenomicAppointmentEvent.appointment_id == max_subquery.c.max_appointment_id,
-                GenomicAppointmentEvent.event_type.notlike('%note_available')
+                and_(
+                    GenomicAppointmentEvent.appointment_id == max_appointment_id_subquery.c.max_appointment_id,
+                    GenomicAppointmentEvent.event_authored_time ==
+                    max_event_authored_time_subquery.c.max_event_authored_time
+                )
             )
 
             return records.all()
