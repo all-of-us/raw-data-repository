@@ -21,6 +21,8 @@ default_rdr_ods_tables = [
          bigquery.SchemaField('active_flag', 'BOOLEAN', 'NULLABLE', 'on-off switch for record.', ()),
          bigquery.SchemaField('target_table', 'STRING', 'NULLABLE', 'rdr_ods table to receive data for data element.',
                               ()),
+         bigquery.SchemaField('normalization_rule', 'STRING', 'REPEATED',
+                              'Array of string values that represent a normalization rule.', ()),
      ]},
 
     {"table_name": "export_schema",
@@ -41,7 +43,7 @@ default_rdr_ods_tables = [
          bigquery.SchemaField('active_flag', 'BOOLEAN', 'NULLABLE', 'On-Off switch for inclusion in export', ()),
      ]},
 
-    {"table_name": "participant_data_element",
+    {"table_name": "participant_survey_data_element",
      "fields": [
          bigquery.SchemaField('participant_id', 'STRING', 'NULLABLE', 'participant_id from RDR.', ()),
          bigquery.SchemaField('research_id', 'STRING', 'NULLABLE', 'research_id from RDR.', ()),
@@ -51,6 +53,17 @@ default_rdr_ods_tables = [
          bigquery.SchemaField('created_timestamp', 'TIMESTAMP', 'NULLABLE', 'timestamp of record insertion', ()),
          bigquery.SchemaField('authored_timestamp', 'TIMESTAMP', 'NULLABLE',
                               'timestamp from questionnaire_response.authored', ()),
+     ]},
+    {"table_name": "participant_consent_data_element",
+     "fields": [
+         bigquery.SchemaField('participant_id', 'STRING', 'NULLABLE', 'participant_id from RDR.', ()),
+         bigquery.SchemaField('research_id', 'STRING', 'NULLABLE', 'research_id from RDR.', ()),
+         bigquery.SchemaField(
+             'data_element_id', 'STRING', 'NULLABLE', 'data_element_id from rdr_ods.data_element', ()),
+         bigquery.SchemaField('value_string', 'STRING', 'NULLABLE', 'value of of data element', ()),
+         bigquery.SchemaField('created_timestamp', 'TIMESTAMP', 'NULLABLE', 'timestamp of record insertion', ()),
+         bigquery.SchemaField('authored_timestamp', 'TIMESTAMP', 'NULLABLE',
+                              'timestamp from consent authored field', ()),
      ]},
     {"table_name": "sample_data_element",
      "fields": [
@@ -80,7 +93,7 @@ default_rdr_ods_table_data = [
     },
     {
         "table_name": "export_schema_data_element",
-        "data": os.path.join(data_file_path, "export_schema_data_element.json")
+        "data": os.path.join(data_file_path, "export_schema_data_element_full.json")
     },
 ]
 

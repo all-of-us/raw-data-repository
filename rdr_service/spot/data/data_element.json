@@ -99,8 +99,13 @@
   "source_target": "GenomicSetMember.qcStatus",
   "value_datatype": "string"
 }, {
+  "id": "1e8d9536ff7441dc89538285bd1aaa70",
+  "source_system": "rdr_consent",
+  "source_target": "Participant.withdrawalStatus",
+  "value_datatype": "string"
+},{
   "id": "fabb52d4336c438aab4c885cbffe21b8",
-  "source_system": "rdr_genomic",
+  "source_system": "rdr_consent",
   "source_target": "ParticipantSummary.consentForStudyEnrollment",
   "value_datatype": "string"
 }, {

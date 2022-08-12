@@ -9,6 +9,8 @@ import sys
 import uuid
 import itertools
 import re
+
+import sqlalchemy
 from dateutil.parser import parse
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
@@ -26,6 +28,7 @@ from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import QuestionnaireResponseClassificationType
 from rdr_service.services.system_utils import setup_logging, setup_i18n
+from rdr_service.spot.value_normalizer import ValueNormalizer
 from rdr_service.tools.tool_libs import GCPProcessContext
 from rdr_service.tools.tool_libs.tool_base import ToolBase
 from rdr_service.spot.initialization import default_rdr_ods_tables, default_rdr_ods_table_data
@@ -72,11 +75,18 @@ class SpotTool(ToolBase):
     default_datasets = ("rdr_ods", "genomic_research_mart")
 
     def run(self):
+        if self.args.project == "all-of-us-rdr-prod":
+            _logger.warning("You are about to run this operation on prod.")
+            response = input("Continue (y/n)?> ")
+            if response != "y":
+                _logger.info("Aborted.")
+                return 0
         self.client = bigquery.Client(project=self.args.project)
         process_map = {
             "LOAD_ODS_TABLE": self.load_ods_table_from_file,
             "TRANSFER_RDR_SAMPLE_DATA_TO_ODS": self.load_ods_sample_data_element,
-            "TRANSFER_RDR_PARTICIPANT_DATA_TO_ODS": self.load_ods_participant_data_element,
+            "TRANSFER_RDR_PARTICIPANT_SURVEY_DATA_TO_ODS": self.load_ods_participant_survey_data_element,
+            "TRANSFER_RDR_PARTICIPANT_CONSENT_DATA_TO_ODS": self.load_ods_participant_consent_data_element,
             "EXPORT_ODS_TO_DATAMART": self.export_ods_data_to_datamart,
             "INITIALIZE_SYSTEM": self.initialize_system,
             "SEED_ODS_DATA": self.seed_ods_data,
@@ -230,7 +240,7 @@ class SpotTool(ToolBase):
         query_job = self.client.query(query_string, job_config=job_config)
         return query_job.result()
 
-    def export_sample_data_element_to_temp_table(self):
+    def call_export_genomic_research_procedure(self):
         # Query parameters are not supported for pivot columns.
         # String formatting the query is vulnerable to injection
         # Using a stored procedure:  rdr_ods.test_export_genomic_research_procedure
@@ -250,7 +260,8 @@ class SpotTool(ToolBase):
         self.gcp_env.activate_sql_proxy()
 
         # get data elements from registry
-        registered_member_data_elements = list(self.get_data_elements_from_registry("sample_data_element"))
+        registered_member_data_elements = list(self.get_data_elements_from_registry("sample_data_element",
+                                                                                    "rdr_genomic"))
 
         # Get all newly modified members (with aw4)
         modified_members = self.get_modified_member_data(registered_member_data_elements,
@@ -267,15 +278,16 @@ class SpotTool(ToolBase):
         return 0
 
     @validate_args(arg_string="cutoff_date")
-    def load_ods_participant_data_element(self):
+    def load_ods_participant_survey_data_element(self):
         """
         Main function for extracting RDR survey data
-        and loading it into rdr_ods.sample_data_element
+        and loading it into rdr_ods.participant_survey_data_element
         """
         self.gcp_env.activate_sql_proxy()
 
         # get data elements from registry
-        survey_data_elements = list(self.get_data_elements_from_registry("participant_data_element"))
+        survey_data_elements = list(self.get_data_elements_from_registry("participant_survey_data_element",
+                                                                         "rdr_survey"))
 
         # Get all newly modified members (with aw4)
         survey_data = self.get_new_survey_data(survey_data_elements,
@@ -285,7 +297,33 @@ class SpotTool(ToolBase):
         rows = self.build_survey_data_element_row(survey_data)
 
         # Load the rows to BQ table
-        table_id = f"{self.args.project}.rdr_ods.participant_data_element"
+        table_id = f"{self.args.project}.rdr_ods.participant_survey_data_element"
+
+        self.load_data_to_bq_table(table_id, rows)
+
+        return 0
+
+    def load_ods_participant_consent_data_element(self):
+        """
+        Main function for extracting RDR consent/withdrawal data
+        and loading it into rdr_ods.participant_consent_data_element
+        TODO: For deadline's sake, values are hardcoded. Would like to make more scaleable
+        """
+        self.gcp_env.activate_sql_proxy()
+
+        consent_targets = ['ParticipantSummary.consentForStudyEnrollment', 'Participant.withdrawalStatus']
+
+        consent_regs = list(self.get_consent_data_element_registry(source_targets=consent_targets))
+
+        # Primary consent and WD status are currently special cases
+        # In a future phase, I'll break this out into its own table
+        participant_consent_data = self.get_participant_consent_data(last_update_date=self.args.cutoff_date,
+                                                                     data_elements=consent_regs)
+
+        _logger.info("building consent data element records...")
+        rows = self.build_participant_data_element_row(participant_consent_data)
+
+        table_id = f"{self.args.project}.rdr_ods.participant_consent_data_element"
 
         self.load_data_to_bq_table(table_id, rows)
 
@@ -297,24 +335,27 @@ class SpotTool(ToolBase):
         loading it into an rdr_ods temp table, and then exporting it as
         a snapshot to the genomic_research_datamart
         """
-        export_schema = self.get_export_schema()
+        for schema in ['genomic_research_array', 'genomic_research_wgs']:
 
-        # Pivot data from sample_data_element into BQ temp table
-        self.export_sample_data_element_to_temp_table()
+            export_schema = self.get_export_schema(schema)
 
-        # load records into snapshot table in rdr_genomic_research_export dataset
-        destination = self.get_destination_table(export_schema)
+            # Pivot data from sample_data_element into BQ temp table
+            self.call_export_genomic_research_procedure()
 
-        self.load_datamart_snapshot(destination)
+            # load records into snapshot table in rdr_genomic_research_export dataset
+            destination = self.get_destination_table(export_schema)
 
-        _logger.info(f"Data export to {destination} complete.")
+            self.load_datamart_snapshot(destination)
+
+            _logger.info(f"Data export to {destination} complete.")
 
         return 0
 
-    def get_data_elements_from_registry(self, target_table):
+    def get_data_elements_from_registry(self, target_table, source_system):
         job_config = bigquery.QueryJobConfig(
             query_parameters=[
                 bigquery.ScalarQueryParameter("target_table", "STRING", target_table),
+                bigquery.ScalarQueryParameter("source_system", "STRING", source_system),
             ]
         )
         return self.run_bq_query_job(f"""
@@ -327,7 +368,79 @@ class SpotTool(ToolBase):
         where true
           and reg.target_table = @target_table
           and reg.active_flag = true
+          and de.source_system = @source_system
         """, job_config=job_config)
+
+    def get_consent_data_element_registry(self, source_targets):
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ArrayQueryParameter("source_targets", "STRING", source_targets),
+            ]
+        )
+        return self.run_bq_query_job(f"""
+                SELECT reg.data_element_id
+                  , reg.target_table
+                  , de.source_system
+                  , de.source_target
+                FROM `rdr_ods.data_element_registry` reg
+                  INNER JOIN `rdr_ods.data_element` de ON de.id = reg.data_element_id
+                where true
+                  and reg.active_flag = true
+                  and de.source_system = "rdr_consent"
+                  and de.source_target IN UNNEST(@source_targets)
+                """, job_config=job_config)
+
+    @staticmethod
+    def get_participant_consent_data(last_update_date, data_elements):
+        session = database_factory.get_database().make_session()
+        # TODO: Need more flexible way to do this
+        withdrawal_de = filter(lambda de: de['source_target'] == "Participant.withdrawalStatus",
+                               data_elements).__next__()
+
+        primary_de = filter(lambda de: de['source_target'] == 'ParticipantSummary.consentForStudyEnrollment',
+                            data_elements).__next__()
+
+        query_participant = session.query(
+            Participant.participantId,
+            Participant.researchId,
+            Participant.withdrawalStatus.label("value_string"),
+            Participant.withdrawalAuthored.label("authored_timestamp"),
+            func.now().label('created_timestamp'),
+            sqlalchemy.literal(withdrawal_de.data_element_id).label("data_element_id")
+        ).select_from(
+            Participant
+        ).join(
+            GenomicSetMember,
+            GenomicSetMember.participantId == Participant.participantId
+        ).filter(
+            GenomicSetMember.ignoreFlag == 0,
+            GenomicSetMember.aw4ManifestJobRunID.isnot(None),
+            Participant.withdrawalAuthored >= last_update_date,
+            # QuestionnaireResponse.participantId.in_() TODO: Add param
+        )
+        query_summary = session.query(
+                ParticipantSummary.participantId,
+                Participant.researchId,
+                ParticipantSummary.consentForStudyEnrollment.label("value_string"),
+                ParticipantSummary.consentForStudyEnrollmentAuthored.label("authored_timestamp"),
+                func.now().label('created_timestamp'),
+                sqlalchemy.literal(primary_de.data_element_id).label("data_element_id")
+            ).select_from(
+                ParticipantSummary
+            ).join(
+                GenomicSetMember,
+                GenomicSetMember.participantId == ParticipantSummary.participantId
+            ).join(
+                Participant,
+                Participant.participantId == ParticipantSummary.participantId
+            ).filter(
+                GenomicSetMember.ignoreFlag == 0,
+                GenomicSetMember.aw4ManifestJobRunID.isnot(None),
+                ParticipantSummary.consentForStudyEnrollmentAuthored >= last_update_date,
+            )
+        set_a = set(query_summary.all())
+        set_b = set(query_participant.all())
+        return set_a.union(set_b)
 
     @staticmethod
     def get_modified_member_data(data_elements, last_update_date):
@@ -389,8 +502,8 @@ class SpotTool(ToolBase):
             QuestionnaireResponse.participantId,
             Participant.researchId,
             question_code.value.label('question_code'),
-            answer_code.value.label('answer_code'),
-            QuestionnaireResponse.authored,
+            answer_code.value.label('value_string'),
+            QuestionnaireResponse.authored.label("authored_timestamp"),
             func.now().label('created_timestamp'),
         ]
         # Get DE IDs from data element and add as case
@@ -429,7 +542,6 @@ class SpotTool(ToolBase):
             Participant,
             Participant.participantId == QuestionnaireResponse.participantId
         ).filter(
-            GenomicSetMember.genomeType == "aou_wgs",
             GenomicSetMember.ignoreFlag == 0,
             GenomicSetMember.aw4ManifestJobRunID.isnot(None),
             QuestionnaireResponse.authored >= last_update_date,
@@ -440,21 +552,22 @@ class SpotTool(ToolBase):
         return query.all()
 
     @staticmethod
-    def build_survey_data_element_row(survey_data):
+    def build_participant_data_element_row(data):
         """
-        Generator function to build json-serializable survey_data_element record
-        :param survey_data:
+        Generator function to build json-serializable
+        participant_survey|consent_data_element record
+        :param data:
         :return dictionary representation of record to insert
         """
 
-        for row in survey_data:
+        for row in data:
             new_row = {
                 'participant_id': row.participantId,
                 'research_id': row.researchId,
                 'data_element_id': row.data_element_id,
-                'value_string': row.answer_code,
+                'value_string': str(row.value_string),
                 'created_timestamp': row.created_timestamp.isoformat(),
-                'authored_timestamp': row.authored.isoformat()
+                'authored_timestamp': row.authored_timestamp.isoformat()
             }
 
             yield new_row
@@ -464,6 +577,14 @@ class SpotTool(ToolBase):
         _logger.info("pivoting member data...")
 
         def build_new_row(old_row, data_element):
+            # Normalize values
+            rules = []
+            normalizer = ValueNormalizer()
+            for rule in rules:
+                test_value = normalizer.rule_map[rule](test_value)
+
+            print(f'Test value: {test_value}')
+
             attribute_name = data_element.source_target.split(".")[-1]
             de_val = getattr(old_row, attribute_name)
             new_row = {
@@ -479,15 +600,20 @@ class SpotTool(ToolBase):
         product = itertools.product(data, data_elements)
         return itertools.starmap(build_new_row, product)
 
-    def get_export_schema(self):
+    def get_export_schema(self, schema):
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("schema", "STRING", schema),
+            ]
+        )
         return list(self.run_bq_query_job(
             """
             select schema_name
               , destination_mart
               , destination_target_table
             from `rdr_ods.export_schema`
-            where schema_name = "genomic_research"
-            """
+            where schema_name = @schema
+            """, job_config=job_config
         ))[0]
 
     def get_export_data_element_names(self):
@@ -532,7 +658,8 @@ def run():
     tool_processes = [
         "LOAD_ODS_TABLE",
         "TRANSFER_RDR_SAMPLE_DATA_TO_ODS",
-        "TRANSFER_RDR_PARTICIPANT_DATA_TO_ODS",
+        "TRANSFER_RDR_PARTICIPANT_SURVEY_DATA_TO_ODS",
+        "TRANSFER_RDR_PARTICIPANT_CONSENT_DATA_TO_ODS",
         "EXPORT_ODS_TO_DATAMART",
         "INITIALIZE_SYSTEM",
         "SEED_ODS_DATA",

@@ -1,101 +1,52 @@
 [{
-  "data_element_id": "ede63e9d82ec45aaaa96ccedba082df5",
-  "active_flag": "true",
-  "target_table": "sample_data_element"
-}, {
-  "data_element_id": "fabb52d4336c438aab4c885cbffe21b8",
-  "active_flag": "true",
-  "target_table": "sample_data_element"
-}, {
-  "data_element_id": "47b91792058b40779955894cca1b9b7c",
-  "active_flag": "true",
-  "target_table": "participant_data_element"
-}, {
-  "data_element_id": "f6ff07d76ece4afcb7ab617c71609d1c",
-  "active_flag": "true",
-  "target_table": "participant_data_element"
-}, {
-  "data_element_id": "e60bc5dbfc2648cc96c8608235160347",
-  "active_flag": "true",
-  "target_table": "participant_data_element"
-}, {
-  "data_element_id": "ce87d7889f2f4788af24182e9031c074",
-  "active_flag": "true",
-  "target_table": "participant_data_element"
-}, {
-  "data_element_id": "485c166186ef4d22ad6462a29d01939f",
-  "active_flag": "true",
-  "target_table": "participant_data_element"
-}, {
-  "data_element_id": "2665a9d530b94e26a55518b2d90697c3",
-  "active_flag": "true",
-  "target_table": "participant_data_element"
-}, {
-  "data_element_id": "7afea7d9ec5c43558f74130d3af57c4b",
-  "active_flag": "true",
-  "target_table": "sample_data_element"
-}, {
   "data_element_id": "6c711285e9444d01b163010a33252043",
   "active_flag": "true",
-  "target_table": "sample_data_element"
+  "target_table": "sample_data_element",
+  "normalization_rule": ["percent_to_ratio"]
 }, {
-  "data_element_id": "f50607e2f35945808e8ec2d14ae7aa96",
+  "data_element_id": "9aba013aae86403a8759431bcfed9eff",
   "active_flag": "true",
-  "target_table": "sample_data_element"
-}, {
-  "data_element_id": "3fa51043a74a4e27a48bcccf0991a5c4",
-  "active_flag": "true",
-  "target_table": "sample_data_element"
-}, {
-  "data_element_id": "b254dab0f63e49078ac16dd4105224e0",
-  "active_flag": "true",
-  "target_table": "sample_data_element"
-}, {
-  "data_element_id": "995c4c6230e24c9b85d65f88250b54cd",
-  "active_flag": "true",
-  "target_table": "sample_data_element"
-}, {
-  "data_element_id": "ad9b3741eefc4cc3a350ea6ca90246ed",
-  "active_flag": "true",
-  "target_table": "sample_data_element"
-}, {
-  "data_element_id": "bef4dffcd0754842b1313813fdf976eb",
-  "active_flag": "true",
-  "target_table": "sample_data_element"
-}, {
-  "data_element_id": "801d3c8090d94592943c88ab51b5cda6",
-  "active_flag": "true",
-  "target_table": "sample_data_element"
+  "target_table": "sample_data_element",
+  "normalization_rule": ["percent_to_ratio"]
 }, {
   "data_element_id": "2e216bb73b764b559fdb9e7f4a69c068",
   "active_flag": "true",
-  "target_table": "sample_data_element"
-}, {
-  "data_element_id": "6727ed3f093f49f4bc826b3a56446dc3",
-  "active_flag": "true",
-  "target_table": "sample_data_element"
+  "target_table": "sample_data_element",
+  "normalization_rule": ["boolean_to_upper_string", "clean_null"]
 }, {
   "data_element_id": "2e5655307ae3465a8d50d18c22496955",
   "active_flag": "true",
   "target_table": "sample_data_element"
 }, {
-  "data_element_id": "a9e2e56b2d064d88b81298c448fea367",
+  "data_element_id": "41e717a4e3bb483887f3ff84d5e32ed0",
   "active_flag": "true",
-  "target_table": "sample_data_element"
-}, {
-  "data_element_id": "5470c845467d4662b12501692785fda5",
-  "active_flag": "true",
-  "target_table": "sample_data_element"
+  "target_table": "sample_data_element",
+  "normalization_rule": ["upper"]
 }, {
   "data_element_id": "f238c7748cab47e191ce3e5156c8b876",
   "active_flag": "true",
   "target_table": "sample_data_element"
 }, {
-  "data_element_id": "097d17e0b1c94eaebbfee9cdf98d1182",
+  "data_element_id": "ad9b3741eefc4cc3a350ea6ca90246ed",
+  "active_flag": "true",
+  "target_table": "sample_data_element",
+  "normalization_rule": ["boolean_to_upper_string"]
+}, {
+  "data_element_id": "3fa51043a74a4e27a48bcccf0991a5c4",
+  "active_flag": "true",
+  "target_table": "sample_data_element",
+  "normalization_rule": ["percent_to_ratio"]
+}, {
+  "data_element_id": "801d3c8090d94592943c88ab51b5cda6",
   "active_flag": "true",
   "target_table": "sample_data_element"
 }, {
-  "data_element_id": "9aba013aae86403a8759431bcfed9eff",
+  "data_element_id": "7afea7d9ec5c43558f74130d3af57c4b",
+  "active_flag": "true",
+  "target_table": "sample_data_element",
+  "normalization_rule": ["percent_to_ratio"]
+}, {
+  "data_element_id": "a9e2e56b2d064d88b81298c448fea367",
   "active_flag": "true",
   "target_table": "sample_data_element"
 }, {
@@ -103,13 +54,53 @@
   "active_flag": "true",
   "target_table": "sample_data_element"
 }, {
-  "data_element_id": "41e717a4e3bb483887f3ff84d5e32ed0",
+  "data_element_id": "995c4c6230e24c9b85d65f88250b54cd",
+  "active_flag": "true",
+  "target_table": "sample_data_element",
+  "normalization_rule": ["percent_to_ratio"]
+}, {
+  "data_element_id": "6727ed3f093f49f4bc826b3a56446dc3",
+  "active_flag": "true",
+  "target_table": "sample_data_element",
+  "normalization_rule": ["upper"]
+}, {
+  "data_element_id": "b254dab0f63e49078ac16dd4105224e0",
   "active_flag": "true",
   "target_table": "sample_data_element"
 }, {
-  "data_element_id": "850ac55298b3492f8759bf2420baae5b",
+  "data_element_id": "5470c845467d4662b12501692785fda5",
   "active_flag": "true",
   "target_table": "sample_data_element"
+}, {
+  "data_element_id": "f50607e2f35945808e8ec2d14ae7aa96",
+  "active_flag": "true",
+  "target_table": "sample_data_element",
+  "normalization_rule": ["percent_to_ratio"]
+}, {
+  "data_element_id": "097d17e0b1c94eaebbfee9cdf98d1182",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "bef4dffcd0754842b1313813fdf976eb",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "ede63e9d82ec45aaaa96ccedba082df5",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "1e8d9536ff7441dc89538285bd1aaa70",
+  "active_flag": "true",
+  "target_table": "participant_consent_data_element"
+}, {
+  "data_element_id": "fabb52d4336c438aab4c885cbffe21b8",
+  "active_flag": "true",
+  "target_table": "participant_consent_data_element"
+}, {
+  "data_element_id": "850ac55298b3492f8759bf2420baae5b",
+  "active_flag": "true",
+  "target_table": "sample_data_element",
+  "normalization_rule": ["boolean_to_upper_string"]
 }, {
   "data_element_id": "c07d2c98e67148d8aad694c745a7261b",
   "active_flag": "true",
@@ -117,23 +108,28 @@
 }, {
   "data_element_id": "7c4c49b41d974fcf826e9b6183d912b8",
   "active_flag": "true",
-  "target_table": "sample_data_element"
+  "target_table": "sample_data_element",
+  "normalization_rule": ["upper"]
 }, {
   "data_element_id": "3f00fac0df834cbfbcf359ec36ce9628",
   "active_flag": "true",
-  "target_table": "sample_data_element"
+  "target_table": "sample_data_element",
+  "normalization_rule": ["boolean_to_upper_string"]
 }, {
   "data_element_id": "c0ee9dfaac3c40a6b965e6147fcf8041",
   "active_flag": "true",
-  "target_table": "sample_data_element"
+  "target_table": "sample_data_element",
+  "normalization_rule": ["upper"]
 }, {
   "data_element_id": "fec8c6bfe1194388bf4cb864bfd40d70",
   "active_flag": "true",
-  "target_table": "sample_data_element"
+  "target_table": "sample_data_element",
+  "normalization_rule": ["upper"]
 }, {
   "data_element_id": "1db1d08a88784aefa0b071cf8bb3c242",
   "active_flag": "true",
-  "target_table": "sample_data_element"
+  "target_table": "sample_data_element",
+  "normalization_rule": ["boolean_to_upper_string"]
 }, {
   "data_element_id": "7a3a9d59a35f4cc38439e2f80c95de3e",
   "active_flag": "true",
@@ -141,161 +137,187 @@
 }, {
   "data_element_id": "0125639035d84482b0ea91acac1df672",
   "active_flag": "true",
-  "target_table": "sample_data_element"
+  "target_table": "sample_data_element",
+  "normalization_rule": ["upper"]
 }, {
   "data_element_id": "d9b4fdfc29c040dbb4160093d146bd9d",
   "active_flag": "true",
-  "target_table": "sample_data_element"
+  "target_table": "sample_data_element",
+  "normalization_rule": ["boolean_to_upper_string"]
+}, {
+  "data_element_id": "2665a9d530b94e26a55518b2d90697c3",
+  "active_flag": "true",
+  "target_table": "participant_survey_data_element"
+}, {
+  "data_element_id": "e60bc5dbfc2648cc96c8608235160347",
+  "active_flag": "true",
+  "target_table": "participant_survey_data_element"
+}, {
+  "data_element_id": "47b91792058b40779955894cca1b9b7c",
+  "active_flag": "true",
+  "target_table": "participant_survey_data_element"
+}, {
+  "data_element_id": "485c166186ef4d22ad6462a29d01939f",
+  "active_flag": "true",
+  "target_table": "participant_survey_data_element"
+}, {
+  "data_element_id": "f6ff07d76ece4afcb7ab617c71609d1c",
+  "active_flag": "true",
+  "target_table": "participant_survey_data_element"
+}, {
+  "data_element_id": "ce87d7889f2f4788af24182e9031c074",
+  "active_flag": "true",
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "ee91d5f794974d5ca082e5d73f634881",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "36e775443d444d76a04c86c268d06ec9",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "bcfa1a1283ac4c5580cc3cd44779130c",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "44a6e50d06e5426e961ffb2ea50d1935",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "543e07dd14f543ee8c3ca450023b10b5",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "2ee772b505a240cebcc65a5e6c91a48e",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "b1dd36e8e76546bbbd70173d345c31e5",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "29b93e07c7d246dc8ccfeb9516a0418b",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "b56c031dca4948e4959ecca3fc8f533f",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "0eb654b970474891a8ae96636add2c9a",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "8e23900a7b4741cb858fd253929ade91",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "49f8bca183384077a0ffc5be547a3442",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "006088c6889e4a4daaffd41ec36450d5",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "ee7158429fbe4bc7bedd9cb15df252c9",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "8598027929514c71bdbe2e7b1e25ed69",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "bebf4b1a10894bfe8d74db6d5fbbabba",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "35fc168379ef46b99997de0bb4b59499",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "5007a3522b0d4353bee3e5794b263381",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "7341e38bc13247ba9d9dfa9c16667207",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "eacb28def2ff42d5910d97dd014e933d",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "a015959d97ff4a199fe6c4f7d2226792",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "db8568fbbc4842dbabb1c4cb29ac2a87",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "485ebe46f9934581ae1fe408edc05c43",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "9722941717dd4b39a03a09e123aaedd2",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "7d85bd08d7984517974912acfeeb4f2e",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "a8642c2a6f464609b49523048bebaffd",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "cf4b3502fcb245d3b8e4a7bfd18e8323",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "dbb0c83697904ecfb30eebcd8dc4f69c",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "c2cda8dc69434ccb86427647039b8b2c",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "dc9c0b75d2234a6991d4308eca8a4064",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "873f6432576147dbac93aec7ca9582d4",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "379ca6da6b954b55b2e5dbba7588607f",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "f4150579c05f4393a22b4b6d1d4e4f30",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "56ed717396a2432e9eaa92dd7b04d227",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "e761f87da33745d996b8e932c3fb3cee",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "7f75ea8b5646461cadffb9174fa109dd",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "a50a757fc61040609a5563cff5b54d7c",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }, {
   "data_element_id": "1255cb6a831e47a59eb0aad53a0bfb00",
   "active_flag": "true",
-  "target_table": "participant_data_element"
+  "target_table": "participant_survey_data_element"
 }]

@@ -1,5 +1,9 @@
 [{
-  "schema_name": "genomic_research",
+  "schema_name": "genomic_research_array",
   "destination_mart": "genomic_research_mart",
-  "destination_target_table": "rdr_genomic_research_export_%eid%"
+  "destination_target_table": "rdr_genomic_research_array_export_%eid%"
+}, {
+  "schema_name": "genomic_research_wgs",
+  "destination_mart": "genomic_research_mart",
+  "destination_target_table": "rdr_genomic_research_wgs_export_%eid%"
 }]
