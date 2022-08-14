@@ -1942,16 +1942,16 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
     def setUp(self):
         super().setUp()
         self.appointment_dao = GenomicAppointmentEventDao()
-        self.num_participants = 5
+        self.num_participants = 4
         self.appointment_keys = ['module', 'type', 'status', 'appointment_id', 'participant_id', 'note_available']
-
-    def build_base_participant_data(self):
-
-        gen_set = self.data_generator.create_database_genomic_set(
+        self.gen_set = self.data_generator.create_database_genomic_set(
             genomicSetName=".",
             genomicSetCriteria=".",
             genomicSetVersion=1
         )
+
+    def build_base_participant_data(self):
+
         participant = self.data_generator.create_database_participant()
 
         self.data_generator.create_database_participant_summary(
@@ -1960,7 +1960,7 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         )
 
         self.data_generator.create_database_genomic_set_member(
-            genomicSetId=gen_set.id,
+            genomicSetId=self.gen_set.id,
             participantId=participant.participantId,
             genomeType='aou_array'
         )
@@ -1970,8 +1970,8 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
     def test_full_participant_validation_appointment_lookup(self):
 
         gen_set = self.data_generator.create_database_genomic_set(
-            genomicSetName=".",
-            genomicSetCriteria=".",
+            genomicSetName="..",
+            genomicSetCriteria="..",
             genomicSetVersion=1
         )
         participant = self.data_generator.create_database_participant()
@@ -2272,8 +2272,59 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         # should be updated | greatest appointment id and greatest event_authored_time
         self.assertTrue(all(obj['status'] == 'updated' for obj in resp['data']))
 
-    # def test_pass_start_date_params(self):
-    #     pass
+    def test_pass_start_date_params(self):
+        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+
+        for i in range(self.num_participants):
+            participant_data = self.build_base_participant_data()
+
+            self.data_generator.create_database_genomic_appointment(
+                message_record_id=1,
+                appointment_id=i+1,
+                event_type='appointment_scheduled',
+                module_type='hdr',
+                participant_id=participant_data.participantId,
+                event_authored_time=fake_date_one
+            )
+
+            self.data_generator.create_database_genomic_appointment(
+                message_record_id=1,
+                appointment_id=i+1,
+                event_type='appointment_updated',
+                module_type='hdr',
+                participant_id=participant_data.participantId,
+                event_authored_time=fake_date_one + datetime.timedelta(days=1)
+            )
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicScheduling?start_date={fake_date_one}'
+            )
+
+        current_appointments = self.appointment_dao.get_all()
+        self.assertTrue(len(current_appointments), self.num_participants * 2)  # 8
+
+        self.assertTrue(len(current_appointments) // 2 == len(resp['data']))  # 4
+        self.assertTrue(all(not len(obj.keys() - self.appointment_keys) and obj.values() for obj in resp['data']))
+        self.assertTrue(obj['status'] == 'updated' for obj in resp['data'])
+        self.assertTrue(obj['module'] == 'hdr' for obj in resp['data'])
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicScheduling?start_date={fake_date_one}&module=HDR'
+            )
+
+        self.assertTrue(len(current_appointments) // 2 == len(resp['data']))  # 4
+        self.assertTrue(obj['status'] == 'updated' for obj in resp['data'])
+        self.assertTrue(obj['module'] == 'hdr' for obj in resp['data'])
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicScheduling?start_date={fake_date_one}&module=PGX'
+            )
+
+        self.assertTrue(resp['data'] == [])
 
 
 class GenomicCloudTasksApiTest(BaseTestCase):

@@ -2288,6 +2288,12 @@ class GenomicSchedulingDao(BaseDao):
                     note_alias.appointment_id == GenomicAppointmentEvent.appointment_id,
                     note_alias.event_type.like('%note_available')
                 )
+            ).filter(
+                and_(
+                    GenomicAppointmentEvent.appointment_id == max_appointment_id_subquery.c.max_appointment_id,
+                    GenomicAppointmentEvent.event_authored_time ==
+                    max_event_authored_time_subquery.c.max_event_authored_time
+                )
             )
 
             if module:
@@ -2304,15 +2310,7 @@ class GenomicSchedulingDao(BaseDao):
                     GenomicAppointmentEvent.event_authored_time < end_date
                 )
 
-            records = records.filter(
-                and_(
-                    GenomicAppointmentEvent.appointment_id == max_appointment_id_subquery.c.max_appointment_id,
-                    GenomicAppointmentEvent.event_authored_time ==
-                    max_event_authored_time_subquery.c.max_event_authored_time
-                )
-            )
-
-            return records.all()
+            return records.distinct().all()
 
 
 class GenomicManifestFileDao(BaseDao, GenomicDaoMixin):
