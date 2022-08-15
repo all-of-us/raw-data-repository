@@ -211,7 +211,7 @@ class WBResearcherGenerator(generators.BaseGenerator):
         :return: resource object
         """
 
-        def v_to_e(val, enum_=WorkbenchResearcherYesNoPreferNot):
+        def value_to_enum(val, enum_=WorkbenchResearcherYesNoPreferNot):
             """ Convert a value to string and int enum """
             if val is None:
                 return None, None
@@ -279,25 +279,25 @@ class WBResearcherGenerator(generators.BaseGenerator):
             data['dsv2_completion_time'] = row.dsv2_completion_time
 
             data['dsv2_disability_concentrating'], data['dsv2_disability_concentrating_id'] = \
-                    v_to_e(row.dsv2_disability_concentrating)
+                    value_to_enum(row.dsv2_disability_concentrating)
             data['dsv2_disability_dressing'], data['dsv2_disability_dressing_id'] = \
-                    v_to_e(row.dsv2_disability_dressing)
+                    value_to_enum(row.dsv2_disability_dressing)
             data['dsv2_disability_errands'], data['dsv2_disability_errands_id'] = \
-                    v_to_e(row.dsv2_disability_errands)
+                    value_to_enum(row.dsv2_disability_errands)
             data['dsv2_disability_hearing'], data['dsv2_disability_hearing_id'] = \
-                    v_to_e(row.dsv2_disability_hearing)
+                    value_to_enum(row.dsv2_disability_hearing)
 
             data['dsv2_disability_other'] = 1 if row.dsv2_disability_other else 0
 
             data['dsv2_disability_seeing'], data['dsv2_disability_seeing_id'] = \
-                    v_to_e(row.dsv2_disability_seeing)
+                    value_to_enum(row.dsv2_disability_seeing)
             data['dsv2_disability_walking'], data['dsv2_disability_walking_id'] = \
-                    v_to_e(row.dsv2_disability_walking)
+                    value_to_enum(row.dsv2_disability_walking)
 
             data['dsv2_disadvantaged'], data['dsv2_disadvantaged_id'] = \
-                    v_to_e(row.dsv2_disadvantaged)
+                    value_to_enum(row.dsv2_disadvantaged)
             data['dsv2_education'], data['dsv2_education_id'] = \
-                    v_to_e(row.dsv2_education, WorkbenchResearcherEducationV2)
+                    value_to_enum(row.dsv2_education, WorkbenchResearcherEducationV2)
 
             ethnic_categories = json.loads(
                 row.dsv2_ethnic_categories if row.dsv2_ethnic_categories
@@ -328,7 +328,7 @@ class WBResearcherGenerator(generators.BaseGenerator):
             data['dsv2_orientation_other'] = 1 if row.dsv2_orientation_other else 0
 
             data['dsv2_sex_at_birth'], data['dsv2_sex_at_birth_id'] = \
-                    v_to_e(row.dsv2_sex_at_birth, WorkbenchResearcherSexAtBirthV2)
+                    value_to_enum(row.dsv2_sex_at_birth, WorkbenchResearcherSexAtBirthV2)
 
             data['dsv2_sex_at_birth_other'] = 1 if row.dsv2_sex_at_birth_other else 0
 
