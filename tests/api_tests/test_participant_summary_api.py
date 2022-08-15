@@ -667,7 +667,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
             ConsentType.PRIMARY: 'consentForStudyEnrollment',
             ConsentType.CABOR: 'consentForCABoR',
             ConsentType.EHR: 'consentForElectronicHealthRecords',
-            ConsentType.GROR: 'consentForGenomicsROR'
+            ConsentType.GROR: 'consentForGenomicsROR',
+            ConsentType.PRIMARY_RECONSENT: 'reconsentForStudyEnrollment'
         }
 
         for num in range(num_summary):
@@ -709,6 +710,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertEqual(first_summary[file_path], first_path)
 
         self.assertEqual(first_count, len(consents_map.keys()))
+
+        # DA-2895: This assertion should be removed once the misspelled field name is no longer needed.
+        self.assertEqual(first_summary["reconsentForStudyEnrollmentFilePath"],
+                         first_summary["reconsentForStudyEnrollementFilePath"])
 
         self.overwrite_test_user_roles([PTC])
 
