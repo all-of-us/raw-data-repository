@@ -127,7 +127,7 @@ class WorkbenchGeneratorTest(BaseTestCase):
             dsv2GenderOther = '',
             dsv2SexualOrientations = [3, 7],
             dsv2OrientationOther = '',
-            dsv2SexAtBirth = 8,
+            dsv2SexAtBirth = 1,
             dsv2SexAtBirthOther = '',
             dsv2YearOfBirth = 1999,
             dsv2YearOfBirthPreferNot = False,
@@ -199,5 +199,5 @@ class WorkbenchGeneratorTest(BaseTestCase):
         res = gen.make_resource(2)
         self.assertIsNotNone(res)
 
-        res = gen.make_resource(2)
+        res = gen.make_resource(3)
         self.assertIsNotNone(res)
