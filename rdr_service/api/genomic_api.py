@@ -74,11 +74,22 @@ class GenomicAPIPayload(GenomicApiMixin):
         self.lookup_method = method
         self.payload = {'date': clock.CLOCK.now()}
         self.participant_id = kwargs.get('participant_id')
+        self.biobank_id = kwargs.get('biobank_id')
         self.start_date = kwargs.get('start_date')
         self.kwargs = kwargs
 
-    def make_payload(self):
-        prefix, cleaned_participant_id = None, None
+    def clean_lookup(self):
+        prefix, cleaned_id = None, None
+
+        if self.biobank_id:
+            prefix, cleaned_biobank_id = self._extract_pid(self.biobank_id)
+            self._validate_participant(
+                prefix=prefix,
+                biobank_id=cleaned_biobank_id
+            )
+            self.kwargs['biobank_id'] = cleaned_biobank_id
+            cleaned_id = self.biobank_id
+
         if self.participant_id:
             prefix, cleaned_participant_id = self._extract_pid(self.participant_id)
             self._validate_participant(
@@ -86,14 +97,20 @@ class GenomicAPIPayload(GenomicApiMixin):
                 participant_id=cleaned_participant_id
             )
             self.kwargs['participant_id'] = cleaned_participant_id
+            cleaned_id = self.participant_id
 
         if self.start_date:
             self.kwargs['start_date'] = parser.parse(self.kwargs['start_date'])
 
+        return cleaned_id
+
+    def make_payload(self):
+        cleaned_id = self.clean_lookup()
         participant_data = self.lookup_method(**self.kwargs)
 
-        if not participant_data and cleaned_participant_id:
-            raise NotFound(f'Participant with ID {prefix}{cleaned_participant_id} did not pass validation check')
+        if not participant_data and cleaned_id:
+            raise NotFound(f'Participant with ID {cleaned_id} '
+                           f'did not pass validation check')
 
         self.payload['data'] = participant_data
         return self.payload
@@ -111,34 +128,21 @@ class GenomicPiiApi(BaseApi, GenomicApiMixin):
         if not pii_id:
             raise BadRequest
 
-        prefix, pii_id = self._extract_pid(pii_id)
         biobank_id, participant_id = None, pii_id
 
         if mode == 'RHP':
             biobank_id = pii_id
             participant_id = None
 
-        self._validate_participant(
-            prefix=prefix,
+        api_payload = GenomicAPIPayload(
+            self.dao.get_pii,
             participant_id=participant_id,
-            biobank_id=biobank_id
+            biobank_id=biobank_id,
+            mode=mode
         )
+        payload = api_payload.make_payload()
 
-        pii_data = self.dao.get_pii(
-            mode=mode,
-            participant_id=participant_id,
-            biobank_id=biobank_id
-        )
-
-        if not pii_data:
-            raise NotFound(f"Participant with ID {prefix}{pii_id} did not pass validation check")
-
-        proto_payload = {
-            'mode': mode,
-            'data': pii_data
-        }
-
-        return self._make_response(proto_payload)
+        return self._make_response(payload)
 
 
 class GenomicOutreachApi(BaseApi):
