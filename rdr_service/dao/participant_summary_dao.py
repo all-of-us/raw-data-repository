@@ -1033,7 +1033,7 @@ class ParticipantSummaryDao(UpdatableDao):
             ConsentType.CABOR: 'consentForCABoR',
             ConsentType.EHR: 'consentForElectronicHealthRecords',
             ConsentType.GROR: 'consentForGenomicsROR',
-            ConsentType.PRIMARY_RECONSENT: 'reconsentForStudyEnrollement',
+            ConsentType.PRIMARY_RECONSENT: 'reconsentForStudyEnrollment',
             ConsentType.EHR_RECONSENT: 'reconsentForElectronicHealthRecords'
         }
         participant_id = result['participantId']
@@ -1045,6 +1045,11 @@ class ParticipantSummaryDao(UpdatableDao):
 
             if has_consent_path:
                 result[value_path_key] = has_consent_path[0].file_path
+
+        # DA-2895: Copy reconsentForStudyEnrollmentFilePath value to incorrect field name.
+        # This can be removed after HealthPro updates.
+        if 'reconsentForStudyEnrollmentFilePath' in result:
+            result['reconsentForStudyEnrollementFilePath'] = result['reconsentForStudyEnrollmentFilePath']
 
         return result
 
