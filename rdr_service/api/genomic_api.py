@@ -78,8 +78,6 @@ class GenomicGETPayload(GenomicApiValidationMixin):
         self.start_date = kwargs.get('start_date')
         self.kwargs = kwargs
 
-        self.cleaned_id = self.clean_params()
-
     def clean_params(self):
         prefix, cleaned_id = None, None
 
@@ -107,10 +105,11 @@ class GenomicGETPayload(GenomicApiValidationMixin):
         return cleaned_id
 
     def get_payload(self):
+        cleaned_id = self.clean_params()
         participant_data = self.lookup_method(**self.kwargs)
 
-        if not participant_data and self.cleaned_id:
-            raise NotFound(f'Participant with ID {self.cleaned_id} '
+        if not participant_data and cleaned_id:
+            raise NotFound(f'Participant with ID {cleaned_id} '
                            f'did not pass validation check')
 
         self.payload['data'] = participant_data
