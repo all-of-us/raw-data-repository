@@ -2275,9 +2275,11 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
     def test_pass_start_date_params(self):
         fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
         fake_now = clock.CLOCK.now().replace(microsecond=0)
+        participant_ids = []
 
         for i in range(self.num_participants):
             participant_data = self.build_base_participant_data()
+            participant_ids.append(participant_data.participantId)
 
             self.data_generator.create_database_genomic_appointment(
                 message_record_id=1,
@@ -2309,6 +2311,7 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         self.assertTrue(all(not len(obj.keys() - self.appointment_keys) and obj.values() for obj in resp['data']))
         self.assertTrue(obj['status'] == 'updated' for obj in resp['data'])
         self.assertTrue(obj['module'] == 'hdr' for obj in resp['data'])
+        self.assertTrue(all(int(obj['participant_id'].split('P')[-1]) in participant_ids for obj in resp['data']))
 
         with clock.FakeClock(fake_now):
             resp = self.send_get(
