@@ -210,6 +210,15 @@ class WBResearcherGenerator(generators.BaseGenerator):
         :param backup: if True, get from backup database instead of Primary.
         :return: resource object
         """
+
+        def value_to_enum(val, enum_=WorkbenchResearcherYesNoPreferNot):
+            """ Convert a value to string and int enum """
+            if val is None:
+                return None, None
+            str_val = str(enum_(val))
+            int_val = int(enum_(val))
+            return str_val, int_val
+
         if not self.ro_dao:
             self.ro_dao = ResourceDataDao(backup=backup)
 
@@ -269,27 +278,26 @@ class WBResearcherGenerator(generators.BaseGenerator):
             ]
             data['dsv2_completion_time'] = row.dsv2_completion_time
 
-            data['dsv2_disability_concentrating'] = str(
-                WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_concentrating))
-            data['dsv2_disability_concentrating_id'] = int(
-                WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_concentrating))
-            data['dsv2_disability_dressing'] = str(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_dressing))
-            data['dsv2_disability_dressing_id'] = int(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_dressing))
-            data['dsv2_disability_errands'] = str(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_errands))
-            data['dsv2_disability_errands_id'] = int(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_errands))
-            data['dsv2_disability_hearing'] = str(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_hearing))
-            data['dsv2_disability_hearing_id'] = int(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_hearing))
+            data['dsv2_disability_concentrating'], data['dsv2_disability_concentrating_id'] = \
+                    value_to_enum(row.dsv2_disability_concentrating)
+            data['dsv2_disability_dressing'], data['dsv2_disability_dressing_id'] = \
+                    value_to_enum(row.dsv2_disability_dressing)
+            data['dsv2_disability_errands'], data['dsv2_disability_errands_id'] = \
+                    value_to_enum(row.dsv2_disability_errands)
+            data['dsv2_disability_hearing'], data['dsv2_disability_hearing_id'] = \
+                    value_to_enum(row.dsv2_disability_hearing)
 
             data['dsv2_disability_other'] = 1 if row.dsv2_disability_other else 0
 
-            data['dsv2_disability_seeing'] = str(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_seeing))
-            data['dsv2_disability_seeing_id'] = int(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_seeing))
-            data['dsv2_disability_walking'] = str(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_walking))
-            data['dsv2_disability_walking_id'] = int(WorkbenchResearcherYesNoPreferNot(row.dsv2_disability_walking))
-            data['dsv2_disadvantaged'] = str(WorkbenchResearcherYesNoPreferNot(row.dsv2_disadvantaged))
-            data['dsv2_disadvantaged_id'] = int(WorkbenchResearcherYesNoPreferNot(row.dsv2_disadvantaged))
-            data['dsv2_education'] = str(WorkbenchResearcherEducationV2(row.dsv2_education))
-            data['dsv2_education_id'] = int(WorkbenchResearcherEducationV2(row.dsv2_education))
+            data['dsv2_disability_seeing'], data['dsv2_disability_seeing_id'] = \
+                    value_to_enum(row.dsv2_disability_seeing)
+            data['dsv2_disability_walking'], data['dsv2_disability_walking_id'] = \
+                    value_to_enum(row.dsv2_disability_walking)
+
+            data['dsv2_disadvantaged'], data['dsv2_disadvantaged_id'] = \
+                    value_to_enum(row.dsv2_disadvantaged)
+            data['dsv2_education'], data['dsv2_education_id'] = \
+                    value_to_enum(row.dsv2_education, WorkbenchResearcherEducationV2)
 
             ethnic_categories = json.loads(
                 row.dsv2_ethnic_categories if row.dsv2_ethnic_categories
@@ -319,8 +327,8 @@ class WBResearcherGenerator(generators.BaseGenerator):
             data['dsv2_gender_other'] = 1 if row.dsv2_gender_other else 0
             data['dsv2_orientation_other'] = 1 if row.dsv2_orientation_other else 0
 
-            data['dsv2_sex_at_birth'] = str(WorkbenchResearcherSexAtBirthV2(row.dsv2_sex_at_birth))
-            data['dsv2_sex_at_birth_id'] = int(WorkbenchResearcherSexAtBirthV2(row.dsv2_sex_at_birth))
+            data['dsv2_sex_at_birth'], data['dsv2_sex_at_birth_id'] = \
+                    value_to_enum(row.dsv2_sex_at_birth, WorkbenchResearcherSexAtBirthV2)
 
             data['dsv2_sex_at_birth_other'] = 1 if row.dsv2_sex_at_birth_other else 0
 
