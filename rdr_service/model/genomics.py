@@ -1506,11 +1506,13 @@ class GenomicSampleSwap(Base):
     created = Column(DateTime)
     modified = Column(DateTime)
     name = Column(String(255), nullable=False)
-    explanation = Column(String(512))
+    description = Column(String(512))
     open_investigation = Column(SmallInteger, nullable=False, default=0)
     open_investigation_date = Column(DateTime, nullable=True)
     closed_investigation = Column(SmallInteger, nullable=False, default=0)
     closed_investigation_date = Column(DateTime, nullable=True)
+    number = Column(SmallInteger)
+    location = Column(String(512))
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
 
 
