@@ -84,7 +84,8 @@ from rdr_service.config import (
     GENOMIC_AW3_WGS_SUBFOLDER,
     BIOBANK_AW2F_SUBFOLDER,
     GENOMIC_INVESTIGATION_GENOME_TYPES,
-    CVL_W1IL_MANIFEST_SUBFOLDER,
+    CVL_W1IL_HDR_MANIFEST_SUBFOLDER,
+    CVL_W1IL_PGX_MANIFEST_SUBFOLDER,
     CVL_W2W_MANIFEST_SUBFOLDER,
     CVL_W3SR_MANIFEST_SUBFOLDER
 )
@@ -3494,7 +3495,7 @@ class ManifestDefinitionProvider:
             GenomicManifestTypes.CVL_W1IL_PGX: {
                 'job_run_field': 'cvlW1ilPgxJobRunId',
                 'output_filename':
-                    f'{CVL_W1IL_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_'
+                    f'{CVL_W1IL_PGX_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_'
                     f'{ResultsModuleType.PGXV1.name}_{now_formatted}.csv',
                 'signal': 'manifest-generated',
                 'query': self.query_dao.get_data_ready_for_w1il_manifest,
@@ -3506,7 +3507,7 @@ class ManifestDefinitionProvider:
             GenomicManifestTypes.CVL_W1IL_HDR: {
                 'job_run_field': 'cvlW1ilHdrJobRunId',
                 'output_filename':
-                    f'{CVL_W1IL_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_'
+                    f'{CVL_W1IL_HDR_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_'
                     f'{ResultsModuleType.HDRV1.name}_{now_formatted}.csv',
                 'query': self.query_dao.get_data_ready_for_w1il_manifest,
                 'params': {
