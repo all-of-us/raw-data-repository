@@ -802,14 +802,14 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             sql_exporter_class_mock,
             {
                 config.getSetting(config.BCM_BUCKET_NAME): {
-                    f'W1IL_manifests/BCM_AoU_CVL_W1IL_{ResultsModuleType.PGXV1.name}'
+                    f'W1IL_manifests_pgx/BCM_AoU_CVL_W1IL_{ResultsModuleType.PGXV1.name}'
                     f'_{manifest_file_timestamp_str}.csv': bcm_pgx_w1il_manifest,
-                    f'W1IL_manifests/BCM_AoU_CVL_W1IL_{ResultsModuleType.HDRV1.name}'
+                    f'W1IL_manifests_hdr/BCM_AoU_CVL_W1IL_{ResultsModuleType.HDRV1.name}'
                     f'_{manifest_file_timestamp_str}.csv':
                         bcm_hdr_w1il_manifest
                 },
                 config.getSetting(config.CO_BUCKET_NAME): {
-                    f'W1IL_manifests/CO_AoU_CVL_W1IL_{ResultsModuleType.PGXV1.name}'
+                    f'W1IL_manifests_pgx/CO_AoU_CVL_W1IL_{ResultsModuleType.PGXV1.name}'
                     f'_{manifest_file_timestamp_str}.csv': co_w1il_manifest
                 }
             }
