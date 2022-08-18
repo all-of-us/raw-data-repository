@@ -380,7 +380,7 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
             requestBody={
                 'result_type': result_module_types[0],
                 'hdr_result_status': 'positive',
-                'report_revision_number': 0
+                'report_revision_number': 1
             },
             requestTime=clock.CLOCK.now(),
             responseError='',
@@ -395,7 +395,8 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
                 eventType=message_broker_record_hdr_positive.eventType,
                 eventAuthoredTime=message_broker_record_hdr_positive.eventAuthoredTime,
                 fieldName=key,
-                valueString=value
+                valueString=value if type(value) is str else None,
+                valueInteger=value if type(value) is int else None
             )
 
         with GenomicJobController(GenomicJob.INGEST_RESULT_READY) as controller:
@@ -448,7 +449,8 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
                 eventType=message_broker_record_hdr_uninformative.eventType,
                 eventAuthoredTime=message_broker_record_hdr_uninformative.eventAuthoredTime,
                 fieldName=key,
-                valueString=value
+                valueString=value if type(value) is str else None,
+                valueInteger=value if type(value) is int else None
             )
 
         with GenomicJobController(GenomicJob.INGEST_RESULT_READY) as controller:
@@ -502,7 +504,8 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
                 eventType=message_broker_record_pgx.eventType,
                 eventAuthoredTime=message_broker_record_pgx.eventAuthoredTime,
                 fieldName=key,
-                valueString=value
+                valueString=value if type(value) is str else None,
+                valueInteger=value if type(value) is int else None
             )
 
         with GenomicJobController(GenomicJob.INGEST_RESULT_READY) as controller:

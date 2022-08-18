@@ -3,6 +3,7 @@ This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
 import logging
 from datetime import datetime, timedelta
+from typing import List, Optional
 
 import pytz
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
@@ -432,11 +433,22 @@ class GenomicJobController:
         except RuntimeError:
             logging.warning('Inserting data file failure')
 
-    def ingest_records_from_message_broker_data(self, *, message_record_id: int, event_type: str):
+    def ingest_records_from_message_broker_data(self, *, message_record_id: int, event_type: str) -> None:
 
-        def _set_module_type(records):
-            mod_type = [obj for obj in records if obj.fieldName in ['module_type', 'result_type'] and obj.valueString]
-            return mod_type[0].valueString if mod_type else None
+        module_fields = ['module_type', 'result_type']
+
+        def _set_value_from_parsed_values(
+            records,
+            field_names: List[str]
+        ) -> Optional[str]:
+
+            field_records = list(filter(lambda x: x.fieldName in field_names, records))
+            if not field_records:
+                return None
+
+            field_records = field_records[0].asdict()
+            value = [v for k, v in field_records.items() if v is not None and 'value' in k]
+            return value[0] if value else None
 
         def _set_genome_type(module):
             return {
@@ -447,10 +459,11 @@ class GenomicJobController:
                 'pgx_v1': config.GENOME_TYPE_WGS
             }[module.lower()]
 
-        def _set_report_type(records):
+        def _set_report_data(records):
             # API currently doesnt support deletes for CVL samples
             # https://docs.google.com/document/d/1E1tNSi1mWwhBSCs9Syprbzl5E0SH3c_9oLduG1mzlcY/edit#
             report_state = GenomicReportState.UNSET
+
             try:
                 result_record = list(filter(lambda x: x.fieldName == 'result_type', records))[0]
                 result_type = result_record.valueString.split('_')[0] \
@@ -469,16 +482,16 @@ class GenomicJobController:
                 hdr_result = list(filter(lambda x: x.fieldName == 'hdr_result_status', records))
                 if not hdr_result:
                     report_state = report_map[0]
-                    return report_state
+                    return report_state, None
 
                 field_name = hdr_result[0].valueString.lower()
                 report_state = list(filter(lambda x: field_name in x.name.lower(), report_map))[0]
-                return report_state
+                return report_state, field_name
 
             # pylint: disable=broad-except
             except Exception as e:
                 logging.warning(f'Cannot set report state type: message record{records[0].messageRecordId}: {e}')
-                return report_state
+                return report_state, None
 
         if self.job_id == GenomicJob.INGEST_INFORMING_LOOP:
             loop_type = event_type
@@ -498,7 +511,11 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.NO_RESULTS
                 return
 
-            module_type = _set_module_type(informing_loop_records)
+            module_type = _set_value_from_parsed_values(
+                informing_loop_records,
+                module_fields
+            )
+
             if not module_type:
                 logging.warning(f'Cannot find module type in message record id: '
                                 f'{informing_loop_records[0].messageRecordId}')
@@ -550,7 +567,11 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.NO_RESULTS
                 return
 
-            module_type = _set_module_type(result_viewed_records)
+            module_type = _set_value_from_parsed_values(
+                result_viewed_records,
+                module_fields
+            )
+
             if not module_type:
                 logging.warning(f'Cannot find module type in message record id: '
                                 f'{result_viewed_records[0].messageRecordId}')
@@ -611,7 +632,11 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.NO_RESULTS
                 return
 
-            module_type = _set_module_type(result_ready_records)
+            module_type = _set_value_from_parsed_values(
+                result_ready_records,
+                module_fields
+            )
+
             if not module_type:
                 logging.warning(f'Cannot find module type in message record id: '
                                 f'{result_ready_records[0].messageRecordId}')
@@ -632,8 +657,11 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.ERROR
                 return
 
-            report_type = _set_report_type(result_ready_records)
-
+            report_type, hdr_status = _set_report_data(result_ready_records)
+            result_revision_number = _set_value_from_parsed_values(
+                result_ready_records,
+                ['report_revision_number']
+            )
             report_obj = self.report_state_dao.model_type(
                 genomic_set_member_id=member.id,
                 genomic_report_state=report_type,
@@ -643,7 +671,9 @@ class GenomicJobController:
                 message_record_id=first_record.messageRecordId,
                 event_type=event_type,
                 event_authored_time=first_record.eventAuthoredTime,
-                sample_id=member.sampleId
+                sample_id=member.sampleId,
+                report_revision_number=result_revision_number,
+                hdr_result_status=hdr_status
             )
             self.report_state_dao.insert(report_obj)
             self.job_result = GenomicSubProcessResult.SUCCESS
@@ -672,7 +702,11 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.NO_RESULTS
                 return
 
-            module_type = _set_module_type(appointment_records)
+            module_type = _set_value_from_parsed_values(
+                appointment_records,
+                module_fields
+            )
+
             if not module_type:
                 logging.warning(f'Cannot find module type in message record id: '
                                 f'{appointment_records[0].messageRecordId}')
