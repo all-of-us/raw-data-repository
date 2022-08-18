@@ -459,7 +459,7 @@ class GenomicJobController:
                 'pgx_v1': config.GENOME_TYPE_WGS
             }[module.lower()]
 
-        def _set_report_data(records):
+        def _set_report_type(records):
             # API currently doesnt support deletes for CVL samples
             # https://docs.google.com/document/d/1E1tNSi1mWwhBSCs9Syprbzl5E0SH3c_9oLduG1mzlcY/edit#
             report_state = GenomicReportState.UNSET
@@ -482,16 +482,16 @@ class GenomicJobController:
                 hdr_result = list(filter(lambda x: x.fieldName == 'hdr_result_status', records))
                 if not hdr_result:
                     report_state = report_map[0]
-                    return report_state, None
+                    return report_state
 
                 field_name = hdr_result[0].valueString.lower()
                 report_state = list(filter(lambda x: field_name in x.name.lower(), report_map))[0]
-                return report_state, field_name
+                return report_state
 
             # pylint: disable=broad-except
             except Exception as e:
                 logging.warning(f'Cannot set report state type: message record{records[0].messageRecordId}: {e}')
-                return report_state, None
+                return report_state
 
         if self.job_id == GenomicJob.INGEST_INFORMING_LOOP:
             loop_type = event_type
@@ -657,7 +657,7 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.ERROR
                 return
 
-            report_type, hdr_status = _set_report_data(result_ready_records)
+            report_type = _set_report_type(result_ready_records)
             result_revision_number = _set_value_from_parsed_values(
                 result_ready_records,
                 ['report_revision_number']
@@ -673,7 +673,6 @@ class GenomicJobController:
                 event_authored_time=first_record.eventAuthoredTime,
                 sample_id=member.sampleId,
                 report_revision_number=result_revision_number,
-                hdr_result_status=hdr_status
             )
             self.report_state_dao.insert(report_obj)
             self.job_result = GenomicSubProcessResult.SUCCESS

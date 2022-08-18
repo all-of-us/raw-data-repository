@@ -1289,7 +1289,6 @@ class GenomicMemberReportState(Base):
     event_authored_time = Column(UTCDateTime6, nullable=True)
     module = Column(String(80), nullable=False)
     sample_id = Column(String(80), nullable=True, index=True)
-    hdr_result_status = Column(String(80), nullable=True)
     report_revision_number = Column(SmallInteger, nullable=True)
 
 

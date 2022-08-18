@@ -421,6 +421,8 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
         self.assertTrue(result_ready_genomic_record.module == result_module_types[0])
         self.assertEqual(result_ready_genomic_record.sample_id, sample_id)
 
+        self.assertEqual(result_ready_genomic_record.report_revision_number, 1)
+
         # check for correct report state
         self.assertEqual(result_ready_genomic_record.genomic_report_state, GenomicReportState.HDR_RPT_POSITIVE)
         self.assertEqual(result_ready_genomic_record.genomic_report_state_str, GenomicReportState.HDR_RPT_POSITIVE.name)
@@ -476,6 +478,8 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
         self.assertTrue(result_ready_genomic_record.module == result_module_types[0])
         self.assertEqual(result_ready_genomic_record.sample_id, sample_id)
 
+        self.assertEqual(result_ready_genomic_record.report_revision_number, 0)
+
         # check for correct report state
         self.assertEqual(result_ready_genomic_record.genomic_report_state, GenomicReportState.HDR_RPT_UNINFORMATIVE)
         self.assertEqual(result_ready_genomic_record.genomic_report_state_str,
@@ -529,6 +533,8 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
         self.assertEqual(result_ready_genomic_record.event_type, event_type)
         self.assertTrue(result_ready_genomic_record.module == result_module_types[1])
         self.assertEqual(result_ready_genomic_record.sample_id, sample_id)
+
+        self.assertEqual(result_ready_genomic_record.report_revision_number, 0)
 
         # check for correct report state
         self.assertEqual(result_ready_genomic_record.genomic_report_state, GenomicReportState.PGX_RPT_READY)
