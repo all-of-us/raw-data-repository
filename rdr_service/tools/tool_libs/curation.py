@@ -239,7 +239,12 @@ class CurationExportClass(ToolBase):
                         0 validated_survey_concept_id,
                         '' validated_survey_source_value,
                         '' visit_occurence_id,
-                        '' response_visit_occurrence_id
+                        '' response_visit_occurrence_id,
+                        NULL survey_start_date,
+                        NULL survey_start_datetime,
+                        0 respondent_type_concept_id,
+                        NULL respondent_type_source_value,
+                        NULL survey_version_number
                 FROM questionnaire_response qr
                 -- join to src_clean to filter down to only responses going into etl
                 INNER JOIN cdm.src_clean sc ON sc.questionnaire_response_id = qr.questionnaire_response_id
