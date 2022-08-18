@@ -1,8 +1,7 @@
 [{
   "data_element_id": "6c711285e9444d01b163010a33252043",
   "active_flag": "true",
-  "target_table": "sample_data_element",
-  "normalization_rule": ["percent_to_ratio"]
+  "target_table": "sample_data_element"
 }, {
   "data_element_id": "9aba013aae86403a8759431bcfed9eff",
   "active_flag": "true",
@@ -86,6 +85,78 @@
   "target_table": "sample_data_element"
 }, {
   "data_element_id": "ede63e9d82ec45aaaa96ccedba082df5",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "dbaea59fc8f34e4b90dd2f8657393dcc",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "10fc0803983045a2b069254b71b9c2b0",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "ea0276d36979413884df44fdbc20f652",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "e738ef0157e248efa2e2d0a4158fa8ee",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "37ef0123ee1243f0b20d7276469b5c3f",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "d9863153a1e844b8971997ac553c1358",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "6f2e309d4da04a0b92c20aec9a4ba145",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "045c0dfa8a674bcfa976fd3e0da79777",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "35b4240502b84f52b9acbccf61af2986",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "482900048590476196a64e4c1f9abc9c",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "e88fdef9f8c749ac9f6db465d9cf3255",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "9fa25766350b446491ec2bbfb410169d",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "49712f82f5124378917a6f253f1e786a",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "70f9ae7a40374e3b81658f0d16b136a1",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "9881f30cbd9d4d19b4bca5c342c7f56d",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "dbd1d8a09efb4f208ee8c4b51d26520a",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "c61a4eafea1c4690ba9eaceaed3d1084",
+  "active_flag": "true",
+  "target_table": "sample_data_element"
+}, {
+  "data_element_id": "4a043f3fa31d4f57970bd837f9381fac",
   "active_flag": "true",
   "target_table": "sample_data_element"
 }, {

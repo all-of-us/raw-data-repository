@@ -13,7 +13,6 @@ class ValueNormalizer:
 
     @staticmethod
     def rule_boolean_to_upper_string(value):
-        print('performing boolean to upper string')
         if value is None:
             return value
         if value.lower() in ['1', 'true', 'y']:
@@ -25,14 +24,12 @@ class ValueNormalizer:
 
     @staticmethod
     def rule_upper(value):
-        print('performing upper')
         if value is None:
             return value
         return value.upper()
 
     @staticmethod
     def rule_percent_to_ratio(value):
-        print('performing percent to ratio')
         if value is None:
             return value
         try:
@@ -52,7 +49,6 @@ class ValueNormalizer:
 
     @staticmethod
     def rule_clean_null(value):
-        print('performing clean null')
         if value is None:
             return value
         if value.lower() in ['null', '']:

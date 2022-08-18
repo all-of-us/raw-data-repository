@@ -77,7 +77,7 @@ class SpotTool(ToolBase):
     def run(self):
         if self.args.project == "all-of-us-rdr-prod":
             _logger.warning("You are about to run this operation on prod.")
-            response = input("Continue (y/n)?> ")
+            response = input("Continue? (y/n)> ")
             if response != "y":
                 _logger.info("Aborted.")
                 return 0
@@ -134,7 +134,7 @@ class SpotTool(ToolBase):
         """
         table = self.client.get_table(table_id)  # API Request
 
-        # View table properties
+        # View table properties for copy/paste
         for a in table.schema:
             print(f'bigquery.{a},')
 
@@ -216,18 +216,41 @@ class SpotTool(ToolBase):
             _logger.error(f"Error decoding json file: {e}")
             return 1
 
-    def load_data_to_bq_table(self, table_id, rows_to_insert):
+    def load_data_to_bq_table(self, table_id, rows_to_insert, skip_invalid=False, buffer_size=10000):
         """
         Inserts rows into a BQ table
+        :param buffer_size:
+        :param skip_invalid:
+            If True: Insert all valid rows.
+            If False, fail entire request if any rows are invalid
         :param table_id: qualified table ID to insert data into
         :param rows_to_insert: sequence of JSON serializable data to insert
         """
-        errors = self.client.insert_rows_json(table_id, rows_to_insert)  # Make an API request.
+        # Loading by chunks of 10k
+        buffer = []
+        chunk = 1
+        for row in rows_to_insert:
+            buffer.append(row)
+            if len(buffer) % buffer_size == 0:
+
+                errors = self.client.insert_rows_json(table_id, buffer,
+                                                      skip_invalid_rows=skip_invalid)  # Make an API request.
+                if not errors:
+                    _logger.info(f"New rows have been added (chunk {chunk}).")
+                else:
+                    _logger.error(f"Encountered errors while inserting rows in chunk {chunk}: {errors}")
+                    return 1
+
+                buffer = []
+                chunk += 1
+
+        errors = self.client.insert_rows_json(table_id, buffer,
+                                              skip_invalid_rows=skip_invalid)  # Make an API request.
         if not errors:
-            _logger.info("New rows have been added.")
+            _logger.info(f"New rows have been added (chunk {chunk}).")
             return 0
         else:
-            _logger.error("Encountered errors while inserting rows: {}".format(errors))
+            _logger.error(f"Encountered errors while inserting rows in chunk {chunk}: {errors}")
             return 1
 
     def run_bq_query_job(self, query_string, job_config=None):
@@ -240,16 +263,30 @@ class SpotTool(ToolBase):
         query_job = self.client.query(query_string, job_config=job_config)
         return query_job.result()
 
-    def call_export_genomic_research_procedure(self):
+    def call_export_genomic_research_procedure(self, schema):
         # Query parameters are not supported for pivot columns.
         # String formatting the query is vulnerable to injection
         # Using a stored procedure:  rdr_ods.test_export_genomic_research_procedure
         # EXECUTE IMMEDIATE provides security contrainsts to prevent injection:
         # https://cloud.google.com/bigquery/docs/multi-statement-queries#security_constraints
         _logger.info("Exporting Data to intermediate table...")
-        return self.run_bq_query_job(
-            "CALL rdr_ods.export_genomic_research_procedure();"
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("cutoff_date", "TIMESTAMP", self.args.cutoff_date),
+            ]
         )
+        if schema == "genomic_research_array":
+            return self.run_bq_query_job(
+                "CALL rdr_ods.export_genomic_research_array_procedure(@cutoff_date);",
+                job_config=job_config
+            )
+        if schema == "genomic_research_wgs":
+            return self.run_bq_query_job(
+                "CALL rdr_ods.export_genomic_research_wgs_procedure(@cutoff_date);",
+                job_config = job_config
+            )
+        _logger.error("ERROR: Invalid export schema")
+        sys.exit()
 
     @validate_args(arg_string="cutoff_date")
     def load_ods_sample_data_element(self):
@@ -294,7 +331,7 @@ class SpotTool(ToolBase):
                                                last_update_date=self.args.cutoff_date)
 
         _logger.info("building survey data element records...")
-        rows = self.build_survey_data_element_row(survey_data)
+        rows = self.build_participant_data_element_row(survey_data)
 
         # Load the rows to BQ table
         table_id = f"{self.args.project}.rdr_ods.participant_survey_data_element"
@@ -307,7 +344,7 @@ class SpotTool(ToolBase):
         """
         Main function for extracting RDR consent/withdrawal data
         and loading it into rdr_ods.participant_consent_data_element
-        TODO: For deadline's sake, values are hardcoded. Would like to make more scaleable
+        TODO: For deadline's sake, values are hardcoded. Should increase scaleability in next phase
         """
         self.gcp_env.activate_sql_proxy()
 
@@ -329,6 +366,7 @@ class SpotTool(ToolBase):
 
         return 0
 
+    @validate_args(arg_string="cutoff_date")
     def export_ods_data_to_datamart(self):
         """
         Main function for extracting ODS data, pivoting the data,
@@ -340,7 +378,7 @@ class SpotTool(ToolBase):
             export_schema = self.get_export_schema(schema)
 
             # Pivot data from sample_data_element into BQ temp table
-            self.call_export_genomic_research_procedure()
+            self.call_export_genomic_research_procedure(schema)
 
             # load records into snapshot table in rdr_genomic_research_export dataset
             destination = self.get_destination_table(export_schema)
@@ -363,6 +401,7 @@ class SpotTool(ToolBase):
           , reg.target_table
           , de.source_system
           , de.source_target
+          , reg.normalization_rule
         FROM `rdr_ods.data_element_registry` reg
           INNER JOIN `rdr_ods.data_element` de ON de.id = reg.data_element_id
         where true
@@ -393,7 +432,8 @@ class SpotTool(ToolBase):
     @staticmethod
     def get_participant_consent_data(last_update_date, data_elements):
         session = database_factory.get_database().make_session()
-        # TODO: Need more flexible way to do this
+        # TODO: Refactor queries and DE metadata to be more dynamic
+        # Get data element metadata for union below
         withdrawal_de = filter(lambda de: de['source_target'] == "Participant.withdrawalStatus",
                                data_elements).__next__()
 
@@ -480,7 +520,7 @@ class SpotTool(ToolBase):
             GenomicGCValidationMetrics.ignoreFlag == 0,
             GenomicSetMember.modified > last_update_date,
             # GenomicSetMember.participantId.in_(),  # TODO: Add param
-            GenomicSetMember.genomeType == "aou_wgs"
+            GenomicSetMember.genomeType.in_(["aou_wgs", "aou_array"])
         )
         return query.all()
 
@@ -574,31 +614,51 @@ class SpotTool(ToolBase):
 
     @staticmethod
     def pivot_member_data(data_elements, data):
+        """
+        Builds json-serializable row for insert into sample_data_element
+        takes cartesian product of data_elements and row data
+        starmap applies build_new_row to each element in product
+        starmap is filtered to remove rows where DE value is None
+        :param data_elements:
+        :param data:
+        :return:
+        """
         _logger.info("pivoting member data...")
 
         def build_new_row(old_row, data_element):
-            # Normalize values
-            rules = []
-            normalizer = ValueNormalizer()
-            for rule in rules:
-                test_value = normalizer.rule_map[rule](test_value)
-
-            print(f'Test value: {test_value}')
-
+            """
+            applies normalization rules to old_row
+            builds new row with data_element metadata.
+            :param old_row:
+            :param data_element:
+            :return: new_row dict
+            """
             attribute_name = data_element.source_target.split(".")[-1]
             de_val = getattr(old_row, attribute_name)
-            new_row = {
-                'participant_id': old_row.participantId,
-                'research_id': old_row.researchId,
-                'sample_id': old_row.sampleId,
-                'data_element_id': data_element.data_element_id,
-                'value_string': de_val if de_val is None else str(de_val),
-                'created_timestamp': old_row.created_timestamp.isoformat()
-            }
-            return new_row
+
+            if de_val is not None:
+                de_val = str(de_val)
+
+                # Apply normalization rules
+                rules = data_element.normalization_rule
+                if rules:
+                    normalizer = ValueNormalizer()
+                    for rule in rules:
+                        de_val = normalizer.rule_map[rule](de_val)
+
+                new_row = {
+                    'participant_id': old_row.participantId,
+                    'research_id': old_row.researchId,
+                    'sample_id': old_row.sampleId,
+                    'data_element_id': data_element.data_element_id,
+                    'value_string': de_val,
+                    'created_timestamp': old_row.created_timestamp.isoformat()
+                }
+
+                return new_row
 
         product = itertools.product(data, data_elements)
-        return itertools.starmap(build_new_row, product)
+        return filter(lambda x: x is not None, itertools.starmap(build_new_row, product))
 
     def get_export_schema(self, schema):
         job_config = bigquery.QueryJobConfig(

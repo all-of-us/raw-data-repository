@@ -46,7 +46,7 @@
 }, {
   "schema_name": "genomic_research_wgs",
   "data_element_id": "995c4c6230e24c9b85d65f88250b54cd",
-  "display_name": "aw2_mapped_reads_ratio",
+  "display_name": "aw2_mapped_reads",
   "active_flag": "true"
 }, {
   "schema_name": "genomic_research_wgs",
@@ -111,7 +111,7 @@
 }, {
   "schema_name": "genomic_research_wgs",
   "data_element_id": "c0ee9dfaac3c40a6b965e6147fcf8041",
-  "display_name": "genome_center_site_id",
+  "display_name": "site_id",
   "active_flag": "true"
 }, {
   "schema_name": "genomic_research_wgs",
@@ -357,11 +357,6 @@
   "schema_name": "genomic_research_wgs",
   "data_element_id": "1255cb6a831e47a59eb0aad53a0bfb00",
   "display_name": "Disability_DifficultyConcentrating",
-  "active_flag": "true"
-}, {
-  "schema_name": "genomic_research_array",
-  "data_element_id": "9aba013aae86403a8759431bcfed9eff",
-  "display_name": "drc_mean_coverage",
   "active_flag": "true"
 }, {
   "schema_name": "genomic_research_array",
@@ -436,7 +431,7 @@
 }, {
   "schema_name": "genomic_research_array",
   "data_element_id": "c0ee9dfaac3c40a6b965e6147fcf8041",
-  "display_name": "genome_center_site_id",
+  "display_name": "site_id",
   "active_flag": "true"
 }, {
   "schema_name": "genomic_research_array",
@@ -466,17 +461,17 @@
 }, {
   "schema_name": "genomic_research_array",
   "data_element_id": "41e717a4e3bb483887f3ff84d5e32ed0",
-  "display_name": "GenomicGCValidationMetrics.pipelineId",
+  "display_name": "aw2_pipeline_id",
   "active_flag": "true"
 }, {
   "schema_name": "genomic_research_array",
   "data_element_id": "7afea7d9ec5c43558f74130d3af57c4b",
-  "display_name": "GenomicGCValidationMetrics.callRate",
+  "display_name": "aw2_call_rate",
   "active_flag": "true"
 }, {
   "schema_name": "genomic_research_array",
   "data_element_id": "097d17e0b1c94eaebbfee9cdf98d1182",
-  "display_name": "GenomicGCValidationMetrics.drcCallRate",
+  "display_name": "drc_call_rate",
   "active_flag": "true"
 }, {
   "schema_name": "genomic_research_array",
@@ -698,4 +693,94 @@
   "data_element_id": "1255cb6a831e47a59eb0aad53a0bfb00",
   "display_name": "Disability_DifficultyConcentrating",
   "active_flag": "true"
+}, {
+  "schema_name": "genomic_research_wgs",
+  "active_flag": "true",
+  "display_name": "hf_vcf_path",
+  "data_element_id": "dbaea59fc8f34e4b90dd2f8657393dcc"
+}, {
+  "schema_name": "genomic_research_wgs",
+  "active_flag": "true",
+  "display_name": "hf_vcf_tbi_path",
+  "data_element_id": "10fc0803983045a2b069254b71b9c2b0"
+}, {
+  "schema_name": "genomic_research_wgs",
+  "active_flag": "true",
+  "display_name": "hf_vcf_md5_path",
+  "data_element_id": "ea0276d36979413884df44fdbc20f652"
+}, {
+  "schema_name": "genomic_research_wgs",
+  "active_flag": "true",
+  "display_name": "raw_vcf_path",
+  "data_element_id": "e738ef0157e248efa2e2d0a4158fa8ee"
+}, {
+  "schema_name": "genomic_research_wgs",
+  "active_flag": "true",
+  "display_name": "raw_vcf_tbi_path",
+  "data_element_id": "37ef0123ee1243f0b20d7276469b5c3f"
+}, {
+  "schema_name": "genomic_research_wgs",
+  "active_flag": "true",
+  "display_name": "raw_vcf_md5_path",
+  "data_element_id": "d9863153a1e844b8971997ac553c1358"
+}, {
+  "schema_name": "genomic_research_wgs",
+  "active_flag": "true",
+  "display_name": "cram_path",
+  "data_element_id": "6f2e309d4da04a0b92c20aec9a4ba145"
+}, {
+  "schema_name": "genomic_research_wgs",
+  "active_flag": "true",
+  "display_name": "cram_md5_path",
+  "data_element_id": "045c0dfa8a674bcfa976fd3e0da79777"
+}, {
+  "schema_name": "genomic_research_wgs",
+  "active_flag": "true",
+  "display_name": "crai_path",
+  "data_element_id": "35b4240502b84f52b9acbccf61af2986"
+}, {
+  "schema_name": "genomic_research_wgs",
+  "active_flag": "true",
+  "display_name": "gvcf_path",
+  "data_element_id": "482900048590476196a64e4c1f9abc9c"
+}, {
+  "schema_name": "genomic_research_wgs",
+  "active_flag": "true",
+  "display_name": "gvcf_md5_path",
+  "data_element_id": "e88fdef9f8c749ac9f6db465d9cf3255"
+}, {
+  "schema_name": "genomic_research_array",
+  "active_flag": "true",
+  "display_name": "idat_red_path",
+  "data_element_id": "9fa25766350b446491ec2bbfb410169d"
+}, {
+  "schema_name": "genomic_research_array",
+  "active_flag": "true",
+  "display_name": "idat_green_path",
+  "data_element_id": "49712f82f5124378917a6f253f1e786a"
+}, {
+  "schema_name": "genomic_research_array",
+  "active_flag": "true",
+  "display_name": "idat_red_md5_path",
+  "data_element_id": "70f9ae7a40374e3b81658f0d16b136a1"
+}, {
+  "schema_name": "genomic_research_array",
+  "active_flag": "true",
+  "display_name": "idat_green_md5_path",
+  "data_element_id": "9881f30cbd9d4d19b4bca5c342c7f56d"
+}, {
+  "schema_name": "genomic_research_array",
+  "active_flag": "true",
+  "display_name": "vcf_path",
+  "data_element_id": "dbd1d8a09efb4f208ee8c4b51d26520a"
+}, {
+  "schema_name": "genomic_research_array",
+  "active_flag": "true",
+  "display_name": "vcf_tbi_path",
+  "data_element_id": "c61a4eafea1c4690ba9eaceaed3d1084"
+}, {
+  "schema_name": "genomic_research_array",
+  "active_flag": "true",
+  "display_name": "vcf_md5_path",
+  "data_element_id": "4a043f3fa31d4f57970bd837f9381fac"
 }]
