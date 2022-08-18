@@ -92,7 +92,7 @@ cron:
 - description: Genomic Data PDR Reconcile
   url: /offline/GenomicDataPdrReconcile
   timezone: America/New_York
-  schedule: every 6 hours
+  schedule: every 30 minutes
   target: offline
 - description: Export VA Workqueue (Daily)
   url: /offline/ExportVaWorkQueue
