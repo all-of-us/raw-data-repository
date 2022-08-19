@@ -85,7 +85,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         elif '_w2sc_' in object_id:
             task_key = "w2sc"
 
-        # W3SC files have "W3SC" in their file path (bucket name)
+        # W3NS files have "W3NS" in their file path (bucket name)
         elif '_w3ns_' in object_id:
             task_key = "w3ns"
 
@@ -97,7 +97,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         elif '_pkg' in object_id:
             task_key = "w3ss"
 
-        # W4WR files have "W2SC" in their file path (bucket name)
+        # W4WR files have "W4WR" in their file path (bucket name)
         elif '_w4wr_' in object_id:
             task_key = "w4wr"
 
