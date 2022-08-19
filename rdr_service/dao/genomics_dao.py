@@ -2052,7 +2052,7 @@ class GenomicOutreachDaoV2(BaseDao):
             "timestamp": timestamp
         }
 
-    def outreach_lookup(self, pid=None, start_date=None, end_date=None):
+    def get_outreach_data(self, participant_id=None, start_date=None, end_date=None):
         informing_loops, results = [], []
         end_date = clock.CLOCK.now() if not end_date else end_date
         informing_loop_ready = GenomicSetMemberDao.base_informing_loop_ready().subquery()
@@ -2073,8 +2073,8 @@ class GenomicOutreachDaoV2(BaseDao):
 
             max_loops, participant_ids = [], {obj.participant_id for obj in decision_loops}
 
-            for participant_id in participant_ids:
-                participant_loops = list(filter(lambda x: x.participant_id == participant_id, decision_loops))
+            for pid in participant_ids:
+                participant_loops = list(filter(lambda x: x.participant_id == pid, decision_loops))
 
                 modules = {obj.module_type for obj in participant_loops}
                 for module in modules:
@@ -2125,12 +2125,12 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.informingLoopReadyFlagModified.isnot(None)
                     )
                 )
-                if pid:
+                if participant_id:
                     decision_loop = decision_loop.filter(
-                        GenomicSetMember.participantId == pid
+                        GenomicSetMember.participantId == participant_id
                     )
                     ready_loop = ready_loop.filter(
-                        GenomicSetMember.participantId == pid
+                        GenomicSetMember.participantId == participant_id
                     )
                 if start_date:
                     decision_loop = decision_loop.filter(
@@ -2176,9 +2176,9 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.ignoreFlag != 1
                     )
                 )
-                if pid:
+                if participant_id:
                     result_query = result_query.filter(
-                        ParticipantSummary.participantId == pid
+                        ParticipantSummary.participantId == participant_id
                     )
                 if start_date:
                     result_query = result_query.filter(
@@ -2211,6 +2211,106 @@ class GenomicOutreachDaoV2(BaseDao):
                 if mod == key:
                     mappings.extend(value)
         return mappings
+
+
+class GenomicSchedulingDao(BaseDao):
+    def __init__(self):
+        super().__init__(GenomicSetMember, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def to_client_json(self, payload_dict):
+        timestamp = pytz.utc.localize(payload_dict.get('date'))
+        appointments = []
+
+        if not payload_dict.get('data'):
+            return {
+                "data": appointments,
+                "timestamp": timestamp
+            }
+
+        for appointment in payload_dict.get('data'):
+            appointments.append({
+                'module': appointment.module_type,
+                'type': 'appointment',
+                'status': appointment.event_type.split('_')[-1],
+                'appointment_id': appointment.appointment_id,
+                'participant_id': f'P{appointment.participant_id}',
+                'note_available': appointment.has_appointment_note
+            })
+
+        return {
+            "data": appointments,
+            "timestamp": timestamp
+        }
+
+    def get_latest_scheduling_data(self, participant_id=None, start_date=None, end_date=None, module=None):
+        max_appointment_id_subquery = sqlalchemy.orm.Query(
+            functions.max(GenomicAppointmentEvent.appointment_id).label(
+                'max_appointment_id'
+            )
+        ).filter(
+            GenomicAppointmentEvent.event_type.notlike('%note_available')
+        ).group_by(
+            GenomicAppointmentEvent.participant_id,
+            GenomicAppointmentEvent.module_type
+        ).subquery()
+        max_event_authored_time_subquery = sqlalchemy.orm.Query(
+            functions.max(GenomicAppointmentEvent.event_authored_time).label(
+                'max_event_authored_time'
+            )
+        ).filter(
+            GenomicAppointmentEvent.event_type.notlike('%note_available')
+        ).group_by(
+            GenomicAppointmentEvent.participant_id,
+            GenomicAppointmentEvent.module_type
+        ).subquery()
+        note_alias = aliased(GenomicAppointmentEvent)
+        with self.session() as session:
+            records = session.query(
+                GenomicAppointmentEvent.participant_id,
+                GenomicAppointmentEvent.module_type,
+                GenomicAppointmentEvent.event_type,
+                GenomicAppointmentEvent.appointment_id,
+                sqlalchemy.case(
+                    [
+                        (note_alias.id.isnot(None), True)
+                    ],
+                    else_=False
+                ).label('has_appointment_note'),
+            ).outerjoin(
+                note_alias,
+                and_(
+                    note_alias.appointment_id == GenomicAppointmentEvent.appointment_id,
+                    note_alias.event_type.like('%note_available')
+                )
+            ).filter(
+                and_(
+                    GenomicAppointmentEvent.appointment_id == max_appointment_id_subquery.c.max_appointment_id,
+                    GenomicAppointmentEvent.event_authored_time ==
+                    max_event_authored_time_subquery.c.max_event_authored_time
+                )
+            )
+
+            if module:
+                records = records.filter(
+                    GenomicAppointmentEvent.module_type.ilike(module)
+                )
+            if participant_id:
+                records = records.filter(
+                    GenomicAppointmentEvent.participant_id == participant_id
+                )
+            if start_date:
+                records = records.filter(
+                    GenomicAppointmentEvent.event_authored_time > start_date,
+                    GenomicAppointmentEvent.event_authored_time < end_date
+                )
+
+            return records.distinct().all()
 
 
 class GenomicManifestFileDao(BaseDao, GenomicDaoMixin):
