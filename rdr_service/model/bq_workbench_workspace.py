@@ -119,7 +119,7 @@ class BQRWBWorkspaceRaceEthnicityView(BQView):
     __pk_id__ = 'workspace_source_id'
     __table__ = BQRWBWorkspace
     __sql__ = """
-        SELECT t.id, t.created, t.modified, t.workspace_source_id, nt.*
+        SELECT t.id, t.created, t.modified, t.workspace_source_id, t.modified_time, nt.*
           FROM (
             SELECT *, 
                    ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified) AS rn
@@ -135,7 +135,7 @@ class BQRWBWorkspaceAgeView(BQView):
     __pk_id__ = 'workspace_source_id'
     __table__ = BQRWBWorkspace
     __sql__ = """
-        SELECT t.id, t.created, t.modified, t.workspace_source_id, nt.*
+        SELECT t.id, t.created, t.modified, t.workspace_source_id, t.modified_time, nt.*
           FROM (
             SELECT *, 
                    ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified) AS rn

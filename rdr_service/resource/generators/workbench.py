@@ -85,8 +85,9 @@ class WBWorkspaceGenerator(generators.BaseGenerator):
             data['income_level'] = str(WorkbenchWorkspaceIncomeLevel(row.income_level))
             data['income_level_id'] = int(WorkbenchWorkspaceIncomeLevel(row.income_level))
 
-            data['access_tier'] = str(WorkbenchWorkspaceAccessTier(row.access_tier))
-            data['access_tier_id'] = int(WorkbenchWorkspaceAccessTier(row.access_tier))
+            if row.access_tier:
+                data['access_tier'] = str(WorkbenchWorkspaceAccessTier(row.access_tier))
+                data['access_tier_id'] = int(WorkbenchWorkspaceAccessTier(row.access_tier))
 
             return generators.ResourceRecordSet(schemas.WorkbenchWorkspaceSchema, data)
 
@@ -173,10 +174,11 @@ class WBInstitutionalAffiliationsGenerator(generators.BaseGenerator):
 
         with self.ro_dao.session() as ro_session:
             row = ro_session.execute(
-                text('select * from rdr.workbench_institutional_affiliations where id = :id'), {'id': pk_id}).first()
+                text('select * from rdr.workbench_institutional_affiliations_history where id = :id'),
+                        {'id': pk_id}).first()
             data = self.ro_dao.to_dict(row)
             if not data:
-                msg = f'Institutional affiliation id {pk_id} not found in workbench_institutional_affiliations table.'
+                msg = f'ID {pk_id} not found in workbench_institutional_affiliations_history table.'
                 logging.error(msg)
                 raise NotFound(msg)
 
