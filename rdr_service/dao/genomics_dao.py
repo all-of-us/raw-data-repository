@@ -1965,14 +1965,10 @@ class GenomicOutreachDaoV2(BaseDao):
                     GenomicReportState.GEM_RPT_PENDING_DELETE,
                     GenomicReportState.GEM_RPT_DELETED],
             'pgx': [GenomicReportState.PGX_RPT_READY,
-                    GenomicReportState.PGX_RPT_PENDING_DELETE,
-                    GenomicReportState.PGX_RPT_DELETED,
                     GenomicReportState.CVL_RPT_PENDING_DELETE,
                     GenomicReportState.CVL_RPT_DELETED],
             'hdr': [GenomicReportState.HDR_RPT_UNINFORMATIVE,
                     GenomicReportState.HDR_RPT_POSITIVE,
-                    GenomicReportState.HDR_RPT_PENDING_DELETE,
-                    GenomicReportState.HDR_RPT_DELETED,
                     GenomicReportState.CVL_RPT_PENDING_DELETE,
                     GenomicReportState.CVL_RPT_DELETED]
         }
@@ -2009,28 +2005,37 @@ class GenomicOutreachDaoV2(BaseDao):
                 "timestamp": timestamp
             }
 
-        for p in _dict.get('data'):
-            pid = p.participant_id
-            if 'result' in p.type:
-                report_status, report_module = self._determine_report_state(p.genomic_report_state)
-                genomic_result_viewed = p.GenomicResultViewed
+        for participant_data in _dict.get('data'):
+            pid, cvl_modules = participant_data.participant_id, ['hdr', 'pgx']
+
+            if 'result' in participant_data.type:
+                report_status, report_module = self._determine_report_state(participant_data.genomic_report_state)
+                genomic_result_viewed = participant_data.GenomicResultViewed
                 result_viewed = 'yes' if genomic_result_viewed and genomic_result_viewed.module_type \
                                                 == report_module else 'no'
                 genomic_swap_module = _get_sample_swap_module(
-                    sample_swap=p.GenomicSampleSwapMember
+                    sample_swap=participant_data.GenomicSampleSwapMember
                 )
 
-                report_statuses.append({
+                report_obj = {
                     "module": f'{report_module.lower()}{genomic_swap_module}',
                     "type": 'result',
                     "status": report_status,
                     "viewed": result_viewed,
                     "participant_id": f'P{pid}',
-                })
-            elif 'informing_loop' in p.type:
-                if 'ready' in p.type:
-                    ready_modules = ['hdr', 'pgx']
-                    for module in ready_modules:
+                }
+
+                if report_module in cvl_modules:
+                    report_obj['report_revision_number'] = participant_data.report_revision_number
+                    if report_module == 'hdr':
+                        status = participant_data.genomic_report_state.name.split('_', 2)[-1].lower()
+                        report_obj['hdr_result_status'] = status
+
+                report_statuses.append(report_obj)
+
+            elif 'informing_loop' in participant_data.type:
+                if 'ready' in participant_data.type:
+                    for module in cvl_modules:
                         if module in self.module:
                             report_statuses.append({
                                 "module": module,
@@ -2038,12 +2043,12 @@ class GenomicOutreachDaoV2(BaseDao):
                                 "status": 'ready',
                                 "participant_id": f'P{pid}',
                             })
-                if 'decision' in p.type:
+                if 'decision' in participant_data.type:
                     report_statuses.append({
-                        "module": p.module_type.lower(),
+                        "module": participant_data.module_type.lower(),
                         "type": 'informingLoop',
                         "status": 'completed',
-                        "decision": p.decision_value,
+                        "decision": participant_data.decision_value,
                         "participant_id": f'P{pid}'
                     })
 
@@ -2149,6 +2154,7 @@ class GenomicOutreachDaoV2(BaseDao):
                     session.query(
                         distinct(GenomicMemberReportState.participant_id).label('participant_id'),
                         GenomicMemberReportState.genomic_report_state,
+                        GenomicMemberReportState.report_revision_number,
                         GenomicResultViewed,
                         GenomicSampleSwapMember,
                         literal('result').label('type')

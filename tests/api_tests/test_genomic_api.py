@@ -774,6 +774,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             module = 'gem'
             report_state = GenomicReportState.GEM_RPT_READY
             genome_type = 'aou_array'
+            report_revision_number = None
 
             if num == 0:
                 first_participant = participant
@@ -781,7 +782,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 second_participant = participant
                 module = 'pgx_v1'
                 genome_type = 'aou_wgs'
-                report_state = GenomicReportState.PGX_RPT_PENDING_DELETE
+                report_state = GenomicReportState.PGX_RPT_READY
+                report_revision_number = 1
 
             gen_member = self.data_generator.create_database_genomic_set_member(
                 genomicSetId=gen_set.id,
@@ -796,7 +798,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 genomic_set_member_id=gen_member.id,
                 participant_id=participant.participantId,
                 module=module,
-                genomic_report_state=report_state
+                genomic_report_state=report_state,
+                report_revision_number=report_revision_number
             )
 
             if num == 3:
@@ -837,8 +840,9 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             'data': [
                 {
                     'module': 'pgx',
+                    'report_revision_number': 1,
                     'type': 'result',
-                    'status': 'pending_delete',
+                    'status': 'ready',
                     "viewed": 'no',
                     'participant_id': f'P{second_participant.participantId}'
                 }
