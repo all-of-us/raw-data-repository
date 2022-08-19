@@ -96,4 +96,3 @@ default_rdr_ods_table_data = [
         "data": os.path.join(data_file_path, "export_schema_data_element_full.json")
     },
 ]
-

@@ -17,10 +17,9 @@ class ValueNormalizer:
             return value
         if value.lower() in ['1', 'true', 'y']:
             return "TRUE"
-        elif value.lower() in ['0', 'false', 'n']:
+        if value.lower() in ['0', 'false', 'n']:
             return "FALSE"
-        else:
-            return value
+        return value
 
     @staticmethod
     def rule_upper(value):
@@ -44,8 +43,8 @@ class ValueNormalizer:
 
         if value > 0.001:
             return str(value)
-        else:
-            return "{:e}".format(value)  # returns scientific notation
+
+        return "{:e}".format(value)  # returns scientific notation
 
     @staticmethod
     def rule_clean_null(value):
@@ -53,5 +52,4 @@ class ValueNormalizer:
             return value
         if value.lower() in ['null', '']:
             return None
-        else:
-            return value
+        return value
