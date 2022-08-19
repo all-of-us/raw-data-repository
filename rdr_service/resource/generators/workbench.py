@@ -85,7 +85,7 @@ class WBWorkspaceGenerator(generators.BaseGenerator):
             data['income_level'] = str(WorkbenchWorkspaceIncomeLevel(row.income_level))
             data['income_level_id'] = int(WorkbenchWorkspaceIncomeLevel(row.income_level))
 
-            if row.access_tier:
+            if row.access_tier is not None:
                 data['access_tier'] = str(WorkbenchWorkspaceAccessTier(row.access_tier))
                 data['access_tier_id'] = int(WorkbenchWorkspaceAccessTier(row.access_tier))
 
