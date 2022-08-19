@@ -1092,6 +1092,53 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.assertTrue(pgx_result)
         self.assertTrue(pgx_loop)
 
+    def test_hdr_result_payload(self):
+        module = 'hdr_v1'
+        report_state = GenomicReportState.HDR_RPT_UNINFORMATIVE
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        participant = self.data_generator.create_database_participant()
+
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            consentForGenomicsRORAuthored=clock.CLOCK.now(),
+            consentForStudyEnrollmentAuthored=clock.CLOCK.now()
+        )
+
+        gen_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId="21042005280",
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.CVL_READY,
+            participantId=participant.participantId,
+            genomicWorkflowStateModifiedTime=clock.CLOCK.now()
+        )
+
+        self.data_generator.create_database_genomic_member_report_state(
+            genomic_set_member_id=gen_member.id,
+            participant_id=participant.participantId,
+            module=module,
+            genomic_report_state=report_state,
+            report_revision_number=1
+        )
+
+        resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
+
+        self.assertTrue(len(resp['data']), 1)
+        hdr_result_keys = ['module', 'type', 'status', 'viewed', 'participant_id', 'hdr_result_status',
+                           'report_revision_number']
+        all_hdr_result_keys_data = all(not len(obj.keys() - hdr_result_keys) and obj.values() for obj in resp['data'])
+        self.assertTrue(all_hdr_result_keys_data)
+
+        self.assertTrue(all(obj['hdr_result_status'] == 'uninformative' for obj in resp['data']))
+        self.assertTrue(all(obj['report_revision_number'] == 1 for obj in resp['data']))
+
     def test_get_by_date_range(self):
         self.num_participants = 10
         fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')

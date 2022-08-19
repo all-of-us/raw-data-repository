@@ -2011,8 +2011,11 @@ class GenomicOutreachDaoV2(BaseDao):
             if 'result' in participant_data.type:
                 report_status, report_module = self._determine_report_state(participant_data.genomic_report_state)
                 genomic_result_viewed = participant_data.GenomicResultViewed
-                result_viewed = 'yes' if genomic_result_viewed and genomic_result_viewed.module_type \
-                                                == report_module else 'no'
+
+                result_viewed = 'no'
+                if genomic_result_viewed and genomic_result_viewed.module_type == report_module:
+                    result_viewed = 'yes'
+
                 genomic_swap_module = _get_sample_swap_module(
                     sample_swap=participant_data.GenomicSampleSwapMember
                 )
@@ -2025,11 +2028,12 @@ class GenomicOutreachDaoV2(BaseDao):
                     "participant_id": f'P{pid}',
                 }
 
-                if report_module in cvl_modules:
+                if participant_data.report_revision_number is not None:
                     report_obj['report_revision_number'] = participant_data.report_revision_number
-                    if report_module == 'hdr':
-                        status = participant_data.genomic_report_state.name.split('_', 2)[-1].lower()
-                        report_obj['hdr_result_status'] = status
+
+                if participant_data.genomic_report_state in self.report_state_map.get('hdr'):
+                    report_obj['hdr_result_status'] = participant_data.genomic_report_state.name.split('_', 2)[
+                        -1].lower()
 
                 report_statuses.append(report_obj)
 
@@ -2200,8 +2204,8 @@ class GenomicOutreachDaoV2(BaseDao):
         p_status, p_module = None, None
         for key, report_values in self.report_state_map.items():
             if status in report_values:
-                p_status = status.name.split('_', 2)[-1].lower()
                 p_module = key
+                p_status = status.name.split('_', 2)[-1].lower() if 'hdr' not in key else 'ready'
                 break
         return p_status, p_module
 
