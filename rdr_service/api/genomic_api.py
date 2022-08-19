@@ -8,7 +8,8 @@ from rdr_service import clock, config
 from rdr_service.api.base_api import BaseApi, log_api_request, UpdatableApi
 from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
 from rdr_service.app_util import auth_required, restrict_to_gae_project
-from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicSetMemberDao, GenomicOutreachDao, GenomicOutreachDaoV2
+from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicSetMemberDao, GenomicOutreachDao, GenomicOutreachDaoV2, \
+    GenomicSchedulingDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.services.genomic_datagen import ParticipantGenerator
@@ -21,7 +22,17 @@ PTC_ALLOWED_ENVIRONMENTS = [
 ]
 
 
-class GenomicApiMixin:
+class GenomicApiValidationMixin:
+
+    @classmethod
+    def check_raise_error(cls,
+                          *,
+                          params_sent,
+                          accepted_params,
+                          message
+                          ):
+        if any(arg for arg in params_sent if arg not in accepted_params):
+            raise BadRequest(f"{message}: {' | '.join(accepted_params)}")
 
     @staticmethod
     def _extract_pid(_id):
@@ -58,7 +69,54 @@ class GenomicApiMixin:
             raise NotFound(f"Participant with ID {prefix}{checked_value} not found in Genomics system")
 
 
-class GenomicPiiApi(BaseApi, GenomicApiMixin):
+class GenomicGETPayload(GenomicApiValidationMixin):
+    def __init__(self, method, **kwargs):
+        self.lookup_method = method
+        self.payload = {'date': clock.CLOCK.now()}
+        self.participant_id = kwargs.get('participant_id')
+        self.biobank_id = kwargs.get('biobank_id')
+        self.start_date = kwargs.get('start_date')
+        self.kwargs = kwargs
+
+    def clean_params(self):
+        prefix, cleaned_id = None, None
+
+        if self.biobank_id:
+            prefix, cleaned_biobank_id = self._extract_pid(self.biobank_id)
+            self._validate_participant(
+                prefix=prefix,
+                biobank_id=cleaned_biobank_id
+            )
+            self.kwargs['biobank_id'] = cleaned_biobank_id
+            cleaned_id = self.biobank_id
+
+        if self.participant_id:
+            prefix, cleaned_participant_id = self._extract_pid(self.participant_id)
+            self._validate_participant(
+                prefix=prefix,
+                participant_id=cleaned_participant_id
+            )
+            self.kwargs['participant_id'] = cleaned_participant_id
+            cleaned_id = self.participant_id
+
+        if self.start_date:
+            self.kwargs['start_date'] = parser.parse(self.kwargs['start_date'])
+
+        return cleaned_id
+
+    def get_payload(self):
+        cleaned_id = self.clean_params()
+        participant_data = self.lookup_method(**self.kwargs)
+
+        if not participant_data and cleaned_id:
+            raise NotFound(f'Participant with ID {cleaned_id} '
+                           f'did not pass validation check')
+
+        self.payload['data'] = participant_data
+        return self.payload
+
+
+class GenomicPiiApi(BaseApi):
     def __init__(self):
         super(GenomicPiiApi, self).__init__(GenomicPiiDao())
 
@@ -70,34 +128,21 @@ class GenomicPiiApi(BaseApi, GenomicApiMixin):
         if not pii_id:
             raise BadRequest
 
-        prefix, pii_id = self._extract_pid(pii_id)
         biobank_id, participant_id = None, pii_id
 
         if mode == 'RHP':
             biobank_id = pii_id
             participant_id = None
 
-        self._validate_participant(
-            prefix=prefix,
+        api_payload = GenomicGETPayload(
+            self.dao.get_pii,
             participant_id=participant_id,
-            biobank_id=biobank_id
+            biobank_id=biobank_id,
+            mode=mode
         )
+        payload = api_payload.get_payload()
 
-        pii_data = self.dao.get_pii(
-            mode=mode,
-            participant_id=participant_id,
-            biobank_id=biobank_id
-        )
-
-        if not pii_data:
-            raise NotFound(f"Participant with ID {prefix}{pii_id} did not pass validation check")
-
-        proto_payload = {
-            'mode': mode,
-            'data': pii_data
-        }
-
-        return self._make_response(proto_payload)
+        return self._make_response(payload)
 
 
 class GenomicOutreachApi(BaseApi):
@@ -212,10 +257,10 @@ class GenomicOutreachApi(BaseApi):
             raise BadRequest(f"GenomicOutreach Mode required to be one of {modes}.")
 
 
-class GenomicOutreachApiV2(UpdatableApi, GenomicApiMixin):
+class GenomicOutreachApiV2(UpdatableApi):
     def __init__(self):
-        super(GenomicOutreachApiV2, self).__init__(GenomicOutreachDaoV2())
-        self.validate_params()
+        super().__init__(GenomicOutreachDaoV2())
+        self.validate_outreach_params()
 
     @auth_required(RDR_AND_PTC)
     def get(self):
@@ -254,34 +299,18 @@ class GenomicOutreachApiV2(UpdatableApi, GenomicApiMixin):
             if not request.args.get("end_date") \
             else parser.parse(request.args.get("end_date"))
 
-        payload = {
-            'date': clock.CLOCK.now()
-        }
-
         if not participant_id and not start_date:
             raise BadRequest('Participant ID or Start Date is required for GenomicOutreach lookup.')
 
-        if participant_id:
-            prefix, participant_id = self._extract_pid(participant_id)
-            self._validate_participant(
-                prefix=prefix,
-                participant_id=participant_id
-            )
+        api_payload = GenomicGETPayload(
+            self.dao.get_outreach_data,
+            participant_id=participant_id,
+            start_date=start_date,
+            end_date=end_date
+        )
+        payload = api_payload.get_payload()
 
-            participant_data = self.dao.outreach_lookup(pid=participant_id)
-            if participant_data:
-                payload['data'] = participant_data
-                return self._make_response(payload)
-
-            raise NotFound(f'Participant with ID {prefix}{participant_id} did not pass validation check')
-
-        if start_date:
-            start_date = parser.parse(start_date)
-            participant_data = self.dao.outreach_lookup(start_date=start_date, end_date=end_date)
-            payload['data'] = participant_data
-            return self._make_response(payload)
-
-        raise BadRequest
+        return self._make_response(payload)
 
     @staticmethod
     def set_ready_loop(participant_id, req_data):
@@ -354,7 +383,7 @@ class GenomicOutreachApiV2(UpdatableApi, GenomicApiMixin):
         """
         Checks that the mode in the endpoint is valid
         :param module: "GEM" / "PGX" / "HDR"
-        :param req_type: "result" / "informingLoop" / "appointment"
+        :param req_type: "result" / "informingLoop"
         """
         current_module, current_type = None, None
 
@@ -403,19 +432,11 @@ class GenomicOutreachApiV2(UpdatableApi, GenomicApiMixin):
         return participant_id, request_data
 
     @staticmethod
-    def validate_params():
-        def _check_error(*,
-                         params_sent,
-                         accepted_params,
-                         message
-                         ):
-            if any(arg for arg in params_sent if arg not in accepted_params):
-                raise BadRequest(f"{message}: {' | '.join(accepted_params)}")
-
+    def validate_outreach_params():
         if request.method == 'GET':
             valid_params = ['start_date', 'end_date', 'participant_id', 'module', 'type']
             request_keys = list(request.args.keys())
-            return _check_error(
+            return GenomicApiValidationMixin.check_raise_error(
                 params_sent=request_keys,
                 accepted_params=valid_params,
                 message='GenomicOutreachV2 GET accepted params'
@@ -424,8 +445,68 @@ class GenomicOutreachApiV2(UpdatableApi, GenomicApiMixin):
             valid_params = ['informing_loop_eligible', 'eligibility_date_utc', 'participant_id']
             request_keys = list(request.get_json().keys())
             request_keys += list(request.args.keys())
-            return _check_error(
+            return GenomicApiValidationMixin.check_raise_error(
                 params_sent=request_keys,
                 accepted_params=valid_params,
                 message=f'GenomicOutreachV2 {request.method} accepted data/params'
             )
+
+
+class GenomicSchedulingApi(BaseApi):
+    def __init__(self):
+        super().__init__(GenomicSchedulingDao())
+        self.validate_scheduling_params()
+
+    @auth_required(RDR_AND_PTC)
+    def get(self):
+        self._check_global_args(
+            request.args.get('module')
+        )
+        return self.get_scheduling()
+
+    def get_scheduling(self):
+        """
+        Returns the genomic scheduling resource based on the request parameters
+        :return:
+        """
+        start_date = request.args.get("start_date", None)
+        participant_id = request.args.get("participant_id", None)
+        module = request.args.get('module', None)
+        end_date = clock.CLOCK.now() \
+            if not request.args.get("end_date") \
+            else parser.parse(request.args.get("end_date"))
+
+        if not participant_id and not start_date:
+            raise BadRequest('Participant ID or Start Date parameter is required for use with GenomicScheduling API.')
+
+        api_payload = GenomicGETPayload(
+            self.dao.get_latest_scheduling_data,
+            participant_id=participant_id,
+            start_date=start_date,
+            end_date=end_date,
+            module=module
+        )
+        payload = api_payload.get_payload()
+
+        return self._make_response(payload)
+
+    @staticmethod
+    def _check_global_args(module):
+        """
+        Checks that the mode in the endpoint is valid
+        :param module: "PGX" / "HDR"
+        """
+        allowed_modules = ['hdr', 'pgx']
+        if module and module.lower() not in allowed_modules:
+            raise BadRequest(
+                f"GenomicScheduling GET accepted modules: {' | '.join(allowed_modules)}")
+
+    @staticmethod
+    def validate_scheduling_params():
+        valid_params = ['start_date', 'end_date', 'participant_id', 'module']
+        request_keys = list(request.args.keys())
+        return GenomicApiValidationMixin.check_raise_error(
+            params_sent=request_keys,
+            accepted_params=valid_params,
+            message='GenomicScheduling GET accepted params'
+        )
