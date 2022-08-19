@@ -182,6 +182,7 @@ class WBInstitutionalAffiliationsGenerator(generators.BaseGenerator):
                 logging.error(msg)
                 raise NotFound(msg)
 
+            data['modified_time'] = row.modified
             data['non_academic_affiliation'] = str(WorkbenchInstitutionNonAcademic(row.non_academic_affiliation))
             data['non_academic_affiliation_id'] = int(WorkbenchInstitutionNonAcademic(row.non_academic_affiliation))
             return generators.ResourceRecordSet(schemas.WorkbenchInstitutionalAffiliationsSchema, data)
