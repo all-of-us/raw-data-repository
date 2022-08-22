@@ -815,7 +815,7 @@ class ParticipantSummaryDao(UpdatableDao):
         )
         summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
         summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
-        summary.enrollmentStatusCoreMinusPMTime = self.calculate_core_minus_pm_time(consent, summary)
+        summary.enrollmentStatusCoreMinusPMTime = self.calculate_core_minus_pm_time(consent, summary, enrollment_status)
 
         # [DA-1623] Participants that have 'Core' status should never lose it
         # CORE_MINUS_PM status can not downgrade, but can upgrade to FULL_PARTICIPANT
@@ -879,7 +879,7 @@ class ParticipantSummaryDao(UpdatableDao):
         else:
             return None
 
-    def calculate_core_minus_pm_time(self, consent, participant_summary):
+    def calculate_core_minus_pm_time(self, consent, participant_summary, enrollment_status):
         if (
             consent
             and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
@@ -889,7 +889,7 @@ class ParticipantSummaryDao(UpdatableDao):
             and participant_summary.samplesToIsolateDNA == SampleStatus.RECEIVED
             and (participant_summary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED
                  or participant_summary.consentCohort != ParticipantCohort.COHORT_3)
-        ) or participant_summary.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM:
+        ) or enrollment_status == EnrollmentStatus.CORE_MINUS_PM:
 
             max_core_sample_time = self.calculate_max_core_sample_time(
                 participant_summary, field_name_prefix="sampleStatus"
