@@ -157,6 +157,27 @@ class EnrollmentStatusV2(messages.Enum):
     CORE_MINUS_PM = 4
 
 
+class EnrollmentStatusV30(messages.Enum):
+    """A status reflecting how fully enrolled a participant is according to the 3.0 data glossary"""
+
+    PARTICIPANT = 1
+    PARTICIPANT_PLUS_EHR = 2
+    PARTICIPANT_PMB_ELIGIBLE = 3
+    CORE_MINUS_PM = 4
+    CORE_PARTICIPANT = 5
+
+
+class EnrollmentStatusV31(messages.Enum):
+    """A status reflecting how fully enrolled a participant is according to the 3.1 data glossary"""
+
+    PARTICIPANT = 1
+    PARTICIPANT_PLUS_EHR = 2
+    PARTICIPANT_PLUS_BASICS = 3
+    CORE_MINUS_PM = 4
+    CORE_PARTICIPANT = 5
+    BASELINE_PARTICIPANT = 6
+
+
 class SampleStatus(messages.Enum):
     """Status of biobank samples"""
 
