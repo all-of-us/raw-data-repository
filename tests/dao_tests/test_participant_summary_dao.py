@@ -567,6 +567,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
 
         summary.clinicPhysicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+        summary.clinicPhysicalMeasurementsFinalizedTime = datetime.datetime(2022, 7, 12)
         self.dao.update_enrollment_status(summary)
         self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, summary.enrollmentStatus)
         self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
@@ -607,6 +608,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
 
         summary.selfReportedPhysicalMeasurementsStatus = SelfReportedPhysicalMeasurementsStatus.COMPLETED
+        summary.selfReportedPhysicalMeasurementsAuthored = datetime.datetime(2022, 7, 12)
         self.dao.update_enrollment_status(summary)
         self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, summary.enrollmentStatus)
         self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
@@ -643,7 +645,8 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             samplesToIsolateDNA=SampleStatus.RECEIVED,
             clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
             enrollmentStatus=EnrollmentStatus.CORE_MINUS_PM,
-            sampleStatus2ED10Time=sample_time
+            sampleStatus2ED10Time=sample_time,
+            enrollmentStatusCoreMinusPMTime=sample_time
         )
         self.dao.update_enrollment_status(summary)
         self.assertEqual(EnrollmentStatus.CORE_MINUS_PM, summary.enrollmentStatus)
