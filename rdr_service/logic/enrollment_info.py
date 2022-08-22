@@ -43,6 +43,8 @@ class EnrollmentDependencies:
     lifestyle_authored_time: datetime
 
     ehr_consent_date_range_list: List[DateRange]
+    """DateRanges of when the participant expressed interest in sharing EHR data. Must be in chronological order"""
+
     earliest_biobank_received_dna_time: datetime
     earliest_ehr_file_received_time: datetime
     earliest_physical_measurements_time: datetime
@@ -123,6 +125,7 @@ class EnrollmentCalculation:
                 enrollment.version_legacy_status = EnrollmentStatus.MEMBER
                 enrollment.version_legacy_datetime = ehr_consent_time
 
+        # Find if CORE_MINUS_PM status is met
         dates_needed_for_upgrade = [
             participant_info.basics_authored_time,
             participant_info.overall_health_authored_time,
@@ -140,6 +143,7 @@ class EnrollmentCalculation:
             enrollment.version_legacy_status = EnrollmentStatus.CORE_MINUS_PM
             enrollment.version_legacy_datetime = core_minus_pm_reqs_met_time
 
+        # Find if CORE status is met
         dates_needed_for_upgrade.append(participant_info.earliest_physical_measurements_time)
         core_reqs_met_time = cls._get_requirements_met_date(
             participant_info.ehr_consent_date_range_list,
@@ -199,12 +203,11 @@ class EnrollmentCalculation:
             enrollment.version_3_1_status = EnrollmentStatusV31.CORE_MINUS_PM
             enrollment.version_3_1_datetime = max(cls._get_dates_needed_for_core_minus_pm(participant_info))
 
-            if not participant_info.submitted_physical_measurements:
-                return
-
+        if cls._meets_requirements_for_core(participant_info):
             enrollment.version_3_1_status = EnrollmentStatusV31.CORE_PARTICIPANT
             enrollment.version_3_1_datetime = max(cls._get_dates_needed_for_core(participant_info))
 
+            # Check to see if the participant also meets BASELINE requirements
             if (
                 participant_info.has_had_ehr_file_submitted
                 and (
@@ -212,6 +215,8 @@ class EnrollmentCalculation:
                     or participant_info.has_completed_dna_update
                 )
             ):
+                # Track the extra dates needed
+                # (definitely need the date of an ehr file, but also possibly the dna update time)
                 extra_dates_needed = [participant_info.earliest_ehr_file_received_time]
                 if participant_info.consent_cohort in [ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2]:
                     extra_dates_needed.append(participant_info.dna_update_time)
