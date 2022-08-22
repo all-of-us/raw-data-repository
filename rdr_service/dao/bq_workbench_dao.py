@@ -243,6 +243,7 @@ class BQRWBInstitutionalAffiliationsGenerator(BigQueryGenerator):
                         {'id': pk_id}).first()
             data = ro_dao.to_dict(row)
 
+            data['modified_time'] = row.modified
             data['non_academic_affiliation'] = str(WorkbenchInstitutionNonAcademic(row.non_academic_affiliation))
             data['non_academic_affiliation_id'] = int(WorkbenchInstitutionNonAcademic(row.non_academic_affiliation))
 

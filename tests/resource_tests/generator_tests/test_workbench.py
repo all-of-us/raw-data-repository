@@ -8,7 +8,7 @@ from tests.helpers.unittest_base import BaseTestCase
 
 from rdr_service.model.workbench_workspace import WorkbenchWorkspaceSnapshot
 from rdr_service.model.workbench_researcher import WorkbenchResearcherHistory
-from rdr_service.participant_enums import WorkbenchResearcherDisability
+from rdr_service.participant_enums import WorkbenchResearcherDisability, WorkbenchWorkspaceAccessTier
 from rdr_service.resource.generators import WBWorkspaceGenerator, WBResearcherGenerator
 
 
@@ -25,7 +25,8 @@ class WorkbenchGeneratorTest(BaseTestCase):
             name='test',
             age=[1, 3],
             raceEthnicity=[1, 5],
-            resource='test'
+            resource='test',
+            accessTier=WorkbenchWorkspaceAccessTier.UNSET
         )
 
         self.researcher = WorkbenchResearcherHistory(
