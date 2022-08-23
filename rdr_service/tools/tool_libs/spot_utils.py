@@ -449,12 +449,7 @@ class SpotTool(ToolBase):
             sqlalchemy.literal(withdrawal_de.data_element_id).label("data_element_id")
         ).select_from(
             Participant
-        ).join(
-            GenomicSetMember,
-            GenomicSetMember.participantId == Participant.participantId
         ).filter(
-            GenomicSetMember.ignoreFlag == 0,
-            GenomicSetMember.aw4ManifestJobRunID.isnot(None),
             Participant.withdrawalAuthored >= last_update_date,
             # QuestionnaireResponse.participantId.in_() TODO: Add param
         )
@@ -468,14 +463,9 @@ class SpotTool(ToolBase):
             ).select_from(
                 ParticipantSummary
             ).join(
-                GenomicSetMember,
-                GenomicSetMember.participantId == ParticipantSummary.participantId
-            ).join(
                 Participant,
                 Participant.participantId == ParticipantSummary.participantId
             ).filter(
-                GenomicSetMember.ignoreFlag == 0,
-                GenomicSetMember.aw4ManifestJobRunID.isnot(None),
                 ParticipantSummary.consentForStudyEnrollmentAuthored >= last_update_date,
             )
         set_a = set(query_summary.all())
@@ -570,9 +560,6 @@ class SpotTool(ToolBase):
             QuestionnaireResponse,
             QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
         ).join(
-            GenomicSetMember,
-            GenomicSetMember.participantId == QuestionnaireResponse.participantId
-        ).join(
             question_code,
             question_code.codeId == QuestionnaireQuestion.codeId
         ).join(
@@ -582,8 +569,6 @@ class SpotTool(ToolBase):
             Participant,
             Participant.participantId == QuestionnaireResponse.participantId
         ).filter(
-            GenomicSetMember.ignoreFlag == 0,
-            GenomicSetMember.aw4ManifestJobRunID.isnot(None),
             QuestionnaireResponse.authored >= last_update_date,
             # QuestionnaireResponse.participantId.in_() TODO: Add param
             QuestionnaireResponse.classificationType == QuestionnaireResponseClassificationType.COMPLETE,
