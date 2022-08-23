@@ -5,6 +5,9 @@
 # !!! This file is python 3.x compliant !!!
 #
 
+from dataclasses import dataclass
+from typing import List, Optional
+
 import gettext
 import json
 import logging
@@ -788,3 +791,45 @@ def retry_func(func, retries=25, backoff_amount=2.0, **kwargs):
             count -= 1
             backoff += backoff_amount
     return result
+
+
+@dataclass
+class DateRange:
+    """
+    Convenience class for representing a date range.
+    """
+
+    start: datetime
+    end: datetime = None
+
+    def find_first_overlap(self, other: datetime) -> Optional[datetime]:
+        """
+        The other date is considered an unending range.
+        If this range overlaps, return the first date of that overlap. Otherwise return None.
+        """
+        if other is None:
+            # No overlap since the other date is None
+            return None
+
+        if self.end is None:
+            # Both date ranges are unending, the overlap starts at the latest date
+            return max(self.start, other)
+
+        if self.end < other:
+            # If the date range ends before the other, then there isn't an overlap
+            return None
+
+        # The date range ends after the other, the overlap starts at the other date
+        return other
+
+    def find_first_overlap_list(self, date_list: List[datetime]):
+        """
+        The provided dates are considered unending ranges.
+        Return the start of where they all overlap.
+        """
+        if any(other_date is None for other_date in date_list):
+            # If any of the given dates is None, then there can't be a place where they all overlap
+            return None
+
+        # The overlap would start at the latest date given
+        return self.find_first_overlap(max(date_list))
