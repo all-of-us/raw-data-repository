@@ -154,7 +154,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('baselineQuestionnairesFirstCompleteAuthored'), TIME_3.isoformat())
 
-
     def test_remote_pm_imperial_response(self):
         questionnaire_id = self.create_questionnaire("questionnaire3.json")
         questionnaire_id_1 = self.create_questionnaire("all_consents_questionnaire.json")
@@ -303,6 +302,33 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
                          )
         self.assertEqual(response["entry"][0]["resource"]["entry"][1]['resource']['effectiveDateTime'],
                          '2022-06-01T18:26:08')
+
+    def test_remote_pm_can_skip_questions(self):
+        self.data_generator.create_database_code(value='pmi_skip')
+        participant_id = to_client_participant_id(
+            self.data_generator.create_database_participant_summary().participantId
+        )
+        remote_pm_questionnaire_id = self.create_questionnaire("remote_pm_questionnaire.json")
+
+        resource = self._load_response_json("remote_pm_response_metric.json", remote_pm_questionnaire_id,
+                                            participant_id)
+        resource['group']['question'][1]['answer'] = [{
+            "valueCoding": {
+                "code": "PMI_Skip",
+                "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+            }
+        }]
+        resource['group']['question'][2]['answer'] = [{
+            "valueCoding": {
+                "code": "PMI_Skip",
+                "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+            }
+        }]
+        with FakeClock(TIME_2):
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary['selfReportedPhysicalMeasurementsStatus'], 'COMPLETED')
 
     def test_ehr_consent_expired(self):
         participant_id = self.create_participant()
