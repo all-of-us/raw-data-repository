@@ -35,7 +35,7 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_incentives_dao import ParticipantIncentivesDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
-
+from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentDependencies, EnrollmentInfo
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
@@ -72,6 +72,7 @@ from rdr_service.participant_enums import (
 )
 from rdr_service.model.code import Code
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
+from rdr_service.services.system_utils import min_or_none
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
 _ORDER_BY_ENDING = ("lastName", "firstName", "dateOfBirth", "participantId")
@@ -790,44 +791,100 @@ class ParticipantSummaryDao(UpdatableDao):
     def _get_num_baseline_ppi_modules(self):
         return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
 
-    def update_enrollment_status(self, summary):
-        """Updates the enrollment status field on the provided participant summary to
-    the correct value based on the other fields on it. Called after
-    a questionnaire response or physical measurements are submitted."""
-        consent = (
-            summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
-            and summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED
-        ) or (
-            summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
-            and summary.consentForElectronicHealthRecords is None
-            and summary.consentForDvElectronicHealthRecordsSharing == QuestionnaireStatus.SUBMITTED
+    def update_enrollment_status(self, summary: ParticipantSummary, session):
+        """
+        Updates the enrollment status field on the provided participant summary to
+        the correct value based on the other fields on it. Called after
+        a questionnaire response or physical measurements are submitted.
+        """
+
+        earliest_physical_measurements_time = min_or_none([
+            summary.clinicPhysicalMeasurementsFinalizedTime,
+            summary.selfReportedPhysicalMeasurementsAuthored
+        ])
+        earliest_biobank_received_dna_time = min_or_none([
+            summary.sampleStatus1ED10Time,
+            summary.sampleStatus2ED10Time,
+            summary.sampleStatus1ED04Time,
+            summary.sampleStatus1SALTime,
+            summary.sampleStatus1SAL2Time
+        ])
+
+        from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
+        ehr_consent_ranges = QuestionnaireResponseDao.get_interest_in_sharing_ehr_ranges(
+            participant_id=summary.participantId,
+            session=session
         )
 
-        enrollment_status = self.calculate_enrollment_status(
-            consent,
-            summary.numCompletedBaselinePPIModules,
-            summary.clinicPhysicalMeasurementsStatus,
-            summary.selfReportedPhysicalMeasurementsStatus,
-            summary.samplesToIsolateDNA,
-            summary.consentCohort,
-            summary.consentForGenomicsROR,
-            summary.ehrConsentExpireStatus
+        dna_update_time_list = [summary.questionnaireOnDnaProgramAuthored]
+        if summary.consentForStudyEnrollmentAuthored != summary.consentForStudyEnrollmentFirstYesAuthored:
+            dna_update_time_list.append(summary.consentForStudyEnrollmentAuthored)
+        dna_update_time = min_or_none(dna_update_time_list)
+
+        enrollment_info = EnrollmentCalculation.get_enrollment_info(
+            EnrollmentDependencies(
+                consent_cohort=summary.consentCohort,
+                primary_consent_authored_time=summary.consentForStudyEnrollmentAuthored,
+                gror_authored_time=summary.consentForGenomicsRORAuthored,
+                basics_authored_time=summary.questionnaireOnTheBasicsAuthored,
+                overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
+                lifestyle_authored_time=summary.questionnaireOnLifestyleAuthored,
+                earliest_ehr_file_received_time=summary.firstEhrReceiptTime,
+                earliest_physical_measurements_time=earliest_physical_measurements_time,
+                earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
+                ehr_consent_date_range_list=ehr_consent_ranges,
+                dna_update_time=dna_update_time,
+                current_enrollment=EnrollmentInfo(
+                    version_legacy_status=summary.enrollmentStatus,
+                    version_3_1_status=1,
+                    version_3_0_status=1,
+                    version_3_1_datetime=datetime.datetime.now(),
+                    version_3_0_datetime=datetime.datetime.now(),
+                    version_legacy_datetime=datetime.datetime.now()
+                )
+            )
         )
-        summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
-        summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
-        summary.enrollmentStatusCoreMinusPMTime = self.calculate_core_minus_pm_time(consent, summary, enrollment_status)
 
-        # [DA-1623] Participants that have 'Core' status should never lose it
-        # CORE_MINUS_PM status can not downgrade, but can upgrade to FULL_PARTICIPANT
-        if summary.enrollmentStatus not in (EnrollmentStatus.FULL_PARTICIPANT, EnrollmentStatus.CORE_MINUS_PM) \
-            or (summary.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM
-                and enrollment_status == EnrollmentStatus.FULL_PARTICIPANT):
-            # Update last modified date if status changes
-            if summary.enrollmentStatus != enrollment_status:
-                summary.lastModified = clock.CLOCK.now()
+        if (
+            enrollment_info.version_legacy_status == EnrollmentStatus.INTERESTED
+            and summary.enrollmentStatus == EnrollmentStatus.MEMBER
+        ):
+            summary.enrollmentStatusMemberTime = None
 
-            summary.enrollmentStatus = enrollment_status
-            summary.enrollmentStatusMemberTime = self.calculate_member_time(consent, summary)
+        if enrollment_info.version_legacy_status != summary.enrollmentStatus:
+            summary.lastModified = clock.CLOCK.now()
+            summary.enrollmentStatus = enrollment_info.version_legacy_status
+
+            if summary.enrollmentStatus == EnrollmentStatus.MEMBER:
+                summary.enrollmentStatusMemberTime = enrollment_info.version_legacy_datetime
+            elif summary.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM:
+                summary.enrollmentStatusCoreMinusPMTime = enrollment_info.version_legacy_datetime
+            elif summary.enrollmentStatus == EnrollmentStatus.FULL_PARTICIPANT:
+                summary.enrollmentStatusCoreStoredSampleTime = enrollment_info.version_legacy_datetime
+
+        # legacy stuff
+        if summary.enrollmentStatus >= EnrollmentStatus.MEMBER:
+            summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(
+                consent=True,
+                participant_summary=summary
+            )
+
+        # summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
+        # summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
+        # summary.enrollmentStatusCoreMinusPMTime =
+        #   self.calculate_core_minus_pm_time(consent, summary, enrollment_status)
+        #
+        # # [DA-1623] Participants that have 'Core' status should never lose it
+        # # CORE_MINUS_PM status can not downgrade, but can upgrade to FULL_PARTICIPANT
+        # if summary.enrollmentStatus not in (EnrollmentStatus.FULL_PARTICIPANT, EnrollmentStatus.CORE_MINUS_PM) \
+        #     or (summary.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM
+        #         and enrollment_status == EnrollmentStatus.FULL_PARTICIPANT):
+        #     # Update last modified date if status changes
+        #     if summary.enrollmentStatus != enrollment_status:
+        #         summary.lastModified = clock.CLOCK.now()
+        #
+        #     summary.enrollmentStatus = enrollment_status
+        #     summary.enrollmentStatusMemberTime = self.calculate_member_time(consent, summary)
 
     def calculate_enrollment_status(
         self, consent, num_completed_baseline_ppi_modules, physical_measurements_status,

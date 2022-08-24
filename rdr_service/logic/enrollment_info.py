@@ -34,6 +34,7 @@ class EnrollmentDependencies:
 
     consent_cohort: ParticipantCohort
     primary_consent_authored_time: datetime
+    current_enrollment: EnrollmentInfo
 
     dna_update_time: datetime  # Cohorts 1 and 2
 
@@ -117,13 +118,12 @@ class EnrollmentCalculation:
 
     @classmethod
     def _set_legacy_status(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):
-        ehr_consent_time = participant_info.first_ehr_consent_date
-        if ehr_consent_time:
-            # Check that EHR consent hasn't been revoked
-            last_ehr_consent_range = participant_info.ehr_consent_date_range_list[-1]
-            if last_ehr_consent_range.end is None:
+        if participant_info.ever_expressed_interest_in_sharing_ehr:
+            latest_ehr_range = participant_info.ehr_consent_date_range_list[-1]
+            # Check that EHR consent hasn't been revoked`
+            if latest_ehr_range.end is None:
                 enrollment.version_legacy_status = EnrollmentStatus.MEMBER
-                enrollment.version_legacy_datetime = ehr_consent_time
+                enrollment.version_legacy_datetime = latest_ehr_range.start
 
         # Find if CORE_MINUS_PM status is met
         dates_needed_for_upgrade = [
@@ -152,6 +152,15 @@ class EnrollmentCalculation:
         if core_reqs_met_time:
             enrollment.version_legacy_status = EnrollmentStatus.FULL_PARTICIPANT
             enrollment.version_legacy_datetime = core_reqs_met_time
+
+        current_status = participant_info.current_enrollment.version_legacy_status
+        if current_status == EnrollmentStatus.FULL_PARTICIPANT:
+            enrollment.version_legacy_status = EnrollmentStatus.FULL_PARTICIPANT
+        if (
+            current_status == EnrollmentStatus.CORE_MINUS_PM
+            and enrollment.version_legacy_status in (EnrollmentStatus.INTERESTED, EnrollmentStatus.MEMBER)
+        ):
+            enrollment.version_legacy_status = EnrollmentStatus.CORE_MINUS_PM
 
     @classmethod
     def _set_v30_status(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):

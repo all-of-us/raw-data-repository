@@ -116,6 +116,7 @@ from rdr_service.participant_enums import (
     OriginMeasurementUnit,
     PhysicalMeasurementsCollectType
 )
+from rdr_service.services.system_utils import DateRange
 
 _QUESTIONNAIRE_PREFIX = "Questionnaire/"
 _QUESTIONNAIRE_HISTORY_SEGMENT = "/_history/"
@@ -514,6 +515,9 @@ class QuestionnaireResponseDao(BaseDao):
         for answer in current_answers:
             answer.endTime = questionnaire_response.created
             session.merge(answer)
+
+        participant = ParticipantDao().get_for_update(session, questionnaire_response.participantId)
+        ParticipantSummaryDao().update_enrollment_status(participant.participantSummary, session=session)
 
         return questionnaire_response
 
@@ -1049,7 +1053,6 @@ class QuestionnaireResponseDao(BaseDao):
                         .format(*["present" if part else "missing" for part in email_phone])
                 )
 
-            ParticipantSummaryDao().update_enrollment_status(participant_summary)
             participant_summary.lastModified = clock.CLOCK.now()
             session.merge(participant_summary)
 
@@ -1576,6 +1579,83 @@ class QuestionnaireResponseDao(BaseDao):
             )
 
         return dict(participant_response_map)
+
+    @classmethod
+    def get_interest_in_sharing_ehr_ranges(cls, participant_id, session: Session) -> List[DateRange]:
+        # Load all EHR and DV_EHR responses
+        dv_ehr_response_list = cls.get_responses_to_surveys(
+            session=session,
+            survey_codes=[CONSENT_FOR_DVEHR_MODULE],
+            participant_ids=[participant_id]
+        ).get(participant_id)
+        ehr_response_list = cls.get_responses_to_surveys(
+            session=session,
+            survey_codes=[CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE],
+            participant_ids=[participant_id]
+        ).get(participant_id)
+
+        # Find all Yes ranges for DV_EHR
+        ehr_interest_date_ranges = []
+
+        if dv_ehr_response_list:
+            current_date_range = None
+            for dv_response in dv_ehr_response_list.in_authored_order:
+                consent_answer = dv_response.get_single_answer_for(DVEHR_SHARING_QUESTION_CODE)
+                if consent_answer:
+                    if (
+                        consent_answer.value.lower() == DVEHRSHARING_CONSENT_CODE_YES.lower()
+                        and current_date_range is None
+                    ):
+                        current_date_range = DateRange(start=dv_response.authored_datetime)
+                    if (
+                        consent_answer.value.lower() != DVEHRSHARING_CONSENT_CODE_YES.lower()
+                        and current_date_range is not None
+                    ):
+                        current_date_range.end = dv_response.authored_datetime
+                        ehr_interest_date_ranges.append(current_date_range)
+                        current_date_range = None
+            if current_date_range is not None:
+                ehr_interest_date_ranges.append(current_date_range)
+
+            if ehr_response_list:
+                # Modify Yes DV_EHR if there was a No EHR at the same time
+                for ehr_response in ehr_response_list.in_authored_order:
+                    consent_answer = ehr_response.get_single_answer_for(EHR_CONSENT_QUESTION_CODE)
+                    # TODO: check if answer is null, and use a safe version of get_single_answer
+                    if consent_answer and consent_answer.value.lower() != CONSENT_PERMISSION_YES_CODE.lower():
+                        for dv_range in ehr_interest_date_ranges:
+                            overlap_time = dv_range.find_first_overlap(ehr_response.authored_datetime)
+                            if overlap_time:
+                                dv_range.end = overlap_time
+
+        if ehr_response_list:
+            # Add in any Yes EHR ranges
+            current_date_range = None
+            for ehr_response in ehr_response_list.in_authored_order:
+                consent_answer = ehr_response.get_single_answer_for(EHR_CONSENT_QUESTION_CODE)
+                if consent_answer:
+                    if (
+                        consent_answer.value.lower() == CONSENT_PERMISSION_YES_CODE.lower()
+                        and current_date_range is None
+                    ):
+                        current_date_range = DateRange(start=ehr_response.authored_datetime)
+                    if (
+                        consent_answer.value.lower() != CONSENT_PERMISSION_YES_CODE.lower()
+                        and current_date_range is not None
+                    ):
+                        current_date_range.end = ehr_response.authored_datetime
+                        ehr_interest_date_ranges.append(current_date_range)
+                        current_date_range = None
+
+                expire_answer = ehr_response.get_single_answer_for(EHR_CONSENT_EXPIRED_QUESTION_CODE)
+                if expire_answer and expire_answer.value.lower() == EHR_CONSENT_EXPIRED_YES and current_date_range:
+                    current_date_range.end = ehr_response.authored_datetime
+            if current_date_range is not None:
+                ehr_interest_date_ranges.append(current_date_range)
+
+            # TODO: the ranges should be in order, and we'll need to take expirations into account
+
+        return ehr_interest_date_ranges
 
     @classmethod
     def get_latest_answer_for_state_receiving_care(cls, session: Session, participant_id) -> str:

@@ -267,10 +267,21 @@ class TestEnrollmentInfo(BaseTestCase):
         biobank_received_dna_sample_time=None,
         physical_measurements_time=None,
         ehr_file_submitted_time=None,
-        dna_update_time=None
+        dna_update_time=None,
+        current_enrollment: EnrollmentInfo = None
     ):
         if not ehr_consent_ranges:
             ehr_consent_ranges = []
+        if not current_enrollment:
+            default_first_status_time = datetime(2017, 1, 1)
+            current_enrollment = EnrollmentInfo(
+                version_legacy_status=EnrollmentStatus.INTERESTED,
+                version_3_0_status=EnrollmentStatusV30.PARTICIPANT,
+                version_3_1_status=EnrollmentStatusV31.PARTICIPANT,
+                version_legacy_datetime=default_first_status_time,
+                version_3_0_datetime=default_first_status_time,
+                version_3_1_datetime=default_first_status_time
+            )
 
         return EnrollmentDependencies(
             consent_cohort=consent_cohort,
@@ -283,7 +294,8 @@ class TestEnrollmentInfo(BaseTestCase):
             earliest_biobank_received_dna_time=biobank_received_dna_sample_time,
             earliest_physical_measurements_time=physical_measurements_time,
             dna_update_time=dna_update_time,
-            earliest_ehr_file_received_time=ehr_file_submitted_time
+            earliest_ehr_file_received_time=ehr_file_submitted_time,
+            current_enrollment=current_enrollment
         )
 
     @classmethod
