@@ -182,7 +182,7 @@ def _get_json_fields(participant):
 
 def _export_datetime(api_datetime):
     if api_datetime:
-        return datetime.datetime.fromisoformat(api_datetime).strftime("%m/%d/%Y %H:%M:%S")
+        return datetime.datetime.fromisoformat(api_datetime.replace("Z", "")).strftime("%m/%d/%Y %H:%M:%S")
     else:
         return ""
 
