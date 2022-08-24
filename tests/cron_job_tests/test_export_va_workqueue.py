@@ -48,7 +48,7 @@ class ExportVaWorkQueueTest(BaseTestCase, PDRGeneratorTestMixin):
                 ps.dateOfBirth = datetime.date(1979, 3, 11)
                 ps.questionnaireOnCopeDec = 1
                 ps.questionnaireOnCopeDecAuthored = datetime.datetime(2022, 1, 3, 13, 23)
-                ps.digitalHealthSharingStatus = {'fitbit':{'status':'YES', 'authoredTime': '2022-04-03T17:12:34'}}
+                ps.digitalHealthSharingStatus = {'fitbit':{'status':'YES', 'authoredTime': '2022-04-03T17:12:34Z'}}
                 ps.patientStatus = [{'status': 'YES', 'organization': 'VA_BOSTON_VAMC'}]
                 ps.consentCohort = 2
                 ps.cohort2PilotFlag = 1
@@ -74,6 +74,7 @@ class ExportVaWorkQueueTest(BaseTestCase, PDRGeneratorTestMixin):
                     self.assertEqual(item["COPE Dec PPI Survey Complete"], "1")
                     self.assertEqual(item["COPE Dec PPI Survey Completion Date"], "01/03/2022 13:23:00")
                     self.assertEqual(item["Fitbit Consent"], "1")
+                    self.assertEqual(item["Fitbit Consent Date"], "04/03/2022 17:12:34")
                     self.assertEqual(item["Patient Status: Yes"], "VA_BOSTON_VAMC")
                     self.assertEqual(item["Consent Cohort"], "Cohort 2.1")
                     self.assertEqual(item["EHR Expiration Status"], "1")
