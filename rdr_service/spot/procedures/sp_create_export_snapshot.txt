@@ -1,0 +1,8 @@
+# Export from tmp table to datamart snapshot
+CREATE OR REPLACE PROCEDURE rdr_ods.create_export_snapshot(name STRING)
+BEGIN
+EXECUTE IMMEDIATE
+FORMAT(
+  """
+  CREATE TABLE `%s` AS SELECT * FROM `rdr_ods.tmp_export`""", name);
+END
