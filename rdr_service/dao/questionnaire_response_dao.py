@@ -585,7 +585,6 @@ class QuestionnaireResponseDao(BaseDao):
 
         participant_id = questionnaire_response.participantId
         authored = questionnaire_response.authored.replace(tzinfo=None)
-        measurements = []
         pm_dao = PhysicalMeasurementsDao()
         exist_pm = pm_dao.get_exist_remote_pm(participant_id, authored)
         if exist_pm:
@@ -619,49 +618,55 @@ class QuestionnaireResponseDao(BaseDao):
                         else:
                             raise BadRequest(f'unknown measurement unit {answer_code_value} for participant '
                                              f'{participant_id}')
-                    elif question_code.value in ['self_reported_height_ft', 'self_reported_height_in',
-                                                 'self_reported_height_cm'] and answer.valueInteger:
+                    elif (
+                        question_code.value in['self_reported_height_ft', 'self_reported_height_in',
+                                               'self_reported_height_cm']
+                        and answer.valueInteger is not None
+                    ):
                         self_reported_int_value_map[question_code.value] = round(answer.valueInteger, 1)
-                    elif question_code.value in ['self_reported_weight_pounds',
-                                                 'self_reported_weight_kg'] and answer.valueString:
+                    elif (
+                        question_code.value in ['self_reported_weight_pounds', 'self_reported_weight_kg']
+                        and answer.valueString is not None
+                    ):
                         self_reported_int_value_map[question_code.value] = round(float(answer.valueString), 1)
 
         if origin_measurement_unit == OriginMeasurementUnit.IMPERIAL:
-            # validation
-            if self_reported_int_value_map['self_reported_height_ft'] is None or \
-                self_reported_int_value_map['self_reported_height_in'] is None or \
-                self_reported_int_value_map['self_reported_weight_pounds'] is None:
-                raise BadRequest(f'invalid physical measurement value for participant {participant_id}')
             # convert to METRIC
-            height_cm_decimal = round(self_reported_int_value_map['self_reported_height_ft'] * 30.48
-                                      + self_reported_int_value_map['self_reported_height_in'] * 2.54, 1)
-            weight_kg_decimal = round(self_reported_int_value_map['self_reported_weight_pounds'] * 0.453592, 1)
-            self_reported_int_value_map['self_reported_height_cm'] = height_cm_decimal
-            self_reported_int_value_map['self_reported_weight_kg'] = weight_kg_decimal
-        elif origin_measurement_unit == OriginMeasurementUnit.METRIC:
-            # validation
-            if self_reported_int_value_map['self_reported_height_cm'] is None or \
-                self_reported_int_value_map['self_reported_weight_kg'] is None:
-                raise BadRequest(f'invalid physical measurement value for participant {participant_id}')
+            height_ft = self_reported_int_value_map.get('self_reported_height_ft')
+            height_in = self_reported_int_value_map.get('self_reported_height_in')
+            height_cm_decimal = None
+            if not (height_ft is None or height_in is None):
+                height_cm_decimal = round((height_ft * 30.48) + (height_in * 2.54), 1)
 
-        pm_height = Measurement(
-            codeSystem=MEASUREMENT_SYS,
-            codeValue='height',
-            measurementTime=authored,
-            valueDecimal=self_reported_int_value_map['self_reported_height_cm'],
-            valueUnit='cm',
-        )
+            weight_pounds = self_reported_int_value_map.get('self_reported_weight_pounds')
+            weight_kg_decimal = None
+            if weight_pounds is not None:
+                weight_kg_decimal = round(weight_pounds * 0.453592, 1)
+        else:
+            height_cm_decimal = self_reported_int_value_map.get('self_reported_height_cm')
+            weight_kg_decimal = self_reported_int_value_map.get('self_reported_weight_kg')
 
-        pm_weight = Measurement(
-            codeSystem=MEASUREMENT_SYS,
-            codeValue='weight',
-            measurementTime=authored,
-            valueDecimal=self_reported_int_value_map['self_reported_weight_kg'],
-            valueUnit='kg',
-        )
-
-        measurements.append(pm_height)
-        measurements.append(pm_weight)
+        measurements = []
+        if height_cm_decimal is not None:
+            measurements.append(
+                Measurement(
+                    codeSystem=MEASUREMENT_SYS,
+                    codeValue='height',
+                    measurementTime=authored,
+                    valueDecimal=height_cm_decimal,
+                    valueUnit='cm',
+                )
+            )
+        if weight_kg_decimal is not None:
+            measurements.append(
+                Measurement(
+                    codeSystem=MEASUREMENT_SYS,
+                    codeValue='weight',
+                    measurementTime=authored,
+                    valueDecimal=weight_kg_decimal,
+                    valueUnit='kg',
+                )
+            )
 
         pm = PhysicalMeasurements(
             participantId=participant_id,
