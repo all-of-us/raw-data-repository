@@ -1,0 +1,71 @@
+CREATE OR REPLACE PROCEDURE rdr_ods.export_genomic_research_array_procedure(auth_ts TIMESTAMP)
+BEGIN
+DECLARE des STRING;
+EXECUTE IMMEDIATE """
+  select STRING_AGG(CONCAT("'",display_name,"'"))
+  from `rdr_ods.export_schema_data_element`
+  where schema_name = "genomic_research_array"
+    and active_flag is true
+""" INTO des;
+EXECUTE IMMEDIATE
+  format(
+  """
+  CREATE or REPLACE TABLE `rdr_ods.tmp_export`
+  AS
+  select * FROM
+    (
+      select * FROM
+      (
+      select DISTINCT participant_id
+      , sample_id
+      , research_id
+      , es.display_name
+      , LAST_VALUE(value_string)
+      OVER (
+        PARTITION BY sde.data_element_id, sample_id
+        order by created_timestamp
+        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+      ) as latest_data_element_value
+      FROM `rdr_ods.sample_data_element` sde
+      JOIN `rdr_ods.export_schema_data_element` es ON es.data_element_id = sde.data_element_id
+        and es.schema_name = "genomic_research_array"
+      UNION ALL
+      # Survey Data
+      SELECT DISTINCT pde.participant_id
+        , sde.sample_id
+        , pde.research_id
+        , es.display_name
+        , LAST_VALUE(pde.value_string)
+        OVER (
+          PARTITION BY pde.data_element_id, pde.participant_id
+          order by authored_timestamp
+          ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+        ) as latest_data_element_value
+      FROM `rdr_ods.participant_survey_data_element` pde
+        JOIN `rdr_ods.export_schema_data_element` es ON es.data_element_id = pde.data_element_id
+          and es.schema_name = "genomic_research_array"
+        JOIN `rdr_ods.sample_data_element` sde ON sde.participant_id = pde.participant_id
+        WHERE pde.authored_timestamp < '%t'
+      UNION ALL
+      # Consent Data
+      SELECT DISTINCT cde.participant_id
+        , sde.sample_id
+        , cde.research_id
+        , es.display_name
+        , LAST_VALUE(cde.value_string)
+        OVER (
+          PARTITION BY cde.data_element_id, cde.participant_id
+          order by authored_timestamp
+          ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+        ) as latest_data_element_value
+      FROM `rdr_ods.participant_consent_data_element` cde
+        JOIN `rdr_ods.export_schema_data_element` es ON es.data_element_id = cde.data_element_id
+          and es.schema_name = "genomic_research_array"
+        JOIN `rdr_ods.sample_data_element` sde ON sde.participant_id = cde.participant_id
+        WHERE cde.authored_timestamp < '%t'
+      ) sub
+  ) a
+PIVOT(MAX(a.latest_data_element_value) FOR a.display_name IN (%s))
+""", auth_ts, auth_ts, des
+);
+END
