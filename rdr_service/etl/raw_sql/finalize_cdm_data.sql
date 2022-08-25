@@ -597,8 +597,8 @@ FROM rdr.measurement meas
 INNER JOIN rdr.physical_measurements pm
     ON meas.physical_measurements_id = pm.physical_measurements_id
     AND pm.final = 1
-    AND pm.collect_type <> 2
-    AND (pm.status <> 2 OR pm.status IS NULL)
+    AND (pm.collect_type <> 2 OR pm.collect_type IS NULL)
+    AND (pm.status <> 2 OR pm.status IS NULL) -- %SED_PM_CUTOFF_FILTER%
 INNER JOIN cdm.person pe
     ON pe.person_id = pm.participant_id
 ;
