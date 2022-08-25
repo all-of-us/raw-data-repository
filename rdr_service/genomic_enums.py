@@ -249,16 +249,12 @@ class GenomicReportState(messages.Enum):
     GEM_RPT_DELETED = 3
     # PGX Reporting States
     PGX_RPT_READY = 4
-    PGX_RPT_PENDING_DELETE = 5
-    PGX_RPT_DELETED = 6
     # HDR Reporting States
-    HDR_RPT_UNINFORMATIVE = 7
-    HDR_RPT_POSITIVE = 8
-    HDR_RPT_PENDING_DELETE = 9
-    HDR_RPT_DELETED = 10
+    HDR_RPT_UNINFORMATIVE = 5
+    HDR_RPT_POSITIVE = 6
     # CVL Generic Reporting States
-    CVL_RPT_PENDING_DELETE = 11
-    CVL_RPT_DELETED = 12
+    CVL_RPT_PENDING_DELETE = 20
+    CVL_RPT_DELETED = 21
 
 
 class GenomicSubProcessStatus(messages.Enum):
