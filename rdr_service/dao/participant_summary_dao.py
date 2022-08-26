@@ -39,7 +39,6 @@ from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentD
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
-from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import (
     ParticipantGenderAnswers,
     ParticipantRaceAnswers,
@@ -73,6 +72,8 @@ from rdr_service.participant_enums import (
 from rdr_service.model.code import Code
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
 from rdr_service.services.system_utils import min_or_none
+
+from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
 _ORDER_BY_ENDING = ("lastName", "firstName", "dateOfBirth", "participantId")
@@ -794,8 +795,7 @@ class ParticipantSummaryDao(UpdatableDao):
     def update_enrollment_status(self, summary: ParticipantSummary, session):
         """
         Updates the enrollment status field on the provided participant summary to
-        the correct value based on the other fields on it. Called after
-        a questionnaire response or physical measurements are submitted.
+        the correct value.
         """
 
         earliest_physical_measurements_time = min_or_none([
@@ -810,8 +810,7 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.sampleStatus1SAL2Time
         ])
 
-        from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
-        ehr_consent_ranges = QuestionnaireResponseDao.get_interest_in_sharing_ehr_ranges(
+        ehr_consent_ranges = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
             participant_id=summary.participantId,
             session=session
         )

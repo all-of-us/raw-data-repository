@@ -1,4 +1,3 @@
-from collections import defaultdict
 import json
 import logging
 import os
@@ -10,14 +9,13 @@ from hashlib import md5
 import pytz
 from typing import Dict, List, Optional
 
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import aliased, joinedload, Session, subqueryload
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import singletons
 from rdr_service.api_util import dispatch_task
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
-from rdr_service.domain_model import response as response_domain_model
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
     PARTICIPANT_COHORT_3_START_TIME
@@ -99,7 +97,6 @@ from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_F
     QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
-from rdr_service.model.participant import Participant
 from rdr_service.model.measurements import PhysicalMeasurements, Measurement
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
@@ -116,7 +113,6 @@ from rdr_service.participant_enums import (
     OriginMeasurementUnit,
     PhysicalMeasurementsCollectType
 )
-from rdr_service.services.system_utils import DateRange
 
 _QUESTIONNAIRE_PREFIX = "Questionnaire/"
 _QUESTIONNAIRE_HISTORY_SEGMENT = "/_history/"
@@ -1452,210 +1448,6 @@ class QuestionnaireResponseDao(BaseDao):
         )
 
         return [result_row.participantId for result_row in query.all()]
-
-    @classmethod
-    def get_responses_to_surveys(
-        cls,
-        session: Session,
-        survey_codes: List[str] = None,
-        participant_ids: List[int] = None,
-        include_ignored_answers=False,
-        sent_statuses: Optional[List[QuestionnaireResponseStatus]] = None,
-        classification_types: Optional[List[QuestionnaireResponseClassificationType]] = None,
-        created_start_datetime: datetime = None,
-        created_end_datetime: datetime = None
-    ) -> Dict[int, response_domain_model.ParticipantResponses]:
-        """
-        Retrieve questionnaire response data (returned as a domain model) for the specified participant ids
-        and survey codes.
-
-        :param survey_codes: Survey module code strings to get responses for
-        :param session: Session to use for connecting to the database
-        :param participant_ids: Participant ids to get responses for
-        :param include_ignored_answers: Include response answers that have been ignored
-        :param sent_statuses: List of QuestionnaireResponseStatus to use when filtering responses
-            (defaults to QuestionnaireResponseStatus.COMPLETED)
-        :param classification_types: List of QuestionnaireResponseClassificationTypes to filter results by
-        :param created_start_datetime: Optional start date, if set only responses that were sent to
-            the API after this date will be returned
-        :param created_end_datetime: Optional end date, if set only responses that were sent to the
-            API before this date will be returned
-        :return: A dictionary keyed by participant ids with the value being the collection of responses for
-            that participant
-        """
-
-        if sent_statuses is None:
-            sent_statuses = [QuestionnaireResponseStatus.COMPLETED]
-        if classification_types is None:
-            classification_types = [QuestionnaireResponseClassificationType.COMPLETE]
-
-        # Build query for all the questions answered by the given participants for the given survey codes
-        question_code = aliased(Code)
-        survey_code = aliased(Code)
-        query = (
-            session.query(
-                func.lower(question_code.value),
-                QuestionnaireResponse.participantId,
-                QuestionnaireResponse.questionnaireResponseId,
-                QuestionnaireResponse.authored,
-                survey_code.value,
-                QuestionnaireResponseAnswer,
-                QuestionnaireResponse.status
-            )
-            .select_from(QuestionnaireResponseAnswer)
-            .join(QuestionnaireQuestion)
-            .join(QuestionnaireResponse)
-            .join(
-                Participant,
-                Participant.participantId == QuestionnaireResponse.participantId
-            )
-            .join(question_code, question_code.codeId == QuestionnaireQuestion.codeId)
-            .join(
-                QuestionnaireConcept,
-                and_(
-                    QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
-                    QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
-                )
-            ).join(survey_code, survey_code.codeId == QuestionnaireConcept.codeId)
-            .options(joinedload(QuestionnaireResponseAnswer.code))
-            .filter(
-                QuestionnaireResponse.status.in_(sent_statuses),
-                QuestionnaireResponse.classificationType.in_(classification_types),
-                Participant.isTestParticipant != 1
-            )
-        )
-
-        if survey_codes:
-            query = query.filter(
-                survey_code.value.in_(survey_codes)
-            )
-        if participant_ids:
-            query = query.filter(
-                QuestionnaireResponse.participantId.in_(participant_ids)
-            )
-        if not include_ignored_answers:
-            query = query.filter(
-                or_(
-                    QuestionnaireResponseAnswer.ignore.is_(False),
-                    QuestionnaireResponseAnswer.ignore.is_(None)
-                )
-            )
-        if created_start_datetime:
-            query = query.filter(
-                QuestionnaireResponse.created >= created_start_datetime
-            ).with_hint(
-                QuestionnaireResponse,
-                'USE INDEX (idx_created_q_id)'
-            )
-        if created_end_datetime:
-            query = query.filter(
-                QuestionnaireResponse.created <= created_end_datetime
-            ).with_hint(
-                QuestionnaireResponse,
-                'USE INDEX (idx_created_q_id)'
-            )
-
-        # build dict with participant ids as keys and ParticipantResponse objects as values
-        participant_response_map = defaultdict(response_domain_model.ParticipantResponses)
-        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, answer, \
-                status in query.all():
-            # Get the collection of responses for the participant
-            response_collection_for_participant = participant_response_map[participant_id]
-
-            # Get the response that this particular answer is for so we can store the answer
-            response = response_collection_for_participant.responses.get(response_id)
-            if not response:
-                # This is the first time seeing an answer for this response, so create the Response structure for it
-                response = response_domain_model.Response(
-                    id=response_id,
-                    survey_code=survey_code_str,
-                    authored_datetime=authored_datetime,
-                    status=status
-                )
-                response_collection_for_participant.responses[response_id] = response
-
-            response.answered_codes[question_code_str].append(
-                response_domain_model.Answer.from_db_model(answer)
-            )
-
-        return dict(participant_response_map)
-
-    @classmethod
-    def get_interest_in_sharing_ehr_ranges(cls, participant_id, session: Session) -> List[DateRange]:
-        # Load all EHR and DV_EHR responses
-        dv_ehr_response_list = cls.get_responses_to_surveys(
-            session=session,
-            survey_codes=[CONSENT_FOR_DVEHR_MODULE],
-            participant_ids=[participant_id]
-        ).get(participant_id)
-        ehr_response_list = cls.get_responses_to_surveys(
-            session=session,
-            survey_codes=[CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE],
-            participant_ids=[participant_id]
-        ).get(participant_id)
-
-        # Find all Yes ranges for DV_EHR
-        ehr_interest_date_ranges = []
-
-        if dv_ehr_response_list:
-            current_date_range = None
-            for dv_response in dv_ehr_response_list.in_authored_order:
-                consent_answer = dv_response.get_single_answer_for(DVEHR_SHARING_QUESTION_CODE)
-                if consent_answer:
-                    if (
-                        consent_answer.value.lower() == DVEHRSHARING_CONSENT_CODE_YES.lower()
-                        and current_date_range is None
-                    ):
-                        current_date_range = DateRange(start=dv_response.authored_datetime)
-                    if (
-                        consent_answer.value.lower() != DVEHRSHARING_CONSENT_CODE_YES.lower()
-                        and current_date_range is not None
-                    ):
-                        current_date_range.end = dv_response.authored_datetime
-                        ehr_interest_date_ranges.append(current_date_range)
-                        current_date_range = None
-            if current_date_range is not None:
-                ehr_interest_date_ranges.append(current_date_range)
-
-            if ehr_response_list:
-                # Modify Yes DV_EHR if there was a No EHR at the same time
-                for ehr_response in ehr_response_list.in_authored_order:
-                    consent_answer = ehr_response.get_single_answer_for(EHR_CONSENT_QUESTION_CODE)
-                    # TODO: check if answer is null, and use a safe version of get_single_answer
-                    if consent_answer and consent_answer.value.lower() != CONSENT_PERMISSION_YES_CODE.lower():
-                        for dv_range in ehr_interest_date_ranges:
-                            overlap_time = dv_range.find_first_overlap(ehr_response.authored_datetime)
-                            if overlap_time:
-                                dv_range.end = overlap_time
-
-        if ehr_response_list:
-            # Add in any Yes EHR ranges
-            current_date_range = None
-            for ehr_response in ehr_response_list.in_authored_order:
-                consent_answer = ehr_response.get_single_answer_for(EHR_CONSENT_QUESTION_CODE)
-                if consent_answer:
-                    if (
-                        consent_answer.value.lower() == CONSENT_PERMISSION_YES_CODE.lower()
-                        and current_date_range is None
-                    ):
-                        current_date_range = DateRange(start=ehr_response.authored_datetime)
-                    if (
-                        consent_answer.value.lower() != CONSENT_PERMISSION_YES_CODE.lower()
-                        and current_date_range is not None
-                    ):
-                        current_date_range.end = ehr_response.authored_datetime
-                        ehr_interest_date_ranges.append(current_date_range)
-                        current_date_range = None
-
-                expire_answer = ehr_response.get_single_answer_for(EHR_CONSENT_EXPIRED_QUESTION_CODE)
-                if expire_answer and expire_answer.value.lower() == EHR_CONSENT_EXPIRED_YES and current_date_range:
-                    current_date_range.end = ehr_response.authored_datetime
-            if current_date_range is not None:
-                ehr_interest_date_ranges.append(current_date_range)
-
-            # TODO: the ranges should be in order, and we'll need to take expirations into account
-
-        return ehr_interest_date_ranges
 
     @classmethod
     def get_latest_answer_for_state_receiving_care(cls, session: Session, participant_id) -> str:
