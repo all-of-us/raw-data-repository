@@ -144,3 +144,5 @@ class OnsiteVerificationApiTest(BaseTestCase):
         self.assertEqual(participant_summary.onsiteIdVerificationType, OnSiteVerificationType.TWO_OF_PII)
         self.assertEqual(participant_summary.onsiteIdVerificationVisitType,
                          OnSiteVerificationVisitType.PHYSICAL_MEASUREMENTS_ONLY)
+        self.assertEqual(participant_summary.onsiteIdVerificationUser, 'test@mail.com')
+        self.assertEqual(participant_summary.onsiteIdVerificationSite, self.site.siteId)
