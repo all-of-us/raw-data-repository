@@ -64,22 +64,6 @@ class TestEnrollmentInfo(BaseTestCase):
             EnrollmentCalculation.get_enrollment_info(participant_info)
         )
 
-        # The legacy calculation should downgrade when EHR is revoked, the other versions should stay upgraded
-        participant_info.ehr_consent_date_range_list = [
-            DateRange(start=datetime(2019, 8, 3), end=datetime(2019, 8, 3))
-        ]
-        self.assertEnrollmentInfoEqual(
-            EnrollmentInfo(
-                version_legacy_status=EnrollmentStatus.INTERESTED,
-                version_3_0_status=EnrollmentStatusV30.PARTICIPANT_PLUS_EHR,
-                version_3_1_status=EnrollmentStatusV31.PARTICIPANT_PLUS_EHR,
-                version_legacy_datetime=participant_info.primary_consent_authored_time,
-                version_3_0_datetime=participant_info.first_ehr_consent_date,
-                version_3_1_datetime=participant_info.first_ehr_consent_date
-            ),
-            EnrollmentCalculation.get_enrollment_info(participant_info)
-        )
-
     def test_basics_and_gror(self):
         """
         3.0 should upgrade to PARTICIPANT_PMB_ELIGIBLE when TheBasics has been submitted.

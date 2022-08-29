@@ -119,9 +119,8 @@ class EnrollmentCalculation:
     @classmethod
     def _set_legacy_status(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):
         if participant_info.ever_expressed_interest_in_sharing_ehr:
-            latest_ehr_range = participant_info.ehr_consent_date_range_list[-1]
             enrollment.version_legacy_status = EnrollmentStatus.MEMBER
-            enrollment.version_legacy_datetime = latest_ehr_range.start
+            enrollment.version_legacy_datetime = participant_info.first_ehr_consent_date
 
         # Find if CORE_MINUS_PM status is met
         dates_needed_for_upgrade = [

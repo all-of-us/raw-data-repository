@@ -2008,9 +2008,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
-        # ehr consent overwrite dv consent, enrollmentStatusMemberTime should be None
-        self.assertIsNone(ps_1.get("enrollmentStatusMemberTime"))
-        self.assertEqual("INTERESTED", ps_1.get("enrollmentStatus"))
+        # Participants that attain MEMBER status shouldn't lose the enrollment status
+        self.assertEqual(TIME_1.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
+        self.assertEqual("MEMBER", ps_1.get("enrollmentStatus"))
         self.assertEqual("SUBMITTED_NO_CONSENT", ps_1.get("consentForElectronicHealthRecords"))
 
     def test_member_ordered_stored_times_for_multi_biobank_order_with_only_dv_consent(self):

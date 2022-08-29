@@ -72,7 +72,9 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.hpo_id_order_query = Query([], OrderBy("hpoId", True), 2, None)
         self.first_name_order_query = Query([], OrderBy("firstName", True), 2, None)
 
-        response_dao_patch = mock.patch('rdr_service.dao.questionnaire_response_dao.QuestionnaireResponseDao')
+        response_dao_patch = mock.patch(
+            'rdr_service.dao.participant_summary_dao.QuestionnaireResponseRepository'
+        )
         response_dao_mock = response_dao_patch.start()
         self.mock_ehr_interest_ranges = response_dao_mock.get_interest_in_sharing_ehr_ranges
         self.addCleanup(response_dao_patch.stop)
