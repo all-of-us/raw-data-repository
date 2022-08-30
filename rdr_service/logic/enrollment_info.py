@@ -11,19 +11,35 @@ from rdr_service.participant_enums import (
 from rdr_service.services.system_utils import DateRange
 
 
+class EnrollmentDates(dict):
+    ...
+
+
 @dataclass
 class EnrollmentInfo:
     """
     Convenience class for communicating enrollment progress for each version
     """
-    version_legacy_status: EnrollmentStatus
-    version_legacy_datetime: datetime
+    version_legacy_status: EnrollmentStatus = None
+    version_legacy_dates = EnrollmentDates()
 
-    version_3_0_status: EnrollmentStatusV30
-    version_3_0_datetime: datetime
+    version_3_0_status: EnrollmentStatusV30 = None
+    version_3_0_dates = EnrollmentDates()
 
-    version_3_1_status: EnrollmentStatusV31
-    version_3_1_datetime: datetime
+    version_3_1_status: EnrollmentStatusV31 = None
+    version_3_1_dates = EnrollmentDates()
+
+    def upgrade_legacy_status(self, status: EnrollmentStatus, achieved_date: datetime):
+        self.version_legacy_status = status
+        self.version_legacy_dates[status] = achieved_date
+
+    def upgrade_3_0_status(self, status: EnrollmentStatusV30, achieved_date: datetime):
+        self.version_3_0_status = status
+        self.version_3_0_dates[status] = achieved_date
+
+    def upgrade_3_1_status(self, status: EnrollmentStatusV31, achieved_date: datetime):
+        self.version_3_1_status = status
+        self.version_3_1_dates[status] = achieved_date
 
 
 @dataclass
@@ -34,6 +50,7 @@ class EnrollmentDependencies:
 
     consent_cohort: ParticipantCohort
     primary_consent_authored_time: datetime
+    current_enrollment: EnrollmentInfo
 
     dna_update_time: datetime  # Cohorts 1 and 2
 
@@ -98,16 +115,10 @@ class EnrollmentCalculation:
     def get_enrollment_info(cls, participant_info: EnrollmentDependencies) -> EnrollmentInfo:
         # RDR currently only displays enrollment status for participants that have consented to the Primary consent.
         # So if this is called for any participant, it is assumed they have provided Primary consent.
-        enrollment = EnrollmentInfo(
-            version_legacy_status=EnrollmentStatus.INTERESTED,
-            version_legacy_datetime=participant_info.primary_consent_authored_time,
-
-            version_3_0_status=EnrollmentStatusV30.PARTICIPANT,
-            version_3_0_datetime=participant_info.primary_consent_authored_time,
-
-            version_3_1_status=EnrollmentStatusV31.PARTICIPANT,
-            version_3_1_datetime=participant_info.primary_consent_authored_time
-        )
+        enrollment = EnrollmentInfo()
+        enrollment.upgrade_legacy_status(EnrollmentStatus.INTERESTED, participant_info.primary_consent_authored_time)
+        enrollment.upgrade_3_0_status(EnrollmentStatusV30.PARTICIPANT, participant_info.primary_consent_authored_time)
+        enrollment.upgrade_3_1_status(EnrollmentStatusV31.PARTICIPANT, participant_info.primary_consent_authored_time)
 
         cls._set_legacy_status(enrollment, participant_info)
         cls._set_v30_status(enrollment, participant_info)
@@ -117,13 +128,8 @@ class EnrollmentCalculation:
 
     @classmethod
     def _set_legacy_status(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):
-        ehr_consent_time = participant_info.first_ehr_consent_date
-        if ehr_consent_time:
-            # Check that EHR consent hasn't been revoked
-            last_ehr_consent_range = participant_info.ehr_consent_date_range_list[-1]
-            if last_ehr_consent_range.end is None:
-                enrollment.version_legacy_status = EnrollmentStatus.MEMBER
-                enrollment.version_legacy_datetime = ehr_consent_time
+        if participant_info.ever_expressed_interest_in_sharing_ehr:
+            enrollment.upgrade_legacy_status(EnrollmentStatus.MEMBER, participant_info.first_ehr_consent_date)
 
         # Find if CORE_MINUS_PM status is met
         dates_needed_for_upgrade = [
@@ -140,8 +146,7 @@ class EnrollmentCalculation:
             other_required_date_list=dates_needed_for_upgrade
         )
         if core_minus_pm_reqs_met_time:
-            enrollment.version_legacy_status = EnrollmentStatus.CORE_MINUS_PM
-            enrollment.version_legacy_datetime = core_minus_pm_reqs_met_time
+            enrollment.upgrade_legacy_status(EnrollmentStatus.CORE_MINUS_PM, core_minus_pm_reqs_met_time)
 
         # Find if CORE status is met
         dates_needed_for_upgrade.append(participant_info.earliest_physical_measurements_time)
@@ -150,8 +155,7 @@ class EnrollmentCalculation:
             other_required_date_list=dates_needed_for_upgrade
         )
         if core_reqs_met_time:
-            enrollment.version_legacy_status = EnrollmentStatus.FULL_PARTICIPANT
-            enrollment.version_legacy_datetime = core_reqs_met_time
+            enrollment.upgrade_legacy_status(EnrollmentStatus.FULL_PARTICIPANT, core_reqs_met_time)
 
     @classmethod
     def _set_v30_status(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):
@@ -165,17 +169,18 @@ class EnrollmentCalculation:
             return enrollment  # stop here without TheBasics, any more upgrades to the enrollment status require it
 
         # continue upgrading since we have TheBasics
+        # TODO: make sure we have EHR at the time of basics
         enrollment.version_3_0_status = EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE
         enrollment.version_3_0_datetime = max(
             participant_info.first_ehr_consent_date,
             participant_info.basics_authored_time
         )
 
-        if cls._meets_requirements_for_core_minus_pm(participant_info):
+        if cls._meets_requirements_for_core_minus_pm(participant_info):  # TODO: check that EHR is consented
             enrollment.version_3_0_status = EnrollmentStatusV30.CORE_MINUS_PM
             enrollment.version_3_0_datetime = max(cls._get_dates_needed_for_core_minus_pm(participant_info))
 
-        if cls._meets_requirements_for_core(participant_info):
+        if cls._meets_requirements_for_core(participant_info):  # TODO: check that EHR is consented
             enrollment.version_3_0_status = EnrollmentStatusV30.CORE_PARTICIPANT
             enrollment.version_3_0_datetime = max(cls._get_dates_needed_for_core(participant_info))
 
@@ -198,6 +203,7 @@ class EnrollmentCalculation:
                 participant_info.basics_authored_time,
                 participant_info.gror_authored_time
             )
+            # TODO: check that ehr consent is provided at the same time
 
         if cls._meets_requirements_for_core_minus_pm(participant_info):
             enrollment.version_3_1_status = EnrollmentStatusV31.CORE_MINUS_PM
