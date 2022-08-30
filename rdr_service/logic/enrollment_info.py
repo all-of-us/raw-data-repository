@@ -46,7 +46,6 @@ class EnrollmentDependencies:
 
     consent_cohort: ParticipantCohort
     primary_consent_authored_time: datetime
-    current_enrollment: EnrollmentInfo
 
     dna_update_time: datetime  # Cohorts 1 and 2
 
