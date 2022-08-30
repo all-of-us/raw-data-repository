@@ -2013,7 +2013,7 @@ class GenomicOutreachDaoV2(BaseDao):
                 genomic_result_viewed = participant_data.GenomicResultViewed
 
                 result_viewed = 'no'
-                if genomic_result_viewed and genomic_result_viewed.module_type == report_module:
+                if genomic_result_viewed and report_module in genomic_result_viewed.module_type:
                     result_viewed = 'yes'
 
                 genomic_swap_module = _get_sample_swap_module(
@@ -2183,6 +2183,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
+                        GenomicMemberReportState.event_authored_time.isnot(None),
                         GenomicSetMember.ignoreFlag != 1
                     )
                 )
@@ -2192,8 +2193,8 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                 if start_date:
                     result_query = result_query.filter(
-                        GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
-                        GenomicSetMember.genomicWorkflowStateModifiedTime < end_date
+                        GenomicMemberReportState.event_authored_time > start_date,
+                        GenomicMemberReportState.event_authored_time < end_date
                     )
 
                 results = result_query.all()
