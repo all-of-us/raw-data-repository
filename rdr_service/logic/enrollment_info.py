@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
 
@@ -11,23 +11,19 @@ from rdr_service.participant_enums import (
 from rdr_service.services.system_utils import DateRange
 
 
-class EnrollmentDates(dict):
-    ...
-
-
 @dataclass
 class EnrollmentInfo:
     """
     Convenience class for communicating enrollment progress for each version
     """
     version_legacy_status: EnrollmentStatus = None
-    version_legacy_dates = EnrollmentDates()
+    version_legacy_dates: dict = field(default_factory=dict)
 
     version_3_0_status: EnrollmentStatusV30 = None
-    version_3_0_dates = EnrollmentDates()
+    version_3_0_dates: dict = field(default_factory=dict)
 
     version_3_1_status: EnrollmentStatusV31 = None
-    version_3_1_dates = EnrollmentDates()
+    version_3_1_dates: dict = field(default_factory=dict)
 
     def upgrade_legacy_status(self, status: EnrollmentStatus, achieved_date: datetime):
         self.version_legacy_status = status
@@ -161,57 +157,64 @@ class EnrollmentCalculation:
     def _set_v30_status(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):
         if not participant_info.ever_expressed_interest_in_sharing_ehr:
             return  # stop here without ehr interest, any more upgrades to the 3.0 enrollment status require it
-
-        enrollment.version_3_0_status = EnrollmentStatusV30.PARTICIPANT_PLUS_EHR
-        enrollment.version_3_0_datetime = participant_info.first_ehr_consent_date
+        enrollment.upgrade_3_0_status(EnrollmentStatusV30.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date)
 
         if not participant_info.has_completed_the_basics_survey:
             return enrollment  # stop here without TheBasics, any more upgrades to the enrollment status require it
 
         # continue upgrading since we have TheBasics
-        # TODO: make sure we have EHR at the time of basics
-        enrollment.version_3_0_status = EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE
-        enrollment.version_3_0_datetime = max(
-            participant_info.first_ehr_consent_date,
-            participant_info.basics_authored_time
+        matching_date = cls._get_requirements_met_date(
+            participant_info.ehr_consent_date_range_list,
+            [participant_info.basics_authored_time]
         )
+        if matching_date:
+            enrollment.upgrade_3_0_status(EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE, matching_date)
 
-        if cls._meets_requirements_for_core_minus_pm(participant_info):  # TODO: check that EHR is consented
-            enrollment.version_3_0_status = EnrollmentStatusV30.CORE_MINUS_PM
-            enrollment.version_3_0_datetime = max(cls._get_dates_needed_for_core_minus_pm(participant_info))
+        if cls._meets_requirements_for_core_minus_pm(participant_info):
+            enrollment.upgrade_3_0_status(
+                EnrollmentStatusV30.CORE_MINUS_PM,
+                max(cls._get_dates_needed_for_core_minus_pm(participant_info))
+            )
 
-        if cls._meets_requirements_for_core(participant_info):  # TODO: check that EHR is consented
-            enrollment.version_3_0_status = EnrollmentStatusV30.CORE_PARTICIPANT
-            enrollment.version_3_0_datetime = max(cls._get_dates_needed_for_core(participant_info))
+        if cls._meets_requirements_for_core(participant_info):
+            enrollment.upgrade_3_0_status(
+                EnrollmentStatusV30.CORE_PARTICIPANT,
+                max(cls._get_dates_needed_for_core(participant_info))
+            )
 
     @classmethod
     def _set_v31_status(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):
         if not participant_info.ever_expressed_interest_in_sharing_ehr:
             return  # stop here without ehr interest, any more upgrades to the enrollment status require it
 
-        enrollment.version_3_1_status = EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
-        enrollment.version_3_1_datetime = participant_info.first_ehr_consent_date
+        enrollment.upgrade_3_1_status(EnrollmentStatusV31.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date)
 
         if not participant_info.has_completed_the_basics_survey:
             return  # stop here without TheBasics, any more upgrades to the enrollment status require it
 
         # Upgrading 3.1 to PLUS_BASICS requires TheBasics and a GROR response
         if participant_info.has_completed_gror_survey:
-            enrollment.version_3_1_status = EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS
-            enrollment.version_3_1_datetime = max(
-                participant_info.first_ehr_consent_date,
-                participant_info.basics_authored_time,
-                participant_info.gror_authored_time
+            matching_date = cls._get_requirements_met_date(
+                participant_info.ehr_consent_date_range_list,
+                [
+                    participant_info.basics_authored_time,
+                    participant_info.gror_authored_time
+                ]
             )
-            # TODO: check that ehr consent is provided at the same time
+            if matching_date:
+                enrollment.upgrade_3_1_status(EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS, matching_date)
 
         if cls._meets_requirements_for_core_minus_pm(participant_info):
-            enrollment.version_3_1_status = EnrollmentStatusV31.CORE_MINUS_PM
-            enrollment.version_3_1_datetime = max(cls._get_dates_needed_for_core_minus_pm(participant_info))
+            enrollment.upgrade_3_1_status(
+                EnrollmentStatusV31.CORE_MINUS_PM,
+                max(cls._get_dates_needed_for_core_minus_pm(participant_info))
+            )
 
         if cls._meets_requirements_for_core(participant_info):
-            enrollment.version_3_1_status = EnrollmentStatusV31.CORE_PARTICIPANT
-            enrollment.version_3_1_datetime = max(cls._get_dates_needed_for_core(participant_info))
+            enrollment.upgrade_3_1_status(
+                EnrollmentStatusV31.CORE_PARTICIPANT,
+                max(cls._get_dates_needed_for_core(participant_info))
+            )
 
             # Check to see if the participant also meets BASELINE requirements
             if (
@@ -227,11 +230,13 @@ class EnrollmentCalculation:
                 if participant_info.consent_cohort in [ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2]:
                     extra_dates_needed.append(participant_info.dna_update_time)
 
-                enrollment.version_3_1_status = EnrollmentStatusV31.BASELINE_PARTICIPANT
-                enrollment.version_3_1_datetime = max([
-                    *cls._get_dates_needed_for_core(participant_info),
-                    *extra_dates_needed
-                ])
+                enrollment.upgrade_3_1_status(
+                    EnrollmentStatusV31.BASELINE_PARTICIPANT,
+                    max([
+                        *cls._get_dates_needed_for_core(participant_info),
+                        *extra_dates_needed
+                    ])
+                )
 
         return enrollment
 
