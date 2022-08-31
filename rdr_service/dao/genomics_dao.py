@@ -62,6 +62,7 @@ from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
 from rdr_service.genomic.genomic_mappings import informing_loop_event_mappings
 from rdr_service.resource.generators.genomics import genomic_user_event_metrics_batch_update
+from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes
 
 
 class GenomicDaoMixin:
@@ -1207,6 +1208,83 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             if genome_type:
                 members = members.filter(
                     GenomicSetMember.genomeType == genome_type
+                )
+            return members.all()
+
+    def get_array_members_files_available(self, sample_list=None):
+        with self.session() as session:
+            subquery = session.query(
+                GenomicSetMember.id,
+                func.count(GenomicGcDataFile.file_type).label("file_count")
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).outerjoin(
+                GenomicGcDataFile,
+                GenomicGcDataFile.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GC_DATA_FILES_MISSING,
+                GenomicSetMember.genomeType == 'aou_array',
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicGCValidationMetrics.ignoreFlag != 1,
+                GenomicGcDataFile.ignore_flag != 1,
+                GenomicGcDataFile.file_type.in_(
+                    [file_type['file_type'] for file_type in array_file_types_attributes
+                     if file_type['required']])
+            ).group_by(GenomicSetMember.id).subquery()
+
+            members = session.query(
+                GenomicSetMember
+            ).select_from(
+                GenomicSetMember
+            ).join(
+                subquery,
+                subquery.c.id == GenomicSetMember.id,
+            ).filter(
+                subquery.c.file_count == len([1 for file_type in array_file_types_attributes if file_type['required']])
+            )
+
+            if sample_list:
+                members = members.filter(
+                    GenomicSetMember.sampleId.in_(sample_list)
+                )
+            return members.all()
+
+    def get_wgs_members_files_available(self, sample_list=None):
+        with self.session() as session:
+            subquery = session.query(
+                GenomicSetMember.id,
+                func.count(GenomicGcDataFile.file_type).label("file_count")
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).outerjoin(
+                GenomicGcDataFile,
+                GenomicGcDataFile.identifier_value == GenomicSetMember.sampleId
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GC_DATA_FILES_MISSING,
+                GenomicSetMember.genomeType == 'aou_wgs',
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicGCValidationMetrics.ignoreFlag != 1,
+                GenomicGcDataFile.ignore_flag != 1,
+                GenomicGcDataFile.file_type.in_(
+                    [file_type['file_type'] for file_type in wgs_file_types_attributes
+                     if file_type['required']])
+            ).group_by(GenomicSetMember.id).subquery()
+
+            members = session.query(
+                GenomicSetMember
+            ).select_from(
+                GenomicSetMember
+            ).join(
+                subquery,
+                subquery.c.id == GenomicSetMember.id,
+            ).filter(
+                subquery.c.file_count == len([1 for file_type in wgs_file_types_attributes if file_type['required']])
+            )
+            if sample_list:
+                members = members.filter(
+                    GenomicSetMember.sampleId.in_(sample_list)
                 )
             return members.all()
 

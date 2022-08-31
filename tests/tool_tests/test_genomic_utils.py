@@ -6,7 +6,7 @@ from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicGCValidatio
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicContaminationCategory
 from rdr_service.tools.tool_libs.backfill_gvcf_paths import GVcfBackfillTool
 from rdr_service.tools.tool_libs.genomic_utils import GenomicProcessRunner, LoadRawManifest, IngestionClass, \
-    UnblockSamples
+    UnblockSamples, UpdateMissingFiles
 from tests.helpers.tool_test_mixin import ToolTestMixin
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -437,3 +437,107 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         self.assertEqual(sid_member16.blockResults, 0)
         self.assertEqual(sid_member16.blockResearch, 1)
         self.assertEqual(sid_member16.gcManifestWellPosition, None)
+
+    def test_update_missing_files(self):
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        array_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="3112",
+            sampleId="211145",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.GC_DATA_FILES_MISSING
+        )
+
+        wgs_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="3113",
+            sampleId="211146",
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.GC_DATA_FILES_MISSING
+        )
+        self.data_generator.create_database_genomic_gc_validation_metrics(
+            genomicSetMemberId=array_member.id,
+            chipwellbarcode='10001_R01C01',
+            idatRedReceived=0,
+            idatGreenReceived=0,
+            idatRedMd5Received=0,
+            idatGreenMd5Received=0,
+            vcfReceived=0,
+            vcfTbiReceived=0,
+            vcfMd5Received=0
+        )
+        self.data_generator.create_database_genomic_gc_validation_metrics(
+            genomicSetMemberId=wgs_member.id,
+            cramReceived=0,
+            craiReceived=0,
+            cramMd5Received=0,
+            hfVcfReceived=0,
+            hfVcfMd5Received=0,
+            hfVcfTbiReceived=0,
+        )
+        array_files = [
+            f'test_data_folder/10001_R01C01.vcf.gz',
+            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
+            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
+            f'test_data_folder/10001_R01C01_Red.idat',
+            f'test_data_folder/10001_R01C01_Grn.idat',
+            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
+            f'test_data_folder/10001_R01C01_Grn.idat.md5sum',
+        ]
+        wgs_files = [
+            'Wgs_sample_raw_data/test.cram',
+            'Wgs_sample_raw_data/test.cram.crai',
+            'Wgs_sample_raw_data/test.cram.md5sum',
+            'Wgs_sample_raw_data/test.hard-filtered.vcf.gz',
+            'Wgs_sample_raw_data/test.hard-filtered.vcf.gz.md5sum',
+            'Wgs_sample_raw_data/test.hard-filtered.vcf.gz.tbi'
+        ]
+        bucket_name = 'gs://test-bucket'
+        for file_name in array_files:
+            # Set file type
+            file_type = file_name.split('/')[-1].split("_")[-1] if "idat" in file_name.lower() else \
+                '.'.join(file_name.split('.')[1:])
+
+            test_file_dict = {
+                'file_path': f'{bucket_name}/{file_name}',
+                'gc_site_id': 'rdr',
+                'bucket_name': bucket_name,
+                'file_prefix': f'test_data_folder',
+                'file_name': file_name,
+                'file_type': file_type,
+                'identifier_type': 'chipwellbarcode',
+                'identifier_value': "_".join(file_name.split('/')[1].split('_')[0:2]).split('.')[0],
+            }
+            self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        for file_name in wgs_files:
+            test_file_dict = {
+                'file_path': f'{bucket_name}/{file_name}',
+                'gc_site_id': 'rdr',
+                'bucket_name': bucket_name,
+                'file_prefix': f'Wgs_sample_raw_data',
+                'file_name': file_name,
+                'file_type': '.'.join(file_name.split('.')[1:]),
+                'identifier_type': 'sample_id',
+                'identifier_value': '211146',
+            }
+            self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        GenomicUtilsGeneralTest.run_tool(UpdateMissingFiles, tool_args={
+            "command": "update-missing-files",
+            "file_path": None,
+            "dryrun": False
+        })
+
+        metrics_dao = GenomicGCValidationMetricsDao()
+        array_metrics = metrics_dao.get_metrics_by_member_id(array_member.id)
+        self.assertEqual(1, array_metrics.idatRedReceived)
+        self.assertEqual("gs://test-bucket/test_data_folder/10001_R01C01_Red.idat", array_metrics.idatRedPath)
+        wgs_metrics = metrics_dao.get_metrics_by_member_id(wgs_member.id)
+        self.assertEqual(1, wgs_metrics.cramReceived)
+        self.assertEqual('gs://test-bucket/Wgs_sample_raw_data/test.cram', wgs_metrics.cramPath)

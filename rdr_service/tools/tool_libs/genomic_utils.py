@@ -22,7 +22,8 @@ from rdr_service.code_constants import GENOME_TYPE, GC_SITE_IDs, AW1_BUCKETS, AW
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
     GenomicGCValidationMetricsDao, GenomicFileProcessedDao, GenomicManifestFileDao, \
-    GenomicAW1RawDao, GenomicAW2RawDao, GenomicManifestFeedbackDao, GemToGpMigrationDao, GenomicInformingLoopDao
+    GenomicAW1RawDao, GenomicAW2RawDao, GenomicManifestFeedbackDao, GemToGpMigrationDao, GenomicInformingLoopDao, \
+    GenomicGcDataFileDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler, GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
@@ -2344,6 +2345,71 @@ class UnblockSamples(ToolBase):
                 _logger.info(f"Will try to reconcile sample ids: {needs_data_file_reconciliation}")
 
 
+class UpdateMissingFiles(ToolBase):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super().__init__(args, gcp_env)
+        self.member_dao = None
+        self.data_file_dao = None
+        self.metrics_dao = None
+
+    def run(self):
+        self.gcp_env.activate_sql_proxy()
+
+        self.member_dao = GenomicSetMemberDao()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.data_file_dao = GenomicGcDataFileDao()
+
+        samples_list = []
+        updated_count = 0
+
+        if self.args.file_path:
+            if os.path.exists(self.args.file_path):
+                with open(self.args.file_path, encoding='utf-8-sig') as file:
+                    lines = file.readlines()
+                    for line in lines:
+                        samples_list.append(line.strip())
+            else:
+                _logger.error(f"Unable to open {self.args.file_path}")
+                return 1
+
+        members_to_update = self.member_dao.get_array_members_files_available(samples_list)
+        members_to_update.extend(self.member_dao.get_wgs_members_files_available(samples_list))
+        if not self.args.dryrun:
+            for member in members_to_update:
+                updated = self._update_member(member)
+                if updated:
+                    updated_count += 1
+        else:
+            _logger.info(f"Will update {len(members_to_update)} samples")
+        _logger.info(f"Found {len(members_to_update)} members to update. Updated {updated_count}.")
+
+    def _update_member(self, member: GenomicSetMember) -> bool:
+        file_list = {}
+        files = None
+        file_types_attributes = None
+
+        metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
+        if member.genomeType == 'aou_array':
+            file_types_attributes = array_file_types_attributes
+            files = self.data_file_dao.get_with_chipwellbarcode(metrics.chipwellbarcode)
+        elif member.genomeType == 'aou_wgs':
+            file_types_attributes = wgs_file_types_attributes
+            files = self.data_file_dao.get_with_sample_id(member.sampleId)
+        metric_updated = False
+        for file in files:
+            file_list[file.file_type] = file.file_path
+        for file_type in file_types_attributes:
+            if file_type['required'] and file_type['file_type'] in file_list:
+                if getattr(metrics, file_type['file_received_attribute']) == 0:
+                    setattr(metrics, file_type['file_received_attribute'], 1)
+                    setattr(metrics, file_type['file_path_attribute'], file_list[file_type['file_type']])
+                    metric_updated = True
+        if metric_updated:
+            self.metrics_dao.upsert(metrics)
+            return True
+        return False
+
+
 def get_process_for_run(args, gcp_env):
     util = args.util
 
@@ -2410,6 +2476,9 @@ def get_process_for_run(args, gcp_env):
         },
         'unblock-samples': {
             'process': UnblockSamples(args, gcp_env)
+        },
+        'update-missing-files': {
+            'process': UpdateMissingFiles(args, gcp_env)
         }
     }
 
@@ -2724,6 +2793,14 @@ def run():
         default=False,
         required=False,
         action="store_true"
+    )
+
+    update_missing_files = subparser.add_parser('update-missing-files')
+    update_missing_files.add_argument(
+        "--file-path",
+        help="A newline separated list of sample ids.",
+        default=None,
+        required=False
     )
 
     args = parser.parse_args()
