@@ -307,8 +307,7 @@ class TestEnrollmentInfo(BaseTestCase):
             earliest_biobank_received_dna_time=biobank_received_dna_sample_time,
             earliest_physical_measurements_time=physical_measurements_time,
             dna_update_time=dna_update_time,
-            earliest_ehr_file_received_time=ehr_file_submitted_time,
-            current_enrollment=current_enrollment
+            earliest_ehr_file_received_time=ehr_file_submitted_time
         )
 
     @classmethod
