@@ -27,13 +27,17 @@ def upgrade_rdr():
     op.execute(
         """
         UPDATE genomic_member_report_state gmsp
-        INNER JOIN genomic_set_member gsm
+            INNER JOIN genomic_set_member gsm
             On gsm.id = gmsp.genomic_set_member_id
-        INNER JOIN genomic_job_run gjr
+            INNER JOIN genomic_job_run gjr
             On gjr.id = gsm.gem_a2_manifest_job_run_id
-        SET gmsp.event_authored_time = gjr.created
+        SET gmsp.event_authored_time = gjr.created,
+            gmsp.event_type = 'result_ready',
+            gmsp.sample_id = gsm.sample_id,
+            gmsp.modified = NOW()
         Where gsm.gem_a2_manifest_job_run_id is not null
-        And gsm.genome_type = 'aou_array'
+          And gsm.genome_type = 'aou_array'
+          And gmsp.module = 'gem'
         """
     )
     # ### end Alembic commands ###
