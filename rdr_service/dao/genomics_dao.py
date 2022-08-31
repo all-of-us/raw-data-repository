@@ -3591,6 +3591,23 @@ class GenomicQueriesDao(BaseDao):
         # used for array investigation workflow
         genome_type = kwargs.get('genome_type', config.GENOME_TYPE_ARRAY)
         with self.session() as session:
+            subquery = session.query(
+                GenomicSetMember.id,
+                func.count(GenomicGcDataFile.file_type).label("file_count")
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).outerjoin(
+                GenomicGcDataFile,
+                GenomicGcDataFile.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
+            ).filter(
+                GenomicSetMember.genomeType == genome_type,
+                GenomicGcDataFile.ignore_flag != 1,
+                GenomicGcDataFile.file_type.in_(
+                    [file_type['file_type'] for file_type in array_file_types_attributes
+                     if file_type['required']])
+            ).group_by(GenomicSetMember.id).subquery()
+
             return session.query(
                 GenomicGCValidationMetrics.chipwellbarcode,
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
@@ -3632,6 +3649,11 @@ class GenomicQueriesDao(BaseDao):
             ).join(
                 Participant,
                 Participant.participantId == ParticipantSummary.participantId
+            ).join(
+                subquery,
+                and_(subquery.c.id == GenomicSetMember.id, subquery.c.file_count ==
+                     len([1 for file_type in array_file_types_attributes if file_type['required']])
+                     )
             ).outerjoin(
                 GenomicAW3Raw,
                 and_(
@@ -3663,6 +3685,23 @@ class GenomicQueriesDao(BaseDao):
         genome_type = kwargs.get('genome_type', config.GENOME_TYPE_WGS)
         wgs_parent_sample = self.wgs_parent_sample().subquery()
         with self.session() as session:
+            subquery = session.query(
+                GenomicSetMember.id,
+                func.count(GenomicGcDataFile.file_type).label("file_count")
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).outerjoin(
+                GenomicGcDataFile,
+                GenomicGcDataFile.identifier_value == GenomicSetMember.sampleId
+            ).filter(
+                GenomicSetMember.genomeType == genome_type,
+                GenomicGcDataFile.ignore_flag != 1,
+                GenomicGcDataFile.file_type.in_(
+                    [file_type['file_type'] for file_type in wgs_file_types_attributes
+                     if file_type['required']])
+            ).group_by(GenomicSetMember.id).subquery()
+
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                 GenomicSetMember.sampleId,
@@ -3705,6 +3744,13 @@ class GenomicQueriesDao(BaseDao):
             ).join(
                 Participant,
                 Participant.participantId == ParticipantSummary.participantId
+            ).join(
+                subquery,
+                and_(
+                    subquery.c.id == GenomicSetMember.id,
+                    subquery.c.file_count == len([1 for file_type in wgs_file_types_attributes
+                                                  if file_type['required']])
+                )
             ).outerjoin(
                 GenomicAW3Raw,
                 and_(
