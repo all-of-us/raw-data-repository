@@ -89,16 +89,6 @@ cron:
   timezone: America/New_York
   schedule: every monday 05:30
   target: offline
-- description: Genomic Reconciliation Array Data Workflow
-  url: /offline/GenomicArrayReconciliationWorkflow
-  timezone: America/New_York
-  schedule: every day 05:30
-  target: offline
-- description: Genomic Reconciliation WGS Data Workflow
-  url: /offline/GenomicWGSReconciliationWorkflow
-  timezone: America/New_York
-  schedule: every day 05:45
-  target: offline
 - description: Genomic GEM A1 Workflow
   url: /offline/GenomicGemA1Workflow
   timezone: America/New_York
@@ -168,16 +158,6 @@ cron:
   url: /offline/GenomicMissingFilesCleanUp
   timezone: America/New_York
   schedule: every saturday 22:00
-  target: offline
-- description: Genomic Missing Files Resolve
-  url: /offline/GenomicMissingFilesResolve
-  timezone: America/New_York
-  schedule: every 6 hours
-  target: offline
-- description: Reconcile GC Data File to Table
-  url: /offline/ReconcileGCDataFileToTable
-  timezone: America/New_York
-  schedule: every tuesday 02:00
   target: offline
 - description: Reconcile Raw AW2 to Validation Metrics
   url: /offline/ReconcileRawToAw2Ingested
