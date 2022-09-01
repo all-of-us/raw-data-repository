@@ -27,7 +27,7 @@ flask-restful==0.3.9      # via -r requirements.in
 flask==2.0.2              # via -r requirements.in, flask-basicauth, flask-restful, locust
 flask-limiter==1.4
 gevent==20.5.1            # via geventhttpclient, locust
-geventhttpclient==1.4.2   # via locust
+geventhttpclient==2.0.2   # via locust
 google-api-core[grpc]==1.17.0  # via google-api-python-client, google-cloud-bigquery, google-cloud-core, google-cloud-datastore, google-cloud-firestore, google-cloud-logging, google-cloud-tasks
 google-api-python-client==1.8.3  # via -r requirements.in, google-python-cloud-debugger
 google-auth-httplib2==0.0.3  # via google-api-python-client, google-python-cloud-debugger
