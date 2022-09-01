@@ -56,8 +56,8 @@ itsdangerous==2.0.1       # via flask
 jinja2==3.0.2             # via flask, sphinx
 jira==2.0.0               # via -r requirements.in
 lazy-object-proxy==1.4.3  # via astroid
-locust==1.0.2             # via -r requirements.in
-mako==1.1.2               # via alembic
+locust==1.3.2             # via -r requirements.in
+mako==1.2.2               # via alembic
 markupsafe==2.0.1         # via jinja2, mako
 marshmallow-jsonschema==0.10.0  # via -r requirements.in
 marshmallow==3.6.0        # via -r requirements.in, marshmallow-jsonschema
