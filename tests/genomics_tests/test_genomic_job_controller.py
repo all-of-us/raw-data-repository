@@ -943,3 +943,5 @@ class GenomicJobControllerTest(BaseTestCase):
 
         current_job_run = list(filter(lambda x: x.jobId == GenomicJob.GEM_RESULT_REPORTS, current_job_runs))[2]
         self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.NO_RESULTS)
+
+        self.clear_table_after_test('genomic_member_report_state')
