@@ -1387,8 +1387,18 @@ class ParticipantSummary(Base):
 
     onsiteIdVerificationType = Column("onsite_id_verification_type", Enum(OnSiteVerificationType),
                                       default=OnSiteVerificationType.UNSET)
+    """The type of ID verification used for visit
+       :ref:`Enumerated values <OnSiteVerificationType>`"""
     onsiteIdVerificationVisitType = Column("onsite_id_verification_visit_type", Enum(OnSiteVerificationVisitType),
                                default=OnSiteVerificationVisitType.UNSET)
+    """The type of visit on which ID verification occurred
+       :ref:`Enumerated values <OnSiteVerificationVisitType>`"""
+    onsiteIdVerificationUser = Column("onsite_id_verification_user", String(200))
+    """User who recorded ID verification occurrence"""
+    onsiteIdVerificationSite = Column("onsite_id_verification_site_id", Integer, ForeignKey("site.site_id"))
+    """The site where ID verification took place"""
+
+
 
     lastModified = Column("last_modified", UTCDateTime6)
     """UTC timestamp of the last time the participant summary was modified"""
