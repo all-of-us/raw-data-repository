@@ -3107,7 +3107,7 @@ class GenomicGcDataFileDao(BaseDao):
             ).all()
 
 
-class GcDataFileStagingDao(BaseDao):
+class GcDataFileStagingDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GcDataFileStagingDao, self).__init__(
             GcDataFileStaging, order_by_ending=['id'])
