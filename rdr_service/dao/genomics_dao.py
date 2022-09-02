@@ -1579,7 +1579,37 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
             'processingStatus': 'processingstatus',
             'notes': 'notes',
             'siteId': 'siteid',
-            'pipelineId': 'pipelineid'
+            'pipelineId': 'pipelineid',
+            'cramReceived': 'cramReceived',
+            'cramPath': 'cramPath',
+            'craiReceived': 'craiReceived',
+            'craiPath': 'craiPath',
+            'cramMd5Received': 'cramMd5Received',
+            'cramMd5Path': 'cramMd5Path',
+            'hfVcfReceived': 'hfVcfReceived',
+            'hfVcfPath': 'hfVcfPath',
+            'hfVcfMd5Received': 'hfVcfMd5Received',
+            'hfVcfMd5Path': 'hfVcfMd5Path',
+            'hfVcfTbiReceived': 'hfVcfTbiReceived',
+            'hfVcfTbiPath': 'hfVcfTbiPath',
+            'idatRedReceived': 'idatRedReceived',
+            'idatRedPath': 'idatRedPath',
+            'idatGreenReceived': 'idatGreenReceived',
+            'idatGreenPath': 'idatGreenPath',
+            'idatRedMd5Received': 'idatRedMd5Received',
+            'idatRedMd5Path': 'idatRedMd5Path',
+            'idatGreenMd5Received': 'idatGreenMd5Received',
+            'idatGreenMd5Path': 'idatGreenMd5Path',
+            'vcfReceived': 'vcfReceived',
+            'vcfPath': 'vcfPath',
+            'vcfTbiReceived': 'vcfTbiReceived',
+            'vcfTbiPath': 'vcfTbiPath',
+            'vcfMd5Received': 'vcfMd5Received',
+            'vcfMd5Path': 'vcfMd5Path',
+            'gvcfReceived': 'gvcfReceived',
+            'gvcfPath': 'gvcfPath',
+            'gvcfMd5Received': 'gvcfMd5Received',
+            'gvcfMd5Path': 'gvcfMd5Path',
         }
         # The mapping between the columns in the DB and the data to ingest
 
@@ -3699,7 +3729,7 @@ class GenomicQueriesDao(BaseDao):
                 GenomicGcDataFile.ignore_flag != 1,
                 GenomicGcDataFile.file_type.in_(
                     [file_type['file_type'] for file_type in wgs_file_types_attributes
-                     if file_type['required']])
+                     if file_type['required']] + ['hard-filtered.gvcf.gz', 'hard-filtered.gvcf.gz.md5sum'])
             ).group_by(GenomicSetMember.id).subquery()
 
             return session.query(
@@ -3748,8 +3778,9 @@ class GenomicQueriesDao(BaseDao):
                 subquery,
                 and_(
                     subquery.c.id == GenomicSetMember.id,
-                    subquery.c.file_count == len([1 for file_type in wgs_file_types_attributes
-                                                  if file_type['required']])
+                    subquery.c.file_count == len(['1' for file_type in wgs_file_types_attributes
+                                                  if file_type['required']] + ['hard-filtered.gvcf.gz',
+                                                                               'hard-filtered.gvcf.gz.md5sum'])
                 )
             ).outerjoin(
                 GenomicAW3Raw,

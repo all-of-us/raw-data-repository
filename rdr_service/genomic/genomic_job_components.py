@@ -90,6 +90,7 @@ from rdr_service.config import (
     CVL_W3SR_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
+from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes
 from sqlalchemy.orm import aliased
 
 
@@ -670,6 +671,7 @@ class GenomicFileIngester:
             row = self._clean_row_keys(row)
 
         # Beging prep aw2 row
+        row = self._set_metrics_data_file_paths(row)
         row = self.prep_aw2_row_attributes(row, member)
 
         if row == GenomicSubProcessResult.ERROR:
@@ -688,6 +690,7 @@ class GenomicFileIngester:
 
         # Update member in DB
         self.member_dao.update(member)
+        self._update_member_state_after_aw2(member)
 
         # Update AW1 manifest feedback record count
         if existing_metrics_obj is None and not self.controller.bypass_record_count:
@@ -1128,7 +1131,7 @@ class GenomicFileIngester:
         for row in rows:
             # change all key names to lower
             row_copy = self._clean_row_keys(row)
-
+            row_copy = self._set_metrics_data_file_paths(row_copy)
             member = self.member_dao.get_member_from_sample_id(
                 int(row_copy['sampleid']),
             )
@@ -1158,9 +1161,9 @@ class GenomicFileIngester:
                                                                   GenomicContaminationCategory.EXTRACT_BOTH]:
                             # Insert a new member
                             self.insert_member_for_replating(member, row_copy['contamination_category'])
-
                 self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
                 self.update_member_for_aw2(member)
+                self._update_member_state_after_aw2(member)
 
                 # For feedback manifest loop
                 # Get the genomic_manifest_file
@@ -1693,6 +1696,65 @@ class GenomicFileIngester:
                 contamination_category = GenomicContaminationCategory.TERMINAL_NO_EXTRACT
 
         return contamination_category
+
+    def _set_metrics_data_file_paths(self, row: dict):
+        cvl_site_bucket_map = config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP)
+        prefix_map = config.getSettingJson(config.GENOMIC_CVL_SITE_PREFIX_MAP)
+        site_id = self.file_obj.fileName.split('_')[0].lower()
+        if site_id == 'jh':
+            site_id = 'bcm'
+        cvl_bucket = cvl_site_bucket_map[site_id]
+        gc_bucket = config.getSetting(cvl_bucket)
+
+        if row['genometype'] == 'aou_array':
+            for file_def in array_file_types_attributes:
+                if file_def['required']:
+                    if 'idat' in file_def["file_type"]:
+                        file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}' + \
+                                    f'_{file_def["file_type"]}'
+                    else:
+                        file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}.' + \
+                                    f'{file_def["file_type"]}'
+                    row[file_def['file_path_attribute']] = file_path
+                    row[file_def['file_received_attribute']] = 1
+            # Need to set wgs file received flags to 0 to prevent an error when ingesting updated AW2
+            for file_def in wgs_file_types_attributes:
+                if file_def['required']:
+                    row[file_def['file_received_attribute']] = 0
+                elif 'gvcf' in file_def['file_type']:
+                    row[file_def['file_received_attribute']] = 0
+
+        elif row['genometype'] == 'aou_wgs':
+            for file_def in wgs_file_types_attributes:
+                if file_def['required']:
+                    file_path = f'gs://{gc_bucket}/{prefix_map[site_id][file_def["file_type"]]}/{site_id.upper()}_' + \
+                                f'{row["biobankid"]}_{row["sampleid"]}_{row["limsid"]}_1.{file_def["file_type"]}'
+                    row[file_def['file_path_attribute']] = file_path
+                    row[file_def['file_received_attribute']] = 1
+                # gvcf files not required but needed for AW3 generation
+                elif 'gvcf' in file_def['file_type']:
+                    file_path = f'gs://{gc_bucket}/{prefix_map[site_id][file_def["file_type"]]}/{site_id.upper()}_' + \
+                                f'{row["biobankid"]}_{row["sampleid"]}_{row["limsid"]}_1.{file_def["file_type"]}'
+                    row[file_def['file_path_attribute']] = file_path
+                    row[file_def['file_received_attribute']] = 1
+            # Need to set array file received flags to 0 to prevent an error when ingesting updated AW2
+            for file_def in array_file_types_attributes:
+                if file_def['required']:
+                    row[file_def['file_received_attribute']] = 0
+
+        return row
+
+    def _update_member_state_after_aw2(self, member: GenomicSetMember):
+        if member.genomeType == 'aou_array':
+            ready_signal = 'gem-ready'
+        elif member.genomeType == 'aou_wgs':
+            ready_signal = 'cvl-ready'
+        else:
+            # Don't update state for investigation genome types
+            return
+        next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal=ready_signal)
+        if next_state and next_state != member.genomicWorkflowState:
+            self.member_dao.update_member_workflow_state(member, next_state)
 
 
 class GenomicFileValidator:

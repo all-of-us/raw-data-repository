@@ -128,6 +128,7 @@ MAYOLINK_ENDPOINT = "mayolink_endpoint"
 GENOMIC_API_MODES = ('gem', 'rhp', 'pgx', 'hdr')
 GENOMIC_CVL_SITES = ('co', 'uw', 'bcm')
 GENOMIC_CVL_SITE_BUCKET_MAP = 'cvl_site_bucket_map'
+GENOMIC_CVL_SITE_PREFIX_MAP = 'cvl_site_prefix_map'
 CONFIG_BUCKET = "all-of-us-rdr-sequestered-config-test"
 EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT = "ehr_status_bigquery_view_participant"
 EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION = "ehr_status_bigquery_view_organization"

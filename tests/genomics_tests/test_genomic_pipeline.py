@@ -85,12 +85,14 @@ _FAKE_GENOMIC_CENTER_BUCKET_A = 'rdr_fake_genomic_center_a_bucket'
 _FAKE_GENOMIC_CENTER_BUCKET_B = 'rdr_fake_genomic_center_b_bucket'
 _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR = 'fake_genomic_center_bucket-baylor'
 _FAKE_GENOMIC_CENTER_DATA_BUCKET_A = 'rdr_fake_genomic_center_a_data_bucket'
+_FAKE_GENOMIC_CENTER_BUCKET_RDR = 'rdr_fake_bucket'
 _FAKE_GENOTYPING_FOLDER = 'AW1_genotyping_sample_manifests'
 _FAKE_SEQUENCING_FOLDER = 'AW1_wgs_sample_manifests'
 _FAKE_CVL_REPORT_FOLDER = 'fake_cvl_reconciliation_reports'
 _FAKE_CVL_MANIFEST_FOLDER = 'fake_cvl_manifest_folder'
 _FAKE_GEM_BUCKET = 'fake_gem_bucket'
 _FAKE_FAILURE_FOLDER = 'AW1F_genotyping_accessioning_results'
+_FAKE_CVL_SITE_BUCKET_MAP = {"rdr": "rdr_bucket_name"}
 _OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
@@ -182,10 +184,12 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME, [_FAKE_BUCKET_RESULT_FOLDER])
         config.override_setting(config.GENOMIC_CENTER_BUCKET_NAME, [_FAKE_GENOMIC_CENTER_BUCKET_A,
                                                                     _FAKE_GENOMIC_CENTER_BUCKET_B,
-                                                                    _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR])
+                                                                    _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR,
+                                                                    _FAKE_GENOMIC_CENTER_BUCKET_RDR])
         config.override_setting(config.GENOMIC_CENTER_DATA_BUCKET_NAME, [_FAKE_GENOMIC_CENTER_BUCKET_A,
                                                                          _FAKE_GENOMIC_CENTER_BUCKET_B,
-                                                                         _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR])
+                                                                         _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR,
+                                                                         _FAKE_GENOMIC_CENTER_BUCKET_RDR])
         config.override_setting(config.GENOMIC_CVL_BUCKET_NAME, [_FAKE_BUCKET])
 
         config.override_setting(config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME,
@@ -197,6 +201,18 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.GENOMIC_GEM_BUCKET_NAME, [_FAKE_GEM_BUCKET])
         config.override_setting(config.GENOMIC_AW1F_SUBFOLDER, [_FAKE_FAILURE_FOLDER])
         config.override_setting(config.RDR_SLACK_WEBHOOKS, self.slack_webhooks)
+        config.override_setting(config.GENOMIC_CVL_SITE_BUCKET_MAP, _FAKE_CVL_SITE_BUCKET_MAP)
+        config.override_setting('rdr_bucket_name', [_FAKE_BUCKET])
+        config.override_setting(config.GENOMIC_CVL_SITE_PREFIX_MAP, {'rdr': {
+            'cram': 'Wgs_sample_raw_data/CRAMs_CRAIs',
+            'cram.crai': 'Wgs_sample_raw_data/CRAMs_CRAIs',
+            'cram.md5sum': 'Wgs_sample_raw_data/CRAMs_CRAIs',
+            'hard-filtered.vcf.gz': 'Wgs_sample_raw_data/SS_VCF_clinical',
+            'hard-filtered.vcf.gz.md5sum': 'Wgs_sample_raw_data/SS_VCF_clinical',
+            'hard-filtered.vcf.gz.tbi': 'Wgs_sample_raw_data/SS_VCF_clinical',
+            'hard-filtered.gvcf.gz': 'Wgs_sample_raw_data/SS_VCF_research',
+            'hard-filtered.gvcf.gz.md5sum': 'Wgs_sample_raw_data/SS_VCF_research'
+        }})
 
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
@@ -650,7 +666,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test Genomic State updated
         member = self.member_dao.get(1)
-        self.assertEqual(GenomicWorkflowState.AW2, member.genomicWorkflowState)
+        self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
         self.assertEqual('1001', member.sampleId)
         self.assertEqual(1, member.aw2FileProcessedId)
 
@@ -1109,672 +1125,674 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
         self.assertEqual("SUCCESS", self.job_run_dao.get(2).runResultStr)
 
-    def test_gc_metrics_reconciliation_vs_array_data(self):
-
-        # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1, 2, 3],
-                                                genome_center='rdr',
-                                                genomic_workflow_state=GenomicWorkflowState.AW1)
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
-        create_ingestion_test_file('RDR_AoU_GEN_TestDataManifestWithFailure.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
-
-        self._update_test_sample_ids()
-
-        self._create_stored_samples([
-            (1, 1001),
-            (2, 1002),
-            (3, 1003)
-        ])
-
-        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
-
-        # JH sample files
-        array_test_files_jh = (
-            f'test_data_folder/10001_R01C01.vcf.gz',
-            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
-            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
-            f'test_data_folder/10001_R01C01_Red.idat',
-            f'test_data_folder/10001_R01C01_Grn.idat',
-            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
-            f'test_data_folder/10002_R01C02.vcf.gz',
-            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
-            f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
-            f'test_data_folder/10002_R01C02_Red.idat',
-            f'test_data_folder/10002_R01C02_Grn.idat',
-            f'test_data_folder/10002_R01C02_Red.idat.md5sum',
-            f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
-        )
-
-        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
-
-        # create test records in GenomicGcDataFile
-        with clock.FakeClock(test_date):
-            for f in array_test_files_jh:
-                # Set file type
-                if "idat" in f.lower():
-                    file_type = f.split('/')[-1].split("_")[-1]
-                else:
-                    file_type = '.'.join(f.split('.')[1:])
-
-                test_file_dict = {
-                    'file_path': f'{bucket_name}/{f}',
-                    'gc_site_id': 'jh',
-                    'bucket_name': bucket_name,
-                    'file_prefix': f'Genotyping_sample_raw_data',
-                    'file_name': f,
-                    'file_type': file_type,
-                    'identifier_type': 'chipwellbarcode',
-                    'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
-                }
-
-                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
-
-        # change member 2 gc_site_id
-        member = self.member_dao.get(2)
-        member.gcSiteId = 'jh'
-
-        with self.member_dao.session() as s:
-            s.merge(member)
-
-        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 2
-
-        gc_record = self.metrics_dao.get(1)
-
-        # Test the gc_metrics were updated with reconciliation data
-        self.assertEqual(1, gc_record.vcfReceived)
-        self.assertEqual(1, gc_record.vcfTbiReceived)
-        self.assertEqual(1, gc_record.vcfMd5Received)
-        self.assertEqual(1, gc_record.idatRedReceived)
-        self.assertEqual(1, gc_record.idatGreenReceived)
-        self.assertEqual(1, gc_record.idatRedMd5Received)
-        self.assertEqual(0, gc_record.idatGreenMd5Received)
-
-        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[0]}", gc_record.vcfPath)
-        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[1]}", gc_record.vcfTbiPath)
-        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[2]}", gc_record.vcfMd5Path)
-        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[3]}", gc_record.idatRedPath)
-        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[4]}", gc_record.idatGreenPath)
-        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[5]}", gc_record.idatRedMd5Path)
-
-        gc_record = self.metrics_dao.get(2)
-
-        # Test the gc_metrics were updated with reconciliation data
-        self.assertEqual(1, gc_record.vcfReceived)
-        self.assertEqual(1, gc_record.vcfTbiReceived)
-        self.assertEqual(1, gc_record.vcfMd5Received)
-        self.assertEqual(1, gc_record.idatRedReceived)
-        self.assertEqual(1, gc_record.idatGreenReceived)
-        self.assertEqual(1, gc_record.idatRedMd5Received)
-        self.assertEqual(1, gc_record.idatGreenMd5Received)
-
-        # Test member updated with job ID
-        member = self.member_dao.get(1)
-        self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
-        self.assertEqual('GC_DATA_FILES_MISSING', member.genomicWorkflowStateStr)
-
-        # Test member updated with job ID
-        member = self.member_dao.get(2)
-        self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
-        self.assertEqual('GEM_READY', member.genomicWorkflowStateStr)
-
-        missing_file = self.missing_file_dao.get(1)
-        self.assertEqual("rdr", missing_file.gc_site_id)
-        self.assertEqual("Grn.idat.md5sum", missing_file.file_type)
-        self.assertEqual(2, missing_file.run_id)
-        self.assertEqual(1, missing_file.gc_validation_metric_id)
-        self.assertEqual(0, missing_file.resolved)
-
-        processed_file = self.file_processed_dao.get(1)
-        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
-        self.assertTrue(incident.code == 'MISSING_FILES')
-        self.assertTrue(incident.slack_notification == 1)
-        self.assertTrue("Grn.idat.md5sum" in incident.message)
-
-        run_obj = self.job_run_dao.get(2)
-
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
-
-    def test_gc_metrics_reconciliation_vs_array_investigation_data(self):
-
-        # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1, 2, 3],
-                                                genome_center='rdr',
-                                                genomic_workflow_state=GenomicWorkflowState.AW1,
-                                                genome_type='aou_array_investigation',
-                                                block_research=1,
-                                                block_research_reason='Created from AW1 with investigation genome type',
-                                                block_results=1,
-                                                block_results_reason='Created from AW1 with investigation genome type')
-
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
-        create_ingestion_test_file('RDR_AoU_GEN_TestDataManifestWithFailure.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
-
-        self._update_test_sample_ids()
-
-        self._create_stored_samples([
-            (1, 1001),
-            (2, 1002),
-            (3, 1003)
-        ])
-
-        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
-
-        # JH sample files
-        array_test_files_jh = (
-            f'test_data_folder/10001_R01C01.vcf.gz',
-            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
-            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
-            f'test_data_folder/10001_R01C01_Red.idat',
-            f'test_data_folder/10001_R01C01_Grn.idat',
-            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
-            f'test_data_folder/10002_R01C02.vcf.gz',
-            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
-            f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
-            f'test_data_folder/10002_R01C02_Red.idat',
-            f'test_data_folder/10002_R01C02_Grn.idat',
-            f'test_data_folder/10002_R01C02_Red.idat.md5sum',
-            f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
-        )
-
-        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
-
-        # create test records in GenomicGcDataFile
-        with clock.FakeClock(test_date):
-            for f in array_test_files_jh:
-                # Set file type
-                if "idat" in f.lower():
-                    file_type = f.split('/')[-1].split("_")[-1]
-                else:
-                    file_type = '.'.join(f.split('.')[1:])
-
-                test_file_dict = {
-                    'file_path': f'{bucket_name}/{f}',
-                    'gc_site_id': 'jh',
-                    'bucket_name': bucket_name,
-                    'file_prefix': f'Genotyping_sample_raw_data',
-                    'file_name': f,
-                    'file_type': file_type,
-                    'identifier_type': 'chipwellbarcode',
-                    'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
-                }
-
-                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
-
-        # change member 2 gc_site_id
-        member = self.member_dao.get(2)
-        member.gcSiteId = 'jh'
-
-        with self.member_dao.session() as s:
-            s.merge(member)
-
-        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 2
-
-        gc_record = self.metrics_dao.get(1)
-
-        # Test the gc_metrics were updated with reconciliation data
-        self.assertEqual(1, gc_record.vcfReceived)
-        self.assertEqual(1, gc_record.vcfTbiReceived)
-        self.assertEqual(1, gc_record.vcfMd5Received)
-        self.assertEqual(1, gc_record.idatRedReceived)
-        self.assertEqual(1, gc_record.idatGreenReceived)
-        self.assertEqual(1, gc_record.idatRedMd5Received)
-        self.assertEqual(0, gc_record.idatGreenMd5Received)
-
-        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[0]}", gc_record.vcfPath)
-        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[1]}", gc_record.vcfTbiPath)
-        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[2]}", gc_record.vcfMd5Path)
-        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[3]}", gc_record.idatRedPath)
-        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[4]}", gc_record.idatGreenPath)
-        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[5]}", gc_record.idatRedMd5Path)
-
-        gc_record = self.metrics_dao.get(2)
-
-        # Test the gc_metrics were updated with reconciliation data
-        self.assertEqual(1, gc_record.vcfReceived)
-        self.assertEqual(1, gc_record.vcfTbiReceived)
-        self.assertEqual(1, gc_record.vcfMd5Received)
-        self.assertEqual(1, gc_record.idatRedReceived)
-        self.assertEqual(1, gc_record.idatGreenReceived)
-        self.assertEqual(1, gc_record.idatRedMd5Received)
-        self.assertEqual(1, gc_record.idatGreenMd5Received)
-
-        # Test member updated with job ID
-        member = self.member_dao.get(1)
-        self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
-        self.assertEqual('GC_DATA_FILES_MISSING', member.genomicWorkflowStateStr)
-
-        # Test member updated with job ID
-        member = self.member_dao.get(2)
-        self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
-        self.assertEqual('GEM_READY', member.genomicWorkflowStateStr)
-
-        missing_file = self.missing_file_dao.get(1)
-        self.assertEqual("rdr", missing_file.gc_site_id)
-        self.assertEqual("Grn.idat.md5sum", missing_file.file_type)
-        self.assertEqual(2, missing_file.run_id)
-        self.assertEqual(1, missing_file.gc_validation_metric_id)
-        self.assertEqual(0, missing_file.resolved)
-
-        processed_file = self.file_processed_dao.get(1)
-        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
-        self.assertTrue(incident.code == 'MISSING_FILES')
-        self.assertTrue(incident.slack_notification == 1)
-        self.assertTrue("Grn.idat.md5sum" in incident.message)
-
-        run_obj = self.job_run_dao.get(2)
-
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
-
-    def test_reconciliation_array_data_with_pipeline_config(self):
-
-        # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1, 2, 3],
-                                                genome_center='rdr',
-                                                genomic_workflow_state=GenomicWorkflowState.AW1)
-
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
-        create_ingestion_test_file(
-            'RDR_AoU_GEN_TestDataManifest_2.csv',
-            bucket_name,
-            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
-        )
-
-        self._update_test_sample_ids()
-
-        self._create_stored_samples([
-            (1, 1001),
-            (2, 1002),
-            (3, 1003)
-        ])
-
-        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
-
-        # rdr sample files
-        array_test_files_jh = (
-            f'test_data_folder/10001_R01C01.vcf.gz',
-            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
-            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
-            f'test_data_folder/10001_R01C01_Red.idat',
-            f'test_data_folder/10001_R01C01_Grn.idat',
-            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
-            f'test_data_folder/10001_R01C01_Grn.idat.md5sum',
-            f'test_data_folder/10002_R01C02.vcf.gz',
-            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
-            f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
-            f'test_data_folder/10002_R01C02_Red.idat',
-            f'test_data_folder/10002_R01C02_Grn.idat',
-            f'test_data_folder/10002_R01C02_Red.idat.md5sum',
-            f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
-            f'test_data_folder/10003_R01C03.vcf.gz',
-            f'test_data_folder/10003_R01C03.vcf.gz.tbi',
-            f'test_data_folder/10003_R01C03.vcf.gz.md5sum',
-            f'test_data_folder/10003_R01C03_Red.idat',
-            f'test_data_folder/10003_R01C03_Grn.idat',
-            f'test_data_folder/10003_R01C03_Red.idat.md5sum',
-            f'test_data_folder/10003_R01C03_Grn.idat.md5sum',
-        )
-
-        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
-
-        # create test records in GenomicGcDataFile
-        with clock.FakeClock(test_date):
-            for f in array_test_files_jh:
-                # Set file type
-                file_type = f.split('/')[-1].split("_")[-1] if "idat" in f.lower() else '.'.join(f.split('.')[1:])
-
-                test_file_dict = {
-                    'file_path': f'{bucket_name}/{f}',
-                    'gc_site_id': 'rdr',
-                    'bucket_name': bucket_name,
-                    'file_prefix': f'Genotyping_sample_raw_data',
-                    'file_name': f,
-                    'file_type': file_type,
-                    'identifier_type': 'chipwellbarcode',
-                    'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
-                }
-                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
-
-        pipeline_id_config = {
-            "aou_array": ["test_pipeline_id"]
-        }
-
-        config.override_setting(config.GENOMIC_PIPELINE_IDS, pipeline_id_config)
-
-        # all data files for each metric record are present
-        all_metrics = self.metrics_dao.get_all()
-        for metric in all_metrics:
-            if metric.id < len(all_metrics):
-                metric.pipelineId = 'test_pipeline_id'
-                self.metrics_dao.upsert(metric)
-
-        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 2
-
-        all_metrics = self.metrics_dao.get_all()
-
-        # reconcile should only happen for pipelineId == 'test_pipeline_id'
-        for metric in all_metrics:
-            if metric.pipelineId == 'test_pipeline_id':
-                self.assertEqual(1, metric.vcfReceived)
-                self.assertEqual(1, metric.vcfTbiReceived)
-                self.assertEqual(1, metric.vcfMd5Received)
-                self.assertEqual(1, metric.idatRedReceived)
-                self.assertEqual(1, metric.idatGreenReceived)
-                self.assertEqual(1, metric.idatRedMd5Received)
-                self.assertEqual(1, metric.idatGreenMd5Received)
-            else:
-                self.assertEqual(0, metric.vcfReceived)
-                self.assertEqual(0, metric.vcfTbiReceived)
-                self.assertEqual(0, metric.vcfMd5Received)
-                self.assertEqual(0, metric.idatRedReceived)
-                self.assertEqual(0, metric.idatGreenReceived)
-                self.assertEqual(0, metric.idatRedMd5Received)
-                self.assertEqual(0, metric.idatGreenMd5Received)
-
-        run_obj = self.job_run_dao.get(2)
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
-
-        # clear current set metric records
-        with self.metrics_dao.session() as session:
-            session.query(GenomicGCValidationMetrics).delete()
-
-        # clear current config
-        config.override_setting(config.GENOMIC_PIPELINE_IDS, {})
-
-        genomic_pipeline.ingest_genomic_centers_metrics_files()
-
-        all_metrics = self.metrics_dao.get_all()
-        for metric in all_metrics:
-            if metric.id < (len(all_metrics) * 2):
-                metric.pipelineId = 'test_pipeline_id'
-                self.metrics_dao.upsert(metric)
-
-        genomic_pipeline.reconcile_metrics_vs_array_data()
-
-        all_metrics = self.metrics_dao.get_all()
-
-        # reconcile should only happen for all regardless of pipelineId
-        for metric in all_metrics:
-            self.assertEqual(1, metric.vcfReceived)
-            self.assertEqual(1, metric.vcfTbiReceived)
-            self.assertEqual(1, metric.vcfMd5Received)
-            self.assertEqual(1, metric.idatRedReceived)
-            self.assertEqual(1, metric.idatGreenReceived)
-            self.assertEqual(1, metric.idatRedMd5Received)
-            self.assertEqual(1, metric.idatGreenMd5Received)
-
-        run_obj = self.job_run_dao.get(4)
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
-
-    def test_aw2_wgs_reconciliation_vs_wgs_data(self):
-
-        # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(3, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1)
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
-        create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifestWithFailure.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
-
-        self._update_test_sample_ids()
-
-        self._create_stored_samples([
-            (2, 1002),
-            (3, 1003)
-        ])
-
-        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
-
-        # Test the reconciliation process
-        sequencing_test_files = (
-            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
-            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
-            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
-            'test_data_folder/RDR_2_1002_10002_v2.cram',
-            'test_data_folder/RDR_2_1002_10002_v2.cram.md5sum',
-        )
-
-        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
-
-        # create test records in GenomicGcDataFile
-        with clock.FakeClock(test_date):
-            for f in sequencing_test_files:
-                if "cram" in f:
-                    file_prefix = "CRAMs_CRAIs"
-                else:
-                    file_prefix = "SS_VCF_CLINICAL"
-
-                test_file_dict = {
-                    'file_path': f'{bucket_name}/{f}',
-                    'gc_site_id': 'rdr',
-                    'bucket_name': bucket_name,
-                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
-                    'file_name': f,
-                    'file_type': '.'.join(f.split('.')[1:]),
-                    'identifier_type': 'sample_id',
-                    'identifier_value': '1002',
-                }
-
-                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
-
-        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 2
-
-        gc_record = self.metrics_dao.get(1)
-
-        # Test the gc_metrics were updated with reconciliation data
-        self.assertEqual(1, gc_record.hfVcfReceived)
-        self.assertEqual(1, gc_record.hfVcfTbiReceived)
-        self.assertEqual(1, gc_record.hfVcfMd5Received)
-        self.assertEqual(0, gc_record.rawVcfReceived)
-        self.assertEqual(0, gc_record.rawVcfTbiReceived)
-        self.assertEqual(0, gc_record.rawVcfMd5Received)
-        self.assertEqual(1, gc_record.cramReceived)
-        self.assertEqual(1, gc_record.cramMd5Received)
-        self.assertEqual(0, gc_record.craiReceived)
-
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[0]}", gc_record.hfVcfPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.hfVcfTbiPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[2]}", gc_record.hfVcfMd5Path)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[3]}", gc_record.cramPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[4]}", gc_record.cramMd5Path)
-
-        # Test member updated with job ID and state
-        member = self.member_dao.get(2)
-        self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
-        self.assertEqual('GC_DATA_FILES_MISSING', member.genomicWorkflowStateStr)
-
-        missing_file = self.missing_file_dao.get(1)
-        self.assertEqual("rdr", missing_file.gc_site_id)
-        self.assertEqual("cram.crai", missing_file.file_type)
-        self.assertEqual(2, missing_file.run_id)
-        self.assertEqual(1, missing_file.gc_validation_metric_id)
-        self.assertEqual(0, missing_file.resolved)
-
-        processed_file = self.file_processed_dao.get(1)
-        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
-        self.assertTrue(incident.code == 'MISSING_FILES')
-        self.assertTrue(incident.slack_notification == 1)
-        self.assertTrue("cram.crai" in incident.message)
-
-        run_obj = self.job_run_dao.get(2)
-
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
-
-    def test_aw2_wgs_reconciliation_vs_wgs_investigation_data(self):
-
-        # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(3, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1,
-                                                genome_type='aou_wgs_investigation',
-                                                block_research=1,
-                                                block_research_reason='Created from AW1 with investigation genome type',
-                                                block_results=1,
-                                                block_results_reason='Created from AW1 with investigation genome type'
-                                                )
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
-        create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifestWithFailure.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
-
-        self._update_test_sample_ids()
-
-        self._create_stored_samples([
-            (2, 1002),
-            (3, 1003)
-        ])
-
-        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
-
-        # Test the reconciliation process
-        sequencing_test_files = (
-            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
-            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
-            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
-            'test_data_folder/RDR_2_1002_10002_v2.cram',
-            'test_data_folder/RDR_2_1002_10002_v2.cram.md5sum',
-        )
-
-        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
-
-        # create test records in GenomicGcDataFile
-        with clock.FakeClock(test_date):
-            for f in sequencing_test_files:
-                if "cram" in f:
-                    file_prefix = "CRAMs_CRAIs"
-                else:
-                    file_prefix = "SS_VCF_CLINICAL"
-
-                test_file_dict = {
-                    'file_path': f'{bucket_name}/{f}',
-                    'gc_site_id': 'rdr',
-                    'bucket_name': bucket_name,
-                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
-                    'file_name': f,
-                    'file_type': '.'.join(f.split('.')[1:]),
-                    'identifier_type': 'sample_id',
-                    'identifier_value': '1002',
-                }
-
-                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
-
-        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 2
-
-        gc_record = self.metrics_dao.get(1)
-
-        # Test the gc_metrics were updated with reconciliation data
-        self.assertEqual(1, gc_record.hfVcfReceived)
-        self.assertEqual(1, gc_record.hfVcfTbiReceived)
-        self.assertEqual(1, gc_record.hfVcfMd5Received)
-        self.assertEqual(0, gc_record.rawVcfReceived)
-        self.assertEqual(0, gc_record.rawVcfTbiReceived)
-        self.assertEqual(0, gc_record.rawVcfMd5Received)
-        self.assertEqual(1, gc_record.cramReceived)
-        self.assertEqual(1, gc_record.cramMd5Received)
-        self.assertEqual(0, gc_record.craiReceived)
-
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[0]}", gc_record.hfVcfPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.hfVcfTbiPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[2]}", gc_record.hfVcfMd5Path)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[3]}", gc_record.cramPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[4]}", gc_record.cramMd5Path)
-
-        # Test member updated with job ID and state
-        member = self.member_dao.get(2)
-        self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
-        self.assertEqual('GC_DATA_FILES_MISSING', member.genomicWorkflowStateStr)
-
-        missing_file = self.missing_file_dao.get(1)
-        self.assertEqual("rdr", missing_file.gc_site_id)
-        self.assertEqual("cram.crai", missing_file.file_type)
-        self.assertEqual(2, missing_file.run_id)
-        self.assertEqual(1, missing_file.gc_validation_metric_id)
-        self.assertEqual(0, missing_file.resolved)
-
-        processed_file = self.file_processed_dao.get(1)
-        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
-        self.assertTrue(incident.code == 'MISSING_FILES')
-        self.assertTrue(incident.slack_notification == 1)
-        self.assertTrue("cram.crai" in incident.message)
-
-        run_obj = self.job_run_dao.get(2)
-
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
-
-    def test_reconciliation_wgs_data_config_missing_files_incident_creation(self):
-        # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(3, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1)
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
-        create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifestWithFailure.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
-
-        self._update_test_sample_ids()
-
-        self._create_stored_samples([
-            (2, 1002),
-            (3, 1003)
-        ])
-
-        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
-
-        # Test the reconciliation process
-        sequencing_test_files = (
-            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
-            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
-            'test_data_folder/RDR_2_1002_10002_v2.cram',
-            'test_data_folder/RDR_2_1002_10002_v2.cram.md5sum',
-        )
-
-        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
-
-        # create test records in GenomicGcDataFile
-        with clock.FakeClock(test_date):
-            for f in sequencing_test_files:
-                if "cram" in f:
-                    file_prefix = "CRAMs_CRAIs"
-                else:
-                    file_prefix = "SS_VCF_CLINICAL"
-
-                test_file_dict = {
-                    'file_path': f'{bucket_name}/{f}',
-                    'gc_site_id': 'rdr',
-                    'bucket_name': bucket_name,
-                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
-                    'file_name': f,
-                    'file_type': '.'.join(f.split('.')[1:]),
-                    'identifier_type': 'sample_id',
-                    'identifier_value': '1002',
-                }
-
-                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
-
-        missing_file_config = {
-            "aou_wgs": ["hard-filtered.vcf.gz"]
-        }
-        config.override_setting(
-            config.GENOMIC_SKIP_MISSING_FILETYPES,
-            missing_file_config
-        )
-
-        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 2
-
-        # should be 2 missing file records => ('hard-filtered.vcf.gz', 'cram.crai')
-        missing_files = self.missing_file_dao.get_all()
-        self.assertTrue(all(obj.gc_site_id == 'rdr' for obj in missing_files))
-        self.assertTrue(all(obj.file_type in ("hard-filtered.vcf.gz", "cram.crai") for obj in missing_files))
-
-        processed_file = self.file_processed_dao.get(1)
-        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
-
-        # should only be 1 missing file in incident => ('cram.crai')
-        self.assertTrue(incident.code == 'MISSING_FILES')
-        self.assertTrue("cram.crai" in incident.message)
-        self.assertFalse("hard-filtered.vcf.gz" in incident.message)
-
-        run_obj = self.job_run_dao.get(2)
-
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+    # def test_gc_metrics_reconciliation_vs_array_data(self):
+    #
+    #     # Create the fake ingested data
+    #     self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1, 2, 3],
+    #                                             genome_center='rdr',
+    #                                             genomic_workflow_state=GenomicWorkflowState.AW1)
+    #     bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
+    #     create_ingestion_test_file('RDR_AoU_GEN_TestDataManifestWithFailure.csv',
+    #                                      bucket_name,
+    #                                      folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
+    #
+    #     self._update_test_sample_ids()
+    #
+    #     self._create_stored_samples([
+    #         (1, 1001),
+    #         (2, 1002),
+    #         (3, 1003)
+    #     ])
+    #
+    #     genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+    #
+    #     # JH sample files
+    #     array_test_files_jh = (
+    #         f'test_data_folder/10001_R01C01.vcf.gz',
+    #         f'test_data_folder/10001_R01C01.vcf.gz.tbi',
+    #         f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
+    #         f'test_data_folder/10001_R01C01_Red.idat',
+    #         f'test_data_folder/10001_R01C01_Grn.idat',
+    #         f'test_data_folder/10001_R01C01_Red.idat.md5sum',
+    #         f'test_data_folder/10002_R01C02.vcf.gz',
+    #         f'test_data_folder/10002_R01C02.vcf.gz.tbi',
+    #         f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
+    #         f'test_data_folder/10002_R01C02_Red.idat',
+    #         f'test_data_folder/10002_R01C02_Grn.idat',
+    #         f'test_data_folder/10002_R01C02_Red.idat.md5sum',
+    #         f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
+    #     )
+    #
+    #     test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+    #
+    #     # create test records in GenomicGcDataFile
+    #     with clock.FakeClock(test_date):
+    #         for f in array_test_files_jh:
+    #             # Set file type
+    #             if "idat" in f.lower():
+    #                 file_type = f.split('/')[-1].split("_")[-1]
+    #             else:
+    #                 file_type = '.'.join(f.split('.')[1:])
+    #
+    #             test_file_dict = {
+    #                 'file_path': f'{bucket_name}/{f}',
+    #                 'gc_site_id': 'jh',
+    #                 'bucket_name': bucket_name,
+    #                 'file_prefix': f'Genotyping_sample_raw_data',
+    #                 'file_name': f,
+    #                 'file_type': file_type,
+    #                 'identifier_type': 'chipwellbarcode',
+    #                 'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
+    #             }
+    #
+    #             self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+    #
+    #     # change member 2 gc_site_id
+    #     member = self.member_dao.get(2)
+    #     member.gcSiteId = 'jh'
+    #
+    #     with self.member_dao.session() as s:
+    #         s.merge(member)
+    #
+    #     genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 2
+    #
+    #     gc_record = self.metrics_dao.get(1)
+    #
+    #     # Test the gc_metrics were updated with reconciliation data
+    #     self.assertEqual(1, gc_record.vcfReceived)
+    #     self.assertEqual(1, gc_record.vcfTbiReceived)
+    #     self.assertEqual(1, gc_record.vcfMd5Received)
+    #     self.assertEqual(1, gc_record.idatRedReceived)
+    #     self.assertEqual(1, gc_record.idatGreenReceived)
+    #     self.assertEqual(1, gc_record.idatRedMd5Received)
+    #     self.assertEqual(0, gc_record.idatGreenMd5Received)
+    #
+    #     self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[0]}", gc_record.vcfPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[1]}", gc_record.vcfTbiPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[2]}", gc_record.vcfMd5Path)
+    #     self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[3]}", gc_record.idatRedPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[4]}", gc_record.idatGreenPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[5]}", gc_record.idatRedMd5Path)
+    #
+    #     gc_record = self.metrics_dao.get(2)
+    #
+    #     # Test the gc_metrics were updated with reconciliation data
+    #     self.assertEqual(1, gc_record.vcfReceived)
+    #     self.assertEqual(1, gc_record.vcfTbiReceived)
+    #     self.assertEqual(1, gc_record.vcfMd5Received)
+    #     self.assertEqual(1, gc_record.idatRedReceived)
+    #     self.assertEqual(1, gc_record.idatGreenReceived)
+    #     self.assertEqual(1, gc_record.idatRedMd5Received)
+    #     self.assertEqual(1, gc_record.idatGreenMd5Received)
+    #
+    #     # Test member updated with job ID
+    #     member = self.member_dao.get(1)
+    #     self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
+    #     self.assertEqual('GC_DATA_FILES_MISSING', member.genomicWorkflowStateStr)
+    #
+    #     # Test member updated with job ID
+    #     member = self.member_dao.get(2)
+    #     self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
+    #     self.assertEqual('GEM_READY', member.genomicWorkflowStateStr)
+    #
+    #     missing_file = self.missing_file_dao.get(1)
+    #     self.assertEqual("rdr", missing_file.gc_site_id)
+    #     self.assertEqual("Grn.idat.md5sum", missing_file.file_type)
+    #     self.assertEqual(2, missing_file.run_id)
+    #     self.assertEqual(1, missing_file.gc_validation_metric_id)
+    #     self.assertEqual(0, missing_file.resolved)
+    #
+    #     processed_file = self.file_processed_dao.get(1)
+    #     incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+    #     self.assertTrue(incident.code == 'MISSING_FILES')
+    #     self.assertTrue(incident.slack_notification == 1)
+    #     self.assertTrue("Grn.idat.md5sum" in incident.message)
+    #
+    #     run_obj = self.job_run_dao.get(2)
+    #
+    #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+    #
+    # def test_gc_metrics_reconciliation_vs_array_investigation_data(self):
+    #
+    #     # Create the fake ingested data
+    #     self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1, 2, 3],
+    #                                             genome_center='rdr',
+    #                                             genomic_workflow_state=GenomicWorkflowState.AW1,
+    #                                             genome_type='aou_array_investigation',
+    #                                             block_research=1,
+    #                                             block_research_reason='Created from AW1 with investigation genome type',
+    #                                             block_results=1,
+    #                                             block_results_reason='Created from AW1 with investigation genome type')
+    #
+    #     bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
+    #     create_ingestion_test_file('RDR_AoU_GEN_TestDataManifestWithFailure.csv',
+    #                                      bucket_name,
+    #                                      folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
+    #
+    #     self._update_test_sample_ids()
+    #
+    #     self._create_stored_samples([
+    #         (1, 1001),
+    #         (2, 1002),
+    #         (3, 1003)
+    #     ])
+    #
+    #     genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+    #
+    #     # JH sample files
+    #     array_test_files_jh = (
+    #         f'test_data_folder/10001_R01C01.vcf.gz',
+    #         f'test_data_folder/10001_R01C01.vcf.gz.tbi',
+    #         f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
+    #         f'test_data_folder/10001_R01C01_Red.idat',
+    #         f'test_data_folder/10001_R01C01_Grn.idat',
+    #         f'test_data_folder/10001_R01C01_Red.idat.md5sum',
+    #         f'test_data_folder/10002_R01C02.vcf.gz',
+    #         f'test_data_folder/10002_R01C02.vcf.gz.tbi',
+    #         f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
+    #         f'test_data_folder/10002_R01C02_Red.idat',
+    #         f'test_data_folder/10002_R01C02_Grn.idat',
+    #         f'test_data_folder/10002_R01C02_Red.idat.md5sum',
+    #         f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
+    #     )
+    #
+    #     test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+    #
+    #     # create test records in GenomicGcDataFile
+    #     with clock.FakeClock(test_date):
+    #         for f in array_test_files_jh:
+    #             # Set file type
+    #             if "idat" in f.lower():
+    #                 file_type = f.split('/')[-1].split("_")[-1]
+    #             else:
+    #                 file_type = '.'.join(f.split('.')[1:])
+    #
+    #             test_file_dict = {
+    #                 'file_path': f'{bucket_name}/{f}',
+    #                 'gc_site_id': 'jh',
+    #                 'bucket_name': bucket_name,
+    #                 'file_prefix': f'Genotyping_sample_raw_data',
+    #                 'file_name': f,
+    #                 'file_type': file_type,
+    #                 'identifier_type': 'chipwellbarcode',
+    #                 'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
+    #             }
+    #
+    #             self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+    #
+    #     # change member 2 gc_site_id
+    #     member = self.member_dao.get(2)
+    #     member.gcSiteId = 'jh'
+    #
+    #     with self.member_dao.session() as s:
+    #         s.merge(member)
+    #
+    #     genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 2
+    #
+    #     gc_record = self.metrics_dao.get(1)
+    #
+    #     # Test the gc_metrics were updated with reconciliation data
+    #     self.assertEqual(1, gc_record.vcfReceived)
+    #     self.assertEqual(1, gc_record.vcfTbiReceived)
+    #     self.assertEqual(1, gc_record.vcfMd5Received)
+    #     self.assertEqual(1, gc_record.idatRedReceived)
+    #     self.assertEqual(1, gc_record.idatGreenReceived)
+    #     self.assertEqual(1, gc_record.idatRedMd5Received)
+    #     self.assertEqual(0, gc_record.idatGreenMd5Received)
+    #
+    #     self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[0]}", gc_record.vcfPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[1]}", gc_record.vcfTbiPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[2]}", gc_record.vcfMd5Path)
+    #     self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[3]}", gc_record.idatRedPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[4]}", gc_record.idatGreenPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[5]}", gc_record.idatRedMd5Path)
+    #
+    #     gc_record = self.metrics_dao.get(2)
+    #
+    #     # Test the gc_metrics were updated with reconciliation data
+    #     self.assertEqual(1, gc_record.vcfReceived)
+    #     self.assertEqual(1, gc_record.vcfTbiReceived)
+    #     self.assertEqual(1, gc_record.vcfMd5Received)
+    #     self.assertEqual(1, gc_record.idatRedReceived)
+    #     self.assertEqual(1, gc_record.idatGreenReceived)
+    #     self.assertEqual(1, gc_record.idatRedMd5Received)
+    #     self.assertEqual(1, gc_record.idatGreenMd5Received)
+    #
+    #     # Test member updated with job ID
+    #     member = self.member_dao.get(1)
+    #     self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
+    #     self.assertEqual('GC_DATA_FILES_MISSING', member.genomicWorkflowStateStr)
+    #
+    #     # Test member updated with job ID
+    #     member = self.member_dao.get(2)
+    #     self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
+    #     self.assertEqual('GEM_READY', member.genomicWorkflowStateStr)
+    #
+    #     missing_file = self.missing_file_dao.get(1)
+    #     self.assertEqual("rdr", missing_file.gc_site_id)
+    #     self.assertEqual("Grn.idat.md5sum", missing_file.file_type)
+    #     self.assertEqual(2, missing_file.run_id)
+    #     self.assertEqual(1, missing_file.gc_validation_metric_id)
+    #     self.assertEqual(0, missing_file.resolved)
+    #
+    #     processed_file = self.file_processed_dao.get(1)
+    #     incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+    #     self.assertTrue(incident.code == 'MISSING_FILES')
+    #     self.assertTrue(incident.slack_notification == 1)
+    #     self.assertTrue("Grn.idat.md5sum" in incident.message)
+    #
+    #     run_obj = self.job_run_dao.get(2)
+    #
+    #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+    #
+    # DA-2934 reconciliation job has been deactivated
+    # def test_reconciliation_array_data_with_pipeline_config(self):
+    #
+    #     # Create the fake ingested data
+    #     self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1, 2, 3],
+    #                                             genome_center='rdr',
+    #                                             genomic_workflow_state=GenomicWorkflowState.AW1)
+    #
+    #     bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
+    #     create_ingestion_test_file(
+    #         'RDR_AoU_GEN_TestDataManifest_2.csv',
+    #         bucket_name,
+    #         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
+    #     )
+    #
+    #     self._update_test_sample_ids()
+    #
+    #     self._create_stored_samples([
+    #         (1, 1001),
+    #         (2, 1002),
+    #         (3, 1003)
+    #     ])
+    #
+    #     genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+    #
+    #     # rdr sample files
+    #     array_test_files_jh = (
+    #         f'test_data_folder/10001_R01C01.vcf.gz',
+    #         f'test_data_folder/10001_R01C01.vcf.gz.tbi',
+    #         f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
+    #         f'test_data_folder/10001_R01C01_Red.idat',
+    #         f'test_data_folder/10001_R01C01_Grn.idat',
+    #         f'test_data_folder/10001_R01C01_Red.idat.md5sum',
+    #         f'test_data_folder/10001_R01C01_Grn.idat.md5sum',
+    #         f'test_data_folder/10002_R01C02.vcf.gz',
+    #         f'test_data_folder/10002_R01C02.vcf.gz.tbi',
+    #         f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
+    #         f'test_data_folder/10002_R01C02_Red.idat',
+    #         f'test_data_folder/10002_R01C02_Grn.idat',
+    #         f'test_data_folder/10002_R01C02_Red.idat.md5sum',
+    #         f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
+    #         f'test_data_folder/10003_R01C03.vcf.gz',
+    #         f'test_data_folder/10003_R01C03.vcf.gz.tbi',
+    #         f'test_data_folder/10003_R01C03.vcf.gz.md5sum',
+    #         f'test_data_folder/10003_R01C03_Red.idat',
+    #         f'test_data_folder/10003_R01C03_Grn.idat',
+    #         f'test_data_folder/10003_R01C03_Red.idat.md5sum',
+    #         f'test_data_folder/10003_R01C03_Grn.idat.md5sum',
+    #     )
+    #
+    #     test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+    #
+    #     # create test records in GenomicGcDataFile
+    #     with clock.FakeClock(test_date):
+    #         for f in array_test_files_jh:
+    #             # Set file type
+    #             file_type = f.split('/')[-1].split("_")[-1] if "idat" in f.lower() else '.'.join(f.split('.')[1:])
+    #
+    #             test_file_dict = {
+    #                 'file_path': f'{bucket_name}/{f}',
+    #                 'gc_site_id': 'rdr',
+    #                 'bucket_name': bucket_name,
+    #                 'file_prefix': f'Genotyping_sample_raw_data',
+    #                 'file_name': f,
+    #                 'file_type': file_type,
+    #                 'identifier_type': 'chipwellbarcode',
+    #                 'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
+    #             }
+    #             self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+    #
+    #     pipeline_id_config = {
+    #         "aou_array": ["test_pipeline_id"]
+    #     }
+    #
+    #     config.override_setting(config.GENOMIC_PIPELINE_IDS, pipeline_id_config)
+    #
+    #     # all data files for each metric record are present
+    #     all_metrics = self.metrics_dao.get_all()
+    #     for metric in all_metrics:
+    #         if metric.id < len(all_metrics):
+    #             metric.pipelineId = 'test_pipeline_id'
+    #             self.metrics_dao.upsert(metric)
+    #
+    #     genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 2
+    #
+    #     all_metrics = self.metrics_dao.get_all()
+    #
+    #     # reconcile should only happen for pipelineId == 'test_pipeline_id'
+    #     for metric in all_metrics:
+    #         if metric.pipelineId == 'test_pipeline_id':
+    #             self.assertEqual(1, metric.vcfReceived)
+    #             self.assertEqual(1, metric.vcfTbiReceived)
+    #             self.assertEqual(1, metric.vcfMd5Received)
+    #             self.assertEqual(1, metric.idatRedReceived)
+    #             self.assertEqual(1, metric.idatGreenReceived)
+    #             self.assertEqual(1, metric.idatRedMd5Received)
+    #             self.assertEqual(1, metric.idatGreenMd5Received)
+    #         else:
+    #             self.assertEqual(0, metric.vcfReceived)
+    #             self.assertEqual(0, metric.vcfTbiReceived)
+    #             self.assertEqual(0, metric.vcfMd5Received)
+    #             self.assertEqual(0, metric.idatRedReceived)
+    #             self.assertEqual(0, metric.idatGreenReceived)
+    #             self.assertEqual(0, metric.idatRedMd5Received)
+    #             self.assertEqual(0, metric.idatGreenMd5Received)
+    #
+    #     run_obj = self.job_run_dao.get(2)
+    #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+    #
+    #     # clear current set metric records
+    #     with self.metrics_dao.session() as session:
+    #         session.query(GenomicGCValidationMetrics).delete()
+    #
+    #     # clear current config
+    #     config.override_setting(config.GENOMIC_PIPELINE_IDS, {})
+    #
+    #     genomic_pipeline.ingest_genomic_centers_metrics_files()
+    #
+    #     all_metrics = self.metrics_dao.get_all()
+    #     for metric in all_metrics:
+    #         if metric.id < (len(all_metrics) * 2):
+    #             metric.pipelineId = 'test_pipeline_id'
+    #             self.metrics_dao.upsert(metric)
+    #
+    #     genomic_pipeline.reconcile_metrics_vs_array_data()
+    #
+    #     all_metrics = self.metrics_dao.get_all()
+    #
+    #     # reconcile should only happen for all regardless of pipelineId
+    #     for metric in all_metrics:
+    #         self.assertEqual(1, metric.vcfReceived)
+    #         self.assertEqual(1, metric.vcfTbiReceived)
+    #         self.assertEqual(1, metric.vcfMd5Received)
+    #         self.assertEqual(1, metric.idatRedReceived)
+    #         self.assertEqual(1, metric.idatGreenReceived)
+    #         self.assertEqual(1, metric.idatRedMd5Received)
+    #         self.assertEqual(1, metric.idatGreenMd5Received)
+    #
+    #     run_obj = self.job_run_dao.get(4)
+    #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    # DA-2934 These jobs have been disabled
+    # def test_aw2_wgs_reconciliation_vs_wgs_data(self):
+    #
+    #     # Create the fake ingested data
+    #     self._create_fake_datasets_for_gc_tests(3, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1)
+    #     bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+    #     create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifestWithFailure.csv',
+    #                                      bucket_name,
+    #                                      folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
+    #
+    #     self._update_test_sample_ids()
+    #
+    #     self._create_stored_samples([
+    #         (2, 1002),
+    #         (3, 1003)
+    #     ])
+    #
+    #     genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+    #
+    #     # Test the reconciliation process
+    #     sequencing_test_files = (
+    #         'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
+    #         'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+    #         'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+    #         'test_data_folder/RDR_2_1002_10002_v2.cram',
+    #         'test_data_folder/RDR_2_1002_10002_v2.cram.md5sum',
+    #     )
+    #
+    #     test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+    #
+    #     # create test records in GenomicGcDataFile
+    #     with clock.FakeClock(test_date):
+    #         for f in sequencing_test_files:
+    #             if "cram" in f:
+    #                 file_prefix = "CRAMs_CRAIs"
+    #             else:
+    #                 file_prefix = "SS_VCF_CLINICAL"
+    #
+    #             test_file_dict = {
+    #                 'file_path': f'{bucket_name}/{f}',
+    #                 'gc_site_id': 'rdr',
+    #                 'bucket_name': bucket_name,
+    #                 'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+    #                 'file_name': f,
+    #                 'file_type': '.'.join(f.split('.')[1:]),
+    #                 'identifier_type': 'sample_id',
+    #                 'identifier_value': '1002',
+    #             }
+    #
+    #             self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+    #
+    #     genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 2
+    #
+    #     gc_record = self.metrics_dao.get(1)
+    #
+    #     # Test the gc_metrics were updated with reconciliation data
+    #     self.assertEqual(1, gc_record.hfVcfReceived)
+    #     self.assertEqual(1, gc_record.hfVcfTbiReceived)
+    #     self.assertEqual(1, gc_record.hfVcfMd5Received)
+    #     self.assertEqual(0, gc_record.rawVcfReceived)
+    #     self.assertEqual(0, gc_record.rawVcfTbiReceived)
+    #     self.assertEqual(0, gc_record.rawVcfMd5Received)
+    #     self.assertEqual(1, gc_record.cramReceived)
+    #     self.assertEqual(1, gc_record.cramMd5Received)
+    #     self.assertEqual(0, gc_record.craiReceived)
+    #
+    #     self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[0]}", gc_record.hfVcfPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.hfVcfTbiPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[2]}", gc_record.hfVcfMd5Path)
+    #     self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[3]}", gc_record.cramPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[4]}", gc_record.cramMd5Path)
+    #
+    #     # Test member updated with job ID and state
+    #     member = self.member_dao.get(2)
+    #     self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
+    #     self.assertEqual('GC_DATA_FILES_MISSING', member.genomicWorkflowStateStr)
+    #
+    #     missing_file = self.missing_file_dao.get(1)
+    #     self.assertEqual("rdr", missing_file.gc_site_id)
+    #     self.assertEqual("cram.crai", missing_file.file_type)
+    #     self.assertEqual(2, missing_file.run_id)
+    #     self.assertEqual(1, missing_file.gc_validation_metric_id)
+    #     self.assertEqual(0, missing_file.resolved)
+    #
+    #     processed_file = self.file_processed_dao.get(1)
+    #     incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+    #     self.assertTrue(incident.code == 'MISSING_FILES')
+    #     self.assertTrue(incident.slack_notification == 1)
+    #     self.assertTrue("cram.crai" in incident.message)
+    #
+    #     run_obj = self.job_run_dao.get(2)
+    #
+    #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    # def test_aw2_wgs_reconciliation_vs_wgs_investigation_data(self):
+    #
+    #     # Create the fake ingested data
+    #     self._create_fake_datasets_for_gc_tests(3, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1,
+    #                                             genome_type='aou_wgs_investigation',
+    #                                             block_research=1,
+    #                                             block_research_reason='Created from AW1 with investigation genome type',
+    #                                             block_results=1,
+    #                                             block_results_reason='Created from AW1 with investigation genome type'
+    #                                             )
+    #     bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+    #     create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifestWithFailure.csv',
+    #                                      bucket_name,
+    #                                      folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
+    #
+    #     self._update_test_sample_ids()
+    #
+    #     self._create_stored_samples([
+    #         (2, 1002),
+    #         (3, 1003)
+    #     ])
+    #
+    #     genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+    #
+    #     # Test the reconciliation process
+    #     sequencing_test_files = (
+    #         'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
+    #         'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+    #         'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+    #         'test_data_folder/RDR_2_1002_10002_v2.cram',
+    #         'test_data_folder/RDR_2_1002_10002_v2.cram.md5sum',
+    #     )
+    #
+    #     test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+    #
+    #     # create test records in GenomicGcDataFile
+    #     with clock.FakeClock(test_date):
+    #         for f in sequencing_test_files:
+    #             if "cram" in f:
+    #                 file_prefix = "CRAMs_CRAIs"
+    #             else:
+    #                 file_prefix = "SS_VCF_CLINICAL"
+    #
+    #             test_file_dict = {
+    #                 'file_path': f'{bucket_name}/{f}',
+    #                 'gc_site_id': 'rdr',
+    #                 'bucket_name': bucket_name,
+    #                 'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+    #                 'file_name': f,
+    #                 'file_type': '.'.join(f.split('.')[1:]),
+    #                 'identifier_type': 'sample_id',
+    #                 'identifier_value': '1002',
+    #             }
+    #
+    #             self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+    #
+    #     genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 2
+    #
+    #     gc_record = self.metrics_dao.get(1)
+    #
+    #     # Test the gc_metrics were updated with reconciliation data
+    #     self.assertEqual(1, gc_record.hfVcfReceived)
+    #     self.assertEqual(1, gc_record.hfVcfTbiReceived)
+    #     self.assertEqual(1, gc_record.hfVcfMd5Received)
+    #     self.assertEqual(0, gc_record.rawVcfReceived)
+    #     self.assertEqual(0, gc_record.rawVcfTbiReceived)
+    #     self.assertEqual(0, gc_record.rawVcfMd5Received)
+    #     self.assertEqual(1, gc_record.cramReceived)
+    #     self.assertEqual(1, gc_record.cramMd5Received)
+    #     self.assertEqual(0, gc_record.craiReceived)
+    #
+    #     self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[0]}", gc_record.hfVcfPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.hfVcfTbiPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[2]}", gc_record.hfVcfMd5Path)
+    #     self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[3]}", gc_record.cramPath)
+    #     self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[4]}", gc_record.cramMd5Path)
+    #
+    #     # Test member updated with job ID and state
+    #     member = self.member_dao.get(2)
+    #     self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
+    #     self.assertEqual('GC_DATA_FILES_MISSING', member.genomicWorkflowStateStr)
+    #
+    #     missing_file = self.missing_file_dao.get(1)
+    #     self.assertEqual("rdr", missing_file.gc_site_id)
+    #     self.assertEqual("cram.crai", missing_file.file_type)
+    #     self.assertEqual(2, missing_file.run_id)
+    #     self.assertEqual(1, missing_file.gc_validation_metric_id)
+    #     self.assertEqual(0, missing_file.resolved)
+    #
+    #     processed_file = self.file_processed_dao.get(1)
+    #     incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+    #     self.assertTrue(incident.code == 'MISSING_FILES')
+    #     self.assertTrue(incident.slack_notification == 1)
+    #     self.assertTrue("cram.crai" in incident.message)
+    #
+    #     run_obj = self.job_run_dao.get(2)
+    #
+    #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    # def test_reconciliation_wgs_data_config_missing_files_incident_creation(self):
+    #     # Create the fake ingested data
+    #     self._create_fake_datasets_for_gc_tests(3, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1)
+    #     bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+    #     create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifestWithFailure.csv',
+    #                                      bucket_name,
+    #                                      folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
+    #
+    #     self._update_test_sample_ids()
+    #
+    #     self._create_stored_samples([
+    #         (2, 1002),
+    #         (3, 1003)
+    #     ])
+    #
+    #     genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+    #
+    #     # Test the reconciliation process
+    #     sequencing_test_files = (
+    #         'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+    #         'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+    #         'test_data_folder/RDR_2_1002_10002_v2.cram',
+    #         'test_data_folder/RDR_2_1002_10002_v2.cram.md5sum',
+    #     )
+    #
+    #     test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+    #
+    #     # create test records in GenomicGcDataFile
+    #     with clock.FakeClock(test_date):
+    #         for f in sequencing_test_files:
+    #             if "cram" in f:
+    #                 file_prefix = "CRAMs_CRAIs"
+    #             else:
+    #                 file_prefix = "SS_VCF_CLINICAL"
+    #
+    #             test_file_dict = {
+    #                 'file_path': f'{bucket_name}/{f}',
+    #                 'gc_site_id': 'rdr',
+    #                 'bucket_name': bucket_name,
+    #                 'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+    #                 'file_name': f,
+    #                 'file_type': '.'.join(f.split('.')[1:]),
+    #                 'identifier_type': 'sample_id',
+    #                 'identifier_value': '1002',
+    #             }
+    #
+    #             self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+    #
+    #     missing_file_config = {
+    #         "aou_wgs": ["hard-filtered.vcf.gz"]
+    #     }
+    #     config.override_setting(
+    #         config.GENOMIC_SKIP_MISSING_FILETYPES,
+    #         missing_file_config
+    #     )
+    #
+    #     genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 2
+    #
+    #     # should be 2 missing file records => ('hard-filtered.vcf.gz', 'cram.crai')
+    #     missing_files = self.missing_file_dao.get_all()
+    #     self.assertTrue(all(obj.gc_site_id == 'rdr' for obj in missing_files))
+    #     self.assertTrue(all(obj.file_type in ("hard-filtered.vcf.gz", "cram.crai") for obj in missing_files))
+    #
+    #     processed_file = self.file_processed_dao.get(1)
+    #     incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+    #
+    #     # should only be 1 missing file in incident => ('cram.crai')
+    #     self.assertTrue(incident.code == 'MISSING_FILES')
+    #     self.assertTrue("cram.crai" in incident.message)
+    #     self.assertFalse("hard-filtered.vcf.gz" in incident.message)
+    #
+    #     run_obj = self.job_run_dao.get(2)
+    #
+    #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_new_participant_workflow(self):
         # Test for Cohort 3 workflow
@@ -3015,13 +3033,11 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
-        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
-
         # finally run the manifest workflow
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         a1_time = datetime.datetime(2020, 4, 1, 0, 0, 0, 0)
         with clock.FakeClock(a1_time):
-            genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 4
+            genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 3
         a1f = a1_time.strftime("%Y-%m-%d-%H-%M-%S")
         # Test Genomic Set Member updated with GEM Array Manifest job run
         with self.member_dao.session() as member_session:
@@ -3077,11 +3093,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Array
         file_record = self.file_processed_dao.get(2)  # remember, GC Metrics is #1
-        self.assertEqual(4, file_record.runId)
+        self.assertEqual(3, file_record.runId)
         self.assertEqual(f'{sub_folder}/AoU_GEM_A1_manifest_{a1f}.csv', file_record.fileName)
 
         # Test the job result
-        run_obj = self.job_run_dao.get(4)
+        run_obj = self.job_run_dao.get(3)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
         # Test Withdrawn and then Reconsented
@@ -3444,8 +3460,6 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
-        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
-
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
@@ -3654,8 +3668,6 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
-        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
-
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
@@ -3757,8 +3769,6 @@ class GenomicPipelineTest(BaseTestCase):
                 }
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
-
-        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
 
         config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [3])
 
@@ -3900,8 +3910,6 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
-        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
-
         incident_name = GenomicIncidentCode.MANIFEST_GENERATE_DATA_VALIDATION_FAILED.name
         should_be_incident_count = 0
 
@@ -3920,10 +3928,10 @@ class GenomicPipelineTest(BaseTestCase):
                 self.member_dao.update(member)
 
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_array_manifest_workflow()  # run_id = 4
+            genomic_pipeline.aw3_array_manifest_workflow()  # run_id = 3
 
         should_be_incident_count += 1
-        run_obj = self.job_run_dao.get(4)
+        run_obj = self.job_run_dao.get(3)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
@@ -3959,7 +3967,7 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_pipeline.aw3_array_manifest_workflow()
 
         should_be_incident_count += 1
-        run_obj = self.job_run_dao.get(5)
+        run_obj = self.job_run_dao.get(4)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
@@ -3981,7 +3989,7 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_pipeline.aw3_array_manifest_workflow()
 
         should_be_incident_count += 1
-        run_obj = self.job_run_dao.get(6)
+        run_obj = self.job_run_dao.get(5)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
@@ -4002,7 +4010,7 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_pipeline.aw3_array_manifest_workflow()
 
         should_be_incident_count += 1
-        run_obj = self.job_run_dao.get(7)
+        run_obj = self.job_run_dao.get(6)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
@@ -4099,13 +4107,11 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
-        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
-
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 4
+            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 3
 
         manifest_records = self.manifest_file_dao.get_all()
         self.assertEqual(len(manifest_records), 1)
@@ -4315,13 +4321,11 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
-        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
-
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 4
+            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 3
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -4431,7 +4435,6 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
-        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
 
         incident_name = GenomicIncidentCode.MANIFEST_GENERATE_DATA_VALIDATION_FAILED.name
         should_be_incident_count = 0
@@ -4453,14 +4456,14 @@ class GenomicPipelineTest(BaseTestCase):
 
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 4
+            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 3
 
         # clear aw3 raw records so query finds source data
         with self.member_dao.session() as session:
             session.query(GenomicAW3Raw).delete()
 
         # still is success with same sample_ids becuase of distinct on query
-        run_obj = self.job_run_dao.get(4)
+        run_obj = self.job_run_dao.get(3)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
         member = self.member_dao.get(last_id)
@@ -4486,7 +4489,7 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_pipeline.aw3_wgs_manifest_workflow()
 
         should_be_incident_count += 1
-        run_obj = self.job_run_dao.get(6)
+        run_obj = self.job_run_dao.get(5)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
@@ -4639,14 +4642,12 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
-        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
-
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
         config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [2])
 
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 4
+            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 3
 
         manifest_records = self.manifest_file_dao.get_all()
         self.assertEqual(len(manifest_records), 3)
@@ -6299,62 +6300,63 @@ class GenomicPipelineTest(BaseTestCase):
             else:
                 self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
 
-    def test_reconcile_gc_data_file_to_table(self):
-        # Create files in bucket
-        array_prefix = "Genotyping_sample_raw_data"
-
-        array_test_files_jh = (
-            f'{array_prefix}/10001_R01C01.vcf.gz',
-            f'{array_prefix}/10001_R01C01.vcf.gz.tbi',
-            f'{array_prefix}/10001_R01C01.vcf.gz.md5sum',
-            f'{array_prefix}/10001_R01C01_Red.idat',
-            f'{array_prefix}/10001_R01C01_Grn.idat',
-            f'{array_prefix}/10001_R01C01_Red.idat.md5sum',
-            f'{array_prefix}/10002_R01C02.vcf.gz',
-            f'{array_prefix}/10002_R01C02.vcf.gz.tbi',
-            f'{array_prefix}/10002_R01C02.vcf.gz.md5sum',
-            f'{array_prefix}/10002_R01C02_Red.idat',
-            f'{array_prefix}/10002_R01C02_Grn.idat',
-            f'{array_prefix}/10002_R01C02_Red.idat.md5sum',
-            f'{array_prefix}/10002_R01C02_Grn.idat.md5sum',
-        )
-        for file in array_test_files_jh:
-            write_cloud_csv(
-                file,
-                "atgcatgc",
-                bucket=_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR,
-            )
-
-        # insert file record into the the gc_data_file_table
-        self.data_generator.create_database_gc_data_file_record(
-            file_path=f"{_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR}/{array_test_files_jh[0]}",
-            gc_site_id="jh",
-            bucket_name=_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR,
-            file_prefix=array_prefix,
-            file_name=array_test_files_jh[0],
-            file_type="vcf.gz",
-            identifier_type="chipwellbarcode",
-            identifier_value="10001_R01C01",
-        )
-
-        nonprod_dict = {
-            "fake_genomic_center_bucket-baylor": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"],
-        }
-
-        config.override_setting(config.DATA_BUCKET_SUBFOLDERS_PROD, nonprod_dict)
-
-        genomic_pipeline.reconcile_gc_data_file_to_table()
-
-        # Test files inserted into genomic_gc_data_file
-        gc_data_files = self.data_file_dao.get_all()
-
-        self.assertEqual(13, len(gc_data_files))
-        for file in gc_data_files:
-            self.assertEqual('jh', file.gc_site_id)
-            self.assertEqual(array_prefix, file.file_prefix)
-
-        runs = self.job_run_dao.get_all()
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, runs[0].runResult)
+    # Test for disabled job DA-2934
+    # def test_reconcile_gc_data_file_to_table(self):
+    #     # Create files in bucket
+    #     array_prefix = "Genotyping_sample_raw_data"
+    #
+    #     array_test_files_jh = (
+    #         f'{array_prefix}/10001_R01C01.vcf.gz',
+    #         f'{array_prefix}/10001_R01C01.vcf.gz.tbi',
+    #         f'{array_prefix}/10001_R01C01.vcf.gz.md5sum',
+    #         f'{array_prefix}/10001_R01C01_Red.idat',
+    #         f'{array_prefix}/10001_R01C01_Grn.idat',
+    #         f'{array_prefix}/10001_R01C01_Red.idat.md5sum',
+    #         f'{array_prefix}/10002_R01C02.vcf.gz',
+    #         f'{array_prefix}/10002_R01C02.vcf.gz.tbi',
+    #         f'{array_prefix}/10002_R01C02.vcf.gz.md5sum',
+    #         f'{array_prefix}/10002_R01C02_Red.idat',
+    #         f'{array_prefix}/10002_R01C02_Grn.idat',
+    #         f'{array_prefix}/10002_R01C02_Red.idat.md5sum',
+    #         f'{array_prefix}/10002_R01C02_Grn.idat.md5sum',
+    #     )
+    #     for file in array_test_files_jh:
+    #         write_cloud_csv(
+    #             file,
+    #             "atgcatgc",
+    #             bucket=_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR,
+    #         )
+    #
+    #     # insert file record into the the gc_data_file_table
+    #     self.data_generator.create_database_gc_data_file_record(
+    #         file_path=f"{_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR}/{array_test_files_jh[0]}",
+    #         gc_site_id="jh",
+    #         bucket_name=_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR,
+    #         file_prefix=array_prefix,
+    #         file_name=array_test_files_jh[0],
+    #         file_type="vcf.gz",
+    #         identifier_type="chipwellbarcode",
+    #         identifier_value="10001_R01C01",
+    #     )
+    #
+    #     nonprod_dict = {
+    #         "fake_genomic_center_bucket-baylor": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"],
+    #     }
+    #
+    #     config.override_setting(config.DATA_BUCKET_SUBFOLDERS_PROD, nonprod_dict)
+    #
+    #     genomic_pipeline.reconcile_gc_data_file_to_table()
+    #
+    #     # Test files inserted into genomic_gc_data_file
+    #     gc_data_files = self.data_file_dao.get_all()
+    #
+    #     self.assertEqual(13, len(gc_data_files))
+    #     for file in gc_data_files:
+    #         self.assertEqual('jh', file.gc_site_id)
+    #         self.assertEqual(array_prefix, file.file_prefix)
+    #
+    #     runs = self.job_run_dao.get_all()
+    #     self.assertEqual(GenomicSubProcessResult.SUCCESS, runs[0].runResult)
 
     # Disabling this job until further notice
     # def test_reconcile_raw_to_aw1_ingested(self):
@@ -6809,3 +6811,500 @@ class GenomicPipelineTest(BaseTestCase):
         for member in members:
             self.assertEqual(GenomicWorkflowState.AW2, member.genomicWorkflowState)
             self.assertEqual(GenomicWorkflowState.AW2.name, member.genomicWorkflowStateStr)
+
+    def test_gc_metrics_array_data(self):
+
+        # Create the fake ingested data
+        self._create_fake_datasets_for_gc_tests(2, arr_override=True, array_participants=[1, 2],
+                                                genome_center='rdr',
+                                                genomic_workflow_state=GenomicWorkflowState.AW1)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_RDR
+        create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
+                                   bucket_name,
+                                   folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
+
+        self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002),
+        ])
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+
+        gc_record = self.metrics_dao.get(1)
+
+        # Test the gc_metrics were populated at ingestion
+        self.assertEqual(1, gc_record.vcfReceived)
+        self.assertEqual(1, gc_record.vcfTbiReceived)
+        self.assertEqual(1, gc_record.vcfMd5Received)
+        self.assertEqual(1, gc_record.idatRedReceived)
+        self.assertEqual(1, gc_record.idatGreenReceived)
+        self.assertEqual(1, gc_record.idatRedMd5Received)
+        self.assertEqual(1, gc_record.idatGreenMd5Received)
+
+        self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01.vcf.gz", gc_record.vcfPath)
+        self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01.vcf.gz.tbi", gc_record.vcfTbiPath)
+        self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01.vcf.gz.md5sum", gc_record.vcfMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01_Red.idat", gc_record.idatRedPath)
+        self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01_Grn.idat", gc_record.idatGreenPath)
+        self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01_Red.idat.md5sum", gc_record.idatRedMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01_Grn.idat.md5sum",
+                         gc_record.idatGreenMd5Path)
+
+        gc_record = self.metrics_dao.get(2)
+
+        # Test the gc_metrics were populated at ingestion
+        self.assertEqual(1, gc_record.vcfReceived)
+        self.assertEqual(1, gc_record.vcfTbiReceived)
+        self.assertEqual(1, gc_record.vcfMd5Received)
+        self.assertEqual(1, gc_record.idatRedReceived)
+        self.assertEqual(1, gc_record.idatGreenReceived)
+        self.assertEqual(1, gc_record.idatRedMd5Received)
+        self.assertEqual(1, gc_record.idatGreenMd5Received)
+
+        # Test member updated with job ID
+        member = self.member_dao.get(1)
+        self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
+        self.assertEqual('GEM_READY', member.genomicWorkflowStateStr)
+
+        # Test member updated with job ID
+        member = self.member_dao.get(2)
+        self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
+        self.assertEqual('GEM_READY', member.genomicWorkflowStateStr)
+
+    def test_gc_metrics_wgs_data(self):
+
+        # Create the fake ingested data
+        self._create_fake_datasets_for_gc_tests(2, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_RDR
+        create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
+                                   bucket_name,
+                                   folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
+
+        self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (2, 1002)
+        ])
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+
+        # Test the reconciliation process
+        sequencing_test_files = (
+            'Wgs_sample_raw_data/SS_VCF_clinical/RDR_T2_1002_10002_1.hard-filtered.vcf.gz',
+            'Wgs_sample_raw_data/SS_VCF_clinical/RDR_T2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+            'Wgs_sample_raw_data/SS_VCF_clinical/RDR_T2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+            'Wgs_sample_raw_data/CRAMs_CRAIs/RDR_T2_1002_10002_1.cram',
+            'Wgs_sample_raw_data/CRAMs_CRAIs/RDR_T2_1002_10002_1.cram.md5sum',
+        )
+
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': '.'.join(f.split('.')[1:]),
+                    'identifier_type': 'sample_id',
+                    'identifier_value': '1002',
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        gc_record = self.metrics_dao.get(1)
+
+        # Test the gc_metrics were updated with reconciliation data
+        self.assertEqual(1, gc_record.hfVcfReceived)
+        self.assertEqual(1, gc_record.hfVcfTbiReceived)
+        self.assertEqual(1, gc_record.hfVcfMd5Received)
+        self.assertEqual(0, gc_record.rawVcfReceived)
+        self.assertEqual(0, gc_record.rawVcfTbiReceived)
+        self.assertEqual(0, gc_record.rawVcfMd5Received)
+        self.assertEqual(1, gc_record.cramReceived)
+        self.assertEqual(1, gc_record.cramMd5Received)
+        self.assertEqual(1, gc_record.craiReceived)
+
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[0]}", gc_record.hfVcfPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.hfVcfTbiPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[2]}", gc_record.hfVcfMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[3]}", gc_record.cramPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[4]}", gc_record.cramMd5Path)
+
+        # Test member updated with job ID and state
+        member = self.member_dao.get(2)
+        self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
+        self.assertEqual('CVL_READY', member.genomicWorkflowStateStr)
+
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_array_manifest_generation_missing_files(self, cloud_task):
+        # Need GC Manifest for source query : run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=range(1, 4),
+                                                recon_gc_man_id=1,
+                                                genome_center='jh',
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                sample_source="Whole Blood",
+                                                ai_an='N')
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_RDR
+
+        create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
+                                         bucket_name,
+                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
+
+        self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002)
+        ])
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # Test sequencing file (required for GEM)
+        sequencing_test_files = (
+            f'test_data_folder/10001_R01C01.vcf.gz',
+            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
+            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
+            f'test_data_folder/10001_R01C01_Red.idat',
+            f'test_data_folder/10001_R01C01_Grn.idat',
+            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
+            f'test_data_folder/10001_R01C01_Grn.idat.md5sum',
+            f'test_data_folder/10002_R01C02.vcf.gz',
+            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
+            f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
+            # f'test_data_folder/10002_R01C02_Red.idat',
+            f'test_data_folder/10002_R01C02_Grn.idat',
+            f'test_data_folder/10002_R01C02_Red.idat.md5sum',
+            f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
+        )
+
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            for f in sequencing_test_files:
+                # Set file type
+                if "idat" in f.lower():
+                    file_type = f.split('/')[-1].split("_")[-1]
+                else:
+                    file_type = '.'.join(f.split('.')[1:])
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'jh',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Genotyping_sample_raw_data',
+                    'file_name': f,
+                    'file_type': file_type,
+                    'identifier_type': 'chipwellbarcode',
+                    'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        # finally run the AW3 manifest workflow
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_array_manifest_workflow()  # run_id = 3
+
+        manifest_records = self.manifest_file_dao.get_all()
+        self.assertEqual(len(manifest_records), 1)
+        self.assertEqual(manifest_records[0].recordCount, 1)
+        self.assertIsNotNone(manifest_records[0].fileName)
+        self.assertIsNotNone(manifest_records[0].filePath)
+
+        self.assertTrue(cloud_task.called)
+        cloud_task_args = cloud_task.call_args.args[0]
+        self.assertEqual(cloud_task_args['field'], 'aw3ManifestFileId')
+
+        member_ids = cloud_task_args['member_ids']
+        self.assertIsNotNone(member_ids)
+        self.assertTrue(len(set(member_ids)) == len(member_ids))
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Test member was updated
+        member = self.member_dao.get(1)
+        self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
+
+        bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
+        sub_folder = config.GENOMIC_AW3_ARRAY_SUBFOLDER
+
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_GEN_{aw3_dtf}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+
+            rows = list(csv_reader)
+
+            self.assertEqual(1, len(rows))
+            self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}', rows[0]['biobank_id'])
+            self.assertEqual(member.sampleId, rows[0]['sample_id'])
+            self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}_{member.sampleId}',
+                             rows[0]['biobankidsampleid'])
+            self.assertEqual(member.sexAtBirth, rows[0]['sex_at_birth'])
+            self.assertEqual(member.gcSiteId, rows[0]['site_id'])
+            self.assertEqual(1000001, int(rows[0]['research_id']))
+            self.assertEqual('Whole Blood', rows[0]['sample_source'])
+            self.assertEqual('cidr_egt_1', rows[0]['pipeline_id'])
+            self.assertEqual('False', rows[0]['ai_an'])
+
+            # Test File Paths
+            metric = self.metrics_dao.get(1)
+            self.assertEqual(metric.idatRedPath, rows[0]['red_idat_path'])
+            self.assertEqual(metric.idatRedMd5Path, rows[0]['red_idat_md5_path'])
+            self.assertEqual(metric.idatGreenPath, rows[0]['green_idat_path'])
+            self.assertEqual(metric.idatGreenMd5Path, rows[0]['green_idat_md5_path'])
+            self.assertEqual(metric.vcfPath, rows[0]['vcf_path'])
+            self.assertEqual(metric.vcfTbiPath, rows[0]['vcf_index_path'])
+            self.assertEqual(metric.vcfMd5Path, rows[0]['vcf_md5_path'])
+
+            # Test processing GC metrics columns
+            self.assertEqual(metric.callRate, rows[0]['callrate'])
+            self.assertEqual(metric.sexConcordance, rows[0]['sex_concordance'])
+            self.assertEqual(metric.contamination, rows[0]['contamination'])
+            self.assertEqual(metric.processingStatus, rows[0]['processing_status'])
+
+            self.assertEqual(metric.pipelineId, rows[0]['pipeline_id'])
+
+            # Test AW3 loaded into raw table
+            aw3_dao = GenomicAW3RawDao()
+            raw_records = aw3_dao.get_all()
+            raw_records.sort(key=lambda x: x.biobank_id)
+
+            # Check rows in file against records in raw table
+            self.assertEqual(len(rows), len(raw_records))
+
+            for file_row in rows:
+                i = int(file_row['biobank_id'][1:])-1
+                for field in file_row.keys():
+                    self.assertEqual(file_row[field], getattr(raw_records[i], field.lower()))
+
+                self.assertEqual("aou_array", raw_records[i].genome_type)
+
+        # Test run record is success
+        run_obj = self.job_run_dao.get(4)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        # Set up 'investigation' test
+        investigation_member = member
+        investigation_member.genomeType = 'aou_array_investigation'
+        investigation_member.blockResearch = 1
+        self.member_dao.update(investigation_member)
+
+        fake_dt = datetime.datetime(2020, 8, 4, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_array_investigation_workflow()
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Check file WAS created
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_GEN_{aw3_dtf}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+            self.assertEqual("True", rows[0]['blocklisted'])
+
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
+
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_wgs_manifest_generation_missing_files(self, cloud_task):
+        # Need GC Manifest for source query : run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(3, arr_override=False,
+                                                recon_gc_man_id=1,
+                                                genome_center='rdr',
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                sample_source="Whole Blood",
+                                                ai_an='N')
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+
+        create_ingestion_test_file(
+            'RDR_AoU_SEQ_TestDataManifest.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
+        )
+
+        self._update_test_sample_ids()
+        self._create_stored_samples([(1, 1001)])
+        self._create_stored_samples([(2, 1002)])
+
+        # Create corresponding array genomic_set_members
+        for i in range(1, 4):
+            self.data_generator.create_database_genomic_set_member(
+                participantId=i,
+                genomicSetId=1,
+                biobankId=i,
+                gcManifestParentSampleId=1000+i,
+                genomeType="aou_array",
+                aw3ManifestJobRunID=1,
+                ai_an='N'
+            )
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # Test sequencing file (required for AW3 WGS)
+        sequencing_test_files = (
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_1.cram',
+            f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
+            f'test_data_folder/RDR_1_1001_10001_1.hard-filtered.vcf.gz',
+            f'test_data_folder/RDR_1_1001_10001_1.hard-filtered.vcf.gz.tbi',
+            f'test_data_folder/RDR_1_1001_10001_1.hard-filtered.vcf.gz.md5sum',
+            f'test_data_folder/RDR_1_1001_10001_1.cram',
+            f'test_data_folder/RDR_1_1001_10001_1.cram.md5sum',
+            f'test_data_folder/RDR_1_1001_10001_1.cram.crai',
+            #f'test_data_folder/RDR_1_1001_10001_1.hard-filtered.gvcf.gz',
+            f'test_data_folder/RDR_1_1001_10001_1.hard-filtered.gvcf.gz.md5sum',
+        )
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': '.'.join(f.split('.')[1:]),
+                    'identifier_type': 'sample_id',
+                    'identifier_value': f.split('_')[4],
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        # finally run the AW3 manifest workflow
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 3
+
+        manifest_records = self.manifest_file_dao.get_all()
+        self.assertEqual(len(manifest_records), 1)
+        self.assertEqual(manifest_records[0].recordCount, 1)
+        self.assertIsNotNone(manifest_records[0].fileName)
+        self.assertIsNotNone(manifest_records[0].filePath)
+
+        self.assertTrue(cloud_task.called)
+        cloud_task_args = cloud_task.call_args.args[0]
+        self.assertEqual(cloud_task_args['field'], 'aw3ManifestFileId')
+
+        member_ids = cloud_task_args['member_ids']
+        self.assertIsNotNone(member_ids)
+        self.assertTrue(len(set(member_ids)) == len(member_ids))
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Test member was updated
+        member = self.member_dao.get(2)
+        self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
+
+        bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
+        sub_folder = config.GENOMIC_AW3_WGS_SUBFOLDER
+
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+
+            row = rows[0]
+            metric = self.metrics_dao.get(1)
+
+            self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}',
+                             row['biobank_id'])
+            self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}_{member.sampleId}',
+                             row['biobankidsampleid'])
+            self.assertEqual(member.sexAtBirth, row['sex_at_birth'])
+            self.assertEqual(member.gcSiteId, row['site_id'])
+            self.assertEqual(1000002, int(row['research_id']))
+
+            self.assertEqual('Whole Blood', row['sample_source'])
+            self.assertEqual('88.8888888', row['mapped_reads_pct'])
+            self.assertEqual('XY', row['sex_ploidy'])
+            self.assertEqual('False', row['ai_an'])
+
+            self.assertEqual(metric.hfVcfPath, row["vcf_hf_path"])
+            self.assertEqual(metric.hfVcfTbiPath, row["vcf_hf_index_path"])
+            self.assertEqual(metric.cramPath, row["cram_path"])
+            self.assertEqual(metric.cramMd5Path, row["cram_md5_path"])
+            self.assertEqual(metric.craiPath, row["crai_path"])
+
+            # Test GC metrics columns
+            self.assertEqual(metric.contamination, row['contamination'])
+            self.assertEqual(metric.sexConcordance, row['sex_concordance'])
+            self.assertEqual(metric.processingStatus, row['processing_status'])
+            self.assertEqual(metric.meanCoverage, row['mean_coverage'])
+
+            # Test AW3 loaded into raw table
+            aw3_dao = GenomicAW3RawDao()
+            raw_records = aw3_dao.get_all()
+            raw_records.sort(key=lambda x: x.biobank_id)
+
+            # Check rows in file against records in raw table
+            self.assertEqual(len(rows), len(raw_records))
+
+            for file_row in rows:
+                for field in file_row.keys():
+                    self.assertEqual(file_row[field], getattr(raw_records[0], field.lower()))
+
+                self.assertEqual("aou_wgs", raw_records[0].genome_type)
+
+        # Test run record is success
+        run_obj = self.job_run_dao.get(4)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        # Set up 'investigation' test
+        investigation_member = member
+        investigation_member.genomeType = 'aou_wgs_investigation'
+        investigation_member.blockResearch = 1
+        self.member_dao.update(investigation_member)
+
+        fake_dt = datetime.datetime(2020, 8, 4, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_wgs_investigation_workflow()
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Check file WAS created
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+            self.assertEqual("True", rows[0]['blocklisted'])
+
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
