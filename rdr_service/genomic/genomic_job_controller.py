@@ -438,10 +438,11 @@ class GenomicJobController:
         module_fields = ['module_type', 'result_type']
 
         def _set_value_from_parsed_values(
-            records,
+            records: List[MessageBrokerEventData],
             field_names: List[str]
         ) -> Optional[str]:
 
+            records = [records] if type(records) is not list else records
             field_records = list(filter(lambda x: x.fieldName in field_names, records))
             if not field_records:
                 return None
@@ -679,13 +680,6 @@ class GenomicJobController:
 
         elif self.job_id == GenomicJob.INGEST_APPOINTMENT:
 
-            def _parse_appointment_values(obj: MessageBrokerEventData, message_broker_field: str):
-                nonlocal attribute_values
-                value = [getattr(obj, key) for key in attribute_values if getattr(obj, key) is not None]
-                if obj.fieldName.lower() == message_broker_field and value:
-                    return value[0]
-                return None
-
             appointment_records = self.message_broker_event_dao.get_appointment_event(
                 message_record_id
             )
@@ -726,7 +720,6 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.ERROR
                 return
 
-            attribute_values = [key for key in first_record.asdict().keys() if 'value' in key]
             appointment_id = list(filter(lambda x: x.fieldName == 'id', appointment_records))[0]
             for record in appointment_records:
                 report_obj = self.appointment_dao.model_type(
@@ -736,12 +729,12 @@ class GenomicJobController:
                     event_authored_time=first_record.eventAuthoredTime,
                     module_type=module_type,
                     appointment_id=appointment_id.valueInteger,
-                    appointment_time=_parse_appointment_values(record, 'appointment_timestamp'),
-                    source=_parse_appointment_values(record, 'source'),
-                    location=_parse_appointment_values(record, 'location'),
-                    contact_number=_parse_appointment_values(record, 'contact_number'),
-                    language=_parse_appointment_values(record, 'language'),
-                    cancellation_reason=_parse_appointment_values(record, 'reason')
+                    appointment_time=_set_value_from_parsed_values(record, ['appointment_timestamp']),
+                    source=_set_value_from_parsed_values(record, ['source']),
+                    location=_set_value_from_parsed_values(record, ['location']),
+                    contact_number=_set_value_from_parsed_values(record, ['contact_number']),
+                    language=_set_value_from_parsed_values(record, ['language']),
+                    cancellation_reason=_set_value_from_parsed_values(record, ['reason'])
                 )
 
                 self.appointment_dao.insert(report_obj)
