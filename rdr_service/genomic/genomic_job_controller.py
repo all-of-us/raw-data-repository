@@ -434,7 +434,6 @@ class GenomicJobController:
             logging.warning('Inserting data file failure')
 
     def gem_results_to_report_state(self):
-
         gem_result_records = self.member_dao.get_gem_results_for_report_state()
 
         if not gem_result_records:
@@ -445,13 +444,9 @@ class GenomicJobController:
         batch_size, item_count, batch = 100, 0, []
 
         for result in gem_result_records:
-            report_state = self.report_state_dao.get_report_state_from_wf_state(result.genomicWorkflowState)
-            result = result._asdict()
-            del result['genomicWorkflowState']
-            result['genomic_report_state'], result['genomic_report_state_str'] = report_state, report_state.name
-            result['created'] = clock.CLOCK.now()
-            result['modified'] = clock.CLOCK.now()
-            batch.append(result)
+            batch.append(
+                self.report_state_dao.process_gem_result_to_report(result)
+            )
             item_count += 1
 
             if item_count == batch_size:

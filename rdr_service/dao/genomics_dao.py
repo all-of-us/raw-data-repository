@@ -1161,9 +1161,9 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
 
         return self.insert(new_member_obj)
 
-    def get_gem_results_for_report_state(self):
+    def get_gem_results_for_report_state(self, obj: GenomicSetMember = None):
         with self.session() as session:
-            return session.query(
+            records = session.query(
                 GenomicSetMember.id.label('genomic_set_member_id'),
                 GenomicSetMember.participantId.label('participant_id'),
                 literal('result_ready').label('event_type'),
@@ -1187,7 +1187,12 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                     GenomicWorkflowState.CVL_RPT_PENDING_DELETE,
                     GenomicWorkflowState.CVL_RPT_DELETED,
                 ])
-            ).all()
+            )
+            if obj:
+                records = records.filter(GenomicSetMember.id == obj.id)
+                return records.one()
+
+            return records.all()
 
     @classmethod
     def _is_valid_set_member_job_field(cls, job_field_name):
@@ -1837,6 +1842,7 @@ class GenomicOutreachDao(BaseDao):
                                   genomeType=genome_type,
                                   genomicWorkflowState=report_state,
                                   genomicWorkflowStateStr=report_state.name,
+                                  gemA2ManifestJobRunId=1,
                                   gemPass='Y',
                                   genomicWorkflowStateModifiedTime=modified_date)
 
@@ -2951,6 +2957,19 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
             ).filter(
                 GenomicMemberReportState.genomic_set_member_id == obj_id
             ).first()
+
+    def process_gem_result_to_report(
+        self,
+        obj: GenomicSetMember
+    ):
+        report_state = self.get_report_state_from_wf_state(obj.genomicWorkflowState)
+        result = obj._asdict() or obj.asdict()
+        del result['genomicWorkflowState']
+        result['genomic_report_state'] = report_state
+        result['genomic_report_state_str'] = report_state.name
+        result['created'] = clock.CLOCK.now()
+        result['modified'] = clock.CLOCK.now()
+        return result
 
     @staticmethod
     def get_report_state_from_wf_state(wf_state):
