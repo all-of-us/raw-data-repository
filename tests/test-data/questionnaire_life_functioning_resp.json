@@ -1,0 +1,37 @@
+{
+  "status": "completed",
+  "id": "318417187",
+  "authored": "2022-09-06T14:32:28Z",
+  "subject": {
+    "reference": "Patient/{participant_id}"
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+      "valueCode": "en"
+    }
+  ],
+  "resourceType": "QuestionnaireResponse",
+  "questionnaire": {
+    "reference": "Questionnaire/{questionnaire_id}"
+  },
+  "group": {
+    "linkId": "root_group",
+    "title": "Life Functioning Survey",
+    "question": [
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "Blind_Yes",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "Yes"
+            }
+          }
+        ],
+        "linkId": "7332",
+        "text": "Are you blind or do you have serious difficulty seeing, even when wearing glasses?"
+      }
+    ]
+  }
+}

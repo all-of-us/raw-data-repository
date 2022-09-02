@@ -921,6 +921,19 @@ class ParticipantSummary(Base):
     questionnaireOnDnaProgramAuthored = Column("questionnaire_on_dna_program_authored", UTCDateTime)
     "The UTC Date time of when the participant completed the DNA program questionnaire"
 
+    questionnaireOnLifeFunctioning = Column("questionnaire_on_life_functioning", Enum(QuestionnaireStatus),
+                                            default=QuestionnaireStatus.UNSET)
+    """
+    Indicates the status of the life functioning survey questionnaire that a participant can fill out
+
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+    questionnaireOnLifeFunctioningTime = Column("questionnaire_on_life_functioning_time", UTCDateTime)
+    "Indicates the time at which the RDR received notice of life functioning survey questionnaire."
+
+    questionnaireOnLifeFunctioningAuthored = Column("questionnaire_on_life_functioning_authored", UTCDateTime)
+    "The UTC Date time of when the participant completed the life functioning survey questionnaire"
+
     numCompletedBaselinePPIModules = Column("num_completed_baseline_ppi_modules", SmallInteger, default=0)
     """
     The count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth, questionnaireOnLifestyle]
