@@ -8,6 +8,7 @@ from dateutil import parser
 from unittest import mock
 
 from rdr_service.api_util import PTC, HEALTHPRO, GEM, RDR
+from rdr_service.dao.database_utils import format_datetime
 from rdr_service.services.system_utils import JSONObject
 from rdr_service import clock, config
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -1994,7 +1995,7 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         super().setUp()
         self.appointment_dao = GenomicAppointmentEventDao()
         self.num_participants = 4
-        self.appointment_keys = ['module', 'type', 'status', 'appointment_id', 'participant_id', 'note_available']
+
         self.gen_set = self.data_generator.create_database_genomic_set(
             genomicSetName=".",
             genomicSetCriteria=".",
@@ -2071,13 +2072,19 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         self.assertEqual(resp.status_code, 404)
 
         # add appointment record
-        self.data_generator.create_database_genomic_appointment(
+        appointment_record = self.data_generator.create_database_genomic_appointment(
             message_record_id=1,
             appointment_id=1,
             event_type='appointment_scheduled',
             module_type='hdr',
             participant_id=participant.participantId,
-            event_authored_time=clock.CLOCK.now()
+            event_authored_time=clock.CLOCK.now(),
+            source='Color',
+            appointment_time=format_datetime(clock.CLOCK.now()),
+            appointment_timezone='America/Los_Angeles',
+            location='123 address st',
+            contact_number='17348675309',
+            language='EN'
         )
 
         resp = self.send_get(
@@ -2087,11 +2094,19 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         self.assertIsNotNone(resp)
         self.assertEqual(len(resp.get('data')), 1)
 
-        self.assertTrue(all(not len(obj.keys() - self.appointment_keys) and obj.values() for obj in resp['data']))
         self.assertTrue(all(obj['participant_id'] == f'P{participant.participantId}' for obj in resp['data']))
+        self.assertTrue(all(obj['appointment_id'] == appointment_record.appointment_id for obj in resp['data']))
         self.assertTrue(all(obj['type'] == 'appointment' for obj in resp['data']))
-        self.assertTrue(all(obj['module'] == 'hdr' for obj in resp['data']))
-        self.assertTrue(all(obj['status'] == 'scheduled' for obj in resp['data']))
+        self.assertTrue(all(obj['module'] == appointment_record.module_type for obj in resp['data']))
+        self.assertTrue(all(obj['status'] == appointment_record.event_type.split('_')[-1] for obj in resp['data']))
+        self.assertTrue(all(obj['appointment_time'] is not None for obj in resp['data']))
+        self.assertTrue(all(obj['appointment_timezone'] == appointment_record.appointment_timezone for obj in
+                            resp['data']))
+        self.assertTrue(all(obj['source'] == appointment_record.source for obj in resp['data']))
+        self.assertTrue(all(obj['contact_number'] == appointment_record.contact_number for obj in resp['data']))
+        self.assertTrue(all(obj['location'] == appointment_record.location for obj in resp['data']))
+        self.assertTrue(all(obj['language'] == appointment_record.language for obj in resp['data']))
+
         self.assertTrue(all(obj['note_available'] is False for obj in resp['data']))
 
     def test_validate_params(self):
@@ -2150,7 +2165,6 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
             f"GenomicScheduling?participant_id=P{participant_data.participantId}"
         )
 
-        self.assertTrue(all(not len(obj.keys() - self.appointment_keys) and obj.values() for obj in resp['data']))
         self.assertTrue(all(obj['status'] == 'scheduled' for obj in resp['data']))
         self.assertTrue(all(obj['note_available'] is False for obj in resp['data']))
 
@@ -2168,7 +2182,6 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
             f"GenomicScheduling?participant_id=P{participant_data.participantId}"
         )
 
-        self.assertTrue(all(not len(obj.keys() - self.appointment_keys) and obj.values() for obj in resp['data']))
         # should still be scheduled as the status, note event should be filtered out
         self.assertTrue(all(obj['status'] == 'scheduled' for obj in resp['data']))
         self.assertTrue(all(obj['note_available'] is True for obj in resp['data']))
@@ -2359,7 +2372,6 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         self.assertTrue(len(current_appointments), self.num_participants * 2)  # 8
 
         self.assertTrue(len(current_appointments) // 2 == len(resp['data']))  # 4
-        self.assertTrue(all(not len(obj.keys() - self.appointment_keys) and obj.values() for obj in resp['data']))
         self.assertTrue(obj['status'] == 'updated' for obj in resp['data'])
         self.assertTrue(obj['module'] == 'hdr' for obj in resp['data'])
         self.assertTrue(all(int(obj['participant_id'].split('P')[-1]) in participant_ids for obj in resp['data']))

@@ -2244,14 +2244,15 @@ class GenomicSchedulingDao(BaseDao):
             }
 
         for appointment in payload_dict.get('data'):
-            appointments.append({
-                'module': appointment.module_type,
-                'type': 'appointment',
-                'status': appointment.event_type.split('_')[-1],
-                'appointment_id': appointment.appointment_id,
-                'participant_id': f'P{appointment.participant_id}',
-                'note_available': appointment.has_appointment_note
-            })
+            status = appointment.status.split('_')[-1]
+            participant_id = f'P{appointment.participant_id}'
+            appointment = appointment._asdict()
+            appointment['participant_id'] = participant_id
+            appointment['status'] = status
+            appointment['type'] = 'appointment'
+            appointments.append(
+                {k: v for k, v in appointment.items() if v is not None}
+            )
 
         return {
             "data": appointments,
@@ -2269,6 +2270,7 @@ class GenomicSchedulingDao(BaseDao):
             GenomicAppointmentEvent.participant_id,
             GenomicAppointmentEvent.module_type
         ).subquery()
+
         max_event_authored_time_subquery = sqlalchemy.orm.Query(
             functions.max(GenomicAppointmentEvent.event_authored_time).label(
                 'max_event_authored_time'
@@ -2279,19 +2281,28 @@ class GenomicSchedulingDao(BaseDao):
             GenomicAppointmentEvent.participant_id,
             GenomicAppointmentEvent.module_type
         ).subquery()
+
         note_alias = aliased(GenomicAppointmentEvent)
+
         with self.session() as session:
             records = session.query(
-                GenomicAppointmentEvent.participant_id,
-                GenomicAppointmentEvent.module_type,
-                GenomicAppointmentEvent.event_type,
                 GenomicAppointmentEvent.appointment_id,
+                GenomicAppointmentEvent.participant_id,
+                GenomicAppointmentEvent.module_type.label('module'),
+                GenomicAppointmentEvent.event_type.label('status'),
+                GenomicAppointmentEvent.appointment_time,
+                GenomicAppointmentEvent.appointment_timezone,
+                GenomicAppointmentEvent.source,
+                GenomicAppointmentEvent.location,
+                GenomicAppointmentEvent.contact_number,
+                GenomicAppointmentEvent.language,
+                GenomicAppointmentEvent.cancellation_reason,
                 sqlalchemy.case(
                     [
                         (note_alias.id.isnot(None), True)
                     ],
                     else_=False
-                ).label('has_appointment_note'),
+                ).label('note_available'),
             ).outerjoin(
                 note_alias,
                 and_(

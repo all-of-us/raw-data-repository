@@ -730,6 +730,7 @@ class GenomicJobController:
                     module_type=module_type,
                     appointment_id=appointment_id.valueInteger,
                     appointment_time=_set_value_from_parsed_values(record, ['appointment_timestamp']),
+                    appointment_timezone=_set_value_from_parsed_values(record, ['appointment_timezone']),
                     source=_set_value_from_parsed_values(record, ['source']),
                     location=_set_value_from_parsed_values(record, ['location']),
                     contact_number=_set_value_from_parsed_values(record, ['contact_number']),
