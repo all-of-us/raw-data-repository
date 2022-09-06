@@ -335,7 +335,10 @@ class ParticipantSummary(Base):
     enrollmentStatusParticipantV3_1Time = Column("enrollment_status_participant_v_3_1_time", UTCDateTime)
     """UTC time the participant has reached the 'PARTICIPANT' enrollment status defined by the 3.1 data glossary"""
 
-    enrollmentStatusParticipantPlusEhrV3_1Time = Column("enrollment_status_participant_plusEhr_v_3_1_time", UTCDateTime)
+    enrollmentStatusParticipantPlusEhrV3_1Time = Column(
+        "enrollment_status_participant_plus_ehr_v_3_1_time",
+        UTCDateTime
+    )
     """
     UTC time the participant has reached the 'PARTICIPANT_PLUS_EHR' enrollment status defined by the 3.1 data glossary
     """
