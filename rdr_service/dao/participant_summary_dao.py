@@ -71,9 +71,9 @@ from rdr_service.participant_enums import (
 )
 from rdr_service.model.code import Code
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
+from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from rdr_service.services.system_utils import min_or_none
 
-from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
 _ORDER_BY_ENDING = ("lastName", "firstName", "dateOfBirth", "participantId")
