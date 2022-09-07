@@ -1183,9 +1183,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.genomicWorkflowState.in_([
                     GenomicWorkflowState.GEM_RPT_READY,
                     GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
-                    GenomicWorkflowState.GEM_RPT_DELETED,
-                    GenomicWorkflowState.CVL_RPT_PENDING_DELETE,
-                    GenomicWorkflowState.CVL_RPT_DELETED,
+                    GenomicWorkflowState.GEM_RPT_DELETED
                 ])
             )
             if obj:
