@@ -756,6 +756,13 @@ def genomic_results_pipeline_withdrawals():
 
 
 @app_util.auth_required_cron
+@run_genomic_cron_job('gem_results_to_report_state')
+def genomic_gem_result_reports():
+    genomic_pipeline.gem_results_to_report_state()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 @run_genomic_cron_job('daily_ingestion_summary')
 def genomic_data_quality_daily_ingestion_summary():
     genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
@@ -1162,14 +1169,14 @@ def _build_pipeline_app():
         methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicGHR3ReconciliationAlerts",
-        endpoint="genomic_ghr3_reconcile_alerts",
+        OFFLINE_PREFIX + "GenomicCVLReconciliationAlerts",
+        endpoint="genomic_cvl_reconcile_alerts",
         view_func=genomic_reconcile_cvl_alerts,
         methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicGHR3ResolveSamples",
-        endpoint="genomic_ghr3_resolve_samples",
+        OFFLINE_PREFIX + "GenomicCVLResolveSamples",
+        endpoint="genomic_cvl_resolve_samples",
         view_func=genomic_reconcile_cvl_resolve,
         methods=["GET"]
     )
@@ -1177,6 +1184,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicResultsPipelineWithdrawals",
         endpoint="genomic_results_pipeline_withdrawals",
         view_func=genomic_results_pipeline_withdrawals,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicGemResultReports",
+        endpoint="genomic_gem_result_reports",
+        view_func=genomic_gem_result_reports,
         methods=["GET"]
     )
     # END Genomic Pipeline Jobs

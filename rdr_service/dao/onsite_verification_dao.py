@@ -82,6 +82,8 @@ class OnsiteVerificationDao(BaseDao):
         participant_summary.onsiteIdVerificationTime = obj.verifiedTime
         participant_summary.onsiteIdVerificationType = OnSiteVerificationType(obj.verificationType)
         participant_summary.onsiteIdVerificationVisitType = OnSiteVerificationVisitType(obj.visitType)
+        participant_summary.onsiteIdVerificationUser = obj.userEmail
+        participant_summary.onsiteIdVerificationSite = obj.siteId
         participant_summary.lastModified = clock.CLOCK.now()
         participant_summary_dao.update(participant_summary)
 
