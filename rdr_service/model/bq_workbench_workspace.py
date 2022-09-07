@@ -83,6 +83,10 @@ class BQRWBWorkspaceSchema(BQSchema):
     access_tier = BQField('access_tier', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     access_tier_id = BQField('access_tier_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    orig_created = BQField('orig_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    orig_modified = BQField('orig_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
 
 class BQRWBWorkspace(BQTable):
     """ Research Workbench Workspace BigQuery Table """
@@ -119,7 +123,8 @@ class BQRWBWorkspaceRaceEthnicityView(BQView):
     __pk_id__ = 'workspace_source_id'
     __table__ = BQRWBWorkspace
     __sql__ = """
-        SELECT t.id, t.created, t.modified, t.workspace_source_id, t.modified_time, nt.*
+        SELECT t.id, t.created, t.modified, t.orig_id, t.orig_created, t.orig_modified, 
+            t.workspace_source_id, t.modified_time, nt.*
           FROM (
             SELECT *, 
                    ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified) AS rn
@@ -135,7 +140,8 @@ class BQRWBWorkspaceAgeView(BQView):
     __pk_id__ = 'workspace_source_id'
     __table__ = BQRWBWorkspace
     __sql__ = """
-        SELECT t.id, t.created, t.modified, t.workspace_source_id, t.modified_time, nt.*
+        SELECT t.id, t.created, t.modified, t.orig_id, t.orig_created, t.orig_modified, 
+            t.workspace_source_id, t.modified_time, nt.*
           FROM (
             SELECT *, 
                    ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified) AS rn
@@ -159,6 +165,10 @@ class BQRWBWorkspaceUsersSchema(BQSchema):
     status_id = BQField('status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     researcher_id = BQField('researcher_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     is_creator = BQField('is_creator', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
+    orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    orig_created = BQField('orig_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    orig_modified = BQField('orig_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
 
 class BQRWBWorkspaceUsers(BQTable):
@@ -187,6 +197,10 @@ class BQRWBAuditSchema(BQSchema):
     audit_workspace_access_decision = BQField('audit_workspace_access_decision', BQFieldTypeEnum.INTEGER,
                                               BQFieldModeEnum.REQUIRED)
     audit_notes = BQField('audit_notes', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+
+    orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    orig_created = BQField('orig_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    orig_modified = BQField('orig_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
 
 class BQRWBAudit(BQTable):
