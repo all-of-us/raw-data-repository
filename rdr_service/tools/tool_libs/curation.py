@@ -246,8 +246,6 @@ class CurationExportClass(ToolBase):
                         NULL respondent_type_source_value,
                         NULL survey_version_number
                 FROM questionnaire_response qr
-                -- join to src_clean to filter down to only responses going into etl
-                INNER JOIN cdm.src_clean sc ON sc.questionnaire_response_id = qr.questionnaire_response_id
                 INNER JOIN questionnaire_concept qc
                     ON qc.questionnaire_id = qr.questionnaire_id AND qc.questionnaire_version = qr.questionnaire_version
                 INNER JOIN code mc ON mc.code_id = qc.code_id
@@ -255,6 +253,11 @@ class CurationExportClass(ToolBase):
                 LEFT JOIN voc.concept voc_c
                     ON voc_c.concept_code = mc.value AND voc_c.vocabulary_id = 'PPI'
                     AND voc_c.domain_id = 'observation' AND voc_c.concept_class_id = 'module'
+                WHERE qr.questionnaire_response_id in (
+                    SELECT DISTINCT sc.questionnaire_response_id
+                    FROM cdm.src_clean sc
+                )
+                limit 10
             """,
             column_name_list=[
                 'survey_conduct_id', 'person_id', 'survey_concept_id', 'survey_source_concept_id',
@@ -479,7 +482,17 @@ class CurationExportClass(ToolBase):
             ParticipantSummary,
             ParticipantSummary.participantId == Participant.participantId
         ).filter(
-            Participant.isGhostId.isnot(True),
+            or_(
+                Participant.isGhostId.isnot(True),
+                and_(
+                    ParticipantSummary.participantId.isnot(None),
+                    Participant.dateAddedGhost > datetime.datetime(2022, 3, 18),
+                    or_(
+                        ParticipantSummary.consentForElectronicHealthRecords != QuestionnaireStatus.UNSET,
+                        ParticipantSummary.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
+                    )
+                )
+            ),
             Participant.isTestParticipant.isnot(True),
             Participant.participantOrigin != 'careevolution',
             HPO.name != 'TEST',
