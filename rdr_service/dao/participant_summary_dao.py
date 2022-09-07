@@ -35,7 +35,7 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_incentives_dao import ParticipantIncentivesDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
-from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentDependencies, EnrollmentInfo
+from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentDependencies
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
@@ -792,6 +792,11 @@ class ParticipantSummaryDao(UpdatableDao):
     def _get_num_baseline_ppi_modules(self):
         return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
 
+    @classmethod
+    def _set_if_empty(cls, summary, field_name, new_value):
+        if getattr(summary, field_name) is None and new_value is not None:
+            setattr(summary, field_name, new_value)
+
     def update_enrollment_status(self, summary: ParticipantSummary, session):
         """
         Updates the enrollment status field on the provided participant summary to
@@ -836,24 +841,40 @@ class ParticipantSummaryDao(UpdatableDao):
             )
         )
 
-        return enrollment_info
+        # Update enrollment status if it is upgrading
+        status_rank_map = {  # Re-orders the status values so we can quickly see if the current status is higher
+            EnrollmentStatus.INTERESTED: 0,
+            EnrollmentStatus.MEMBER: 1,
+            EnrollmentStatus.CORE_MINUS_PM: 2,
+            EnrollmentStatus.FULL_PARTICIPANT: 3
+        }
+        if status_rank_map[summary.enrollmentStatus] < status_rank_map[enrollment_info.version_legacy_status]:
+            summary.enrollmentStatus = enrollment_info.version_legacy_status
+            summary.lastModified = clock.CLOCK.now()
 
-        # summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
-        # summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
-        # summary.enrollmentStatusCoreMinusPMTime =
-        #   self.calculate_core_minus_pm_time(consent, summary, enrollment_status)
-        #
-        # # [DA-1623] Participants that have 'Core' status should never lose it
-        # # CORE_MINUS_PM status can not downgrade, but can upgrade to FULL_PARTICIPANT
-        # if summary.enrollmentStatus not in (EnrollmentStatus.FULL_PARTICIPANT, EnrollmentStatus.CORE_MINUS_PM) \
-        #     or (summary.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM
-        #         and enrollment_status == EnrollmentStatus.FULL_PARTICIPANT):
-        #     # Update last modified date if status changes
-        #     if summary.enrollmentStatus != enrollment_status:
-        #         summary.lastModified = clock.CLOCK.now()
-        #
-        #     summary.enrollmentStatus = enrollment_status
-        #     summary.enrollmentStatusMemberTime = self.calculate_member_time(consent, summary)
+        # Set enrollment status date fields
+        legacy_dates = enrollment_info.version_legacy_dates
+        if EnrollmentStatus.MEMBER in legacy_dates:
+            self._set_if_empty(summary, 'enrollmentStatusMemberTime', legacy_dates[EnrollmentStatus.MEMBER])
+        if EnrollmentStatus.CORE_MINUS_PM in legacy_dates:
+            self._set_if_empty(summary, 'enrollmentStatusCoreMinusPMTime', legacy_dates[EnrollmentStatus.CORE_MINUS_PM])
+        if EnrollmentStatus.FULL_PARTICIPANT in legacy_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusCoreStoredSampleTime',
+                legacy_dates[EnrollmentStatus.FULL_PARTICIPANT]
+            )
+
+        # Legacy code for setting CoreOrdered date field
+        consent = (
+                      summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
+                      and summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED
+                  ) or (
+                      summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
+                      and summary.consentForElectronicHealthRecords is None
+                      and summary.consentForDvElectronicHealthRecordsSharing == QuestionnaireStatus.SUBMITTED
+        )
+        summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
 
     def calculate_enrollment_status(
         self, consent, num_completed_baseline_ppi_modules, physical_measurements_status,
