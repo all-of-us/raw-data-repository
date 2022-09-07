@@ -234,8 +234,8 @@ cron:
   timezone: America/New_York
   schedule: every monday 09:00
   target: offline
-- description: Genomic GHR3 Resolve Samples (Weekly)
-  url: /offline/GenomicGHR3ResolveSamples
+- description: Genomic CVL Resolve Samples (Weekly)
+  url: /offline/GenomicCVLResolveSamples
   timezone: America/New_York
   schedule: every monday 10:00
   target: offline
