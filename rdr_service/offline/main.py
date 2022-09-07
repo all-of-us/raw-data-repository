@@ -1162,14 +1162,14 @@ def _build_pipeline_app():
         methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicGHR3ReconciliationAlerts",
-        endpoint="genomic_ghr3_reconcile_alerts",
+        OFFLINE_PREFIX + "GenomicCVLReconciliationAlerts",
+        endpoint="genomic_cvl_reconcile_alerts",
         view_func=genomic_reconcile_cvl_alerts,
         methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicGHR3ResolveSamples",
-        endpoint="genomic_ghr3_resolve_samples",
+        OFFLINE_PREFIX + "GenomicCVLResolveSamples",
+        endpoint="genomic_cvl_resolve_samples",
         view_func=genomic_reconcile_cvl_resolve,
         methods=["GET"]
     )
