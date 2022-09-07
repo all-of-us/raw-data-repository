@@ -35,7 +35,8 @@ from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOptio
 from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
 from rdr_service.participant_enums import PatientStatusFlag, QuestionnaireResponseStatus, \
     QuestionnaireResponseClassificationType, UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus, \
-    DeceasedStatus, DeceasedNotification, DeceasedReportStatus, WithdrawalAIANCeremonyStatus
+    EnrollmentStatusV30, EnrollmentStatusV31, DeceasedStatus, DeceasedNotification, DeceasedReportStatus,\
+    WithdrawalAIANCeremonyStatus
 
 
 class DataGenerator:
@@ -311,6 +312,8 @@ class DataGenerator:
             "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
             "enrollmentStatus": EnrollmentStatus.INTERESTED,
+            "enrollmentStatusV3_0": EnrollmentStatusV30.PARTICIPANT,
+            "enrollmentStatusV3_1": EnrollmentStatusV31.PARTICIPANT,
             "participantOrigin": participant.participantOrigin,
             "deceasedStatus": DeceasedStatus.UNSET,
             "isEhrDataAvailable": False

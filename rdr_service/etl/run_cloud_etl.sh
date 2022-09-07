@@ -65,9 +65,10 @@ mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT}
 if [ -z "${CUTOFF}" ]
 then
   python -m tools curation --project ${PROJECT} cdm-data --vocabulary ${VOCABULARY}
+  mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/finalize_cdm_data.sql
 else
   python -m tools curation --project ${PROJECT} cdm-data --cutoff ${CUTOFF} --vocabulary ${VOCABULARY}
+  sed 's/-- %SED_PM_CUTOFF_FILTER%/AND pm.finalized < "'"${CUTOFF}"'"/g' etl/raw_sql/finalize_cdm_data.sql | mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT}
 fi
-mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/finalize_cdm_data.sql
 
 echo "Done with ETL. Please manually run export."

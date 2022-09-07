@@ -136,7 +136,7 @@ class TestEnrollmentInfo(BaseTestCase):
                 legacy_data=[
                     (EnrollmentStatus.INTERESTED, participant_info.primary_consent_authored_time),
                     (EnrollmentStatus.MEMBER, participant_info.first_ehr_consent_date),
-                    (EnrollmentStatus.CORE_MINUS_PM, participant_info.biobank_received_dna_sample)
+                    (EnrollmentStatus.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time)
                 ],
                 v30_data=[
                     (EnrollmentStatusV30.PARTICIPANT, participant_info.primary_consent_authored_time),
@@ -147,7 +147,6 @@ class TestEnrollmentInfo(BaseTestCase):
                 v31_data=[
                     (EnrollmentStatusV31.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV31.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
-                    (EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS, participant_info.gror_authored_time),
                     (EnrollmentStatusV31.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time)
                 ]
             ),
@@ -179,13 +178,26 @@ class TestEnrollmentInfo(BaseTestCase):
             physical_measurements_time=datetime(2018, 3, 1)
         )
         self.assertEnrollmentInfoEqual(
-            EnrollmentInfo(
-                version_legacy_status=EnrollmentStatus.FULL_PARTICIPANT,
-                version_3_0_status=EnrollmentStatusV30.CORE_PARTICIPANT,
-                version_3_1_status=EnrollmentStatusV31.CORE_PARTICIPANT,
-                version_legacy_datetime=participant_info.earliest_physical_measurements_time,
-                version_3_0_datetime=participant_info.earliest_physical_measurements_time,
-                version_3_1_datetime=participant_info.earliest_physical_measurements_time
+            self._build_expected_enrollment_info(
+                legacy_data=[
+                    (EnrollmentStatus.INTERESTED, participant_info.primary_consent_authored_time),
+                    (EnrollmentStatus.MEMBER, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatus.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
+                    (EnrollmentStatus.FULL_PARTICIPANT, participant_info.earliest_physical_measurements_time)
+                ],
+                v30_data=[
+                    (EnrollmentStatusV30.PARTICIPANT, participant_info.primary_consent_authored_time),
+                    (EnrollmentStatusV30.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE, participant_info.basics_authored_time),
+                    (EnrollmentStatusV30.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
+                    (EnrollmentStatusV30.CORE_PARTICIPANT, participant_info.earliest_physical_measurements_time)
+                ],
+                v31_data=[
+                    (EnrollmentStatusV31.PARTICIPANT, participant_info.primary_consent_authored_time),
+                    (EnrollmentStatusV31.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatusV31.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
+                    (EnrollmentStatusV31.CORE_PARTICIPANT, participant_info.earliest_physical_measurements_time)
+                ]
             ),
             EnrollmentCalculation.get_enrollment_info(participant_info)
         )
@@ -204,47 +216,48 @@ class TestEnrollmentInfo(BaseTestCase):
             overall_health_time=datetime(2018, 1, 17),
             lifestyle_time=datetime(2018, 1, 17),
             gror_time=datetime(2018, 2, 7),
-            biobank_received_dna_sample_time=datetime(2018, 1, 21),
+            biobank_received_dna_sample_time=datetime(2018, 2, 21),
             physical_measurements_time=datetime(2018, 3, 1),
             ehr_file_submitted_time=datetime(2018, 5, 6)
         )
         self.assertEnrollmentInfoEqual(
-            EnrollmentInfo(
-                version_legacy_status=EnrollmentStatus.FULL_PARTICIPANT,
-                version_3_0_status=EnrollmentStatusV30.CORE_PARTICIPANT,
-                version_3_1_status=EnrollmentStatusV31.BASELINE_PARTICIPANT,
-                version_legacy_datetime=participant_info.earliest_physical_measurements_time,
-                version_3_0_datetime=participant_info.earliest_physical_measurements_time,
-                version_3_1_datetime=participant_info.earliest_ehr_file_received_time
+            self._build_expected_enrollment_info(
+                legacy_data=[
+                    (EnrollmentStatus.INTERESTED, participant_info.primary_consent_authored_time),
+                    (EnrollmentStatus.MEMBER, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatus.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
+                    (EnrollmentStatus.FULL_PARTICIPANT, participant_info.earliest_physical_measurements_time)
+                ],
+                v30_data=[
+                    (EnrollmentStatusV30.PARTICIPANT, participant_info.primary_consent_authored_time),
+                    (EnrollmentStatusV30.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE, participant_info.basics_authored_time),
+                    (EnrollmentStatusV30.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
+                    (EnrollmentStatusV30.CORE_PARTICIPANT, participant_info.earliest_physical_measurements_time)
+                ],
+                v31_data=[
+                    (EnrollmentStatusV31.PARTICIPANT, participant_info.primary_consent_authored_time),
+                    (EnrollmentStatusV31.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS, participant_info.gror_authored_time),
+                    (EnrollmentStatusV31.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
+                    (EnrollmentStatusV31.CORE_PARTICIPANT, participant_info.earliest_physical_measurements_time),
+                    (EnrollmentStatusV31.BASELINE_PARTICIPANT, participant_info.earliest_ehr_file_received_time)
+                ]
             ),
             EnrollmentCalculation.get_enrollment_info(participant_info)
         )
 
         # Check that BASELINE also needs the DNA update for earlier cohorts.
         participant_info.consent_cohort = ParticipantCohort.COHORT_2
-        self.assertEnrollmentInfoEqual(
-            EnrollmentInfo(
-                version_legacy_status=EnrollmentStatus.FULL_PARTICIPANT,
-                version_3_0_status=EnrollmentStatusV30.CORE_PARTICIPANT,
-                version_3_1_status=EnrollmentStatusV31.CORE_PARTICIPANT,
-                version_legacy_datetime=participant_info.earliest_physical_measurements_time,
-                version_3_0_datetime=participant_info.earliest_physical_measurements_time,
-                version_3_1_datetime=participant_info.earliest_physical_measurements_time
-            ),
-            EnrollmentCalculation.get_enrollment_info(participant_info)
-        )
+        enrollment = EnrollmentCalculation.get_enrollment_info(participant_info)
+        self.assertEqual(EnrollmentStatusV31.CORE_PARTICIPANT, enrollment.version_3_1_status)
 
         participant_info.dna_update_time = datetime(2018, 6, 8)
-        self.assertEnrollmentInfoEqual(
-            EnrollmentInfo(
-                version_legacy_status=EnrollmentStatus.FULL_PARTICIPANT,
-                version_3_0_status=EnrollmentStatusV30.CORE_PARTICIPANT,
-                version_3_1_status=EnrollmentStatusV31.BASELINE_PARTICIPANT,
-                version_legacy_datetime=participant_info.earliest_physical_measurements_time,
-                version_3_0_datetime=participant_info.earliest_physical_measurements_time,
-                version_3_1_datetime=participant_info.dna_update_time
-            ),
-            EnrollmentCalculation.get_enrollment_info(participant_info)
+        enrollment = EnrollmentCalculation.get_enrollment_info(participant_info)
+        self.assertEqual(EnrollmentStatusV31.BASELINE_PARTICIPANT, enrollment.version_3_1_status)
+        self.assertEqual(
+            participant_info.dna_update_time,
+            enrollment.version_3_1_dates[EnrollmentStatusV31.BASELINE_PARTICIPANT]
         )
 
     @classmethod

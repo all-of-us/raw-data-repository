@@ -57,6 +57,8 @@ participant_summary_default_values = {
     "state": "UNSET",
     "recontactMethod": "UNSET",
     "enrollmentStatus": "INTERESTED",
+    "enrollmentStatusV3_0": "PARTICIPANT",
+    "enrollmentStatusV3_1": "PARTICIPANT",
     "samplesToIsolateDNA": "UNSET",
     "numBaselineSamplesArrived": 0,
     "numCompletedPPIModules": 1,
