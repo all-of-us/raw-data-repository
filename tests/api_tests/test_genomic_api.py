@@ -2392,6 +2392,63 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
 
         self.assertTrue(resp['data'] == [])
 
+    def test_appointment_cancelled_payload(self):
+        participant_data = self.build_base_participant_data()
+
+        # add hdr appointment record
+        self.data_generator.create_database_genomic_appointment(
+            message_record_id=1,
+            appointment_id=1,
+            event_type='appointment_scheduled',
+            module_type='hdr',
+            participant_id=participant_data.participantId,
+            event_authored_time=clock.CLOCK.now()
+        )
+
+        resp = self.send_get(
+            f"GenomicScheduling?participant_id=P{participant_data.participantId}"
+        )
+
+        current_appointments = self.appointment_dao.get_all()
+        hdr_appointments = list(filter(lambda x: x.participant_id == participant_data.participantId,
+                                       current_appointments))
+        self.assertTrue(len(hdr_appointments), 1)
+        self.assertTrue(len(resp['data']), len(hdr_appointments))  # 1
+        self.assertTrue(all(obj['module'] == 'hdr' for obj in resp['data']))
+        # greatest appointment id
+        self.assertTrue(all(obj['appointment_id'] == 1 for obj in resp['data']))
+        # should be scheduled
+        self.assertTrue(all(obj['status'] == 'scheduled' for obj in resp['data']))
+
+        # add another hdr appointment: cancelled
+        self.data_generator.create_database_genomic_appointment(
+            message_record_id=2,
+            appointment_id=1,  # same id
+            event_type='appointment_cancelled',
+            module_type='hdr',
+            participant_id=participant_data.participantId,
+            event_authored_time=clock.CLOCK.now() + datetime.timedelta(days=1),
+            cancellation_reason='participant_initiated',
+            source='Color'
+        )
+
+        resp = self.send_get(
+            f"GenomicScheduling?participant_id=P{participant_data.participantId}"
+        )
+
+        current_appointments = self.appointment_dao.get_all()
+        hdr_appointments = list(filter(lambda x: x.participant_id == participant_data.participantId,
+                                       current_appointments))
+        self.assertTrue(len(hdr_appointments), 2) # 2 appointment records
+        self.assertTrue(len(resp['data']), 1)  # 1
+        self.assertTrue(all(obj['module'] == 'hdr' for obj in resp['data']))
+        # greatest appointment id
+        self.assertTrue(all(obj['appointment_id'] == 1 for obj in resp['data']))
+        # should be cancelled | greatest appointment id and greatest event_authored_time
+        self.assertTrue(all(obj['status'] == 'cancelled' for obj in resp['data']))
+        self.assertTrue(all(obj['cancellation_reason'] == 'participant_initiated' for obj in resp['data']))
+        self.assertTrue(all(obj['source'] == 'Color' for obj in resp['data']))
+
 
 class GenomicCloudTasksApiTest(BaseTestCase):
     def setUp(self):
