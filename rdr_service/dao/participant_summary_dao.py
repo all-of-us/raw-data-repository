@@ -832,41 +832,11 @@ class ParticipantSummaryDao(UpdatableDao):
                 earliest_physical_measurements_time=earliest_physical_measurements_time,
                 earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
                 ehr_consent_date_range_list=ehr_consent_ranges,
-                dna_update_time=dna_update_time,
-                current_enrollment=EnrollmentInfo(
-                    version_legacy_status=summary.enrollmentStatus,
-                    version_3_1_status=1,
-                    version_3_0_status=1,
-                    version_3_1_datetime=datetime.datetime.now(),
-                    version_3_0_datetime=datetime.datetime.now(),
-                    version_legacy_datetime=datetime.datetime.now()
-                )
+                dna_update_time=dna_update_time
             )
         )
 
-        if (
-            enrollment_info.version_legacy_status == EnrollmentStatus.INTERESTED
-            and summary.enrollmentStatus == EnrollmentStatus.MEMBER
-        ):
-            summary.enrollmentStatusMemberTime = None
-
-        if enrollment_info.version_legacy_status != summary.enrollmentStatus:
-            summary.lastModified = clock.CLOCK.now()
-            summary.enrollmentStatus = enrollment_info.version_legacy_status
-
-            if summary.enrollmentStatus == EnrollmentStatus.MEMBER:
-                summary.enrollmentStatusMemberTime = enrollment_info.version_legacy_datetime
-            elif summary.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM:
-                summary.enrollmentStatusCoreMinusPMTime = enrollment_info.version_legacy_datetime
-            elif summary.enrollmentStatus == EnrollmentStatus.FULL_PARTICIPANT:
-                summary.enrollmentStatusCoreStoredSampleTime = enrollment_info.version_legacy_datetime
-
-        # legacy stuff
-        if summary.enrollmentStatus >= EnrollmentStatus.MEMBER:
-            summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(
-                consent=True,
-                participant_summary=summary
-            )
+        return enrollment_info
 
         # summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
         # summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
