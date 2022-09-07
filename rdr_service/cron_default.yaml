@@ -244,4 +244,10 @@ cron:
   timezone: America/New_York
   schedule: every monday 11:00
   target: offline
+- description: Genomic Gem Result to Reports
+  url: /offline/GenomicGemResultReports
+  timezone: America/New_York
+  schedule: every day 06:00
+  target: offline
+
 

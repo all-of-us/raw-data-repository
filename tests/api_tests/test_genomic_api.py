@@ -690,7 +690,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             genomic_set_member_id=gen_member.id,
             participant_id=participant.participantId,
             module='gem',
-            genomic_report_state=GenomicReportState.GEM_RPT_READY
+            genomic_report_state=GenomicReportState.GEM_RPT_READY,
+            event_authored_time=clock.CLOCK.now()
         )
 
         resp = self.send_get(
@@ -799,7 +800,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 participant_id=participant.participantId,
                 module=module,
                 genomic_report_state=report_state,
-                report_revision_number=report_revision_number
+                report_revision_number=report_revision_number,
+                event_authored_time=fake_date
             )
 
             if num == 3:
@@ -810,7 +812,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                     module_type=module,
                     participant_id=participant.participantId,
                     decision_value='maybe_later',
-                    event_authored_time=fake_date + datetime.timedelta(days=1)
+                    event_authored_time=fake_date
                 )
 
         total_num_set = self.loop_dao.get_all() + self.report_dao.get_all()
@@ -883,7 +885,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         fake_date_one = parser.parse('2020-05-29T08:00:01-05:00')
         fake_date_two = parser.parse('2020-05-30T08:00:01-05:00')
         fake_date_three = parser.parse('2020-05-31T08:00:01-05:00')
-        workflow_date = fake_date_one
         fake_now = clock.CLOCK.now().replace(microsecond=0)
         informing_loop_type = 'informingLoop'
         result_type = 'result'
@@ -906,24 +907,21 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             module = 'gem'
             report_state = GenomicReportState.GEM_RPT_READY
 
-            if num > 4:
-                workflow_date = fake_date_two
-
             gen_member = self.data_generator.create_database_genomic_set_member(
                 genomicSetId=gen_set.id,
                 biobankId="100153482",
                 sampleId="21042005280",
                 genomeType="aou_array",
                 genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
-                participantId=participant.participantId,
-                genomicWorkflowStateModifiedTime=workflow_date
+                participantId=participant.participantId
             )
 
             self.data_generator.create_database_genomic_member_report_state(
                 genomic_set_member_id=gen_member.id,
                 participant_id=participant.participantId,
                 module=module,
-                genomic_report_state=report_state
+                genomic_report_state=report_state,
+                event_authored_time=fake_date_two if num > 4 else fake_date_one
             )
 
             if num % 2 == 0:
@@ -933,7 +931,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                     module_type=module,
                     participant_id=participant.participantId,
                     decision_value='maybe_later',
-                    event_authored_time=fake_date_one + datetime.timedelta(days=1)
+                    event_authored_time=fake_date_two
                 )
 
         total_num_set = self.loop_dao.get_all() + self.report_dao.get_all()
@@ -994,7 +992,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.num_participants = 10
         fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
         fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
-        workflow_date = fake_date_two
         fake_now = clock.CLOCK.now().replace(microsecond=0)
 
         gen_set = self.data_generator.create_database_genomic_set(
@@ -1029,15 +1026,15 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 sampleId="21042005280",
                 genomeType=genome_type,
                 genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
-                participantId=participant.participantId,
-                genomicWorkflowStateModifiedTime=workflow_date
+                participantId=participant.participantId
             )
 
             self.data_generator.create_database_genomic_member_report_state(
                 genomic_set_member_id=gen_member.id,
                 participant_id=participant.participantId,
                 module=result_module,
-                genomic_report_state=report_state
+                genomic_report_state=report_state,
+                event_authored_time=fake_date_two
             )
 
             self.data_generator.create_database_genomic_informing_loop(
@@ -1046,7 +1043,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 module_type=loop_module,
                 participant_id=participant.participantId,
                 decision_value='maybe_later',
-                event_authored_time=fake_date_one + datetime.timedelta(days=1)
+                event_authored_time=fake_date_two
             )
 
         total_num_set = self.loop_dao.get_all() + self.report_dao.get_all()
@@ -1125,7 +1122,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             participant_id=participant.participantId,
             module=module,
             genomic_report_state=report_state,
-            report_revision_number=1
+            report_revision_number=1,
+            event_authored_time=clock.CLOCK.now()
         )
 
         resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
@@ -1156,11 +1154,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         for num in range(self.num_participants):
             participant = self.data_generator.create_database_participant()
 
-            if num % 2 == 0:
-                workflow_date = fake_date_two
-            else:
-                workflow_date = fake_date_one
-
             self.data_generator.create_database_participant_summary(
                 participant=participant,
                 consentForGenomicsRORAuthored=fake_date_two,
@@ -1174,14 +1167,14 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 genomeType="aou_array",
                 genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
                 participantId=participant.participantId,
-                genomicWorkflowStateModifiedTime=workflow_date
             )
 
             self.data_generator.create_database_genomic_member_report_state(
                 genomic_set_member_id=gen_member.id,
                 participant_id=participant.participantId,
                 module=module,
-                genomic_report_state=report_state
+                genomic_report_state=report_state,
+                event_authored_time=fake_date_two if num % 2 == 0 else fake_date_one
             )
 
             self.data_generator.create_database_genomic_informing_loop(
@@ -1190,7 +1183,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 module_type=module,
                 participant_id=participant.participantId,
                 decision_value='maybe_later',
-                event_authored_time=workflow_date
+                event_authored_time=fake_date_two if num % 2 == 0 else fake_date_one
             )
 
         total_num_set = self.loop_dao.get_all() + self.report_dao.get_all()
@@ -1497,15 +1490,15 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 sampleId="21042005280",
                 genomeType="aou_array",
                 genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
-                participantId=participant.participantId,
-                genomicWorkflowStateModifiedTime=fake_date_two
+                participantId=participant.participantId
             )
 
             self.data_generator.create_database_genomic_member_report_state(
                 genomic_set_member_id=gen_member.id,
                 participant_id=participant.participantId,
                 module=module,
-                genomic_report_state=report_state
+                genomic_report_state=report_state,
+                event_authored_time=fake_date_two
             )
 
             if num % 2 == 0:
@@ -1705,7 +1698,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             genomic_set_member_id=gen_member.id,
             participant_id=participant.participantId,
             module=module,
-            genomic_report_state=report_state
+            genomic_report_state=report_state,
+            event_authored_time=fake_date_one
         )
 
         # initial result ready
