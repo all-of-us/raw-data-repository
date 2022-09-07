@@ -433,6 +433,32 @@ class GenomicJobController:
         except RuntimeError:
             logging.warning('Inserting data file failure')
 
+    def gem_results_to_report_state(self):
+        gem_result_records = self.member_dao.get_gem_results_for_report_state()
+
+        if not gem_result_records:
+            self.job_result = GenomicSubProcessResult.NO_RESULTS
+            return
+
+        logging.info(f'Creating {len(gem_result_records)} report states from GEM results')
+        batch_size, item_count, batch = 100, 0, []
+
+        for result in gem_result_records:
+            batch.append(
+                self.report_state_dao.process_gem_result_to_report(result)
+            )
+            item_count += 1
+
+            if item_count == batch_size:
+                self.report_state_dao.insert_bulk(batch)
+                item_count = 0
+                batch.clear()
+
+        if item_count:
+            self.report_state_dao.insert_bulk(batch)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
     def ingest_records_from_message_broker_data(self, *, message_record_id: int, event_type: str) -> None:
 
         module_fields = ['module_type', 'result_type']
@@ -936,10 +962,10 @@ class GenomicJobController:
                         })
 
                         if len(files) % 10000 == 0:
-                            self.staging_dao.insert_filenames_bulk(files)
+                            self.staging_dao.insert_bulk(files)
                             files = []
 
-                self.staging_dao.insert_filenames_bulk(files)
+                self.staging_dao.insert_bulk(files)
 
     # Disabling job until further notice.
     # def reconcile_raw_to_aw1_ingested(self):
