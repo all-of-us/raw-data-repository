@@ -35,6 +35,10 @@ class BQRWBWorkspaceGenerator(BigQueryGenerator):
                     {'id': src_pk_id}).first()
             data = ro_dao.to_dict(row)
 
+            data['orig_id'] = row.id
+            data['orig_created'] = row.created
+            data['orig_modified'] = row.modified
+
             data['status'] = str(WorkbenchWorkspaceStatus(row.status))
             data['status_id'] = int(WorkbenchWorkspaceStatus(row.status))
 
@@ -133,6 +137,9 @@ class BQRWBWorkspaceUsersGenerator(BigQueryGenerator):
                     text('select * from rdr.workbench_workspace_user where id = :id order by modified desc'),
                         {'id': pk_id}).first()
             data = ro_dao.to_dict(row)
+            data['orig_id'] = row.id
+            data['orig_created'] = row.created
+            data['orig_modified'] = row.modified
 
             if row.role:
                 data['role'] = str(WorkbenchWorkspaceUserRole(row.role))
@@ -189,6 +196,9 @@ class BQRWBResearcherGenerator(BigQueryGenerator):
         """
         res = WBResearcherGenerator().make_resource(src_pk_id)
         data = res.get_data()
+        data['orig_id'] = data['id']
+        data['orig_created'] = data['created']
+        data['orig_modified'] = data['modified']
 
         return BQRecord(schema=BQRWBResearcherSchema, data=data, convert_to_enum=convert_to_enum)
 
@@ -242,6 +252,9 @@ class BQRWBInstitutionalAffiliationsGenerator(BigQueryGenerator):
                 text('select * from rdr.workbench_institutional_affiliations_history where id = :id'),
                         {'id': pk_id}).first()
             data = ro_dao.to_dict(row)
+            data['orig_id'] = row.id
+            data['orig_created'] = row.created
+            data['orig_modified'] = row.modified
 
             data['modified_time'] = row.modified
             data['non_academic_affiliation'] = str(WorkbenchInstitutionNonAcademic(row.non_academic_affiliation))
@@ -298,6 +311,9 @@ class BQRWBAuditGenerator(BigQueryGenerator):
             row = ro_session.execute(
                 text('select * from rdr.workbench_audit where id = :id'), {'id': pk_id}).first()
             data = ro_dao.to_dict(row)
+            data['orig_id'] = row.id
+            data['orig_created'] = row.created
+            data['orig_modified'] = row.modified
 
             data['auditor_pmi_email'] = 1 if data['auditor_pmi_email'] else 0
             data['audit_notes'] = 1 if data['audit_notes'] else 0

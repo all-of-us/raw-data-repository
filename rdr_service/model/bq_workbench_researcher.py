@@ -133,6 +133,10 @@ class BQRWBResearcherSchema(BQSchema):
                                          BQFieldModeEnum.NULLABLE)
     dsv2_survey_comments = BQField('dsv2_survey_comments', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    orig_created = BQField('orig_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    orig_modified = BQField('orig_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
 
 class BQRWBResearcher(BQTable):
     """ Code BigQuery Table """
@@ -175,7 +179,8 @@ class BQRWBResearcherGenderView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, t.created, t.modified, t.user_source_id, t.modified_time, nt.*
+        SELECT t.id, t.created, t.modified, t.orig_id, t.orig_created, t.orig_modified, 
+            t.user_source_id, t.modified_time, nt.*
           FROM (
             SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
@@ -191,7 +196,8 @@ class BQRWBResearcherRaceView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, t.created, t.modified, t.user_source_id, t.modified_time, nt.*
+        SELECT t.id, t.created, t.modified, t.orig_id, t.orig_created, t.orig_modified, 
+            t.user_source_id, t.modified_time, nt.*
           FROM (
             SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
@@ -207,7 +213,8 @@ class BQRWBResearcherSexAtBirthView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, t.created, t.modified, t.user_source_id, t.modified_time, nt.*
+        SELECT t.id, t.created, t.modified, t.orig_id, t.orig_created, t.orig_modified, 
+            t.user_source_id, t.modified_time, nt.*
           FROM (
             SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
@@ -223,7 +230,8 @@ class BQRWBResearcherDegreeView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, t.created, t.modified, t.user_source_id, t.modified_time, nt.*
+        SELECT t.id, t.created, t.modified, t.orig_id, t.orig_created, t.orig_modified, 
+            t.user_source_id, t.modified_time, nt.*
           FROM (
             SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
@@ -238,7 +246,8 @@ class BQAccessTierShortNameView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, t.created, t.modified, t.user_source_id, t.modified_time, nt.*
+        SELECT t.id, t.created, t.modified, t.orig_id, t.orig_created, t.orig_modified, 
+            t.user_source_id, t.modified_time, nt.*
           FROM (
             SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
@@ -255,7 +264,8 @@ class BQDSV2EthnicCategoryView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, t.created, t.modified, t.user_source_id, t.modified_time, nt.*
+        SELECT t.id, t.created, t.modified, t.orig_id, t.orig_created, t.orig_modified, 
+            t.user_source_id, t.modified_time, nt.*
           FROM (
             SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
@@ -272,7 +282,8 @@ class BQDSV2GenderIdentityView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, t.created, t.modified, t.user_source_id, t.modified_time, nt.*
+        SELECT t.id, t.created, t.modified, t.orig_id, t.orig_created, t.orig_modified, 
+            t.user_source_id, t.modified_time, nt.*
           FROM (
             SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
@@ -289,7 +300,8 @@ class BQDSV2SexualOrientationView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, t.created, t.modified, t.user_source_id, t.modified_time, nt.*
+        SELECT t.id, t.created, t.modified, t.orig_id, t.orig_created, t.orig_modified, 
+            t.user_source_id, t.modified_time, nt.*
           FROM (
             SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
@@ -312,6 +324,10 @@ class BQRWBInstitutionalAffiliationsSchema(BQSchema):
                                           BQFieldModeEnum.NULLABLE)
     is_verified = BQField('is_verified', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     modified_time = BQField('modified_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
+    orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    orig_created = BQField('orig_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    orig_modified = BQField('orig_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
 
 class BQRWBInstitutionalAffiliations(BQTable):
