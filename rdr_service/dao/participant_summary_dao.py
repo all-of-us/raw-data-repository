@@ -54,6 +54,8 @@ from rdr_service.participant_enums import (
     BiobankOrderStatus,
     EhrStatus,
     EnrollmentStatus,
+    EnrollmentStatusV30,
+    EnrollmentStatusV31,
     DeceasedStatus,
     ConsentExpireStatus,
     GenderIdentity,
@@ -844,6 +846,8 @@ class ParticipantSummaryDao(UpdatableDao):
 
         # Update enrollment status if it is upgrading
         legacy_dates = enrollment_info.version_legacy_dates
+        version_3_0_dates = enrollment_info.version_3_0_dates
+        version_3_1_dates = enrollment_info.version_3_1_dates
         status_rank_map = {  # Re-orders the status values so we can quickly see if the current status is higher
             EnrollmentStatus.INTERESTED: 0,
             EnrollmentStatus.MEMBER: 1,
@@ -863,6 +867,28 @@ class ParticipantSummaryDao(UpdatableDao):
                     timestamp=legacy_dates[summary.enrollmentStatus]
                 )
             )
+        if summary.enrollmentStatusV3_0 < enrollment_info.version_3_0_status:
+            summary.enrollmentStatusV3_0 = enrollment_info.version_3_0_status
+            summary.lastModified = clock.CLOCK.now()
+            session.add(
+                EnrollmentStatusHistory(
+                    participant_id=summary.participantId,
+                    version='3.0',
+                    status=str(summary.enrollmentStatusV3_0),
+                    timestamp=version_3_0_dates[summary.enrollmentStatusV3_0]
+                )
+            )
+        if summary.enrollmentStatusV3_1 < enrollment_info.version_3_0_status:
+            summary.enrollmentStatusV3_1 = enrollment_info.version_3_0_status
+            summary.lastModified = clock.CLOCK.now()
+            session.add(
+                EnrollmentStatusHistory(
+                    participant_id=summary.participantId,
+                    version='3.1',
+                    status=str(summary.enrollmentStatusV3_1),
+                    timestamp=version_3_1_dates[summary.enrollmentStatusV3_1]
+                )
+            )
 
         # Set enrollment status date fields
         if EnrollmentStatus.MEMBER in legacy_dates:
@@ -874,6 +900,74 @@ class ParticipantSummaryDao(UpdatableDao):
                 summary,
                 'enrollmentStatusCoreStoredSampleTime',
                 legacy_dates[EnrollmentStatus.FULL_PARTICIPANT]
+            )
+
+        if EnrollmentStatusV30.PARTICIPANT in version_3_0_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusParticipantV3_0Time',
+                version_3_0_dates[EnrollmentStatusV30.PARTICIPANT]
+            )
+        if EnrollmentStatusV30.PARTICIPANT_PLUS_EHR in version_3_0_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusParticipantPlusEhrV3_0Time',
+                version_3_0_dates[EnrollmentStatusV30.PARTICIPANT_PLUS_EHR]
+            )
+        if EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE in version_3_0_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusPmbEligibleV3_0Time',
+                version_3_0_dates[EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE]
+            )
+        if EnrollmentStatusV30.CORE_MINUS_PM in version_3_0_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusCoreMinusPmV3_0Time',
+                version_3_0_dates[EnrollmentStatusV30.CORE_MINUS_PM]
+            )
+        if EnrollmentStatusV30.CORE_PARTICIPANT in version_3_0_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusCoreV3_0Time',
+                version_3_0_dates[EnrollmentStatusV30.CORE_PARTICIPANT]
+            )
+
+        if EnrollmentStatusV31.PARTICIPANT in version_3_1_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusParticipantV3_1Time',
+                version_3_1_dates[EnrollmentStatusV31.PARTICIPANT]
+            )
+        if EnrollmentStatusV31.PARTICIPANT_PLUS_EHR in version_3_1_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusParticipantPlusEhrV3_1Time',
+                version_3_1_dates[EnrollmentStatusV31.PARTICIPANT_PLUS_EHR]
+            )
+        if EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS in version_3_1_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusParticipantPlusBasicsV3_1Time',
+                version_3_1_dates[EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS]
+            )
+        if EnrollmentStatusV31.CORE_MINUS_PM in version_3_1_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusCoreMinusPmV3_1Time',
+                version_3_1_dates[EnrollmentStatusV31.CORE_MINUS_PM]
+            )
+        if EnrollmentStatusV31.CORE_PARTICIPANT in version_3_1_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusCoreV3_1Time',
+                version_3_1_dates[EnrollmentStatusV31.CORE_PARTICIPANT]
+            )
+        if EnrollmentStatusV31.BASELINE_PARTICIPANT in version_3_1_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusParticipantPlusBaselineV3_1Time',
+                version_3_1_dates[EnrollmentStatusV31.BASELINE_PARTICIPANT]
             )
 
         # Legacy code for setting CoreOrdered date field
