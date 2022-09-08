@@ -26,7 +26,9 @@ from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
 from rdr_service.model.consent_file import ConsentType
+from rdr_service.model.enrollment_status_history import EnrollmentStatusHistory
 from rdr_service.model.hpo import HPO
+from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import (
     ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType,
     TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus)
@@ -2014,6 +2016,29 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(TIME_1.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
         self.assertEqual("MEMBER", ps_1.get("enrollmentStatus"))
         self.assertEqual("SUBMITTED_NO_CONSENT", ps_1.get("consentForElectronicHealthRecords"))
+
+    def test_enrollment_status_history(self):
+        primary_consent_datetime = datetime.datetime(2022, 3, 17)
+        ehr_consent_datetime = datetime.datetime(2022, 4, 1)
+
+        # Create a participant and submit primary consent for them
+        participant_response = self.send_post("Participant", {})
+        participant_id_str = participant_response["participantId"]
+        with FakeClock(primary_consent_datetime):
+            self.send_consent(participant_id_str)
+
+        # Send EHR consent, upgrading them from INTERESTED to MEMBER
+        ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
+        self._submit_consent_questionnaire_response(
+            participant_id_str, ehr_questionnaire_id, CONSENT_PERMISSION_YES_CODE, time=ehr_consent_datetime
+        )
+
+        status_history = self.session.query(EnrollmentStatusHistory).filter(
+            EnrollmentStatusHistory.participant_id == from_client_participant_id(participant_id_str)
+        ).one()
+        self.assertEqual('legacy', status_history.version)
+        self.assertEqual('MEMBER', status_history.status)
+        self.assertEqual(ehr_consent_datetime, status_history.timestamp)
 
     def test_member_ordered_stored_times_for_multi_biobank_order_with_only_dv_consent(self):
         questionnaire_id = self.create_questionnaire("questionnaire3.json")

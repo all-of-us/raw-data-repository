@@ -38,6 +38,7 @@ from rdr_service.dao.site_dao import SiteDao
 from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentDependencies
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
+from rdr_service.model.enrollment_status_history import EnrollmentStatusHistory
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.model.participant_summary import (
     ParticipantGenderAnswers,
@@ -842,6 +843,7 @@ class ParticipantSummaryDao(UpdatableDao):
         )
 
         # Update enrollment status if it is upgrading
+        legacy_dates = enrollment_info.version_legacy_dates
         status_rank_map = {  # Re-orders the status values so we can quickly see if the current status is higher
             EnrollmentStatus.INTERESTED: 0,
             EnrollmentStatus.MEMBER: 1,
@@ -852,8 +854,17 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.enrollmentStatus = enrollment_info.version_legacy_status
             summary.lastModified = clock.CLOCK.now()
 
+            # Record the new status in the history table
+            session.add(
+                EnrollmentStatusHistory(
+                    participant_id=summary.participantId,
+                    version='legacy',
+                    status=str(summary.enrollmentStatus),
+                    timestamp=legacy_dates[summary.enrollmentStatus]
+                )
+            )
+
         # Set enrollment status date fields
-        legacy_dates = enrollment_info.version_legacy_dates
         if EnrollmentStatus.MEMBER in legacy_dates:
             self._set_if_empty(summary, 'enrollmentStatusMemberTime', legacy_dates[EnrollmentStatus.MEMBER])
         if EnrollmentStatus.CORE_MINUS_PM in legacy_dates:
