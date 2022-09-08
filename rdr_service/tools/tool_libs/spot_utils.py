@@ -15,7 +15,7 @@ from dateutil.parser import parse
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
 from sqlalchemy.orm import aliased
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy import case
 
 from rdr_service.dao import database_factory
@@ -508,7 +508,10 @@ class SpotTool(ToolBase):
             GenomicSetMember.aw4ManifestJobRunID.isnot(None),
             GenomicSetMember.ignoreFlag == 0,
             GenomicGCValidationMetrics.ignoreFlag == 0,
-            GenomicSetMember.modified > last_update_date,
+            or_(
+                GenomicSetMember.modified > last_update_date,
+                GenomicGCValidationMetrics.modified > last_update_date,
+                ),
             # GenomicSetMember.participantId.in_(),  # TODO: Add param
             GenomicSetMember.genomeType.in_(["aou_wgs", "aou_array"])
         )
