@@ -36,7 +36,7 @@ from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
 from rdr_service.participant_enums import PatientStatusFlag, QuestionnaireResponseStatus, \
     QuestionnaireResponseClassificationType, UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus, \
     EnrollmentStatusV30, EnrollmentStatusV31, DeceasedStatus, DeceasedNotification, DeceasedReportStatus,\
-    WithdrawalAIANCeremonyStatus
+    WithdrawalAIANCeremonyStatus, DigitalHealthSharingStatusV31
 
 
 class DataGenerator:
@@ -316,7 +316,8 @@ class DataGenerator:
             "enrollmentStatusV3_1": EnrollmentStatusV31.PARTICIPANT,
             "participantOrigin": participant.participantOrigin,
             "deceasedStatus": DeceasedStatus.UNSET,
-            "isEhrDataAvailable": False
+            "isEhrDataAvailable": False,
+            "healthDataStreamSharingStatusV3_1": DigitalHealthSharingStatusV31.NEVER_SHARED
         }
 
         defaults.update(kwargs)
