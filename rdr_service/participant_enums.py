@@ -178,6 +178,14 @@ class EnrollmentStatusV31(messages.Enum):
     BASELINE_PARTICIPANT = 6
 
 
+class DigitalHealthSharingStatusV31(messages.Enum):
+    """Provides whether EHR files have been or currently are available for the participant"""
+
+    NEVER_SHARED = 1
+    EVER_SHARED = 2
+    CURRENTLY_SHARING = 3
+
+
 class SampleStatus(messages.Enum):
     """Status of biobank samples"""
 
