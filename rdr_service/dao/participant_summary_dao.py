@@ -878,8 +878,8 @@ class ParticipantSummaryDao(UpdatableDao):
                     timestamp=version_3_0_dates[summary.enrollmentStatusV3_0]
                 )
             )
-        if summary.enrollmentStatusV3_1 < enrollment_info.version_3_0_status:
-            summary.enrollmentStatusV3_1 = enrollment_info.version_3_0_status
+        if summary.enrollmentStatusV3_1 < enrollment_info.version_3_1_status:
+            summary.enrollmentStatusV3_1 = enrollment_info.version_3_1_status
             summary.lastModified = clock.CLOCK.now()
             session.add(
                 EnrollmentStatusHistory(
