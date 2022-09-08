@@ -2014,11 +2014,6 @@ class GenomicOutreachDaoV2(BaseDao):
 
             if 'result' in participant_data.type:
                 report_status, report_module = self._determine_report_state(participant_data.genomic_report_state)
-                genomic_result_viewed = participant_data.GenomicResultViewed
-
-                result_viewed = 'no'
-                if genomic_result_viewed and report_module in genomic_result_viewed.module_type:
-                    result_viewed = 'yes'
 
                 genomic_swap_module = _get_sample_swap_module(
                     sample_swap=participant_data.GenomicSampleSwapMember
@@ -2028,7 +2023,6 @@ class GenomicOutreachDaoV2(BaseDao):
                     "module": f'{report_module.lower()}{genomic_swap_module}',
                     "type": 'result',
                     "status": report_status,
-                    "viewed": result_viewed,
                     "participant_id": f'P{pid}',
                 }
 
@@ -2163,7 +2157,6 @@ class GenomicOutreachDaoV2(BaseDao):
                         distinct(GenomicMemberReportState.participant_id).label('participant_id'),
                         GenomicMemberReportState.genomic_report_state,
                         GenomicMemberReportState.report_revision_number,
-                        GenomicResultViewed,
                         GenomicSampleSwapMember,
                         literal('result').label('type')
                     )
@@ -2177,9 +2170,6 @@ class GenomicOutreachDaoV2(BaseDao):
                             GenomicSetMember.id == GenomicMemberReportState.genomic_set_member_id,
                             GenomicSetMember.genomeType.in_(query_genome_types)
                         )
-                    ).outerjoin(
-                        GenomicResultViewed,
-                        GenomicResultViewed.participant_id == GenomicMemberReportState.participant_id
                     ).outerjoin(
                         GenomicSampleSwapMember,
                         GenomicSampleSwapMember.genomic_set_member_id == GenomicSetMember.id

@@ -827,7 +827,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                     'module': 'gem',
                     'type': 'result',
                     'status': 'ready',
-                    "viewed": 'no',
                     'participant_id': f'P{first_participant.participantId}'
                 }
             ],
@@ -845,7 +844,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                     'report_revision_number': 1,
                     'type': 'result',
                     'status': 'ready',
-                    "viewed": 'no',
                     'participant_id': f'P{second_participant.participantId}'
                 }
             ],
@@ -869,7 +867,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                     'module': 'gem',
                     'type': 'result',
                     'status': 'ready',
-                    "viewed": 'no',
                     'participant_id': f'P{third_participant.participantId}'
                 },
             ],
@@ -980,7 +977,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 f'GenomicOutreachV2?start_date={fake_date_one}&type={result_type}'
             )
 
-        result_keys = ['module', 'type', 'status', 'viewed', 'participant_id']
+        result_keys = ['module', 'type', 'status', 'participant_id']
         all_result_keys_data = all(not len(obj.keys() - result_keys) and obj.values() for obj in resp['data'])
         self.assertTrue(all_result_keys_data)
 
@@ -1129,7 +1126,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
 
         self.assertTrue(len(resp['data']), 1)
-        hdr_result_keys = ['module', 'type', 'status', 'viewed', 'participant_id', 'hdr_result_status',
+        hdr_result_keys = ['module', 'type', 'status', 'participant_id', 'hdr_result_status',
                            'report_revision_number']
         all_hdr_result_keys_data = all(not len(obj.keys() - hdr_result_keys) and obj.values() for obj in resp['data'])
         self.assertTrue(all_hdr_result_keys_data)
@@ -1460,75 +1457,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
         self.assertEqual(len(resp['data']), 2)
 
-    def test_getting_result_viewed_on_results(self):
-        self.num_participants = 10
-        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
-        fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
-        fake_now = clock.CLOCK.now().replace(microsecond=0)
-        module = 'gem'
-        report_state = GenomicReportState.GEM_RPT_READY
-        pids = []
-
-        gen_set = self.data_generator.create_database_genomic_set(
-            genomicSetName=".",
-            genomicSetCriteria=".",
-            genomicSetVersion=1
-        )
-
-        for num in range(self.num_participants):
-            participant = self.data_generator.create_database_participant()
-
-            self.data_generator.create_database_participant_summary(
-                participant=participant,
-                consentForGenomicsRORAuthored=fake_date_one,
-                consentForStudyEnrollmentAuthored=fake_date_one
-            )
-
-            gen_member = self.data_generator.create_database_genomic_set_member(
-                genomicSetId=gen_set.id,
-                biobankId="100153482",
-                sampleId="21042005280",
-                genomeType="aou_array",
-                genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
-                participantId=participant.participantId
-            )
-
-            self.data_generator.create_database_genomic_member_report_state(
-                genomic_set_member_id=gen_member.id,
-                participant_id=participant.participantId,
-                module=module,
-                genomic_report_state=report_state,
-                event_authored_time=fake_date_two
-            )
-
-            if num % 2 == 0:
-                pids.append(participant.participantId)
-                self.data_generator.create_genomic_result_viewed(
-                    participant_id=participant.participantId,
-                    message_record_id=num + 1,
-                    event_type='result_viewed',
-                    event_authored_time=fake_now,
-                    module_type=module,
-                    first_viewed=fake_now,
-                    last_viewed=fake_now
-                )
-
-        total_num_result_set = self.result_dao.get_all()
-        self.assertEqual(len(total_num_result_set), self.num_participants // 2)
-
-        with clock.FakeClock(fake_now):
-            resp = self.send_get(
-                f'GenomicOutreachV2?start_date={fake_date_one}'
-            )
-
-        self.assertEqual(len(resp['data']), self.num_participants)
-
-        only_results = all(obj['type'] == 'result' for obj in resp['data'])
-        self.assertTrue(only_results)
-
-        pids_only_viewed_yes = all(obj['viewed'] == 'yes' for obj in resp['data']
-                                   if int(obj['participant_id'].split('P')[1]) in pids)
-        self.assertTrue(pids_only_viewed_yes)
 
     def test_get_multi_module_last_decision_loop(self):
         fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
@@ -1705,7 +1633,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         # initial result ready
         resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
 
-        result_keys = ['module', 'type', 'status', 'viewed', 'participant_id']
+        result_keys = ['module', 'type', 'status', 'participant_id']
 
         all_result_keys_data = all(not len(obj.keys() - result_keys) and obj.values() for obj in resp['data'])
         self.assertTrue(all_result_keys_data)
