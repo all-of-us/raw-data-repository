@@ -16,17 +16,8 @@ class ParticipantResponses:
     @property
     def in_authored_order(self) -> List['Response']:
         if not self._responses_in_order:
-            responses = {}
-            for response in self.responses.values():
-                survey_code = response.survey_code
-                if survey_code in responses:
-                    other_response = responses[survey_code]
-                    if other_response.authored_datetime <= response.authored_datetime:
-                        responses[survey_code] = response
-                else:
-                    responses[response.survey_code] = response
             self._responses_in_order = sorted(
-                responses.values(),
+                self.responses.values(),
                 key=lambda response: response.authored_datetime or False
             )
 

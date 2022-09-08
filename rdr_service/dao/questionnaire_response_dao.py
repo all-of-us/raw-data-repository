@@ -1,4 +1,3 @@
-from collections import defaultdict
 import json
 import logging
 import os
@@ -10,14 +9,13 @@ from hashlib import md5
 import pytz
 from typing import Dict, List, Optional
 
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import aliased, joinedload, Session, subqueryload
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import singletons
 from rdr_service.api_util import dispatch_task
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
-from rdr_service.domain_model import response as response_domain_model
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
     PARTICIPANT_COHORT_3_START_TIME
@@ -99,7 +97,6 @@ from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_F
     QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
-from rdr_service.model.participant import Participant
 from rdr_service.model.measurements import PhysicalMeasurements, Measurement
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
@@ -514,6 +511,9 @@ class QuestionnaireResponseDao(BaseDao):
         for answer in current_answers:
             answer.endTime = questionnaire_response.created
             session.merge(answer)
+
+        participant = ParticipantDao().get_for_update(session, questionnaire_response.participantId)
+        ParticipantSummaryDao().update_enrollment_status(participant.participantSummary, session=session)
 
         return questionnaire_response
 
@@ -1054,7 +1054,6 @@ class QuestionnaireResponseDao(BaseDao):
                         .format(*["present" if part else "missing" for part in email_phone])
                 )
 
-            ParticipantSummaryDao().update_enrollment_status(participant_summary)
             participant_summary.lastModified = clock.CLOCK.now()
             session.merge(participant_summary)
 
@@ -1454,133 +1453,6 @@ class QuestionnaireResponseDao(BaseDao):
         )
 
         return [result_row.participantId for result_row in query.all()]
-
-    @classmethod
-    def get_responses_to_surveys(
-        cls,
-        session: Session,
-        survey_codes: List[str] = None,
-        participant_ids: List[int] = None,
-        include_ignored_answers=False,
-        sent_statuses: Optional[List[QuestionnaireResponseStatus]] = None,
-        classification_types: Optional[List[QuestionnaireResponseClassificationType]] = None,
-        created_start_datetime: datetime = None,
-        created_end_datetime: datetime = None
-    ) -> Dict[int, response_domain_model.ParticipantResponses]:
-        """
-        Retrieve questionnaire response data (returned as a domain model) for the specified participant ids
-        and survey codes.
-
-        :param survey_codes: Survey module code strings to get responses for
-        :param session: Session to use for connecting to the database
-        :param participant_ids: Participant ids to get responses for
-        :param include_ignored_answers: Include response answers that have been ignored
-        :param sent_statuses: List of QuestionnaireResponseStatus to use when filtering responses
-            (defaults to QuestionnaireResponseStatus.COMPLETED)
-        :param classification_types: List of QuestionnaireResponseClassificationTypes to filter results by
-        :param created_start_datetime: Optional start date, if set only responses that were sent to
-            the API after this date will be returned
-        :param created_end_datetime: Optional end date, if set only responses that were sent to the
-            API before this date will be returned
-        :return: A dictionary keyed by participant ids with the value being the collection of responses for
-            that participant
-        """
-
-        if sent_statuses is None:
-            sent_statuses = [QuestionnaireResponseStatus.COMPLETED]
-        if classification_types is None:
-            classification_types = [QuestionnaireResponseClassificationType.COMPLETE]
-
-        # Build query for all the questions answered by the given participants for the given survey codes
-        question_code = aliased(Code)
-        survey_code = aliased(Code)
-        query = (
-            session.query(
-                func.lower(question_code.value),
-                QuestionnaireResponse.participantId,
-                QuestionnaireResponse.questionnaireResponseId,
-                QuestionnaireResponse.authored,
-                survey_code.value,
-                QuestionnaireResponseAnswer,
-                QuestionnaireResponse.status
-            )
-            .select_from(QuestionnaireResponseAnswer)
-            .join(QuestionnaireQuestion)
-            .join(QuestionnaireResponse)
-            .join(
-                Participant,
-                Participant.participantId == QuestionnaireResponse.participantId
-            )
-            .join(question_code, question_code.codeId == QuestionnaireQuestion.codeId)
-            .join(
-                QuestionnaireConcept,
-                and_(
-                    QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
-                    QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
-                )
-            ).join(survey_code, survey_code.codeId == QuestionnaireConcept.codeId)
-            .options(joinedload(QuestionnaireResponseAnswer.code))
-            .filter(
-                QuestionnaireResponse.status.in_(sent_statuses),
-                QuestionnaireResponse.classificationType.in_(classification_types),
-                Participant.isTestParticipant != 1
-            )
-        )
-
-        if survey_codes:
-            query = query.filter(
-                survey_code.value.in_(survey_codes)
-            )
-        if participant_ids:
-            query = query.filter(
-                QuestionnaireResponse.participantId.in_(participant_ids)
-            )
-        if not include_ignored_answers:
-            query = query.filter(
-                or_(
-                    QuestionnaireResponseAnswer.ignore.is_(False),
-                    QuestionnaireResponseAnswer.ignore.is_(None)
-                )
-            )
-        if created_start_datetime:
-            query = query.filter(
-                QuestionnaireResponse.created >= created_start_datetime
-            ).with_hint(
-                QuestionnaireResponse,
-                'USE INDEX (idx_created_q_id)'
-            )
-        if created_end_datetime:
-            query = query.filter(
-                QuestionnaireResponse.created <= created_end_datetime
-            ).with_hint(
-                QuestionnaireResponse,
-                'USE INDEX (idx_created_q_id)'
-            )
-
-        # build dict with participant ids as keys and ParticipantResponse objects as values
-        participant_response_map = defaultdict(response_domain_model.ParticipantResponses)
-        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, answer, \
-                status in query.all():
-            # Get the collection of responses for the participant
-            response_collection_for_participant = participant_response_map[participant_id]
-
-            # Get the response that this particular answer is for so we can store the answer
-            response = response_collection_for_participant.responses.get(response_id)
-            if not response:
-                # This is the first time seeing an answer for this response, so create the Response structure for it
-                response = response_domain_model.Response(
-                    id=response_id,
-                    survey_code=survey_code_str,
-                    authored_datetime=authored_datetime,
-                    status=status
-                )
-                response_collection_for_participant.responses[response_id] = response
-
-            response.answered_codes[question_code_str].append(
-                response_domain_model.Answer.from_db_model(answer)
-            )
-
-        return dict(participant_response_map)
 
     @classmethod
     def get_latest_answer_for_state_receiving_care(cls, session: Session, participant_id) -> str:
