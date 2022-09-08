@@ -291,8 +291,6 @@ class DataGenerator:
 
     def create_database_participant_summary(self, **kwargs):
         participant_summary = self._participant_summary_with_defaults(**kwargs)
-
-
         self._commit_to_database(participant_summary)
         return participant_summary
 
