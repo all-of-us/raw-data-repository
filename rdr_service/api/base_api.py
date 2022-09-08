@@ -179,6 +179,8 @@ class BaseApi(Resource):
         # in test env to ParticipantSummary
         if result.__class__.__name__.lower() == 'participantsummary':
             result.wasEhrDataAvailable = None
+            result.healthDataStreamSharingStatusV3_1 = None
+            result.healthDataStreamSharingStatusV3_1Time = None
 
         if participant_id or (result and hasattr(result, 'participantId')):
             if not participant_id:
