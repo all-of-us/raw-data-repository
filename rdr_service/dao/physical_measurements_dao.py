@@ -365,7 +365,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 SelfReportedPhysicalMeasurementsStatus.COMPLETED
             participant_summary.selfReportedPhysicalMeasurementsAuthored = obj.finalized
 
-        participant_summary_dao.update_enrollment_status(participant_summary)
+        participant_summary_dao.update_enrollment_status(participant_summary, session=session)
         session.merge(participant_summary)
 
         return participant_summary
