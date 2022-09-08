@@ -464,9 +464,9 @@ class MessageBrokerApiTest(BaseTestCase):
                 'id': 111,
                 'source': 'Color',
                 'appointment_timestamp': format_datetime(clock.CLOCK.now()),
-                'appointment_timezone': '-04',
+                'appointment_timezone': 'America/Los_Angeles',
                 'location': '123 address st',
-                'contact_number': '12121212',
+                'contact_number': '17348675309',
                 'language': 'EN'
             }
         }
@@ -502,15 +502,28 @@ class MessageBrokerApiTest(BaseTestCase):
             len(request_json_appointment_scheduled['messageBody'])
         )
 
-        for result in appointment_records:
-            if result.fieldName == 'appointment_scheduled':
-                self.assertTrue(result.valueString == 'hdr_v1')
-            if result.fieldName == 'id':
-                self.assertTrue(result.valueInteger == 111)
 
-            self.assertEqual(format_datetime(result.eventAuthoredTime), event_time)
-            self.assertEqual(result.eventType, 'appointment_scheduled')
-            self.assertTrue(result.fieldName in request_json_appointment_scheduled['messageBody'].keys())
+        self.assertTrue(any(result.fieldName == 'id' and result.valueInteger == 111 for result in appointment_records))
+        self.assertTrue(any(result.fieldName == 'source' and result.valueString == 'Color' for result in
+                            appointment_records))
+        self.assertTrue(any(result.fieldName == 'language' and result.valueString == 'EN' for result in
+                            appointment_records))
+        self.assertTrue(any(result.fieldName == 'location' and result.valueString == '123 address st' for result in
+                            appointment_records))
+        self.assertTrue(any(result.fieldName == 'module_type' and result.valueString == 'hdr' for result in
+                            appointment_records))
+        self.assertTrue(any(result.fieldName == 'contact_number' and result.valueString == '17348675309' for result in
+                            appointment_records))
+        self.assertTrue(any(result.fieldName == 'appointment_timezone' and result.valueString == 'America/Los_Angeles' for result in
+                            appointment_records))
+        self.assertTrue(any(result.fieldName == 'appointment_timestamp' and result.valueDatetime is not None for
+                            result in
+                            appointment_records))
+        # should be in all
+        self.assertTrue(all(result.eventAuthoredTime is not None for result in appointment_records))
+        self.assertTrue(all(result.eventType == 'appointment_scheduled' for result in appointment_records))
+        self.assertTrue(all(result.fieldName in request_json_appointment_scheduled['messageBody'].keys() for result
+                            in appointment_records))
 
     @mock.patch('rdr_service.message_broker.message_broker.requests')
     def test_token_refresh_retry(self, requests_mock):

@@ -40,7 +40,7 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
             if isinstance(value, str):
                 try:
                     value_date_time = parse(value)
-                except ValueError:
+                except (ValueError, OverflowError):
                     pass
 
             message_event_date = MessageBrokerEventData(
