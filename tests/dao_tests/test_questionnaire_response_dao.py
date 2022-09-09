@@ -41,7 +41,8 @@ from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept,
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseStatus
 from rdr_service.model.resource_data import ResourceData
-from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort
+from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort,\
+    DigitalHealthSharingStatusV31
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from tests import test_data
 from tests.test_data import (
@@ -636,7 +637,8 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -1266,7 +1268,8 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -1342,7 +1345,8 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -1425,7 +1429,8 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
@@ -1498,7 +1503,8 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
