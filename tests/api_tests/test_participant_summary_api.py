@@ -158,6 +158,7 @@ participant_summary_default_values = {
     "questionnaireOnCopeVaccineMinute4": "UNSET",
     "onsiteIdVerificationType": "UNSET",
     "onsiteIdVerificationVisitType": "UNSET",
+    "questionnaireOnLifeFunctioning": "UNSET",
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)

@@ -182,6 +182,7 @@ COPE_NOV_MODULE = 'cope_nov'
 COPE_DEC_MODULE = "cope_dec"
 COPE_FEB_MODULE = "cope_feb"
 GENETIC_ANCESTRY_MODULE = 'GeneticAncestry'
+LIFE_FUNCTIONING_SURVEY = 'lfs'
 
 VA_PRIMARY_RECONSENT_C1_C2 = 'vaprimaryreconsent_c1_2'
 VA_PRIMARY_RECONSENT_C3 = 'vaprimaryreconsent_c3'

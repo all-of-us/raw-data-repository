@@ -1,0 +1,48 @@
+{
+  "status": "published",
+  "group": {
+    "concept": [
+      {
+        "code": "lfs",
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+      }
+    ],
+    "title": "Life Functioning Survey",
+    "linkId": "root_group",
+    "required": true,
+    "question": [
+      {
+        "concept": [
+          {
+            "code": "Disability_Blind",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "option": [
+          {
+            "code": "Blind_Yes",
+            "display": "Yes",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          },
+          {
+            "code": "Blind_PreferNotToAnswer",
+            "display": "Prefer not to answer",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          },
+          {
+            "code": "Blind_No",
+            "display": "No",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "linkId": "7332",
+        "repeats": false,
+        "type": "choice",
+        "text": "Are you blind or do you have serious difficulty seeing, even when wearing glasses?"
+      }
+    ]
+  },
+  "resourceType": "Questionnaire",
+  "version": "1",
+  "date": "2022-09-06T05:04:47Z"
+}
