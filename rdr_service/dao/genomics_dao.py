@@ -2014,21 +2014,15 @@ class GenomicOutreachDaoV2(BaseDao):
 
             if 'result' in participant_data.type:
                 report_status, report_module = self._determine_report_state(participant_data.genomic_report_state)
-                genomic_result_viewed = participant_data.GenomicResultViewed
-
-                result_viewed = 'no'
-                if genomic_result_viewed and report_module in genomic_result_viewed.module_type:
-                    result_viewed = 'yes'
 
                 genomic_swap_module = _get_sample_swap_module(
                     sample_swap=participant_data.GenomicSampleSwapMember
                 )
 
                 report_obj = {
-                    "module": f'{report_module.lower()}{genomic_swap_module}',
+                    "module": f'{report_module}{genomic_swap_module}',
                     "type": 'result',
                     "status": report_status,
-                    "viewed": result_viewed,
                     "participant_id": f'P{pid}',
                 }
 
@@ -2040,6 +2034,12 @@ class GenomicOutreachDaoV2(BaseDao):
                         -1].lower()
 
                 report_statuses.append(report_obj)
+
+                if participant_data.result_viewed:
+                    result_obj = report_obj.copy()
+                    result_obj['status'] = 'viewed'
+
+                    report_statuses.append(result_obj)
 
             elif 'informing_loop' in participant_data.type:
                 if 'ready' in participant_data.type:
@@ -2163,8 +2163,13 @@ class GenomicOutreachDaoV2(BaseDao):
                         distinct(GenomicMemberReportState.participant_id).label('participant_id'),
                         GenomicMemberReportState.genomic_report_state,
                         GenomicMemberReportState.report_revision_number,
-                        GenomicResultViewed,
                         GenomicSampleSwapMember,
+                        sqlalchemy.case(
+                            [
+                                (GenomicResultViewed.id.isnot(None), True)
+                            ],
+                            else_=False
+                        ).label('result_viewed'),
                         literal('result').label('type')
                     )
                     .join(
@@ -2179,7 +2184,10 @@ class GenomicOutreachDaoV2(BaseDao):
                         )
                     ).outerjoin(
                         GenomicResultViewed,
-                        GenomicResultViewed.participant_id == GenomicMemberReportState.participant_id
+                        and_(
+                            GenomicResultViewed.sample_id == GenomicMemberReportState.sample_id,
+                            GenomicResultViewed.module_type == GenomicMemberReportState.module
+                        )
                     ).outerjoin(
                         GenomicSampleSwapMember,
                         GenomicSampleSwapMember.genomic_set_member_id == GenomicSetMember.id
@@ -2197,8 +2205,16 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                 if start_date:
                     result_query = result_query.filter(
-                        GenomicMemberReportState.event_authored_time > start_date,
-                        GenomicMemberReportState.event_authored_time < end_date
+                        or_(
+                            and_(
+                                GenomicMemberReportState.event_authored_time > start_date,
+                                GenomicMemberReportState.event_authored_time < end_date,
+                            ),
+                            and_(
+                                GenomicResultViewed.event_authored_time > start_date,
+                                GenomicResultViewed.event_authored_time < end_date
+                            )
+                        )
                     )
 
                 results = result_query.all()

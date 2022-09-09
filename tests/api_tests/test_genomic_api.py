@@ -828,7 +828,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                     'module': 'gem',
                     'type': 'result',
                     'status': 'ready',
-                    "viewed": 'no',
                     'participant_id': f'P{first_participant.participantId}'
                 }
             ],
@@ -846,7 +845,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                     'report_revision_number': 1,
                     'type': 'result',
                     'status': 'ready',
-                    "viewed": 'no',
                     'participant_id': f'P{second_participant.participantId}'
                 }
             ],
@@ -870,7 +868,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                     'module': 'gem',
                     'type': 'result',
                     'status': 'ready',
-                    "viewed": 'no',
                     'participant_id': f'P{third_participant.participantId}'
                 },
             ],
@@ -981,7 +978,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 f'GenomicOutreachV2?start_date={fake_date_one}&type={result_type}'
             )
 
-        result_keys = ['module', 'type', 'status', 'viewed', 'participant_id']
+        result_keys = ['module', 'type', 'status', 'participant_id']
         all_result_keys_data = all(not len(obj.keys() - result_keys) and obj.values() for obj in resp['data'])
         self.assertTrue(all_result_keys_data)
 
@@ -1130,7 +1127,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
 
         self.assertTrue(len(resp['data']), 1)
-        hdr_result_keys = ['module', 'type', 'status', 'viewed', 'participant_id', 'hdr_result_status',
+        hdr_result_keys = ['module', 'type', 'status', 'participant_id', 'hdr_result_status',
                            'report_revision_number']
         all_hdr_result_keys_data = all(not len(obj.keys() - hdr_result_keys) and obj.values() for obj in resp['data'])
         self.assertTrue(all_hdr_result_keys_data)
@@ -1461,76 +1458,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
         self.assertEqual(len(resp['data']), 2)
 
-    def test_getting_result_viewed_on_results(self):
-        self.num_participants = 10
-        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
-        fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
-        fake_now = clock.CLOCK.now().replace(microsecond=0)
-        module = 'gem'
-        report_state = GenomicReportState.GEM_RPT_READY
-        pids = []
-
-        gen_set = self.data_generator.create_database_genomic_set(
-            genomicSetName=".",
-            genomicSetCriteria=".",
-            genomicSetVersion=1
-        )
-
-        for num in range(self.num_participants):
-            participant = self.data_generator.create_database_participant()
-
-            self.data_generator.create_database_participant_summary(
-                participant=participant,
-                consentForGenomicsRORAuthored=fake_date_one,
-                consentForStudyEnrollmentAuthored=fake_date_one
-            )
-
-            gen_member = self.data_generator.create_database_genomic_set_member(
-                genomicSetId=gen_set.id,
-                biobankId="100153482",
-                sampleId="21042005280",
-                genomeType="aou_array",
-                genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
-                participantId=participant.participantId
-            )
-
-            self.data_generator.create_database_genomic_member_report_state(
-                genomic_set_member_id=gen_member.id,
-                participant_id=participant.participantId,
-                module=module,
-                genomic_report_state=report_state,
-                event_authored_time=fake_date_two
-            )
-
-            if num % 2 == 0:
-                pids.append(participant.participantId)
-                self.data_generator.create_genomic_result_viewed(
-                    participant_id=participant.participantId,
-                    message_record_id=num + 1,
-                    event_type='result_viewed',
-                    event_authored_time=fake_now,
-                    module_type=module,
-                    first_viewed=fake_now,
-                    last_viewed=fake_now
-                )
-
-        total_num_result_set = self.result_dao.get_all()
-        self.assertEqual(len(total_num_result_set), self.num_participants // 2)
-
-        with clock.FakeClock(fake_now):
-            resp = self.send_get(
-                f'GenomicOutreachV2?start_date={fake_date_one}'
-            )
-
-        self.assertEqual(len(resp['data']), self.num_participants)
-
-        only_results = all(obj['type'] == 'result' for obj in resp['data'])
-        self.assertTrue(only_results)
-
-        pids_only_viewed_yes = all(obj['viewed'] == 'yes' for obj in resp['data']
-                                   if int(obj['participant_id'].split('P')[1]) in pids)
-        self.assertTrue(pids_only_viewed_yes)
-
     def test_get_multi_module_last_decision_loop(self):
         fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
         fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
@@ -1706,7 +1633,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         # initial result ready
         resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
 
-        result_keys = ['module', 'type', 'status', 'viewed', 'participant_id']
+        result_keys = ['module', 'type', 'status', 'participant_id']
 
         all_result_keys_data = all(not len(obj.keys() - result_keys) and obj.values() for obj in resp['data'])
         self.assertTrue(all_result_keys_data)
@@ -1729,6 +1656,170 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         swap_module_name = f'{module}_{sample_swap.name}_' \
                            f'{GenomicSampleSwapCategory.RESULT_READY_NOT_VIEWED.name}'.lower()
         self.assertTrue(all(obj['module'] == swap_module_name for obj in resp['data']))
+
+    def test_get_result_viewed_cvl_modules_same_sample_id(self):
+        sample_id = 22222
+
+        hdr_module = 'hdr_v1'
+        hdr_report_state = GenomicReportState.HDR_RPT_UNINFORMATIVE
+
+        pgx_module = 'pgx_v1'
+        pgx_report_state = GenomicReportState.PGX_RPT_READY
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        participant = self.data_generator.create_database_participant()
+
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            consentForGenomicsRORAuthored=clock.CLOCK.now(),
+            consentForStudyEnrollmentAuthored=clock.CLOCK.now()
+        )
+
+        # base cvl member for both cvl modules
+        cvl_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId=sample_id,
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.CVL_READY,
+            participantId=participant.participantId,
+            genomicWorkflowStateModifiedTime=clock.CLOCK.now()
+        )
+
+        # hdr sample report state
+        self.data_generator.create_database_genomic_member_report_state(
+            genomic_set_member_id=cvl_member.id,
+            participant_id=participant.participantId,
+            module=hdr_module,
+            genomic_report_state=hdr_report_state,
+            report_revision_number=1,
+            event_authored_time=clock.CLOCK.now(),
+            sample_id=sample_id
+        )
+
+        # pgx sample report state
+        self.data_generator.create_database_genomic_member_report_state(
+            genomic_set_member_id=cvl_member.id,
+            participant_id=participant.participantId,
+            module=pgx_module,
+            genomic_report_state=pgx_report_state,
+            report_revision_number=1,
+            event_authored_time=clock.CLOCK.now(),
+            sample_id=sample_id
+        )
+
+        resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
+
+        self.assertTrue(len(resp['data']), 2)
+
+        # should one of each
+        hdr_results = list(filter(lambda x: x['module'] == 'hdr', resp['data']))
+        self.assertEqual(len(hdr_results), 1)
+
+        pgx_results = list(filter(lambda x: x['module'] == 'pgx', resp['data']))
+        self.assertEqual(len(pgx_results), 1)
+
+        self.assertTrue(any(obj['hdr_result_status'] == 'uninformative' for obj in resp['data']))
+        self.assertTrue(all(obj['report_revision_number'] == 1 for obj in resp['data']))
+
+        # result viewed for pgx result
+        self.data_generator.create_genomic_result_viewed(
+            participant_id=participant.participantId,
+            message_record_id=1,
+            event_type='result_viewed',
+            event_authored_time=clock.CLOCK.now(),
+            module_type=pgx_module,
+            sample_id=sample_id
+        )
+
+        resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
+
+        pgx_results = list(filter(lambda x: x['module'] == 'pgx', resp['data']))
+        self.assertEqual(len(pgx_results), 2)
+
+        self.assertTrue(any(obj['status'] == 'viewed' for obj in resp['data']))
+
+    def test_get_result_viewed_date_param(self):
+        sample_id = 22222
+        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+
+        hdr_module = 'hdr_v1'
+        hdr_report_state = GenomicReportState.HDR_RPT_UNINFORMATIVE
+
+        # pgx_module = 'pgx_v1'
+        # pgx_report_state = GenomicReportState.PGX_RPT_READY
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        participant = self.data_generator.create_database_participant()
+
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            consentForGenomicsRORAuthored=clock.CLOCK.now(),
+            consentForStudyEnrollmentAuthored=clock.CLOCK.now()
+        )
+
+        cvl_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId=sample_id,
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.CVL_READY,
+            participantId=participant.participantId,
+            genomicWorkflowStateModifiedTime=clock.CLOCK.now()
+        )
+
+        # hdr sample report state ready
+        self.data_generator.create_database_genomic_member_report_state(
+            genomic_set_member_id=cvl_member.id,
+            participant_id=participant.participantId,
+            module=hdr_module,
+            genomic_report_state=hdr_report_state,
+            report_revision_number=1,
+            event_authored_time=fake_date_one + datetime.timedelta(days=1),
+            sample_id=sample_id
+        )
+
+        # hdr sample report viewed
+        self.data_generator.create_genomic_result_viewed(
+            participant_id=participant.participantId,
+            message_record_id=1,
+            event_type='result_viewed',
+            event_authored_time=fake_date_one + datetime.timedelta(days=1),
+            module_type=hdr_module,
+            sample_id=sample_id
+        )
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}'
+            )
+
+        self.assertTrue(len(resp['data']), 2)
+
+        # should be two
+        hdr_results = list(filter(lambda x: x['module'] == 'hdr', resp['data']))
+        self.assertEqual(len(hdr_results), 2)
+
+        self.assertTrue(all(obj['type'] == 'result' for obj in resp['data']))
+        self.assertTrue(all(obj['hdr_result_status'] == 'uninformative' for obj in resp['data']))
+        self.assertTrue(all(obj['report_revision_number'] == 1 for obj in resp['data']))
+        self.assertTrue(all(obj['participant_id'] == f'P{participant.participantId}' for obj in resp['data']))
+
+        # should be one ready
+        self.assertTrue(any(obj['status'] == 'ready' for obj in resp['data']))
+        # should be one viewed
+        self.assertTrue(any(obj['status'] == 'viewed' for obj in resp['data']))
 
     # POST/PUT
     def test_validate_post_put_data(self):
