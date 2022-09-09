@@ -1,0 +1,24 @@
+# Remove duplicate values from rdr_ods.sample_data_element
+CREATE OR REPLACE PROCEDURE rdr_ods.purge_duplicate_sample_values()
+BEGIN
+DELETE from
+`rdr_ods.sample_data_element`
+where STRUCT(sample_id, data_element_id, value_string, created_timestamp)
+IN
+(
+  select AS STRUCT sample_id
+    , data_element_id
+    , value_string
+    , created_timestamp
+  FROM
+  (
+    select AS STRUCT sde.sample_id
+      , sde.data_element_id
+      , sde.value_string
+      , sde.created_timestamp
+      , row_number() OVER (PARTITION BY sde.sample_id, sde.data_element_id, value_string ORDER BY sde.created_timestamp) dup_num
+    from `rdr_ods.sample_data_element` sde
+  ) a
+  where dup_num > 1
+);
+END
