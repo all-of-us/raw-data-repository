@@ -140,6 +140,7 @@ participant_summary_default_values = {
     "suspensionStatus": "NOT_SUSPENDED",
     "numberDistinctVisits": 0,
     "ehrStatus": "UNSET",
+    "healthDataStreamSharingStatusV3_1": "NEVER_SHARED",
     "ehrConsentExpireStatus": "UNSET",
     "patientStatus": [],
     "participantOrigin": 'example',
@@ -157,6 +158,7 @@ participant_summary_default_values = {
     "questionnaireOnCopeVaccineMinute4": "UNSET",
     "onsiteIdVerificationType": "UNSET",
     "onsiteIdVerificationVisitType": "UNSET",
+    "questionnaireOnLifeFunctioning": "UNSET",
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
@@ -3672,7 +3674,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.send_get("ParticipantSummary?suspensionStatus=test", expected_status=400)
 
     def test_ehr_field_mapping(self):
-        """Check that the new set of EHR data availablity fields are present on the summary"""
+        """Check that the new set of EHR data availability fields are present on the summary"""
         first_receipt_time = datetime.datetime(2020, 3, 27)
         latest_receipt_time = datetime.datetime(2020, 8, 4)
 
@@ -3697,6 +3699,61 @@ class ParticipantSummaryApiTest(BaseTestCase):
         response = self.send_get(f'ParticipantSummary?_count=1&_sort=lastModified&awardee=PITT&_sync=true')
         self.assertEqual(first_receipt_time.isoformat(), response['entry'][0]['resource']['firstEhrReceiptTime'])
         self.assertEqual(latest_receipt_time.isoformat(), response['entry'][0]['resource']['latestEhrReceiptTime'])
+
+    def test_digital_health_sharing(self):
+        """Check that the new set of Digital Health Sharing data availability fields are present on the summary"""
+        first_receipt_time = datetime.datetime(2020, 3, 27)
+        latest_receipt_time = datetime.datetime(2020, 8, 4)
+
+        sharing_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,  # PITT
+            ehrStatus=EhrStatus.PRESENT,
+            isEhrDataAvailable=True,
+            ehrReceiptTime=first_receipt_time,
+            ehrUpdateTime=latest_receipt_time
+        )
+        not_sharing_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,  # PITT
+            ehrStatus=EhrStatus.NOT_PRESENT
+        )
+
+        # Check fields on participant that is sharing
+        response = self.send_get(f'Participant/P{sharing_summary.participantId}/Summary')
+        self.assertEqual('CURRENTLY_SHARING', response['healthDataStreamSharingStatusV3_1'])
+        self.assertEqual(latest_receipt_time.isoformat(), response['healthDataStreamSharingStatusV3_1Time'])
+
+        # Check fields on participant that is NOT sharing
+        response = self.send_get(f'Participant/P{not_sharing_summary.participantId}/Summary')
+        self.assertEqual('NEVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertNotIn('healthDataStreamSharingStatusV3_1Time', response)
+
+        # Check the ordering of participants based on status
+        response = self.send_get(f'ParticipantSummary?_sort=healthDataStreamSharingStatusV3_1&awardee=PITT&_sync=false')
+        participant_id_list = [
+            from_client_participant_id(entry['resource']['participantId'])
+            for entry in response['entry']
+        ]
+        self.assertEqual(not_sharing_summary.participantId, participant_id_list[0])
+        self.assertEqual(sharing_summary.participantId, participant_id_list[1])
+
+        # Add in another participant and check the ordering based on the sharing date
+        later_shared_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,  # PITT
+            ehrStatus=EhrStatus.PRESENT,
+            isEhrDataAvailable=False,
+            ehrReceiptTime=datetime.datetime(2021, 8, 4),
+            ehrUpdateTime=datetime.datetime(2021, 8, 4)
+        )
+        response = self.send_get(
+            f'ParticipantSummary?_sort=healthDataStreamSharingStatusV3_1Time&awardee=PITT&_sync=false'
+        )
+        participant_id_list = [
+            from_client_participant_id(entry['resource']['participantId'])
+            for entry in response['entry']
+        ]
+        self.assertEqual(not_sharing_summary.participantId, participant_id_list[0])
+        self.assertEqual(sharing_summary.participantId, participant_id_list[1])
+        self.assertEqual(later_shared_summary.participantId, participant_id_list[2])
 
     def test_blank_demographics_data_mapped_to_skip(self):
         # Create a participant summary that doesn't use skip codes for the demographics questions that weren't answered.

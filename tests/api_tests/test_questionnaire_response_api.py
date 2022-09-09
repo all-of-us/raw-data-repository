@@ -1662,6 +1662,21 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         ).one()
         self.assertIsNone(response_obj.externalId)
 
+    def test_questionnaire_life_functioning_survey(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id)
+        questionnaire_id = self.create_questionnaire("questionnaire_life_functioning.json")
+        resource = self._load_response_json("questionnaire_life_functioning_resp.json", questionnaire_id, participant_id)
+        self._save_codes(resource)
+        with FakeClock(datetime.datetime(2022, 9, 7, 1, 2, 3)):
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual(summary['questionnaireOnLifeFunctioning'], 'SUBMITTED')
+        self.assertEqual(summary['questionnaireOnLifeFunctioningAuthored'], '2022-09-06T14:32:28')
+        self.assertEqual(summary['questionnaireOnLifeFunctioningTime'], '2022-09-07T01:02:03')
+
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
         with open(data_path(template_file_name)) as fd:

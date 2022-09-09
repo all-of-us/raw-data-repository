@@ -2,6 +2,7 @@ import datetime
 
 from sqlalchemy import (
     Boolean,
+    case,
     Column,
     Computed,
     Date,
@@ -25,6 +26,7 @@ from rdr_service.participant_enums import (
     EnrollmentStatus,
     EnrollmentStatusV30,
     EnrollmentStatusV31,
+    DigitalHealthSharingStatusV31,
     GenderIdentity,
     OrderStatus,
     PhysicalMeasurementsStatus,
@@ -441,6 +443,27 @@ class ParticipantSummary(Base):
     """
     UTC timestamp indicating the latest time RDR was aware of signed and uploaded EHR documents
     """
+
+    healthDataStreamSharingStatusV3_1 = Column(
+        'health_data_stream_sharing_status_v_3_1',
+        Enum(DigitalHealthSharingStatusV31),
+        Computed(
+            case(
+                [
+                    (isEhrDataAvailable, int(DigitalHealthSharingStatusV31.CURRENTLY_SHARING)),
+                    (wasEhrDataAvailable, int(DigitalHealthSharingStatusV31.EVER_SHARED))
+                ],
+                else_=int(DigitalHealthSharingStatusV31.NEVER_SHARED)
+            ),
+            persisted=True
+        )
+    )
+
+    healthDataStreamSharingStatusV3_1Time = Column(
+        'health_data_stream_sharing_status_v_3_1_time',
+        UTCDateTime,
+        Computed(ehrUpdateTime, persisted=True)
+    )
 
     clinicPhysicalMeasurementsStatus = Column(
         "clinic_physical_measurements_status", Enum(PhysicalMeasurementsStatus),
@@ -993,6 +1016,19 @@ class ParticipantSummary(Base):
 
     questionnaireOnDnaProgramAuthored = Column("questionnaire_on_dna_program_authored", UTCDateTime)
     "The UTC Date time of when the participant completed the DNA program questionnaire"
+
+    questionnaireOnLifeFunctioning = Column("questionnaire_on_life_functioning", Enum(QuestionnaireStatus),
+                                            default=QuestionnaireStatus.UNSET)
+    """
+    Indicates the status of the life functioning survey questionnaire that a participant can fill out
+
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+    questionnaireOnLifeFunctioningTime = Column("questionnaire_on_life_functioning_time", UTCDateTime)
+    "Indicates the time at which the RDR received notice of life functioning survey questionnaire."
+
+    questionnaireOnLifeFunctioningAuthored = Column("questionnaire_on_life_functioning_authored", UTCDateTime)
+    "The UTC Date time of when the participant completed the life functioning survey questionnaire"
 
     numCompletedBaselinePPIModules = Column("num_completed_baseline_ppi_modules", SmallInteger, default=0)
     """
