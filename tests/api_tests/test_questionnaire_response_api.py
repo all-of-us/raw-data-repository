@@ -15,6 +15,7 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao, \
     ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao, QuestionnaireResponseDao
@@ -208,7 +209,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         # clinicPhysicalMeasurementsFinalizedTime with other times to cover the bug scenario:
         # TypeError("can't compare offset-naive and offset-aware datetimes")
         ps_dao = ParticipantSummaryDao()
-        ps_dao.update_from_biobank_stored_samples()
+        ps_dao.update_from_biobank_stored_samples(biobank_ids=[from_client_biobank_id(participant_1['biobankId'])])
 
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary["selfReportedPhysicalMeasurementsStatus"], 'UNSET')
