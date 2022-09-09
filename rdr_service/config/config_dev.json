@@ -176,6 +176,8 @@
   "va_workqueue_subfolder": [
     "DailyParticipants"
   ],
-  "sensitive_ehr_release_date": "2100-01-01"
+  "sensitive_ehr_release_date": "2100-01-01",
+  "enable_enrollment_status_3": true,
+  "enable_health_sharing_status_3": true
 }
 
