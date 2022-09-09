@@ -2020,7 +2020,7 @@ class GenomicOutreachDaoV2(BaseDao):
                 )
 
                 report_obj = {
-                    "module": f'{report_module.lower()}{genomic_swap_module}',
+                    "module": f'{report_module}{genomic_swap_module}',
                     "type": 'result',
                     "status": report_status,
                     "participant_id": f'P{pid}',
@@ -2034,6 +2034,12 @@ class GenomicOutreachDaoV2(BaseDao):
                         -1].lower()
 
                 report_statuses.append(report_obj)
+
+                if participant_data.result_viewed:
+                    result_obj = report_obj.copy()
+                    result_obj['status'] = 'viewed'
+
+                    report_statuses.append(result_obj)
 
             elif 'informing_loop' in participant_data.type:
                 if 'ready' in participant_data.type:
@@ -2158,6 +2164,12 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicMemberReportState.genomic_report_state,
                         GenomicMemberReportState.report_revision_number,
                         GenomicSampleSwapMember,
+                        sqlalchemy.case(
+                            [
+                                (GenomicResultViewed.id.isnot(None), True)
+                            ],
+                            else_=False
+                        ).label('result_viewed'),
                         literal('result').label('type')
                     )
                     .join(
@@ -2169,6 +2181,12 @@ class GenomicOutreachDaoV2(BaseDao):
                         and_(
                             GenomicSetMember.id == GenomicMemberReportState.genomic_set_member_id,
                             GenomicSetMember.genomeType.in_(query_genome_types)
+                        )
+                    ).outerjoin(
+                        GenomicResultViewed,
+                        and_(
+                            GenomicResultViewed.sample_id == GenomicMemberReportState.sample_id,
+                            GenomicResultViewed.module_type == GenomicMemberReportState.module
                         )
                     ).outerjoin(
                         GenomicSampleSwapMember,

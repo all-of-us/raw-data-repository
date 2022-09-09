@@ -1457,7 +1457,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
         self.assertEqual(len(resp['data']), 2)
 
-
     def test_get_multi_module_last_decision_loop(self):
         fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
         fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
@@ -1656,6 +1655,93 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         swap_module_name = f'{module}_{sample_swap.name}_' \
                            f'{GenomicSampleSwapCategory.RESULT_READY_NOT_VIEWED.name}'.lower()
         self.assertTrue(all(obj['module'] == swap_module_name for obj in resp['data']))
+
+    def test_get_result_viewed_cvl_modules_same_sample_id(self):
+        sample_id = 22222
+
+        hdr_module = 'hdr_v1'
+        hdr_report_state = GenomicReportState.HDR_RPT_UNINFORMATIVE
+
+        pgx_module = 'pgx_v1'
+        pgx_report_state = GenomicReportState.PGX_RPT_READY
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        participant = self.data_generator.create_database_participant()
+
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            consentForGenomicsRORAuthored=clock.CLOCK.now(),
+            consentForStudyEnrollmentAuthored=clock.CLOCK.now()
+        )
+
+        # base cvl member for both cvl modules
+        cvl_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId=sample_id,
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.CVL_READY,
+            participantId=participant.participantId,
+            genomicWorkflowStateModifiedTime=clock.CLOCK.now()
+        )
+
+        # hdr sample report state
+        self.data_generator.create_database_genomic_member_report_state(
+            genomic_set_member_id=cvl_member.id,
+            participant_id=participant.participantId,
+            module=hdr_module,
+            genomic_report_state=hdr_report_state,
+            report_revision_number=1,
+            event_authored_time=clock.CLOCK.now(),
+            sample_id=sample_id
+        )
+
+        # pgx sample report state
+        self.data_generator.create_database_genomic_member_report_state(
+            genomic_set_member_id=cvl_member.id,
+            participant_id=participant.participantId,
+            module=pgx_module,
+            genomic_report_state=pgx_report_state,
+            report_revision_number=1,
+            event_authored_time=clock.CLOCK.now(),
+            sample_id=sample_id
+        )
+
+        resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
+
+        self.assertTrue(len(resp['data']), 2)
+
+        # should one of each
+        hdr_results = list(filter(lambda x: x['module'] == 'hdr', resp['data']))
+        self.assertEqual(len(hdr_results), 1)
+
+        pgx_results = list(filter(lambda x: x['module'] == 'pgx', resp['data']))
+        self.assertEqual(len(pgx_results), 1)
+
+        self.assertTrue(any(obj['hdr_result_status'] == 'uninformative' for obj in resp['data']))
+        self.assertTrue(all(obj['report_revision_number'] == 1 for obj in resp['data']))
+
+        # result viewed for pgx result
+        self.data_generator.create_genomic_result_viewed(
+            participant_id=participant.participantId,
+            message_record_id=1,
+            event_type='result_viewed',
+            event_authored_time=clock.CLOCK.now(),
+            module_type=pgx_module,
+            sample_id=sample_id
+        )
+
+        resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
+
+        pgx_results = list(filter(lambda x: x['module'] == 'pgx', resp['data']))
+        self.assertEqual(len(pgx_results), 2)
+
+        self.assertTrue(any(obj['status'] == 'viewed' for obj in resp['data']))
 
     # POST/PUT
     def test_validate_post_put_data(self):
