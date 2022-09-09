@@ -90,11 +90,11 @@ def upsert_from_latest_csv():
         )
     with open_cloud_file(csv_file_path) as csv_file:
         csv_reader = csv.DictReader(csv_file, delimiter="\t")
-        written = _upsert_samples_from_csv(csv_reader)
+        written, biobank_ids = _upsert_samples_from_csv(csv_reader)
 
     since_ts = clock.CLOCK.now()
     dao = ParticipantSummaryDao()
-    dao.update_from_biobank_stored_samples()
+    dao.update_from_biobank_stored_samples(biobank_ids=biobank_ids)
     update_bigquery_sync_participants(since_ts, dao)
 
     return written, timestamp
@@ -219,6 +219,8 @@ def _upsert_samples_from_csv(csv_reader):
         raise DataError("CSV is missing columns %s, had columns %s." % (missing_cols, csv_reader.fieldnames))
     samples_dao = BiobankStoredSampleDao()
     biobank_id_prefix = get_biobank_id_prefix()
+
+    biobank_ids = set()
     written = 0
     try:
         samples = []
@@ -239,10 +241,12 @@ def _upsert_samples_from_csv(csv_reader):
                         written += samples_dao.upsert_all(samples)
                         samples = []
 
+                    biobank_ids.add(sample.biobankId)
+
             if samples:
                 written += samples_dao.upsert_all(samples)
 
-        return written
+        return written, biobank_ids
     except ValueError:
         raise DataError("Error upserting samples from CSV")
 

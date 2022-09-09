@@ -21,9 +21,7 @@ from tempfile import mkdtemp
 
 import faker
 
-from rdr_service import api_util
-from rdr_service import config
-from rdr_service import main
+from rdr_service import api_util, config, main, participant_enums
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
@@ -613,6 +611,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         summary.firstName = self.fake.first_name()
         summary.lastName = self.fake.last_name()
         summary.email = self.fake.email()
+        summary.enrollmentStatus = participant_enums.EnrollmentStatus.MEMBER
+        summary.enrollmentStatusV3_0 = participant_enums.EnrollmentStatusV30.PARTICIPANT_PLUS_EHR
+        summary.enrollmentStatusV3_1 = participant_enums.EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
+
         return summary
 
     def create_participant(self, provider_link=None):

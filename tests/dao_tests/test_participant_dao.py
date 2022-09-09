@@ -3,6 +3,7 @@ import mock
 from sqlalchemy.exc import OperationalError
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, PreconditionFailed, ServiceUnavailable
 
+from rdr_service import participant_enums
 from rdr_service.clock import FakeClock
 from rdr_service.dao.base_dao import MAX_INSERT_ATTEMPTS
 from rdr_service.dao.hpo_dao import HPODao
@@ -184,6 +185,9 @@ class ParticipantDaoTest(BaseTestCase):
             self.dao.update(p)
 
         summary = self.participant_summary(p)
+        summary.enrollmentStatus = participant_enums.EnrollmentStatus.INTERESTED
+        summary.enrollmentStatusV3_0 = participant_enums.EnrollmentStatusV30.PARTICIPANT
+        summary.enrollmentStatusV3_1 = participant_enums.EnrollmentStatusV31.PARTICIPANT
         self.participant_summary_dao.insert(summary)
 
         # lastModified, hpoId, version is updated on p after being passed in
