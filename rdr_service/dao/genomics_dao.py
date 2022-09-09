@@ -2205,8 +2205,16 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                 if start_date:
                     result_query = result_query.filter(
-                        GenomicMemberReportState.event_authored_time > start_date,
-                        GenomicMemberReportState.event_authored_time < end_date
+                        or_(
+                            and_(
+                                GenomicMemberReportState.event_authored_time > start_date,
+                                GenomicMemberReportState.event_authored_time < end_date,
+                            ),
+                            and_(
+                                GenomicResultViewed.event_authored_time > start_date,
+                                GenomicResultViewed.event_authored_time < end_date
+                            )
+                        )
                     )
 
                 results = result_query.all()
