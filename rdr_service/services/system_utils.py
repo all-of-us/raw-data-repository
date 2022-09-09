@@ -793,6 +793,21 @@ def retry_func(func, retries=25, backoff_amount=2.0, **kwargs):
     return result
 
 
+def min_or_none(value_list):
+    min_found = None
+    for val in value_list:
+        if(
+            min_found is None
+            or (
+                val is not None
+                and min_found > val
+            )
+        ):
+            min_found = val
+
+    return min_found
+
+
 @dataclass
 class DateRange:
     """

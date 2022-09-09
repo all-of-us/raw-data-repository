@@ -392,7 +392,7 @@ class BiobankOrderDao(UpdatableDao):
             raise BadRequest(f"Can't submit biospecimens for participant {obj.participantId} without consent")
         raise_if_withdrawn(participant_summary)
         self._set_participant_summary_fields(obj, participant_summary)
-        participant_summary_dao.update_enrollment_status(participant_summary)
+        participant_summary_dao.update_enrollment_status(participant_summary, session=session)
 
         finalized_time = self.get_random_sample_finalized_time(obj)
         is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(
@@ -474,7 +474,7 @@ class BiobankOrderDao(UpdatableDao):
         if len(non_cancelled_orders) > 0:
             for order in non_cancelled_orders:
                 self._set_participant_summary_fields(order, participant_summary)
-        participant_summary_dao.update_enrollment_status(participant_summary)
+        participant_summary_dao.update_enrollment_status(participant_summary, session=session)
 
     def _parse_handling_info(self, handling_info):
         site_id = None

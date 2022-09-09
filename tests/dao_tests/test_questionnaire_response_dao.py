@@ -43,6 +43,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.model.resource_data import ResourceData
 from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort,\
     DigitalHealthSharingStatusV31
+from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from tests import test_data
 from tests.test_data import (
     consent_code,
@@ -1595,7 +1596,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             created_date=datetime.datetime(2022, 3, 5)
         )
 
-        participant_responses_map = QuestionnaireResponseDao.get_responses_to_surveys(
+        participant_responses_map = QuestionnaireResponseRepository.get_responses_to_surveys(
             survey_codes=['test_survey', 'another_survey'],
             participant_ids=[participant_id],
             session=self.session
