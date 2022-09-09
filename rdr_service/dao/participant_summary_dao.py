@@ -157,23 +157,6 @@ _ENROLLMENT_STATUS_CASE_SQL = """
         END
 """
 
-_ENROLLMENT_STATUS_SQL = """
-    UPDATE
-      participant_summary
-    SET
-      enrollment_status = {enrollment_status_case_sql},
-      last_modified = :now
-    WHERE
-      (
-        (enrollment_status != :full_participant and enrollment_status != :core_minus_pm)
-        OR
-        (enrollment_status = :core_minus_pm AND :full_participant = {enrollment_status_case_sql})
-      )
-      AND enrollment_status != {enrollment_status_case_sql}
-   """.format(
-    enrollment_status_case_sql=_ENROLLMENT_STATUS_CASE_SQL
-)
-
 # DA-614 - Notes: Because there can be multiple distinct samples with the same test for a
 # participant and we can't show them all in the participant summary.  The HealthPro team
 # wants to see status and timestamp of received records over disposed records. Currently
@@ -342,15 +325,6 @@ def _get_dna_isolates_sql_and_params():
     )
 
 
-def _get_status_time_sql():
-    dns_test_list = config.getSettingList(config.DNA_SAMPLE_TEST_CODES)
-
-    status_time_sql = "%s" % ",".join(
-        ["""COALESCE(sample_status_%s_time, '3000-01-01')""" % item for item in dns_test_list]
-    )
-    return status_time_sql
-
-
 def _get_baseline_ppi_module_sql():
     baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
 
@@ -358,105 +332,6 @@ def _get_baseline_ppi_module_sql():
         ["""%s_time""" % re.sub("(?<!^)(?=[A-Z])", "_", item).lower() for item in baseline_ppi_module_fields]
     )
     return baseline_ppi_module_sql
-
-
-def _get_sample_status_time_sql_and_params():
-    """Gets SQL that to update enrollmentStatusCoreStoredSampleTime field
-  on the participant summary.
-  """
-    status_time_sql = _get_status_time_sql()
-    baseline_ppi_module_sql = _get_baseline_ppi_module_sql()
-
-    sub_sql = """
-    SELECT
-      participant_id,
-      GREATEST(
-        CASE WHEN enrollment_status_member_time IS NOT NULL THEN enrollment_status_member_time
-             ELSE consent_for_electronic_health_records_time
-        END,
-        CASE WHEN GREATEST(
-                COALESCE(clinic_physical_measurements_finalized_time, 0),
-                COALESCE(self_reported_physical_measurements_authored, 0)
-            ) = 0 THEN NULL
-            ELSE GREATEST(
-                COALESCE(clinic_physical_measurements_finalized_time, 0),
-                COALESCE(self_reported_physical_measurements_authored, 0)
-            )
-        END,
-        {baseline_ppi_module_sql},
-        CASE WHEN
-            LEAST(
-                {status_time_sql}
-                ) = '3000-01-01' THEN NULL
-            ELSE LEAST(
-                {status_time_sql}
-                )
-        END
-      ) AS new_core_stored_sample_time
-    FROM
-      participant_summary
-  """.format(
-        status_time_sql=status_time_sql, baseline_ppi_module_sql=baseline_ppi_module_sql
-    )
-
-    sql = """
-    UPDATE
-      participant_summary AS a
-      INNER JOIN ({sub_sql}) AS b ON a.participant_id = b.participant_id
-    SET
-      a.enrollment_status_core_stored_sample_time = b.new_core_stored_sample_time
-    WHERE a.enrollment_status = 3
-    AND a.enrollment_status_core_stored_sample_time IS NULL
-    """.format(
-        sub_sql=sub_sql
-    )
-
-    return sql
-
-
-def _get_core_minus_pm_time_sql_and_params():
-    """
-    Gets SQL that to update enrollmentStatusCoreMinusPMTime field on the participant summary.
-    """
-    status_time_sql = _get_status_time_sql()
-    baseline_ppi_module_sql = _get_baseline_ppi_module_sql()
-
-    sub_sql = """
-    SELECT
-      participant_id,
-      GREATEST(
-        CASE WHEN enrollment_status_member_time IS NOT NULL THEN enrollment_status_member_time
-             ELSE consent_for_electronic_health_records_time
-        END,
-        {baseline_ppi_module_sql},
-        CASE WHEN
-            LEAST(
-                {status_time_sql}
-                ) = '3000-01-01' THEN NULL
-            ELSE LEAST(
-                {status_time_sql}
-                )
-        END
-      ) AS core_minus_pm_time
-    FROM
-      participant_summary
-  """.format(
-        status_time_sql=status_time_sql, baseline_ppi_module_sql=baseline_ppi_module_sql
-    )
-
-    sql = """
-    UPDATE
-      participant_summary AS a
-      INNER JOIN ({sub_sql}) AS b ON a.participant_id = b.participant_id
-    SET
-      a.enrollment_status_core_minus_pm_time = b.core_minus_pm_time
-    WHERE a.enrollment_status = 4
-    AND a.enrollment_status_core_minus_pm_time IS NULL
-    """.format(
-        sub_sql=sub_sql
-    )
-
-    return sql
 
 
 class ParticipantSummaryDao(UpdatableDao):
@@ -719,7 +594,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
         return filter_obj
 
-    def update_from_biobank_stored_samples(self, participant_id=None):
+    def update_from_biobank_stored_samples(self, participant_id=None, biobank_ids=None):
         """Rewrites sample-related summary data. Call this after updating BiobankStoredSamples.
     If participant_id is provided, only that participant will have their summary updated."""
         now = clock.CLOCK.now()
@@ -727,12 +602,6 @@ class ParticipantSummaryDao(UpdatableDao):
 
         baseline_tests_sql, baseline_tests_params = _get_baseline_sql_and_params()
         dna_tests_sql, dna_tests_params = _get_dna_isolates_sql_and_params()
-
-        sample_status_time_sql = _get_sample_status_time_sql_and_params()
-        sample_status_time_params = {}
-
-        core_minus_pm_time_sql = _get_core_minus_pm_time_sql_and_params()
-        core_minus_pm_time_params = {}
 
         counts_sql = """
     UPDATE
@@ -751,34 +620,12 @@ class ParticipantSummaryDao(UpdatableDao):
         counts_params.update(baseline_tests_params)
         counts_params.update(dna_tests_params)
 
-        enrollment_status_sql = _ENROLLMENT_STATUS_SQL
-        enrollment_status_params = {
-            "submitted": int(QuestionnaireStatus.SUBMITTED),
-            "submitted_not_sure": int(QuestionnaireStatus.SUBMITTED_NOT_SURE),
-            "unset": int(QuestionnaireStatus.UNSET),
-            "num_baseline_ppi_modules": self._get_num_baseline_ppi_modules(),
-            "completed": int(PhysicalMeasurementsStatus.COMPLETED),
-            "received": int(SampleStatus.RECEIVED),
-            "full_participant": int(EnrollmentStatus.FULL_PARTICIPANT),
-            "core_minus_pm": int(EnrollmentStatus.CORE_MINUS_PM),
-            "member": int(EnrollmentStatus.MEMBER),
-            "interested": int(EnrollmentStatus.INTERESTED),
-            "cohort_3": int(ParticipantCohort.COHORT_3),
-            "now": now,
-        }
-
         # If participant_id is provided, add the participant ID filter to all update statements.
         if participant_id:
             sample_sql += " AND participant_id = :participant_id"
             sample_params["participant_id"] = participant_id
             counts_sql += " AND participant_id = :participant_id"
             counts_params["participant_id"] = participant_id
-            enrollment_status_sql += " AND participant_id = :participant_id"
-            enrollment_status_params["participant_id"] = participant_id
-            sample_status_time_sql += " AND a.participant_id = :participant_id"
-            sample_status_time_params["participant_id"] = participant_id
-            core_minus_pm_time_sql += " AND a.participant_id = :participant_id"
-            core_minus_pm_time_params["participant_id"] = participant_id
 
         sample_sql = replace_null_safe_equals(sample_sql)
         counts_sql = replace_null_safe_equals(counts_sql)
@@ -786,11 +633,18 @@ class ParticipantSummaryDao(UpdatableDao):
         with self.session() as session:
             session.execute(sample_sql, sample_params)
             session.execute(counts_sql, counts_params)
-            session.execute(enrollment_status_sql, enrollment_status_params)
             session.commit()
-            # TODO: Change this to the optimized sql in _update_dv_stored_samples()
-            session.execute(sample_status_time_sql, sample_status_time_params)
-            session.execute(core_minus_pm_time_sql, core_minus_pm_time_params)
+
+            if biobank_ids:
+                summary_list = session.query(ParticipantSummary).filter(
+                    ParticipantSummary.biobankId.in_(biobank_ids)
+                ).all()
+                for summary in summary_list:
+                    self.update_enrollment_status(
+                        summary=summary,
+                        session=session
+                    )
+                    session.commit()
 
     def _get_num_baseline_ppi_modules(self):
         return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))

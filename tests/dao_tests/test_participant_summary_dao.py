@@ -79,6 +79,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         )
         response_dao_mock = response_dao_patch.start()
         self.mock_ehr_interest_ranges = response_dao_mock.get_interest_in_sharing_ehr_ranges
+        self.mock_ehr_interest_ranges.return_value = []
         self.addCleanup(response_dao_patch.stop)
 
     def assert_no_results(self, query):
@@ -117,6 +118,9 @@ class ParticipantSummaryDaoTest(BaseTestCase):
     def _insert(self, participant, first_name=None, last_name=None):
         self.participant_dao.insert(participant)
         summary = self.participant_summary(participant)
+        summary.enrollmentStatus = EnrollmentStatus.INTERESTED
+        summary.enrollmentStatusV3_0 = EnrollmentStatusV30.PARTICIPANT
+        summary.enrollmentStatusV3_1 = EnrollmentStatusV31.PARTICIPANT
         if first_name:
             summary.firstName = first_name
         if last_name:
@@ -727,7 +731,10 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         reset_summary()
 
         # Update and reload summary record
-        self.dao.update_from_biobank_stored_samples(participant_id=participant.participantId)
+        self.dao.update_from_biobank_stored_samples(
+            participant_id=participant.participantId,
+            biobank_ids=[participant.biobankId]
+        )
         summary = self.dao.get(participant.participantId)
 
         # Test that status has changed and lastModified is also different
@@ -770,7 +777,10 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         reset_summary()
 
         # Update and reload summary record
-        self.dao.update_from_biobank_stored_samples(participant_id=participant.participantId)
+        self.dao.update_from_biobank_stored_samples(
+            participant_id=participant.participantId,
+            biobank_ids=[participant.biobankId]
+        )
         summary = self.dao.get(participant.participantId)
 
         # Test that status has changed and lastModified is also different

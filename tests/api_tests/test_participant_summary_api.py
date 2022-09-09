@@ -25,6 +25,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
+from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
 from rdr_service.model.enrollment_status_history import EnrollmentStatusHistory
 from rdr_service.model.hpo import HPO
@@ -2252,7 +2253,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_4)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_5)
         # Update participant summaries based on these changes.
-        self.ps_dao.update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples(biobank_ids=[from_client_biobank_id(participant_1['biobankId'])])
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2348,7 +2349,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_4)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_5)
         # Update participant summaries based on these changes.
-        self.ps_dao.update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples(biobank_ids=[from_client_biobank_id(participant_1['biobankId'])])
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2439,7 +2440,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_4)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_5)
         # Update participant summaries based on these changes.
-        self.ps_dao.update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples(biobank_ids=[from_client_biobank_id(participant_1['biobankId'])])
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2478,7 +2479,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("COMPLETED", ps_1.get("clinicPhysicalMeasurementsStatus"))
 
-        self.ps_dao.update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples(biobank_ids=[from_client_biobank_id(participant_1['biobankId'])])
 
         # cancel a physical measurement
         path = "Participant/%s/PhysicalMeasurements" % participant_id_1
@@ -2724,7 +2725,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_3, "1SAL")
         self._store_biobank_sample(participant_3, "2ED10")
         # Update participant summaries based on these changes.
-        self.ps_dao.update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples(biobank_ids=[
+            from_client_biobank_id(participant_json['biobankId'])
+            for participant_json in [participant_1, participant_3]
+        ])
         # Update version for participant 3, which has changed.
         participant_3 = self.send_get("Participant/%s" % participant_id_3)
 
@@ -3135,7 +3139,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_3, "1SAL")
         self._store_biobank_sample(participant_3, "2ED10")
         # Update participant summaries based on these changes.
-        self.ps_dao.update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples(biobank_ids=[
+            from_client_biobank_id(participant_json['biobankId'])
+            for participant_json in [participant_1, participant_3]
+        ])
 
         ps_2 = self.send_get("Participant/%s/Summary" % participant_id_2)
         self.assertEqual("SUBMITTED", ps_2["consentForDvElectronicHealthRecordsSharing"])
