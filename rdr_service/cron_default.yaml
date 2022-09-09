@@ -132,12 +132,12 @@ cron:
 - description: Genomic CVL W1IL PGX Workflow
   url: /offline/GenomicCVLW1ILPgxWorkflow
   timezone: America/New_York
-  schedule: every wednesday 05:00
+  schedule: every wednesday 04:00
   target: offline
 - description: Genomic CVL W1IL HDR Workflow
   url: /offline/GenomicCVLW1ILHdrWorkflow
   timezone: America/New_York
-  schedule: every wednesday 05:15
+  schedule: every wednesday 04:15
   target: offline
 - description: Genomic CVL W2W Workflow (bi-weekly runs)
   url: /offline/GenomicCVLW2WWorkflow
