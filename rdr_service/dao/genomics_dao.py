@@ -3944,23 +3944,24 @@ class GenomicQueriesDao(BaseDao):
 
     def get_results_withdrawn_participants(self):
         with self.session() as session:
-            return session.query(
+            records = session.query(
                 GenomicSetMember.participantId.label('participant_id'),
-                sqlalchemy.case(
+                func.max(sqlalchemy.case(
                     [
                         (GenomicSetMember.gemA1ManifestJobRunId.isnot(None), True)
                     ],
                     else_=False
-                ).label('array_results'),
-                sqlalchemy.case(
+                )).label('array_results'),
+                func.max(sqlalchemy.case(
                     [
-                        (or_(
-                            GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
-                            GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
-                        ), True)
+                        (
+                            or_(
+                                GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
+                                GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
+                            ), True)
                     ],
                     else_=False
-                ).label('cvl_results')
+                )).label('cvl_results')
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
@@ -3970,7 +3971,10 @@ class GenomicQueriesDao(BaseDao):
             ).filter(
                 ParticipantSummary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
                 GenomicResultWithdrawals.id.is_(None),
-            ).all()
+            ).group_by(
+                GenomicSetMember.participantId
+            )
+            return records.all()
 
 
 class GenomicCVLResultPastDueDao(UpdatableDao, GenomicDaoMixin):

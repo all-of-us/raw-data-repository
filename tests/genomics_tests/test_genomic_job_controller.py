@@ -813,18 +813,27 @@ class GenomicJobControllerTest(BaseTestCase):
         )
 
         pids = []
-        for _ in range(num_participants):
+        for num in range(num_participants):
             summary = self.data_generator.create_database_participant_summary(
                 consentForStudyEnrollment=1,
                 consentForGenomicsROR=1,
                 withdrawalStatus=WithdrawalStatus.EARLY_OUT
             )
+
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                participantId=summary.participantId,
+                genomeType=config.GENOME_TYPE_ARRAY,
+                gemA1ManifestJobRunId=gen_job_run.id if num % 2 == 0 else None
+            )
+
             self.data_generator.create_database_genomic_set_member(
                 genomicSetId=gen_set.id,
                 participantId=summary.participantId,
                 genomeType=config.GENOME_TYPE_WGS,
                 cvlW1ilHdrJobRunId=gen_job_run.id
             )
+
             pids.append(summary.participantId)
 
         config.override_setting(config.RDR_GENOMICS_NOTIFICATION_EMAIL, 'email@test.com')
@@ -842,9 +851,17 @@ class GenomicJobControllerTest(BaseTestCase):
         all_withdrawal_records = result_withdrawal_dao.get_all()
 
         self.assertTrue(len(all_withdrawal_records) == len(pids))
-        self.assertTrue(all(obj.array_results == 0 for obj in all_withdrawal_records))
-        self.assertTrue(all(obj.cvl_results == 1 for obj in all_withdrawal_records))
         self.assertTrue(all(obj.participant_id in pids for obj in all_withdrawal_records))
+
+        array_results = list(filter(lambda x: x.array_results == 1, all_withdrawal_records))
+
+        # should only be 2
+        self.assertTrue(len(array_results), 2)
+
+        cvl_results = list(filter(lambda x: x.cvl_results == 1, all_withdrawal_records))
+
+        # should be 4 for num of participants
+        self.assertTrue(len(cvl_results), num_participants)
 
         with GenomicJobController(GenomicJob.RESULTS_PIPELINE_WITHDRAWALS) as controller:
             controller.check_results_withdrawals()
