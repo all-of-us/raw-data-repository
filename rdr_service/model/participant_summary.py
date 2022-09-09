@@ -2,6 +2,7 @@ import datetime
 
 from sqlalchemy import (
     Boolean,
+    case,
     Column,
     Computed,
     Date,
@@ -25,6 +26,7 @@ from rdr_service.participant_enums import (
     EnrollmentStatus,
     EnrollmentStatusV30,
     EnrollmentStatusV31,
+    DigitalHealthSharingStatusV31,
     GenderIdentity,
     OrderStatus,
     PhysicalMeasurementsStatus,
@@ -441,6 +443,27 @@ class ParticipantSummary(Base):
     """
     UTC timestamp indicating the latest time RDR was aware of signed and uploaded EHR documents
     """
+
+    healthDataStreamSharingStatusV3_1 = Column(
+        'health_data_stream_sharing_status_v_3_1',
+        Enum(DigitalHealthSharingStatusV31),
+        Computed(
+            case(
+                [
+                    (isEhrDataAvailable, int(DigitalHealthSharingStatusV31.CURRENTLY_SHARING)),
+                    (wasEhrDataAvailable, int(DigitalHealthSharingStatusV31.EVER_SHARED))
+                ],
+                else_=int(DigitalHealthSharingStatusV31.NEVER_SHARED)
+            ),
+            persisted=True
+        )
+    )
+
+    healthDataStreamSharingStatusV3_1Time = Column(
+        'health_data_stream_sharing_status_v_3_1_time',
+        UTCDateTime,
+        Computed(ehrUpdateTime, persisted=True)
+    )
 
     clinicPhysicalMeasurementsStatus = Column(
         "clinic_physical_measurements_status", Enum(PhysicalMeasurementsStatus),
