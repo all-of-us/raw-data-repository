@@ -326,7 +326,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "email": self.email,
                 "consentCohort": "COHORT_1",
                 "cohort2PilotFlag": "UNSET",
-                "patientStatus": patient_statuses or []
+                "patientStatus": patient_statuses or [],
+                "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+                "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
             }
         )
 
@@ -1721,6 +1723,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "income": "lotsofmoney",
             "dateOfBirth": datetime.date(1978, 10, 9),
             "CABoRSignature": "signature.pdf",
+            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
         }
 
         self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
@@ -2034,7 +2038,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
 
         status_history = self.session.query(EnrollmentStatusHistory).filter(
-            EnrollmentStatusHistory.participant_id == from_client_participant_id(participant_id_str)
+            EnrollmentStatusHistory.participant_id == from_client_participant_id(participant_id_str),
+            EnrollmentStatusHistory.version == 'legacy'
         ).one()
         self.assertEqual('legacy', status_history.version)
         self.assertEqual('MEMBER', status_history.status)

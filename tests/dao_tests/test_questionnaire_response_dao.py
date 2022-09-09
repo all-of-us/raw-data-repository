@@ -636,7 +636,9 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2)
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -1266,7 +1268,9 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2)
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -1342,7 +1346,9 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2)
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -1425,7 +1431,9 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2)
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
@@ -1498,7 +1506,9 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2)
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
