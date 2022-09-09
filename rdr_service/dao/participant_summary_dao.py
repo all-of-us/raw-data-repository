@@ -1224,6 +1224,32 @@ class ParticipantSummaryDao(UpdatableDao):
             result["physicalMeasurementsFinalizedSite"] = "UNSET"
             result["physicalMeasurementsCollectType"] = str(PhysicalMeasurementsCollectType.SELF_REPORTED)
 
+        # Check to see if we should hide 3.0 and 3.1 fields
+        if not config.getSettingJson(config.ENABLE_ENROLLMENT_STATUS_3, default=False):
+            del result['enrollmentStatusV3_0']
+            del result['enrollmentStatusV3_1']
+            for field_name in [
+                'enrollmentStatusParticipantV3_0Time'
+                'enrollmentStatusParticipantPlusEhrV3_0Time'
+                'enrollmentStatusPmbEligibleV3_0Time'
+                'enrollmentStatusCoreMinusPmV3_0Time'
+                'enrollmentStatusCoreV3_0Time'
+                'enrollmentStatusParticipantV3_1Time'
+                'enrollmentStatusParticipantPlusEhrV3_1Time'
+                'enrollmentStatusParticipantPlusBasicsV3_1Time'
+                'enrollmentStatusCoreMinusPmV3_1Time'
+                'enrollmentStatusCoreV3_1Time'
+                'enrollmentStatusParticipantPlusBaselineV3_1Time'
+            ]:
+                if field_name in result:
+                    del result[field_name]
+
+        # Check to see if we should hide digital health sharing fields
+        if not config.getSettingJson(config.ENABLE_HEALTH_SHARING_STATUS_3, default=False):
+            del result['healthDataStreamSharingStatusV3_1']
+            if 'healthDataStreamSharingStatusV3_1Time' in result:
+                del result['healthDataStreamSharingStatusV3_1Time']
+
         # Strip None values.
         if strip_none_values is True:
             result = {k: v for k, v in list(result.items()) if v is not None}

@@ -3750,6 +3750,20 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(sharing_summary.participantId, participant_id_list[1])
         self.assertEqual(later_shared_summary.participantId, participant_id_list[2])
 
+    def test_disabling_data_glossary_3_fields(self):
+        """Check that the 3.x enrollment statuses and digital health sharing fields are disabled by default"""
+        summary = self.data_generator.create_database_participant_summary()
+
+        # Override the default config, disabling the fields on the API
+        self.temporarily_override_config_setting(config.ENABLE_ENROLLMENT_STATUS_3, False)
+        self.temporarily_override_config_setting(config.ENABLE_HEALTH_SHARING_STATUS_3, False)
+
+        # Check that the new fields are hidden
+        api_response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertNotIn('enrollmentStatusV3_0', api_response)
+        self.assertNotIn('enrollmentStatusV3_1', api_response)
+        self.assertNotIn('healthDataStreamSharingStatusV3_1', api_response)
+
     def test_blank_demographics_data_mapped_to_skip(self):
         # Create a participant summary that doesn't use skip codes for the demographics questions that weren't answered.
         # Some early summaries show this, we should map to displaying skip to have a more consistent output.
