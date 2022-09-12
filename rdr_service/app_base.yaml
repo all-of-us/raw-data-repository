@@ -25,6 +25,3 @@ handlers:
   secure: always
 - url: /_ah/warmup
   script: auto
-
-vpc_access_connector:
-  name: 'projects/all-of-us-rdr-sandbox/locations/us-central1/connectors/rdr-sandbox-redis'
