@@ -220,7 +220,7 @@ class WorkbenchInstitutionalAffiliationsSchema(Schema):
     non_academic_affiliation = fields.EnumString(enum=WorkbenchInstitutionNonAcademic, required=True)
     non_academic_affiliation_id = fields.EnumInteger(enum=WorkbenchInstitutionNonAcademic, required=True)
     is_verified = fields.Boolean()
-    
+
     orig_id = fields.Int32()
     orig_created = fields.DateTime()
     orig_modified = fields.DateTime()
