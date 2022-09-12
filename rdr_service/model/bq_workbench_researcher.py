@@ -323,7 +323,6 @@ class BQRWBInstitutionalAffiliationsSchema(BQSchema):
     non_academic_affiliation_id = BQField('non_academic_affiliation_id', BQFieldTypeEnum.INTEGER,
                                           BQFieldModeEnum.NULLABLE)
     is_verified = BQField('is_verified', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    modified_time = BQField('modified_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
     orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     orig_created = BQField('orig_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
