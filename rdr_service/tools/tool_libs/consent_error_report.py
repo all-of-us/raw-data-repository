@@ -56,10 +56,11 @@ class ConsentErrorReportTool(object):
             cc_recipients = list(cc_list.split(','))
         return recipients, cc_recipients
 
-    def _connect_to_rdr_replica(self):
-        """ Establish a connection to the replica RDR database for reading consent validation data """
-        self.gcp_env.activate_sql_proxy(replica=True)
-        self.db_conn = self.gcp_env.make_mysqldb_connection()
+    def _connect_to_rdr(self, replica=False):
+        """ Establish a connection to RDR database for managing consent error report generation/logging """
+        self.gcp_env.activate_sql_proxy(replica=replica, project=self.gcp_env.project)
+        if self.gcp_env.project != 'localhost':
+            self.db_conn = self.gcp_env.make_mysqldb_connection()
 
     def execute(self):
         """
@@ -69,28 +70,38 @@ class ConsentErrorReportTool(object):
         # Only generate error reports/tickets if project is prod,  or we're directing output to a file instead of
         # generating emails (allows for testing in lower environments if needed)
         if not (self.args.to_file or self.gcp_env.project == 'all-of-us-rdr-prod'):
+            _logger.error('Must use --to-file unless running against prod')
             return
 
-        self._connect_to_rdr_replica()
+        # Will use the replica if possible on prod, if redirecting output (no writing to ConsentErrorReport table)
+        use_replica = self.gcp_env.project == 'all-of-us-rdr-prod' and self.args.to_file is not None
+
+        self._connect_to_rdr(replica=use_replica)
 
         if not self.args.to_file:
             project_config = self.gcp_env.get_app_config()
-            if not project_config[config.SENDGRID_KEY]:
-                raise (config.MissingConfigException, 'No API key configured for sendgrid')
+            if not project_config[config.SENDGRID_KEY] or not project_config[config.PTSC_SERVICE_DESK_EMAIL]:
+                raise (config.MissingConfigException,
+                       'Missing configuration for sendgrid key or default email addresses')
             # This enables use of SendGrid email service when running this tool from a dev server vs. app instance
             config.override_setting(config.SENDGRID_KEY, project_config[config.SENDGRID_KEY])
+            config.override_setting(config.PTSC_SERVICE_DESK_EMAIL, project_config[config.PTSC_SERVICE_DESK_EMAIL])
 
-        errors_since = self.args.errors_since
         report = ConsentErrorReportGenerator()
-        # Specific ids will override any date filter
-        if self.id_list:
-            errors_since = None
-        report.create_error_reports(errors_created_since=errors_since,
-                                    id_list=self.id_list,
-                                    recipients=self.recipients,
-                                    cc_list=self.cc_recipients,
-                                    participant_origin=self.args.origin,
-                                    to_file=self.args.to_file)
+        # If no user-provided ids were specified (--id or --from-file), default to all unreported errors
+        id_list = self.id_list or report.get_unreported_error_ids()
+
+        if id_list and len(id_list):
+            report.create_error_reports(
+                                        id_list=id_list,
+                                        recipients=self.recipients,
+                                        cc_list=self.cc_recipients,
+                                        participant_origin=self.args.origin,
+                                        to_file=self.args.to_file
+            )
+        else:
+            _logger.info('No ids specified by user and no outstanding error records found')
+
         return 0
 
 def get_id_list(fname):
@@ -133,7 +144,7 @@ def run():
     parser.add_argument("--from-file", type=str, help="File with list of consent_file primary_key ids to create " + \
                                                       "error reports for")
     parser.add_argument("--to-file", help="Output error report content to this file",
-                        default=False, type=str, dest="to_file")
+                        default=None, type=str, dest="to_file")
     parser.add_argument("--origin", default='vibrent', help="participant_origin value to filter on")
     parser.add_argument("--to", default=None,
                         help="Comma-separated list of email addresses for To: list.  Overrides app config setting")

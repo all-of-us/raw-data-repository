@@ -25,14 +25,16 @@ class BiobankSpecimenApi(BiobankApiBase):
     def put(self, *_, **kwargs):
         resource = request.get_json(force=True)
 
-        if 'rlims_id' in kwargs:
+        rlims_id = kwargs.get('rlims_id')
+        if rlims_id:
             self._check_required_specimen_fields(resource)
 
-            if self.dao.exists(resource):
-                rlims_id = kwargs['rlims_id']
-                return super(BiobankSpecimenApi, self).put(rlims_id, skip_etag=True)
-            else:
-                return super(BiobankSpecimenApi, self).post()
+            with self.dao.get_mutually_exclusive_lock(rlims_id):
+                if self.dao.exists(rlims_id):
+                    rlims_id = kwargs['rlims_id']
+                    return super(BiobankSpecimenApi, self).put(rlims_id, skip_etag=True)
+                else:
+                    return super(BiobankSpecimenApi, self).post()
         else:
             success_count = 0
             total_count = 0
@@ -199,11 +201,12 @@ class BiobankAliquotApi(BiobankApiBase):
         self.aliquot_rlims_id = kwargs['rlims_id']
         self.parent_rlims_id = kwargs['parent_rlims_id']
 
-        aliquot_id = self.dao.get_id(BiobankAliquot(rlimsId=self.aliquot_rlims_id))
-        if aliquot_id is None:
-            super(BiobankAliquotApi, self).post()
-        else:
-            super(BiobankAliquotApi, self).put(aliquot_id, skip_etag=True)
+        with self.dao.get_mutually_exclusive_lock(self.aliquot_rlims_id):
+            aliquot_id = self.dao.get_id(BiobankAliquot(rlimsId=self.aliquot_rlims_id))
+            if aliquot_id is None:
+                super(BiobankAliquotApi, self).post()
+            else:
+                super(BiobankAliquotApi, self).put(aliquot_id, skip_etag=True)
 
     def _get_model_to_update(self, resource, id_, expected_version, participant_id=None):
         return self._parse_aliquot_json(resource)

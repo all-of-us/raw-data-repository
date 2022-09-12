@@ -45,6 +45,7 @@ class GenomicSetMemberSchema(Schema):
     sex_at_birth = fields.String(validate=validate.Length(max=20))
     genome_type = fields.String(validate=validate.Length(max=80))
     biobank_id = fields.Int32()
+    biobank_id_str = fields.String(validate=validate.Length(max=128))
     package_id = fields.String(validate=validate.Length(max=80))
     validation_status = fields.EnumString(enum=GenomicSetMemberStatus)
     validation_status_id = fields.EnumInteger(enum=GenomicSetMemberStatus)
@@ -93,12 +94,8 @@ class GenomicSetMemberSchema(Schema):
     cvl_w4f_manifest_job_run_id = fields.Int32()
     genomic_workflow_state = fields.EnumString(enum=GenomicWorkflowState)
     genomic_workflow_state_id = fields.EnumInteger(enum=GenomicWorkflowState)
-
-    genomic_workflow_state_history = fields.JSON()
     collection_tube_id = fields.String(validate=validate.Length(max=80))
     gc_site_id = fields.String(validate=validate.Length(max=11))
-    arr_aw3_manifest_job_run_id = fields.Int32()
-    wgs_aw3_manifest_job_run_id = fields.Int32()
     genomic_workflow_state_modified_time = fields.DateTime()
     report_consent_removal_date = fields.DateTime()
     qc_status = fields.EnumString(enum=GenomicQcStatus)
@@ -107,8 +104,40 @@ class GenomicSetMemberSchema(Schema):
     dev_note = fields.String(validate=validate.Length(max=255))
     aw1_file_processed_id = fields.Int32()
     aw2_file_processed_id = fields.Int32()
-    biobank_id_str = fields.String(validate=validate.Length(max=128))
     aw2f_job_run_id = fields.Int32()
+
+    aw0_manifest_file_id = fields.Int32()
+    aw2f_manifest_job_run_id = fields.Int32()
+    aw3_manifest_file_id = fields.Int32()
+    block_research = fields.Int16()
+    block_research_reason = fields.String(validate=validate.Length(max=255))
+    block_results = fields.Int16()
+    block_results_reason = fields.String(validate=validate.Length(max=255))
+    color_metrics_job_run_id = fields.Int32()
+    cvl_secondary_conf_failure = fields.String(validate=validate.Length(max=255))
+    cvl_w1il_hdr_job_run_id = fields.Int32()
+    cvl_w1il_pgx_job_run_id = fields.Int32()
+    cvl_w2sc_manifest_job_run_id = fields.Int32()
+    cvl_w2w_job_run_id = fields.Int32()
+    cvl_w3ns_manifest_job_run_id = fields.Int32()
+    cvl_w3sc_manifest_job_run_id = fields.Int32()
+    cvl_w3sr_manifest_job_run_id = fields.Int32()
+    cvl_w3ss_manifest_job_run_id = fields.Int32()
+    cvl_w4wr_hdr_manifest_job_run_id = fields.Int32()
+    cvl_w4wr_pgx_manifest_job_run_id = fields.Int32()
+    cvl_w5nf_hdr_manifest_job_run_id = fields.Int32()
+    cvl_w5nf_pgx_manifest_job_run_id = fields.Int32()
+    diversion_pouch_site_flag = fields.Int16()
+    gem_date_of_import = fields.DateTime()
+    gem_metrics_ancestry_loop_response = fields.String(validate=validate.Length(max=10))
+    gem_metrics_available_results = fields.String(validate=validate.Length(max=255))
+    gem_metrics_results_released_at = fields.Int32()
+    ignore_flag = fields.Int16()
+    informing_loop_ready_flag = fields.Int32()
+    informing_loop_ready_flag_modified = fields.DateTime()
+    participant_origin = fields.String(validate=validate.Length(max=80))
+    replated_member_id = fields.Int32()
+
 
     class Meta:
         schema_id = SchemaID.genomic_set_member
@@ -121,6 +150,8 @@ class GenomicSetMemberSchema(Schema):
 class GenomicJobRunSchema(Schema):
 
     id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
     job = fields.EnumString(enum=GenomicJob)
     job_id = fields.EnumInteger(enum=GenomicJob)
     start_time = fields.DateTime()
@@ -141,6 +172,8 @@ class GenomicJobRunSchema(Schema):
 class GenomicFileProcessedSchema(Schema):
 
     id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
     run_id = fields.Int32()
     start_time = fields.DateTime()
     end_time = fields.DateTime()
@@ -198,6 +231,7 @@ class GenomicManifestFeedbackSchema(Schema):
     feedback_complete = fields.Int16()
     feedback_complete_date = fields.DateTime()
     ignore_flag = fields.Int16()
+    version = fields.Int32()
 
     class Meta:
         schema_id = SchemaID.genomic_manifest_feedback
@@ -292,6 +326,7 @@ class GenomicGCValidationMetricsSchema(Schema):
     gvcf_md5_deleted = fields.Int16()
     drc_call_rate = fields.String(validate=validate.Length(max=128))
     pipeline_id = fields.String(validate=validate.Length(max=128))
+    mapped_reads_pct = fields.String(validate=validate.Length(max=10))
 
     class Meta:
         schema_id = SchemaID.genomic_gc_validation_metrics
@@ -323,3 +358,46 @@ class GenomicUserEventMetricsSchema(Schema):
         resource_pk_field = 'id'
         pii_fields = ()  # List fields that contain PII data.
         pii_filter = {}  # dict(field: lambda function).
+
+
+class GenomicInformingLoopSchema(Schema):
+
+    id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
+    message_record_id = fields.Int32()
+    participant_id = fields.String(validate=validate.Length(max=10))
+    event_type = fields.String(validate=validate.Length(max=256))
+    event_authored_time = fields.DateTime()
+    module_type = fields.String(validate=validate.Length(max=128))
+    decision_value = fields.String(validate=validate.Length(max=128))
+    sample_id = fields.String(validate=validate.Length(max=80))
+
+    class Meta:
+        schema_id = SchemaID.genomic_informing_loop
+        resource_uri = 'GenomicInformingLoop'
+        resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
+
+class GenomicCVLResultPastDueSchema(Schema):
+
+    id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
+    genomic_set_member_id = fields.Int32()
+    sample_id = fields.String(validate=validate.Length(max=255))
+    results_type = fields.String(validate=validate.Length(max=128))
+    cvl_site_id = fields.String(validate=validate.Length(max=128))
+    email_notification_sent = fields.Int16()
+    email_notification_sent_date = fields.DateTime()
+    resolved = fields.Int16()
+    resolved_date = fields.DateTime()
+
+    class Meta:
+        schema_id = SchemaID.genomic_cvl_result_past_due
+        resource_uri = 'GenomicCVLResultPastDue'
+        resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function)
+

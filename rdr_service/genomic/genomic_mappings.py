@@ -5,6 +5,8 @@ This module provides central location for all genomics_mappings
 genome_type_to_aw1_aw2_file_prefix = {
     "aou_array": "GEN",
     "aou_wgs": "SEQ",
+    "aou_array_investigation": "GEN",
+    "aou_wgs_investigation": "SEQ"
 }
 
 raw_aw1_to_genomic_set_member_fields = {
@@ -223,8 +225,13 @@ genome_centers_id_from_bucket_wgs = {
 }
 
 informing_loop_event_mappings = {
-    'gem.informing_loop_started': 'gem.informing_loop.started',
     'gem.informing_loop_decision.no': 'gem.informing_loop.screen8_no',
     'gem.informing_loop_decision.yes': 'gem.informing_loop.screen8_yes',
     'gem.informing_loop_decision.maybe_later': 'gem.informing_loop.screen8_maybe_later',
+    'pgx.informing_loop_decision.no': 'pgx.informing_loop.screen8_no',
+    'pgx.informing_loop_decision.yes': 'pgx.informing_loop.screen8_yes',
+    'pgx.informing_loop_decision.maybe_later': 'pgx.informing_loop.screen8_maybe_later',
+    'hdr.informing_loop_decision.no': 'hdr.informing_loop.screen10_no',
+    'hdr.informing_loop_decision.yes': 'hdr.informing_loop.screen10_yes',
+    'hdr.informing_loop_decision.maybe_later': 'hdr.informing_loop.screen10_maybe_later'
 }

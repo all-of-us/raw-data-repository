@@ -113,6 +113,16 @@ class GenomicJob(messages.Enum):
     DELETE_OLD_GP_USER_EVENT_METRICS = 56
     RETRY_MANIFEST_INGESTIONS = 57
     UPDATE_REPORT_STATES_FOR_CONSENT_REMOVAL = 58
+    CALCULATE_INFORMING_LOOP_READY = 59
+    RECONCILE_CVL_PGX_RESULTS = 60
+    RECONCILE_CVL_HDR_RESULTS = 61
+    RECONCILE_CVL_ALERTS = 62
+    RECONCILE_CVL_RESOLVE = 63
+    CHECK_FOR_W1IL_GROR_RESUBMIT = 64
+    INGEST_RESULT_READY = 65
+    INGEST_APPOINTMENT = 66
+    RESULTS_PIPELINE_WITHDRAWALS = 67
+    GEM_RESULT_REPORTS = 68
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
@@ -126,7 +136,23 @@ class GenomicJob(messages.Enum):
 
     CVL_W1IL_WORKFLOW = 200
     CVL_W2SC_WORKFLOW = 201
-    CVL_W3SR_WORKFLOW = 202
+    CVL_W2W_WORKFLOW = 202
+    CVL_W3SR_WORKFLOW = 203
+    CVL_W3NS_WORKFLOW = 204
+    CVL_W3SC_WORKFLOW = 205
+    CVL_W3SS_WORKFLOW = 206
+    CVL_W4WR_WORKFLOW = 207
+    CVL_W5NF_WORKFLOW = 208
+
+    LOAD_CVL_W1IL_TO_RAW_TABLE = 251
+    LOAD_CVL_W2SC_TO_RAW_TABLE = 252
+    LOAD_CVL_W2W_TO_RAW_TABLE = 253
+    LOAD_CVL_W3SR_TO_RAW_TABLE = 254
+    LOAD_CVL_W3NS_TO_RAW_TABLE = 255
+    LOAD_CVL_W3SC_TO_RAW_TABLE = 256
+    LOAD_CVL_W3SS_TO_RAW_TABLE = 257
+    LOAD_CVL_W4WR_TO_RAW_TABLE = 258
+    LOAD_CVL_W5NF_TO_RAW_TABLE = 259
 
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
@@ -136,6 +162,9 @@ class GenomicJob(messages.Enum):
     AW3_WGS_INVESTIGATION_WORKFLOW = 2002
     AW4_ARRAY_INVESTIGATION_WORKFLOW = 2003
     AW4_WGS_INVESTIGATION_WORKFLOW = 2004
+
+    # Datagen Manifest Workflows
+    DATAGEN_MANIFEST_GENERATION = 3001
 
 
 class GenomicWorkflowState(messages.Enum):
@@ -193,34 +222,40 @@ class GenomicWorkflowState(messages.Enum):
     CVL_RPT_PENDING_DELETE = 39
     CVL_RPT_DELETED = 40
 
-    CVL_W1IL = 50
-    CVL_W2SC = 51
-    CVL_W3SR = 52
+
+class ResultsWorkflowState(messages.Enum):
+    UNSET = 0
+    CVL_W1IL = 1
+    CVL_W2SC = 2
+    CVL_W2W = 3
+    CVL_W3SR = 4
+    CVL_W3SS = 5
+    CVL_W3NS = 6
+    CVL_W3SC = 7
+    CVL_W4WR = 8
+    CVL_W5NF = 9
+
+
+class ResultsModuleType(messages.Enum):
+    UNSET = 0
+    HDRV1 = 1
+    PGXV1 = 2
 
 
 class GenomicReportState(messages.Enum):
-
     UNSET = 0
-
     # GEM Reporting States
     GEM_RPT_READY = 1
     GEM_RPT_PENDING_DELETE = 2
     GEM_RPT_DELETED = 3
-
     # PGX Reporting States
     PGX_RPT_READY = 4
-    PGX_RPT_PENDING_DELETE = 5
-    PGX_RPT_DELETED = 6
-
     # HDR Reporting States
-    HDR_RPT_UNINFORMATIVE = 7
-    HDR_RPT_POSITIVE = 8
-    HDR_RPT_PENDING_DELETE = 9
-    HDR_RPT_DELETED = 10
-
+    HDR_RPT_UNINFORMATIVE = 5
+    HDR_RPT_POSITIVE = 6
     # CVL Generic Reporting States
-    CVL_RPT_PENDING_DELETE = 11
-    CVL_RPT_DELETED = 12
+    CVL_RPT_PENDING_DELETE = 20
+    CVL_RPT_DELETED = 21
 
 
 class GenomicSubProcessStatus(messages.Enum):
@@ -239,6 +274,8 @@ class GenomicSubProcessResult(messages.Enum):
     INVALID_FILE_NAME = 3
     INVALID_FILE_STRUCTURE = 4
     ERROR = 5
+    MISSING_CONFIG = 6
+    NO_RESULTS = 7
 
 
 class GenomicManifestTypes(messages.Enum):
@@ -258,9 +295,16 @@ class GenomicManifestTypes(messages.Enum):
     AW1F = 14
     AW5_ARRAY = 15
     AW5_WGS = 16
-    CVL_W1IL = 17
     CVL_W2SC = 18
-    CVL_W3SR = 19
+    CVL_W2W = 19
+    CVL_W3SR = 20
+    CVL_W3SS = 21
+    CVL_W3NS = 22
+    CVL_W3SC = 23
+    CVL_W4WR = 24
+    CVL_W5NF = 25
+    CVL_W1IL_PGX = 26
+    CVL_W1IL_HDR = 27
 
 
 class GenomicContaminationCategory(messages.Enum):
@@ -290,9 +334,17 @@ class GenomicIncidentCode(messages.Enum):
     FILE_VALIDATION_FAILED_VALUES = 9
     FILE_VALIDATION_INVALID_FILE_NAME = 10
     INFORMING_LOOP_TO_EVENTS_MISMATCH = 11
+    UNABLE_TO_RESOLVE_MESSAGE_BROKER_RECORD = 12
 
 
 class GenomicIncidentStatus(messages.Enum):
     OPEN = 0
     RESOLVED = 1
     UNABLE_TO_RESOLVE = 2
+
+
+class GenomicSampleSwapCategory(messages.Enum):
+    UNSET = 0
+    RESULT_NOT_READY = 1
+    RESULT_READY_NOT_VIEWED = 2
+    RESULT_READY_VIEWED = 3

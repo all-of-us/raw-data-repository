@@ -2,6 +2,7 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
+import re
 from datetime import datetime
 from sqlalchemy.sql import text
 
@@ -106,10 +107,17 @@ class BQGenomicSetMemberSchemaGenerator(BigQueryGenerator):
             row = ro_session.execute(text('select * from genomic_set_member where id = :id'), {'id': _id}).first()
             data = self.ro_dao.to_dict(row)
 
-            # Set biobank_id_str and delete biobank_id
+            # Convert biobank ID to integer for PDR (if present and if it's a valid AoU biobank ID)
             try:
-                data['biobank_id_str'] = data['biobank_id']
-                del data['biobank_id']
+                bb_id = data['biobank_id']
+                data['biobank_id_str'] = bb_id
+                # genomic_set_member table may contain pseudo-biobank_ids values for control samples (e.g., HG-001)
+                # Only populate the PDR biobank_id integer field if there is a valid-looking AoU biobank ID
+                # (9 digits or one leading alpha char + 9 digits, where leading char will be stripped)
+                if bb_id and re.match("[A-Za-z]?\\d{9}", bb_id):
+                    data['biobank_id'] = int(re.sub("[^0-9]", "", bb_id))
+                else:
+                    data['biobank_id'] = None
             except KeyError:
                 pass
 

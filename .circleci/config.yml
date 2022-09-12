@@ -71,6 +71,9 @@ commands:
           name: Deploy App To Test Environment
           command: ./ci/deploy_app.sh << parameters.project-id >> << parameters.git-target >>
           no_output_timeout: 60m
+      - run:
+          name: Verify App Instance Running
+          command: source venv/bin/activate && python ./ci/verify_instance.py << parameters.project-id >> << parameters.git-target >>
 
 jobs:
   job_run_unittests:
@@ -153,7 +156,6 @@ workflows:
               only:
                 - circleci-deploy
                 - devel
-#                - master
 
   release_workflow:
     jobs:

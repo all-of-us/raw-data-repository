@@ -2,6 +2,7 @@ import datetime
 
 from sqlalchemy import (
     Boolean,
+    case,
     Column,
     Computed,
     Date,
@@ -23,6 +24,9 @@ from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTim
 from rdr_service.participant_enums import (
     EhrStatus,
     EnrollmentStatus,
+    EnrollmentStatusV30,
+    EnrollmentStatusV31,
+    DigitalHealthSharingStatusV31,
     GenderIdentity,
     OrderStatus,
     PhysicalMeasurementsStatus,
@@ -38,7 +42,10 @@ from rdr_service.participant_enums import (
     ConsentExpireStatus,
     DeceasedStatus,
     RetentionStatus,
-    RetentionType)
+    RetentionType,
+    SelfReportedPhysicalMeasurementsStatus,
+    OnSiteVerificationType,
+    OnSiteVerificationVisitType)
 
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
@@ -143,7 +150,6 @@ class ParticipantSummary(Base):
     """DEPRECATED in favor of primary_language"""
     language = None  # placeholder for docs, API sets on model using corresponding ID field
     '*Deprecated*'
-
 
     dateOfBirth = Column("date_of_birth", Date)
     """The day the participant was born."""
@@ -271,7 +277,8 @@ class ParticipantSummary(Base):
     * questionnaireOnTheBasicsTime
     * questionnaireOnLifestyleTime
     * questionnaireOnOverallHealthTime
-    * physicalMeasurementsFinalizedTime
+    * clinicPhysicalMeasurementsFinalizedTime
+    * selfReportedPhysicalMeasurementsAuthored
     """
 
     # The time when we get a DNA order
@@ -286,7 +293,79 @@ class ParticipantSummary(Base):
     * questionnaireOnTheBasicsTime
     * questionnaireOnLifestyleTime
     * questionnaireOnOverallHealthTime
-    * physicalMeasurementsFinalizedTime
+    * clinicPhysicalMeasurementsFinalizedTime
+    * selfReportedPhysicalMeasurementsAuthored
+    """
+
+    enrollmentStatusV3_0 = Column(
+        "enrollment_status_v_3_0",
+        Enum(EnrollmentStatusV30),
+        default=EnrollmentStatusV30.PARTICIPANT
+    )
+    """Participant's current enrollment status as defined by the 3.0 data glossary"""
+
+    enrollmentStatusParticipantV3_0Time = Column("enrollment_status_participant_v_3_0_time", UTCDateTime)
+    """UTC time the participant has reached the 'PARTICIPANT' enrollment status defined by the 3.0 data glossary"""
+
+    enrollmentStatusParticipantPlusEhrV3_0Time = Column(
+        "enrollment_status_participant_plus_ehr_v_3_0_time",
+        UTCDateTime
+    )
+    """
+    UTC time the participant has reached the 'PARTICIPANT_PLUS_EHR' enrollment status defined by the 3.0 data glossary
+    """
+
+    enrollmentStatusPmbEligibleV3_0Time = Column("enrollment_status_pmb_eligible_v_3_0_time", UTCDateTime)
+    """
+    UTC time the participant has reached the 'PARTICIPANT_PMB_ELIGIBLE'
+    enrollment status defined by the 3.0 data glossary
+    """
+
+    enrollmentStatusCoreMinusPmV3_0Time = Column("enrollment_status_core_minus_pm_v_3_0_time", UTCDateTime)
+    """UTC time the participant has reached the 'CORE_MINUS_PM' enrollment status defined by the 3.0 data glossary"""
+
+    enrollmentStatusCoreV3_0Time = Column("enrollment_status_core_v_3_0_time", UTCDateTime)
+    """UTC time the participant has reached the 'CORE_PARTICIPANT' enrollment status defined by the 3.0 data glossary"""
+
+    enrollmentStatusV3_1 = Column(
+        "enrollment_status_v_3_1",
+        Enum(EnrollmentStatusV31),
+        default=EnrollmentStatusV31.PARTICIPANT
+    )
+    """Participant's current enrollment status as defined by the 3.1 data glossary"""
+
+    enrollmentStatusParticipantV3_1Time = Column("enrollment_status_participant_v_3_1_time", UTCDateTime)
+    """UTC time the participant has reached the 'PARTICIPANT' enrollment status defined by the 3.1 data glossary"""
+
+    enrollmentStatusParticipantPlusEhrV3_1Time = Column(
+        "enrollment_status_participant_plus_ehr_v_3_1_time",
+        UTCDateTime
+    )
+    """
+    UTC time the participant has reached the 'PARTICIPANT_PLUS_EHR' enrollment status defined by the 3.1 data glossary
+    """
+
+    enrollmentStatusParticipantPlusBasicsV3_1Time = Column(
+        "enrollment_status_participant_plus_basics_v_3_1_time",
+        UTCDateTime
+    )
+    """
+    UTC time the participant has reached the 'PARTICIPANT_PLUS_BASICS'
+    enrollment status defined by the 3.1 data glossary
+    """
+
+    enrollmentStatusCoreMinusPmV3_1Time = Column("enrollment_status_core_minus_pm_v_3_1_time", UTCDateTime)
+    """UTC time the participant has reached the 'CORE_MINUS_PM' enrollment status defined by the 3.1 data glossary"""
+
+    enrollmentStatusCoreV3_1Time = Column("enrollment_status_core_v_3_1_time", UTCDateTime)
+    """UTC time the participant has reached the 'CORE_PARTICIPANT' enrollment status defined by the 3.1 data glossary"""
+
+    enrollmentStatusParticipantPlusBaselineV3_1Time = Column(
+        "enrollment_status_participant_plus_baseline_v_3_1_time",
+        UTCDateTime
+    )
+    """
+    UTC time the participant has reached the 'BASELINE_PARTICIPANT' enrollment status defined by the 3.1 data glossary
     """
 
     consentCohort = Column("consent_cohort", Enum(ParticipantCohort), default=ParticipantCohort.UNSET)
@@ -365,36 +444,70 @@ class ParticipantSummary(Base):
     UTC timestamp indicating the latest time RDR was aware of signed and uploaded EHR documents
     """
 
-    physicalMeasurementsStatus = Column(
-        "physical_measurements_status", Enum(PhysicalMeasurementsStatus), default=PhysicalMeasurementsStatus.UNSET
+    healthDataStreamSharingStatusV3_1 = Column(
+        'health_data_stream_sharing_status_v_3_1',
+        Enum(DigitalHealthSharingStatusV31),
+        Computed(
+            case(
+                [
+                    (isEhrDataAvailable, int(DigitalHealthSharingStatusV31.CURRENTLY_SHARING)),
+                    (wasEhrDataAvailable, int(DigitalHealthSharingStatusV31.EVER_SHARED))
+                ],
+                else_=int(DigitalHealthSharingStatusV31.NEVER_SHARED)
+            ),
+            persisted=True
+        )
+    )
+
+    healthDataStreamSharingStatusV3_1Time = Column(
+        'health_data_stream_sharing_status_v_3_1_time',
+        UTCDateTime,
+        Computed(ehrUpdateTime, persisted=True)
+    )
+
+    clinicPhysicalMeasurementsStatus = Column(
+        "clinic_physical_measurements_status", Enum(PhysicalMeasurementsStatus),
+        default=PhysicalMeasurementsStatus.UNSET
     )
     """
     Indicates whether this participant has completed physical measurements.
 
-    :ref:`Enumerated values <physical_measurements_status>`
+    :ref:`Enumerated values <clinic_physical_measurements_status>`
     """
 
     # The first time that physical measurements were submitted for the participant.
-    physicalMeasurementsTime = Column("physical_measurements_time", UTCDateTime)
+    clinicPhysicalMeasurementsTime = Column("clinic_physical_measurements_time", UTCDateTime)
     """Indicates the latest time physical measurements were submitted for the participant"""
 
     # The time that physical measurements were finalized (before submission to the RDR)
-    physicalMeasurementsFinalizedTime = Column("physical_measurements_finalized_time", UTCDateTime)
+    clinicPhysicalMeasurementsFinalizedTime = Column("clinic_physical_measurements_finalized_time", UTCDateTime)
     """Indicates the latest time physical measurements were finalized for the participant"""
 
-    physicalMeasurementsCreatedSiteId = Column(
-        "physical_measurements_created_site_id", Integer, ForeignKey("site.site_id")
+    clinicPhysicalMeasurementsCreatedSiteId = Column(
+        "clinic_physical_measurements_created_site_id", Integer, ForeignKey("site.site_id")
     )
     """An indicator for the site where the physical measurements were created for each participant"""
-    physicalMeasurementsCreatedSite = None  # placeholder for docs, API sets on model using corresponding ID field
+    clinicPhysicalMeasurementsCreatedSite = None  # placeholder for docs, API sets on model using corresponding ID field
     """An indicator for the site where the physical measurements were created for each participant"""
 
-    physicalMeasurementsFinalizedSiteId = Column(
-        "physical_measurements_finalized_site_id", Integer, ForeignKey("site.site_id")
+    clinicPhysicalMeasurementsFinalizedSiteId = Column(
+        "clinic_physical_measurements_finalized_site_id", Integer, ForeignKey("site.site_id")
     )
     """An indicator for the site where the physical measurements were finalized for each participant"""
-    physicalMeasurementsFinalizedSite = None  # placeholder for docs, API sets on model using corresponding ID field
+    clinicPhysicalMeasurementsFinalizedSite = None
+    # placeholder for docs, API sets on model using corresponding ID field
     """An indicator for the site where the physical measurements were finalized for each participant"""
+
+    selfReportedPhysicalMeasurementsStatus = Column("self_reported_physical_measurements_status",
+                                                    Enum(SelfReportedPhysicalMeasurementsStatus),
+                                                    default=SelfReportedPhysicalMeasurementsStatus.UNSET)
+    """
+    Indicates whether this participant has completed self-reported physical measurements
+
+    :ref:`Enumerated values <self_reported_physical_measurements_status>`
+    """
+    selfReportedPhysicalMeasurementsAuthored = Column("self_reported_physical_measurements_authored", UTCDateTime)
+    """Indicates the latest time the participant authored the survey for self-reporting physical measurements"""
 
     numberDistinctVisits = Column("number_distinct_visits", Integer, default=0)
     """The number of distinct visits to a health care provider that the participant has made that supplied data"""
@@ -569,6 +682,12 @@ class ParticipantSummary(Base):
     semanticVersionForPrimaryConsent = Column("semantic_version_for_primary_consent", String(100))
     """The human readable version of primary consent the participant signed"""
 
+    reconsentForStudyEnrollmentAuthored = Column("reconsent_for_study_enrollment_authored", UTCDateTime)
+    """
+    The UTC date time of when the participant re-consented to the program
+    (if a reconsent was performed for this participant)
+    """
+
     consentForElectronicHealthRecords = Column(
         "consent_for_electronic_health_records", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
@@ -608,6 +727,15 @@ class ParticipantSummary(Base):
     """
     Indicates the time at which the participant completed an EHR consent
     which may be subject to expiration in certain states
+    """
+
+    reconsentForElectronicHealthRecordsAuthored = Column(
+        "reconsent_for_electronic_health_records_authored",
+        UTCDateTime
+    )
+    """
+    The UTC date time of when the participant re-consented for sharing electronic health records
+    (if a reconsent was performed for this participant)
     """
 
     consentForDvElectronicHealthRecordsSharing = Column(
@@ -888,6 +1016,19 @@ class ParticipantSummary(Base):
 
     questionnaireOnDnaProgramAuthored = Column("questionnaire_on_dna_program_authored", UTCDateTime)
     "The UTC Date time of when the participant completed the DNA program questionnaire"
+
+    questionnaireOnLifeFunctioning = Column("questionnaire_on_life_functioning", Enum(QuestionnaireStatus),
+                                            default=QuestionnaireStatus.UNSET)
+    """
+    Indicates the status of the life functioning survey questionnaire that a participant can fill out
+
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+    questionnaireOnLifeFunctioningTime = Column("questionnaire_on_life_functioning_time", UTCDateTime)
+    "Indicates the time at which the RDR received notice of life functioning survey questionnaire."
+
+    questionnaireOnLifeFunctioningAuthored = Column("questionnaire_on_life_functioning_authored", UTCDateTime)
+    "The UTC Date time of when the participant completed the life functioning survey questionnaire"
 
     numCompletedBaselinePPIModules = Column("num_completed_baseline_ppi_modules", SmallInteger, default=0)
     """
@@ -1349,6 +1490,24 @@ class ParticipantSummary(Base):
     """
     Present the retention type: ACTIVE, PASSIVE or ACTIVE_AND_PASSIVE
     """
+
+    onsiteIdVerificationTime = Column("onsite_id_verification_time", UTCDateTime)
+    "Timestamp of the most recent id verification"
+
+    onsiteIdVerificationType = Column("onsite_id_verification_type", Enum(OnSiteVerificationType),
+                                      default=OnSiteVerificationType.UNSET)
+    """The type of ID verification used for visit
+       :ref:`Enumerated values <OnSiteVerificationType>`"""
+    onsiteIdVerificationVisitType = Column("onsite_id_verification_visit_type", Enum(OnSiteVerificationVisitType),
+                               default=OnSiteVerificationVisitType.UNSET)
+    """The type of visit on which ID verification occurred
+       :ref:`Enumerated values <OnSiteVerificationVisitType>`"""
+    onsiteIdVerificationUser = Column("onsite_id_verification_user", String(200))
+    """User who recorded ID verification occurrence"""
+    onsiteIdVerificationSite = Column("onsite_id_verification_site_id", Integer, ForeignKey("site.site_id"))
+    """The site where ID verification took place"""
+
+
 
     lastModified = Column("last_modified", UTCDateTime6)
     """UTC timestamp of the last time the participant summary was modified"""

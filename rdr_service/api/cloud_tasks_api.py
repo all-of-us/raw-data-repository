@@ -5,12 +5,13 @@ from flask_restful import Resource
 from werkzeug.exceptions import NotFound
 
 from rdr_service.api.data_gen_api import generate_samples_task
+from rdr_service.api_util import parse_date, returns_success
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
-    bq_institutional_affiliations_batch_update, bq_researcher_batch_update
+    bq_institutional_affiliations_batch_update, bq_researcher_batch_update, bq_audit_batch_update
 from rdr_service.offline import retention_eligible_import
 from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
@@ -20,6 +21,10 @@ from rdr_service.resource.generators.workbench import res_workspace_batch_update
     res_institutional_affiliations_batch_update, res_researcher_batch_update
 from rdr_service.resource.tasks import batch_rebuild_participants_task, batch_rebuild_retention_metrics_task, \
     batch_rebuild_consent_metrics_task, batch_rebuild_user_event_metrics_task, check_consent_errors_task
+from rdr_service.services.participant_data_validation import ParticipantDataValidation
+from rdr_service.services.slack_utils import SlackMessageHandler
+from rdr_service import config
+from rdr_service.config import RDR_SLACK_WEBHOOKS
 
 
 def log_task_headers():
@@ -160,6 +165,8 @@ class RebuildResearchWorkbenchTableRecordsApi(Resource):
         elif table == 'researcher':
             bq_researcher_batch_update(batch)
             res_researcher_batch_update(batch)
+        elif table == 'audit':
+            bq_audit_batch_update(batch)
 
         logging.info(f'Rebuild complete.')
         return '{"success": "true"}'
@@ -177,6 +184,30 @@ class ArchiveRequestLogApi(Resource):
         log_id = data.get('log_id')
 
         RequestsLogMigrator.archive_log(log_id)
+        return '{"success": "true"}'
+
+
+class PtscHealthDataTransferValidTaskApi(Resource):
+    """
+    Cloud Task endpoint: Ptsc Health Data Transfer Result
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        logging.info(f'Ptsc Health Data Transfer Result: {data.get("attributes").get("eventType")}')
+        # possible event types: TRANSFER_OPERATION_SUCCESS, TRANSFER_OPERATION_FAILED, TRANSFER_OPERATION_ABORTED
+        event_type = data.get("attributes").get("eventType")
+        if event_type in ['TRANSFER_OPERATION_FAILED', 'TRANSFER_OPERATION_ABORTED']:
+            slack_config = config.getSettingJson(RDR_SLACK_WEBHOOKS, {})
+            webhook_url = slack_config.get('rdr_ptsc_health_data_transfer_alerts')
+            slack_alert_helper = SlackMessageHandler(webhook_url=webhook_url)
+            logging.info('sending PTSC health data transfer error alert')
+            message_data = {
+                'text': f'PTSC health data transfer status: {event_type}, please check data transfer log for detail'}
+            slack_alert_helper.send_message_to_webhook(message_data=message_data)
+
+        logging.info('Complete.')
         return '{"success": "true"}'
 
 
@@ -214,6 +245,7 @@ class RebuildRetentionEligibleMetricsApi(Resource):
         batch_rebuild_retention_metrics_task(data)
         return '{"success": "true"}'
 
+
 class RebuildConsentMetricApi(Resource):
     """
     Cloud Task endpoint: Rebuild Consent Validation metrics resource records
@@ -224,6 +256,7 @@ class RebuildConsentMetricApi(Resource):
         data = request.get_json(force=True)
         batch_rebuild_consent_metrics_task(data)
         return '{"success": "true"}'
+
 
 class CheckConsentErrorsApi(Resource):
     """
@@ -236,6 +269,7 @@ class CheckConsentErrorsApi(Resource):
         check_consent_errors_task(data)
         return '{"success": "true"}'
 
+
 class RebuildUserEventMetricsApi(Resource):
     """
     Cloud Task endpoint: Rebuild Color User Event Metrics records Resource records.
@@ -246,3 +280,16 @@ class RebuildUserEventMetricsApi(Resource):
         data = request.get_json(force=True)
         batch_rebuild_user_event_metrics_task(data)
         return '{"success": "true"}'
+
+
+class ValidateDateOfBirthApi(Resource):
+    @task_auth_required
+    @returns_success
+    def post(self):
+        task_data = request.get_json(force=True)
+        date_of_birth = parse_date(task_data['date_of_birth'])
+
+        ParticipantDataValidation.analyze_date_of_birth(
+            participant_id=task_data['participant_id'],
+            date_of_birth=date_of_birth
+        )

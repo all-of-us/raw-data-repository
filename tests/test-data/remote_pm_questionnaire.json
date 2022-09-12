@@ -1,0 +1,160 @@
+{
+  "resourceType": "Questionnaire",
+  "identifier": [
+    {
+      "value": "Vibrent_FORM_ID_1580"
+    }
+  ],
+  "version": "v2022.5.23",
+  "status": "published",
+  "date": "2022-05-27T21:41:34+00:00",
+  "group": {
+    "linkId": "root_group",
+    "title": "Record your height and weight",
+    "concept": [
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+        "code": "pm_height_weight"
+      }
+    ],
+    "required": true,
+    "repeats": false,
+    "question": [
+      {
+        "linkId": "62242",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "measurement_unit"
+          }
+        ],
+        "text": "Select the unit of measurement you prefer",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "Seleccione la unidad de medida que prefiere"
+                }
+              ]
+            }
+          ]
+        },
+        "type": "choice",
+        "repeats": false,
+        "option": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "pm_1",
+            "display": "I want to use Feet/Inches and Pounds. (Imperial System) ",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "Quiero usar la medida de pies/pulgadas y libras (sistema imperial)"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "pm_2",
+            "display": "I want to use Centimeters and Kilograms. (Metric System)",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "Quiero usar centímetros y kilogramos. (sistema métrico)"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "linkId": "62275",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "self_reported_height_ft"
+          }
+        ],
+        "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+        "type": "decimal",
+        "repeats": false
+      },
+      {
+        "linkId": "62276",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "self_reported_height_in"
+          }
+        ],
+        "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+        "type": "decimal",
+        "repeats": false
+      },
+      {
+        "linkId": "62296",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "self_reported_weight_pounds"
+          }
+        ],
+        "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+        "type": "decimal",
+        "repeats": false
+      },
+      {
+        "linkId": "62297",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "self_reported_height_cm"
+          }
+        ],
+        "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+        "type": "decimal",
+        "repeats": false
+      },
+      {
+        "linkId": "62277",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "self_reported_weight_kg"
+          }
+        ],
+        "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+        "type": "decimal",
+        "repeats": false
+      }
+    ]
+  }
+}

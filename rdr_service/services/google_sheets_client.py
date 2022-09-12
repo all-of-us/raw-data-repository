@@ -250,13 +250,14 @@ class GoogleSheetsClient:
 
     @backoff.on_exception(backoff.constant, HttpError, max_tries=4, jitter=None, interval=30)
     def _process_batch_update_requests(self, service):
-        request = service.spreadsheets().batchUpdate(
-            spreadsheetId=self._spreadsheet_id,
-            body={
-                'requests': self._spreadsheets_batch_update_requests
-            }
-        )
-        request.execute()
+        if self._spreadsheets_batch_update_requests:
+            request = service.spreadsheets().batchUpdate(
+                spreadsheetId=self._spreadsheet_id,
+                body={
+                    'requests': self._spreadsheets_batch_update_requests
+                }
+            )
+            request.execute()
 
     @backoff.on_exception(backoff.constant, HttpError, max_tries=4, jitter=None, interval=30)
     def _upload_sheet_values(self, service):

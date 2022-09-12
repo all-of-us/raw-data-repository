@@ -12,6 +12,10 @@ class ConsentOtherErrors:
     MISSING_CONSENT_CHECK_MARK = 'missing consent check mark'
     NON_VETERAN_CONSENT_FOR_VETERAN = 'non-veteran consent for veteran participant'
     VETERAN_CONSENT_FOR_NON_VETERAN = 'veteran consent for non-veteran participant'
+    INVALID_PRINTED_NAME = 'invalid printed name'
+    SENSITIVE_EHR_EXPECTED = 'non-sensitive ehr consent given when sensitive version expected'
+    NONSENSITIVE_EHR_EXPECTED = 'sensitive ehr consent given when non-sensitive version expected'
+    INITIALS_MISSING_ON_SENSITIVE_EHR = 'missing expected initials on sensitive ehr'
 
 
 class ConsentType(messages.Enum):
@@ -21,6 +25,9 @@ class ConsentType(messages.Enum):
     GROR = 4
     UNKNOWN = 5
     PRIMARY_UPDATE = 6
+    WEAR = 7
+    PRIMARY_RECONSENT = 8
+    EHR_RECONSENT = 9
 
 
 class ConsentSyncStatus(messages.Enum):
@@ -50,6 +57,7 @@ class ConsentFile(Base):
     signature_str = Column(String(200), nullable=True)
     is_signature_image = Column(Boolean, default=False)
     signing_date = Column(Date, nullable=True)
+    printed_name = Column(String(200), nullable=True)
     expected_sign_date = Column(Date, nullable=True)
 
     file_upload_time = Column(UTCDateTime, nullable=True)
@@ -64,7 +72,21 @@ class ConsentFile(Base):
     """Id of a record linking the consent to the QuestionnaireResponse that provided the consent."""
 
     consent_response = relationship('ConsentResponse')
+    consent_error_report = relationship('ConsentErrorReport')
+
+# DA-2611:  Track which consent_file records with validation errors already had error reports generated.
+# Table schema may expand to include other details as warranted
+class ConsentErrorReport(Base):
+    __tablename__ = 'consent_error_report'
+    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    consent_file_id = Column(Integer, ForeignKey(ConsentFile.id), nullable=False)
+    notes = Column(String(2048))
+    """ Additional details about the report, e.g. the error description and/or corresponding PTSC SD ticket number """
 
 
 event.listen(ConsentFile, "before_insert", model_insert_listener)
 event.listen(ConsentFile, "before_update", model_update_listener)
+event.listen(ConsentErrorReport, "before_insert", model_insert_listener)
+event.listen(ConsentErrorReport, "before_update", model_insert_listener)

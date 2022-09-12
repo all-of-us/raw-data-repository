@@ -26,7 +26,7 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_se
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update, \
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
 from rdr_service.dao.bq_workbench_dao import bq_workspace_update, bq_workspace_user_update, \
-    bq_institutional_affiliations_update, bq_researcher_update
+    bq_institutional_affiliations_update, bq_researcher_update, bq_audit_update
 from rdr_service.dao.bq_hpo_dao import bq_hpo_update, bq_hpo_update_by_id
 from rdr_service.dao.bq_organization_dao import bq_organization_update, bq_organization_update_by_id
 from rdr_service.dao.bq_site_dao import bq_site_update, bq_site_update_by_id
@@ -35,13 +35,17 @@ from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.bq_questionnaires import PDR_MODULE_LIST
 from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.participant import Participant
+from rdr_service.model.resource_data import ResourceData
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource import generators
 from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update, \
-    genomic_manifest_file_update, genomic_manifest_feedback_update
+    genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_informing_loop_update, \
+    genomic_cvl_result_past_due_update
+from rdr_service.resource.constants import SKIP_TEST_PIDS_FOR_PDR
 from rdr_service.resource.tasks import batch_rebuild_consent_metrics_task
+from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 
@@ -61,9 +65,10 @@ PDR_PROJECT_ID_MAP = {
 }
 
 GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'genomic_gc_validation_metrics',
-                     'genomic_file_processed', 'genomic_manifest_file', 'genomic_manifest_feedback')
+                     'genomic_file_processed', 'genomic_manifest_file', 'genomic_manifest_feedback',
+                     'genomic_informing_loop', 'genomic_cvl_result_past_due')
 
-RESEARCH_WORKBENCH_TABLES = ('workspace', 'workspace_user', 'researcher', 'institutional_affiliations')
+RESEARCH_WORKBENCH_TABLES = ('workspace', 'workspace_user', 'researcher', 'institutional_affiliations', 'audit')
 
 SITE_TABLES = ('hpo', 'site', 'organization')
 
@@ -97,6 +102,7 @@ class CleanPDRDataClass(object):
         else:
             dao = BigQuerySyncDao()
             with dao.session() as session:
+
                 # Verify the table_id matches at least some existing records in the bigquery_sync table
                 query = session.query(BigQuerySync.id)\
                     .filter(BigQuerySync.projectId == project_id).filter(BigQuerySync.datasetId == dataset_id)\
@@ -124,10 +130,28 @@ class CleanPDRDataClass(object):
                             suffix="complete"
                         )
 
-
     def delete_resource_pk_ids_from_resource_data(self, resource_type_id):
-        """ TODO:  Implement deletions from the resource_data table based on resource_pk_id field matches """
-        _logger.error(f'resource_data table cleanup not yet implemented, cannot clean {resource_type_id}')
+        """ Perform deletions from the resource_data table based on resource_pk_id field matches """
+
+        dao = ResourceDataDao()
+        with dao.session() as session:
+            batch_count = 500
+            batch_total = len(self.pk_id_list)
+            processed = 0
+            for pk_ids in chunks(self.pk_id_list, batch_count):
+                session.query(ResourceData
+                              ).filter(ResourceData.resourceTypeID == resource_type_id
+                              ).filter(ResourceData.resourcePKID.in_(pk_ids)
+                              ).delete(synchronize_session=False)
+                # Inject a short delay between chunk-sized delete operations to avoid blocking other table updates
+                session.commit()
+                sleep(0.5)
+                processed += len(pk_ids)
+                if not self.args.debug:
+                    print_progress_bar(
+                        processed, batch_total, prefix="{0}/{1}:".format(processed, batch_total),
+                        suffix="complete"
+                    )
 
     def run(self):
         """
@@ -153,13 +177,20 @@ class CleanPDRDataClass(object):
         _logger.info('=' * 90)
         _logger.info('')
 
-        if self.args.bq_table_id:
-            self.delete_pk_ids_from_bigquery_sync(self.args.bq_table_id)
+        if self.args.pdr_mod_responses:
+            # This option/use case is primarily for orphaned responses due to retroactively flagged duplicate
+            # questionnaire responses. Use the cleanup code already in the ResponseDuplicationDetector class
+            dao = BigQuerySyncDao()
+            with dao.session() as session:
+                ResponseDuplicationDetector.clean_pdr_module_data(self.pk_id_list, session, self.gcp_env.project)
+        else:
+            if self.args.bq_table_id:
+                self.delete_pk_ids_from_bigquery_sync(self.args.bq_table_id)
 
-        # Can delete from both tables on the same run as long as the bigquery_sync.pk_id matches the
-        # resource_data.resource_pk_id for the resource_type_id specified.
-        if self.args.resource_type_id:
-            self.delete_resource_pk_ids_from_resource_data(self.resource_type_id)
+            # Can delete from both bigquery_sync and resource data tables on the same run as long as the
+            # bigquery_sync.pk_id matches the resource_data.resource_pk_id for the resource_type_id specified.
+            if self.args.resource_type_id:
+                self.delete_resource_pk_ids_from_resource_data(self.args.resource_type_id)
 
 
 class ParticipantResourceClass(object):
@@ -172,7 +203,6 @@ class ParticipantResourceClass(object):
         self.args = args
         self.gcp_env = gcp_env
         self.pid_list = pid_list
-
 
     def update_single_pid(self, pid):
         """
@@ -229,9 +259,9 @@ class ParticipantResourceClass(object):
 
         # queue up a batch of participant ids and send them to be rebuilt.
         for pid in pids:
-
-            batch.append({'pid': pid})
-            count += 1
+            if pid not in SKIP_TEST_PIDS_FOR_PDR:
+                batch.append({'pid': pid})
+                count += 1
 
             if count == batch_size:
                 payload = {'batch': batch,
@@ -297,6 +327,9 @@ class ParticipantResourceClass(object):
 
         for pid in pids:
             count += 1
+            if pid in SKIP_TEST_PIDS_FOR_PDR:
+                _logger.info(f'Skipping PDR data build for test pid {pid}')
+                continue
 
             if self.update_single_pid(pid) != 0:
                 errors += 1
@@ -312,7 +345,6 @@ class ParticipantResourceClass(object):
             _logger.warning(f'\n\nThere were {errors} PIDs not found during processing.')
 
         return 0
-
 
     def run(self):
         """
@@ -451,6 +483,10 @@ class GenomicResourceClass(object):
             elif table == 'genomic_gc_validation_metrics':
                 bq_genomic_gc_validation_metrics_update(_id, project_id=self.gcp_env.project)
                 genomic_gc_validation_metrics_update(_id)
+            elif table == 'genomic_informing_loop':
+                genomic_informing_loop_update(_id)
+            elif table == 'genomic_cvl_result_past_due':
+                genomic_cvl_result_past_due_update(_id)
         except NotFound:
             return 1
         return 0
@@ -707,6 +743,8 @@ class ResearchWorkbenchResourceClass(object):
                 bq_institutional_affiliations_update(_id, project_id=self.gcp_env.project)
             elif table == 'researcher':
                 bq_researcher_update(_id, project_id=self.gcp_env.project)
+            elif table == 'audit':
+                bq_audit_update(_id, project_id=self.gcp_env.project)
         except NotFound:
             return 1
         return 0
@@ -789,9 +827,10 @@ class ResearchWorkbenchResourceClass(object):
 
         table_map = {
             'workspace': 'workbench_workspace_snapshot',
-            'workspace_user': 'workbench_workspace_user',
-            'researcher': 'workbench_researcher',
-            'institutional_affiliations': 'workbench_institutional_affiliations'
+            'workspace_user': 'workbench_workspace_user_history',
+            'researcher': 'workbench_researcher_history',
+            'institutional_affiliations': 'workbench_institutional_affiliations_history',
+            'audit': 'workbench_audit'
         }
 
         if self.args.all_ids or self.args.all_tables:
@@ -1450,9 +1489,10 @@ def run():
 
     clean_pdr_data_parser.add_argument('--bq-table-id', type=str, default=None,
                                    help='table_id value whose bigquery_sync records should be cleaned')
-    clean_pdr_data_parser.add_argument('--resource-type-id', type=int, default=None,
+    clean_pdr_data_parser.add_argument('--resource-type-id', dest='resource_type_id', type=int, default=None,
                                    help='resource_type_id whose resource_data records should be cleaned')
-
+    clean_pdr_data_parser.add_argument('--pdr-mod-responses', default=False, action='store_true',
+                                        help="clean all pdr_mod_* tables based on questionnaire_response_id list")
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:

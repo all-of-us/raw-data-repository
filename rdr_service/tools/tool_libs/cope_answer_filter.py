@@ -1,9 +1,9 @@
 from typing import Optional
 
 from rdr_service import code_constants
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.domain_model.response import Answer, Response, ParticipantResponses
-from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.services.system_utils import list_chunks
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
@@ -69,12 +69,36 @@ class DosesReceivedTracker:
         self.first_dose_tracker = _MinuteSurveyDoseTracking(
             dose_received_question_code=code_constants.COPE_FIRST_DOSE_QUESTION,
             dose_type_question_code=code_constants.COPE_FIRST_DOSE_TYPE_QUESTION,
-            dose_type_other_question_code=code_constants.COPE_FIRST_DOSE_TYPE_OTHER_QUESTION
+            dose_type_other_question_code=code_constants.COPE_FIRST_DOSE_TYPE_OTHER_QUESTION,
+            dose_symptom_question_code=code_constants.COPE_FIRST_DOSE_SYMPTOM_QUESTION,
+            dose_symptom_other_question_code=code_constants.COPE_FIRST_DOSE_SYMPTOM_OTHER_QUESTION,
+            dose_date_question_code=code_constants.COPE_FIRST_DOSE_DATE_QUESTION
         )
         self.second_dose_tracker = _MinuteSurveyDoseTracking(
             dose_received_question_code=code_constants.COPE_SECOND_DOSE_QUESTION,
             dose_type_question_code=code_constants.COPE_SECOND_DOSE_TYPE_QUESTION,
-            dose_type_other_question_code=code_constants.COPE_SECOND_DOSE_TYPE_OTHER_QUESTION
+            dose_type_other_question_code=code_constants.COPE_SECOND_DOSE_TYPE_OTHER_QUESTION,
+            dose_symptom_question_code=code_constants.COPE_SECOND_DOSE_SYMPTOM_QUESTION,
+            dose_symptom_other_question_code=code_constants.COPE_SECOND_DOSE_SYMPTOM_OTHER_QUESTION,
+            dose_date_question_code=code_constants.COPE_SECOND_DOSE_DATE_QUESTION
+        )
+        # Create dose question trackers that track answers for doses 3 through 17
+        self.additional_dose_trackers = [
+            self._build_numbered_dose_tracker(number)
+            for number in range(3, 18)
+        ]
+
+    @classmethod
+    def _build_numbered_dose_tracker(cls, number):
+        return _MinuteSurveyDoseTracking(
+            dose_received_question_code=f'cdc_covid_xx_dose{number}',
+            dose_type_question_code=f'cdc_covid_xx_b_dose{number}',
+            dose_type_other_question_code=f'cdc_covid_xx_b_dose{number}_other',
+            dose_symptom_question_code=f'cdc_covid_xx_symptom_dose{number}',
+            dose_symptom_other_question_code=f'cdc_covid_xx_symptom_cope_350_dose{number}',
+            dose_vol_question_code=f'cdc_covid_xx_type_dose{number}',
+            dose_vol_other_question_code=f'cdc_covid_xx_type_dose{number}_other',
+            dose_date_question_code=f'cdc_covid_xx_a_date{number}'
         )
 
     def visit_response(self, response: Response):
@@ -114,19 +138,28 @@ class DosesReceivedTracker:
             self.first_dose_tracker.get_and_clear_ids(),
             self.second_dose_tracker.get_and_clear_ids(),
         )
+        for tracker in self.additional_dose_trackers:
+            tracker.check_minute_response(response)
+            invalid_answer_ids.update(tracker.get_and_clear_ids())
 
         if invalid_answer_ids:
             raise InvalidAnswers(f'Invalid answers found for dose questions', answer_ids=invalid_answer_ids)
 
 
 class _MinuteSurveyDoseTracking:
-    def __init__(self, dose_received_question_code, dose_type_question_code, dose_type_other_question_code):
+    def __init__(self, dose_received_question_code, dose_type_question_code, dose_type_other_question_code,
+                 dose_symptom_question_code, dose_symptom_other_question_code, dose_date_question_code,
+                 dose_vol_question_code=None, dose_vol_other_question_code=None):
         self.dose_received_question_code = dose_received_question_code
         self.dose_type_question_code = dose_type_question_code
         self.dose_type_other_question_code = dose_type_other_question_code
+        self.dose_symptom_question_code = dose_symptom_question_code
+        self.dose_symptom_other_question_code = dose_symptom_other_question_code
+        self.dose_vol_question_code = dose_vol_question_code
+        self.dose_vol_other_question_code = dose_vol_other_question_code
+        self.dose_date_question_code = dose_date_question_code
 
         self.previously_confirmed_dose_received = False
-        self.previously_answered_dose_type = False
         self.invalid_ids = set()
 
     def get_and_clear_ids(self):
@@ -140,27 +173,50 @@ class _MinuteSurveyDoseTracking:
             self.invalid_ids.add(dose_received_answer.id)
 
         dose_type_answer = response.get_single_answer_for(self.dose_type_question_code)
-        if dose_type_answer and self.previously_answered_dose_type:
+        if dose_type_answer and self.previously_confirmed_dose_received:
             self.invalid_ids.add(dose_type_answer.id)
 
         dose_type_other_answer = response.get_single_answer_for(self.dose_type_other_question_code)
-        if dose_type_other_answer and self.previously_answered_dose_type:
+        if dose_type_other_answer and self.previously_confirmed_dose_received:
             self.invalid_ids.add(dose_type_other_answer.id)
+
+        dose_symptom_answer = response.get_answers_for(self.dose_symptom_question_code)
+        if dose_symptom_answer and self.previously_confirmed_dose_received:
+            self.invalid_ids.update({answer.id for answer in dose_symptom_answer})
+
+        dose_symptom_other_answer = response.get_single_answer_for(self.dose_symptom_other_question_code)
+        if dose_symptom_other_answer and self.previously_confirmed_dose_received:
+            self.invalid_ids.update({answer.id for answer in dose_symptom_answer})
+
+        dose_vol_answer = response.get_single_answer_for(self.dose_vol_question_code)
+        if self.dose_vol_question_code and dose_vol_answer and self.previously_confirmed_dose_received:
+            self.invalid_ids.add(dose_vol_answer.id)
+
+        dose_vol_other_answer = response.get_single_answer_for(self.dose_vol_other_question_code)
+        if self.dose_vol_other_question_code and dose_vol_other_answer and self.previously_confirmed_dose_received:
+            self.invalid_ids.add(dose_vol_other_answer.id)
+
+        dose_date_answer = response.get_single_answer_for(self.dose_date_question_code)
+        if dose_date_answer and self.previously_confirmed_dose_received:
+            self.invalid_ids.add(dose_date_answer.id)
 
         if _CopeUtils.is_yes_answer(dose_received_answer):
             self.previously_confirmed_dose_received = True
+        elif dose_received_answer is None or dose_received_answer.value != 'pmi_skip':
             if dose_type_answer:
-                self.previously_answered_dose_type = True
-            else:
-                raise Exception('No answer on dose type, is this ok?')
-
-            if dose_type_other_answer and not dose_type_answer:
-                raise Exception('investigate this')
-        else:
-            if dose_type_answer:
-                raise Exception('Got a response on the type of dose, but not that they took it')
+                print('ERROR: Got a response on the type of dose, but not that they took it')
             if dose_type_other_answer:
-                raise Exception('Got a response on the type of dose, but not that they took it')
+                print('ERROR: Got a response on the other type of dose, but not that they took it')
+            if dose_symptom_answer:
+                print('ERROR: Got a response on the symptom of dose, but not that they took it')
+            if dose_symptom_other_answer:
+                print('ERROR: Got a response on the other symptom of dose, but not that they took it')
+            if dose_vol_answer:
+                print('ERROR: Got a response on the vol of dose, but not that they took it')
+            if dose_vol_other_answer:
+                print('ERROR: Got a response on the other vol of dose, but not that they took it')
+            if dose_date_answer:
+                print('ERROR: Got a response on the date of dose, but not that they took it')
 
 
 class CopeFilterTool(ToolBase):
@@ -168,7 +224,7 @@ class CopeFilterTool(ToolBase):
         super(CopeFilterTool, self).run()
 
         with self.get_session() as session:
-            participant_ids = self._get_all_consented_participant_ids(session)
+            participant_ids = ParticipantSummaryDao.get_all_consented_participant_ids(session)
             cope_survey_codes = ['cope_feb', 'cope_vaccine1', 'cope_vaccine2', 'cope_vaccine3', 'cope_vaccine4']
             invalid_answer_ids = set()
 
@@ -198,25 +254,10 @@ class CopeFilterTool(ToolBase):
                 session.commit()
 
     @classmethod
-    def _get_all_consented_participant_ids(cls, session):
-        db_results = session.query(ParticipantSummary.participantId).all()
-        return [obj.participantId for obj in db_results]
-
-    @classmethod
     def _get_invalid_answers_in_cope_responses(cls, responses: ParticipantResponses):
         invalid_answer_ids = set()
         validation_rule_trackers = [
-            DosesReceivedTracker(),  # covers first and second dose "received", "type", and "type-other" questions
-            CodeRepeatedTracker([code_constants.COPE_FIRST_DOSE_DATE_QUESTION]),
-            CodeRepeatedTracker([code_constants.COPE_SECOND_DOSE_DATE_QUESTION]),
-            CodeRepeatedTracker([
-                code_constants.COPE_FIRST_DOSE_SYMPTOM_QUESTION,
-                code_constants.COPE_FIRST_DOSE_SYMPTOM_OTHER_QUESTION
-            ]),
-            CodeRepeatedTracker([
-                code_constants.COPE_SECOND_DOSE_SYMPTOM_QUESTION,
-                code_constants.COPE_SECOND_DOSE_SYMPTOM_OTHER_QUESTION
-            ])
+            DosesReceivedTracker()  # covers all questions related to doses received
         ]
         for response in responses.in_authored_order:
             for tracker in validation_rule_trackers:

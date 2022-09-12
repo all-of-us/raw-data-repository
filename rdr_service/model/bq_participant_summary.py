@@ -147,7 +147,15 @@ class BQPhysicalMeasurements(BQSchema):
                                          BQFieldModeEnum.NULLABLE)
     pm_final = BQField('pm_final', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     pm_restored = BQField('pm_restored', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-
+    pm_questionnaire_response_id = BQField('pm_questionnaire_response_id',
+                                           BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    pm_collect_type = BQField('pm_collect_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    pm_collect_type_id = BQField('pm_collect_type_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    pm_origin = BQField('pm_origin', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    pm_origin_measurement_unit = BQField('pm_origin_measurement_unit', BQFieldTypeEnum.STRING,
+                                         BQFieldModeEnum.NULLABLE)
+    pm_origin_measurement_unit_id = BQField('pm_origin_measurement_unit_id', BQFieldTypeEnum.INTEGER,
+                                            BQFieldModeEnum.NULLABLE)
 
 class BQBiobankSampleSchema(BQSchema):
     """
@@ -168,6 +176,8 @@ class BQBiobankSampleSchema(BQSchema):
     bbs_disposed_reason_id = BQField('bbs_disposed_reason_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     bbs_biobank_stored_sample_id = BQField('bbs_biobank_stored_sample_id', BQFieldTypeEnum.STRING,
                                            BQFieldModeEnum.NULLABLE)
+    bbs_id = BQField('bbs_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    bbs_hash_id = BQField('bbs_hash_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQBiobankOrderSchema(BQSchema):
@@ -195,6 +205,7 @@ class BQBiobankOrderSchema(BQSchema):
                                       BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     bbo_collection_method = BQField('bbo_collection_method', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     bbo_collection_method_id = BQField('bbo_collection_method_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    bbo_id = BQField('bbo_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQPatientStatusSchema(BQSchema):
@@ -230,9 +241,9 @@ class BQPairingHistorySchema(BQSchema):
     """
     Participant pairing history
     """
-    last_modified = BQField('last_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
-    hpo = BQField('hpo', BQFieldTypeEnum.STRING, BQFieldModeEnum.REQUIRED)
-    hpo_id = BQField('hpo_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    last_modified = BQField('last_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    hpo = BQField('hpo', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    hpo_id = BQField('hpo_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     organization = BQField('organization', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     organization_id = BQField('organization_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     site = BQField('site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)

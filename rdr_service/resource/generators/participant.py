@@ -1,5 +1,6 @@
 import datetime
 import enum
+import hashlib
 import json
 import logging
 import re
@@ -27,11 +28,13 @@ from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_base import BQRecord
 # TODO: Create new versions of these ENUMs in resource.constants.
 from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum, BQModuleStatusEnum
+from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus
 from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
-from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
+from rdr_service.model.measurements import (PhysicalMeasurements, PhysicalMeasurementsStatus,
+                                            PhysicalMeasurementsCollectType, OriginMeasurementUnit)
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
@@ -49,7 +52,7 @@ from rdr_service.resource import generators, schemas
 from rdr_service.resource.calculators import EnrollmentStatusCalculator, ParticipantUBRCalculator as ubr
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
     PDREnrollmentStatusEnum
-from rdr_service.resource.schemas.participant import StreetAddressTypeEnum
+from rdr_service.resource.schemas.participant import StreetAddressTypeEnum, BIOBANK_UNIQUE_TEST_IDS
 
 
 class ModuleLookupEnum(enum.Enum):
@@ -72,7 +75,13 @@ _consent_module_question_map = {
     'cope_dec': 'section_participation',
     'cope_feb': 'section_participation',
     'GeneticAncestry': 'GeneticAncestry_ConsentAncestryTraits',
-    'covid_19_serology_results': 'covid_19_serology_results_decision'
+    'covid_19_serology_results': 'covid_19_serology_results_decision',
+    'wear_consent': 'resultsconsent_wear',
+    # Reconsent modules for cases where participant may not have initially completed the expected VA vs. Non-VA version
+    'vaprimaryreconsent_c1_2': 'vaprimaryreconsent_c1_2_agree',
+    'vaprimaryreconsent_c3': 'vaprimaryreconsent_c3_agree',
+    'vaehrreconsent': 'vaehrreconsent_agree',
+    'nonvaprimaryreconsent': 'nonvaprimaryreconsent_agree'
 }
 
 # _consent_expired_question_map, for expired consents. { module: question code string }
@@ -106,6 +115,12 @@ _consent_answer_status_map = {
     # covid_19_serology_results_decision
     'Decision_Yes': BQModuleStatusEnum.SUBMITTED,
     'Decision_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    'WEAR_Yes': BQModuleStatusEnum.SUBMITTED,
+    'WEAR_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    # VA/Non-VA reconsent modules consent answer options (note:  agree_no is defined but may not be transmitted to RDR,
+    # participants who decline reconsent may be updated to withdrawn status by PTSC instead)
+    'agree_yes': BQModuleStatusEnum.SUBMITTED,
+    'agree_no': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
 }
 
 # PDR-252:  When RDR starts accepting QuestionnaireResponse payloads for withdrawal screens, AIAN participants
@@ -206,6 +221,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
             summary['activity'] = self.validate_activity_timestamps(summary['activity'])
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
+
+            # DA-2611 related: Closes a gap where primary consent metrics records in PDR have some stale errors for
+            # invalid DOB/invalid age at consent
+            if summary.get('date_of_birth', None):
+                self.generate_primary_consent_metrics(p_id, ro_session)
+
             return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
 
     def patch_resource(self, p_id, data):
@@ -308,7 +329,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         withdrawal_reason = WithdrawalReason(p.withdrawalReason if p.withdrawalReason else 0)
         suspension_status = SuspensionStatus(p.suspensionStatus)
 
-
         # PDR-252:  The AIAN withdrawal ceremony decision needs to be made available to PDR.  Look for the latest
         # authored answer code, if one exists
         ceremony_question_code = ro_session.query(Code.codeId).filter(Code.value == WITHDRAWAL_CEREMONY_QUESTION_CODE)
@@ -328,7 +348,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 _withdrawal_aian_ceremony_status_map.get(ceremony_response.value, WithdrawalAIANCeremonyStatus.UNSET)
         else:
             withdrawal_aian_ceremony_status = WithdrawalAIANCeremonyStatus.UNSET
-
 
         # The cohort_2_pilot_flag field values in participant_summary were set via a one-time backfill based on a
         # list of participant IDs provided by PTSC and archived in the participant_cohort_pilot table.  See:
@@ -671,11 +690,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                     if qnans:
                         qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
+                        consent_answer_value, module_status = self._find_consent_response(qnan, module_name)
                         # TODO: Consent table depreciated, remove consent field sets after BigQuery table support
                         #  is removed.
                         consent = {
-                            'consent': _consent_module_question_map[module_name],
-                            'consent_id': self._lookup_code_id(_consent_module_question_map[module_name], ro_session),
+                            'consent': consent_answer_value,
+                            'consent_id': self._lookup_code_id(consent_answer_value, ro_session),
                             'consent_date': parser.parse(qnan['authored']).date() if qnan['authored'] else None,
                             'consent_module': module_name,
                             'consent_module_authored': row.authored,
@@ -689,35 +709,27 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         # associated answer options (like ConsentPII or ProgramUpdate), any submitted response is given
                         # an implicit ConsentPermission_Yes value.   May need adjusting if there are ever modules where
                         # that may no longer be true
-                        if _consent_module_question_map[module_name] is None:
+                        if consent_answer_value is None:
                             consent['consent'] = module_name
                             consent['consent_id'] = self._lookup_code_id(module_name, ro_session)
                             consent['consent_value'] = module_data['consent_value'] = 'ConsentPermission_Yes'
                             consent['consent_value_id'] = module_data['consent_value_id'] = \
                                 self._lookup_code_id('ConsentPermission_Yes', ro_session)
                         else:
-                            consent_value = qnan.get(_consent_module_question_map[module_name], None)
-                            consent['consent_value'] = module_data['consent_value'] = consent_value
+                            if module_status == BQModuleStatusEnum.SUBMITTED_INVALID:
+                                logging.warning("""
+                                    No consent answer for module {0}.  Defaulting status to SUBMITTED_INVALID
+                                    (pid {1}, response {2})
+                                    """.format(module_name, p_id, row.questionnaireResponseId))
+
+                            consent['consent_value'] = module_data['consent_value'] = consent_answer_value
                             consent['consent_value_id'] = module_data['consent_value_id'] = \
-                                self._lookup_code_id(consent_value, ro_session)
+                                self._lookup_code_id(consent_answer_value, ro_session)
                             if module_name in _consent_expired_question_map:
                                 consent['consent_expired'] = module_data['consent_expired'] = \
                                     qnan.get(_consent_expired_question_map[module_name] or 'None', None)
                             # TODO: Should we have also have a 'consent_expired_id', if so what would the integer
                             #  value be (there is only a question code_id in the code table, no answer code_id)?
-
-                            # Note: Currently, consent_expired only applies for EHRConsentPII.  Expired EHR consent
-                            # (EHRConsentPII_ConsentExpired_Yes) is always accompanied by consent_value
-                            # ConsentPermission_No so we can rely on consent_value alone to map the module_status
-                            module_status = _consent_answer_status_map.get(consent_value, None)
-                            if not module_status:
-                                # This seems the appropriate status for cases where there wasn't any recognized
-                                #  consent answer found in the payload (not even PMI_SKIP, which maps to UNSET)
-                                module_status = BQModuleStatusEnum.SUBMITTED_INVALID
-                                logging.warning("""
-                                    No consent answer for module {0}.  Defaulting status to SUBMITTED_INVALID
-                                    (pid {1}, response {2})
-                                """.format(module_name, p_id, row.questionnaireResponseId))
 
                         module_data['status'] = module_status.name
                         module_data['status_id'] = module_status.value
@@ -766,7 +778,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 except TypeError:
                     data['consents'].sort(key=lambda consent_data: consent_data['consent_module_created'],
                                           reverse=True)
-
         data['activity'] = activity
         return data
 
@@ -851,6 +862,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         query = ro_session.query(PhysicalMeasurements.physicalMeasurementsId, PhysicalMeasurements.created,
                                  PhysicalMeasurements.createdSiteId, PhysicalMeasurements.final,
                                  PhysicalMeasurements.finalized, PhysicalMeasurements.finalizedSiteId,
+                                 PhysicalMeasurements.collectType, PhysicalMeasurements.origin,
+                                 PhysicalMeasurements.originMeasurementUnit,
+                                 PhysicalMeasurements.questionnaireResponseId,
                                  PhysicalMeasurements.status, PhysicalMeasurements.amendedMeasurementsId). \
             filter(PhysicalMeasurements.participantId == p_id). \
             order_by(desc(PhysicalMeasurements.created))
@@ -860,10 +874,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         for row in results:
             # Imitate some of the RDR 'participant_summary' table logic, the PM status value defaults to COMPLETED
             # unless PM status is CANCELLED.  So we set all NULL values to COMPLETED status here.
-            pm_status = PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.COMPLETED
+            pm_status = PhysicalMeasurementsStatus(row.status or PhysicalMeasurementsStatus.COMPLETED)
+            collection_type = PhysicalMeasurementsCollectType(row.collectType or PhysicalMeasurementsCollectType.UNSET)
+            origin_measurements_type = OriginMeasurementUnit(row.originMeasurementUnit or OriginMeasurementUnit.UNSET)
 
             pm_list.append({
                 'physical_measurements_id': row.physicalMeasurementsId,
+                'questionnaire_response_id': row.questionnaireResponseId,
                 'status': str(pm_status),
                 'status_id': int(pm_status),
                 'created': row.created,
@@ -874,13 +891,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
                 'finalized_site_id': row.finalizedSiteId,
                 'amended_measurements_id': row.amendedMeasurementsId,
+                'collect_type':  str(collection_type),
+                'collect_type_id': int(collection_type),
+                'origin': row.origin,
+                'origin_measurement_unit': str(origin_measurements_type),
+                'origin_measurement_unit_id': int(origin_measurements_type),
                 # If status == UNSET in data, then the record has been cancelled and then restored. PM status is
                 # only set to UNSET in this scenario.
                 'restored': 1 if row.status == 0 else 0
             })
             activity.append(_act(row.finalized or row.created, ActivityGroupEnum.Profile,
-                                ParticipantEventEnum.PhysicalMeasurements,
-                                **{'status': str(pm_status), 'status_id': int(pm_status)}))
+                                 ParticipantEventEnum.PhysicalMeasurements,
+                                 **{'status': str(pm_status), 'status_id': int(pm_status)}))
 
         if len(pm_list) > 0:
             data['pm'] = pm_list
@@ -920,12 +942,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
             return match
 
-        def _make_sample_dict_from_row(bss=None, bos=None):
+        def _make_sample_dict_from_row(bss=None, bos=None, bo_pk=None, idx=None):
             """"
             Internal helper routine to populate a sample dict entry from the available ordered sample and
             stored sample information.
             :param bss:   A biobank_stored_sample row
             :param bos:   A biobank_ordered_sample row
+            :param bo_pk: The primary key value for the biobank order.
             Note that there should never be an instance where neither parameter has content
             """
 
@@ -943,7 +966,26 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 logging.error(f'No stored or ordered sample info provided for biobank id {p_bb_id}. Please investigate')
                 return {}
 
+            # Create a unique repeatable primary key value for each biobank sample record.
+            test_id = BIOBANK_UNIQUE_TEST_IDS[test] if test in BIOBANK_UNIQUE_TEST_IDS else '99'
+            if bo_pk:
+                # From known biobank orders
+                id_ = int(f'{bo_pk}{test_id}{idx}')
+            else:
+                # For unknown biobank orders, use participant_id + 99 + test id.
+                # All tests here will be grouped together under this 99 id.
+                id_ = int(f'{bss.participant_id}99{test_id}{idx}')
+
+            # Create a hash integer value that will fit in a 32-bit data field, as an alternate unique id.
+            if bss:
+                hash_str = f'{id_}{bss.test}{bss.created}{bss.biobank_stored_sample_id}{bss.family_id}'.encode('utf-8')
+            else:
+                hash_str = f'{id_}'.encode('utf-8')
+            hash_id = int(str(int(hashlib.sha512(hash_str).hexdigest()[:12], 16))[:9])
+
             return {
+                'id': id_,
+                'hash_id': hash_id,
                 'biobank_stored_sample_id': bss.biobank_stored_sample_id if bss else None,
                 'test': test,
                 'baseline_test': 1 if test in self._baseline_sample_test_codes else 0,  # Boolean field
@@ -962,7 +1004,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # SQL to generate a list of biobank orders associated with a participant
         _biobank_orders_sql = """
-           select bo.biobank_order_id, bo.created, bo.order_status,
+           select bo.participant_id, bo.biobank_order_id, bo.created, bo.order_status,
                    bo.collected_site_id, (select google_group from site where site.site_id = bo.collected_site_id) as collected_site,
                    bo.processed_site_id, (select google_group from site where site.site_id = bo.processed_site_id) as processed_site,
                    bo.finalized_site_id, (select google_group from site where site.site_id = bo.finalized_site_id) as finalized_site,
@@ -975,7 +1017,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # SQL to collect all the ordered samples associated with a biobank order
         _biobank_ordered_samples_sql = """
-            select bo.biobank_order_id, bos.*
+            select bo.participant_id, bo.biobank_order_id, bos.*
             from biobank_order bo
             inner join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
             where bo.participant_id = :p_id and bo.biobank_order_id = :bo_id
@@ -987,13 +1029,14 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # See: https://precisionmedicineinitiative.atlassian.net/browse/PDR-89.
         _biobank_stored_samples_sql = """
             select
+                (select p.participant_id from participant p where p.biobank_id = bss.biobank_id) as participant_id,
                 (select distinct boi.biobank_order_id from
                    biobank_order_identifier boi where boi.`value` = bss.biobank_order_identifier
                 ) as biobank_order_id,
                 bss.*
             from biobank_stored_sample bss
             where bss.biobank_id = :bb_id
-            order by biobank_order_id, test;
+            order by biobank_order_id, bss.test, bss.created;
         """
 
         data = {}
@@ -1002,6 +1045,16 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # Find all biobank orders associated with this participant
         cursor = ro_session.execute(_biobank_orders_sql, {'p_id': p_id})
         biobank_orders = [r for r in cursor]
+        # Create a unique identifier for each biobank order. This uid must be repeatable, so we sort by 'created'.
+        # This unique biobank order id will be used as the prefix of the unique id for each biobank sample record.
+        # Note: This is why every database table should have an 'id' integer field as the primary key, so we don't
+        #       have to fudge up a primary key value in code.
+        bbo_pks = dict()
+        bbo_tmp = [[bo.participant_id, bo.biobank_order_id, bo.created] for bo in biobank_orders]
+        sorted(bbo_tmp, key=lambda i: i[2])
+        for x in range(len(bbo_tmp)):
+            # bo pk = participant_id + order index left padded 2 zeros.
+            bbo_pks[bbo_tmp[x][1]] = int(f'{bbo_tmp[x][0]}{str(x).zfill(2)}')
 
         # Find stored samples associated with this participant. For any stored samples for which there
         # is no known biobank order, create a separate list that will be consolidated into a "pseudo" order record
@@ -1023,23 +1076,30 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # RDR has a small number of biobank_order records (mail kit salivary orders) without a related
             # biobank_ordered_sample record, but with biobank_stored_sample records.  Make sure those stored samples
             # are included with the participant's biobank_order data
+            idx = 0
             if len(bos_results) == 0 and len(bss_results) > 0:
                 for bss in bss_results:
                     if bss.biobank_order_id == row.biobank_order_id:
-                        bbo_samples.append(_make_sample_dict_from_row(bss=bss, bos=None))
+                        idx += 1
+                        bbo_samples.append(_make_sample_dict_from_row(
+                                bss=bss, bos=None, bo_pk=bbo_pks[row.biobank_order_id], idx=idx))
                         stored_count += 1
             # PDR-400: There are about 20 participants that have less ordered samples than stored samples.
             elif len(bss_results) > 0 and len(bos_results) < len(bss_results):
                 for bss in bss_results:
                     if bss.biobank_order_id == row.biobank_order_id:
-                        bbo_samples.append(_make_sample_dict_from_row(bss=bss, bos=bos_results[0]))
+                        idx += 1
+                        bbo_samples.append(_make_sample_dict_from_row(
+                                bss=bss, bos=bos_results[0], bo_pk=bbo_pks[row.biobank_order_id], idx=idx))
                         stored_count += 1
             else:
                 for ordered_sample in bos_results:
+                    idx += 1
                     # Look for a matching stored sample result based on the biobank order id and test type
                     # from the ordered sample record, to add to the order's list of samples
                     stored_sample = _get_stored_sample_row(bss_results, ordered_sample)
-                    bbo_samples.append(_make_sample_dict_from_row(bss=stored_sample, bos=ordered_sample))
+                    bbo_samples.append(_make_sample_dict_from_row(
+                            bss=stored_sample, bos=ordered_sample, bo_pk=bbo_pks[row.biobank_order_id], idx=idx))
                     if stored_sample:
                         stored_count += 1
 
@@ -1061,6 +1121,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 finalized_status = OrderStatus.UNSET
 
             order = {
+                'id': bbo_pks[row.biobank_order_id],
                 'biobank_order_id': row.biobank_order_id,
                 'created': row.created,
                 'status': str(bb_order_status),
@@ -1090,12 +1151,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # pseudo order with an order id of 'UNSET'
         if len(bss_missing_orders):
             orderless_stored_samples = list()
+            idx = 0
             for bss_row in bss_missing_orders:
-                sr = _make_sample_dict_from_row(bss=bss_row, bos=None)
+                idx += 1
+                sr = _make_sample_dict_from_row(bss=bss_row, bos=None, idx=idx)
                 if sr not in orderless_stored_samples:  # Don't put duplicates in samples list.
                     orderless_stored_samples.append(sr)
 
             order = {
+                'id': int(f'{bss_missing_orders[0].participant_id}99'),
                 'finalized_time': None,
                 'biobank_order_id': 'UNSET',
                 'collection_method': str(SampleCollectionMethod.UNSET),
@@ -1356,6 +1420,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                      INNER JOIN questionnaire q
                                 ON qq.questionnaire_id = q.questionnaire_id
             WHERE qr.questionnaire_response_id = :qr_id
+                  and (qra.ignore is null or qra.ignore = 0)
             -- Order by question and the calculated answer so duplicates can be caught when results are processed
             ORDER BY qra.question_id, answer
         """
@@ -1393,15 +1458,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 qnans = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
                 # Save answers into data dict.  Ignore duplicate answers to the same question from the same response
                 # (See: questionnaire_response_id 680418686 as an example)
-                last_question_id = None
+                last_question_code_id = None
                 last_answer = None
                 skipped_duplicates = 0
                 for qnan in qnans:
-                    if last_question_id == qnan.question_id and last_answer == qnan.answer:
+                    if last_question_code_id == qnan.code_id and last_answer == qnan.answer:
                         skipped_duplicates += 1
                         continue
                     else:
-                        last_question_id = qnan.question_id
+                        last_question_code_id = qnan.code_id
                         last_answer = qnan.answer
 
                     # For question codes with multiple distinct responses, created comma-separated list of answers
@@ -1449,6 +1514,41 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             return rtn_data, answers
         else:
             return rtn_data
+
+    def _find_consent_response(self, response_rec: BQRecord, module: str):
+        """
+        Look for the participant provided answer value that determines consent status for a module
+        :param response_rec: A BQRecord object derived from a QuestionnaireResponse record
+        :param module:  The module name (e.g., EHRConsentPII, GROR...)
+        :returns: answer_code, consent_status
+                  answer_code:  answer code string value
+                  consent_status:  BQModuleStatusEnum
+        """
+        # If a module doesn't have defined consent questions that determine status, it defaults to SUBMITTED status
+        if _consent_module_question_map[module] is None:
+            return None, BQModuleStatusEnum.SUBMITTED
+
+        answer_code = None
+
+        consent_question_codes = _consent_module_question_map[module]
+        code_list = [consent_question_codes, ] if isinstance(consent_question_codes, str) else consent_question_codes
+        for code in code_list:
+            answer_code = response_rec.get(code, None)
+            if answer_code:
+                break
+
+        consent_status = _consent_answer_status_map.get(answer_code, None) if answer_code else None
+        if not consent_status:
+            if module == 'EHRConsentPII':
+                # PDR-979:  Match RDR by defaulting to SUBMITTED_NO_CONSENT for (sensitive) EHRConsentPII if
+                # there was not a recognized "yes" consent answer
+                consent_status = BQModuleStatusEnum.SUBMITTED_NO_CONSENT
+            else:
+                # For other modules/cases where there wasn't any recognized consent answer found in the payload
+                # (not even PMI_SKIP, which maps to UNSET)
+                consent_status = BQModuleStatusEnum.SUBMITTED_INVALID
+
+        return answer_code, consent_status
 
     @staticmethod
     def is_replay(prev_data_dict, prev_answer_hash,
@@ -1589,6 +1689,42 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return data
 
+    @staticmethod
+    def generate_primary_consent_metrics(p_id, ro_session=None):
+        """
+        Rebuild the PDR consent metrics records for a participant's primary consent(s).  Invalid DOB/age at consent
+        errors need to be checked for resolution when participant data is rebuilt, in case a new ConsentPII with a
+        different DOB value has been received.
+        :param p_id:  Participant id
+        :param ro_session:  Active DB session for running a read-only query (optional)
+        """
+        dao = None
+        if not ro_session:
+            dao = ResourceDataDao(backup=True)
+            ro_session = dao.session()
+
+        # Only need to regenerate metrics if there are already primary consent PDF validation results (could still be
+        # pending if this is a newly consented participant), with certain statuses pertinent to the metrics.  This
+        # query is almost always limited to 2 or fewer results (a few dozen outlier pids have more)
+        sql = """
+             select id from consent_file
+             where participant_id = :p_id and type = :consent_type
+                   and sync_status in :status_filter
+        """
+        args = {'p_id': p_id, 'consent_type': int(ConsentType.PRIMARY),
+                'status_filter': [int(ConsentSyncStatus.NEEDS_CORRECTING), int(ConsentSyncStatus.READY_FOR_SYNC),
+                                      int(ConsentSyncStatus.SYNC_COMPLETE)]}
+        results = ro_session.execute(sql, args)
+
+        if results:
+            consent_file_ids = [r.id for r in results]
+            if len(consent_file_ids):
+                res_gen = generators.ConsentMetricGenerator(ro_dao=dao)
+                # Transform into consent metrics records for PDR (resource_data table/resource API only, not in BQ)
+                validation_results = res_gen.get_consent_validation_records(id_list=consent_file_ids)
+                for row in validation_results:
+                    res = res_gen.make_resource(row.id, consent_validation_rec=row)
+                    res.save()
 
 def rebuild_participant_summary_resource(p_id, res_gen=None, patch_data=None):
     """

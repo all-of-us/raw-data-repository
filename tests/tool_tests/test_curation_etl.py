@@ -1,18 +1,21 @@
-from datetime import datetime
+from datetime import datetime, date
 from typing import Collection
 
-from rdr_service.clock import FakeClock
 from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, PMI_SKIP_CODE,\
     STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
 from rdr_service.etl.model.src_clean import SrcClean
 from rdr_service.model.code import Code
 from rdr_service.model.participant import Participant
+from rdr_service.dao.curation_etl_dao import CdrEtlRunHistoryDao, CdrEtlSurveyHistoryDao
 from rdr_service.participant_enums import QuestionnaireResponseStatus, QuestionnaireResponseClassificationType
 from rdr_service.tools.tool_libs.curation import CurationExportClass
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.tool_test_mixin import ToolTestMixin
+from rdr_service.clock import FakeClock
 
 TIME = datetime(2000, 1, 10)
+TIME_2 = datetime(2022, 5, 10)
+
 
 class CurationEtlTest(ToolTestMixin, BaseTestCase):
     def setUp(self):
@@ -21,19 +24,25 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
     def _setup_data(self):
         self.participant = self.data_generator.create_database_participant()
-        self.data_generator.create_database_participant_summary(participant=self.participant,
-                                                                dateOfBirth=datetime(1982, 1, 9))
+        self.data_generator.create_database_participant_summary(
+            participant=self.participant,
+            dateOfBirth=datetime(1982, 1, 9),
+            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10))
 
         self.module_code = self.data_generator.create_database_code(value='src_clean_test')
-
+        self.question_code_list = []
+        self.indexed_answers = []
         self.questionnaire = self.data_generator.create_database_questionnaire_history()
         for question_index in range(4):
             question_code = self.data_generator.create_database_code(value=f'q_{question_index}')
+            self.question_code_list.append(question_code)
             self.data_generator.create_database_questionnaire_question(
                 questionnaireId=self.questionnaire.questionnaireId,
                 questionnaireVersion=self.questionnaire.version,
                 codeId=question_code.codeId
             )
+            answer_code = self.data_generator.create_database_code(value=f'a_{question_index}')
+            self.indexed_answers.append((question_index, 'valueCodeId', answer_code.codeId))
 
         self.data_generator.create_database_questionnaire_concept(
             questionnaireId=self.questionnaire.questionnaireId,
@@ -41,7 +50,8 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             codeId=self.module_code.codeId
         )
 
-        self.questionnaire_response = self._setup_questionnaire_response(self.participant, self.questionnaire)
+        self.questionnaire_response = self._setup_questionnaire_response(self.participant, self.questionnaire,
+                                                                         indexed_answers=self.indexed_answers)
 
     def _setup_questionnaire_response(self, participant, questionnaire, authored=datetime(2020, 3, 15),
                                       created=datetime(2020, 3, 15), indexed_answers=None, ignored_answer_indexes=None,
@@ -80,9 +90,20 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         return questionnaire_response
 
     @staticmethod
-    def run_cdm_data_generation():
+    def run_cdm_data_generation(cutoff=None, vocabulary='gs://curation-vocabulary/aou_vocab_20220201/'):
         CurationEtlTest.run_tool(CurationExportClass, tool_args={
-            'command': 'cdm-data'
+            'command': 'cdm-data',
+            'cutoff': cutoff,
+            'vocabulary': vocabulary
+        })
+
+    @staticmethod
+    def run_exclude_code_command(operation, code_value, code_type):
+        CurationEtlTest.run_tool(CurationExportClass, tool_args={
+            'command': 'exclude-code',
+            'operation': operation,
+            'code_value': code_value,
+            'code_type': code_type
         })
 
     def test_locking(self):
@@ -391,20 +412,140 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
     def test_exclude_participants_age_under_18(self):
         """
-        Curation team request to exclude participants that were under 18 at the time of ETL run.
+        Curation team request to exclude participants that were under 18 at the time of study consent.
         """
         self._create_consent_questionnaire()
-        with FakeClock(TIME):
-            self.run_cdm_data_generation()
+        self.run_cdm_data_generation()
         src_clean_answers = self.session.query(SrcClean).all()
         self.assertEqual(4, len(src_clean_answers))
 
         dob = datetime(1982, 1, 11)
         self.data_generator.create_database_participant_summary(participant=self.participant, dateOfBirth=dob)
-        with FakeClock(TIME):
-            self.run_cdm_data_generation()
+        self.run_cdm_data_generation()
         src_clean_answers = self.session.query(SrcClean).all()
         self.assertEqual(0, len(src_clean_answers))
+
+    def test_etl_exclude_code(self):
+        self.run_cdm_data_generation()
+        src_clean_answers = self.session.query(SrcClean).all()
+        self.assertEqual(4, len(src_clean_answers))
+        self.session.commit()
+
+        exclude_question_str = self.question_code_list[0].value + ',' + self.question_code_list[1].value
+        self.run_exclude_code_command('add', exclude_question_str, 'question')
+        exclude_answer_str = 'a_' + str(self.indexed_answers[2][0])
+        self.run_exclude_code_command('add', exclude_answer_str, 'answer')
+
+        self.run_cdm_data_generation()
+        src_clean_answers = self.session.query(SrcClean).all()
+        self.assertEqual(1, len(src_clean_answers))
+        self.session.commit()
+
+        self.run_exclude_code_command('add', self.module_code.value, 'module')
+        self.run_cdm_data_generation()
+        src_clean_answers = self.session.query(SrcClean).all()
+        self.assertEqual(0, len(src_clean_answers))
+
+        self.clear_table_after_test('cdr_etl_survey_history')
+        self.clear_table_after_test('cdr_etl_run_history')
+        self.clear_table_after_test('cdr_excluded_code')
+
+    def test_etl_include_exclude_survey_history(self):
+        exclude_question_str = self.question_code_list[0].value + ',' + self.question_code_list[1].value
+        self.run_exclude_code_command('add', exclude_question_str, 'question')
+        exclude_answer_str = 'a_' + str(self.indexed_answers[2][0])
+        self.run_exclude_code_command('add', exclude_answer_str, 'answer')
+
+        self.run_cdm_data_generation()
+        src_clean_answers = self.session.query(SrcClean).all()
+        self.assertEqual(1, len(src_clean_answers))
+        self.session.commit()
+
+        include_exclude_history_dao = CdrEtlSurveyHistoryDao()
+        records = include_exclude_history_dao.get_all()
+        self.assertEqual(len(records), 6)
+
+        self.clear_table_after_test('cdr_etl_survey_history')
+        self.clear_table_after_test('cdr_etl_run_history')
+        self.clear_table_after_test('cdr_excluded_code')
+
+    def test_etl_history(self):
+        with FakeClock(TIME_2):
+            self.run_cdm_data_generation(cutoff='2022-04-01')
+        dao = CdrEtlRunHistoryDao()
+        records = dao.get_all()
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].cutoffDate, date(2022, 4, 1))
+        self.assertEqual(records[0].startTime, TIME_2)
+        self.assertEqual(records[0].endTime, TIME_2)
+        self.assertEqual(records[0].vocabularyPath, 'gs://curation-vocabulary/aou_vocab_20220201/')
+
+        self.clear_table_after_test('cdr_etl_survey_history')
+        self.clear_table_after_test('cdr_etl_run_history')
+        self.clear_table_after_test('cdr_excluded_code')
+
+    def test_cutoff_date(self):
+        participant1 = self.data_generator.create_database_participant()
+        # consent before cutoff 2022-04-01, should be included in the result
+        self.data_generator.create_database_participant_summary(
+            participant=participant1, consentForStudyEnrollmentFirstYesAuthored=datetime(2022, 2, 1),
+            dateOfBirth=datetime(1982, 1, 9))
+        self._setup_questionnaire_response(
+            participant1,
+            self.questionnaire,
+            authored=datetime(2022, 2, 1)
+        )
+
+        participant2 = self.data_generator.create_database_participant()
+        # consent after cutoff 2022-04-01, should not be included in the result
+        self.data_generator.create_database_participant_summary(
+            participant=participant2, consentForStudyEnrollmentFirstYesAuthored=datetime(2022, 4, 20),
+            dateOfBirth=datetime(1982, 1, 9))
+        self._setup_questionnaire_response(
+            participant2,
+            self.questionnaire,
+            authored=datetime(2022, 4, 20)
+        )
+
+        participant3 = self.data_generator.create_database_participant()
+        # withdrawal before cutoff 2022-04-01, should not be included in the result
+        self.data_generator.create_database_participant_summary(
+            participant=participant3, consentForStudyEnrollmentFirstYesAuthored=datetime(2022, 2, 1),
+            withdrawalStatus=2, withdrawalAuthored=datetime(2022, 2, 20), dateOfBirth=datetime(1982, 1, 9))
+        self._setup_questionnaire_response(
+            participant3,
+            self.questionnaire,
+            authored=datetime(2022, 2, 1)
+        )
+
+        participant4 = self.data_generator.create_database_participant()
+        # withdrawal after cutoff 2022-04-01, should be included in the result
+        self.data_generator.create_database_participant_summary(
+            participant=participant4, consentForStudyEnrollmentFirstYesAuthored=datetime(2022, 2, 1),
+            withdrawalStatus=2, withdrawalAuthored=datetime(2022, 4, 20), dateOfBirth=datetime(1982, 1, 9))
+        self._setup_questionnaire_response(
+            participant4,
+            self.questionnaire,
+            authored=datetime(2022, 2, 1)
+        )
+
+        self.run_cdm_data_generation(cutoff='2022-04-01')
+
+        src_clean_answers_p1 = self.session.query(SrcClean)\
+            .filter(SrcClean.participant_id == participant1.participantId).all()
+        self.assertEqual(4, len(src_clean_answers_p1))
+
+        src_clean_answers_p2 = self.session.query(SrcClean) \
+            .filter(SrcClean.participant_id == participant2.participantId).all()
+        self.assertEqual(0, len(src_clean_answers_p2))
+
+        src_clean_answers_p3 = self.session.query(SrcClean) \
+            .filter(SrcClean.participant_id == participant3.participantId).all()
+        self.assertEqual(0, len(src_clean_answers_p3))
+
+        src_clean_answers_p4 = self.session.query(SrcClean) \
+            .filter(SrcClean.participant_id == participant4.participantId).all()
+        self.assertEqual(4, len(src_clean_answers_p4))
 
     def test_ignored_answers_are_marked_invalid(self):
         """

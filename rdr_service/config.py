@@ -55,6 +55,9 @@ A1_LIMIT = "a1_limit"
 CVL_W1_MANIFEST_SUBFOLDER = "w1_wgs_cvl_manifests"
 CVL_W2_MANIFEST_SUBFOLDER = "w2_wgs_cvl_manifests"
 CVL_W3_MANIFEST_SUBFOLDER = "w3_wgs_cvl_manifests"
+CVL_W1IL_HDR_MANIFEST_SUBFOLDER = "W1IL_manifests_hdr"
+CVL_W1IL_PGX_MANIFEST_SUBFOLDER = "W1IL_manifests_pgx"
+CVL_W2W_MANIFEST_SUBFOLDER = "W2W_manifests"
 CVL_W3SR_MANIFEST_SUBFOLDER = "W3SR_manifests"
 GENOMIC_AW2_SUBFOLDERS = ("aw2_wgs_data_manifest_subfolder_name", "aw2_genotyping_data_manifest_subfolder_name")
 GENOMIC_AW5_WGS_SUBFOLDERS = "aw5_wgs_data_manifest_subfolder_name"
@@ -73,20 +76,30 @@ GENOMIC_AW1F_SUBFOLDER = "post_accessioning_results"
 GENOME_TYPE_ARRAY = "aou_array"
 GENOME_TYPE_WGS = "aou_wgs"
 GENOME_TYPE_CVL = "aou_cvl"
+GENOME_TYPE_ARRAY_INVESTIGATION = "aou_array_investigation"
+GENOME_TYPE_WGS_INVESTIGATION = "aou_wgs_investigation"
 AW1F_ALERT_RECIPIENTS = "aw1f_alert_recipients"
 GENOMIC_AW3_ARRAY_SUBFOLDER = "AW3_array_manifest"
 GENOMIC_AW3_WGS_SUBFOLDER = "AW3_wgs_manifest"
-GENOMIC_REPORT_PATH = "/prod-rdr-genomics/daily_ingestion_reports/"
+GENOMIC_INGESTION_REPORT_PATH = "/prod-rdr-genomics/daily_ingestion_reports/"
+GENOMIC_INCIDENT_REPORT_PATH = "/prod-rdr-genomics/daily_incident_reports/"
+GENOMIC_RESOLVED_REPORT_PATH = "/prod-rdr-genomics/daily_resolved_reports/"
 GENOMIC_CRON_JOBS = "genomic_cron_jobs"
 GENOMIC_MAX_NUM_GENERATE = "genomic_max_num_generate"
 GENOMIC_MAX_NUM_INGEST = "genomic_max_num_ingest"
 GENOMIC_DAILY_VALIDATION_EMAILS = "genomic_daily_validation_emails"
+GENOMIC_CVL_RECONCILE_EMAILS = "genomic_cvl_reconcile_emails"
+GENOMIC_CVL_RECONCILE_LIMITS = "genomic_cvl_reconcile_limits"
 GENOMIC_MEMBER_BLOCKLISTS = "genomic_set_member_blocklists"
 GENOMIC_INGESTIONS = "genomic_ingestions"
 GENOMIC_SKIP_MISSING_FILETYPES = "genomic_skip_missing_file_types"
 GENOMIC_GC_ID_MAPPING = "gc_name_to_id_mapping"
 GENOMIC_PIPELINE_IDS = "genomic_pipeline_ids"
+CALCULATE_READY_FLAG_LIMIT = 'calculate_ready_flag_limit'
 DRC_BROAD_BUCKET_NAME = "drc_broad_bucket_name"
+CO_BUCKET_NAME = "co_bucket_name"
+UW_BUCKET_NAME = "uw_bucket_name"
+BCM_BUCKET_NAME = "bcm_bucket_name"
 DRC_BROAD_AW4_SUBFOLDERS = ("aw4_array_subfolder_name", "aw4_wgs_subfolder_name")
 BIOBANK_AW2F_SUBFOLDER = "aw2f_manifests"
 CONSENT_PDF_BUCKET = "consent_pdf_bucket"
@@ -106,6 +119,7 @@ SENDGRID_FROM_EMAIL = "no-reply@pmi-ops.org"
 MAYOLINK_ENDPOINT = "mayolink_endpoint"
 GENOMIC_API_MODES = ('gem', 'rhp', 'pgx', 'hdr')
 GENOMIC_CVL_SITES = ('co', 'uw', 'bcm')
+GENOMIC_CVL_SITE_BUCKET_MAP = 'cvl_site_bucket_map'
 CONFIG_BUCKET = "all-of-us-rdr-sequestered-config-test"
 EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT = "ehr_status_bigquery_view_participant"
 EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION = "ehr_status_bigquery_view_organization"
@@ -123,22 +137,42 @@ DATA_BUCKET_SUBFOLDERS_PROD = 'data_bucket_subfolders_prod'
 HEALTHPRO_CONSENT_BUCKET = 'hpro_consent_bucket'
 HEALTHPRO_CONSENTS_TRANSFER_LIMIT = 'hpro_consents_transfer_limit'
 CE_HEALTH_DATA_BUCKET_NAME = "ce_health_data_bucket_name"
+VA_WORKQUEUE_BUCKET_NAME = 'va_workqueue_bucket_name'
+VA_WORKQUEUE_SUBFOLDER = 'va_workqueue_subfolder'
+
+ENABLE_ENROLLMENT_STATUS_3 = 'enable_enrollment_status_3'
+ENABLE_HEALTH_SHARING_STATUS_3 = 'enable_health_sharing_status_3'
 
 # Buckets to listen for Pub/Sub notifications
 PUBSUB_NOTIFICATION_BUCKETS_PROD = [
     "prod-genomics-baylor",
+    "prod-genomics-color",
     "prod-genomics-broad",
     "prod-genomics-northwest",
     "prod-genomics-data-baylor",
     "prod-genomics-data-broad",
+    "prod-genomics-data-color",
     "prod-genomics-data-northwest",
     "prod-drc-broad",
     "prod-color-rhp"
 ]
 
+PUBSUB_NOTIFICATION_BUCKETS_STABLE = [
+    "genomics-raw-baylor",
+    "genomics-raw-color",
+    "genomics-raw-northwest",
+    "genomics-raw-broad",
+    "genomics-baylor-dryrun",
+    "genomics-color-dryrun",
+    "genomics-northwest-dryrun",
+    "genomics-broad-dryrun",
+    "color-rhp-stable"
+]
+
 PUBSUB_NOTIFICATION_BUCKETS_SANDBOX = [
     "aou-rdr-sandbox-mock-data",
 ]
+
 GENOMIC_INVESTIGATION_GENOME_TYPES = ['aou_array_investigation', 'aou_wgs_investigation']
 
 # Questionnaire Codes
@@ -170,10 +204,14 @@ DATA_DICTIONARY_DOCUMENT_ID = "data_dictionary_document_id"
 BIOBANK_DATA_COMPARISON_DOCUMENT_ID = "biobank_data_comparison_document_id"
 
 RDR_SLACK_WEBHOOKS = "rdr_slack_webhooks"
+RDR_VALIDATION_WEBHOOK = "rdr_validation_webhook"
 
 DECEASED_REPORT_FILTER_EXCEPTIONS = "deceased_report_filter_exceptions"
 
 PTSC_SERVICE_DESK_EMAIL = "ptsc_service_desk_email"
+RDR_GENOMICS_NOTIFICATION_EMAIL = "rdr_genomics_notification_email"
+
+SENSITIVE_EHR_RELEASE_DATE = 'sensitive_ehr_release_date'
 
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}

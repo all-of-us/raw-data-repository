@@ -8,6 +8,9 @@ from sqlalchemy.orm import subqueryload, aliased
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
 from datetime import datetime, timedelta
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.config import GAE_PROJECT
+from rdr_service.dao.bq_workbench_dao import rebuild_bq_wb_researchers
 from rdr_service.dao.metadata_dao import MetadataDao, WORKBENCH_LAST_SYNC_KEY
 from rdr_service.model.workbench_workspace import (
     WorkbenchWorkspaceApproved,
@@ -29,7 +32,11 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, \
     WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, \
     WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAge, WorkbenchAuditWorkspaceAccessDecision, \
-    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType, WorkbenchWorkspaceAccessTier
+    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType, WorkbenchWorkspaceAccessTier, \
+    WorkbenchResearcherAccessTierShortName, WorkbenchResearcherEthnicCategory, WorkbenchResearcherSexualOrientationV2, \
+    WorkbenchResearcherGenderIdentity, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2,\
+    WorkbenchResearcherEducationV2
+from rdr_service.services.system_utils import list_chunks
 
 
 class WorkbenchWorkspaceDao(UpdatableDao):
@@ -385,6 +392,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     "givenName": researcher.givenName,
                     "familyName": researcher.familyName,
                     "email": researcher.email,
+                    "accessTier": researcher.get_access_tier(),
                     "verifiedInstitutionalAffiliation": verified_institutional_affiliation,
                     "affiliations": affiliations
                 }
@@ -486,6 +494,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         now = clock.CLOCK.now()
         sequest_hours_ago = now - timedelta(hours=sequest_hour)
         with self.session() as session:
+            start_date = datetime(2020, 5, 27)
             subquery = (
                 session.query(distinct(WorkbenchWorkspaceUser.workspaceId))
                     .filter(WorkbenchWorkspaceUser.isCreator == 1)
@@ -502,7 +511,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                                            WorkbenchWorkspaceApproved.id.notin_(subquery)
                                        )),
                                    or_(WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
-                                       WorkbenchWorkspaceApproved.isReviewed == 1))
+                                       WorkbenchWorkspaceApproved.isReviewed == 1),
+                                   WorkbenchWorkspaceApproved.creationTime > start_date
+                                   )
                            )
             total = count_query.count()
 
@@ -527,7 +538,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
                         WorkbenchWorkspaceApproved.isReviewed == 1
                     ),
-                    WorkbenchWorkspaceApproved.creationTime > datetime(2020, 5, 20)
+                    WorkbenchWorkspaceApproved.creationTime > start_date
                 ).order_by(
                     desc(WorkbenchWorkspaceApproved.modifiedTime)
                 )
@@ -547,7 +558,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
                         WorkbenchWorkspaceApproved.isReviewed == 1
                     ),
-                    WorkbenchWorkspaceApproved.creationTime > datetime(2020, 5, 20)
+                    WorkbenchWorkspaceApproved.creationTime > start_date
                 )
             )
 
@@ -823,6 +834,8 @@ class WorkbenchWorkspaceHistoryDao(UpdatableDao):
 class WorkbenchResearcherDao(UpdatableDao):
     def __init__(self):
         super().__init__(WorkbenchResearcher, order_by_ending=["id"])
+        self.is_backfill = False
+        self.researcher_history_dao = WorkbenchResearcherHistoryDao()
 
     def get_id(self, obj):
         return obj.id
@@ -882,6 +895,15 @@ class WorkbenchResearcherDao(UpdatableDao):
                         raise BadRequest(f"Invalid degree: {degree}")
             item['degree'] = degree_array
 
+            access_tier_array = []
+            if item.get('accessTierShortNames') is not None:
+                for access_tier in item.get('accessTierShortNames'):
+                    try:
+                        access_tier_array.append(int(WorkbenchResearcherAccessTierShortName(access_tier)))
+                    except TypeError:
+                        raise BadRequest(f"Invalid accessTierShortNames: {access_tier}")
+            item['accessTierShortNames'] = access_tier_array
+
             try:
                 if item.get('disability') is None:
                     item['disability'] = 'UNSET'
@@ -916,6 +938,40 @@ class WorkbenchResearcherDao(UpdatableDao):
                     except TypeError:
                         raise BadRequest(
                             f"Invalid nonAcademicAffiliation: {institution.get('nonAcademicAffiliation')}")
+
+            if item.get("demographicSurveyV2") is not None:
+                survey = item.get("demographicSurveyV2")
+                current_year = clock.CLOCK.now().year
+                if survey.get("yearOfBirth") and current_year - int(survey.get("yearOfBirth")) > 125:
+                    raise BadRequest(f"Invalid birth year: {survey.get('yearOfBirth')} more than 125 years ago")
+                ethnic_categories = []
+                if survey.get("ethnicCategories") is not None:
+                    for ethnic_category in survey.get("ethnicCategories"):
+                        try:
+                            ethnic_categories.append(int(WorkbenchResearcherEthnicCategory(ethnic_category)))
+                        except TypeError:
+                            raise BadRequest(f"Invalid ethnic category: {ethnic_category}")
+                survey["ethnicCategories"] = ethnic_categories
+                gender_identities = []
+                if survey.get("genderIdentities") is not None:
+                    for gender_identity in survey.get("genderIdentities"):
+                        try:
+                            gender_identities.append(int(WorkbenchResearcherGenderIdentity(gender_identity)))
+                        except TypeError:
+                            raise BadRequest(f"Invalid gender identity: {gender_identity}")
+                survey["genderIdentities"] = gender_identities
+                sexual_orientations = []
+                if survey.get("sexualOrientations") is not None:
+                    for sexual_orientation in survey.get("sexualOrientations"):
+                        try:
+                            sexual_orientations.append(int(WorkbenchResearcherSexualOrientationV2(sexual_orientation)))
+                        except TypeError:
+                            raise BadRequest(f"Invalid sexual orientation: {sexual_orientation}")
+                survey["sexualOrientations"] = sexual_orientations
+                item["demographicSurveyV2"] = survey
+
+
+
 
     def get_redcap_audit_researchers(
         self,
@@ -954,6 +1010,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                     'givenName': researcher.givenName,
                     'familyName': researcher.familyName,
                     'email': researcher.email,
+                    "accessTier": researcher.get_access_tier(),
                     'affiliations': affiliations
                 })
 
@@ -964,6 +1021,7 @@ class WorkbenchResearcherDao(UpdatableDao):
         now = clock.CLOCK.now()
         researchers = []
         for item in resource_json:
+            survey_parameters = self._build_survey_parameters(item.get("demographicSurveyV2"))
             researcher = WorkbenchResearcher(
                 created=now,
                 modified=now,
@@ -988,9 +1046,12 @@ class WorkbenchResearcherDao(UpdatableDao):
                 disability=WorkbenchResearcherDisability(item.get('disability', 'UNSET')),
                 gender=item.get('gender'),
                 race=item.get('race'),
+                accessTierShortNames=item.get('accessTierShortNames'),
                 workbenchInstitutionalAffiliations=self._get_affiliations(item.get('affiliations'),
                                                                           item.get('verifiedInstitutionalAffiliation')),
-                resource=json.dumps(item)
+                resource=json.dumps(item),
+                **survey_parameters
+
             )
 
             researchers.append(researcher)
@@ -1025,14 +1086,38 @@ class WorkbenchResearcherDao(UpdatableDao):
             affiliations.append(verified_affiliation_obj)
         return affiliations
 
+    def backfill_researcher_with_session(self, session, backfilled_researcher):
+        exist = self.get_researcher_by_user_id_with_session(session, backfilled_researcher.userSourceId)
+        if exist:
+            for k, v in backfilled_researcher:
+                if k not in ('id', 'workbenchInstitutionalAffiliations'):
+                    setattr(exist, k, v)
+
+        exist_history = self.researcher_history_dao.get_snapshot_exist_with_session(
+            session, backfilled_researcher.userSourceId, backfilled_researcher.modifiedTime)
+        if exist_history:
+            for k, v in backfilled_researcher:
+                if k not in ('id', 'workbenchInstitutionalAffiliations'):
+                    setattr(exist_history, k, v)
+
+        return exist_history
+
     def insert_with_session(self, session, researchers):
         new_researcher_source_ids = []
         new_researchers = []
         new_researchers_map = {}
-        researcher_snapshot_dao = WorkbenchResearcherHistoryDao()
+
+        if self.is_backfill:
+            for researcher in researchers:
+                backfilled_snapshot = self.backfill_researcher_with_session(session, researcher)
+                if backfilled_snapshot:
+                    new_researchers.append(backfilled_snapshot)
+            return new_researchers
+
         for researcher in researchers:
-            is_snapshot_exist = researcher_snapshot_dao.is_snapshot_exist_with_session(session, researcher.userSourceId,
-                                                                                       researcher.modifiedTime)
+            is_snapshot_exist = self.researcher_history_dao.is_snapshot_exist_with_session(session,
+                                                                                           researcher.userSourceId,
+                                                                                           researcher.modifiedTime)
             if is_snapshot_exist:
                 continue
             new_researchers_map[researcher.userSourceId] = researcher
@@ -1069,6 +1154,7 @@ class WorkbenchResearcherDao(UpdatableDao):
     @staticmethod
     def _insert_history(session, researchers):
         session.flush()
+        hist_researchers = list()
         for researcher in researchers:
             history = WorkbenchResearcherHistory()
             for k, v in researcher:
@@ -1087,6 +1173,32 @@ class WorkbenchResearcherDao(UpdatableDao):
                 affiliations_history.append(affiliation_obj)
             history.workbenchInstitutionalAffiliations = affiliations_history
             session.add(history)
+            hist_researchers.append(history)
+        session.commit()
+
+        # Generate tasks to build PDR records.
+        if GAE_PROJECT == 'localhost':
+            rebuild_bq_wb_researchers(hist_researchers)
+        else:
+            researcher_ids = list()
+            affiliation_ids = list()
+            for obj in hist_researchers:
+                researcher_ids.append(obj.id)
+                if obj.workbenchInstitutionalAffiliations:
+                    for aff in obj.workbenchInstitutionalAffiliations:
+                        affiliation_ids.append(aff.id)
+
+            task = GCPCloudTask()
+            if researcher_ids:
+                for chunk in list_chunks(researcher_ids, chunk_size=250):
+                    payload = {'table': 'researcher', 'ids': chunk}
+                    task.execute('rebuild_research_workbench_table_records_task', payload=payload,
+                                   in_seconds=15, queue='resource-rebuild')
+            if affiliation_ids:
+                for chunk in list_chunks(affiliation_ids, chunk_size=250):
+                    payload = {'table': 'institutional_affiliations', 'ids': chunk}
+                    task.execute('rebuild_research_workbench_table_records_task', payload=payload,
+                                   in_seconds=15, queue='resource-rebuild')
 
     @staticmethod
     def get_researcher_by_user_id_with_session(session, user_id):
@@ -1096,6 +1208,73 @@ class WorkbenchResearcherDao(UpdatableDao):
     @staticmethod
     def get_researchers_by_user_id_list_with_session(session, user_id_list):
         return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId.in_(user_id_list)).all()
+
+    @staticmethod
+    def _build_survey_parameters(survey):
+        if survey:
+            survey_params = {
+                'dsv2CompletionTime': parse(survey.get('completionTime')) if survey.get(
+                    'completionTime') is not None else None,
+                'dsv2EthnicCategories': survey.get('ethnicCategories'),
+                'dsv2EthnicityAiAnOther': survey.get('ethnicityAiAnOtherText'),
+                'dsv2EthnicityAsianOther': survey.get('ethnicityAsianOtherText'),
+                'dsv2EthnicityBlackOther': survey.get('ethnicityAsianOtherText'),
+                'dsv2EthnicityHispanicOther': survey.get('ethnicityHispanicOtherText'),
+                'dsv2EthnicityMeNaOther': survey.get('ethnicityMeNaOtherText'),
+                'dsv2EthnicityNhPiOther': survey.get('ethnicityNhPiOtherText'),
+                'dsv2EthnicityWhiteOther': survey.get('ethnicityWhiteOtherText'),
+                'dsv2EthnicityOther': survey.get('ethnicityOtherText'),
+                'dsv2GenderIdentities': survey.get('genderIdentities'),
+                'dsv2GenderOther': survey.get('genderOtherText'),
+                'dsv2SexualOrientations': survey.get('sexualOrientations'),
+                'dsv2OrientationOther': survey.get('orientationOtherText'),
+                'dsv2SexAtBirth': WorkbenchResearcherSexAtBirthV2(survey.get('sexAtBirth', 'UNSET')),
+                'dsv2SexAtBirthOther': survey.get('sexAtBirthOtherText'),
+                'dsv2YearOfBirth': int(survey.get('yearOfBirth')) if survey.get('yearOfBirth') else None,
+                'dsv2YearOfBirthPreferNot': survey.get('yearOfBirthPreferNot'),
+                'dsv2DisabilityHearing': WorkbenchResearcherYesNoPreferNot(survey.get('disabilityHearing', 'UNSET')),
+                'dsv2DisabilitySeeing': WorkbenchResearcherYesNoPreferNot(survey.get('disabilitySeeing', 'UNSET')),
+                'dsv2DisabilityConcentrating': WorkbenchResearcherYesNoPreferNot(
+                    survey.get('disabilityConcentrating', 'UNSET')),
+                'dsv2DisabilityWalking': WorkbenchResearcherYesNoPreferNot(survey.get('disabilityWalking', 'UNSET')),
+                'dsv2DisabilityDressing': WorkbenchResearcherYesNoPreferNot(survey.get('disabilityDressing', 'UNSET')),
+                'dsv2DisabilityErrands': WorkbenchResearcherYesNoPreferNot(survey.get('disabilityErrands', 'UNSET')),
+                'dsv2DisabilityOther': survey.get('disabilityOtherText'),
+                'dsv2Education': WorkbenchResearcherEducationV2(survey.get('education', 'UNSET')),
+                'dsv2Disadvantaged': WorkbenchResearcherYesNoPreferNot(survey.get('disadvantaged', 'UNSET')),
+                'dsv2SurveyComments': survey.get('surveyComments'),
+            }
+        else:
+            survey_params = {
+                'dsv2CompletionTime': None,
+                'dsv2EthnicCategories': [],
+                'dsv2EthnicityAiAnOther': None,
+                'dsv2EthnicityAsianOther': None,
+                'dsv2EthnicityHispanicOther': None,
+                'dsv2EthnicityMeNaOther': None,
+                'dsv2EthnicityNhPiOther': None,
+                'dsv2EthnicityWhiteOther': None,
+                'dsv2EthnicityOther': None,
+                'dsv2GenderIdentities': [],
+                'dsv2GenderOther': None,
+                'dsv2SexualOrientations': [],
+                'dsv2OrientationOther': None,
+                'dsv2SexAtBirth': WorkbenchResearcherSexAtBirthV2('UNSET'),
+                'dsv2SexAtBirthOther': None,
+                'dsv2YearOfBirth': None,
+                'dsv2YearOfBirthPreferNot': None,
+                'dsv2DisabilityHearing': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2DisabilitySeeing': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2DisabilityConcentrating': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2DisabilityWalking': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2DisabilityDressing': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2DisabilityErrands': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2DisabilityOther': None,
+                'dsv2Education': WorkbenchResearcherEducationV2('UNSET'),
+                'dsv2Disadvantaged': WorkbenchResearcherYesNoPreferNot('UNSET'),
+                'dsv2SurveyComments': None,
+            }
+        return survey_params
 
 
 class WorkbenchResearcherHistoryDao(UpdatableDao):
@@ -1109,11 +1288,16 @@ class WorkbenchResearcherHistoryDao(UpdatableDao):
                 .order_by(desc(WorkbenchResearcherHistory.created)).first()
 
     def is_snapshot_exist_with_session(self, session, user_source_id, modified_time):
+        record = self.get_snapshot_exist_with_session(session, user_source_id, modified_time)
+        return True if record else False
+
+    def get_snapshot_exist_with_session(self, session, user_source_id, modified_time):
         record = session.query(WorkbenchResearcherHistory) \
+            .options(subqueryload(WorkbenchResearcherHistory.workbenchInstitutionalAffiliations)) \
             .filter(WorkbenchResearcherHistory.userSourceId == user_source_id,
                     WorkbenchResearcherHistory.modifiedTime == modified_time) \
             .first()
-        return True if record else False
+        return record
 
     def get_researcher_history_by_id_with_session(self, researcher_history_id):
         with self.session() as session:

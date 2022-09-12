@@ -199,44 +199,10 @@ class GEMReportDeleted(GenomicStateBase):
 class CVLReadyState(GenomicStateBase):
     """State representing the CVL_READY state"""
     def transition_function(self, signal):
-        if signal == 'manifest-generated':
-            return GenomicWorkflowState.W1
-
         if signal == 'unconsented':
             return GenomicWorkflowState.CVL_RPT_PENDING_DELETE
 
         return GenomicWorkflowState.CVL_READY
-
-
-class W1State(GenomicStateBase):
-    """State representing the W1 manifest state"""
-    def transition_function(self, signal):
-        if signal == 'w2-ingestion-success':
-            return GenomicWorkflowState.W2
-
-
-class W2State(GenomicStateBase):
-    """State representing the W2 manifest state"""
-    def transition_function(self, signal):
-        if signal == 'manifest-generated':
-            return GenomicWorkflowState.W3
-
-
-class W3State(GenomicStateBase):
-    """State representing the W3 manifest state"""
-    def transition_function(self, signal):
-        if signal == 'aw1c-reconciled':
-            return GenomicWorkflowState.AW1C
-
-        if signal == 'aw1c-failed':
-            # TODO: There may be a pre-accessioning state as well
-            return GenomicWorkflowState.AW1CF_POST
-
-
-class W2SCState(GenomicStateBase):
-    def transition_function(self, signal):
-        if signal == 'manifest-generated':
-            return GenomicWorkflowState.CVL_W3SR
 
 
 class GenomicStateHandler:
@@ -252,9 +218,6 @@ class GenomicStateHandler:
         GenomicWorkflowState.AW2: AW2State(),
         GenomicWorkflowState.GC_DATA_FILES_MISSING: AW2MissingState(),
         GenomicWorkflowState.CVL_READY: CVLReadyState(),
-        GenomicWorkflowState.W1: W1State(),
-        GenomicWorkflowState.W2: W2State(),
-        GenomicWorkflowState.W3: W3State(),
         GenomicWorkflowState.GEM_READY: GEMReadyState(),
         GenomicWorkflowState.A1: A1State(),
         GenomicWorkflowState.A2: A2PassState(),
@@ -265,7 +228,6 @@ class GenomicStateHandler:
         GenomicWorkflowState.GEM_RPT_DELETED: GEMReportDeleted(),
         # Replating is functionally equivalent to AW0
         GenomicWorkflowState.EXTRACT_REQUESTED: AW0State(),
-        GenomicWorkflowState.CVL_W2SC: W2SCState(),
     }
 
     @classmethod

@@ -33,11 +33,13 @@ BQ_TABLES = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRPostPMBFeedback'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRPPIModuleFeedback'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRGROR'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRWearConsent'),
 
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummary'),
 
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcher'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBInstitutionalAffiliations'),
+    ('rdr_service.model.bq_workbench_workspace', 'BQRWBAudit'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspace'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceUsers'),
 
@@ -98,6 +100,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRPostPMBFeedbackView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRPPIModuleFeedbackView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRGRORView'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRWearConsentView'),
 
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherGenderView'),
@@ -105,7 +108,12 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherSexAtBirthView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherDegreeView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBInstitutionalAffiliationsView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQAccessTierShortNameView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQDSV2EthnicCategoryView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQDSV2GenderIdentityView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQDSV2SexualOrientationView'),
 
+    ('rdr_service.model.bq_workbench_workspace', 'BQRWBAuditView'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceView'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceRaceEthnicityView'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceAgeView'),

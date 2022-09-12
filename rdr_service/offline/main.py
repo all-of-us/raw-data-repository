@@ -1,5 +1,4 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
-import rdr_service.activate_debugger  # pylint: disable=unused-import
 
 from rdr_service.genomic_enums import GenomicJob
 
@@ -25,7 +24,7 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status, \
-    antibody_study_pipeline, genomic_data_quality_pipeline
+    antibody_study_pipeline, genomic_data_quality_pipeline, export_va_workqueue
 from rdr_service.offline.ce_health_data_reconciliation_pipeline import CeHealthDataReconciliationPipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
@@ -33,13 +32,14 @@ from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
 from rdr_service.offline.import_deceased_reports import DeceasedReportImporter
 from rdr_service.offline.import_hpo_lite_pairing import HpoLitePairingImporter
 from rdr_service.offline.enrollment_check import check_enrollment
-from rdr_service.offline.genomic_pipeline import run_genomic_cron_job
+from rdr_service.offline.genomic_pipeline import run_genomic_cron_job, interval_run_schedule
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.offline.retention_eligible_import import calculate_retention_eligible_metrics
 from rdr_service.offline.participant_maint import skew_duplicate_last_modified
 from rdr_service.offline.patient_status_backfill import backfill_patient_status
 from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, PublicMetricsExport
 from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
+from rdr_service.offline.response_validation import ResponseValidationController
 from rdr_service.offline.service_accounts import ServiceAccountKeyManager
 from rdr_service.offline.sync_consent_files import ConsentSyncController
 from rdr_service.offline.table_exporter import TableExporter
@@ -242,12 +242,13 @@ def find_ghosts():
     return '{"success": "true"}'
 
 
-def _build_validation_controller():
+def _build_validation_controller(session, consent_dao):
     return ConsentValidationController(
-        consent_dao=ConsentDao(),
+        consent_dao=consent_dao,
         participant_summary_dao=ParticipantSummaryDao(),
         hpo_dao=HPODao(),
-        storage_provider=GoogleCloudStorageProvider()
+        storage_provider=GoogleCloudStorageProvider(),
+        session=session
     )
 
 
@@ -261,12 +262,16 @@ def check_for_consent_corrections():
 
 @app_util.auth_required_cron
 def validate_consent_files():
-    validation_controller = _build_validation_controller()
-    with validation_controller.consent_dao.session() as session, StoreResultStrategy(
+    consent_dao = ConsentDao()
+    with consent_dao.session() as session, StoreResultStrategy(
         session=session,
-        consent_dao=validation_controller.consent_dao
+        consent_dao=consent_dao
     ) as store_strategy:
-        validation_controller.validate_consent_uploads(session, store_strategy)
+        validation_controller = _build_validation_controller(
+            session=session,
+            consent_dao=consent_dao
+        )
+        validation_controller.validate_consent_uploads(store_strategy)
     return '{"success": "true"}'
 
 
@@ -283,16 +288,18 @@ def run_sync_consent_files():
 
 @app_util.auth_required(RDR)
 def manually_trigger_validation():
-    controller = ConsentValidationController(
-        consent_dao=ConsentDao(),
-        participant_summary_dao=ParticipantSummaryDao(),
-        hpo_dao=HPODao(),
-        storage_provider=GoogleCloudStorageProvider()
-    )
-    with controller.consent_dao.session() as session, ReplacementStoringStrategy(
+    consent_dao = ConsentDao()
+    with consent_dao.session() as session, ReplacementStoringStrategy(
         session=session,
-        consent_dao=controller.consent_dao
+        consent_dao=consent_dao
     ) as output_strategy:
+        controller = ConsentValidationController(
+            consent_dao=consent_dao,
+            participant_summary_dao=ParticipantSummaryDao(),
+            hpo_dao=HPODao(),
+            storage_provider=GoogleCloudStorageProvider(),
+            session=session
+        )
         for participant_id in request.json.get('ids'):
             controller.validate_all_for_participant(participant_id=participant_id, output_strategy=output_strategy)
     return '{"success": "true"}'
@@ -380,6 +387,25 @@ def flag_response_duplication():
 
 
 @app_util.auth_required_cron
+def validate_responses():
+    a_day_ago = CLOCK.now() - timedelta(days=1)
+    since_date = datetime(year=a_day_ago.year, month=a_day_ago.month, day=a_day_ago.day)
+
+    slack_webhooks = config.getSettingJson(config.RDR_SLACK_WEBHOOKS)
+
+    dao = BaseDao(None)
+    with dao.session() as session:
+        controller = ResponseValidationController(
+            session=session,
+            since_date=since_date,
+            slack_webhook=slack_webhooks[config.RDR_VALIDATION_WEBHOOK]
+        )
+        controller.run_validation()
+
+    return '{ "success": "true" }'
+
+
+@app_util.auth_required_cron
 @_alert_on_exceptions
 def import_deceased_reports():
     importer = DeceasedReportImporter(config.get_config())
@@ -462,31 +488,6 @@ def genomic_gc_manifest_workflow():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('aw1c_manifest_workflow')
-def aw1c_manifest_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.ingest_aw1c_manifest()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@run_genomic_cron_job('aw1cf_manifest_workflow')
-def aw1cf_failures_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.ingest_aw1cf_manifest_workflow()
-    genomic_pipeline.aw1cf_alerts_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
 def genomic_data_manifest_workflow():
     genomic_pipeline.ingest_genomic_centers_metrics_files()
     return '{"success": "true"}'
@@ -537,49 +538,13 @@ def genomic_gem_a2_workflow():
 @run_genomic_cron_job('a3_manifest_workflow')
 def genomic_gem_a3_workflow():
     genomic_pipeline.gem_a3_manifest_workflow()
-    return '{"success": "true"}'\
+    return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
 @run_genomic_cron_job('update_report_state_for_consent_removal')
 def update_report_state_for_consent_removal():
     genomic_pipeline.update_report_state_for_consent_removal()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@run_genomic_cron_job('w1_manifest_workflow')
-def genomic_cvl_w1_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.create_cvl_w1_manifest()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@run_genomic_cron_job('w2_manifest_workflow')
-def genomic_cvl_w2_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.ingest_cvl_w2_manifest()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@run_genomic_cron_job('w3_manifest_workflow')
-def genomic_cvl_w3_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.create_cvl_w3_manifest()
     return '{"success": "true"}'
 
 
@@ -598,7 +563,38 @@ def genomic_aw3_wgs_workflow():
 
 
 @app_util.auth_required_cron
+@run_genomic_cron_job('cvl_w1il_pgx_manifest_workflow')
+def genomic_cvl_w1il_pgx_workflow():
+    genomic_pipeline.cvl_w1il_manifest_workflow(
+        cvl_site_bucket_map=config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP),
+        module_type='pgx'
+    )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('cvl_w1il_hdr_manifest_workflow')
+def genomic_cvl_w1il_hdr_workflow():
+    genomic_pipeline.cvl_w1il_manifest_workflow(
+        cvl_site_bucket_map=config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP),
+        module_type='hdr'
+    )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('cvl_w2w_manifest_workflow')
+@interval_run_schedule(GenomicJob.CVL_W2W_WORKFLOW, 'skip_week')
+def genomic_cvl_w2w_workflow():
+    genomic_pipeline.cvl_w2w_manifest_workflow(
+        cvl_site_bucket_map=config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP)
+    )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 @run_genomic_cron_job('cvl_w3sr_manifest_workflow')
+@interval_run_schedule(GenomicJob.CVL_W3SR_WORKFLOW, 'skip_week')
 def genomic_cvl_w3sr_workflow():
     genomic_pipeline.cvl_w3sr_manifest_workflow()
     return '{"success": "true"}'
@@ -647,10 +643,17 @@ def reconcile_gc_data_file_to_table():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_raw_to_aw1_ingested_workflow')
-def reconcile_raw_to_aw1_ingested():
-    genomic_pipeline.reconcile_raw_to_aw1_ingested()
+def check_for_w1il_gror_resubmit_participants():
+    a_week_ago = datetime.utcnow() - timedelta(weeks=1)
+    genomic_pipeline.notify_email_group_of_w1il_gror_resubmit_participants(since_datetime=a_week_ago)
     return '{"success": "true"}'
+
+# Disabling job until further notice
+# @app_util.auth_required_cron
+# @run_genomic_cron_job('reconcile_raw_to_aw1_ingested_workflow')
+# def reconcile_raw_to_aw1_ingested():
+#     genomic_pipeline.reconcile_raw_to_aw1_ingested()
+#     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
@@ -689,6 +692,20 @@ def genomic_retry_manifest_ingestion_failures():
 
 
 @app_util.auth_required_cron
+@run_genomic_cron_job('calculate_informing_loops_ready_weekly')
+def genomic_calculate_informing_loop_ready_flags_weekly():
+    genomic_pipeline.calculate_informing_loop_ready_flags()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('calculate_informing_loops_ready_daily')
+def genomic_calculate_informing_loop_ready_flags_daily():
+    genomic_pipeline.calculate_informing_loop_ready_flags()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 @run_genomic_cron_job('reconcile_pdr_data')
 def genomic_reconcile_pdr_data():
     genomic_pipeline.reconcile_pdr_data()
@@ -696,9 +713,52 @@ def genomic_reconcile_pdr_data():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('genomic_delete_old_gp_user_events')
-def genomic_delete_old_gp_user_events():
-    genomic_pipeline.delete_old_gp_user_events(days=7)
+@run_genomic_cron_job('reconcile_cvl_pgx_results')
+def genomic_reconcile_cvl_pgx_results():
+    genomic_pipeline.reconcile_cvl_results(
+        reconcile_job_type=GenomicJob.RECONCILE_CVL_PGX_RESULTS
+    )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_cvl_hdr_results')
+def genomic_reconcile_cvl_hdr_results():
+    genomic_pipeline.reconcile_cvl_results(
+        reconcile_job_type=GenomicJob.RECONCILE_CVL_HDR_RESULTS
+    )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_cvl_alerts')
+def genomic_reconcile_cvl_alerts():
+    genomic_pipeline.reconcile_cvl_results(
+        reconcile_job_type=GenomicJob.RECONCILE_CVL_ALERTS
+    )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_cvl_resolved')
+def genomic_reconcile_cvl_resolve():
+    genomic_pipeline.reconcile_cvl_results(
+        reconcile_job_type=GenomicJob.RECONCILE_CVL_RESOLVE
+    )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('results_pipeline_withdrawals')
+def genomic_results_pipeline_withdrawals():
+    genomic_pipeline.results_pipeline_withdrawals()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('gem_results_to_report_state')
+def genomic_gem_result_reports():
+    genomic_pipeline.gem_results_to_report_state()
     return '{"success": "true"}'
 
 
@@ -730,6 +790,17 @@ def genomic_data_quality_validation_fails_resolved():
     return '{"success": "true"}'
 
 
+@app_util.auth_required_cron
+def export_va_workqueue_report():
+    export_va_workqueue.generate_workqueue_report()
+    return '{"success": "true"}'
+
+@app_util.auth_required_cron
+def delete_old_va_workqueue_reports():
+    export_va_workqueue.delete_old_reports()
+    return '{"success": "true"}'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
@@ -747,6 +818,13 @@ def _build_pipeline_app():
         endpoint="flagResponseDuplication",
         view_func=flag_response_duplication,
         methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ResponseValidation",
+        endpoint="responseValidation",
+        view_func=validate_responses,
+        methods=["GET"]
     )
 
     offline_app.add_url_rule(
@@ -894,18 +972,6 @@ def _build_pipeline_app():
         methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicAW1CManifestWorkflow",
-        endpoint="aw1c_manifest_workflow",
-        view_func=aw1c_manifest_workflow,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicCVLFailuresWorkflow",
-        endpoint="aw1cf_failures_workflow",
-        view_func=aw1cf_failures_workflow,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicDataManifestWorkflow",
         endpoint="genomic_data_manifest_workflow",
         view_func=genomic_data_manifest_workflow,
@@ -959,24 +1025,6 @@ def _build_pipeline_app():
         methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicCvlW1Workflow",
-        endpoint="genomic_cvl_w1_workflow",
-        view_func=genomic_cvl_w1_workflow,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicCvlW2Workflow",
-        endpoint="genomic_cvl_w2_workflow",
-        view_func=genomic_cvl_w2_workflow,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicCvlW3Workflow",
-        endpoint="genomic_cvl_w3_workflow",
-        view_func=genomic_cvl_w3_workflow,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicAW3ArrayWorkflow",
         endpoint="genomic_aw3_array_workflow",
         view_func=genomic_aw3_array_workflow,
@@ -986,6 +1034,24 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicAW3WGSWorkflow",
         endpoint="genomic_aw3_wgs_workflow",
         view_func=genomic_aw3_wgs_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicCVLW1ILPgxWorkflow",
+        endpoint="genomic_cvl_w1il_pgx_workflow",
+        view_func=genomic_cvl_w1il_pgx_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicCVLW1ILHdrWorkflow",
+        endpoint="genomic_cvl_w1il_hdr_workflow",
+        view_func=genomic_cvl_w1il_hdr_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicCVLW2WWorkflow",
+        endpoint="genomic_cvl_w2w_workflow",
+        view_func=genomic_cvl_w2w_workflow,
         methods=["GET"]
     )
     offline_app.add_url_rule(
@@ -1031,11 +1097,18 @@ def _build_pipeline_app():
         methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "ReconcileRawToAw1Ingested",
-        endpoint="reconcile_raw_to_aw1_ingested",
-        view_func=reconcile_raw_to_aw1_ingested,
+        OFFLINE_PREFIX + "CheckForW1ilGrorResubmitParticipants",
+        endpoint="check_for_w1il_gror_resubmit",
+        view_func=check_for_w1il_gror_resubmit_participants,
         methods=["GET"]
     )
+    # Disabling job until further notice
+    # offline_app.add_url_rule(
+    #     OFFLINE_PREFIX + "ReconcileRawToAw1Ingested",
+    #     endpoint="reconcile_raw_to_aw1_ingested",
+    #     view_func=reconcile_raw_to_aw1_ingested,
+    #     methods=["GET"]
+    # )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "ReconcileRawToAw2Ingested",
         endpoint="reconcile_raw_to_aw2_ingested",
@@ -1066,14 +1139,57 @@ def _build_pipeline_app():
         view_func=genomic_reconcile_pdr_data, methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicDeleteOldGPUserEvents",
-        endpoint="genomic_delete_old_gp_user_events",
-        view_func=genomic_delete_old_gp_user_events, methods=["GET"]
-    )
-    offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicRetryManifestIngestions",
         endpoint="retry_manifest_ingestion_failures",
         view_func=genomic_retry_manifest_ingestion_failures,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "CalculateInformingLoopReadyStatusWeekly",
+        endpoint="informing_loop_ready_flags_weekly",
+        view_func=genomic_calculate_informing_loop_ready_flags_weekly,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "CalculateInformingLoopReadyStatusDaily",
+        endpoint="informing_loop_ready_flags_daily",
+        view_func=genomic_calculate_informing_loop_ready_flags_daily,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicReconcilePGXResults",
+        endpoint="genomic_reconcile_pgx_results",
+        view_func=genomic_reconcile_cvl_pgx_results,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicReconcileHDRResults",
+        endpoint="genomic_reconcile_hdr_results",
+        view_func=genomic_reconcile_cvl_hdr_results,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicCVLReconciliationAlerts",
+        endpoint="genomic_cvl_reconcile_alerts",
+        view_func=genomic_reconcile_cvl_alerts,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicCVLResolveSamples",
+        endpoint="genomic_cvl_resolve_samples",
+        view_func=genomic_reconcile_cvl_resolve,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicResultsPipelineWithdrawals",
+        endpoint="genomic_results_pipeline_withdrawals",
+        view_func=genomic_results_pipeline_withdrawals,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicGemResultReports",
+        endpoint="genomic_gem_result_reports",
+        view_func=genomic_gem_result_reports,
         methods=["GET"]
     )
     # END Genomic Pipeline Jobs
@@ -1158,6 +1274,20 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'MigrateRequestsLog/<string:target_db>',
         endpoint='migrate_requests_log',
         view_func=migrate_requests_logs,
+        methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'DeleteOldVaWorkQueueReports',
+        endpoint='delete_old_va_workqueue_reports',
+        view_func=delete_old_va_workqueue_reports,
+        methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'ExportVaWorkQueue',
+        endpoint='export_va_workqueue_report',
+        view_func=export_va_workqueue_report,
         methods=['GET']
     )
 

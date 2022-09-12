@@ -98,8 +98,7 @@
     "reconcile_gc_data_file_to_table_workflow": 1,
     "reconcile_pdr_data": 1,
     "retry_manifest_ingestion_failures": 1,
-    "genomic_delete_old_gp_user_events": 1,
-    "reconcile_raw_to_aw1_ingested_workflow": 1,
+    "reconcile_raw_to_aw1_ingested_workflow": 0,
     "reconcile_raw_to_aw2_ingested_workflow": 1,
     "members_state_resolved_workflow": 1,
     "members_update_blocklists": 1,
@@ -108,7 +107,7 @@
     "w1_manifest_workflow": 0,
     "w2_manifest_workflow": 0,
     "w3_manifest_workflow": 0,
-    "cvl_w3sr_manifest_workflow": 0
+    "cvl_w3sr_manifest_workflow": 1
   },
   "data_bucket_subfolders_prod": {
     "prod-genomics-data-baylor": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"],
@@ -123,6 +122,19 @@
       "bcm": ["testone.testy@bcm.edu", "testtwo.testy@bcm.edu"],
       "jh": ["testone.testy@jhmi.edu", "testtwo.testy@jhmi.edu"]
     }
+  },
+  "genomic_cvl_reconcile_emails": {
+    "send_emails": 1,
+    "cc_recipients": ["testone_cc.testy@vumc.edu"],
+    "recipients": {
+      "co": ["testone.testy@co.edu", "testtwo.testy@co.edu"],
+      "bcm": ["testone.testy@bcm.edu", "testtwo.testy@bcm.edu"]
+    }
+  },
+  "genomic_cvl_reconcile_limits": {
+    "pgx_time_limit": 3,
+    "hdr_time_limit": 3,
+    "w3sc_extension": 2
   },
   "genomic_set_member_blocklists": {
     "block_research": [

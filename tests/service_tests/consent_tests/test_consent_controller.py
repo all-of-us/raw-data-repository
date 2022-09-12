@@ -4,7 +4,7 @@ from typing import List
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.model.consent_file import ConsentFile, ConsentType, ConsentSyncStatus
+from rdr_service.model.consent_file import ConsentFile, ConsentOtherErrors, ConsentType, ConsentSyncStatus
 from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
@@ -46,7 +46,8 @@ class ConsentControllerTest(BaseTestCase):
             consent_dao=self.consent_dao_mock,
             hpo_dao=self.hpo_dao_mock,
             participant_summary_dao=self.participant_summary_dao_mock,
-            storage_provider=mock.MagicMock()
+            storage_provider=mock.MagicMock(),
+            session=mock.MagicMock()
         )
         self.store_strategy = StoreResultStrategy(session=mock.MagicMock(), consent_dao=self.consent_dao_mock)
 
@@ -54,24 +55,27 @@ class ConsentControllerTest(BaseTestCase):
         """The controller should find all recent participant summary consents authored and validate files for them"""
         primary_and_ehr_participant_id = 123
         cabor_participant_id = 456
-        self.consent_dao_mock.get_consent_responses_to_validate.return_value = {
-            primary_and_ehr_participant_id: [
-                ConsentResponse(
-                    response=QuestionnaireResponse(participantId=primary_and_ehr_participant_id),
-                    type=ConsentType.PRIMARY
-                ),
-                ConsentResponse(
-                    response=QuestionnaireResponse(participantId=primary_and_ehr_participant_id),
-                    type=ConsentType.EHR
-                )
-            ],
-            cabor_participant_id: [
-                ConsentResponse(
-                    response=QuestionnaireResponse(participantId=cabor_participant_id),
-                    type=ConsentType.CABOR
-                ),
-            ]
-        }
+        self.consent_dao_mock.get_consent_responses_to_validate.return_value = (
+            {
+                primary_and_ehr_participant_id: [
+                    ConsentResponse(
+                        response=QuestionnaireResponse(participantId=primary_and_ehr_participant_id),
+                        type=ConsentType.PRIMARY
+                    ),
+                    ConsentResponse(
+                        response=QuestionnaireResponse(participantId=primary_and_ehr_participant_id),
+                        type=ConsentType.EHR
+                    )
+                ],
+                cabor_participant_id: [
+                    ConsentResponse(
+                        response=QuestionnaireResponse(participantId=cabor_participant_id),
+                        type=ConsentType.CABOR
+                    ),
+                ]
+            },
+            True  # is last batch
+        )
 
         self.consent_validator_mock.get_primary_validation_results.return_value = [
             ConsentFile(id=1, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_primary_1'),
@@ -91,10 +95,7 @@ class ConsentControllerTest(BaseTestCase):
             ParticipantSummary(participantId=cabor_participant_id)
         ]
 
-        self.consent_controller.validate_consent_uploads(
-            session=mock.MagicMock(),
-            output_strategy=self.store_strategy
-        )
+        self.consent_controller.validate_consent_uploads(output_strategy=self.store_strategy)
         self.store_strategy.process_results()
         self.assertConsentValidationResultsUpdated(
             expected_updates=[
@@ -104,8 +105,9 @@ class ConsentControllerTest(BaseTestCase):
                 ConsentFile(id=4, file_path='/valid_cabor_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
             ]
         )
-        # Confirm call to dispatcher for task that checks for newly detected validation errors
-        self.assertEqual(1, self.dispatch_check_consent_errors_mock.call_count)
+        # Confirm calls to dispatcher for task that checks for newly detected validation errors.   A separate task
+        # is dispatched for each participant origin.
+        self.assertEqual(2, self.dispatch_check_consent_errors_mock.call_count)
 
         # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
         # values from the expected_updates list
@@ -140,6 +142,31 @@ class ConsentControllerTest(BaseTestCase):
         # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
         # values from the expected_updates list
         self.assertDispatchRebuildConsentMetricsCalled([ehr_file.id, gror_file.id])
+
+    @mock.patch('rdr_service.dao.consent_dao.ConsentDao.get_files_for_participant')
+    def test_finding_reconsented_files(self, get_files_mock):
+        original_file = ConsentFile(
+            is_signature_valid=True,
+            is_signing_date_valid=True,
+            other_errors=ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN
+        )
+        unsigned_file = ConsentFile(
+            is_signature_valid=False,
+            is_signing_date_valid=True,
+            other_errors=ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN
+        )
+        get_files_mock.return_value = [unsigned_file, original_file]
+
+        retrieved_file = self.consent_controller._find_original_file_for_reconsent(
+            reconsent_type=ConsentType.EHR_RECONSENT,
+            participant_id=1234
+        )
+        self.assertEqual(original_file, retrieved_file)
+        get_files_mock.assert_called_with(
+            participant_id=1234,
+            consent_type=ConsentType.EHR,
+            session=mock.ANY
+        )
 
     def assertDispatchRebuildConsentMetricsCalled(self, expected_id_list, call_count=1, call_number=1):
         """

@@ -1,10 +1,12 @@
+import datetime
 import http.client
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResearcherHistoryDao, \
     WorkbenchWorkspaceDao, WorkbenchWorkspaceHistoryDao
 from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchInstitutionNonAcademic, \
     WorkbenchResearcherEducation, WorkbenchResearcherDisability, WorkbenchResearcherEthnicity, \
-    WorkbenchWorkspaceAccessTier
+    WorkbenchWorkspaceAccessTier, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2, \
+    WorkbenchResearcherEducationV2
 
 
 class WorkbenchApiTest(BaseTestCase):
@@ -35,6 +37,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "race": ["AIAN", "WHITE"],
                 "education": "COLLEGE_GRADUATE",
                 "degree": ["PHD", "MBA"],
+                "accessTierShortNames": ["REGISTERED"],
                 "disability": "YES",
                 "affiliations": [
                     {
@@ -63,6 +66,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].email, 'xxx@xxx.com')
         self.assertEqual(results[0].gender, [1, 2])
         self.assertEqual(results[0].race, [1, 5])
+        self.assertEqual(results[0].accessTierShortNames, [1])
         self.assertEqual(results[0].sexAtBirth, [1, 3])
         self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
         self.assertEqual(results[0].education, WorkbenchResearcherEducation('COLLEGE_GRADUATE'))
@@ -113,6 +117,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "ethnicity": "NOT_HISPANIC",
                 "gender": ["WOMAN", "NONE_DESCRIBE_ME"],
                 "race": ["NHOPI", "WHITE"],
+                "accessTierShortNames": ["REGISTERED", "CONTROLLED"],
                 "sexAtBirth": ["INTERSEX"],
                 "identifiesAsLgbtq": True,
                 "lgbtqIdentity": "string",
@@ -169,6 +174,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].email, 'yyy@yyy.com')
         self.assertEqual(results[0].gender, [2, 5])
         self.assertEqual(results[0].race, [4, 5])
+        self.assertEqual(results[0].accessTierShortNames, [1, 2])
         self.assertEqual(results[0].identifiesAsLgbtq, True)
         self.assertEqual(results[0].lgbtqIdentity, "string")
         self.assertEqual(results[0].sexAtBirth, [3])
@@ -216,6 +222,238 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[2].gender, [])
         self.assertEqual(results[2].race, [])
         self.assertEqual(results[2].ethnicity, WorkbenchResearcherEthnicity('PREFER_NOT_TO_ANSWER'))
+
+        # Test submission including demographic survey V2
+        survey_json = [
+            {
+                "userId": 3,
+                "creationTime": "2021-11-26T21:21:13.056Z",
+                "modifiedTime": "2021-11-26T21:21:13.056Z",
+                "givenName": "stringa",
+                "familyName": "stringb",
+                "email": "zzz@zzz.com",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "HISPANIC",
+                "sexAtBirth": ["FEMALE", "INTERSEX"],
+                "identifiesAsLgbtq": False,
+                "lgbtqIdentity": "string",
+                "gender": ["MAN", "WOMAN"],
+                "race": ["AIAN", "WHITE"],
+                "education": "COLLEGE_GRADUATE",
+                "degree": ["PHD", "MBA"],
+                "accessTierShortNames": ["REGISTERED"],
+                "disability": "YES",
+                "demographicSurveyV2": {
+                    "completionTime": "2022-05-20T14:32:56Z",
+                    "ethnicCategories": [
+                        "ASIAN_OTHER",
+                        "ASIAN_LAO",
+                        "ASIAN",
+                        "WHITE",
+                        "NHPI_FIJIAN",
+                        "MENA_MOROCCAN",
+                        "HISPANIC_CUBAN",
+                        "WHITE_GERMAN"
+                    ],
+                    "ethnicityAiAnOtherText": None,
+                    "ethnicityAsianOtherText": "Tibetan",
+                    "ethnicityOtherText": None,
+                    "genderIdentities": [
+                        "MAN",
+                        "TRANS_MAN"
+                    ],
+                    "genderOtherText": None,
+                    "sexualOrientations": [
+                        "GAY",
+                        "BISEXUAL"
+                    ],
+                    "orientationOtherText": None,
+                    "sexAtBirth": "PREFER_NOT_TO_ANSWER",
+                    "sexAtBirthOtherText": None,
+                    "yearOfBirthPreferNot": True,
+                    "disabilityHearing": "YES",
+                    "disabilitySeeing": "NO",
+                    "disabilityConcentrating": "PREFER_NOT_TO_ANSWER",
+                    "disabilityWalking": "PREFER_NOT_TO_ANSWER",
+                    "disabilityDressing": "PREFER_NOT_TO_ANSWER",
+                    "disabilityErrands": "PREFER_NOT_TO_ANSWER",
+                    "disabilityOtherText": None,
+                    "education": "DOCTORATE",
+                    "disadvantaged": "NO",
+                    "surveyComments": "a string"
+                }
+
+            }
+        ]
+        self.send_post('workbench/directory/researchers', request_data=survey_json)
+        researcher_dao = WorkbenchResearcherDao()
+        result = researcher_dao.get(3)
+        self.assertEqual(result.userSourceId, 3)
+        self.assertEqual(result.givenName, 'stringa')
+        self.assertEqual(result.email, 'zzz@zzz.com')
+        self.assertEqual(result.gender, [1, 2])
+        self.assertEqual(result.race, [1, 5])
+        self.assertEqual(result.accessTierShortNames, [1])
+        self.assertEqual(result.identifiesAsLgbtq, False)
+        self.assertEqual(result.lgbtqIdentity, None)
+        self.assertEqual(result.sexAtBirth, [1, 3])
+        self.assertEqual(result.ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
+        self.assertEqual(result.dsv2CompletionTime, datetime.datetime(2022, 5, 20, 14, 32, 56))
+        self.assertEqual(result.dsv2EthnicCategories, [15, 12, 4, 20, 58, 52, 36, 70])
+        self.assertEqual(result.dsv2EthnicCategories, [15, 12, 4, 20, 58, 52, 36, 70])
+        self.assertEqual(result.dsv2GenderIdentities, [2, 5])
+        self.assertEqual(result.dsv2SexualOrientations, [3, 2])
+        self.assertEqual(result.dsv2DisabilityHearing, WorkbenchResearcherYesNoPreferNot('YES'))
+        self.assertEqual(result.dsv2DisabilitySeeing, WorkbenchResearcherYesNoPreferNot('NO'))
+        self.assertEqual(result.dsv2DisabilityConcentrating, WorkbenchResearcherYesNoPreferNot('PREFER_NOT_TO_ANSWER'))
+        self.assertEqual(result.dsv2SexAtBirth, WorkbenchResearcherSexAtBirthV2('PREFER_NOT_TO_ANSWER'))
+        self.assertEqual(result.dsv2Education, WorkbenchResearcherEducationV2('DOCTORATE'))
+        self.assertEqual(result.dsv2SurveyComments, "a string")
+        self.assertEqual(result.dsv2YearOfBirth, None)
+
+    def test_backfill_researchers(self):
+        # test create new
+        request_json = [
+            {
+                "userId": 1,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "string",
+                "familyName": "string",
+                "email": "xxx@xxx.com",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "HISPANIC",
+                "sexAtBirth": ["FEMALE", "INTERSEX"],
+                "identifiesAsLgbtq": False,
+                "lgbtqIdentity": "string",
+                "gender": ["MAN", "WOMAN"],
+                "race": ["AIAN", "WHITE"],
+                "education": "COLLEGE_GRADUATE",
+                "degree": ["PHD", "MBA"],
+                "accessTierShortNames": ["REGISTERED"],
+                "disability": "YES",
+                ""
+                "affiliations": [
+                    {
+                        "institution": "string",
+                        "role": "string",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ],
+                "verifiedInstitutionalAffiliation": {
+                    "institutionDisplayName": "display name",
+                    "institutionShortName": "string name",
+                    "institutionalRole": "string role"
+                }
+            }
+        ]
+
+        self.send_post('workbench/directory/researchers', request_data=request_json)
+
+        researcher_dao = WorkbenchResearcherDao()
+        self.assertEqual(researcher_dao.count(), 1)
+        results = researcher_dao.get_all_with_children()
+        self.assertEqual(results[0].userSourceId, 1)
+        self.assertEqual(results[0].givenName, 'string')
+        self.assertEqual(results[0].accessTierShortNames, [1])
+
+        researcher_history_dao = WorkbenchResearcherHistoryDao()
+        results = researcher_history_dao.get_all_with_children()
+        self.assertEqual(researcher_history_dao.count(), 1)
+        self.assertEqual(results[0].userSourceId, 1)
+        self.assertEqual(results[0].givenName, 'string')
+        self.assertEqual(results[0].accessTierShortNames, [1])
+
+        # test backfill with same modifiedTime
+        update_json = [
+            {
+                "userId": 1,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "string_modify",
+                "familyName": "string_modify",
+                "email": "yyy@yyy.com",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "NOT_HISPANIC",
+                "gender": ["WOMAN", "NONE_DESCRIBE_ME"],
+                "race": ["NHOPI", "WHITE"],
+                "accessTierShortNames": ["REGISTERED", "CONTROLLED"],
+                "sexAtBirth": ["INTERSEX"],
+                "identifiesAsLgbtq": True,
+                "lgbtqIdentity": "string",
+                "affiliations": [
+                    {
+                        "institution": "string_modify",
+                        "role": "string",
+                        "nonAcademicAffiliation": "EDUCATIONAL_INSTITUTION"
+                    }
+                ],
+                "verifiedInstitutionalAffiliation": {
+                    "institutionDisplayName": "modified display name",
+                    "institutionShortName": "modified string name",
+                    "institutionalRole": "modified string role"
+                }
+            },
+            {
+                "userId": 2,
+                # test creationTime can be NULL
+                # "creationTime": "2019-11-27T21:21:13.056Z",
+                "modifiedTime": "2019-11-27T21:21:14.056Z",
+                "givenName": "string2",
+                "familyName": "string2",
+                "streetAddress1": "string2",
+                "streetAddress2": "string2",
+                "city": "string2",
+                "state": "string2",
+                "zipCode": "string2",
+                "country": "string2",
+                "ethnicity": "PREFER_NOT_TO_ANSWER",
+                # "gender": ["MALE", "INTERSEX"], # test no gender in the payload, will store None in DB
+                # "race": ["WHITE", "AA"], # test no race in the payload, will store None in DB
+                "affiliations": [
+                    {
+                        "institution": "string2",
+                        "role": "string2",
+                        "nonAcademicAffiliation": "EDUCATIONAL_INSTITUTION"
+                    },
+                    {
+                        "institution": "string22",
+                        "role": "string22",
+                        "nonAcademicAffiliation": "CITIZEN_SCIENTIST"
+                    }
+                ]
+            }
+        ]
+        self.send_post('workbench/directory/researchers?backfill=true', request_data=update_json)
+
+        researcher_dao = WorkbenchResearcherDao()
+        self.assertEqual(researcher_dao.count(), 1)
+        results = researcher_dao.get_all_with_children()
+        self.assertEqual(results[0].userSourceId, 1)
+        self.assertEqual(results[0].givenName, 'string_modify')
+        self.assertEqual(results[0].accessTierShortNames, [1, 2])
+
+        researcher_history_dao = WorkbenchResearcherHistoryDao()
+        self.assertEqual(researcher_history_dao.count(), 1)
+        results = researcher_history_dao.get_all_with_children()
+        self.assertEqual(results[0].userSourceId, 1)
+        self.assertEqual(results[0].givenName, 'string_modify')
+        self.assertEqual(results[0].accessTierShortNames, [1, 2])
 
     def test_invalid_input_for_researchers(self):
         request_json = [

@@ -110,7 +110,7 @@ class BiobankSampleComparator:
                 ))
             if not is_datetime_equal(
                 self.report_data.disposed, self.api_data.disposalDate, difference_allowed_seconds=3600
-            ):
+            ) and not self._is_ignorable_disposal():
                 discrepancies_found.append((DifferenceFound(
                     type=DifferenceType.DISPOSAL_DATE,
                     sample_pair=SamplePair(report_data=self.report_data, api_data=self.api_data)
@@ -127,6 +127,9 @@ class BiobankSampleComparator:
         report_status = self.report_data.status
         api_status = self.api_data.status
         api_disposal_reason = self.api_data.disposalReason
+
+        if self._is_ignorable_disposal():
+            return True
 
         if report_status == SampleStatus.CONSUMED and api_status == 'Disposed' and api_disposal_reason == 'Consumed':
             return True
@@ -173,6 +176,21 @@ class BiobankSampleComparator:
 
         # TODO: samples that are 1SAL2 and disposed on the API but still with a status of 1 on the SIR...
         #       these wouldn't get updated on the SIR when the biobank gets it 6weeks later
+
+    def _is_ignorable_disposal(self):
+        # The SIR only shows data for a 10-day window, if any sample data updated after that window
+        # (such as marking a samples as "Not Received" or "Consumed") that update won't be seen through the SIR data
+        api_status = self.api_data.status
+        if api_status != 'Disposed':
+            return False
+
+        first_sir_date = self.report_data.rdrCreated or self.report_data.created
+        days_disposed_after_sir_appearance = (self.api_data.disposalDate - first_sir_date).days
+        if days_disposed_after_sir_appearance > 8:
+            return True
+
+        return self.api_data.disposalReason.lower() == 'sample not received' \
+            and self.report_data.status == SampleStatus.RECEIVED
 
 
 class BiobankDataCheckTool(ToolBase):
@@ -325,22 +343,25 @@ class BiobankDataCheckTool(ToolBase):
 
             # write headers
             client.update_cell(0, 0, 'sample id')
-            client.update_cell(0, 1, 'difference found')
-            client.update_cell(0, 2, 'data found from SIR')
-            client.update_cell(0, 3, 'data found from API')
+            client.update_cell(0, 1, 'test code')
+            client.update_cell(0, 2, 'difference found')
+            client.update_cell(0, 3, 'data found from SIR')
+            client.update_cell(0, 4, 'data found from API')
 
             for index, diff in enumerate(self.differences_found):
                 report_sample = diff.sample_pair.report_data
                 api_sample = diff.sample_pair.api_data
                 sample_id = report_sample.biobankStoredSampleId if report_sample else api_sample.rlimsId
+                test_code = report_sample.test if report_sample else api_sample.testCode
 
                 report_value, api_value = diff.get_report_and_api_values()
 
                 row_to_update = index + 1
                 client.update_cell(row=row_to_update, col=0, value=sample_id)
-                client.update_cell(row=row_to_update, col=1, value=str(diff.type))
-                client.update_cell(row=row_to_update, col=2, value=str(report_value))
-                client.update_cell(row=row_to_update, col=3, value=str(api_value))
+                client.update_cell(row=row_to_update, col=1, value=str(test_code))
+                client.update_cell(row=row_to_update, col=2, value=str(diff.type))
+                client.update_cell(row=row_to_update, col=3, value=str(report_value))
+                client.update_cell(row=row_to_update, col=4, value=str(api_value))
 
 
 def add_additional_arguments(parser: argparse.ArgumentParser):

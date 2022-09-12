@@ -41,6 +41,8 @@ class SchemaID(IntEnum):
     genomic_manifest_file = 3050
     genomic_manifest_feedback = 3060
     genomic_user_event_metrics = 3070
+    genomic_informing_loop = 3080
+    genomic_cvl_result_past_due = 3090
 
     # Workbench
     workbench_researcher = 4000
@@ -53,6 +55,10 @@ class SchemaID(IntEnum):
     workbench_researcher_degree = 4070
     workbench_workspace_age = 4080
     workbench_workspace_ethnicity = 4090
+    workbench_researcher_short_tier_names = 4100
+    workbench_researcher_dsv2_ethnic_category = 4110
+    workbench_researcher_dsv2_gender_identity = 4120
+    workbench_researcher_dsv2_sexual_orientation = 4130
 
     # Covid study
     biobank_covid_antibody_sample = 5000
@@ -69,6 +75,11 @@ class SchemaID(IntEnum):
 # Used to calculate participant enrollment cohort.
 COHORT_1_CUTOFF = datetime(2018, 4, 24, 0, 0, 0)
 COHORT_2_CUTOFF = datetime(2020, 4, 21, 4, 0, 0)
+
+# Workaround:  Allow PDR data rebuild tasks to skip building certain test pids that have so much data associated
+# with them (e.g., high numbers of questionnaire responses) that the PDR generator tasks can exceed time or memory
+# limits and be terminated abnormally.   For now, there is one pid known to cause such task failures
+SKIP_TEST_PIDS_FOR_PDR = [838981439, ]
 
 class ConsentCohortEnum(IntEnum):
     """

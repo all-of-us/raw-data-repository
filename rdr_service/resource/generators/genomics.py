@@ -2,6 +2,8 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
+import re
+
 from dateutil.parser import parse as dt_parse
 from sqlalchemy.sql import text
 
@@ -88,10 +90,17 @@ class GenomicSetMemberSchemaGenerator(generators.BaseGenerator):
             row = ro_session.execute(text('select * from genomic_set_member where id = :id'), {'id': _pk}).first()
             data = self.ro_dao.to_dict(row)
 
-            # Set biobank_id_str and delete biobank_id
+            # Convert biobank_id to integer value (if present and if it is a valid biobank_id )
             try:
-                data['biobank_id_str'] = data['biobank_id']
-                del data['biobank_id']
+                bb_id = data['biobank_id']
+                data['biobank_id_str'] = bb_id
+                # genomic_set_member table may contain pseudo-biobank_id values for control samples (e.g., HG-001)
+                # Only populate the PDR biobank_id integer field if there is a valid-looking AoU biobank ID
+                # (9 digits or one leading alpha char + 9 digits, where leading char will be stripped)
+                if bb_id and re.match("[A-Za-z]?\\d{9}", bb_id):
+                    data['biobank_id'] = int(re.sub("[^0-9]", "", bb_id))
+                else:
+                    data['biobank_id'] = None
             except KeyError:
                 pass
 
@@ -462,3 +471,96 @@ def genomic_user_event_metrics_batch_update(_pk_ids):
     w_dao = ResourceDataDao()
     for _pk in _pk_ids:
         genomic_user_event_metrics_update(_pk, gen=gen, w_dao=w_dao)
+
+
+class GenomicInformingLoopSchemaGenerator(generators.BaseGenerator):
+    """
+    Generate a GenomicInformingLoop resource object
+    """
+    ro_dao = None
+
+    def make_resource(self, _pk, backup=False):
+        """
+        Build a resource object from the given primary key id.
+        :param _pk: Primary key value from rdr table.
+        :param backup: if True, get from backup database instead of Primary.
+        :return: resource object
+        """
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
+            row = ro_session.execute(text('select * from genomic_informing_loop where id = :id'),
+                                     {'id': _pk}).first()
+            data = self.ro_dao.to_dict(row)
+            return generators.ResourceRecordSet(schemas.GenomicInformingLoopSchema, data)
+
+
+def genomic_informing_loop_update(_pk, gen=None, w_dao=None):
+    """
+    Generate GenomicInformingLoop resource record.
+    :param _pk: Primary Key
+    :param gen: GenomicInformingLoopSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicInformingLoopSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_informing_loop_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
+    """
+    gen = GenomicInformingLoopSchemaGenerator()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_informing_loop_update(_pk, gen=gen, w_dao=w_dao)
+
+class GenomicCVLResultPastDueSchemaGenerator(generators.BaseGenerator):
+    """
+    Generate a GenomicCVLResultPastDue resource object
+    """
+    ro_dao = None
+
+    def make_resource(self, _pk, backup=False):
+        """
+        Build a resource object from the given primary key id.
+        :param _pk: Primary key value from rdr table.
+        :param backup: if True, get from backup database instead of Primary.
+        :return: resource object
+        """
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
+            row = ro_session.execute(text('select * from genomic_cvl_result_past_due where id = :id'),
+                                     {'id': _pk}).first()
+            data = self.ro_dao.to_dict(row)
+            return generators.ResourceRecordSet(schemas.GenomicCVLResultPastDueSchema, data)
+
+
+def genomic_cvl_result_past_due_update(_pk, gen=None, w_dao=None):
+    """
+    Generate GenomicCVLResultPastDue resource record.
+    :param _pk: Primary Key
+    :param gen: GenomicCVLResultPastDueSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicCVLResultPastDueSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_cvl_result_past_due_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
+    """
+    gen = GenomicCVLResultPastDueSchemaGenerator()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_cvl_result_past_due_update(_pk, gen=gen, w_dao=w_dao)

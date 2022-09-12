@@ -2,15 +2,13 @@
 
 This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
-# pylint: disable=unused-import
-import rdr_service.activate_debugger
 
 import logging
 
-from flask import got_request_exception, Response
+from flask import got_request_exception
 from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
-from werkzeug.exceptions import HTTPException, InternalServerError
+from werkzeug.exceptions import HTTPException
 
 from rdr_service import app_util, config_api, version_api
 from rdr_service.api import metrics_ehr_api
@@ -25,7 +23,7 @@ from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
 from rdr_service.api.deceased_report_api import DeceasedReportApi, DeceasedReportReviewApi
 from rdr_service.api.mail_kit_order_api import MailKitOrderApi
-from rdr_service.api.genomic_api import GenomicPiiApi, GenomicOutreachApi, GenomicOutreachApiV2
+from rdr_service.api.genomic_api import GenomicPiiApi, GenomicOutreachApi, GenomicOutreachApiV2, GenomicSchedulingApi
 from rdr_service.api.import_codebook_api import import_codebook
 from rdr_service.api.metrics_fields_api import MetricsFieldsApi
 from rdr_service.api.participant_api import ParticipantApi, ParticipantResearchIdApi
@@ -42,6 +40,7 @@ from rdr_service.api.workbench_api import WorkbenchWorkspaceApi, WorkbenchResear
 from rdr_service.api.research_projects_directory_api import ResearchProjectsDirectoryApi
 from rdr_service.api.redcap_workbench_audit_api import RedcapResearcherAuditApi, RedcapWorkbenchAuditApi
 from rdr_service.api.message_broker_api import MessageBrokerApi
+from rdr_service.api.onsite_verification_api import OnsiteVerificationApi
 
 from rdr_service.services.flask import app, API_PREFIX, flask_warmup, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
@@ -303,7 +302,7 @@ api.add_resource(RedcapResearcherAuditApi,
                  methods=['GET'])
 
 api.add_resource(GenomicPiiApi,
-                 API_PREFIX + "GenomicPII/<string:mode>/<participant_id:p_id>",
+                 API_PREFIX + "GenomicPII/<string:mode>/<string:pii_id>",
                  endpoint='genomic.pii',
                  methods=['GET'])
 
@@ -316,6 +315,11 @@ api.add_resource(GenomicOutreachApi,
 api.add_resource(GenomicOutreachApiV2,
                  API_PREFIX + "GenomicOutreachV2",
                  endpoint='genomic.outreachv2',
+                 methods=['GET', 'POST', 'PUT'])
+
+api.add_resource(GenomicSchedulingApi,
+                 API_PREFIX + "GenomicScheduling",
+                 endpoint='genomic.scheduling',
                  methods=['GET'])
 
 api.add_resource(
@@ -375,6 +379,13 @@ app.add_url_rule(API_PREFIX + "CheckPpiData", endpoint="check_ppi_data", view_fu
 app.add_url_rule(API_PREFIX + "ImportCodebook", endpoint="import_codebook", view_func=import_codebook,
                  methods=["POST"])
 
+api.add_resource(
+    OnsiteVerificationApi,
+    API_PREFIX + "Onsite/Id/Verification",
+    API_PREFIX + "Onsite/Id/Verification/<participant_id:p_id>",
+    endpoint="onsite_id_verification",
+    methods=["POST", "GET"],
+)
 
 app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=flask_warmup, methods=["GET"])
 app.add_url_rule("/_ah/start", endpoint="start", view_func=flask_start, methods=["GET"])

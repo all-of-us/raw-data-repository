@@ -44,9 +44,6 @@ class UBRCalculatorTest(BaseTestCase):
         self.assertEqual(self.ubr.ubr_sex('SexAtBirth_Female'), UBRValueEnum.RBR)
         self.assertEqual(self.ubr.ubr_sex('PMI_PreferNotToAnswer'), UBRValueEnum.NotAnswer_Skip)
 
-        # Bad or unknown value will default to RBR
-        self.assertEqual(self.ubr.ubr_sex('BadValueTest'), UBRValueEnum.RBR)
-
     def test_ubr_sexual_orientation(self):
         """
         UBR Calculator Test - Sexual Orientation
@@ -139,7 +136,7 @@ class UBRCalculatorTest(BaseTestCase):
         # Test with RBR values. int(RBR) == 0.
         self.assertEqual(UBRValueEnum.RBR,
                          self.ubr.ubr_sexual_gender_minority(UBRValueEnum.RBR, UBRValueEnum.RBR))
-        self.assertEqual(UBRValueEnum.RBR,
+        self.assertEqual(UBRValueEnum.NotAnswer_Skip,
                          self.ubr.ubr_sexual_gender_minority(UBRValueEnum.RBR, UBRValueEnum.NotAnswer_Skip))
         self.assertEqual(0,
                          self.ubr.ubr_sexual_gender_minority(UBRValueEnum.RBR, UBRValueEnum.RBR))

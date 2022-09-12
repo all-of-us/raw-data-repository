@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Collection, Dict, List
+from typing import Collection, Dict, List, Optional
 
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import aliased, joinedload, Session
@@ -8,7 +8,7 @@ from sqlalchemy.orm import aliased, joinedload, Session
 from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.code import Code
-from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType, ConsentErrorReport
 from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -40,25 +40,36 @@ class ConsentDao(BaseDao):
         )
 
     @classmethod
-    def get_consent_responses_to_validate(cls, session) -> Dict[int, List[ConsentResponse]]:
+    def get_consent_responses_to_validate(cls, session) -> (Dict[int, List[ConsentResponse]], bool):
         """
         Gets all the consent responses that need to be validated.
         :return: Dictionary with keys being participant ids and values being collections of ConsentResponses
         """
-        # A ConsentResponse hasn't been validated yet if there aren't any ConsentFiles that link to the response
-        consent_responses = session.query(ConsentResponse).outerjoin(
-            ConsentFile
-        ).filter(
-            ConsentFile.id.is_(None)
-        ).options(
-            joinedload(ConsentResponse.response)
-        ).all()
+        consent_batch_limit = 500
+
+        # A ConsentResponse will need to be validated if there are not yet any ConsentFile objects
+        # that are of the same type and for the same participant.
+        consent_responses = (
+            session.query(ConsentResponse)
+            .join(QuestionnaireResponse)
+            .outerjoin(
+                ConsentFile,
+                and_(
+                    ConsentFile.type == ConsentResponse.type,
+                    ConsentFile.participant_id == QuestionnaireResponse.participantId
+                )
+            ).filter(
+                ConsentFile.id.is_(None)
+            ).options(
+                joinedload(ConsentResponse.response)
+            )
+        ).limit(consent_batch_limit).all()
 
         grouped_results = defaultdict(list)
         for consent_response in consent_responses:
             grouped_results[consent_response.response.participantId].append(consent_response)
 
-        return dict(grouped_results)
+        return dict(grouped_results), len(consent_responses) < consent_batch_limit
 
     @classmethod
     def get_consent_authored_times_for_participant(cls, session, participant_id) -> Dict[ConsentType, List[datetime]]:
@@ -80,7 +91,6 @@ class ConsentDao(BaseDao):
             grouped_results[consent_type].append(authored_time)
 
         return dict(grouped_results)
-
 
     @classmethod
     def get_participants_with_unvalidated_files(cls, session) -> Collection[ParticipantSummary]:
@@ -233,6 +243,22 @@ class ConsentDao(BaseDao):
             return self._get_ready_to_sync_with_session(session=session, org_names=org_names, hpo_names=hpo_names)
 
     @classmethod
+    def get_files_for_participant(cls, participant_id: int, session: Session,
+                                  consent_type: Optional[ConsentType] = None) -> List[ConsentFile]:
+        query = (
+            session.query(ConsentFile)
+            .filter(
+                ConsentFile.participant_id == participant_id
+            )
+        )
+        if consent_type:
+            query = query.filter(
+                ConsentFile.type == consent_type
+            )
+
+        return query.all()
+
+    @classmethod
     def set_previously_synced_files_as_ready(cls, session: Session, participant_id: int):
         session.query(
             ConsentFile
@@ -243,3 +269,23 @@ class ConsentDao(BaseDao):
             ConsentFile.sync_status: ConsentSyncStatus.READY_FOR_SYNC,
             ConsentFile.sync_time: None
         })
+
+class ConsentErrorReportDao(BaseDao):
+
+    def __init__(self):
+        super(ConsentErrorReportDao, self).__init__(ConsentErrorReport)
+
+    @classmethod
+    def _batch_update_consent_error_reports_with_session(cls, session, error_reports: Collection[ConsentErrorReport]):
+        for rec in error_reports:
+            if rec.id:
+                session.merge(rec)
+            else:
+                session.add(rec)
+
+    def batch_update_consent_error_reports(self, error_reports: Collection[ConsentErrorReport], session=None):
+        if session is None:
+            with self.session() as dao_session:
+                return self._batch_update_consent_error_reports_with_session(dao_session, error_reports)
+        else:
+            return self._batch_update_consent_error_reports_with_session(session, error_reports)

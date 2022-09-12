@@ -21,7 +21,7 @@ class CheckEnrollmentStatusTest(BaseTestCase):
         person.questionnaireOnLifestyle = QuestionnaireStatus.SUBMITTED
         person.questionnaireOnOverallHealth = QuestionnaireStatus.SUBMITTED
         person.questionnaireOnTheBasics = QuestionnaireStatus.SUBMITTED
-        person.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+        person.clinicPhysicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
         with ps_dao.session() as session:
             session.add(person)
         self.assertEqual(check_enrollment(create_ticket=False), True)

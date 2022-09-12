@@ -13,7 +13,8 @@ from .covid_antibody_study import BiobankCovidAntibodySampleSchema, QuestCovidAn
     QuestCovidAntibodyTestSchema
 from .genomics import GenomicSetSchema, GenomicSetMemberSchema, GenomicJobRunSchema, \
     GenomicGCValidationMetricsSchema, GenomicFileProcessedSchema, GenomicManifestFileSchema, \
-    GenomicManifestFeedbackSchema, GenomicUserEventMetricsSchema
+    GenomicManifestFeedbackSchema, GenomicUserEventMetricsSchema, GenomicInformingLoopSchema, \
+    GenomicCVLResultPastDueSchema
 from .retention_metrics import RetentionMetricSchema
 from .consent_metrics import ConsentMetricSchema
 
@@ -39,5 +40,7 @@ __all__ = [
     'GenomicManifestFeedbackSchema',
     'GenomicUserEventMetricsSchema',
     'RetentionMetricSchema',
-    'ConsentMetricSchema'
+    'ConsentMetricSchema',
+    'GenomicInformingLoopSchema',
+    'GenomicCVLResultPastDueSchema'
 ]

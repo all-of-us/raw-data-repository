@@ -29,6 +29,16 @@ class BQPDRPhysicalMeasurements(BQSchema):
                                          BQFieldModeEnum.NULLABLE)
     pm_final = BQField('pm_final', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     pm_restored = BQField('pm_restored', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    pm_questionnaire_response_id = BQField('pm_questionnaire_response_id',
+                                           BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    pm_collect_type = BQField('pm_collect_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    pm_collect_type_id = BQField('pm_collect_type_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    pm_origin = BQField('pm_origin', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    pm_origin_measurement_unit = BQField('pm_origin_measurement_unit', BQFieldTypeEnum.STRING,
+                                         BQFieldModeEnum.NULLABLE)
+    pm_origin_measurement_unit_id = BQField('pm_origin_measurement_unit_id', BQFieldTypeEnum.INTEGER,
+                                            BQFieldModeEnum.NULLABLE)
+
 
 
 # TODO:  Deprecate use of this class and add these fields to the BQBiobankOrderSchema
@@ -201,6 +211,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
     enrl_status = BQField('enrl_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     enrl_status_id = BQField('enrl_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     age_at_consent = BQField('age_at_consent', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    research_id = BQField('research_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQPDRParticipantSummary(BQTable):
@@ -431,7 +442,8 @@ class BQPDRParticipantBiobankOrderView(BQView):
              nt.bbo_tests_ordered,
              nt.bbo_tests_stored,
              nt.bbo_collection_method,
-             nt.bbo_collection_method_id
+             nt.bbo_collection_method_id,
+             nt.bbo_id
         FROM (
           SELECT *,
               ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
@@ -461,7 +473,9 @@ class BQPDRParticipantBiobankSampleView(BQView):
                nt.bbs_disposed,
                nt.bbs_disposed_reason,
                nt.bbs_disposed_reason_id,
-               nt.bbs_biobank_stored_sample_id
+               nt.bbs_biobank_stored_sample_id,
+               nt.bbs_id,
+               nt.bbs_hash_id
            FROM (
               SELECT *,
                   ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn

@@ -422,7 +422,14 @@ class BQPDREHRConsentPIISchema(_BQModuleSchema):
         'EHRConsentPII_ILHIPPAWitnessSignature',
         'EHRConsentPII_HelpWithConsentSignature',
         '12MoEHRConsentPII_EmailCopy',
-        '30MoEHRConsentPII_EmailCopy'
+        '30MoEHRConsentPII_EmailCopy',
+        'sensitivetype2_mentalhealth',
+        'sensitivetype2_hivaids',
+        'sensitivetype2_substanceuse',
+        'sensitivetype2_genetictesting',
+        'sensitivetype2_domesticviolence',
+        'signature_type',
+        'signature_draw'
     )
 
 
@@ -483,7 +490,9 @@ class BQPDRGRORSchema(_BQModuleSchema):
     )
     _force_boolean_fields = (
         'ResultsConsent_Signature',
-        'HelpMeWithConsent_Name'
+        'HelpMeWithConsent_Name',
+        'other_concerns',
+        'other_reasons'
     )
 
 class BQPDRGROR(BQTable):
@@ -1297,6 +1306,30 @@ class BQPDRPPIModuleFeedbackView(BQModuleView):
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
+# PDR-861:  Add WEAR Consent module:
+class BQPDRWearConsentSchema(_BQModuleSchema):
+    """ WEAR Consent Module """
+    _module = 'wear_consent'
+    _force_boolean_fields = (
+        'timeofday',
+        'HelpMeWithConsent_Name'
+    )
+
+class BQPDRWearConsent(BQTable):
+    """ PDR wear_consent BigQuery Table """
+    __tablename__ = 'pdr_mod_wear_consent'
+    __schema__ = BQPDRWearConsentSchema
+
+
+class BQPDRWearConsentView(BQModuleView):
+    """ PDR Wear_Consent BigQuery View """
+    __viewname__ = 'v_pdr_mod_wear_consent'
+    __viewdescr__ = 'PDR wear_consent Module View'
+    __table__ = BQPDRWearConsent
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
+
+
 #
 #
 #
@@ -1328,7 +1361,8 @@ PDR_MODULE_LIST = (
     BQPDRPersonalFamilyHistory,
     BQPDRGeneralFeedback,
     BQPDRPostPMBFeedback,
-    BQPDRPPIModuleFeedback
+    BQPDRPPIModuleFeedback,
+    BQPDRWearConsent
 )
 
 # Create a dictionary of module codes and table object references.

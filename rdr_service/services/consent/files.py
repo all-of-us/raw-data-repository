@@ -90,6 +90,32 @@ class ConsentFileAbstractFactory(ABC):
             if self._is_primary_update_consent(blob_wrapper, consent_date)
         ]
 
+    def get_wear_consents(self) -> List['WearConsentFile']:
+        return [
+            self._build_wear_consent(blob_wrapper)
+            for blob_wrapper in self.consent_blobs
+            if self._is_wear_consent(blob_wrapper)
+        ]
+
+    def get_from_path(self, file_path: str, consent_date=None) -> 'ConsentFile':
+        wrapper = None
+        for consent in self.consent_blobs:
+            if file_path in consent.blob.public_url:
+                wrapper = consent
+                break
+        if self._is_primary_consent(wrapper):
+            return self._build_primary_consent(wrapper)
+        elif self._is_cabor_consent(wrapper):
+            return self._build_cabor_consent(wrapper)
+        elif self._is_ehr_consent(wrapper):
+            return self._build_ehr_consent(wrapper)
+        elif self._is_gror_consent(wrapper):
+            return self._build_gror_consent(wrapper)
+        elif self._is_primary_update_consent(wrapper, consent_date=consent_date):
+            return self._build_primary_update_consent(wrapper, consent_date=consent_date)
+        elif self._is_wear_consent(wrapper):
+            return self._build_wear_consent(wrapper)
+
     @abstractmethod
     def _is_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         ...
@@ -111,6 +137,10 @@ class ConsentFileAbstractFactory(ABC):
         ...
 
     @abstractmethod
+    def _is_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        ...
+
+    @abstractmethod
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         ...
 
@@ -129,6 +159,10 @@ class ConsentFileAbstractFactory(ABC):
     @abstractmethod
     def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) \
             -> 'PrimaryConsentUpdateFile':
+        ...
+
+    @abstractmethod
+    def _build_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'WearConsentFile':
         ...
 
     @abstractmethod
@@ -177,6 +211,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
             )
         )
 
+    def _is_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        raise NotImplementedError('Wear consent validation not implemented for Vibrent')
+
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return VibrentPrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
@@ -197,6 +234,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
             consent_date=consent_date
         )
 
+    def _build_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'WearConsentFile':
+        raise NotImplementedError('Wear consent validation not implemented for Vibrent')
+
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['vibrent']
 
@@ -212,32 +252,52 @@ class CeConsentFactory(ConsentFileAbstractFactory):
         pdf = blob_wrapper.get_parsed_pdf()
         return pdf.has_text([(
             'Consent to Join the All of Us Research Program',
-            'Consentimiento para Participar en el Programa Científico'
+            'Consentimiento para Participar en el Programa Científico',
+            'Consentimiento para Participar en el\nPrograma Cientíﬁco'
         )])
 
     def _is_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         pdf = blob_wrapper.get_parsed_pdf()
         return pdf.has_text([(
             "California Experimental Subject's Bill of Rights",
-            'Declaración de Derechos del Sujeto de Investigación Experimental, de California'
+            'Declaración de Derechos del Sujeto de Investigación Experimental'
         )])
 
     def _is_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         pdf = blob_wrapper.get_parsed_pdf()
-        return pdf.has_text([(
-            'HIPAA Authorization for Research EHR',
-            'Autorización para Investigación de HIPAA'
-        )])
+        return pdf.has_text([
+            (
+                'HIPAA Authorization for Research EHR',
+                'Autorización para Investigación de HIPAA',
+                'Authorization to Share My EHRs for Research',
+                'Autorización para compartir mis EHR para propósitos de investigación'
+            )
+        ])
 
     def _is_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         pdf = blob_wrapper.get_parsed_pdf()
-        return pdf.has_text([(
-            'Consent to Receive DNA Results',
-            'Consentimiento para Recibir Resultados de ADN'
-        )])
+        return pdf.has_text([
+            (
+                'Consent to Receive DNA Results',
+                'Consentimiento para Recibir Resultados de ADN',
+                'Consent to Get DNA Results'
+            )
+        ])
 
     def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) -> bool:
         return False  # CE doesn't have cohort 1 participants to have needed re-consents
+
+    def _is_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        pdf = blob_wrapper.get_parsed_pdf()
+        return pdf.has_text([(
+            'All of Us WEAR Study',
+            'All of Us WEAR\nStudy',
+            'el Estudio WEAR de All of Us',
+            'Estudio del uso desensores portátiles',
+            'Estudio\ndel uso de sensores portátiles',
+            'All of Us Wearable Study',
+            'All of Us Wearable\nStudy'
+        )])
 
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return CePrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
@@ -254,6 +314,9 @@ class CeConsentFactory(ConsentFileAbstractFactory):
     def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) \
             -> 'PrimaryConsentUpdateFile':
         pass  # CE doesn't have cohort 1 participants to have needed re-consents
+
+    def _build_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'WearConsentFile':
+        return CeWearConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['careevolution']
@@ -304,6 +367,12 @@ class ConsentFile(ABC):
 
         return None
 
+    def get_printed_name(self):
+        printed_name_elements = self._get_printed_name_elements()
+        for element in printed_name_elements:
+            if isinstance(element, LTFigure) and len(element) > 0:
+                return ''.join([char_child.get_text() for char_child in element]).strip()
+
     def _get_date_signed_str(self):
         date_elements = self._get_date_elements()
         for element in date_elements:
@@ -315,6 +384,9 @@ class ConsentFile(ABC):
         return []
 
     def _get_date_elements(self):
+        return []
+
+    def _get_printed_name_elements(self):
         return []
 
 
@@ -330,6 +402,12 @@ class CaborConsentFile(ConsentFile, ABC):
 class EhrConsentFile(ConsentFile, ABC):
     def get_is_va_consent(self):
         return self.pdf.get_page_number_of_text(['We may ask you to go to a local clinic to be measured']) is not None
+
+    def is_sensitive_form(self):
+        return False
+
+    def has_valid_sensitive_form_initials(self):
+        return False
 
 
 class GrorConsentFile(ConsentFile, ABC):
@@ -370,6 +448,10 @@ class PrimaryConsentUpdateFile(PrimaryConsentFile, ABC):
         return update_agreement_page_number is not None
 
 
+class WearConsentFile(PrimaryConsentFile, ABC):
+    ...
+
+
 class VibrentPrimaryConsentFile(PrimaryConsentFile):
     def _get_signature_page(self):
         return self.pdf.get_page_number_of_text([
@@ -405,6 +487,14 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
 
         return elements
 
+    def _get_printed_name_elements(self):
+        signature_page = self._get_signature_page()
+
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50),
+            page=signature_page
+        )
+
 
 class VibrentCaborConsentFile(CaborConsentFile):
     def _get_signature_elements(self):
@@ -421,13 +511,78 @@ class VibrentCaborConsentFile(CaborConsentFile):
 
         return elements
 
+    def _get_printed_name_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50)
+        )
+
 
 class VibrentEhrConsentFile(EhrConsentFile):
     def _get_signature_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=250, bottom=160, top=165), page=6)
+        signature_page_number = self._get_signature_page_number()
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=130, right=250, bottom=160, top=165),
+            page=signature_page_number
+        )
 
     def _get_date_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=250, bottom=110, top=115), page=6)
+        signature_page_number = self._get_signature_page_number()
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=130, right=250, bottom=110, top=115),
+            page=signature_page_number
+        )
+
+    def _get_printed_name_elements(self):
+        signature_page_number = self._get_signature_page_number()
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=55),
+            page=signature_page_number
+        )
+
+    def is_sensitive_form(self):
+        return self.pdf.get_page_number_of_text([(
+            'I agree to release sensitive information from my EHRs',
+            'Acepto compartir información confidencial de mis EHR'
+        )]) is not None
+
+    def _get_signature_page_number(self):
+        return self.pdf.get_page_number_of_text([(
+            'You will have access to a signed copy of this form',
+            'Usted tendrá acceso a una copia firmada de este documento'
+        )])
+
+    def has_valid_sensitive_form_initials(self):
+        initial_location_list = [
+            Rect.from_edges(left=82, right=130, bottom=345, top=350),
+            Rect.from_edges(left=82, right=130, bottom=390, top=395),
+            Rect.from_edges(left=82, right=130, bottom=445, top=450),
+            Rect.from_edges(left=82, right=130, bottom=490, top=495),
+            Rect.from_edges(left=82, right=130, bottom=540, top=545),
+        ]
+        initial_text_found = None
+
+        for location in initial_location_list:
+            element_list = self.pdf.get_elements_intersecting_box(location, page=7)
+
+            initial_text_at_location = None
+            for element in element_list:
+                first_child = Pdf.get_first_child_of_element(element)
+
+                if isinstance(first_child, LTChar):
+                    initial_from_element = ''.join([char_child.get_text() for char_child in element]).strip()
+                    if not initial_from_element:
+                        # Move to the next element to check if nothing was found here
+                        continue
+
+                    initial_text_found = initial_from_element
+                    initial_text_at_location = initial_from_element
+                    break
+
+            if not initial_text_at_location:
+                # If a given location doesn't have an initial, return that the initials are invalid
+                return False
+
+        return bool(initial_text_found)
 
 
 class VibrentGrorConsentFile(GrorConsentFile):
@@ -454,6 +609,12 @@ class VibrentGrorConsentFile(GrorConsentFile):
             search_box = Rect.from_edges(left=70, right=73, bottom=475, top=478)
 
         return self.pdf.get_elements_intersecting_box(search_box, page=self._SIGNATURE_PAGE)
+
+    def _get_printed_name_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50),
+            page=self._SIGNATURE_PAGE
+        )
 
 
 class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
@@ -508,6 +669,12 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
 
             return False
 
+    def _get_printed_name_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50),
+            page=self._get_signature_page()
+        )
+
 
 class CeFileWrapper:
     def __init__(self, pdf):
@@ -529,39 +696,30 @@ class CeFileWrapper:
         return None
 
     def get_signature_on_file(self):
-        self.shift_params = (8, 10)
-        signature_str = self._try_to_parse_signature("Participant's Name (printed)")
-        if signature_str:
-            return signature_str
+        signature_offsets = [
+            (8, 15),
+            (73, 80)
+        ]
 
-        self.shift_params = (73, 75)
-        signature_str = self._try_to_parse_signature("Participant's Name (printed)")
-        if signature_str:
-            return signature_str
+        signature_label_strings = [
+            "Participant's Name (printed)",
+            "'s Name (printed)",
+            "Name (printed)",
+            'Nombre'
+        ]
 
-        self.shift_params = (8, 10)
-        signature_str = self._try_to_parse_signature("'s Name (printed)")
-        if signature_str:
-            return signature_str
-
-        self.shift_params = (73, 75)
-        signature_str = self._try_to_parse_signature("'s Name (printed)")
-        if signature_str:
-            return signature_str
-
-        self.shift_params = (8, 10)
-        signature_str = self._try_to_parse_signature("Name (printed)")
-        if signature_str:
-            return signature_str
-
-        self.shift_params = (73, 75)
-        signature_str = self._try_to_parse_signature("Name (printed)")
-        if signature_str:
-            return signature_str
+        for offset in signature_offsets:
+            for label_string in signature_label_strings:
+                self.shift_params = offset
+                signature_str = self._try_to_parse_signature(label_string)
+                if signature_str:
+                    return signature_str
 
     def get_date_signed_str(self):
         signature_page = self._get_last_page()
         signature_footer_location = self._get_location_of_string(signature_page, 'Date')
+        if not signature_footer_location:
+            signature_footer_location = self._get_location_of_string(signature_page, 'Fecha')
 
         if signature_footer_location:
             date_string_list = self._text_in_bounds(
@@ -688,6 +846,18 @@ class CeGrorConsentFile(GrorConsentFile):
 
     def _get_confirmation_check_elements(self):
         return []
+
+
+class CeWearConsentFile(WearConsentFile):
+    def __init__(self, *args, **kwargs):
+        super(CeWearConsentFile, self).__init__(*args, **kwargs)
+        self.pdf_wrapper = CeFileWrapper(self.pdf)
+
+    def get_signature_on_file(self):
+        return self.pdf_wrapper.get_signature_on_file()
+
+    def _get_date_signed_str(self):
+        return self.pdf_wrapper.get_date_signed_str()
 
 
 class Pdf:

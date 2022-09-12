@@ -205,7 +205,7 @@ class DeployAppClass(ToolBase):
             if os.path.exists(c):
                 os.remove(c)
 
-    def create_jira_ticket(self, summary, descr=None, board_id=None, components=None):
+    def create_jira_ticket(self, summary, descr=None, board_id=None, components=None, issue_type=None):
         """
         Create a Jira ticket.
         """
@@ -252,7 +252,13 @@ class DeployAppClass(ToolBase):
         if not board_id:
             board_id = self.jira_board
 
-        ticket = self._jira_handler.create_ticket(summary, descr, board_id=board_id, components=components)
+        ticket = self._jira_handler.create_ticket(
+            summary,
+            descr,
+            board_id=board_id,
+            components=components,
+            issue_type=issue_type
+        )
         return ticket
 
     def add_jira_comment(self, comment):
@@ -279,6 +285,7 @@ class DeployAppClass(ToolBase):
             if self.gcp_env.project == 'all-of-us-rdr-staging':
                 ticket = self.create_jira_ticket(
                     summary,
+                    issue_type='Release',
                     components=[{'id': '10074'}]  # "Change Management" component
                 )
                 if not ticket:

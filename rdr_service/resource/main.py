@@ -1,7 +1,5 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
 
-import rdr_service.activate_debugger  # pylint: disable=unused-import
-
 from flask import Flask, got_request_exception
 from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
@@ -55,6 +53,10 @@ def _build_resource_app():
     _api.add_resource(cloud_tasks_api.RebuildRetentionEligibleMetricsApi,
                       TASK_PREFIX + "RebuildRetentionEligibleMetricsApi",
                       endpoint="batch_rebuild_retention_eligible_task", methods=["POST"])
+
+    _api.add_resource(cloud_tasks_api.PtscHealthDataTransferValidTaskApi,
+                      TASK_PREFIX + "PtscHealthDataTransferValidTaskApi",
+                      endpoint="ptsc_health_data_transfer_valid_task", methods=["POST"])
 
     # Store message broker event data
     _api.add_resource(message_broker_cloud_tasks_api.StoreMessageBrokerEventDataTaskApi,
@@ -138,9 +140,14 @@ def _build_resource_app():
                       endpoint="calculate_contamination_category_task", methods=["POST"])
 
     # Ingest Message Broker Data
-    _api.add_resource(genomic_cloud_tasks_api.IngestFromMessageBrokerDataApi,
-                      TASK_PREFIX + "IngestFromMessageBrokerDataApi",
-                      endpoint="ingest_from_message_broker_data_task", methods=["POST"])
+    _api.add_resource(genomic_cloud_tasks_api.IngestGenomicMessageBrokerDataApi,
+                      TASK_PREFIX + "IngestGenomicMessageBrokerDataApi",
+                      endpoint="ingest_genomic_message_broker_data_task", methods=["POST"])
+
+    # Ingest Message Broker Data - appointments only
+    _api.add_resource(genomic_cloud_tasks_api.IngestGenomicMessageBrokerAppointmentApi,
+                      TASK_PREFIX + "IngestGenomicMessageBrokerAppointmentApi",
+                      endpoint="ingest_genomic_message_broker_appointment_task", methods=["POST"])
 
     # Update Genomic Set Member Job Run
     _api.add_resource(genomic_cloud_tasks_api.GenomicSetMemberUpdateApi,
@@ -159,6 +166,11 @@ def _build_resource_app():
     #
     # End primary Resource API endpoint
     #
+
+    _api.add_resource(cloud_tasks_api.ValidateDateOfBirthApi,
+                      TASK_PREFIX + 'ValidateDateOfBirth',
+                      endpoint='check_date_of_birth', methods=['POST'])
+
     _app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
     _app.add_url_rule('/_ah/stop', endpoint='stop', view_func=flask_stop, methods=["GET"])
 

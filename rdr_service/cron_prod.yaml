@@ -34,6 +34,11 @@ cron:
   schedule: every day 03:00
   timezone: America/New_York
   target: offline
+- description: Check any new survey responses for validation errors
+  url: /offline/ResponseValidation
+  schedule: every day 03:30
+  timezone: America/New_York
+  target: offline
 - description: BigQuery Sync
   url: /offline/BigQuerySync
   timezone: America/New_York
@@ -79,14 +84,23 @@ cron:
   timezone: America/New_York
   schedule: every day 08:15
   target: offline
+- description: Check for Yes-No-Yes GROR W1IL participants
+  url: /offline/CheckForW1ilGrorResubmitParticipants
+  timezone: America/New_York
+  schedule: every monday 10:00
+  target: offline
 - description: Genomic Data PDR Reconcile
   url: /offline/GenomicDataPdrReconcile
   timezone: America/New_York
-  schedule: every 6 hours
+  schedule: every 30 minutes
   target: offline
-- description: Genomic Delete Old GP User Events
-  url: /offline/GenomicDeleteOldGPUserEvents
+- description: Export VA Workqueue (Daily)
+  url: /offline/ExportVaWorkQueue
   timezone: America/New_York
-  schedule: every day 13:30
+  schedule: every day 02:00
   target: offline
-
+- description: Delete Old VA Workqueue Reports (Daily)
+  url: /offline/DeleteOldVaWorkQueueReports
+  timezone: America/New_York
+  schedule: every day 01:00
+  target: offline

@@ -1,0 +1,12 @@
+# app_base.yaml is concatenated to the beginning of this file for deployment.
+# https://cloud.google.com/appengine/docs/standard/
+instance_class: F4
+
+# Have 2 idle instances to prepare for sudden traffic spikes.
+automatic_scaling:
+  min_idle_instances: 2
+
+# to have fixed outbound US. ip address
+vpc_access_connector:
+  name: projects/aou-svpc-stable/locations/us-central1/connectors/stable-rdr-egress
+  egress_setting: all-traffic

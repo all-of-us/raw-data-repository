@@ -5,6 +5,7 @@ PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 # System for codes that are used in questionnaires but we don't need for analysis purposes;
 # these codes are ignored by RDR.
 PPI_EXTRA_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi-extra"
+MEASUREMENT_SYS = 'http://terminology.pmi-ops.org/CodeSystem/physical-measurements'
 
 SITE_ID_SYSTEM = "https://www.pmi-ops.org/site-id"
 QUEST_SITE_ID_SYSTEM = "https://www.pmi-ops.org/quest-site"
@@ -31,12 +32,15 @@ SEXUAL_ORIENTATION_QUESTION_CODE = "TheBasics_SexualOrientation"
 EDUCATION_QUESTION_CODE = "EducationLevel_HighestGrade"
 INCOME_QUESTION_CODE = "Income_AnnualIncome"
 EHR_CONSENT_QUESTION_CODE = "EHRConsentPII_ConsentPermission"
+EHR_SENSITIVE_CONSENT_QUESTION_CODE = "ehrconsentpii_sensitivetype2"
 EHR_CONSENT_EXPIRED_QUESTION_CODE = "EHRConsentPII_ConsentExpired"
 DVEHR_SHARING_QUESTION_CODE = "DVEHRSharing_AreYouInterested"
 CABOR_SIGNATURE_QUESTION_CODE = "ExtraConsent_CABoRSignature"
 GROR_CONSENT_QUESTION_CODE = "ResultsConsent_CheckDNA"
 COPE_CONSENT_QUESTION_CODE = "section_participation"
+WEAR_CONSENT_QUESTION_CODE = "resultsconsent_wear"
 PRIMARY_CONSENT_UPDATE_QUESTION_CODE = "Reconsent_ReviewConsentAgree"
+VA_EHR_RECONSENT_QUESTION_CODE = "vaehrreconsent_agree"
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
@@ -77,6 +81,7 @@ PMI_PREFER_NOT_TO_ANSWER_CODE = "PMI_PreferNotToAnswer"
 PMI_OTHER_CODE = "PMI_Other"
 PMI_FREE_TEXT_CODE = "PMI_FreeText"
 PMI_UNANSWERED_CODE = "PMI_Unanswered"
+PMI_YES = "pmi_yes"
 
 # Gender answer codes. 'GenderIdentity_MoreThanOne' is also an option, set in participant enums.
 GENDER_MAN_CODE = "GenderIdentity_Man"
@@ -107,6 +112,7 @@ CONSENT_PERMISSION_YES_CODE = "ConsentPermission_Yes"
 CONSENT_PERMISSION_NO_CODE = "ConsentPermission_No"
 CONSENT_PERMISSION_NOT_SURE = "ConsentPermission_NotSure"
 EHR_CONSENT_EXPIRED_YES = "EHRConsentPII_ConsentExpired_Yes"
+SENSITIVE_EHR_YES = "sensitivetype2__agree"
 
 # Consent GROR Answer Codes
 CONSENT_GROR_YES_CODE = "CheckDNA_Yes"
@@ -116,6 +122,8 @@ CONSENT_GROR_NOT_SURE = "CheckDNA_NotSure"
 # Reconsent Answer Codes
 COHORT_1_REVIEW_CONSENT_YES_CODE = "ReviewConsentAgree_Yes"
 COHORT_1_REVIEW_CONSENT_NO_CODE = "ReviewConsentAgree_No"
+
+WEAR_YES_ANSWER_CODE = "wear_yes"
 
 # Cohort Group Code
 CONSENT_COHORT_GROUP_CODE = "ConsentPII_CohortGroup"
@@ -163,7 +171,8 @@ SOCIAL_DETERMINANTS_OF_HEALTH_MODULE = "sdoh"
 PERSONAL_AND_FAMILY_HEALTH_HISTORY_MODULE = 'personalfamilyhistory'
 PERSONAL_MEDICAL_HISTORY_MODULE = "PersonalMedicalHistory"
 MEDICATIONS_MODULE = "MedicationsPPI"
-# TODO: UPDATE THIS TO REAL CODEBOOK VALUES WHEN PRESENT
+REMOTE_PM_MODULE = 'pm_height_weight'
+REMOTE_PM_UNIT = 'measurement_unit'
 HEALTHCARE_ACCESS_MODULE = "HealthcareAccess"
 # COVID Experience surveys:
 # The COPE module covers the May/June/July (2020) COPE Survey questionnaires
@@ -173,6 +182,22 @@ COPE_NOV_MODULE = 'cope_nov'
 COPE_DEC_MODULE = "cope_dec"
 COPE_FEB_MODULE = "cope_feb"
 GENETIC_ANCESTRY_MODULE = 'GeneticAncestry'
+LIFE_FUNCTIONING_SURVEY = 'lfs'
+
+VA_PRIMARY_RECONSENT_C1_C2 = 'vaprimaryreconsent_c1_2'
+VA_PRIMARY_RECONSENT_C3 = 'vaprimaryreconsent_c3'
+VA_EHR_RECONSENT = 'vaehrreconsent'
+NON_VA_PRIMARY_RECONSENT = 'nonvaprimaryreconsent'
+
+# ConsentPII Questions
+RECEIVE_CARE_STATE = "ReceiveCare_PIIState"
+
+# ConsentPII Answers
+OR_CARE_STATE = "PIIStateCare_OR"
+TX_CARE_STATE = "PIIStateCare_TX"
+AK_CARE_STATE = "PIIStateCare_AK"
+MA_CARE_STATE = "PIIStateCare_MA"
+MI_CARE_STATE = "PIIStateCare_MI"
 
 # DVEHR ANSWERS
 DVEHRSHARING_CONSENT_CODE_YES = "DVEHRSharing_Yes"
@@ -191,6 +216,10 @@ APPLE_HEALTH_KIT_SHARING_MODULE = "participantintendstoshareapplehealthkit"
 APPLE_HEALTH_KIT_STOP_SHARING_MODULE = "participantintendstostopsharingapplehealthkit"
 FITBIT_SHARING_MODULE = "participantintendstosharefitbit"
 FITBIT_STOP_SHARING_MODULE = "participantintendstostopsharingfitbit"
+
+# General response answer codes
+AGREE_YES = "agree_yes"
+AGREE_NO = "agree_no"
 
 BIOBANK_TESTS = [
     "1ED10",
@@ -237,4 +266,10 @@ AW2_BUCKETS = [
 # Source of a created participant
 ORIGINATING_SOURCES = ['vibrent', 'careevolution', 'example']
 
-
+SENSITIVE_EHR_STATES = [
+    OR_CARE_STATE,
+    TX_CARE_STATE,
+    AK_CARE_STATE,
+    MA_CARE_STATE,
+    MI_CARE_STATE
+]

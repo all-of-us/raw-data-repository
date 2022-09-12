@@ -6,6 +6,6 @@ Participant Summary Field List
     :members:
     :undoc-members:
     :exclude-members: stateId, recontactMethodId, languageId, genderIdentityId, sexId, sexualOrientationId, educationId,
-                      incomeId, physicalMeasurementsCreatedSiteId, physicalMeasurementsFinalizedSiteId, organizationId,
-                      siteId, biospecimenSourceSiteId, biospecimenCollectedSiteId, biospecimenProcessedSiteId,
-                      biospecimenFinalizedSiteId, participant, enrollmentSiteId
+                      incomeId, clinicPhysicalMeasurementsCreatedSiteId, clinicPhysicalMeasurementsFinalizedSiteId,
+                      organizationId, siteId, biospecimenSourceSiteId, biospecimenCollectedSiteId,
+                      biospecimenProcessedSiteId, biospecimenFinalizedSiteId, participant, enrollmentSiteId

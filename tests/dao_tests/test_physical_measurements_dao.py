@@ -11,7 +11,8 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.participant import Participant
-from rdr_service.participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus
+from rdr_service.participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus, \
+    PhysicalMeasurementsCollectType, OriginMeasurementUnit
 from rdr_service.query import FieldFilter, Operator, Query
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -158,6 +159,9 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             ("participantId", self.participant.participantId),
             ("createdSiteId", 1),
             ("finalizedSiteId", 2),
+            ("origin", 'hpro'),
+            ("collectType", PhysicalMeasurementsCollectType.SITE),
+            ("originMeasurementUnit", OriginMeasurementUnit.UNSET)
         ):
             if k not in kwargs:
                 kwargs[k] = default_value
@@ -189,7 +193,7 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
     def testInsert_rightParticipantId(self):
         self._make_summary()
         summary = ParticipantSummaryDao().get(self.participant.participantId)
-        self.assertIsNone(summary.physicalMeasurementsStatus)
+        self.assertIsNone(summary.clinicPhysicalMeasurementsStatus)
         with FakeClock(TIME_2):
             measurements = self.dao.insert(self._make_physical_measurements())
 
@@ -202,6 +206,9 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             logPositionId=1,
             createdSiteId=1,
             finalizedSiteId=2,
+            collectType=PhysicalMeasurementsCollectType.SITE,
+            originMeasurementUnit=OriginMeasurementUnit.UNSET,
+            origin='hpro'
         )
 
         doc = json.loads(self._with_id(self.measurement_json, "1"))
@@ -213,8 +220,8 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
         self.assertEqual(self.dao._measurements_as_dict(expected_measurements), self.dao._measurements_as_dict(measurements))
         # Completing physical measurements changes the participant summary status
         summary = ParticipantSummaryDao().get(self.participant.participantId)
-        self.assertEqual(PhysicalMeasurementsStatus.COMPLETED, summary.physicalMeasurementsStatus)
-        self.assertEqual(TIME_2, summary.physicalMeasurementsTime)
+        self.assertEqual(PhysicalMeasurementsStatus.COMPLETED, summary.clinicPhysicalMeasurementsStatus)
+        self.assertEqual(TIME_2, summary.clinicPhysicalMeasurementsTime)
         self.assertEqual(TIME_2, summary.lastModified)
 
     def testInsert_withdrawnParticipantFails(self):
@@ -222,7 +229,7 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
         ParticipantDao().update(self.participant)
         self._make_summary()
         summary = ParticipantSummaryDao().get(self.participant.participantId)
-        self.assertIsNone(summary.physicalMeasurementsStatus)
+        self.assertIsNone(summary.clinicPhysicalMeasurementsStatus)
         with self.assertRaises(Forbidden):
             self.dao.insert(self._make_physical_measurements())
 
@@ -245,7 +252,6 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             measurements = self.dao.insert(self._make_physical_measurements())
         with FakeClock(TIME_3):
             measurements_2 = self.dao.insert(self._make_physical_measurements())
-
         self.assertEqual(self.dao._measurements_as_dict(measurements), self.dao._measurements_as_dict(measurements_2))
 
     def testInsert_amend(self):
@@ -277,7 +283,7 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
     def test_update_with_patch_cancel(self):
         self._make_summary()
         summary = ParticipantSummaryDao().get(self.participant.participantId)
-        self.assertIsNone(summary.physicalMeasurementsStatus)
+        self.assertIsNone(summary.clinicPhysicalMeasurementsStatus)
         with FakeClock(TIME_2):
             measurements = self.dao.insert(self._make_physical_measurements())
 
@@ -294,11 +300,11 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
         self.assertEqual(update.cancelledUsername, cancel["cancelledInfo"]["author"]["value"])
 
         summary = ParticipantSummaryDao().get(self.participant.participantId)
-        self.assertEqual(summary.physicalMeasurementsStatus, PhysicalMeasurementsStatus.CANCELLED)
-        self.assertEqual(summary.physicalMeasurementsTime, None)
-        self.assertEqual(summary.physicalMeasurementsFinalizedTime, None)
-        self.assertEqual(summary.physicalMeasurementsCreatedSiteId, 1)
-        self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, None)
+        self.assertEqual(summary.clinicPhysicalMeasurementsStatus, PhysicalMeasurementsStatus.CANCELLED)
+        self.assertEqual(summary.clinicPhysicalMeasurementsTime, None)
+        self.assertEqual(summary.clinicPhysicalMeasurementsFinalizedTime, None)
+        self.assertEqual(summary.clinicPhysicalMeasurementsCreatedSiteId, 1)
+        self.assertEqual(summary.clinicPhysicalMeasurementsFinalizedSiteId, None)
 
         with FakeClock(TIME_3):
             measurements = self.dao.insert(self._make_physical_measurements(physicalMeasurementsId=2))
@@ -307,17 +313,17 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             self.dao.insert(self._make_physical_measurements(physicalMeasurementsId=3))
 
         summary = ParticipantSummaryDao().get(self.participant.participantId)
-        self.assertEqual(summary.physicalMeasurementsStatus, PhysicalMeasurementsStatus.COMPLETED)
-        self.assertEqual(summary.physicalMeasurementsTime, TIME_4)
-        self.assertEqual(summary.physicalMeasurementsFinalizedTime, TIME_1)
-        self.assertEqual(summary.physicalMeasurementsCreatedSiteId, 1)
-        self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, 2)
+        self.assertEqual(summary.clinicPhysicalMeasurementsStatus, PhysicalMeasurementsStatus.COMPLETED)
+        self.assertEqual(summary.clinicPhysicalMeasurementsTime, TIME_4)
+        self.assertEqual(summary.clinicPhysicalMeasurementsFinalizedTime, TIME_1)
+        self.assertEqual(summary.clinicPhysicalMeasurementsCreatedSiteId, 1)
+        self.assertEqual(summary.clinicPhysicalMeasurementsFinalizedSiteId, 2)
 
     def test_cancel_fhir_doc(self):
 
         self._make_summary()
         summary = ParticipantSummaryDao().get(self.participant.participantId)
-        self.assertIsNone(summary.physicalMeasurementsStatus)
+        self.assertIsNone(summary.clinicPhysicalMeasurementsStatus)
         with FakeClock(TIME_2):
             measurements = self.dao.insert(self._make_physical_measurements())
 
@@ -352,7 +358,7 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
 
         self._make_summary()
         summary = ParticipantSummaryDao().get(self.participant.participantId)
-        self.assertIsNone(summary.physicalMeasurementsStatus)
+        self.assertIsNone(summary.clinicPhysicalMeasurementsStatus)
         with FakeClock(TIME_2):
             measurements = self.dao.insert(self._make_physical_measurements())
 
@@ -398,7 +404,7 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
 
         self._make_summary()
         summary = ParticipantSummaryDao().get(self.participant.participantId)
-        self.assertIsNone(summary.physicalMeasurementsStatus)
+        self.assertIsNone(summary.clinicPhysicalMeasurementsStatus)
         with FakeClock(TIME_2):
             measurements = self.dao.insert(self._make_physical_measurements())
 

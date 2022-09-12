@@ -1,0 +1,246 @@
+{
+   "notifications": [
+      {
+         "bucket": "genomics-raw-baylor",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "33",
+         "object_name_prefix": "W4WR_manifests_hdr/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-raw-baylor",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "34",
+         "object_name_prefix": "W4WR_manifests_pgx/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-raw-baylor",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "35",
+         "object_name_prefix": "W3SC_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-raw-baylor",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "36",
+         "object_name_prefix": "W2SC_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-raw-color",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "14",
+         "object_name_prefix": "W2SC_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-raw-color",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "15",
+         "object_name_prefix": "W3SC_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-raw-color",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "16",
+         "object_name_prefix": "W4WR_manifests_hdr/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-raw-color",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "17",
+         "object_name_prefix": "W4WR_manifests_pgx/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-raw-northwest",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "34",
+         "object_name_prefix": "W4WR_manifests_hdr/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-raw-northwest",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "35",
+         "object_name_prefix": "W4WR_manifests_pgx/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-raw-northwest",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "36",
+         "object_name_prefix": "W2SC_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-raw-northwest",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "37",
+         "object_name_prefix": "W3SC_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-baylor-dryrun",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "32",
+         "object_name_prefix": "W3NS_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-baylor-dryrun",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "33",
+         "object_name_prefix": "W3SS_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-color-dryrun",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "23",
+         "object_name_prefix": "W3SS_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-color-dryrun",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "24",
+         "object_name_prefix": "W3NS_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-northwest-dryrun",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "26",
+         "object_name_prefix": "W3NS_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "genomics-northwest-dryrun",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "27",
+         "object_name_prefix": "W3SS_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "color-rhp-stable",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "12",
+         "object_name_prefix": "user_events/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_metric_files_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "color-rhp-stable",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "16",
+         "object_name_prefix": "BCM_W5NF_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "color-rhp-stable",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "17",
+         "object_name_prefix": "CO_W5NF_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      },
+      {
+         "bucket": "color-rhp-stable",
+         "event_types": [
+            "OBJECT_FINALIZE"
+         ],
+         "id": "18",
+         "object_name_prefix": "UW_W5NF_manifests/",
+         "payload_format": "JSON_API_V1",
+         "topic_name": "genomic_manifest_upload",
+         "topic_project": "all-of-us-rdr-stable"
+      }
+   ]
+}

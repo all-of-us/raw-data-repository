@@ -1,10 +1,12 @@
 # Runs the ETL SQL on a Cloud database.
 
-USAGE="etl/run_cloud_etl.sh --project <PROJECT> --account <ACCOUNT> [--noclone]"
+USAGE="etl/run_cloud_etl.sh --project <PROJECT> --account <ACCOUNT> [--noclone] [--cutoff <2022-04-01>] --vocabulary <vocabulary path>"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
     --project) PROJECT=$2; shift 2;;
+    --cutoff) CUTOFF=$2; shift 2;;
+    --vocabulary) VOCABULARY=$2; shift 2;;
     --noclone) NOCLONE="Y"; shift 1;;
     -- ) shift; break ;;
     * ) break ;;
@@ -60,7 +62,13 @@ set_db_connection_string
 echo "Running ETL..."
 
 mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/partially_initialize_cdm.sql
-python -m tools curation --project ${PROJECT} cdm-data
-mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/finalize_cdm_data.sql
+if [ -z "${CUTOFF}" ]
+then
+  python -m tools curation --project ${PROJECT} cdm-data --vocabulary ${VOCABULARY}
+  mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/finalize_cdm_data.sql
+else
+  python -m tools curation --project ${PROJECT} cdm-data --cutoff ${CUTOFF} --vocabulary ${VOCABULARY}
+  sed 's/-- %SED_PM_CUTOFF_FILTER%/AND pm.finalized < "'"${CUTOFF}"'"/g' etl/raw_sql/finalize_cdm_data.sql | mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT}
+fi
 
 echo "Done with ETL. Please manually run export."

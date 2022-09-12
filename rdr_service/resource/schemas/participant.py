@@ -10,7 +10,7 @@ from rdr_service.participant_enums import QuestionnaireStatus, ParticipantCohort
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
     SuspensionStatus, QuestionnaireResponseStatus, QuestionnaireResponseClassificationType, \
     DeceasedStatus, ParticipantCohortPilotFlag, WithdrawalAIANCeremonyStatus, BiobankOrderStatus, \
-    SampleCollectionMethod
+    SampleCollectionMethod, PhysicalMeasurementsCollectType, OriginMeasurementUnit
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
@@ -31,6 +31,26 @@ class StreetAddressTypeEnum(Enum):
 
 COHORT_1_CUTOFF = date(2018, 4, 24)
 COHORT_2_CUTOFF = date(2020, 4, 16)
+
+
+BIOBANK_UNIQUE_TEST_IDS = {
+    # The value for each test must be preserved, only append new tests to the end.
+    "1CFD9": '01',
+    "1ED04": '02',
+    "1ED10": '03',
+    "1HEP4": '04',
+    "1PST8": '05',
+    "1PXR2": '06',
+    "1SAL": '07',
+    "1SAL2": '08',
+    "1SST8": '09',
+    "1UR10": '10',
+    "2ED10": '11',
+    "2PST8": '12',
+    "2SST8": '13',
+    "1ED02": '14',
+    "1PS08": '15',
+}
 
 
 class AddressSchema(Schema):
@@ -151,6 +171,7 @@ class SexualOrientationSchema(Schema):
 class PhysicalMeasurementsSchema(Schema):
     """ Participant Physical Measurements """
     physical_measurements_id = fields.Int32()
+    questionnaire_response_id = fields.Int32()
     status = fields.EnumString(enum=PhysicalMeasurementsStatus)
     status_id = fields.EnumInteger(enum=PhysicalMeasurementsStatus)
     created = fields.DateTime()
@@ -161,6 +182,11 @@ class PhysicalMeasurementsSchema(Schema):
     finalized_site_id = fields.Int32()
     finalized = fields.DateTime()
     amended_measurements_id = fields.Int32()
+    collect_type = fields.EnumString(enum=PhysicalMeasurementsCollectType)
+    collect_type_id = fields.EnumInteger(enum=PhysicalMeasurementsCollectType)
+    origin = fields.String(validate=validate.Length(max=255))
+    origin_measurement_unit = fields.EnumString(enum=OriginMeasurementUnit)
+    origin_measurement_unit_id = fields.EnumInteger(enum=OriginMeasurementUnit)
     restored = fields.Boolean()
 
     class Meta:
@@ -173,6 +199,8 @@ class PhysicalMeasurementsSchema(Schema):
 
 class BiobankSampleSchema(Schema):
     """ Biobank sample information """
+    id = fields.Int64()
+    hash_id = fields.Int32()
     test = fields.String(validate=validate.Length(max=80))
     baseline_test = fields.Boolean()
     dna_test = fields.Boolean()
@@ -200,6 +228,7 @@ class BiobankOrderSchema(Schema):
     """
     Biobank order information
     """
+    id = fields.Int32()
     biobank_order_id = fields.String(validate=validate.Length(max=80))
     created = fields.DateTime()
     status = fields.EnumString(enum=BiobankOrderStatus)
@@ -433,7 +462,7 @@ class ParticipantSchema(Schema):
         # Exclude fields and/or functions to strip PII information from fields.
         pii_fields = ('phone_number', 'login_phone_number', 'email',
                       'distinct_visits', 'first_name', 'middle_name', 'last_name',
-                      'sexual_orientation', 'sexual_orientation_id', 'research_id', 'last_modified'
+                      'sexual_orientation', 'sexual_orientation_id', 'last_modified'
                       ) # List fields that contain PII data
 
         pii_filter = {}  # dict(field: lambda function).

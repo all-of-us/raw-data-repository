@@ -10,7 +10,8 @@ from rdr_service.model.utils import Enum, MultiEnum, UTCDateTime, UTCDateTime6
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
     GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
-    GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState
+    GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState, \
+    ResultsWorkflowState, ResultsModuleType, GenomicSampleSwapCategory
 
 
 class GenomicSet(Base):
@@ -53,6 +54,41 @@ class GenomicSetMember(Base):
   """
 
     __tablename__ = "genomic_set_member"
+
+    history_table = True
+    exclude_column_names_from_history = [
+        'modified',
+        'reconcile_metrics_bb_manifest_job_run_id',
+        'reconcile_gc_manifest_job_run_id',
+        'reconcile_metrics_sequencing_job_run_id',
+        'reconcile_cvl_job_run_id',
+        'gem_a1_manifest_job_run_id',
+        'gem_a2_manifest_job_run_id',
+        'gem_a3_manifest_job_run_id',
+        'aw3_manifest_job_run_id',
+        'aw4_manifest_job_run_id',
+        'aw2f_manifest_job_run_id',
+        'cvl_w1_manifest_job_run_id',
+        'cvl_w2_manifest_job_run_id',
+        'cvl_w3_manifest_job_run_id',
+        'cvl_w4_manifest_job_run_id',
+        'cvl_w4f_manifest_job_run_id',
+        'cvl_aw1c_manifest_job_run_id',
+        'cvl_aw1cf_manifest_job_run_id',
+        'cvl_w3sr_manifest_job_run_id',
+        'cvl_w2sc_manifest_job_run_id',
+        'color_metrics_job_run_id',
+        'cvl_w1il_pgx_job_run_id',
+        'cvl_w1il_hdr_job_run_id',
+        'cvl_w2w_job_run_id',
+        'cvl_w4wr_pgx_manifest_job_run_id',
+        'cvl_w4wr_hdr_manifest_job_run_id',
+        'cvl_w3sc_manifest_job_run_id',
+        'cvl_w3ns_manifest_job_run_id',
+        'cvl_w5nf_pgx_manifest_job_run_id',
+        'cvl_w5nf_hdr_manifest_job_run_id',
+        'cvl_w3ss_manifest_job_run_id'
+    ]
 
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -223,8 +259,6 @@ class GenomicSetMember(Base):
 
     reportConsentRemovalDate = Column('report_consent_removal_date', DateTime(timezone=True), nullable=True)
 
-    genomicWorkflowStateHistory = Column("genomic_workflow_state_history", JSON, nullable=True)
-
     # Broad QC Status
     qcStatus = Column('qc_status', Enum(GenomicQcStatus), default=GenomicQcStatus.UNSET)
     qcStatusStr = Column('qc_status_str', String(64), default="UNSET")
@@ -246,16 +280,80 @@ class GenomicSetMember(Base):
     blockResultsReason = Column('block_results_reason', String(255), nullable=True)
     participantOrigin = Column("participant_origin", String(80), nullable=True)
 
+    cvlW1ilPgxJobRunId = Column('cvl_w1il_pgx_job_run_id',
+                                Integer, ForeignKey('genomic_job_run.id'),
+                                nullable=True)
+    cvlW1ilHdrJobRunId = Column('cvl_w1il_hdr_job_run_id',
+                                Integer, ForeignKey('genomic_job_run.id'),
+                                nullable=True)
+
+    cvlW2wJobRunId = Column('cvl_w2w_job_run_id',
+                            Integer, ForeignKey('genomic_job_run.id'),
+                            nullable=True)
+
+    cvlSecondaryConfFailure = Column('cvl_secondary_conf_failure', String(255), nullable=True)
+
+    # PGX / HDR Run IDs
+    cvlW4wrPgxManifestJobRunID = Column('cvl_w4wr_pgx_manifest_job_run_id',
+                                        Integer, ForeignKey("genomic_job_run.id"),
+                                        nullable=True)
+    cvlW4wrHdrManifestJobRunID = Column('cvl_w4wr_hdr_manifest_job_run_id',
+                                        Integer, ForeignKey("genomic_job_run.id"),
+                                        nullable=True)
+    cvlW5nfPgxManifestJobRunID = Column('cvl_w5nf_pgx_manifest_job_run_id',
+                                     Integer, ForeignKey("genomic_job_run.id"),
+                                     nullable=True)
+
+    cvlW5nfHdrManifestJobRunID = Column('cvl_w5nf_hdr_manifest_job_run_id',
+                                     Integer, ForeignKey("genomic_job_run.id"),
+                                     nullable=True)
+
+    # Only HDR Run IDs
     cvlW2scManifestJobRunID = Column('cvl_w2sc_manifest_job_run_id',
+                                     Integer, ForeignKey("genomic_job_run.id"),
+                                     nullable=True)
+    cvlW3ssManifestJobRunID = Column('cvl_w3ss_manifest_job_run_id',
+                                     Integer, ForeignKey("genomic_job_run.id"),
+                                     nullable=True)
+    cvlW3nsManifestJobRunID = Column('cvl_w3ns_manifest_job_run_id',
                                      Integer, ForeignKey("genomic_job_run.id"),
                                      nullable=True)
     cvlW3srManifestJobRunID = Column('cvl_w3sr_manifest_job_run_id',
                                      Integer, ForeignKey("genomic_job_run.id"),
                                      nullable=True)
+    cvlW3scManifestJobRunID = Column('cvl_w3sc_manifest_job_run_id',
+                                     Integer, ForeignKey("genomic_job_run.id"),
+                                     nullable=True)
+
+    diversionPouchSiteFlag = Column('diversion_pouch_site_flag', SmallInteger, nullable=False, default=0)
+    informingLoopReadyFlag = Column('informing_loop_ready_flag', Integer, nullable=False, default=0)
+    informingLoopReadyFlagModified = Column("informing_loop_ready_flag_modified", DateTime, nullable=True)
 
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
+
+
+class GenomicResultWorkflowState(Base):
+    """
+    Used for storing results workflow state
+    """
+
+    __tablename__ = 'genomic_result_workflow_state'
+
+    id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+    genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False, index=True)
+    results_workflow_state = Column(Enum(ResultsWorkflowState), default=ResultsWorkflowState.UNSET)
+    results_workflow_state_str = Column(String(64), default="UNSET")
+    results_module = Column(Enum(ResultsModuleType), default=ResultsModuleType.UNSET, nullable=False)
+    results_module_str = Column(String(64), default="UNSET")
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+
+event.listen(GenomicResultWorkflowState, "before_insert", model_insert_listener)
+event.listen(GenomicResultWorkflowState, "before_update", model_update_listener)
 
 
 class GenomicJobRun(Base):
@@ -609,6 +707,279 @@ event.listen(GenomicAW4Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicAW4Raw, 'before_update', model_update_listener)
 
 
+class GenomicW1ILRaw(Base):
+    """
+    Raw data from W1IL files
+    """
+    __tablename__ = 'genomic_w1il_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    cvl_site_id = Column(String(128), nullable=True, index=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    vcf_raw_path = Column(String(255), nullable=True)
+    vcf_raw_index_path = Column(String(255), nullable=True)
+    vcf_raw_md5_path = Column(String(255), nullable=True)
+    gvcf_path = Column(String(255), nullable=True)
+    gvcf_md5_path = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    ny_flag = Column(String(255), nullable=True)
+    genome_center = Column(String(255), nullable=True)
+    consent_for_gror = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    informing_loop_pgx = Column(String(255), nullable=True)
+    informing_loop_hdr = Column(String(255), nullable=True)
+    aou_hdr_coverage = Column(String(255), nullable=True)
+    contamination = Column(String(255), nullable=True)
+    sex_ploidy = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW1ILRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW1ILRaw, 'before_update', model_update_listener)
+
+
+class GenomicW2SCRaw(Base):
+    """
+    Raw data from W2SC files
+    """
+    __tablename__ = 'genomic_w2sc_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW2SCRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW2SCRaw, 'before_update', model_update_listener)
+
+
+class GenomicW2WRaw(Base):
+    """
+    Raw data from W2W files
+    """
+    __tablename__ = 'genomic_w2w_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    cvl_site_id = Column(String(128), nullable=True, index=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    date_of_consent_removal = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW2WRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW2WRaw, 'before_update', model_update_listener)
+
+
+class GenomicW3NSRaw(Base):
+    """
+    Raw data from W3NS files
+    """
+    __tablename__ = 'genomic_w3ns_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    unavailable_reason = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW3NSRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW3NSRaw, 'before_update', model_update_listener)
+
+
+class GenomicW3SRRaw(Base):
+    """
+    Raw data from W3SR files
+    """
+    __tablename__ = 'genomic_w3sr_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    cvl_site_id = Column(String(128), nullable=True, index=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    parent_sample_id = Column(String(255), nullable=True)
+    collection_tubeid = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    ny_flag = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    site_name = Column(String(255), nullable=True)
+    ai_an = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW3SRRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW3SRRaw, 'before_update', model_update_listener)
+
+
+class GenomicW3SCRaw(Base):
+    """
+    Raw data from W3SR files
+    """
+    __tablename__ = 'genomic_w3sc_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    cvl_secondary_conf_failure = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW3SRRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW3SRRaw, 'before_update', model_update_listener)
+
+
+class GenomicW3SSRaw(Base):
+    """
+    Raw data from W3SR files
+    """
+    __tablename__ = 'genomic_w3ss_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    packageId = Column(String(250), nullable=True)
+    version = Column(String(255), nullable=True)
+    box_storageunit_id = Column(String(255), nullable=True)
+    box_id_plate_id = Column(String(255), nullable=True)
+    well_position = Column(String(255), nullable=True)
+    cvl_sample_id = Column(String(255), nullable=True)
+    parent_sample_id = Column(String(255), nullable=True)
+    collection_tube_id = Column(String(255), nullable=True)
+    matrix_id = Column(String(255), nullable=True)
+    collection_date = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    age = Column(String(255), nullable=True)
+    ny_state = Column(String(255), nullable=True)
+    sample_type = Column(String(255), nullable=True)
+    treatments = Column(String(255), nullable=True)
+    quantity = Column(String(255), nullable=True)
+    total_concentration = Column(String(255), nullable=True)
+    total_dna = Column(String(255), nullable=True)
+    visit_description = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    study = Column(String(255), nullable=True)
+    tracking_number = Column(String(255), nullable=True)
+    contact = Column(String(255), nullable=True)
+    email = Column(String(255), nullable=True)
+    study_pi = Column(String(255), nullable=True)
+    site_name = Column(String(255), nullable=True, index=True)
+    genome_type = Column(String(80), nullable=True, index=True)
+    failure_mode = Column(String(255), nullable=True)
+    failure_mode_desc = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW3SRRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW3SRRaw, 'before_update', model_update_listener)
+
+
+class GenomicW4WRRaw(Base):
+    """
+    Raw data from W4WR files
+    """
+    __tablename__ = 'genomic_w4wr_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    health_related_data_file_name = Column(String(255), nullable=True)
+    clinical_analysis_type = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW4WRRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW4WRRaw, 'before_update', model_update_listener)
+
+
+class GenomicW5NFRaw(Base):
+    """
+    Raw data from W5NF files
+    """
+    __tablename__ = 'genomic_w5nf_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    request_reason = Column(String(255), nullable=True)
+    request_reason_free = Column(String(512), nullable=True)
+    health_related_data_file_name = Column(String(255), nullable=True)
+    clinical_analysis_type = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW5NFRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW5NFRaw, 'before_update', model_update_listener)
+
+
 class GenomicGCValidationMetrics(Base):
     """Genomic Sequencing Metrics model.
     This is the data ingested from
@@ -744,6 +1115,79 @@ event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
 event.listen(GenomicGCValidationMetrics, 'before_update', model_update_listener)
 
 
+class GenomicCVLSecondSample(Base):
+    """
+    Used for storage in GHR3 of second sample records
+    """
+
+    __tablename__ = 'genomic_cvl_second_sample'
+
+    id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+    genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False, index=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+
+    package_id = Column(String(250), nullable=True)
+    version = Column(String(255), nullable=False, default=0)
+    box_storageunit_id = Column(String(255), nullable=True)
+    box_id_plate_id = Column(String(255), nullable=True)
+    well_position = Column(String(255), nullable=True)
+    cvl_sample_id = Column(String(255), nullable=True, index=True)
+    parent_sample_id = Column(String(255), nullable=True)
+    collection_tube_id = Column(String(255), nullable=True)
+    matrix_id = Column(String(255), nullable=True)
+    collection_date = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    age = Column(String(255), nullable=True)
+    ny_state = Column(String(255), nullable=True)
+    sample_type = Column(String(255), nullable=True)
+    treatments = Column(String(255), nullable=True)
+    quantity = Column(String(255), nullable=True)
+    total_concentration = Column(String(255), nullable=True)
+    total_dna = Column(String(255), nullable=True)
+    visit_description = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    study = Column(String(255), nullable=True)
+    tracking_number = Column(String(255), nullable=True)
+    contact = Column(String(255), nullable=True)
+    email = Column(String(255), nullable=True)
+    study_pi = Column(String(255), nullable=True)
+    site_name = Column(String(255), nullable=True, index=True)
+    genome_type = Column(String(80), nullable=True)
+    failure_mode = Column(String(255), nullable=True)
+    failure_mode_desc = Column(String(255), nullable=True)
+
+
+event.listen(GenomicCVLSecondSample, 'before_insert', model_insert_listener)
+event.listen(GenomicCVLSecondSample, 'before_update', model_update_listener)
+
+
+class GenomicCVLAnalysis(Base):
+    """
+    Used for storage in GHR3 of health related analysis
+    """
+
+    __tablename__ = 'genomic_cvl_analysis'
+
+    id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+    genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False, index=True)
+    clinical_analysis_type = Column(String(128), nullable=False)
+    health_related_data_file_name = Column(String(512), nullable=False)
+    failed = Column(Integer, nullable=False, default=0)
+    failed_request_reason = Column(String(255), nullable=True)
+    failed_request_reason_free = Column(String(512), nullable=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+
+event.listen(GenomicCVLAnalysis, 'before_insert', model_insert_listener)
+event.listen(GenomicCVLAnalysis, 'before_update', model_update_listener)
+
+
 class GenomicSampleContamination(Base):
     """A list of samples that have been found to be contaminated with
     information on what stage of the process they have been added to the table."""
@@ -834,13 +1278,18 @@ class GenomicMemberReportState(Base):
 
     id = Column('id', Integer,
                 primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    message_record_id = Column(Integer, nullable=True)
     genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False)
     genomic_report_state = Column(Enum(GenomicReportState), default=GenomicReportState.UNSET)
     genomic_report_state_str = Column(String(64), default="UNSET")
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=True)
-    created = Column(DateTime)
-    modified = Column(DateTime)
+    event_type = Column(String(256), nullable=True)
+    event_authored_time = Column(UTCDateTime6, nullable=True)
     module = Column(String(80), nullable=False)
+    sample_id = Column(String(80), nullable=True, index=True)
+    report_revision_number = Column(SmallInteger, nullable=True)
 
 
 event.listen(GenomicMemberReportState, 'before_insert', model_insert_listener)
@@ -865,6 +1314,7 @@ class GenomicInformingLoop(Base):
     event_authored_time = Column(UTCDateTime6)
     module_type = Column(String(128))
     decision_value = Column(String(128))
+    sample_id = Column(String(80), nullable=True, index=True)
 
 
 event.listen(GenomicInformingLoop, 'before_insert', model_insert_listener)
@@ -890,10 +1340,41 @@ class GenomicResultViewed(Base):
     module_type = Column(String(128))
     first_viewed = Column(UTCDateTime6)
     last_viewed = Column(UTCDateTime6)
+    sample_id = Column(String(80), nullable=True, index=True)
 
 
 event.listen(GenomicResultViewed, 'before_insert', model_insert_listener)
 event.listen(GenomicResultViewed, 'before_update', model_update_listener)
+
+
+class GenomicAppointmentEvent(Base):
+    """
+    Used for maintaining normalized value set of
+    appointment events ingested from MessageBrokerEventData
+    """
+
+    __tablename__ = 'genomic_appointment_event'
+
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    message_record_id = Column(Integer)
+    participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False)
+    event_type = Column(String(256), nullable=False)
+    event_authored_time = Column(UTCDateTime6)
+    module_type = Column(String(255))
+    appointment_id = Column(Integer, nullable=False)
+    appointment_time = Column(UTCDateTime6)
+    appointment_timezone = Column(String(255))
+    source = Column(String(255))
+    location = Column(String(255))
+    contact_number = Column(String(255))
+    language = Column(String(255))
+    cancellation_reason = Column(String(255))
+
+
+event.listen(GenomicAppointmentEvent, 'before_insert', model_insert_listener)
+event.listen(GenomicAppointmentEvent, 'before_update', model_update_listener)
 
 
 class GenomicGcDataFile(Base):
@@ -1014,3 +1495,95 @@ class UserEventMetrics(Base):
 event.listen(UserEventMetrics, 'before_insert', model_insert_listener)
 event.listen(UserEventMetrics, 'before_update', model_update_listener)
 
+
+class GenomicSampleSwap(Base):
+    """
+    Used for storing sample swap types
+    """
+
+    __tablename__ = "genomic_sample_swap"
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    name = Column(String(255), nullable=False)
+    description = Column(String(512))
+    open_investigation = Column(SmallInteger, nullable=False, default=0)
+    open_investigation_date = Column(DateTime, nullable=True)
+    closed_investigation = Column(SmallInteger, nullable=False, default=0)
+    closed_investigation_date = Column(DateTime, nullable=True)
+    number = Column(SmallInteger)
+    location = Column(String(512))
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+
+event.listen(GenomicSampleSwap, 'before_insert', model_insert_listener)
+event.listen(GenomicSampleSwap, 'before_update', model_update_listener)
+
+
+class GenomicSampleSwapMember(Base):
+    """
+    Used for storing sample swap members
+    """
+
+    __tablename__ = "genomic_sample_swap_member"
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    genomic_sample_swap = Column(Integer, ForeignKey("genomic_sample_swap.id"), nullable=False)
+    genomic_set_member_id = Column(Integer, ForeignKey('genomic_set_member.id'), nullable=False)
+    category = Column(Enum(GenomicSampleSwapCategory), default=GenomicSampleSwapCategory.UNSET)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+
+event.listen(GenomicSampleSwapMember, 'before_insert', model_insert_listener)
+event.listen(GenomicSampleSwapMember, 'before_update', model_update_listener)
+
+
+class GenomicCVLResultPastDue(Base):
+    """
+    Used for storing samples in need on reconciliation by CVLs
+    """
+
+    __tablename__ = "genomic_cvl_result_past_due"
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    genomic_set_member_id = Column(Integer, ForeignKey('genomic_set_member.id'), nullable=False)
+    sample_id = Column(String(255), nullable=False, index=True)
+    results_type = Column(String(128), nullable=False)
+    cvl_site_id = Column(String(128), nullable=False, index=True)
+    email_notification_sent = Column(SmallInteger, nullable=False, default=0)
+    email_notification_sent_date = Column(DateTime, nullable=True)
+    resolved = Column(SmallInteger, nullable=False, default=0)
+    resolved_date = Column(DateTime, nullable=True)
+
+
+event.listen(GenomicCVLResultPastDue, 'before_insert', model_insert_listener)
+event.listen(GenomicCVLResultPastDue, 'before_update', model_update_listener)
+
+
+class GenomicResultWithdrawals(Base):
+    """
+    Used for storing the samples in results pipeline
+    that have been withdrawn
+    """
+
+    __tablename__ = "genomic_result_withdrawals"
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False, index=True)
+    array_results = Column(SmallInteger, nullable=False, default=0)
+    cvl_results = Column(SmallInteger, nullable=False, default=0)
+
+
+event.listen(GenomicResultWithdrawals, 'before_insert', model_insert_listener)
+event.listen(GenomicResultWithdrawals, 'before_update', model_update_listener)

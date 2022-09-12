@@ -75,6 +75,28 @@ class PhysicalMeasurementsStatus(messages.Enum):
     CANCELLED = 2
 
 
+class PhysicalMeasurementsCollectType(messages.Enum):
+    """The collect type of the participant's physical measurements"""
+
+    UNSET = 0
+    SITE = 1
+    SELF_REPORTED = 2
+
+
+class SelfReportedPhysicalMeasurementsStatus(messages.Enum):
+    """The state of the participants self-reported physical measurements"""
+
+    UNSET = 0
+    COMPLETED = 1
+
+
+class OriginMeasurementUnit(messages.Enum):
+    """The origin unit type of this measurement record"""
+    UNSET = 0
+    IMPERIAL = 1
+    METRIC = 2
+
+
 class QuestionnaireStatus(messages.Enum):
     """The status of a given questionnaire for this participant"""
 
@@ -100,6 +122,7 @@ class QuestionnaireResponseStatus(messages.Enum):
     AMENDED = 2
     ENTERED_IN_ERROR = 3
     STOPPED = 4
+
 
 class QuestionnaireResponseClassificationType(messages.Enum):
     """
@@ -132,6 +155,35 @@ class EnrollmentStatusV2(messages.Enum):
     FULLY_CONSENTED = 2
     CORE_PARTICIPANT = 3
     CORE_MINUS_PM = 4
+
+
+class EnrollmentStatusV30(messages.Enum):
+    """A status reflecting how fully enrolled a participant is according to the 3.0 data glossary"""
+
+    PARTICIPANT = 1
+    PARTICIPANT_PLUS_EHR = 2
+    PARTICIPANT_PMB_ELIGIBLE = 3
+    CORE_MINUS_PM = 4
+    CORE_PARTICIPANT = 5
+
+
+class EnrollmentStatusV31(messages.Enum):
+    """A status reflecting how fully enrolled a participant is according to the 3.1 data glossary"""
+
+    PARTICIPANT = 1
+    PARTICIPANT_PLUS_EHR = 2
+    PARTICIPANT_PLUS_BASICS = 3
+    CORE_MINUS_PM = 4
+    CORE_PARTICIPANT = 5
+    BASELINE_PARTICIPANT = 6
+
+
+class DigitalHealthSharingStatusV31(messages.Enum):
+    """Provides whether EHR files have been or currently are available for the participant"""
+
+    NEVER_SHARED = 1
+    EVER_SHARED = 2
+    CURRENTLY_SHARING = 3
 
 
 class SampleStatus(messages.Enum):
@@ -484,6 +536,23 @@ class MetricsCronJobStage(messages.Enum):
     STAGE_TWO = 2
 
 
+class OnSiteVerificationType(messages.Enum):
+    """Types of on site verification"""
+    UNSET = 0
+    PHOTO_AND_ONE_OF_PII = 1
+    TWO_OF_PII = 2
+
+
+class OnSiteVerificationVisitType(messages.Enum):
+    """Types of on site visit"""
+    UNSET = 0
+    PMB_INITIAL_VISIT = 1
+    PHYSICAL_MEASUREMENTS_ONLY = 2
+    BIOSPECIMEN_COLLECTION_ONLY = 3
+    BIOSPECIMEN_REDRAW_ONLY = 4
+    RETENTION_ACTIVITIES = 5
+
+
 # M2API age buckets
 AGE_BUCKETS_METRICS_V2_API = ["0-17", "18-25", "26-35", "36-45", "46-55", "56-65", "66-75", "76-85", "86-"]
 AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API = ["18-29", "30-39", "40-49", "50-59", "60-69", "70-79", "80-89", "90-"]
@@ -766,6 +835,11 @@ class WorkbenchResearcherDegree(messages.Enum):
     MPH = 14
 
 
+class WorkbenchResearcherAccessTierShortName(messages.Enum):
+    REGISTERED = 1
+    CONTROLLED = 2
+
+
 class WorkbenchResearcherDisability(messages.Enum):
     UNSET = 0
     YES = 1
@@ -792,3 +866,153 @@ class WorkbenchAuditWorkspaceAccessDecision(messages.Enum):
     DISABLE_WORKSPACE_AND_REVIEW_RESEARCHERS = 2
 
 
+class CdrEtlSurveyStatus(messages.Enum):
+    EXCLUDE = 1
+    INCLUDE = 2
+
+
+class CdrEtlCodeType(messages.Enum):
+    MODULE = 1
+    QUESTION = 2
+    ANSWER = 3
+
+
+class WorkbenchResearcherEthnicCategory(messages.Enum):
+    AI_AN = 1
+    AI_AN_CENTRAL_SOUTH = 2
+    AI_AN_OTHER = 3
+    ASIAN = 4
+    ASIAN_INDIAN = 5
+    ASIAN_CAMBODIAN = 6
+    ASIAN_CHINESE = 7
+    ASIAN_FILIPINO = 8
+    ASIAN_HMONG = 9
+    ASIAN_JAPANESE = 10
+    ASIAN_KOREAN = 11
+    ASIAN_LAO = 12
+    ASIAN_PAKISTANI = 13
+    ASIAN_VIETNAMESE = 14
+    ASIAN_OTHER = 15
+    BLACK = 16
+    HISPANIC = 17
+    MENA = 18
+    NHPI = 19
+    WHITE = 20
+    OTHER = 21
+    PREFER_NOT_TO_ANSWER = 22
+
+    # New subcategories
+    BLACK_AA = 23
+    BLACK_BARBADIAN = 24
+    BLACK_CARIBBEAN = 25
+    BLACK_ETHIOPIAN = 26
+    BLACK_GHANAIAN = 27
+    BLACK_HAITIAN = 28
+    BLACK_JAMAICAN = 29
+    BLACK_LIBERIAN = 30
+    BLACK_NIGERIAN = 31
+    BLACK_SOMALI = 32
+    BLACK_SOUTH_AFRICAN = 33
+    BLACK_OTHER = 34
+    HISPANIC_COLUMBIAN = 35
+    HISPANIC_CUBAN = 36
+    HISPANIC_DOMINICAN = 37
+    HISPANIC_ECUADORIAN = 38
+    HISPANIC_HONDURAN = 39
+    HISPANIC_MEXICAN = 40
+    HISPANIC_PUERTO_RICAN = 41
+    HISPANIC_SALVADORAN = 42
+    HISPANIC_SPANISH = 43
+    HISPANIC_OTHER = 44
+    MENA_AFGHAN = 45
+    MENA_ALGERIAN = 46
+    MENA_EGYPTIAN = 47
+    MENA_IRANIAN = 48
+    MENA_IRAQI = 49
+    MENA_ISRAELI = 50
+    MENA_LEBANESE = 51
+    MENA_MOROCCAN = 52
+    MENA_SYRIAN = 53
+    MENA_TUNISIAN = 54
+    MENA_OTHER = 55
+    NHPI_CHAMORRO = 56
+    NHPI_CHUUKESE = 57
+    NHPI_FIJIAN = 58
+    NHPI_MARSHALLESE = 59
+    NHPI_HAWAIIAN = 60
+    NHPI_PALAUAN = 61
+    NHPI_SAMOAN = 62
+    NHPI_TAHITIAN = 63
+    NHPI_TONGAN = 64
+    NHPI_OTHER = 65
+    WHITE_DUTCH = 66
+    WHITE_ENGLISH = 67
+    WHITE_EUROPEAN = 68
+    WHITE_FRENCH = 69
+    WHITE_GERMAN = 70
+    WHITE_IRISH = 71
+    WHITE_ITALIAN = 72
+    WHITE_NORWEGIAN = 73
+    WHITE_POLISH = 74
+    WHITE_SCOTTISH = 75
+    WHITE_SPANISH = 76
+    WHITE_OTHER = 77
+    AI_AN_AMERICAN_INDIAN = 78
+    AI_AN_ALASKA_NATIVE = 79
+    BLACK_SOUTH_AFRICAN = 80
+    MENA_LEBANESE = 81
+
+
+class WorkbenchResearcherGenderIdentity(messages.Enum):
+    GENDERQUEER = 1
+    MAN = 2
+    NON_BINARY = 3
+    QUESTIONING = 4
+    TRANS_MAN = 5
+    TRANS_WOMAN = 6
+    TWO_SPIRIT = 7
+    WOMAN = 8
+    OTHER = 9
+    PREFER_NOT_TO_ANSWER = 10
+
+
+class WorkbenchResearcherSexualOrientationV2(messages.Enum):
+    ASEXUAL = 1
+    BISEXUAL = 2
+    GAY = 3
+    LESBIAN = 4
+    POLYSEXUAL = 5
+    QUEER = 6
+    QUESTIONING = 7
+    SAME_GENDER = 8
+    STRAIGHT = 9
+    TWO_SPIRIT = 10
+    OTHER = 11
+    PREFER_NOT_TO_ANSWER = 12
+
+
+class WorkbenchResearcherSexAtBirthV2(messages.Enum):
+    UNSET = 0
+    FEMALE = 1
+    INTERSEX = 2
+    MALE = 3
+    OTHER = 4
+    PREFER_NOT_TO_ANSWER = 5
+
+
+class WorkbenchResearcherEducationV2(messages.Enum):
+    UNSET = 0
+    NO_EDUCATION = 1
+    GRADES_1_12 = 2
+    UNDERGRADUATE = 3
+    COLLEGE_GRADUATE = 4
+    MASTER = 5
+    DOCTORATE = 6
+    PREFER_NOT_TO_ANSWER = 7
+
+
+class WorkbenchResearcherYesNoPreferNot(messages.Enum):
+    UNSET = 0
+    YES = 1
+    NO = 2
+    PREFER_NOT_TO_ANSWER = 3

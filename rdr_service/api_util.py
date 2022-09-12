@@ -1,8 +1,12 @@
 """Utilities used by the API definition, and authentication/authorization/roles."""
 import datetime
+import logging
 
 from dateutil.parser import parse
 from werkzeug.exceptions import BadRequest
+
+from rdr_service import config
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.storage import get_storage_provider
 from rdr_service.code_constants import UNMAPPED, UNSET
 
@@ -23,8 +27,10 @@ BIOBANK = 'biobank'
 RDR_AND_PTC = [RDR, PTC]
 RDR_AND_HEALTHPRO = [RDR, HEALTHPRO]
 PTC_AND_GEM = [PTC, GEM]
-WORKBENCH_AND_REDCAP = [WORKBENCH, REDCAP]
-STOREFRONT_AND_REDCAP = [STOREFRONT, REDCAP]
+WORKBENCH_AND_REDCAP_AND_RDR = [WORKBENCH, REDCAP, RDR]
+STOREFRONT_AND_REDCAP_RDR = [STOREFRONT, REDCAP, RDR]
+STOREFRONT_AND_RDR = [STOREFRONT, RDR]
+REDCAP_AND_RDR = [REDCAP, RDR]
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
 PTC_HEALTHPRO_AWARDEE = [PTC, HEALTHPRO, AWARDEE]
 PTC_HEALTHPRO_AWARDEE_CURATION = [PTC, HEALTHPRO, AWARDEE, CURATION]
@@ -234,3 +240,30 @@ def download_cloud_file(source_path, destination_path):
 def is_cloud_file_exits(path):
     provider = get_storage_provider()
     return provider.exists(path)
+
+
+def returns_success(func):
+    """A decorator for cron or task api that simply returns a json structure with success set to true"""
+
+    def wrapper(*args, **kwargs):
+        func(*args, **kwargs)
+        return '{"success": "true"}'
+
+    return wrapper
+
+
+def dispatch_task(endpoint: str, payload: dict, in_seconds=30, quiet=True, project_id=config.GAE_PROJECT):
+    """Queue a task in GAE that will execute with the specified task with the provided json"""
+
+    if project_id == 'localhost':
+        logging.warning(f'Skipping {endpoint} task targeting localhost')
+    else:
+        task = GCPCloudTask()
+        task.execute(
+            endpoint=endpoint,
+            payload=payload,
+            in_seconds=in_seconds,
+            queue='resource-tasks',
+            quiet=quiet,
+            project_id=project_id
+        )

@@ -1,0 +1,75 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+      "valueCode": "en"
+    }
+  ],
+  "identifier": {
+    "value": "67649"
+  },
+  "questionnaire": {
+    "reference": "Questionnaire/{questionnaire_id}"
+  },
+  "status": "completed",
+  "subject": {
+    "reference": "Patient/{participant_id}"
+  },
+  "authored": "2022-06-01T18:26:08+00:00",
+  "group": {
+    "linkId": "root_group",
+    "title": "Record your height and weight",
+    "text": "10 minutos",
+    "question": [
+      {
+        "linkId": "62242",
+        "text": "Select the unit of measurement you prefer",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "Seleccione la unidad de medida que prefiere"
+                }
+              ]
+            }
+          ]
+        },
+        "answer": [
+          {
+            "valueCoding": {
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "code": "pm_2",
+              "display": "I want to use Centimeters and Kilograms. (Metric System)"
+            }
+          }
+        ]
+      },
+      {
+        "linkId": "62297",
+        "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+        "answer": [
+          {
+            "valueInteger": 170
+          }
+        ]
+      },
+      {
+        "linkId": "62277",
+        "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+        "answer": [
+          {
+            "valueString": "60.6"
+          }
+        ]
+      }
+    ]
+  }
+}

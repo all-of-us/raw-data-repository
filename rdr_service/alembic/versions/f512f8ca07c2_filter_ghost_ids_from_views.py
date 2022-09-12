@@ -461,7 +461,7 @@ SELECT
      LEFT OUTER JOIN code sexual_orientation_code ON ps.sexual_orientation_id = sexual_orientation_code.code_id
      LEFT OUTER JOIN code education_code ON ps.education_id = education_code.code_id
      LEFT OUTER JOIN code income_code ON ps.income_id = income_code.code_id
-     WHERE p.withdrawal_status = 1 AND 
+     WHERE p.withdrawal_status = 1 AND
            (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
            (hpo.name IS NULL OR hpo.name != 'TEST')
            AND p.is_ghost_id IS NOT TRUE
@@ -501,10 +501,3 @@ def downgrade_metrics():
     pass
     # ### end Alembic commands ###
 
-
-def unittest_schemas():
-    schemas = list()
-    # unit test schema for ppi_participant_view, escapse '%'
-    schemas.append("CREATE OR REPLACE VIEW ppi_participant_view AS " + PPI_PARTICIPANT_VIEW_SQL.replace('%', '%%'))
-
-    return schemas

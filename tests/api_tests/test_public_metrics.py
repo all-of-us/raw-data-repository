@@ -203,8 +203,8 @@ class PublicMetricsApiTest(BaseTestCase):
                 summary.questionnaireOnMedicalHistoryTime = time_fp
                 summary.questionnaireOnMedicationsTime = time_fp
                 summary.questionnaireOnFamilyHealthTime = time_fp
-                summary.physicalMeasurementsFinalizedTime = time_fp
-                summary.physicalMeasurementsTime = time_fp
+                summary.clinicPhysicalMeasurementsFinalizedTime = time_fp
+                summary.clinicPhysicalMeasurementsTime = time_fp
                 summary.sampleOrderStatus1ED04Time = time_fp
                 summary.sampleOrderStatus1SALTime = time_fp
                 summary.sampleStatus1ED04Time = time_fp
@@ -254,8 +254,8 @@ class PublicMetricsApiTest(BaseTestCase):
                 summary.questionnaireOnMedicalHistoryTime = time_fp
                 summary.questionnaireOnMedicationsTime = time_fp
                 summary.questionnaireOnFamilyHealthTime = time_fp
-                summary.physicalMeasurementsFinalizedTime = time_fp
-                summary.physicalMeasurementsTime = time_fp
+                summary.clinicPhysicalMeasurementsFinalizedTime = time_fp
+                summary.clinicPhysicalMeasurementsTime = time_fp
                 summary.sampleOrderStatus1ED04Time = time_fp
                 summary.sampleOrderStatus1SALTime = time_fp
                 summary.sampleStatus1ED04Time = time_fp

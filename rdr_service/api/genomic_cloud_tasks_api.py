@@ -4,6 +4,7 @@ from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import NotFound
 
+from rdr_service.cloud_utils.gcp_google_pubsub import publish_pdr_pubsub
 from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
 from rdr_service.config import getSetting, getSettingJson, DRC_BROAD_AW4_SUBFOLDERS, GENOMIC_AW5_WGS_SUBFOLDERS, \
@@ -20,7 +21,9 @@ from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetr
 from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
-    genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, genomic_user_event_metrics_batch_update
+    genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, \
+    genomic_user_event_metrics_batch_update,  genomic_informing_loop_batch_update, \
+    genomic_cvl_result_past_due_batch_update
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -274,6 +277,26 @@ class IngestCVLManifestTaskApi(BaseGenomicTaskApi):
             'w2sc': {
                 'job': GenomicJob.CVL_W2SC_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.CVL_W2SC
+            },
+            'w3ns': {
+                'job': GenomicJob.CVL_W3NS_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W3NS
+            },
+            'w3sc': {
+                'job': GenomicJob.CVL_W3SC_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W3SC
+            },
+            'w3ss': {
+                'job': GenomicJob.CVL_W3SS_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W3SS
+            },
+            'w4wr': {
+                'job': GenomicJob.CVL_W4WR_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W4WR
+            },
+            'w5nf': {
+                'job': GenomicJob.CVL_W5NF_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W5NF
             }
         }
 
@@ -353,13 +376,14 @@ class IngestDataFilesTaskApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
-class IngestFromMessageBrokerDataApi(BaseGenomicTaskApi):
+class IngestGenomicMessageBrokerDataApi(BaseGenomicTaskApi):
     """
-    Cloud Task endpoint: Ingest informing loop started/decision
-    and result_viewed from Message Broker Event Data
+    Cloud Task endpoint: Ingesting Message Broker event data
+    informing_loop(s), result_viewed, result_ready
     """
+
     def post(self):
-        super(IngestFromMessageBrokerDataApi, self).post()
+        super(IngestGenomicMessageBrokerDataApi, self).post()
 
         if not self.data.get('event_type') or not self.data.get('message_record_id'):
             logging.warning('Event type and message record id is required for ingestion from Message broker')
@@ -373,6 +397,7 @@ class IngestFromMessageBrokerDataApi(BaseGenomicTaskApi):
         ingest_method_map = {
             'informing_loop': GenomicJob.INGEST_INFORMING_LOOP,
             'result_viewed': GenomicJob.INGEST_RESULT_VIEWED,
+            'result_ready': GenomicJob.INGEST_RESULT_READY
         }
 
         job_type = ingest_method_map[
@@ -381,7 +406,37 @@ class IngestFromMessageBrokerDataApi(BaseGenomicTaskApi):
 
         with GenomicJobController(job_type) as controller:
             controller.ingest_records_from_message_broker_data(
-                message_record_id=self.data['message_record_id'],
+                message_record_id=self.data.get('message_record_id'),
+                event_type=event_type
+            )
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
+class IngestGenomicMessageBrokerAppointmentApi(BaseGenomicTaskApi):
+    """
+    Cloud Task endpoint: Ingesting Message Broker event data
+    appointments only
+    """
+
+    def post(self):
+        super(IngestGenomicMessageBrokerAppointmentApi, self).post()
+
+        if not self.data.get('message_record_id'):
+            logging.warning('Event type and message record id is required for ingestion from Message broker')
+
+            return {"success": False}
+
+        event_type = self.data.get('event_type')
+
+        logging.info(f'Ingesting {event_type}')
+
+        with GenomicJobController(GenomicJob.INGEST_APPOINTMENT) as controller:
+            controller.ingest_records_from_message_broker_data(
+                message_record_id=self.data.get('message_record_id'),
                 event_type=event_type
             )
 
@@ -517,27 +572,53 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
         logging.info(f'Rebuilding {len(batch)} records for table {table}.')
 
         rebuild_map = {
-            'genomic_set': [bq_genomic_set_batch_update, genomic_set_batch_update],
-            'genomic_set_member': [bq_genomic_set_member_batch_update, genomic_set_member_batch_update],
-            'genomic_job_run': [bq_genomic_job_run_batch_update, genomic_job_run_batch_update],
-            'genomic_file_processed': [bq_genomic_file_processed_batch_update, genomic_file_processed_batch_update],
+            'genomic_set': [
+                bq_genomic_set_batch_update,
+                genomic_set_batch_update
+            ],
+            'genomic_set_member': [
+                bq_genomic_set_member_batch_update,
+                genomic_set_member_batch_update
+            ],
+            'genomic_job_run': [
+                bq_genomic_job_run_batch_update,
+                genomic_job_run_batch_update
+            ],
+            'genomic_file_processed': [
+                bq_genomic_file_processed_batch_update,
+                genomic_file_processed_batch_update
+            ],
             'genomic_gc_validation_metrics': [
                 bq_genomic_gc_validation_metrics_batch_update,
                 genomic_gc_validation_metrics_batch_update
             ],
-            'genomic_manifest_file': [bq_genomic_manifest_file_batch_update, genomic_manifest_file_batch_update],
+            'genomic_informing_loop': [
+                genomic_informing_loop_batch_update
+            ],
+            'genomic_manifest_file': [
+                bq_genomic_manifest_file_batch_update,
+                genomic_manifest_file_batch_update
+            ],
             'genomic_manifest_feedback': [
                 bq_genomic_manifest_feedback_batch_update,
                 genomic_manifest_feedback_batch_update
             ],
-            'user_event_metrics': [genomic_user_event_metrics_batch_update]
+            'user_event_metrics': [
+                genomic_user_event_metrics_batch_update
+            ],
+            'genomic_cvl_result_past_due' : [
+                genomic_cvl_result_past_due_batch_update
+            ]
         }
 
         try:
             for method in rebuild_map[table]:
                 method(batch)
-
             logging.info('Rebuild complete.')
+
+            # Publish PDR data-pipeline pub-sub event.
+            publish_pdr_pubsub(table, action='upsert', pk_columns=['id'], pk_values=batch)
+            logging.info('PubSub notification sent.')
 
             self.create_cloud_record()
             logging.info('Complete.')

@@ -34,6 +34,18 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         path_1 = "Participant/%s/PhysicalMeasurements" % self.participant_id
         self.send_post(path_1, measurements_1, expected_status=http.client.BAD_REQUEST)
 
+    def test_get_collect_type_info(self):
+        self.send_consent(self.participant_id)
+        self.send_consent(self.participant_id_2)
+        now = self.time1
+        self._insert_measurements(now.isoformat())
+        response = self.send_get("Participant/%s/PhysicalMeasurements" % self.participant_id)
+        print(json.dumps(response))
+        self.assertEqual(1, len(response["entry"]))
+        self.assertEqual(response["entry"][0]["resource"]["collectType"], 'SITE')
+        self.assertEqual(response["entry"][0]["resource"]["originMeasurementUnit"], 'UNSET')
+        self.assertEqual(response["entry"][0]["resource"]["origin"], 'hpro')
+
     def test_insert(self):
         self.send_consent(self.participant_id)
         self.send_consent(self.participant_id_2)
@@ -336,9 +348,9 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
 
         ps = self.send_get("ParticipantSummary?participantId=%s" % _id)
         # should be completed because of other valid PM
-        self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsStatus"], "COMPLETED")
-        self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsCreatedSite"], "hpo-site-monroeville")
-        self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
+        self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsCreatedSite"], "hpo-site-monroeville")
+        self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
 
     def test_make_pm_after_cancel_first_pm(self):
         _id = self.participant_id.strip("P")
@@ -379,10 +391,10 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
 
         ps = self.send_get("ParticipantSummary?participantId=%s" % _id)
         # should be completed because of other valid PM
-        self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsStatus"], "COMPLETED")
-        self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsCreatedSite"], "hpo-site-monroeville")
-        self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
-        self.assertIsNotNone(ps["entry"][0]["resource"]["physicalMeasurementsTime"])
+        self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsCreatedSite"], "hpo-site-monroeville")
+        self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
+        self.assertIsNotNone(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsTime"])
 
     def test_make_pm_after_cancel_latest_pm(self):
         _id = self.participant_id.strip("P")
@@ -425,11 +437,11 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         ps = self.send_get("ParticipantSummary?participantId=%s" % _id)
 
         # should still get first PM in participant summary
-        self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsStatus"], "COMPLETED")
-        self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsCreatedSite"], "hpo-site-monroeville")
-        self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
-        self.assertIsNotNone(ps["entry"][0]["resource"]["physicalMeasurementsTime"])
-        self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsTime"], self.time1.isoformat())
+        self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsStatus"], "COMPLETED")
+        self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsCreatedSite"], "hpo-site-monroeville")
+        self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
+        self.assertIsNotNone(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsTime"])
+        self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsTime"], self.time1.isoformat())
 
     def test_cancel_single_pm_returns_cancelled_in_summary(self):
         _id = self.participant_id.strip("P")
@@ -464,10 +476,10 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.assertEqual(count, 5)
 
         ps = self.send_get("ParticipantSummary?participantId=%s" % _id)
-        self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsStatus"], "CANCELLED")
-        self.assertNotIn("physicalMeasurementsTime", ps["entry"][0]["resource"])
-        self.assertNotIn("physicalMeasurementsFinalizedSiteId", ps["entry"][0]["resource"])
-        self.assertEqual("UNSET", ps["entry"][0]["resource"]["physicalMeasurementsFinalizedSite"])
+        self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsStatus"], "CANCELLED")
+        self.assertNotIn("clinicPhysicalMeasurementsTime", ps["entry"][0]["resource"])
+        self.assertNotIn("clinicPhysicalMeasurementsFinalizedSiteId", ps["entry"][0]["resource"])
+        self.assertEqual("UNSET", ps["entry"][0]["resource"]["clinicPhysicalMeasurementsFinalizedSite"])
 
     def test_restore_a_physical_measurement(self):
         self.send_consent(self.participant_id)
@@ -478,7 +490,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         path = path + "/" + response["id"]
         self.send_patch(path, BaseTestCase.get_restore_or_cancel_info())
         ps_2 = self.send_get("Participant/%s/Summary" % self.participant_id)
-        self.assertTrue("physicalMeasurementsFinalizedTime" not in ps_2)
+        self.assertTrue("clinicPhysicalMeasurementsFinalizedTime" not in ps_2)
         restored_info = BaseTestCase.get_restore_or_cancel_info(reason="need to restore", status="restored", author="me")
         self.send_patch(path, restored_info)
 
@@ -504,7 +516,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.assertEqual(cancelled, 0)
 
         ps_3 = self.send_get("Participant/%s/Summary" % self.participant_id)
-        self.assertEqual(ps_3['physicalMeasurementsFinalizedTime'], ps['physicalMeasurementsFinalizedTime'])
+        self.assertEqual(ps_3['clinicPhysicalMeasurementsFinalizedTime'], ps['clinicPhysicalMeasurementsFinalizedTime'])
 
     def test_cannot_restore_a_valid_pm(self):
         self.send_consent(self.participant_id)

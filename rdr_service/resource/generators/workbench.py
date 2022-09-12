@@ -16,7 +16,9 @@ from rdr_service.participant_enums import WorkbenchResearcherDegree, WorkbenchRe
     WorkbenchInstitutionNonAcademic, WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, \
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceAccessToCare, \
     WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchWorkspaceAge, \
-    WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAccessTier
+    WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAccessTier, WorkbenchResearcherAccessTierShortName, \
+    WorkbenchResearcherSexAtBirthV2, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherEducationV2, \
+    WorkbenchResearcherEthnicCategory, WorkbenchResearcherGenderIdentity, WorkbenchResearcherSexualOrientationV2
 
 
 class WBWorkspaceGenerator(generators.BaseGenerator):
@@ -83,8 +85,9 @@ class WBWorkspaceGenerator(generators.BaseGenerator):
             data['income_level'] = str(WorkbenchWorkspaceIncomeLevel(row.income_level))
             data['income_level_id'] = int(WorkbenchWorkspaceIncomeLevel(row.income_level))
 
-            data['access_tier'] = str(WorkbenchWorkspaceAccessTier(row.access_tier))
-            data['access_tier_id'] = int(WorkbenchWorkspaceAccessTier(row.access_tier))
+            if row.access_tier is not None:
+                data['access_tier'] = str(WorkbenchWorkspaceAccessTier(row.access_tier))
+                data['access_tier_id'] = int(WorkbenchWorkspaceAccessTier(row.access_tier))
 
             return generators.ResourceRecordSet(schemas.WorkbenchWorkspaceSchema, data)
 
@@ -171,13 +174,15 @@ class WBInstitutionalAffiliationsGenerator(generators.BaseGenerator):
 
         with self.ro_dao.session() as ro_session:
             row = ro_session.execute(
-                text('select * from rdr.workbench_institutional_affiliations where id = :id'), {'id': pk_id}).first()
+                text('select * from rdr.workbench_institutional_affiliations_history where id = :id'),
+                        {'id': pk_id}).first()
             data = self.ro_dao.to_dict(row)
             if not data:
-                msg = f'Institutional affiliation id {pk_id} not found in workbench_institutional_affiliations table.'
+                msg = f'ID {pk_id} not found in workbench_institutional_affiliations_history table.'
                 logging.error(msg)
                 raise NotFound(msg)
 
+            data['modified_time'] = row.modified
             data['non_academic_affiliation'] = str(WorkbenchInstitutionNonAcademic(row.non_academic_affiliation))
             data['non_academic_affiliation_id'] = int(WorkbenchInstitutionNonAcademic(row.non_academic_affiliation))
             return generators.ResourceRecordSet(schemas.WorkbenchInstitutionalAffiliationsSchema, data)
@@ -208,12 +213,21 @@ class WBResearcherGenerator(generators.BaseGenerator):
         :param backup: if True, get from backup database instead of Primary.
         :return: resource object
         """
+
+        def value_to_enum(val, enum_=WorkbenchResearcherYesNoPreferNot):
+            """ Convert a value to string and int enum """
+            if val is None:
+                return None, None
+            str_val = str(enum_(val))
+            int_val = int(enum_(val))
+            return str_val, int_val
+
         if not self.ro_dao:
             self.ro_dao = ResourceDataDao(backup=backup)
 
         with self.ro_dao.session() as ro_session:
             row = ro_session.execute(
-                text('select * from rdr.workbench_researcher where id = :id'), {'id': src_pk_id}).first()
+                text('select * from rdr.workbench_researcher_history where id = :id'), {'id': src_pk_id}).first()
             if not row:
                 return None
             data = self.ro_dao.to_dict(row)
@@ -250,6 +264,97 @@ class WBResearcherGenerator(generators.BaseGenerator):
 
             data['disability'] = str(WorkbenchResearcherDisability(row.disability))
             data['disability_id'] = int(WorkbenchResearcherDisability(row.disability))
+
+            # New fields and sub-tables for PDR-826
+            data['identifies_as_lgbtq'] = row.identifies_as_lgbtq
+            # The 'lgbtq_identity' field seems to support free-text, forcing boolean.
+            data['lgbtq_identity'] = 1 if row.lgbtq_identity else 0
+
+            access_tier_short_names = json.loads(row.access_tier_short_names
+                                                 if row.access_tier_short_names and
+                                                    row.access_tier_short_names != 'null' else '[]')
+            data['access_tier_short_name'] = [
+                {
+                    'access_tier_short_name': str(WorkbenchResearcherAccessTierShortName(v)),
+                    'access_tier_short_name_id': int(WorkbenchResearcherAccessTierShortName(v))
+                 } for v in access_tier_short_names
+            ]
+            data['dsv2_completion_time'] = row.dsv2_completion_time
+
+            data['dsv2_disability_concentrating'], data['dsv2_disability_concentrating_id'] = \
+                    value_to_enum(row.dsv2_disability_concentrating)
+            data['dsv2_disability_dressing'], data['dsv2_disability_dressing_id'] = \
+                    value_to_enum(row.dsv2_disability_dressing)
+            data['dsv2_disability_errands'], data['dsv2_disability_errands_id'] = \
+                    value_to_enum(row.dsv2_disability_errands)
+            data['dsv2_disability_hearing'], data['dsv2_disability_hearing_id'] = \
+                    value_to_enum(row.dsv2_disability_hearing)
+
+            data['dsv2_disability_other'] = 1 if row.dsv2_disability_other else 0
+
+            data['dsv2_disability_seeing'], data['dsv2_disability_seeing_id'] = \
+                    value_to_enum(row.dsv2_disability_seeing)
+            data['dsv2_disability_walking'], data['dsv2_disability_walking_id'] = \
+                    value_to_enum(row.dsv2_disability_walking)
+
+            data['dsv2_disadvantaged'], data['dsv2_disadvantaged_id'] = \
+                    value_to_enum(row.dsv2_disadvantaged)
+            data['dsv2_education'], data['dsv2_education_id'] = \
+                    value_to_enum(row.dsv2_education, WorkbenchResearcherEducationV2)
+
+            ethnic_categories = json.loads(
+                row.dsv2_ethnic_categories if row.dsv2_ethnic_categories
+                                              and row.dsv2_ethnic_categories != 'null' else '[]'
+            )
+            data['dsv2_ethnic_category'] = [
+                {
+                    'dsv2_ethnic_category': str(WorkbenchResearcherEthnicCategory(v)),
+                    'dsv2_ethnic_category_id': int(WorkbenchResearcherEthnicCategory(v))
+                } for v in ethnic_categories
+            ]
+
+            data['dsv2_ethnicity_aian_other'] = 1 if row.dsv2_ethnicity_aian_other else 0
+            data['dsv2_ethnicity_asian_other'] = 1 if row.dsv2_ethnicity_asian_other else 0
+            data['dsv2_ethnicity_other'] = 1 if row.dsv2_ethnicity_other else 0
+
+            gender_identities = json.loads(
+                row.dsv2_gender_identities if row.dsv2_gender_identities
+                                              and row.dsv2_gender_identities != 'null' else '[]')
+            data['dsv2_gender_identity'] = [
+                {
+                    'dsv2_gender_identity': str(WorkbenchResearcherGenderIdentity(v)),
+                    'dsv2_gender_identity_id': int(WorkbenchResearcherGenderIdentity(v))
+                } for v in gender_identities
+            ]
+
+            data['dsv2_gender_other'] = 1 if row.dsv2_gender_other else 0
+            data['dsv2_orientation_other'] = 1 if row.dsv2_orientation_other else 0
+
+            data['dsv2_sex_at_birth'], data['dsv2_sex_at_birth_id'] = \
+                    value_to_enum(row.dsv2_sex_at_birth, WorkbenchResearcherSexAtBirthV2)
+
+            data['dsv2_sex_at_birth_other'] = 1 if row.dsv2_sex_at_birth_other else 0
+
+            sexual_orientation = json.loads(
+                row.dsv2_sexual_orientations if row.dsv2_sexual_orientations
+                                                and row.dsv2_sexual_orientations != 'null' else '[]')
+            data['dsv2_sexual_orientation'] = [
+                {
+                    'dsv2_sexual_orientation': str(WorkbenchResearcherSexualOrientationV2(v)),
+                    'dsv2_sexual_orientation_id': int(WorkbenchResearcherSexualOrientationV2(v))
+                } for v in sexual_orientation
+            ]
+
+            data['dsv2_year_of_birth'] = row.dsv2_year_of_birth
+            data['dsv2_year_of_birth_prefer_not'] = row.dsv2_year_of_birth_prefer_not
+
+            data['dsv2_ethnicity_black_other'] = 1 if row.dsv2_ethnicity_black_other else 0
+            data['dsv2_ethnicity_hispanic_other'] = 1 if row.dsv2_ethnicity_hispanic_other else 0
+            data['dsv2_ethnicity_mena_other'] = 1 if row.dsv2_ethnicity_mena_other else 0
+            data['dsv2_ethnicity_nhpi_other'] = 1 if row.dsv2_ethnicity_nhpi_other else 0
+            data['dsv2_ethnicity_white_other'] = 1 if row.dsv2_ethnicity_white_other else 0
+            data['dsv2_survey_comments'] = 1 if row.dsv2_survey_comments else 0
+
             return generators.ResourceRecordSet(schemas.WorkbenchResearcherSchema, data)
 
 

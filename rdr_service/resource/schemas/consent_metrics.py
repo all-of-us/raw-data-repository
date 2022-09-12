@@ -29,6 +29,7 @@ class ConsentMetricSchema(Schema):
     resolved_date = fields.Date(description='Last modified timestamp from consent_file, for OBSOLETE sync_status files')
     missing_file = fields.Boolean(description='True if consent PDF file is missing')
     signature_missing = fields.Boolean(description='True if consent PDF file has no signature')
+    invalid_printed_name = fields.Boolean(description='True if printed name cannot be validated')
     invalid_signing_date = fields.Boolean(description='True if signing date is outside of valid date range')
     invalid_dob = fields.Boolean(description='True if participant DOB is missing or outside of valid date range')
     invalid_age_at_consent = fields.Boolean(
@@ -39,6 +40,15 @@ class ConsentMetricSchema(Schema):
         description='True if consent for participant paired to VA is not a VA consent form')
     va_consent_for_non_va = fields.Boolean(
         description='True if consent for participant not paired to VA is a VA consent form'
+    )
+    sensitive_ehr_expected = fields.Boolean(
+        description='True if participant is from a sensitive EHR state but consent was not the sensitive EHR form'
+    )
+    non_sensitive_ehr_expected = fields.Boolean(
+        description='True if participant is not from a sensitive EHR state but consent was the sensitive EHR form'
+    )
+    sensitive_ehr_missing_initials = fields.Boolean(
+        description='True if a sensitive EHR form failed validation because expected fields were not initialed'
     )
     test_participant = fields.Boolean(description='True if participant id is flagged as a test or ghost participant')
     ignore = fields.Boolean(

@@ -178,6 +178,9 @@ class CodeDao(CacheAllDao):
     def get_id(self, obj):
         return obj.codeId
 
+    def get_code_with_session(self, session, system, value):
+        return self._get_code_with_session(session, system, value)
+
     def _get_code_with_session(self, session, system, value):
         # In the context of an import, where this is called, don't use the cache.
         return session.query(Code).filter(Code.system == system).filter(Code.value == value).one_or_none()

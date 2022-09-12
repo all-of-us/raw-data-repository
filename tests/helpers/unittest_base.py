@@ -21,9 +21,7 @@ from tempfile import mkdtemp
 
 import faker
 
-from rdr_service import api_util
-from rdr_service import config
-from rdr_service import main
+from rdr_service import api_util, config, main, participant_enums
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
@@ -42,7 +40,7 @@ from rdr_service.offline import sql_exporter
 from rdr_service.resource.generators.code import CodeGenerator
 from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
 from rdr_service.storage import LocalFilesystemStorageProvider
-from tests.helpers.data_generator import DataGenerator
+from rdr_service.data_gen.generators.data_generator import DataGenerator
 from tests.helpers.mysql_helper import reset_mysql_instance, clear_table_on_next_reset
 from tests.test_data import data_path
 
@@ -55,7 +53,7 @@ class CodebookTestMixin:
     def setup_codes(values, code_type):
         code_dao = CodeDao()
         for value in values:
-            code_dao.insert(Code(system=PPI_SYSTEM, value=value, codeType=code_type, mapped=True))
+            code_dao.insert(Code(system=PPI_SYSTEM, value=value, display=value, codeType=code_type, mapped=True))
 
 
 class QuestionnaireTestMixin:
@@ -613,6 +611,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         summary.firstName = self.fake.first_name()
         summary.lastName = self.fake.last_name()
         summary.email = self.fake.email()
+        summary.enrollmentStatus = participant_enums.EnrollmentStatus.MEMBER
+        summary.enrollmentStatusV3_0 = participant_enums.EnrollmentStatusV30.PARTICIPANT_PLUS_EHR
+        summary.enrollmentStatusV3_1 = participant_enums.EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
+
         return summary
 
     def create_participant(self, provider_link=None):
@@ -899,6 +901,13 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         any indentation that exists at the start of each line
         """
         return textwrap.dedent(multiline_str).strip()
+
+    def mock(self, namespace_to_patch):
+        patcher = mock.patch(namespace_to_patch)
+        mock_instance = patcher.start()
+        self.addCleanup(patcher.stop)
+
+        return mock_instance
 
 
 class InMemorySqlExporter(sql_exporter.SqlExporter):

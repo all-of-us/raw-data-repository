@@ -45,6 +45,7 @@ class ConsentFileParsingTest(BaseTestCase):
             self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
             self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
             self.assertEqual(consent_example.expected_to_be_va_file, consent_file.get_is_va_consent())
+            self.assertFalse(consent_file.is_sensitive_form())
 
     def test_ce_ehr_consent(self):
         for consent_example in self._get_ce_ehr_test_data():
@@ -72,6 +73,17 @@ class ConsentFileParsingTest(BaseTestCase):
             self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
             self.assertEqual(consent_example.has_yes_selected, consent_file.is_agreement_selected())
             self.assertEqual(consent_example.expected_to_be_va_file, consent_file.get_is_va_consent())
+
+    def test_detection_of_sensitive_ehr_form(self):
+        sensitive_ehr = self._build_sensitive_ehr(with_initials=False)
+        self.assertTrue(sensitive_ehr.is_sensitive_form())
+
+    def test_finding_sensitive_signatures(self):
+        pdf_without_initials = self._build_sensitive_ehr(with_initials=False)
+        self.assertFalse(pdf_without_initials.has_valid_sensitive_form_initials())
+
+        pdf_with_initials = self._build_sensitive_ehr(with_initials=True)
+        self.assertTrue(pdf_with_initials.has_valid_sensitive_form_initials())
 
     def _get_primary_consent_elements(self):
         return [
@@ -405,6 +417,10 @@ class ConsentFileParsingTest(BaseTestCase):
         basic_ehr_pdf = self._build_pdf(pages=[
             *six_empty_pages,
             [
+                self._build_pdf_element(
+                    cls=LTTextLineHorizontal,
+                    text='You will have access to a signed copy of this form',
+                ),
                 self._build_form_element(text='Test ehr', bbox=(125, 150, 450, 180)),
                 self._build_form_element(text='Dec 21, 2019', bbox=(125, 100, 450, 130))
             ]
@@ -418,6 +434,10 @@ class ConsentFileParsingTest(BaseTestCase):
         va_ehr_pdf = self._build_pdf(pages=[
             *six_empty_pages,
             [
+                self._build_pdf_element(
+                    cls=LTTextLineHorizontal,
+                    text='You will have access to a signed copy of this form',
+                ),
                 self._build_pdf_element(
                     cls=LTTextLineHorizontal,
                     text='We may ask you to go to a local clinic to be measured'
@@ -434,6 +454,29 @@ class ConsentFileParsingTest(BaseTestCase):
         )
 
         return [basic_ehr_case, va_ehr_case]
+
+    def _build_sensitive_ehr(self, with_initials: bool) -> files.EhrConsentFile:
+        seven_empty_pages = [[], [], [], [], [], [], []]
+        sensitive_agreement_page = [
+            self._build_pdf_element(
+                cls=LTTextLineHorizontal,
+                text='I agree to release sensitive information from my EHRs'
+            )
+        ]
+        if with_initials:
+            sensitive_agreement_page.extend([
+                self._build_form_element(text='Test', bbox=(80, 336, 135, 363)),
+                self._build_form_element(text='Test', bbox=(80, 382, 135, 409)),
+                self._build_form_element(text='Test', bbox=(80, 437, 135, 464)),
+                self._build_form_element(text='Test', bbox=(80, 483, 135, 510)),
+                self._build_form_element(text='Test', bbox=(80, 529, 135, 556))
+            ])
+        sensitive_pdf = self._build_pdf(pages=[
+            *seven_empty_pages,
+            sensitive_agreement_page
+        ])
+
+        return files.VibrentEhrConsentFile(pdf=sensitive_pdf, blob=mock.MagicMock())
 
     def _get_ce_ehr_test_data(self):
         basic_pdf = self._build_ce_pdf(pages=[

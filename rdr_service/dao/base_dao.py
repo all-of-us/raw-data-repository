@@ -3,6 +3,8 @@ import datetime
 import json
 import logging
 import random
+import re
+
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from collections import OrderedDict
 from contextlib import closing
@@ -489,14 +491,14 @@ class BaseDao(object):
         return query
 
     @staticmethod
-    def _get_random_id():
+    def get_random_id():
         return random.randint(_MIN_ID, _MAX_ID)
 
     @staticmethod
     def _get_random_research_id():
         return random.randint(_MIN_RESEARCH_ID, _MAX_RESEARCH_ID)
 
-    def _insert_with_random_id(self, obj, fields):
+    def _insert_with_random_id(self, obj, fields, insert_fun=None):
         """Attempts to insert an entity with randomly assigned ID(s) repeatedly until success
     or a maximum number of attempts are performed."""
         all_tried_ids = []
@@ -506,13 +508,16 @@ class BaseDao(object):
                 if field == 'researchId':
                     rand_id = self._get_random_research_id()
                 else:
-                    rand_id = self._get_random_id()
+                    rand_id = self.get_random_id()
                 tried_ids[field] = rand_id
                 setattr(obj, field, rand_id)
             all_tried_ids.append(tried_ids)
             try:
                 with self.session() as session:
-                    return self.insert_with_session(session, obj)
+                    if not insert_fun:
+                        return self.insert_with_session(session, obj)
+                    else:
+                        return insert_fun(session, obj)
             except IntegrityError as e:
                 result = self.handle_integrity_error(tried_ids, e, obj)
                 if result:
@@ -610,6 +615,15 @@ class BaseDao(object):
     :return: string
     """
         return sqlparse.format(str(query), reindent=reindent)
+
+    @staticmethod
+    def camel_to_snake(string_value):
+        return re.sub(r'(?<!^)(?=[A-Z])', '_', string_value).lower()
+
+    @staticmethod
+    def snake_to_camel(string_value):
+        mod_string = string_value.split('_')
+        return mod_string[0] + ''.join(x.title() for x in mod_string[1:])
 
     def to_dict(self, obj, result_proxy=None):
         """

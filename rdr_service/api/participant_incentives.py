@@ -49,8 +49,7 @@ class ParticipantIncentivesApi(UpdatableApi):
 
         model = self.dao.from_client_json(
             request.get_json(force=True),
-            incentive_id=resource['incentiveId'],
-            cancel=resource.get('cancel')
+            incentive_id=resource['incentiveId']
         )
 
         model.id = resource['incentiveId']
@@ -60,28 +59,19 @@ class ParticipantIncentivesApi(UpdatableApi):
         return self._make_response(model)
 
     @staticmethod
-    def _get_required_keys(required_type=None):
-        key_map = {
-            'POST': {
-                'default': ['createdBy', 'site', 'dateGiven', 'occurrence', 'incentiveType', 'amount']
-            },
-            'PUT': {
-                'default': ['createdBy', 'site', 'dateGiven', 'occurrence', 'incentiveType', 'amount'],
-                'cancel': ['incentiveId', 'cancelledBy', 'cancelledDate']
-            }
-        }
-        try:
-            if not required_type:
-                return key_map[request.method]['default']
+    def _get_required_keys(**kwargs):
+        if request.method == 'PUT':
+            base_put = ['incentiveId']
+            if kwargs.get('is_cancel') is not None:
+                return base_put + ['cancelledBy', 'cancelledDate']
 
-            return key_map[request.method][required_type]
+            if kwargs.get('is_declined') is not None:
+                return base_put
 
-        except KeyError:
-            raise BadRequest(f"Error in getting required keys for method: {request.method}")
+        return ['site', 'dateGiven']
 
     def validate_payload_data(self):
         resource = request.get_json(force=True)
-        required_type = None
 
         if resource.get('site'):
             valid_site = self.site_dao.get_by_google_group(resource['site'])
@@ -91,10 +81,10 @@ class ParticipantIncentivesApi(UpdatableApi):
 
             self.site_id = valid_site.siteId
 
-        if resource.get('cancel'):
-            required_type = 'cancel'
-
-        req_keys = self._get_required_keys(required_type)
+        req_keys = self._get_required_keys(
+            is_cancel=resource.get('cancel'),
+            is_declined=resource.get('declined')
+        )
 
         if not all(k in list(resource.keys()) for k in req_keys):
             raise BadRequest(f"Missing required key/values in request, required: {' | '.join(req_keys)}")

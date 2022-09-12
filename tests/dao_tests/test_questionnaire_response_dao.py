@@ -33,7 +33,7 @@ from rdr_service.dao.questionnaire_response_dao import (
     QuestionnaireResponseDao,
     _raise_if_gcloud_file_missing,
 )
-from rdr_service.domain_model.response import Answer
+from rdr_service.domain_model.response import Answer, DataType
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -41,7 +41,9 @@ from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept,
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseStatus
 from rdr_service.model.resource_data import ResourceData
-from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort
+from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort,\
+    DigitalHealthSharingStatusV31
+from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from tests import test_data
 from tests.test_data import (
     consent_code,
@@ -213,7 +215,6 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
                 codeType=3
             )
             self.basics_profile_update_codes.append(code.codeId)
-
 
     def check_response(self, expected_qr):
         qr = self.questionnaire_response_dao.get_with_children(expected_qr.questionnaireResponseId)
@@ -636,7 +637,10 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2),
+            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -1266,7 +1270,10 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2),
+            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -1342,7 +1349,10 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2),
+            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -1425,7 +1435,10 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2),
+            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
@@ -1498,7 +1511,10 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
-            wasEhrDataAvailable=False
+            wasEhrDataAvailable=False,
+            enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2),
+            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
@@ -1560,43 +1576,50 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
 
     def test_loading_response_collections(self):
         # Create a questionnaire, and some responses that have different answers to the questions
-        questionnaire = self._generate_questionnaire(
+        questionnaire1 = self._generate_questionnaire(
             survey_code='test_survey',
             question_codes=[
                 't_1',
                 'T_2'
             ]
         )
+        questionnaire2 = self._generate_questionnaire(
+            survey_code='another_survey',
+            question_codes=[
+                'x_1',
+                'x_2'
+            ]
+        )
         participant_id = self.data_generator.create_database_participant().participantId
         self._generate_response(
-            questionnaire,
+            questionnaire1,
             ['one', 'two'],
             participant_id=participant_id,
             authored_date=datetime.datetime(2021, 10, 1),
             created_date=datetime.datetime(2021, 10, 1)
         )
         self._generate_response(
-            questionnaire,
+            questionnaire2,
             ['nine', 'ten'],
             participant_id=participant_id,
             authored_date=datetime.datetime(2022, 3, 5),
             created_date=datetime.datetime(2022, 3, 5)
         )
 
-        participant_responses_map = QuestionnaireResponseDao.get_responses_to_surveys(
-            survey_codes=['test_survey'],
+        participant_responses_map = QuestionnaireResponseRepository.get_responses_to_surveys(
+            survey_codes=['test_survey', 'another_survey'],
             participant_ids=[participant_id],
             session=self.session
         )
 
         responses = participant_responses_map[participant_id]
         self.assertEqual({
-            't_1': [Answer(id=mock.ANY, value='one')],
-            't_2': [Answer(id=mock.ANY, value='two')]
+            't_1': [Answer(id=mock.ANY, value='one', data_type=DataType.STRING)],
+            't_2': [Answer(id=mock.ANY, value='two', data_type=DataType.STRING)]
         }, responses.in_authored_order[0].answered_codes)
         self.assertEqual({
-            't_1': [Answer(id=mock.ANY, value='nine')],
-            't_2': [Answer(id=mock.ANY, value='ten')]
+            'x_1': [Answer(id=mock.ANY, value='nine', data_type=DataType.STRING)],
+            'x_2': [Answer(id=mock.ANY, value='ten', data_type=DataType.STRING)]
         }, responses.in_authored_order[1].answered_codes)
 
     def _generate_response(self, questionnaire, answers, participant_id=None, authored_date=None, created_date=None):

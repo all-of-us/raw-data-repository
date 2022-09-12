@@ -45,8 +45,7 @@ class ParticipantIncentivesApiTest(BaseTestCase):
         message = response.json['message']
         self.assertEqual(
             message,
-            'Missing required key/values in request, required: '
-            'createdBy | site | dateGiven | occurrence | incentiveType | amount'
+            'Missing required key/values in request, required: site | dateGiven'
         )
 
         response = self.send_put(
@@ -59,8 +58,7 @@ class ParticipantIncentivesApiTest(BaseTestCase):
         message = response.json['message']
         self.assertEqual(
             message,
-            'Missing required key/values in request, required: '
-            'createdBy | site | dateGiven | occurrence | incentiveType | amount'
+            'Missing required key/values in request, required: site | dateGiven'
         )
 
         data = {
@@ -221,6 +219,90 @@ class ParticipantIncentivesApiTest(BaseTestCase):
         self.assertEqual(response_two['cancelled'], False)
         self.assertEqual(response_two['cancelledBy'], 'UNSET')
         self.assertEqual(response_two['cancelledDate'], 'UNSET')
+
+    def test_decline_incentive(self):
+        site = self.site_dao.get(1)
+
+        test_user = 'Test User'
+        date_given = '2022-02-07 21:15:35'
+        occurrence = 'one_time'
+        incentive_type = 'cash'
+        amount = 25
+
+        data = {
+            'createdBy': test_user,
+            'site': site.googleGroup,
+            'dateGiven': date_given,
+            'occurrence': occurrence,
+            'incentiveType': incentive_type,
+            'amount': amount,
+            'declined': True
+        }
+
+        # create initial declined incentive
+        response = self.send_post(
+            f"Participant/P{self.participant.participantId}/Incentives",
+            request_data=data
+        )
+
+        incentives = self.incentive_dao.get_all()
+        self.assertEqual(len(incentives), 1)
+
+        incentive_created = self.incentive_dao.get(1)
+
+        self.assertEqual(response['incentiveId'], incentive_created.id)
+        self.assertEqual(response['createdBy'], test_user)
+        self.assertEqual(response['participantId'], f'P{self.participant.participantId}')
+        self.assertEqual(response['site'], site.googleGroup)
+        self.assertEqual(response['incentiveType'], incentive_type)
+        self.assertEqual(response['occurrence'], occurrence)
+        self.assertEqual(response['amount'], amount)
+        self.assertEqual(response['dateGiven'], date_given)
+
+        # should be True
+        self.assertEqual(response['declined'], True)
+
+        updated_decline = False
+
+        data = {
+            'incentiveId': incentives[0].id,
+            'declined': updated_decline
+        }
+
+        updated_response = self.send_put(
+            f"Participant/P{self.participant.participantId}/Incentives",
+            request_data=data
+        )
+
+        incentives = self.incentive_dao.get_all()
+        self.assertEqual(len(incentives), 1)
+
+        incentive_updated = self.incentive_dao.get(1)
+
+        self.assertEqual(updated_response['incentiveId'], incentive_updated.id)
+        # should be False
+        self.assertEqual(updated_response['declined'], updated_decline)
+
+        updated_decline = True
+
+        data = {
+            'incentiveId': incentives[0].id,
+            'declined': updated_decline
+        }
+
+        updated_response = self.send_put(
+            f"Participant/P{self.participant.participantId}/Incentives",
+            request_data=data
+        )
+
+        incentives = self.incentive_dao.get_all()
+        self.assertEqual(len(incentives), 1)
+
+        incentive_updated = self.incentive_dao.get(1)
+
+        self.assertEqual(updated_response['incentiveId'], incentive_updated.id)
+        # should be True
+        self.assertEqual(updated_response['declined'], updated_decline)
 
     def test_put_cancel_incentive(self):
         site = self.site_dao.get(1)

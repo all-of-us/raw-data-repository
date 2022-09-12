@@ -203,7 +203,8 @@ class MetricsEhrService(BaseDao):
             ParticipantSummary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED
         ) & (ParticipantSummary.consentForElectronicHealthRecordsTime <= cutoff_date)
         had_completed_ppi = ParticipantSummary.numCompletedBaselinePPIModules >= ppi_baseline_module_count
-        had_physical_measurements = ParticipantSummary.physicalMeasurementsFinalizedTime <= cutoff_date
+        had_physical_measurements = (ParticipantSummary.clinicPhysicalMeasurementsFinalizedTime <= cutoff_date
+                                     ) | (ParticipantSummary.selfReportedPhysicalMeasurementsAuthored <= cutoff_date)
         had_biosample = ParticipantSummary.biospecimenOrderTime <= cutoff_date
         had_ehr_receipt = (ParticipantSummary.ehrStatus == EhrStatus.PRESENT) & (
             ParticipantSummary.ehrReceiptTime <= cutoff_date

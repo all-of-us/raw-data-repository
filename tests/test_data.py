@@ -78,6 +78,16 @@ def load_measurement_json_amendment(participant_id, amended_id, now=None):
     return measurement
 
 
+def load_remote_measurement_json(template_file_name, questionnaire_id, participant_id_str):
+    with open(data_path(template_file_name)) as fd:
+        resource = json.load(fd)
+
+    resource["subject"]["reference"] = f'Patient/{participant_id_str}'
+    resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+
+    return resource
+
+
 def load_biobank_order_json(participant_id, filename="biobank_order_1.json"):
     with open(data_path(filename)) as f:
         return json.loads(
