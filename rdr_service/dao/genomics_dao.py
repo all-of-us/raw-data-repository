@@ -2035,11 +2035,11 @@ class GenomicOutreachDaoV2(BaseDao):
 
                 report_statuses.append(report_obj)
 
-                if participant_data.result_viewed:
-                    result_obj = report_obj.copy()
-                    result_obj['status'] = 'viewed'
-
-                    report_statuses.append(result_obj)
+                # if participant_data.result_viewed:
+                #     result_obj = report_obj.copy()
+                #     result_obj['status'] = 'viewed'
+                #
+                #     report_statuses.append(result_obj)
 
             elif 'informing_loop' in participant_data.type:
                 if 'ready' in participant_data.type:
@@ -2205,16 +2205,8 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                 if start_date:
                     result_query = result_query.filter(
-                        or_(
-                            and_(
-                                GenomicMemberReportState.event_authored_time > start_date,
-                                GenomicMemberReportState.event_authored_time < end_date,
-                            ),
-                            and_(
-                                GenomicResultViewed.event_authored_time > start_date,
-                                GenomicResultViewed.event_authored_time < end_date
-                            )
-                        )
+                        GenomicMemberReportState.event_authored_time > start_date,
+                        GenomicMemberReportState.event_authored_time < end_date,
                     )
 
                 results = result_query.all()
