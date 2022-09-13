@@ -3987,6 +3987,13 @@ class GenomicQueriesDao(BaseDao):
             ).filter(
                 ParticipantSummary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
                 GenomicResultWithdrawals.id.is_(None),
+                and_(
+                    or_(
+                        GenomicSetMember.gemA1ManifestJobRunId.isnot(None),
+                        GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
+                        GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
+                    )
+                )
             ).group_by(
                 GenomicSetMember.participantId
             )
