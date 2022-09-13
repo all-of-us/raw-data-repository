@@ -576,6 +576,7 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         self.assertEqual(report_state_member.genomic_report_state, GenomicReportState.GEM_RPT_PENDING_DELETE)
         self.assertEqual(report_state_member.module, 'gem')
         self.assertEqual(report_state_member.genomic_set_member_id, member.id)
+        self.assertEqual(report_state_member.event_authored_time, member.genomicWorkflowStateModifiedTime)
 
     def test_genomic_test_participant_not_found(self):
         # P2001 doesn't exist in participant
