@@ -122,12 +122,12 @@ cron:
 - description: Genomic CVL W1IL PGX Workflow
   url: /offline/GenomicCVLW1ILPgxWorkflow
   timezone: America/New_York
-  schedule: every wednesday 05:00
+  schedule: every wednesday 04:00
   target: offline
 - description: Genomic CVL W1IL HDR Workflow
   url: /offline/GenomicCVLW1ILHdrWorkflow
   timezone: America/New_York
-  schedule: every wednesday 05:15
+  schedule: every wednesday 04:15
   target: offline
 - description: Genomic CVL W2W Workflow (bi-weekly runs)
   url: /offline/GenomicCVLW2WWorkflow
@@ -214,8 +214,8 @@ cron:
   timezone: America/New_York
   schedule: every monday 09:00
   target: offline
-- description: Genomic GHR3 Resolve Samples (Weekly)
-  url: /offline/GenomicGHR3ResolveSamples
+- description: Genomic CVL Resolve Samples (Weekly)
+  url: /offline/GenomicCVLResolveSamples
   timezone: America/New_York
   schedule: every monday 10:00
   target: offline
@@ -224,4 +224,10 @@ cron:
   timezone: America/New_York
   schedule: every monday 11:00
   target: offline
+- description: Genomic Gem Result to Reports
+  url: /offline/GenomicGemResultReports
+  timezone: America/New_York
+  schedule: every day 06:00
+  target: offline
+
 

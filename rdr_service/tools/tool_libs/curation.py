@@ -2,6 +2,7 @@
 #
 # Template for RDR tool python program.
 #
+from datetime import datetime
 import logging
 import pytz
 from sqlalchemy import and_, case, insert, or_, text, not_
@@ -25,7 +26,8 @@ from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireH
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseClassificationType
 from rdr_service.model.curation_etl import CdrExcludedCode
-from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus, CdrEtlCodeType
+from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus, CdrEtlCodeType,\
+    QuestionnaireStatus
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 from rdr_service.dao.curation_etl_dao import CdrEtlRunHistoryDao, CdrEtlSurveyHistoryDao, CdrExcludedCodeDao
@@ -67,6 +69,20 @@ class CurationExportClass(ToolBase):
 
     @classmethod
     def _render_export_select(cls, export_sql, column_name_list):
+        # We need to handle NULLs and convert them to empty strings as gcloud sql has a bug when putting them in a csv
+        # https://issuetracker.google.com/issues/64579566
+        # NULL characters (\0) can also corrupt the output file, so they're removed.
+        # And whitespace was trimmed before so that's moved into the SQL as well
+        # Newlines and double-quotes are also replaced with spaces and single-quotes, respectively
+        data_select_list = [
+            f"TRIM(REPLACE(REPLACE(REPLACE(COALESCE({name}, ''), '\\0', ''), '\n', ' '), '\\\"', '\\\''))"
+            for name in column_name_list
+        ]
+
+        # We have to add a row at the start for the CSV headers, Google hasn't implemented another way yet
+        # https://issuetracker.google.com/issues/111342008
+        # The below format forces the headers to the top of the file.
+        # Curation would like them in the file for schema validation (ROC-687)
         return f"""
             SELECT {', '.join(column_name_list)}
             FROM
@@ -78,9 +94,7 @@ class CurationExportClass(ToolBase):
                 )
                 UNION ALL
                 (
-                    SELECT
-                      2 as sort_col,
-                      data.*
+                    SELECT 2 as sort_col, {','.join(data_select_list)}
                     FROM ({export_sql}) as data
                 )
             ) a
@@ -109,45 +123,13 @@ class CurationExportClass(ToolBase):
         :param table: Table name
         :return:
         """
-        cloud_file = f'gs://{self.args.export_path}/{table}.csv'
-
-        # We have to add a row at the start for the CSV headers, Google hasn't implemented another way yet
-        # https://issuetracker.google.com/issues/111342008
-        column_names = self.get_field_names(table, ['id'])
-        header_string = ','.join([f"'{column_name}'" for column_name in column_names])
-
-        # We need to handle NULLs and convert them to empty strings as gcloud sql has a bug when putting them in a csv
-        # https://issuetracker.google.com/issues/64579566
-        # NULL characters (\0) can also corrupt the output file, so they're removed.
-        # And whitespace was trimmed before so that's moved into the SQL as well
-        # Newlines and double-quotes are also replaced with spaces and single-quotes, respectively
-        field_list = [f"TRIM(REPLACE(REPLACE(REPLACE(COALESCE({name}, ''), '\\0', ''), '\n', ' '), '\\\"', '\\\''))"
-                      for name in column_names]
-
-        # Unions are unordered, so the headers do not always end up at the top of the file.
-        # The below format forces the headers to the top of the file
-        # This is needed because gcloud export sql doesn't support column headers and
-        # Curation would like them in the file for schema validation (ROC-687)
-        sql_string = f"""
-            SELECT {','.join(column_names)}
-            FROM
-            (
-                (
-                    SELECT
-                      1 as sort_col,
-                      {header_string}
-                )
-                UNION ALL
-                (
-                    SELECT 2,
-                        {','.join(field_list)}
-                    FROM {table}
-                )
-            ) a
-            ORDER BY a.sort_col ASC
-        """
+        sql_string = self._render_export_select(
+            export_sql=f"SELECT * FROM {table}",
+            column_name_list=self.get_field_names(table, exclude=['id'])
+        )
 
         _logger.info(f'exporting {table}')
+        cloud_file = f'gs://{self.args.export_path}/{table}.csv'
         gcp_sql_export_csv(self.args.project, sql_string, cloud_file, database='cdm')
 
     def export_cope_map(self):
@@ -268,7 +250,7 @@ class CurationExportClass(ToolBase):
             ]
         )
         export_name = 'survey_conduct'
-        cloud_file = f'{self.args.export_path}/{export_name}.csv'
+        cloud_file = f'gs://{self.args.export_path}/{export_name}.csv'
 
         _logger.info(f'exporting {export_name}')
         gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
@@ -278,8 +260,10 @@ class CurationExportClass(ToolBase):
         # just use a standard MySQLDB connection.
         self.db_conn = self.gcp_env.make_mysqldb_connection(user='alembic', database='cdm')
 
-        if not self.args.export_path.startswith('gs://all-of-us-rdr-prod-cdm/'):
-            raise NameError("Export path must start with 'gs://all-of-us-rdr-prod-cdm/'.")
+        if not any((self.args.export_path.startswith('gs://all-of-us-rdr-prod-cdm/'),
+                    self.args.export_path.startswith('gs://all-of-us-rdr-stable-cdm'))):
+            raise NameError("Export path must start with 'gs://all-of-us-rdr-prod-cdm/'"
+                            "or 'gs://all-of-us-rdr-stable-cdm/'.")
         if self.args.export_path.endswith('/'):  # Remove trailing slash if present.
             self.args.export_path = self.args.export_path[5:-1]
 
@@ -479,7 +463,17 @@ class CurationExportClass(ToolBase):
             ParticipantSummary,
             ParticipantSummary.participantId == Participant.participantId
         ).filter(
-            Participant.isGhostId.isnot(True),
+            or_(
+                Participant.isGhostId.isnot(True),
+                and_(
+                    ParticipantSummary.participantId.isnot(None),
+                    Participant.dateAddedGhost > datetime(2022, 3, 18),
+                    or_(
+                        ParticipantSummary.consentForElectronicHealthRecords != QuestionnaireStatus.UNSET,
+                        ParticipantSummary.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
+                    )
+                )
+            ),
             Participant.isTestParticipant.isnot(True),
             Participant.participantOrigin != 'careevolution',
             HPO.name != 'TEST',

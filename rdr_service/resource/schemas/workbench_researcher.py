@@ -199,6 +199,10 @@ class WorkbenchResearcherSchema(Schema):
     dsv2_ethnicity_white_other = fields.Boolean()
     dsv2_survey_comments = fields.Boolean()
 
+    orig_id = fields.Int32()
+    orig_created = fields.DateTime()
+    orig_modified = fields.DateTime()
+
     class Meta:
         schema_id = SchemaID.workbench_researcher
         resource_uri = 'WorkbenchResearcher'
@@ -217,6 +221,10 @@ class WorkbenchInstitutionalAffiliationsSchema(Schema):
     non_academic_affiliation_id = fields.EnumInteger(enum=WorkbenchInstitutionNonAcademic, required=True)
     is_verified = fields.Boolean()
     modified_time = fields.DateTime()
+
+    orig_id = fields.Int32()
+    orig_created = fields.DateTime()
+    orig_modified = fields.DateTime()
 
     class Meta:
         schema_id = SchemaID.workbench_institutional_affiliation

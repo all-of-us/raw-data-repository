@@ -440,6 +440,11 @@ def results_pipeline_withdrawals():
         controller.check_results_withdrawals()
 
 
+def gem_results_to_report_state():
+    with GenomicJobController(GenomicJob.GEM_RESULT_REPORTS) as controller:
+        controller.gem_results_to_report_state()
+
+
 def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
     """
     Entrypoint for new genomic manifest file pipelines

@@ -15,7 +15,7 @@ from dateutil.parser import parse
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
 from sqlalchemy.orm import aliased
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy import case
 
 from rdr_service.dao import database_factory
@@ -56,6 +56,15 @@ def validate_args(arg_string):
                     _logger.error("--cutoff-date required for operation")
                     return 1
                 obj.args.cutoff_date = parse(obj.args.cutoff_date)
+            if arg_string == "ods_table":
+                valid_ods_tables = []
+                if meth.__name__ == 'purge_duplicate_values':
+                    valid_ods_tables.append("sample_data_element")
+
+                if obj.args.ods_table not in valid_ods_tables:
+                    _logger.error("--ods-table required for operation")
+                    _logger.error(f"--ods-table required to be one of {valid_ods_tables}")
+                    return 1
 
             return meth(obj)
 
@@ -90,6 +99,7 @@ class SpotTool(ToolBase):
             "EXPORT_ODS_TO_DATAMART": self.export_ods_data_to_datamart,
             "INITIALIZE_SYSTEM": self.initialize_system,
             "SEED_ODS_DATA": self.seed_ods_data,
+            "PURGE_DUPLICATE_VALUES": self.purge_duplicate_values,
         }
 
         return process_map[self.args.process]()
@@ -283,7 +293,7 @@ class SpotTool(ToolBase):
         if schema == "genomic_research_wgs":
             return self.run_bq_query_job(
                 "CALL rdr_ods.export_genomic_research_wgs_procedure(@cutoff_date);",
-                job_config = job_config
+                job_config=job_config
             )
         _logger.error("ERROR: Invalid export schema")
         sys.exit()
@@ -365,6 +375,21 @@ class SpotTool(ToolBase):
         self.load_data_to_bq_table(table_id, rows)
 
         return 0
+
+    @validate_args(arg_string="ods_table")
+    def purge_duplicate_values(self):
+        """
+        Removes duplicate de-value pairs, retaining the latest
+        from the ODS table supplied by --ods-table.
+        currently only sample_data_element required
+        :return:
+        """
+        # calls stored proc with ods table to purge
+        if self.args.ods_table == "sample_data_element":
+            self.call_purge_duplicate_sample_values_procedure()
+
+        return 0
+
 
     @validate_args(arg_string="cutoff_date")
     def export_ods_data_to_datamart(self):
@@ -508,7 +533,10 @@ class SpotTool(ToolBase):
             GenomicSetMember.aw4ManifestJobRunID.isnot(None),
             GenomicSetMember.ignoreFlag == 0,
             GenomicGCValidationMetrics.ignoreFlag == 0,
-            GenomicSetMember.modified > last_update_date,
+            or_(
+                GenomicSetMember.modified > last_update_date,
+                GenomicGCValidationMetrics.modified > last_update_date,
+                ),
             # GenomicSetMember.participantId.in_(),  # TODO: Add param
             GenomicSetMember.genomeType.in_(["aou_wgs", "aou_array"])
         )
@@ -679,6 +707,17 @@ class SpotTool(ToolBase):
             f"CALL rdr_ods.create_export_snapshot('{destination}');"
         )
 
+    def call_purge_duplicate_sample_values_procedure(self):
+        confirm = input(f"Are you sure you want to purge duplicates for {self.args.ods_table}? \n(y/n)>")
+        if confirm.lower() == "y":
+            _logger.info(f"Calling stored procedure...")
+            return self.run_bq_query_job(
+                f"CALL rdr_ods.purge_duplicate_sample_values();"
+            )
+        else:
+            _logger.info("Aborting.")
+            return 1
+
     @staticmethod
     def get_destination_table(export_schema):
         clock = Clock()
@@ -708,6 +747,7 @@ def run():
         "EXPORT_ODS_TO_DATAMART",
         "INITIALIZE_SYSTEM",
         "SEED_ODS_DATA",
+        "PURGE_DUPLICATE_VALUES"
     ]
     # Setup program arguments.
     parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)

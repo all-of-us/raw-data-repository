@@ -15,6 +15,7 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao, \
     ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao, QuestionnaireResponseDao
@@ -208,7 +209,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         # clinicPhysicalMeasurementsFinalizedTime with other times to cover the bug scenario:
         # TypeError("can't compare offset-naive and offset-aware datetimes")
         ps_dao = ParticipantSummaryDao()
-        ps_dao.update_from_biobank_stored_samples()
+        ps_dao.update_from_biobank_stored_samples(biobank_ids=[from_client_biobank_id(participant_1['biobankId'])])
 
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary["selfReportedPhysicalMeasurementsStatus"], 'UNSET')
@@ -420,9 +421,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-03-20T00:00:00')
         self.assertEqual(summary.get('consentForElectronicHealthRecords'), 'SUBMITTED_NO_CONSENT')
-        # keep the same behaviour with the withdrawal participant for enrollmentStatusMemberTime
-        self.assertEqual(summary.get('enrollmentStatusMemberTime'), None)
-        self.assertEqual(summary.get('enrollmentStatus'), 'INTERESTED')
+        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-02-12T00:00:00')
+        self.assertEqual(summary.get('enrollmentStatus'), 'MEMBER')
         self.assertEqual(summary.get('ehrConsentExpireStatus'), 'EXPIRED')
         self.assertEqual(summary.get('ehrConsentExpireTime'), '2020-04-12T00:00:00')
         self.assertEqual(summary.get('ehrConsentExpireAuthored'), '2020-03-20T00:00:00')
@@ -439,7 +439,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
                                           datetime.datetime(2020, 4, 11))
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-04-11T00:00:00')
-        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-04-11T00:00:00')
+        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-02-12T00:00:00')
         self.assertEqual(summary.get('enrollmentStatus'), 'MEMBER')
         self.assertEqual(summary.get('ehrConsentExpireStatus'), 'UNSET')
         self.assertEqual(summary.get('ehrConsentExpireTime'), None)
@@ -706,7 +706,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
+            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -854,7 +856,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "primaryLanguage": "es",
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
+            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -939,7 +943,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "primaryLanguage": "es",
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
+            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -991,7 +997,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "primaryLanguage": "es",
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
+            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1129,7 +1137,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
+            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1279,7 +1289,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
+            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1321,7 +1333,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
+            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1648,6 +1662,21 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             QuestionnaireResponse.questionnaireResponseId == response['id']
         ).one()
         self.assertIsNone(response_obj.externalId)
+
+    def test_questionnaire_life_functioning_survey(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id)
+        questionnaire_id = self.create_questionnaire("questionnaire_life_functioning.json")
+        resource = self._load_response_json("questionnaire_life_functioning_resp.json", questionnaire_id, participant_id)
+        self._save_codes(resource)
+        with FakeClock(datetime.datetime(2022, 9, 7, 1, 2, 3)):
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual(summary['questionnaireOnLifeFunctioning'], 'SUBMITTED')
+        self.assertEqual(summary['questionnaireOnLifeFunctioningAuthored'], '2022-09-06T14:32:28')
+        self.assertEqual(summary['questionnaireOnLifeFunctioningTime'], '2022-09-07T01:02:03')
 
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):

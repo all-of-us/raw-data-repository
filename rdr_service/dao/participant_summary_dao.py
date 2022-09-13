@@ -35,11 +35,11 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_incentives_dao import ParticipantIncentivesDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
-
+from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentDependencies
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
+from rdr_service.model.enrollment_status_history import EnrollmentStatusHistory
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
-from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import (
     ParticipantGenderAnswers,
     ParticipantRaceAnswers,
@@ -54,6 +54,8 @@ from rdr_service.participant_enums import (
     BiobankOrderStatus,
     EhrStatus,
     EnrollmentStatus,
+    EnrollmentStatusV30,
+    EnrollmentStatusV31,
     DeceasedStatus,
     ConsentExpireStatus,
     GenderIdentity,
@@ -72,6 +74,9 @@ from rdr_service.participant_enums import (
 )
 from rdr_service.model.code import Code
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
+from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
+from rdr_service.services.system_utils import min_or_none
+
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
 _ORDER_BY_ENDING = ("lastName", "firstName", "dateOfBirth", "participantId")
@@ -151,23 +156,6 @@ _ENROLLMENT_STATUS_CASE_SQL = """
              ELSE :interested
         END
 """
-
-_ENROLLMENT_STATUS_SQL = """
-    UPDATE
-      participant_summary
-    SET
-      enrollment_status = {enrollment_status_case_sql},
-      last_modified = :now
-    WHERE
-      (
-        (enrollment_status != :full_participant and enrollment_status != :core_minus_pm)
-        OR
-        (enrollment_status = :core_minus_pm AND :full_participant = {enrollment_status_case_sql})
-      )
-      AND enrollment_status != {enrollment_status_case_sql}
-   """.format(
-    enrollment_status_case_sql=_ENROLLMENT_STATUS_CASE_SQL
-)
 
 # DA-614 - Notes: Because there can be multiple distinct samples with the same test for a
 # participant and we can't show them all in the participant summary.  The HealthPro team
@@ -337,15 +325,6 @@ def _get_dna_isolates_sql_and_params():
     )
 
 
-def _get_status_time_sql():
-    dns_test_list = config.getSettingList(config.DNA_SAMPLE_TEST_CODES)
-
-    status_time_sql = "%s" % ",".join(
-        ["""COALESCE(sample_status_%s_time, '3000-01-01')""" % item for item in dns_test_list]
-    )
-    return status_time_sql
-
-
 def _get_baseline_ppi_module_sql():
     baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
 
@@ -353,105 +332,6 @@ def _get_baseline_ppi_module_sql():
         ["""%s_time""" % re.sub("(?<!^)(?=[A-Z])", "_", item).lower() for item in baseline_ppi_module_fields]
     )
     return baseline_ppi_module_sql
-
-
-def _get_sample_status_time_sql_and_params():
-    """Gets SQL that to update enrollmentStatusCoreStoredSampleTime field
-  on the participant summary.
-  """
-    status_time_sql = _get_status_time_sql()
-    baseline_ppi_module_sql = _get_baseline_ppi_module_sql()
-
-    sub_sql = """
-    SELECT
-      participant_id,
-      GREATEST(
-        CASE WHEN enrollment_status_member_time IS NOT NULL THEN enrollment_status_member_time
-             ELSE consent_for_electronic_health_records_time
-        END,
-        CASE WHEN GREATEST(
-                COALESCE(clinic_physical_measurements_finalized_time, 0),
-                COALESCE(self_reported_physical_measurements_authored, 0)
-            ) = 0 THEN NULL
-            ELSE GREATEST(
-                COALESCE(clinic_physical_measurements_finalized_time, 0),
-                COALESCE(self_reported_physical_measurements_authored, 0)
-            )
-        END,
-        {baseline_ppi_module_sql},
-        CASE WHEN
-            LEAST(
-                {status_time_sql}
-                ) = '3000-01-01' THEN NULL
-            ELSE LEAST(
-                {status_time_sql}
-                )
-        END
-      ) AS new_core_stored_sample_time
-    FROM
-      participant_summary
-  """.format(
-        status_time_sql=status_time_sql, baseline_ppi_module_sql=baseline_ppi_module_sql
-    )
-
-    sql = """
-    UPDATE
-      participant_summary AS a
-      INNER JOIN ({sub_sql}) AS b ON a.participant_id = b.participant_id
-    SET
-      a.enrollment_status_core_stored_sample_time = b.new_core_stored_sample_time
-    WHERE a.enrollment_status = 3
-    AND a.enrollment_status_core_stored_sample_time IS NULL
-    """.format(
-        sub_sql=sub_sql
-    )
-
-    return sql
-
-
-def _get_core_minus_pm_time_sql_and_params():
-    """
-    Gets SQL that to update enrollmentStatusCoreMinusPMTime field on the participant summary.
-    """
-    status_time_sql = _get_status_time_sql()
-    baseline_ppi_module_sql = _get_baseline_ppi_module_sql()
-
-    sub_sql = """
-    SELECT
-      participant_id,
-      GREATEST(
-        CASE WHEN enrollment_status_member_time IS NOT NULL THEN enrollment_status_member_time
-             ELSE consent_for_electronic_health_records_time
-        END,
-        {baseline_ppi_module_sql},
-        CASE WHEN
-            LEAST(
-                {status_time_sql}
-                ) = '3000-01-01' THEN NULL
-            ELSE LEAST(
-                {status_time_sql}
-                )
-        END
-      ) AS core_minus_pm_time
-    FROM
-      participant_summary
-  """.format(
-        status_time_sql=status_time_sql, baseline_ppi_module_sql=baseline_ppi_module_sql
-    )
-
-    sql = """
-    UPDATE
-      participant_summary AS a
-      INNER JOIN ({sub_sql}) AS b ON a.participant_id = b.participant_id
-    SET
-      a.enrollment_status_core_minus_pm_time = b.core_minus_pm_time
-    WHERE a.enrollment_status = 4
-    AND a.enrollment_status_core_minus_pm_time IS NULL
-    """.format(
-        sub_sql=sub_sql
-    )
-
-    return sql
 
 
 class ParticipantSummaryDao(UpdatableDao):
@@ -714,7 +594,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
         return filter_obj
 
-    def update_from_biobank_stored_samples(self, participant_id=None):
+    def update_from_biobank_stored_samples(self, participant_id=None, biobank_ids=None):
         """Rewrites sample-related summary data. Call this after updating BiobankStoredSamples.
     If participant_id is provided, only that participant will have their summary updated."""
         now = clock.CLOCK.now()
@@ -722,12 +602,6 @@ class ParticipantSummaryDao(UpdatableDao):
 
         baseline_tests_sql, baseline_tests_params = _get_baseline_sql_and_params()
         dna_tests_sql, dna_tests_params = _get_dna_isolates_sql_and_params()
-
-        sample_status_time_sql = _get_sample_status_time_sql_and_params()
-        sample_status_time_params = {}
-
-        core_minus_pm_time_sql = _get_core_minus_pm_time_sql_and_params()
-        core_minus_pm_time_params = {}
 
         counts_sql = """
     UPDATE
@@ -746,34 +620,12 @@ class ParticipantSummaryDao(UpdatableDao):
         counts_params.update(baseline_tests_params)
         counts_params.update(dna_tests_params)
 
-        enrollment_status_sql = _ENROLLMENT_STATUS_SQL
-        enrollment_status_params = {
-            "submitted": int(QuestionnaireStatus.SUBMITTED),
-            "submitted_not_sure": int(QuestionnaireStatus.SUBMITTED_NOT_SURE),
-            "unset": int(QuestionnaireStatus.UNSET),
-            "num_baseline_ppi_modules": self._get_num_baseline_ppi_modules(),
-            "completed": int(PhysicalMeasurementsStatus.COMPLETED),
-            "received": int(SampleStatus.RECEIVED),
-            "full_participant": int(EnrollmentStatus.FULL_PARTICIPANT),
-            "core_minus_pm": int(EnrollmentStatus.CORE_MINUS_PM),
-            "member": int(EnrollmentStatus.MEMBER),
-            "interested": int(EnrollmentStatus.INTERESTED),
-            "cohort_3": int(ParticipantCohort.COHORT_3),
-            "now": now,
-        }
-
         # If participant_id is provided, add the participant ID filter to all update statements.
         if participant_id:
             sample_sql += " AND participant_id = :participant_id"
             sample_params["participant_id"] = participant_id
             counts_sql += " AND participant_id = :participant_id"
             counts_params["participant_id"] = participant_id
-            enrollment_status_sql += " AND participant_id = :participant_id"
-            enrollment_status_params["participant_id"] = participant_id
-            sample_status_time_sql += " AND a.participant_id = :participant_id"
-            sample_status_time_params["participant_id"] = participant_id
-            core_minus_pm_time_sql += " AND a.participant_id = :participant_id"
-            core_minus_pm_time_params["participant_id"] = participant_id
 
         sample_sql = replace_null_safe_equals(sample_sql)
         counts_sql = replace_null_safe_equals(counts_sql)
@@ -781,53 +633,207 @@ class ParticipantSummaryDao(UpdatableDao):
         with self.session() as session:
             session.execute(sample_sql, sample_params)
             session.execute(counts_sql, counts_params)
-            session.execute(enrollment_status_sql, enrollment_status_params)
             session.commit()
-            # TODO: Change this to the optimized sql in _update_dv_stored_samples()
-            session.execute(sample_status_time_sql, sample_status_time_params)
-            session.execute(core_minus_pm_time_sql, core_minus_pm_time_params)
+
+            if biobank_ids:
+                summary_list = session.query(ParticipantSummary).filter(
+                    ParticipantSummary.biobankId.in_(biobank_ids)
+                ).all()
+                for summary in summary_list:
+                    self.update_enrollment_status(
+                        summary=summary,
+                        session=session
+                    )
+                    session.commit()
 
     def _get_num_baseline_ppi_modules(self):
         return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
 
-    def update_enrollment_status(self, summary):
-        """Updates the enrollment status field on the provided participant summary to
-    the correct value based on the other fields on it. Called after
-    a questionnaire response or physical measurements are submitted."""
-        consent = (
-            summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
-            and summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED
-        ) or (
-            summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
-            and summary.consentForElectronicHealthRecords is None
-            and summary.consentForDvElectronicHealthRecordsSharing == QuestionnaireStatus.SUBMITTED
+    @classmethod
+    def _set_if_empty(cls, summary, field_name, new_value):
+        if getattr(summary, field_name) is None and new_value is not None:
+            setattr(summary, field_name, new_value)
+
+    def update_enrollment_status(self, summary: ParticipantSummary, session):
+        """
+        Updates the enrollment status field on the provided participant summary to
+        the correct value.
+        """
+
+        earliest_physical_measurements_time = min_or_none([
+            summary.clinicPhysicalMeasurementsFinalizedTime,
+            summary.selfReportedPhysicalMeasurementsAuthored
+        ])
+        earliest_biobank_received_dna_time = min_or_none([
+            summary.sampleStatus1ED10Time,
+            summary.sampleStatus2ED10Time,
+            summary.sampleStatus1ED04Time,
+            summary.sampleStatus1SALTime,
+            summary.sampleStatus1SAL2Time
+        ])
+
+        ehr_consent_ranges = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
+            participant_id=summary.participantId,
+            session=session
         )
 
-        enrollment_status = self.calculate_enrollment_status(
-            consent,
-            summary.numCompletedBaselinePPIModules,
-            summary.clinicPhysicalMeasurementsStatus,
-            summary.selfReportedPhysicalMeasurementsStatus,
-            summary.samplesToIsolateDNA,
-            summary.consentCohort,
-            summary.consentForGenomicsROR,
-            summary.ehrConsentExpireStatus
+        dna_update_time_list = [summary.questionnaireOnDnaProgramAuthored]
+        if summary.consentForStudyEnrollmentAuthored != summary.consentForStudyEnrollmentFirstYesAuthored:
+            dna_update_time_list.append(summary.consentForStudyEnrollmentAuthored)
+        dna_update_time = min_or_none(dna_update_time_list)
+
+        enrollment_info = EnrollmentCalculation.get_enrollment_info(
+            EnrollmentDependencies(
+                consent_cohort=summary.consentCohort,
+                primary_consent_authored_time=summary.consentForStudyEnrollmentAuthored,
+                gror_authored_time=summary.consentForGenomicsRORAuthored,
+                basics_authored_time=summary.questionnaireOnTheBasicsAuthored,
+                overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
+                lifestyle_authored_time=summary.questionnaireOnLifestyleAuthored,
+                earliest_ehr_file_received_time=summary.firstEhrReceiptTime,
+                earliest_physical_measurements_time=earliest_physical_measurements_time,
+                earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
+                ehr_consent_date_range_list=ehr_consent_ranges,
+                dna_update_time=dna_update_time
+            )
+        )
+
+        # Update enrollment status if it is upgrading
+        legacy_dates = enrollment_info.version_legacy_dates
+        version_3_0_dates = enrollment_info.version_3_0_dates
+        version_3_1_dates = enrollment_info.version_3_1_dates
+        status_rank_map = {  # Re-orders the status values so we can quickly see if the current status is higher
+            EnrollmentStatus.INTERESTED: 0,
+            EnrollmentStatus.MEMBER: 1,
+            EnrollmentStatus.CORE_MINUS_PM: 2,
+            EnrollmentStatus.FULL_PARTICIPANT: 3
+        }
+        if status_rank_map[summary.enrollmentStatus] < status_rank_map[enrollment_info.version_legacy_status]:
+            summary.enrollmentStatus = enrollment_info.version_legacy_status
+            summary.lastModified = clock.CLOCK.now()
+
+            # Record the new status in the history table
+            session.add(
+                EnrollmentStatusHistory(
+                    participant_id=summary.participantId,
+                    version='legacy',
+                    status=str(summary.enrollmentStatus),
+                    timestamp=legacy_dates[summary.enrollmentStatus]
+                )
+            )
+        if summary.enrollmentStatusV3_0 < enrollment_info.version_3_0_status:
+            summary.enrollmentStatusV3_0 = enrollment_info.version_3_0_status
+            summary.lastModified = clock.CLOCK.now()
+            session.add(
+                EnrollmentStatusHistory(
+                    participant_id=summary.participantId,
+                    version='3.0',
+                    status=str(summary.enrollmentStatusV3_0),
+                    timestamp=version_3_0_dates[summary.enrollmentStatusV3_0]
+                )
+            )
+        if summary.enrollmentStatusV3_1 < enrollment_info.version_3_1_status:
+            summary.enrollmentStatusV3_1 = enrollment_info.version_3_1_status
+            summary.lastModified = clock.CLOCK.now()
+            session.add(
+                EnrollmentStatusHistory(
+                    participant_id=summary.participantId,
+                    version='3.1',
+                    status=str(summary.enrollmentStatusV3_1),
+                    timestamp=version_3_1_dates[summary.enrollmentStatusV3_1]
+                )
+            )
+
+        # Set enrollment status date fields
+        if EnrollmentStatus.MEMBER in legacy_dates:
+            self._set_if_empty(summary, 'enrollmentStatusMemberTime', legacy_dates[EnrollmentStatus.MEMBER])
+        if EnrollmentStatus.CORE_MINUS_PM in legacy_dates:
+            self._set_if_empty(summary, 'enrollmentStatusCoreMinusPMTime', legacy_dates[EnrollmentStatus.CORE_MINUS_PM])
+        if EnrollmentStatus.FULL_PARTICIPANT in legacy_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusCoreStoredSampleTime',
+                legacy_dates[EnrollmentStatus.FULL_PARTICIPANT]
+            )
+
+        if EnrollmentStatusV30.PARTICIPANT in version_3_0_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusParticipantV3_0Time',
+                version_3_0_dates[EnrollmentStatusV30.PARTICIPANT]
+            )
+        if EnrollmentStatusV30.PARTICIPANT_PLUS_EHR in version_3_0_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusParticipantPlusEhrV3_0Time',
+                version_3_0_dates[EnrollmentStatusV30.PARTICIPANT_PLUS_EHR]
+            )
+        if EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE in version_3_0_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusPmbEligibleV3_0Time',
+                version_3_0_dates[EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE]
+            )
+        if EnrollmentStatusV30.CORE_MINUS_PM in version_3_0_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusCoreMinusPmV3_0Time',
+                version_3_0_dates[EnrollmentStatusV30.CORE_MINUS_PM]
+            )
+        if EnrollmentStatusV30.CORE_PARTICIPANT in version_3_0_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusCoreV3_0Time',
+                version_3_0_dates[EnrollmentStatusV30.CORE_PARTICIPANT]
+            )
+
+        if EnrollmentStatusV31.PARTICIPANT in version_3_1_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusParticipantV3_1Time',
+                version_3_1_dates[EnrollmentStatusV31.PARTICIPANT]
+            )
+        if EnrollmentStatusV31.PARTICIPANT_PLUS_EHR in version_3_1_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusParticipantPlusEhrV3_1Time',
+                version_3_1_dates[EnrollmentStatusV31.PARTICIPANT_PLUS_EHR]
+            )
+        if EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS in version_3_1_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusParticipantPlusBasicsV3_1Time',
+                version_3_1_dates[EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS]
+            )
+        if EnrollmentStatusV31.CORE_MINUS_PM in version_3_1_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusCoreMinusPmV3_1Time',
+                version_3_1_dates[EnrollmentStatusV31.CORE_MINUS_PM]
+            )
+        if EnrollmentStatusV31.CORE_PARTICIPANT in version_3_1_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusCoreV3_1Time',
+                version_3_1_dates[EnrollmentStatusV31.CORE_PARTICIPANT]
+            )
+        if EnrollmentStatusV31.BASELINE_PARTICIPANT in version_3_1_dates:
+            self._set_if_empty(
+                summary,
+                'enrollmentStatusParticipantPlusBaselineV3_1Time',
+                version_3_1_dates[EnrollmentStatusV31.BASELINE_PARTICIPANT]
+            )
+
+        # Legacy code for setting CoreOrdered date field
+        consent = (
+                      summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
+                      and summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED
+                  ) or (
+                      summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
+                      and summary.consentForElectronicHealthRecords is None
+                      and summary.consentForDvElectronicHealthRecordsSharing == QuestionnaireStatus.SUBMITTED
         )
         summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
-        summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
-        summary.enrollmentStatusCoreMinusPMTime = self.calculate_core_minus_pm_time(consent, summary, enrollment_status)
-
-        # [DA-1623] Participants that have 'Core' status should never lose it
-        # CORE_MINUS_PM status can not downgrade, but can upgrade to FULL_PARTICIPANT
-        if summary.enrollmentStatus not in (EnrollmentStatus.FULL_PARTICIPANT, EnrollmentStatus.CORE_MINUS_PM) \
-            or (summary.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM
-                and enrollment_status == EnrollmentStatus.FULL_PARTICIPANT):
-            # Update last modified date if status changes
-            if summary.enrollmentStatus != enrollment_status:
-                summary.lastModified = clock.CLOCK.now()
-
-            summary.enrollmentStatus = enrollment_status
-            summary.enrollmentStatusMemberTime = self.calculate_member_time(consent, summary)
 
     def calculate_enrollment_status(
         self, consent, num_completed_baseline_ppi_modules, physical_measurements_status,
@@ -1165,6 +1171,32 @@ class ParticipantSummaryDao(UpdatableDao):
             result["physicalMeasurementsCreatedSite"] = "UNSET"
             result["physicalMeasurementsFinalizedSite"] = "UNSET"
             result["physicalMeasurementsCollectType"] = str(PhysicalMeasurementsCollectType.SELF_REPORTED)
+
+        # Check to see if we should hide 3.0 and 3.1 fields
+        if not config.getSettingJson(config.ENABLE_ENROLLMENT_STATUS_3, default=False):
+            del result['enrollmentStatusV3_0']
+            del result['enrollmentStatusV3_1']
+            for field_name in [
+                'enrollmentStatusParticipantV3_0Time'
+                'enrollmentStatusParticipantPlusEhrV3_0Time'
+                'enrollmentStatusPmbEligibleV3_0Time'
+                'enrollmentStatusCoreMinusPmV3_0Time'
+                'enrollmentStatusCoreV3_0Time'
+                'enrollmentStatusParticipantV3_1Time'
+                'enrollmentStatusParticipantPlusEhrV3_1Time'
+                'enrollmentStatusParticipantPlusBasicsV3_1Time'
+                'enrollmentStatusCoreMinusPmV3_1Time'
+                'enrollmentStatusCoreV3_1Time'
+                'enrollmentStatusParticipantPlusBaselineV3_1Time'
+            ]:
+                if field_name in result:
+                    del result[field_name]
+
+        # Check to see if we should hide digital health sharing fields
+        if not config.getSettingJson(config.ENABLE_HEALTH_SHARING_STATUS_3, default=False):
+            del result['healthDataStreamSharingStatusV3_1']
+            if 'healthDataStreamSharingStatusV3_1Time' in result:
+                del result['healthDataStreamSharingStatusV3_1Time']
 
         # Strip None values.
         if strip_none_values is True:

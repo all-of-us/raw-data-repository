@@ -27,6 +27,7 @@ from rdr_service.offline import biobank_samples_pipeline
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value,\
     SampleCollectionMethod
+from rdr_service.services.system_utils import DateRange
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
@@ -141,8 +142,13 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         ps = self.summary_dao.get(participant.participantId)
         self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, ps.enrollmentStatus)
 
+    @mock.patch('rdr_service.dao.participant_summary_dao.QuestionnaireResponseRepository')
     @mock.patch('rdr_service.offline.biobank_samples_pipeline.dispatch_participant_rebuild_tasks')
-    def test_end_to_end(self, mock_dispatch_rebuild):
+    def test_end_to_end(self, mock_dispatch_rebuild, response_repository):
+        response_repository.get_interest_in_sharing_ehr_ranges.return_value = [
+            DateRange(start=datetime(2016, 11, 29, 12, 16))
+        ]
+
         config.override_setting(BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, 'cloud')
 
         self.clear_default_storage()
@@ -200,9 +206,9 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         core_minus_pm_summary.consentForStudyEnrollment = 1
         core_minus_pm_summary.consentForElectronicHealthRecords = 1
         core_minus_pm_summary.enrollmentStatusMemberTime = '2016-11-29 12:16:00'
-        core_minus_pm_summary.questionnaireOnTheBasicsTime = '2016-11-29 12:16:00'
-        core_minus_pm_summary.questionnaireOnOverallHealthTime = '2016-11-29 12:16:00'
-        core_minus_pm_summary.questionnaireOnLifestyleTime = '2016-11-29 12:16:00'
+        core_minus_pm_summary.questionnaireOnTheBasicsAuthored = '2016-11-29 12:16:00'
+        core_minus_pm_summary.questionnaireOnOverallHealthAuthored = '2016-11-29 12:16:00'
+        core_minus_pm_summary.questionnaireOnLifestyleAuthored = '2016-11-29 12:16:00'
         participant_summary_dao.update(core_minus_pm_summary)
 
         core_summary = participant_summary_dao.get(core_participant_id)
@@ -211,9 +217,9 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         core_summary.consentForStudyEnrollment = 1
         core_summary.consentForElectronicHealthRecords = 1
         core_summary.enrollmentStatusMemberTime = '2016-11-29 12:16:00'
-        core_summary.questionnaireOnTheBasicsTime = '2016-11-29 12:16:00'
-        core_summary.questionnaireOnOverallHealthTime = '2016-11-29 12:16:00'
-        core_summary.questionnaireOnLifestyleTime = '2016-11-29 12:16:00'
+        core_summary.questionnaireOnTheBasicsAuthored = '2016-11-29 12:16:00'
+        core_summary.questionnaireOnOverallHealthAuthored = '2016-11-29 12:16:00'
+        core_summary.questionnaireOnLifestyleAuthored = '2016-11-29 12:16:00'
         core_summary.clinicPhysicalMeasurementsStatus = 1
         core_summary.clinicPhysicalMeasurementsFinalizedTime = '2016-11-29 12:16:00'
         participant_summary_dao.update(core_summary)

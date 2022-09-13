@@ -9,7 +9,7 @@ from rdr_service.api.base_api import BaseApi, log_api_request, UpdatableApi
 from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
 from rdr_service.app_util import auth_required, restrict_to_gae_project
 from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicSetMemberDao, GenomicOutreachDao, GenomicOutreachDaoV2, \
-    GenomicSchedulingDao
+    GenomicSchedulingDao, GenomicMemberReportStateDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.services.genomic_datagen import ParticipantGenerator
@@ -149,6 +149,7 @@ class GenomicOutreachApi(BaseApi):
     def __init__(self):
         super(GenomicOutreachApi, self).__init__(GenomicOutreachDao())
         self.member_dao = GenomicSetMemberDao()
+        self.report_state_dao = GenomicMemberReportStateDao()
 
     @auth_required([GEM] + RDR_AND_PTC)
     def get(self, mode=None):
@@ -233,7 +234,13 @@ class GenomicOutreachApi(BaseApi):
         # Create GenomicSetMember with report state
         model = self.dao.from_client_json(resource, participant_id=p_id, mode='gem')
         m = self._do_insert(model)
-        self.member_dao.update_member_gem_report_states(m)
+
+        gem_result_record = self.member_dao.get_gem_results_for_report_state(m)
+        if gem_result_record:
+            report_dict = self.report_state_dao.process_gem_result_to_report(gem_result_record)
+            report_dict['event_authored_time'] = m.genomicWorkflowStateModifiedTime
+            report_obj = self.report_state_dao.get_model_obj_from_items(report_dict.items())
+            self.report_state_dao.insert(report_obj)
 
         response_data = {
             'date': m.genomicWorkflowStateModifiedTime,

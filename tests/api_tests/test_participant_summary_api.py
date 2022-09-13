@@ -25,8 +25,11 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
+from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
+from rdr_service.model.enrollment_status_history import EnrollmentStatusHistory
 from rdr_service.model.hpo import HPO
+from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import (
     ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType,
     TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus)
@@ -57,6 +60,8 @@ participant_summary_default_values = {
     "state": "UNSET",
     "recontactMethod": "UNSET",
     "enrollmentStatus": "INTERESTED",
+    "enrollmentStatusV3_0": "PARTICIPANT",
+    "enrollmentStatusV3_1": "PARTICIPANT",
     "samplesToIsolateDNA": "UNSET",
     "numBaselineSamplesArrived": 0,
     "numCompletedPPIModules": 1,
@@ -136,6 +141,7 @@ participant_summary_default_values = {
     "suspensionStatus": "NOT_SUSPENDED",
     "numberDistinctVisits": 0,
     "ehrStatus": "UNSET",
+    "healthDataStreamSharingStatusV3_1": "NEVER_SHARED",
     "ehrConsentExpireStatus": "UNSET",
     "patientStatus": [],
     "participantOrigin": 'example',
@@ -153,6 +159,7 @@ participant_summary_default_values = {
     "questionnaireOnCopeVaccineMinute4": "UNSET",
     "onsiteIdVerificationType": "UNSET",
     "onsiteIdVerificationVisitType": "UNSET",
+    "questionnaireOnLifeFunctioning": "UNSET",
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
@@ -322,7 +329,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "email": self.email,
                 "consentCohort": "COHORT_1",
                 "cohort2PilotFlag": "UNSET",
-                "patientStatus": patient_statuses or []
+                "patientStatus": patient_statuses or [],
+                "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+                "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
             }
         )
 
@@ -1717,6 +1726,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "income": "lotsofmoney",
             "dateOfBirth": datetime.date(1978, 10, 9),
             "CABoRSignature": "signature.pdf",
+            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
         }
 
         self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
@@ -2008,10 +2019,34 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
-        # ehr consent overwrite dv consent, enrollmentStatusMemberTime should be None
-        self.assertIsNone(ps_1.get("enrollmentStatusMemberTime"))
-        self.assertEqual("INTERESTED", ps_1.get("enrollmentStatus"))
+        # Participants that attain MEMBER status shouldn't lose the enrollment status
+        self.assertEqual(TIME_1.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
+        self.assertEqual("MEMBER", ps_1.get("enrollmentStatus"))
         self.assertEqual("SUBMITTED_NO_CONSENT", ps_1.get("consentForElectronicHealthRecords"))
+
+    def test_enrollment_status_history(self):
+        primary_consent_datetime = datetime.datetime(2022, 3, 17)
+        ehr_consent_datetime = datetime.datetime(2022, 4, 1)
+
+        # Create a participant and submit primary consent for them
+        participant_response = self.send_post("Participant", {})
+        participant_id_str = participant_response["participantId"]
+        with FakeClock(primary_consent_datetime):
+            self.send_consent(participant_id_str)
+
+        # Send EHR consent, upgrading them from INTERESTED to MEMBER
+        ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
+        self._submit_consent_questionnaire_response(
+            participant_id_str, ehr_questionnaire_id, CONSENT_PERMISSION_YES_CODE, time=ehr_consent_datetime
+        )
+
+        status_history = self.session.query(EnrollmentStatusHistory).filter(
+            EnrollmentStatusHistory.participant_id == from_client_participant_id(participant_id_str),
+            EnrollmentStatusHistory.version == 'legacy'
+        ).one()
+        self.assertEqual('legacy', status_history.version)
+        self.assertEqual('MEMBER', status_history.status)
+        self.assertEqual(ehr_consent_datetime, status_history.timestamp)
 
     def test_member_ordered_stored_times_for_multi_biobank_order_with_only_dv_consent(self):
         questionnaire_id = self.create_questionnaire("questionnaire3.json")
@@ -2218,7 +2253,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_4)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_5)
         # Update participant summaries based on these changes.
-        self.ps_dao.update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples(biobank_ids=[from_client_biobank_id(participant_1['biobankId'])])
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2314,7 +2349,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_4)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_5)
         # Update participant summaries based on these changes.
-        self.ps_dao.update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples(biobank_ids=[from_client_biobank_id(participant_1['biobankId'])])
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2405,7 +2440,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_4)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_5)
         # Update participant summaries based on these changes.
-        self.ps_dao.update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples(biobank_ids=[from_client_biobank_id(participant_1['biobankId'])])
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2444,7 +2479,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("COMPLETED", ps_1.get("clinicPhysicalMeasurementsStatus"))
 
-        self.ps_dao.update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples(biobank_ids=[from_client_biobank_id(participant_1['biobankId'])])
 
         # cancel a physical measurement
         path = "Participant/%s/PhysicalMeasurements" % participant_id_1
@@ -2690,7 +2725,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_3, "1SAL")
         self._store_biobank_sample(participant_3, "2ED10")
         # Update participant summaries based on these changes.
-        self.ps_dao.update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples(biobank_ids=[
+            from_client_biobank_id(participant_json['biobankId'])
+            for participant_json in [participant_1, participant_3]
+        ])
         # Update version for participant 3, which has changed.
         participant_3 = self.send_get("Participant/%s" % participant_id_3)
 
@@ -3101,7 +3139,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_3, "1SAL")
         self._store_biobank_sample(participant_3, "2ED10")
         # Update participant summaries based on these changes.
-        self.ps_dao.update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples(biobank_ids=[
+            from_client_biobank_id(participant_json['biobankId'])
+            for participant_json in [participant_1, participant_3]
+        ])
 
         ps_2 = self.send_get("Participant/%s/Summary" % participant_id_2)
         self.assertEqual("SUBMITTED", ps_2["consentForDvElectronicHealthRecordsSharing"])
@@ -3640,7 +3681,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.send_get("ParticipantSummary?suspensionStatus=test", expected_status=400)
 
     def test_ehr_field_mapping(self):
-        """Check that the new set of EHR data availablity fields are present on the summary"""
+        """Check that the new set of EHR data availability fields are present on the summary"""
         first_receipt_time = datetime.datetime(2020, 3, 27)
         latest_receipt_time = datetime.datetime(2020, 8, 4)
 
@@ -3665,6 +3706,75 @@ class ParticipantSummaryApiTest(BaseTestCase):
         response = self.send_get(f'ParticipantSummary?_count=1&_sort=lastModified&awardee=PITT&_sync=true')
         self.assertEqual(first_receipt_time.isoformat(), response['entry'][0]['resource']['firstEhrReceiptTime'])
         self.assertEqual(latest_receipt_time.isoformat(), response['entry'][0]['resource']['latestEhrReceiptTime'])
+
+    def test_digital_health_sharing(self):
+        """Check that the new set of Digital Health Sharing data availability fields are present on the summary"""
+        first_receipt_time = datetime.datetime(2020, 3, 27)
+        latest_receipt_time = datetime.datetime(2020, 8, 4)
+
+        sharing_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,  # PITT
+            ehrStatus=EhrStatus.PRESENT,
+            isEhrDataAvailable=True,
+            ehrReceiptTime=first_receipt_time,
+            ehrUpdateTime=latest_receipt_time
+        )
+        not_sharing_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,  # PITT
+            ehrStatus=EhrStatus.NOT_PRESENT
+        )
+
+        # Check fields on participant that is sharing
+        response = self.send_get(f'Participant/P{sharing_summary.participantId}/Summary')
+        self.assertEqual('CURRENTLY_SHARING', response['healthDataStreamSharingStatusV3_1'])
+        self.assertEqual(latest_receipt_time.isoformat(), response['healthDataStreamSharingStatusV3_1Time'])
+
+        # Check fields on participant that is NOT sharing
+        response = self.send_get(f'Participant/P{not_sharing_summary.participantId}/Summary')
+        self.assertEqual('NEVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertNotIn('healthDataStreamSharingStatusV3_1Time', response)
+
+        # Check the ordering of participants based on status
+        response = self.send_get(f'ParticipantSummary?_sort=healthDataStreamSharingStatusV3_1&awardee=PITT&_sync=false')
+        participant_id_list = [
+            from_client_participant_id(entry['resource']['participantId'])
+            for entry in response['entry']
+        ]
+        self.assertEqual(not_sharing_summary.participantId, participant_id_list[0])
+        self.assertEqual(sharing_summary.participantId, participant_id_list[1])
+
+        # Add in another participant and check the ordering based on the sharing date
+        later_shared_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,  # PITT
+            ehrStatus=EhrStatus.PRESENT,
+            isEhrDataAvailable=False,
+            ehrReceiptTime=datetime.datetime(2021, 8, 4),
+            ehrUpdateTime=datetime.datetime(2021, 8, 4)
+        )
+        response = self.send_get(
+            f'ParticipantSummary?_sort=healthDataStreamSharingStatusV3_1Time&awardee=PITT&_sync=false'
+        )
+        participant_id_list = [
+            from_client_participant_id(entry['resource']['participantId'])
+            for entry in response['entry']
+        ]
+        self.assertEqual(not_sharing_summary.participantId, participant_id_list[0])
+        self.assertEqual(sharing_summary.participantId, participant_id_list[1])
+        self.assertEqual(later_shared_summary.participantId, participant_id_list[2])
+
+    def test_disabling_data_glossary_3_fields(self):
+        """Check that the 3.x enrollment statuses and digital health sharing fields are disabled by default"""
+        summary = self.data_generator.create_database_participant_summary()
+
+        # Override the default config, disabling the fields on the API
+        self.temporarily_override_config_setting(config.ENABLE_ENROLLMENT_STATUS_3, False)
+        self.temporarily_override_config_setting(config.ENABLE_HEALTH_SHARING_STATUS_3, False)
+
+        # Check that the new fields are hidden
+        api_response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertNotIn('enrollmentStatusV3_0', api_response)
+        self.assertNotIn('enrollmentStatusV3_1', api_response)
+        self.assertNotIn('healthDataStreamSharingStatusV3_1', api_response)
 
     def test_blank_demographics_data_mapped_to_skip(self):
         # Create a participant summary that doesn't use skip codes for the demographics questions that weren't answered.

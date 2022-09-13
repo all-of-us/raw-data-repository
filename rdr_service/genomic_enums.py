@@ -122,6 +122,7 @@ class GenomicJob(messages.Enum):
     INGEST_RESULT_READY = 65
     INGEST_APPOINTMENT = 66
     RESULTS_PIPELINE_WITHDRAWALS = 67
+    GEM_RESULT_REPORTS = 68
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

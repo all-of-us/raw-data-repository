@@ -110,6 +110,10 @@ class GenomicDaoMixin:
                 self.model_type.ignore_flag == 0,
             ).all()
 
+    def insert_bulk(self, batch):
+        with self.session() as session:
+            session.bulk_insert_mappings(self.model_type, batch)
+
 
 class GenomicSetDao(UpdatableDao, GenomicDaoMixin):
     """ Stub for GenomicSet model """
@@ -1158,33 +1162,36 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
 
         return self.insert(new_member_obj)
 
-    def update_member_gem_report_states(self, member):
-        gem_wf_states = (
-            GenomicWorkflowState.GEM_RPT_READY,
-            GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
-            GenomicWorkflowState.GEM_RPT_DELETED,
-            GenomicWorkflowState.CVL_RPT_PENDING_DELETE,
-            GenomicWorkflowState.CVL_RPT_DELETED,
-        )
-
-        if member.genomicWorkflowState and member.genomicWorkflowState in gem_wf_states:
-            state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
-            report = self.report_state_dao.get_from_member_id(member.id)
-
-            if report:
-                report.genomic_report_state = state
-                report.genomic_report_state_str = state.name
-                self.report_state_dao.update(report)
-                return
-
-            report_obj = self.report_state_dao.model_type(
-                genomic_set_member_id=member.id,
-                genomic_report_state=state,
-                genomic_report_state_str=state.name,
-                participant_id=member.participantId,
-                module='gem'
+    def get_gem_results_for_report_state(self, obj: GenomicSetMember = None):
+        with self.session() as session:
+            records = session.query(
+                GenomicSetMember.id.label('genomic_set_member_id'),
+                GenomicSetMember.participantId.label('participant_id'),
+                literal('result_ready').label('event_type'),
+                literal('gem').label('module'),
+                GenomicSetMember.sampleId.label('sample_id'),
+                GenomicJobRun.created.label('event_authored_time'),
+                GenomicSetMember.genomicWorkflowState
+            ).join(
+                GenomicJobRun,
+                GenomicJobRun.id == GenomicSetMember.gemA2ManifestJobRunId
+            ).outerjoin(
+                GenomicMemberReportState,
+                GenomicMemberReportState.genomic_set_member_id == GenomicSetMember.id
+            ).filter(
+                GenomicMemberReportState.id.is_(None),
+                GenomicSetMember.gemA2ManifestJobRunId.isnot(None),
+                GenomicSetMember.genomicWorkflowState.in_([
+                    GenomicWorkflowState.GEM_RPT_READY,
+                    GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
+                    GenomicWorkflowState.GEM_RPT_DELETED
+                ])
             )
-            self.report_state_dao.insert(report_obj)
+            if obj:
+                records = records.filter(GenomicSetMember.id == obj.id)
+                return records.one()
+
+            return records.all()
 
     @classmethod
     def _is_valid_set_member_job_field(cls, job_field_name):
@@ -1291,10 +1298,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
     def bulk_update_members(self, members: List[Dict]):
         with self.session() as session:
             session.bulk_update_mappings(GenomicSetMember, members)
-
-    def update(self, obj: GenomicSetMember):
-        self.update_member_gem_report_states(obj)
-        super(GenomicSetMemberDao, self).update(obj)
 
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
@@ -1945,6 +1948,7 @@ class GenomicOutreachDao(BaseDao):
                                   genomeType=genome_type,
                                   genomicWorkflowState=report_state,
                                   genomicWorkflowStateStr=report_state.name,
+                                  gemA2ManifestJobRunId=1,
                                   gemPass='Y',
                                   genomicWorkflowStateModifiedTime=modified_date)
 
@@ -2118,21 +2122,15 @@ class GenomicOutreachDaoV2(BaseDao):
 
             if 'result' in participant_data.type:
                 report_status, report_module = self._determine_report_state(participant_data.genomic_report_state)
-                genomic_result_viewed = participant_data.GenomicResultViewed
-
-                result_viewed = 'no'
-                if genomic_result_viewed and genomic_result_viewed.module_type == report_module:
-                    result_viewed = 'yes'
 
                 genomic_swap_module = _get_sample_swap_module(
                     sample_swap=participant_data.GenomicSampleSwapMember
                 )
 
                 report_obj = {
-                    "module": f'{report_module.lower()}{genomic_swap_module}',
+                    "module": f'{report_module}{genomic_swap_module}',
                     "type": 'result',
                     "status": report_status,
-                    "viewed": result_viewed,
                     "participant_id": f'P{pid}',
                 }
 
@@ -2144,6 +2142,12 @@ class GenomicOutreachDaoV2(BaseDao):
                         -1].lower()
 
                 report_statuses.append(report_obj)
+
+                # if participant_data.result_viewed:
+                #     result_obj = report_obj.copy()
+                #     result_obj['status'] = 'viewed'
+                #
+                #     report_statuses.append(result_obj)
 
             elif 'informing_loop' in participant_data.type:
                 if 'ready' in participant_data.type:
@@ -2267,8 +2271,13 @@ class GenomicOutreachDaoV2(BaseDao):
                         distinct(GenomicMemberReportState.participant_id).label('participant_id'),
                         GenomicMemberReportState.genomic_report_state,
                         GenomicMemberReportState.report_revision_number,
-                        GenomicResultViewed,
                         GenomicSampleSwapMember,
+                        sqlalchemy.case(
+                            [
+                                (GenomicResultViewed.id.isnot(None), True)
+                            ],
+                            else_=False
+                        ).label('result_viewed'),
                         literal('result').label('type')
                     )
                     .join(
@@ -2283,7 +2292,10 @@ class GenomicOutreachDaoV2(BaseDao):
                         )
                     ).outerjoin(
                         GenomicResultViewed,
-                        GenomicResultViewed.participant_id == GenomicMemberReportState.participant_id
+                        and_(
+                            GenomicResultViewed.sample_id == GenomicMemberReportState.sample_id,
+                            GenomicResultViewed.module_type == GenomicMemberReportState.module
+                        )
                     ).outerjoin(
                         GenomicSampleSwapMember,
                         GenomicSampleSwapMember.genomic_set_member_id == GenomicSetMember.id
@@ -2291,6 +2303,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
+                        GenomicMemberReportState.event_authored_time.isnot(None),
                         GenomicSetMember.ignoreFlag != 1
                     )
                 )
@@ -2300,8 +2313,8 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                 if start_date:
                     result_query = result_query.filter(
-                        GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
-                        GenomicSetMember.genomicWorkflowStateModifiedTime < end_date
+                        GenomicMemberReportState.event_authored_time > start_date,
+                        GenomicMemberReportState.event_authored_time < end_date,
                     )
 
                 results = result_query.all()
@@ -2352,14 +2365,15 @@ class GenomicSchedulingDao(BaseDao):
             }
 
         for appointment in payload_dict.get('data'):
-            appointments.append({
-                'module': appointment.module_type,
-                'type': 'appointment',
-                'status': appointment.event_type.split('_')[-1],
-                'appointment_id': appointment.appointment_id,
-                'participant_id': f'P{appointment.participant_id}',
-                'note_available': appointment.has_appointment_note
-            })
+            status = appointment.status.split('_')[-1]
+            participant_id = f'P{appointment.participant_id}'
+            appointment = appointment._asdict()
+            appointment['participant_id'] = participant_id
+            appointment['status'] = status
+            appointment['type'] = 'appointment'
+            appointments.append(
+                {k: v for k, v in appointment.items() if v is not None}
+            )
 
         return {
             "data": appointments,
@@ -2377,6 +2391,7 @@ class GenomicSchedulingDao(BaseDao):
             GenomicAppointmentEvent.participant_id,
             GenomicAppointmentEvent.module_type
         ).subquery()
+
         max_event_authored_time_subquery = sqlalchemy.orm.Query(
             functions.max(GenomicAppointmentEvent.event_authored_time).label(
                 'max_event_authored_time'
@@ -2387,19 +2402,28 @@ class GenomicSchedulingDao(BaseDao):
             GenomicAppointmentEvent.participant_id,
             GenomicAppointmentEvent.module_type
         ).subquery()
+
         note_alias = aliased(GenomicAppointmentEvent)
+
         with self.session() as session:
             records = session.query(
-                GenomicAppointmentEvent.participant_id,
-                GenomicAppointmentEvent.module_type,
-                GenomicAppointmentEvent.event_type,
                 GenomicAppointmentEvent.appointment_id,
+                GenomicAppointmentEvent.participant_id,
+                GenomicAppointmentEvent.module_type.label('module'),
+                GenomicAppointmentEvent.event_type.label('status'),
+                GenomicAppointmentEvent.appointment_time,
+                GenomicAppointmentEvent.appointment_timezone,
+                GenomicAppointmentEvent.source,
+                GenomicAppointmentEvent.location,
+                GenomicAppointmentEvent.contact_number,
+                GenomicAppointmentEvent.language,
+                GenomicAppointmentEvent.cancellation_reason,
                 sqlalchemy.case(
                     [
                         (note_alias.id.isnot(None), True)
                     ],
                     else_=False
-                ).label('has_appointment_note'),
+                ).label('note_available'),
             ).outerjoin(
                 note_alias,
                 and_(
@@ -3038,7 +3062,7 @@ class GenomicCloudRequestsDao(UpdatableDao):
         pass
 
 
-class GenomicMemberReportStateDao(UpdatableDao):
+class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
     validate_version_match = False
 
     def __init__(self):
@@ -3058,6 +3082,19 @@ class GenomicMemberReportStateDao(UpdatableDao):
             ).filter(
                 GenomicMemberReportState.genomic_set_member_id == obj_id
             ).first()
+
+    def process_gem_result_to_report(
+        self,
+        obj: GenomicSetMember
+    ):
+        report_state = self.get_report_state_from_wf_state(obj.genomicWorkflowState)
+        result = obj._asdict() or obj.asdict()
+        del result['genomicWorkflowState']
+        result['genomic_report_state'] = report_state
+        result['genomic_report_state_str'] = report_state.name
+        result['created'] = clock.CLOCK.now()
+        result['modified'] = clock.CLOCK.now()
+        return result
 
     @staticmethod
     def get_report_state_from_wf_state(wf_state):
@@ -3135,10 +3172,6 @@ class GenomicInformingLoopDao(UpdatableDao, GenomicDaoMixin):
             module_type='gem',
             decision_value=decision_mappings.get(row.value)
         ))
-
-    def insert_bulk(self, batch):
-        with self.session() as session:
-            session.bulk_insert_mappings(self.model_type, batch)
 
 
 class GenomicResultViewedDao(UpdatableDao):
@@ -3218,7 +3251,7 @@ class GenomicGcDataFileDao(BaseDao):
             ).all()
 
 
-class GcDataFileStagingDao(BaseDao):
+class GcDataFileStagingDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GcDataFileStagingDao, self).__init__(
             GcDataFileStaging, order_by_ending=['id'])
@@ -3243,10 +3276,6 @@ class GcDataFileStagingDao(BaseDao):
                     GenomicGcDataFile.identifier_value.in_(sample_ids)
                 )
             return query.all()
-
-    def insert_filenames_bulk(self, files):
-        with self.session() as session:
-            session.bulk_insert_mappings(self.model_type, files)
 
 
 class GenomicGcDataFileMissingDao(UpdatableDao):
@@ -3400,10 +3429,6 @@ class GemToGpMigrationDao(BaseDao):
                 results = results.limit(limit)
 
             return results.all()
-
-    def insert_bulk(self, batch):
-        with self.session() as session:
-            session.bulk_insert_mappings(self.model_type, batch)
 
 
 class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
@@ -4082,23 +4107,24 @@ class GenomicQueriesDao(BaseDao):
 
     def get_results_withdrawn_participants(self):
         with self.session() as session:
-            return session.query(
+            records = session.query(
                 GenomicSetMember.participantId.label('participant_id'),
-                sqlalchemy.case(
+                func.max(sqlalchemy.case(
                     [
                         (GenomicSetMember.gemA1ManifestJobRunId.isnot(None), True)
                     ],
                     else_=False
-                ).label('array_results'),
-                sqlalchemy.case(
+                )).label('array_results'),
+                func.max(sqlalchemy.case(
                     [
-                        (or_(
-                            GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
-                            GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
-                        ), True)
+                        (
+                            or_(
+                                GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
+                                GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
+                            ), True)
                     ],
                     else_=False
-                ).label('cvl_results')
+                )).label('cvl_results')
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
@@ -4108,7 +4134,17 @@ class GenomicQueriesDao(BaseDao):
             ).filter(
                 ParticipantSummary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
                 GenomicResultWithdrawals.id.is_(None),
-            ).all()
+                and_(
+                    or_(
+                        GenomicSetMember.gemA1ManifestJobRunId.isnot(None),
+                        GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
+                        GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
+                    )
+                )
+            ).group_by(
+                GenomicSetMember.participantId
+            )
+            return records.all()
 
 
 class GenomicCVLResultPastDueDao(UpdatableDao, GenomicDaoMixin):
@@ -4273,7 +4309,7 @@ class GenomicSampleSwapDao(BaseDao):
         pass
 
 
-class GenomicResultWithdrawalsDao(BaseDao):
+class GenomicResultWithdrawalsDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicResultWithdrawalsDao, self).__init__(
             GenomicResultWithdrawals, order_by_ending=['id']
@@ -4285,6 +4321,3 @@ class GenomicResultWithdrawalsDao(BaseDao):
     def get_id(self, obj):
         pass
 
-    def insert_bulk(self, batch):
-        with self.session() as session:
-            session.bulk_insert_mappings(self.model_type, batch)

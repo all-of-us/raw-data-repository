@@ -5,11 +5,11 @@ from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
-    GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao, GenomicResultWithdrawalsDao
+    GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao, GenomicResultWithdrawalsDao, GenomicMemberReportStateDao
 
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult, \
-    GenomicSubProcessStatus, GenomicManifestTypes, GenomicQcStatus
+    GenomicSubProcessStatus, GenomicManifestTypes, GenomicQcStatus, GenomicReportState
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics
@@ -28,6 +28,7 @@ class GenomicJobControllerTest(BaseTestCase):
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.user_event_metrics_dao = UserEventMetricsDao()
         self.job_run_dao = GenomicJobRunDao()
+        self.report_state_dao = GenomicMemberReportStateDao()
 
     def test_incident_with_long_message(self):
         """Make sure the length of incident messages doesn't cause issues when recording them"""
@@ -812,18 +813,27 @@ class GenomicJobControllerTest(BaseTestCase):
         )
 
         pids = []
-        for _ in range(num_participants):
+        for num in range(num_participants):
             summary = self.data_generator.create_database_participant_summary(
                 consentForStudyEnrollment=1,
                 consentForGenomicsROR=1,
                 withdrawalStatus=WithdrawalStatus.EARLY_OUT
             )
+
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                participantId=summary.participantId,
+                genomeType=config.GENOME_TYPE_ARRAY,
+                gemA1ManifestJobRunId=gen_job_run.id if num % 2 == 0 else None
+            )
+
             self.data_generator.create_database_genomic_set_member(
                 genomicSetId=gen_set.id,
                 participantId=summary.participantId,
                 genomeType=config.GENOME_TYPE_WGS,
                 cvlW1ilHdrJobRunId=gen_job_run.id
             )
+
             pids.append(summary.participantId)
 
         config.override_setting(config.RDR_GENOMICS_NOTIFICATION_EMAIL, 'email@test.com')
@@ -841,9 +851,17 @@ class GenomicJobControllerTest(BaseTestCase):
         all_withdrawal_records = result_withdrawal_dao.get_all()
 
         self.assertTrue(len(all_withdrawal_records) == len(pids))
-        self.assertTrue(all(obj.array_results == 0 for obj in all_withdrawal_records))
-        self.assertTrue(all(obj.cvl_results == 1 for obj in all_withdrawal_records))
         self.assertTrue(all(obj.participant_id in pids for obj in all_withdrawal_records))
+
+        array_results = list(filter(lambda x: x.array_results == 1, all_withdrawal_records))
+
+        # should only be 2
+        self.assertTrue(len(array_results), 2)
+
+        cvl_results = list(filter(lambda x: x.cvl_results == 1, all_withdrawal_records))
+
+        # should be 4 for num of participants
+        self.assertTrue(len(cvl_results), num_participants)
 
         with GenomicJobController(GenomicJob.RESULTS_PIPELINE_WITHDRAWALS) as controller:
             controller.check_results_withdrawals()
@@ -856,3 +874,91 @@ class GenomicJobControllerTest(BaseTestCase):
 
         self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.NO_RESULTS)
 
+    def test_gem_results_to_report_state(self):
+        num_participants = 8
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        gem_a2_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.GEM_A2_MANIFEST,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        pids_to_update, member_ids = [], []
+        for num in range(num_participants):
+            summary = self.data_generator.create_database_participant_summary(
+                consentForStudyEnrollment=1,
+                consentForGenomicsROR=1,
+                withdrawalStatus=WithdrawalStatus.EARLY_OUT
+            )
+
+            member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                participantId=summary.participantId,
+                genomeType=config.GENOME_TYPE_ARRAY
+            )
+
+            if num % 2 == 0:
+                member_ids.append(member.id)
+                pids_to_update.append(summary.participantId)
+
+        with GenomicJobController(GenomicJob.GEM_RESULT_REPORTS) as controller:
+            controller.gem_results_to_report_state()
+
+        current_job_runs = self.job_run_dao.get_all()
+        self.assertEqual(len(current_job_runs), 2)
+
+        current_job_run = list(filter(lambda x: x.jobId == GenomicJob.GEM_RESULT_REPORTS, current_job_runs))[0]
+        self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.NO_RESULTS)
+
+        current_members = self.member_dao.get_all()
+
+        # 4 members updated correctly should return
+        for member in current_members:
+            if member.participantId in pids_to_update:
+                member.gemA2ManifestJobRunId = gem_a2_job_run.id
+                member.genomicWorkflowState = GenomicWorkflowState.GEM_RPT_READY
+                self.member_dao.update(member)
+
+        with GenomicJobController(GenomicJob.GEM_RESULT_REPORTS) as controller:
+            controller.gem_results_to_report_state()
+
+        current_job_runs = self.job_run_dao.get_all()
+        self.assertEqual(len(current_job_runs), 3)
+
+        current_job_run = list(filter(lambda x: x.jobId == GenomicJob.GEM_RESULT_REPORTS, current_job_runs))[1]
+        self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
+
+        current_gem_report_states = self.report_state_dao.get_all()
+        self.assertEqual(len(current_gem_report_states), len(pids_to_update))
+        self.assertTrue(all(obj.event_type == 'result_ready' for obj in current_gem_report_states))
+        self.assertTrue(all(obj.event_authored_time is not None for obj in current_gem_report_states))
+        self.assertTrue(all(obj.module == 'gem' for obj in current_gem_report_states))
+        self.assertTrue(
+            all(obj.genomic_report_state == GenomicReportState.GEM_RPT_READY for obj in current_gem_report_states)
+        )
+        self.assertTrue(
+            all(obj.genomic_report_state_str == GenomicReportState.GEM_RPT_READY.name for obj in
+                current_gem_report_states)
+        )
+        self.assertTrue(
+            all(obj.genomic_set_member_id in member_ids for obj in
+                current_gem_report_states)
+        )
+
+        # 4 members inserted already should not return
+        with GenomicJobController(GenomicJob.GEM_RESULT_REPORTS) as controller:
+            controller.gem_results_to_report_state()
+
+        current_job_runs = self.job_run_dao.get_all()
+        self.assertEqual(len(current_job_runs), 4)
+
+        current_job_run = list(filter(lambda x: x.jobId == GenomicJob.GEM_RESULT_REPORTS, current_job_runs))[2]
+        self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.NO_RESULTS)
+
+        self.clear_table_after_test('genomic_member_report_state')

@@ -98,6 +98,10 @@ class WorkbenchWorkspaceSchema(Schema):
     access_tier = fields.EnumString(enum=WorkbenchWorkspaceAccessTier)
     access_tier_id = fields.EnumInteger(enum=WorkbenchWorkspaceAccessTier)
 
+    orig_id = fields.Int32()
+    orig_created = fields.DateTime()
+    orig_modified = fields.DateTime()
+
     class Meta:
         schema_id = SchemaID.workbench_workspace
         resource_uri = 'WorkbenchWorkspace'
@@ -118,6 +122,10 @@ class WorkbenchWorkspaceUsersSchema(Schema):
     status_id = fields.EnumInteger(enum=WorkbenchWorkspaceStatus, required=True)
 
     is_creator = fields.Boolean()
+
+    orig_id = fields.Int32()
+    orig_created = fields.DateTime()
+    orig_modified = fields.DateTime()
 
     class Meta:
         schema_id = SchemaID.workbench_workspace_users

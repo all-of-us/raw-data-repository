@@ -573,8 +573,9 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
                 'id': appointment_id,
                 'source': 'Color',
                 'appointment_timestamp': format_datetime(clock.CLOCK.now()),
+                'appointment_timezone': 'America/Los_Angeles',
                 'location': '123 address st',
-                'contact_number': '12121212',
+                'contact_number': '17348675309',
                 'language': 'EN'
             },
             requestTime=clock.CLOCK.now(),
@@ -617,6 +618,7 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
         # should be in some record(s)
         self.assertTrue(any(obj.source is not None for obj in current_appointment_data))
         self.assertTrue(any(obj.appointment_time is not None for obj in current_appointment_data))
+        self.assertTrue(any(obj.appointment_timezone is not None for obj in current_appointment_data))
         self.assertTrue(any(obj.location is not None for obj in current_appointment_data))
         self.assertTrue(any(obj.contact_number is not None for obj in current_appointment_data))
         self.assertTrue(any(obj.language is not None for obj in current_appointment_data))

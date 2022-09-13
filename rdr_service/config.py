@@ -149,6 +149,9 @@ CE_HEALTH_DATA_BUCKET_NAME = "ce_health_data_bucket_name"
 VA_WORKQUEUE_BUCKET_NAME = 'va_workqueue_bucket_name'
 VA_WORKQUEUE_SUBFOLDER = 'va_workqueue_subfolder'
 
+ENABLE_ENROLLMENT_STATUS_3 = 'enable_enrollment_status_3'
+ENABLE_HEALTH_SHARING_STATUS_3 = 'enable_health_sharing_status_3'
+
 # Buckets to listen for Pub/Sub notifications
 PUBSUB_NOTIFICATION_BUCKETS_PROD = [
     "prod-genomics-baylor",

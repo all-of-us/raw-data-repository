@@ -110,10 +110,10 @@ class GenomicFileIngesterTest(BaseTestCase):
         self.assertEqual(copy_member.collectionTubeId, f'replated_{member.id}')
 
         self.assertIsNotNone(copy_member.genomeType)
-        self.assertEquals(copy_member.genomeType, genome_type)
+        self.assertEqual(copy_member.genomeType, genome_type)
 
         self.assertIsNotNone(copy_member.blockResearchReason)
-        self.assertEquals(copy_member.blockResearchReason, block_research_reason)
+        self.assertEqual(copy_member.blockResearchReason, block_research_reason)
         self.assertEqual(copy_member.blockResearch, 1)
 
 

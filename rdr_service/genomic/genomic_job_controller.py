@@ -433,15 +433,42 @@ class GenomicJobController:
         except RuntimeError:
             logging.warning('Inserting data file failure')
 
+    def gem_results_to_report_state(self):
+        gem_result_records = self.member_dao.get_gem_results_for_report_state()
+
+        if not gem_result_records:
+            self.job_result = GenomicSubProcessResult.NO_RESULTS
+            return
+
+        logging.info(f'Creating {len(gem_result_records)} report states from GEM results')
+        batch_size, item_count, batch = 100, 0, []
+
+        for result in gem_result_records:
+            batch.append(
+                self.report_state_dao.process_gem_result_to_report(result)
+            )
+            item_count += 1
+
+            if item_count == batch_size:
+                self.report_state_dao.insert_bulk(batch)
+                item_count = 0
+                batch.clear()
+
+        if item_count:
+            self.report_state_dao.insert_bulk(batch)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
     def ingest_records_from_message_broker_data(self, *, message_record_id: int, event_type: str) -> None:
 
         module_fields = ['module_type', 'result_type']
 
         def _set_value_from_parsed_values(
-            records,
+            records: List[MessageBrokerEventData],
             field_names: List[str]
         ) -> Optional[str]:
 
+            records = [records] if type(records) is not list else records
             field_records = list(filter(lambda x: x.fieldName in field_names, records))
             if not field_records:
                 return None
@@ -679,13 +706,6 @@ class GenomicJobController:
 
         elif self.job_id == GenomicJob.INGEST_APPOINTMENT:
 
-            def _parse_appointment_values(obj: MessageBrokerEventData, message_broker_field: str):
-                nonlocal attribute_values
-                value = [getattr(obj, key) for key in attribute_values if getattr(obj, key) is not None]
-                if obj.fieldName.lower() == message_broker_field and value:
-                    return value[0]
-                return None
-
             appointment_records = self.message_broker_event_dao.get_appointment_event(
                 message_record_id
             )
@@ -726,7 +746,6 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.ERROR
                 return
 
-            attribute_values = [key for key in first_record.asdict().keys() if 'value' in key]
             appointment_id = list(filter(lambda x: x.fieldName == 'id', appointment_records))[0]
             for record in appointment_records:
                 report_obj = self.appointment_dao.model_type(
@@ -736,12 +755,13 @@ class GenomicJobController:
                     event_authored_time=first_record.eventAuthoredTime,
                     module_type=module_type,
                     appointment_id=appointment_id.valueInteger,
-                    appointment_time=_parse_appointment_values(record, 'appointment_timestamp'),
-                    source=_parse_appointment_values(record, 'source'),
-                    location=_parse_appointment_values(record, 'location'),
-                    contact_number=_parse_appointment_values(record, 'contact_number'),
-                    language=_parse_appointment_values(record, 'language'),
-                    cancellation_reason=_parse_appointment_values(record, 'reason')
+                    appointment_time=_set_value_from_parsed_values(record, ['appointment_timestamp']),
+                    appointment_timezone=_set_value_from_parsed_values(record, ['appointment_timezone']),
+                    source=_set_value_from_parsed_values(record, ['source']),
+                    location=_set_value_from_parsed_values(record, ['location']),
+                    contact_number=_set_value_from_parsed_values(record, ['contact_number']),
+                    language=_set_value_from_parsed_values(record, ['language']),
+                    cancellation_reason=_set_value_from_parsed_values(record, ['reason'])
                 )
 
                 self.appointment_dao.insert(report_obj)
@@ -936,10 +956,10 @@ class GenomicJobController:
                         })
 
                         if len(files) % 10000 == 0:
-                            self.staging_dao.insert_filenames_bulk(files)
+                            self.staging_dao.insert_bulk(files)
                             files = []
 
-                self.staging_dao.insert_filenames_bulk(files)
+                self.staging_dao.insert_bulk(files)
 
     # Disabling job until further notice.
     # def reconcile_raw_to_aw1_ingested(self):
