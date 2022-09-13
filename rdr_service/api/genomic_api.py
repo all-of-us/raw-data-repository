@@ -238,6 +238,7 @@ class GenomicOutreachApi(BaseApi):
         gem_result_record = self.member_dao.get_gem_results_for_report_state(m)
         if gem_result_record:
             report_dict = self.report_state_dao.process_gem_result_to_report(gem_result_record)
+            report_dict['event_authored_time'] = m.genomicWorkflowStateModifiedTime
             report_obj = self.report_state_dao.get_model_obj_from_items(report_dict.items())
             self.report_state_dao.insert(report_obj)
 
