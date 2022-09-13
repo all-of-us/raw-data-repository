@@ -260,8 +260,10 @@ class CurationExportClass(ToolBase):
         # just use a standard MySQLDB connection.
         self.db_conn = self.gcp_env.make_mysqldb_connection(user='alembic', database='cdm')
 
-        if not self.args.export_path.startswith('gs://all-of-us-rdr-prod-cdm/'):
-            raise NameError("Export path must start with 'gs://all-of-us-rdr-prod-cdm/'.")
+        if not any((self.args.export_path.startswith('gs://all-of-us-rdr-prod-cdm/'),
+                    self.args.export_path.startswith('gs://all-of-us-rdr-stable-cdm'))):
+            raise NameError("Export path must start with 'gs://all-of-us-rdr-prod-cdm/'"
+                            "or 'gs://all-of-us-rdr-stable-cdm/'.")
         if self.args.export_path.endswith('/'):  # Remove trailing slash if present.
             self.args.export_path = self.args.export_path[5:-1]
 
