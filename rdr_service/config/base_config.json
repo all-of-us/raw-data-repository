@@ -23,7 +23,8 @@
     "questionnaireOnCopeVaccineMinute3",
     "questionnaireOnCopeVaccineMinute4",
     "questionnaireOnSocialDeterminantsOfHealth",
-    "questionnaireOnPersonalAndFamilyHealthHistory"
+    "questionnaireOnPersonalAndFamilyHealthHistory",
+    "questionnaireOnLifeFunctioning"
   ],
   "baseline_sample_test_codes": [
   	"1ED04",
