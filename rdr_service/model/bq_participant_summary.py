@@ -438,7 +438,7 @@ class BQParticipantSummarySchema(BQSchema):
     health_datastream_sharing_status_v3_1 = BQField('health_datastream_sharing_status_v3_1',
                                                     BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     health_datastream_sharing_status_v3_1_id = BQField('health_datastream_sharing_status_v3_1_id',
-                                                       BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+                                                       BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummary(BQTable):
