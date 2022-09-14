@@ -1123,6 +1123,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
         self.assertEqual("SUCCESS", self.job_run_dao.get(2).runResultStr)
 
+    # DA-2934 Reconciliation process deprecated
     # def test_gc_metrics_reconciliation_vs_array_data(self):
     #
     #     # Create the fake ingested data
@@ -1249,7 +1250,8 @@ class GenomicPipelineTest(BaseTestCase):
     #     run_obj = self.job_run_dao.get(2)
     #
     #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
-    #
+
+    # DA-2934 Reconciliation process deprecated
     # def test_gc_metrics_reconciliation_vs_array_investigation_data(self):
     #
     #     # Create the fake ingested data
@@ -1382,8 +1384,8 @@ class GenomicPipelineTest(BaseTestCase):
     #     run_obj = self.job_run_dao.get(2)
     #
     #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
-    #
-    # DA-2934 reconciliation job has been deactivated
+
+    # DA-2934 Reconciliation process deprecated
     # def test_reconciliation_array_data_with_pipeline_config(self):
     #
     #     # Create the fake ingested data
@@ -1524,7 +1526,7 @@ class GenomicPipelineTest(BaseTestCase):
     #     run_obj = self.job_run_dao.get(4)
     #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    # DA-2934 These jobs have been disabled
+    # DA-2934 Reconciliation process deprecated
     # def test_aw2_wgs_reconciliation_vs_wgs_data(self):
     #
     #     # Create the fake ingested data
@@ -1618,6 +1620,7 @@ class GenomicPipelineTest(BaseTestCase):
     #
     #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+    # DA-2934 Reconciliation process deprecated
     # def test_aw2_wgs_reconciliation_vs_wgs_investigation_data(self):
     #
     #     # Create the fake ingested data
@@ -1717,6 +1720,7 @@ class GenomicPipelineTest(BaseTestCase):
     #
     #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+    # DA-2934 Missing files process deprecated
     # def test_reconciliation_wgs_data_config_missing_files_incident_creation(self):
     #     # Create the fake ingested data
     #     self._create_fake_datasets_for_gc_tests(3, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1)
@@ -6249,7 +6253,7 @@ class GenomicPipelineTest(BaseTestCase):
             else:
                 self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
 
-    # Test for disabled job DA-2934
+    # DA-2934 Reconciliation process deprecated
     # def test_reconcile_gc_data_file_to_table(self):
     #     # Create files in bucket
     #     array_prefix = "Genotyping_sample_raw_data"
