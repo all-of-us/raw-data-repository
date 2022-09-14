@@ -171,7 +171,6 @@ class ResourceSchemaTest(BaseTestCase):
                                      rschemas.ParticipantSchema(),
                                      bq_pdr_participant_summary.BQPDRParticipantSummarySchema())
 
-
     def test_physical_measurements_resource_schema(self):
         self._verify_resource_schema('PhysicalMeasurementsSchema',
                                      rschemas.participant.PhysicalMeasurementsSchema(),
