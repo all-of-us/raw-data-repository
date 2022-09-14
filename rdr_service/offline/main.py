@@ -795,11 +795,17 @@ def export_va_workqueue_report():
     export_va_workqueue.generate_workqueue_report()
     return '{"success": "true"}'
 
+
 @app_util.auth_required_cron
 def delete_old_va_workqueue_reports():
     export_va_workqueue.delete_old_reports()
     return '{"success": "true"}'
 
+
+@app_util.auth_required_cron
+def aw3_ready_missing_files_report():
+    genomic_pipeline.notify_aw3_ready_missing_data_files()
+    return '{"success": "true"}'
 
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -1288,6 +1294,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'ExportVaWorkQueue',
         endpoint='export_va_workqueue_report',
         view_func=export_va_workqueue_report,
+        methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'AW3ReadyMissingDataFilesReport',
+        endpoint='aw3_ready_missing_files_report',
+        view_func=aw3_ready_missing_files_report,
         methods=['GET']
     )
 

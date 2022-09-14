@@ -618,3 +618,8 @@ def load_awn_manifest_into_raw_table(
 def notify_email_group_of_w1il_gror_resubmit_participants(since_datetime):
     with GenomicJobController(GenomicJob.CHECK_FOR_W1IL_GROR_RESUBMIT) as controller:
         controller.check_w1il_gror_resubmit(since_datetime=since_datetime)
+
+
+def notify_aw3_ready_missing_data_files():
+    with GenomicJobController(GenomicJob.AW3_MISSING_DATA_FILE_REPORT) as controller:
+        controller.check_aw3_ready_missing_files()

@@ -1701,8 +1701,6 @@ class GenomicFileIngester:
         cvl_site_bucket_map = config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP)
         prefix_map = config.getSettingJson(config.GENOMIC_CVL_SITE_PREFIX_MAP)
         site_id = self.file_obj.fileName.split('_')[0].lower()
-        if site_id == 'jh':
-            site_id = 'bcm'
         cvl_bucket = cvl_site_bucket_map[site_id]
         gc_bucket = config.getSetting(cvl_bucket)
 

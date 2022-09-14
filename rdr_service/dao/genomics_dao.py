@@ -3645,6 +3645,7 @@ class GenomicQueriesDao(BaseDao):
         # should be only array genome but query also
         # used for array investigation workflow
         genome_type = kwargs.get('genome_type', config.GENOME_TYPE_ARRAY)
+        return_missing_files = kwargs.get('return_missing_files', False)
         with self.session() as session:
             subquery = session.query(
                 GenomicSetMember.id,
@@ -3663,7 +3664,7 @@ class GenomicQueriesDao(BaseDao):
                      if file_type['required']])
             ).group_by(GenomicSetMember.id).subquery()
 
-            return session.query(
+            aw3_rows = session.query(
                 GenomicGCValidationMetrics.chipwellbarcode,
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                 GenomicSetMember.sampleId,
@@ -3706,9 +3707,7 @@ class GenomicQueriesDao(BaseDao):
                 Participant.participantId == ParticipantSummary.participantId
             ).join(
                 subquery,
-                and_(subquery.c.id == GenomicSetMember.id, subquery.c.file_count ==
-                     len([1 for file_type in array_file_types_attributes if file_type['required']])
-                     )
+                subquery.c.id == GenomicSetMember.id
             ).outerjoin(
                 GenomicAW3Raw,
                 and_(
@@ -3732,12 +3731,24 @@ class GenomicQueriesDao(BaseDao):
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 GenomicAW3Raw.id.is_(None)
-            ).distinct().all()
+            )
+            if return_missing_files:
+                aw3_rows = aw3_rows.filter(
+                    subquery.c.file_count !=
+                    len([1 for file_type in array_file_types_attributes if file_type['required']])
+                )
+            else:
+                aw3_rows = aw3_rows.filter(
+                    subquery.c.file_count ==
+                    len([1 for file_type in array_file_types_attributes if file_type['required']])
+                )
+            return aw3_rows.distinct().all()
 
     def get_aw3_wgs_records(self, **kwargs):
         # should be only wgs genome but query also
         # used for wgs investigation workflow
         genome_type = kwargs.get('genome_type', config.GENOME_TYPE_WGS)
+        return_missing_files = kwargs.get('return_missing_files', False)
         wgs_parent_sample = self.wgs_parent_sample().subquery()
         with self.session() as session:
             subquery = session.query(
@@ -3757,7 +3768,7 @@ class GenomicQueriesDao(BaseDao):
                      if file_type['required']] + ['hard-filtered.gvcf.gz', 'hard-filtered.gvcf.gz.md5sum'])
             ).group_by(GenomicSetMember.id).subquery()
 
-            return session.query(
+            aw3_rows = session.query(
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                 GenomicSetMember.sampleId,
                 sqlalchemy.func.concat(get_biobank_id_prefix(),
@@ -3802,10 +3813,7 @@ class GenomicQueriesDao(BaseDao):
             ).join(
                 subquery,
                 and_(
-                    subquery.c.id == GenomicSetMember.id,
-                    subquery.c.file_count == len(['1' for file_type in wgs_file_types_attributes
-                                                  if file_type['required']] + ['hard-filtered.gvcf.gz',
-                                                                               'hard-filtered.gvcf.gz.md5sum'])
+                    subquery.c.id == GenomicSetMember.id
                 )
             ).outerjoin(
                 GenomicAW3Raw,
@@ -3832,7 +3840,20 @@ class GenomicQueriesDao(BaseDao):
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 GenomicAW3Raw.id.is_(None)
-            ).distinct().all()
+            )
+            if return_missing_files:
+                aw3_rows = aw3_rows.filter(
+                    subquery.c.file_count !=
+                    len(['1' for file_type in wgs_file_types_attributes
+                         if file_type['required']] + ['hard-filtered.gvcf.gz', 'hard-filtered.gvcf.gz.md5sum'])
+                )
+            else:
+                aw3_rows = aw3_rows.filter(
+                    subquery.c.file_count ==
+                    len(['1' for file_type in wgs_file_types_attributes
+                         if file_type['required']] + ['hard-filtered.gvcf.gz', 'hard-filtered.gvcf.gz.md5sum'])
+                )
+            return aw3_rows.distinct().all()
 
     # CVL pipeline start
     def get_w3sr_records(self, **kwargs):

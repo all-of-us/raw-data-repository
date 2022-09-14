@@ -1905,6 +1905,28 @@ class GenomicJobController:
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 
+    def check_aw3_ready_missing_files(self):
+        """ Runs report to email list of samples that are ready for AW3 manifest generation but missing data files"""
+        genomics_dao = GenomicQueriesDao()
+        notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
+
+        array_missing_data = genomics_dao.get_aw3_array_records(return_missing_files=True)
+        wgs_missing_data = genomics_dao.get_aw3_wgs_records(return_missing_files=True)
+        if notification_email_address and any((array_missing_data, wgs_missing_data)):
+            message = 'The following samples matched AW3 manifest criteria except for the data file count:\n\n'
+            message += 'sample_id,genome_type\n'
+            message += '\n'.join([f'{f[1]},aou_array' for f in array_missing_data])
+            message += '\n'.join([f'{f[1]},aou_wgs' for f in wgs_missing_data])
+            EmailService.send_email(
+                Email(
+                    recipients=[notification_email_address],
+                    subject='AW3 ready samples with missing data files',
+                    plain_text_content=message
+                )
+            )
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
+
     @staticmethod
     def execute_cloud_task(payload, endpoint):
         if GAE_PROJECT != 'localhost':

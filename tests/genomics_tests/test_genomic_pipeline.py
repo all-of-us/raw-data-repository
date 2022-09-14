@@ -7095,7 +7095,7 @@ class GenomicPipelineTest(BaseTestCase):
         )
 
         self._update_test_sample_ids()
-        self._create_stored_samples([(1, 1001)])
+        self._create_stored_samples([(3, 1003)])
         self._create_stored_samples([(2, 1002)])
 
         # Create corresponding array genomic_set_members
@@ -7122,14 +7122,14 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
-            f'test_data_folder/RDR_1_1001_10001_1.hard-filtered.vcf.gz',
-            f'test_data_folder/RDR_1_1001_10001_1.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_1_1001_10001_1.hard-filtered.vcf.gz.md5sum',
-            f'test_data_folder/RDR_1_1001_10001_1.cram',
-            f'test_data_folder/RDR_1_1001_10001_1.cram.md5sum',
-            f'test_data_folder/RDR_1_1001_10001_1.cram.crai',
-            #f'test_data_folder/RDR_1_1001_10001_1.hard-filtered.gvcf.gz',
-            f'test_data_folder/RDR_1_1001_10001_1.hard-filtered.gvcf.gz.md5sum',
+            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz',
+            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.tbi',
+            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.md5sum',
+            f'test_data_folder/RDR_3_1003_10003_1.cram',
+            f'test_data_folder/RDR_3_1003_10003_1.cram.md5sum',
+            f'test_data_folder/RDR_3_1003_10003_1.cram.crai',
+            #f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz',
+            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz.md5sum',
         )
         test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
 
@@ -7257,3 +7257,93 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
+
+    @mock.patch('rdr_service.services.email_service.EmailService.send_email')
+    def test_aw3_ready_missing_data_files_report(self, email_mock):
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(3, arr_override=False,
+                                                recon_gc_man_id=1,
+                                                genome_center='rdr',
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                sample_source="Whole Blood",
+                                                ai_an='N')
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+
+        create_ingestion_test_file(
+            'RDR_AoU_SEQ_TestDataManifest.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
+        )
+
+        self._update_test_sample_ids()
+        self._create_stored_samples([(3, 1003)])
+        self._create_stored_samples([(2, 1002)])
+
+        # Create corresponding array genomic_set_members
+        for i in range(1, 4):
+            self.data_generator.create_database_genomic_set_member(
+                participantId=i,
+                genomicSetId=1,
+                biobankId=i,
+                gcManifestParentSampleId=1000+i,
+                genomeType="aou_array",
+                aw3ManifestJobRunID=1,
+                ai_an='N'
+            )
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # Test sequencing file (required for AW3 WGS)
+        sequencing_test_files = (
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_1.cram',
+            f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
+            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz',
+            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.tbi',
+            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.md5sum',
+            f'test_data_folder/RDR_3_1003_10003_1.cram',
+            f'test_data_folder/RDR_3_1003_10003_1.cram.md5sum',
+            f'test_data_folder/RDR_3_1003_10003_1.cram.crai',
+            #f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz',
+            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz.md5sum',
+        )
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': '.'.join(f.split('.')[1:]),
+                    'identifier_type': 'sample_id',
+                    'identifier_value': f.split('_')[4],
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        config.override_setting(config.RDR_GENOMICS_NOTIFICATION_EMAIL, 'email@test.com')
+        with GenomicJobController(GenomicJob.AW3_MISSING_DATA_FILE_REPORT) as controller:
+            controller.check_aw3_ready_missing_files()
+
+        # mock checks
+        self.assertEqual(email_mock.call_count, 1)
+
