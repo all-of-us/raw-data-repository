@@ -406,7 +406,7 @@ class BQParticipantSummarySchema(BQSchema):
     # enrollment_core_minus_pm is the legacy (pre V3.0) timestamp from RDR participant_summary
     enrollment_status_legacy_v2 = BQField('enrollment_status_legacy_v2', BQFieldTypeEnum.STRING,
                                           BQFieldModeEnum.NULLABLE)
-    enrollment_status_legacy_v2_id = BQField('enrollment_status_legacy_v2_id', BQFieldTypeEnum.STRING,
+    enrollment_status_legacy_v2_id = BQField('enrollment_status_legacy_v2_id', BQFieldTypeEnum.INTEGER,
                                              BQFieldModeEnum.NULLABLE)
     enrollment_status_v3_0 = BQField('enrollment_status_v3_0', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     enrollment_status_v3_0_id = BQField('enrollment_status_v3_0_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
@@ -421,7 +421,7 @@ class BQParticipantSummarySchema(BQSchema):
     enrollment_status_v3_0_core_time = BQField('enrollment_status_v3_0_core_time', BQFieldTypeEnum.DATETIME,
                                                BQFieldModeEnum.NULLABLE)
     enrollment_status_v3_1 = BQField('enrollment_status_v3_1', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-    enrollment_status_v3_1_id = BQField('enrollment_status_v3_1', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_1_id = BQField('enrollment_status_v3_1_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     enrollment_status_v3_1_participant_time = BQField('enrollment_status_v3_1_participant_time',
                                                       BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     enrollment_status_v3_1_participant_plus_ehr_time = BQField('enrollment_status_v3_1_participant_plus_ehr_time',

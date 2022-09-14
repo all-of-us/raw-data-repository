@@ -375,7 +375,7 @@ class ParticipantSchema(Schema):
     enrollment_status_v3_0_core_time = fields.DateTime()
 
     enrollment_status_v3_1 = fields.EnumString(enum=EnrollmentStatusV31)
-    enrollment_status_v3_1_id = fields.EnumString(enum=EnrollmentStatusV31)
+    enrollment_status_v3_1_id = fields.EnumInteger(enum=EnrollmentStatusV31)
     enrollment_status_v3_1_participant_time = fields.DateTime()
     enrollment_status_v3_1_participant_plus_ehr_time = fields.DateTime()
     enrollment_status_v3_1_participant_plus_basics_time = fields.DateTime()
