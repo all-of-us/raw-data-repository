@@ -554,7 +554,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'enrollment_status_v3_1_participant_plus_ehr_time': ps.enrollmentStatusParticipantPlusEhrV3_1Time,
                 'enrollment_status_v3_1_participant_plus_basics_time': ps.enrollmentStatusParticipantPlusBasicsV3_1Time,
                 'enrollment_status_v3_1_core_minus_pm_time': ps.enrollmentStatusCoreMinusPmV3_1Time,
-                'enrollment_status_v3_1_core_time': ps.enrollmentStatusCoreMinusPmV3_1Time,
+                'enrollment_status_v3_1_core_time': ps.enrollmentStatusCoreV3_1Time,
                 'enrollment_status_v3_1_participant_plus_baseline_time': \
                     ps.enrollmentStatusParticipantPlusBaselineV3_1Time,
                 'health_datastream_sharing_status_v3_1': str(ps.healthDataStreamSharingStatusV3_1),
