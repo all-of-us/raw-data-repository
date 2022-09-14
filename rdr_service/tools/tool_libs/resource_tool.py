@@ -203,6 +203,7 @@ class ParticipantResourceClass(object):
         self.args = args
         self.gcp_env = gcp_env
         self.pid_list = pid_list
+        self.qc_error_list = []
 
     def update_single_pid(self, pid):
         """
@@ -212,10 +213,20 @@ class ParticipantResourceClass(object):
         """
         try:
             if not self.args.modules_only:
-                rebuild_bq_participant(pid, project_id=self.gcp_env.project)
-                generators.participant.rebuild_participant_summary_resource(pid)
+                if not self.args.qc:
+                    # Skip the BQ build in QC mode;  will just test the resource data return
+                    rebuild_bq_participant(pid, project_id=self.gcp_env.project)
+                res = generators.participant.rebuild_participant_summary_resource(pid, qc_mode=self.args.qc)
+                if self.args.qc:
+                    pid_dict = res.get_data()
+                    rdr_status = pid_dict.get('enrollment_status_legacy_v2', None)
+                    pdr_status = pid_dict.get('enrollment_status', None)
+                    if not rdr_status and pdr_status == 'REGISTERED':
+                        pass
+                    elif rdr_status != pdr_status:
+                        self.qc_error_list.append(f'P{pid} RDR {rdr_status} / PDR {pdr_status}')
 
-            if not self.args.no_modules:
+            if not self.args.no_modules and not self.args.qc:
                 mod_bqgen = BQPDRQuestionnaireResponseGenerator()
 
                 # Generate participant questionnaire module response data
@@ -318,7 +329,7 @@ class ParticipantResourceClass(object):
         if not pids:
             return 1
 
-        if self.args.batch or self.args.all_pids:
+        if self.args.batch or (self.args.all_pids and not self.args.qc):
             return self.update_batch(pids)
 
         total_pids = len(pids)
@@ -386,10 +397,17 @@ class ParticipantResourceClass(object):
             return self.update_many_pids(pids)
 
         if self.args.pid:
-            if self.update_single_pid(self.args.pid) == 0:
+            if self.update_single_pid(self.args.pid) == 0 and not self.args.qc:
                 _logger.info(f'Participant {self.args.pid} updated.')
-            else:
+            elif not self.args.qc:
                 _logger.error(f'Participant ID {self.args.pid} not found.')
+
+        if self.qc_error_list:
+            print('\nDiffs between RDR enrollment_status[_legacy_v2] and PDR enrollment_status:\n')
+            for err in self.qc_error_list:
+                print(err)
+        elif self.args.qc:
+            print('\nNo enrollment status discrepancies found')
 
         return 1
 
@@ -806,7 +824,6 @@ class ResearchWorkbenchResourceClass(object):
             _logger.warning(f'\n\nThere were {errors} IDs not found during processing.')
 
         return 0
-
 
 
     def run(self):
@@ -1402,6 +1419,8 @@ def run():
                                 help="do not rebuild participant questionnaire response data for pdr_mod_* tables")
     rebuild_parser.add_argument("--modules-only", default=False, action="store_true",
                                 help="only rebuild participant questionnaire response data for pdr_mod_* tables")
+    rebuild_parser.add_argument("--qc", default=False, action="store_true",
+                                help="Goal 1 quality control to compare RDR and PDR enrollment status values")
     update_argument(rebuild_parser, dest='from_file',
                     help="rebuild participant ids from a file with a list of pids")
 

@@ -213,6 +213,43 @@ class BQPDRParticipantSummarySchema(BQSchema):
     age_at_consent = BQField('age_at_consent', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     research_id = BQField('research_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    # New Goal 1 additions, ingested from RDR
+    enrollment_status_legacy_v2 = BQField('enrollment_status_legacy_v2', BQFieldTypeEnum.STRING,
+                                          BQFieldModeEnum.NULLABLE)
+    enrollment_status_legacy_v2_id = BQField('enrollment_status_legacy_v2_id', BQFieldTypeEnum.INTEGER,
+                                             BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_0 = BQField('enrollment_status_v3_0', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_0_id = BQField('enrollment_status_v3_0_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_0_participant_time = BQField('enrollment_status_v3_0_participant_time',
+                                                      BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_0_participant_plus_ehr_time = BQField('enrollment_status_v3_0_participant_plus_ehr_time',
+                                                               BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_0_pmb_eligible_time = BQField('enrollment_status_v3_0_pmb_eligible_time',
+                                                       BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_0_core_minus_pm_time = BQField('enrollment_status_v3_0_core_minus_pm_time',
+                                                        BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_0_core_time = BQField('enrollment_status_v3_0_core_time', BQFieldTypeEnum.DATETIME,
+                                               BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_1 = BQField('enrollment_status_v3_1', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_1_id = BQField('enrollment_status_v3_1_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_1_participant_time = BQField('enrollment_status_v3_1_participant_time',
+                                                      BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_1_participant_plus_ehr_time = BQField('enrollment_status_v3_1_participant_plus_ehr_time',
+                                                               BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_1_participant_plus_basics_time = BQField('enrollment_status_v3_1_participant_plus_basics_time',
+                                                               BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_1_core_minus_pm_time = BQField('enrollment_status_v3_1_core_minus_pm_time',
+                                                        BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_1_core_time = BQField('enrollment_status_v3_1_core_time', BQFieldTypeEnum.DATETIME,
+                                               BQFieldModeEnum.NULLABLE)
+    enrollment_status_v3_1_participant_plus_baseline_time = \
+        BQField('enrollment_status_v3_1_participant_plus_baseline_time', BQFieldTypeEnum.DATETIME,
+                BQFieldModeEnum.NULLABLE)
+    health_datastream_sharing_status_v3_1 = BQField('health_datastream_sharing_status_v3_1',
+                                                    BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    health_datastream_sharing_status_v3_1_id = BQField('health_datastream_sharing_status_v3_1_id',
+                                                       BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
 
 class BQPDRParticipantSummary(BQTable):
     """ PDR Participant Summary BigQuery Table """
