@@ -2303,7 +2303,7 @@ class GenomicSchedulingDao(BaseDao):
                 GenomicAppointmentEvent.participant_id,
                 GenomicAppointmentEvent.module_type.label('module'),
                 GenomicAppointmentEvent.event_type.label('status'),
-                GenomicAppointmentEvent.appointment_time,
+                GenomicAppointmentEvent.appointment_timestamp,
                 GenomicAppointmentEvent.appointment_timezone,
                 GenomicAppointmentEvent.source,
                 GenomicAppointmentEvent.location,
