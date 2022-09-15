@@ -617,7 +617,7 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
 
         # should be in some record(s)
         self.assertTrue(any(obj.source is not None for obj in current_appointment_data))
-        self.assertTrue(any(obj.appointment_time is not None for obj in current_appointment_data))
+        self.assertTrue(any(obj.appointment_timestamp is not None for obj in current_appointment_data))
         self.assertTrue(any(obj.appointment_timezone is not None for obj in current_appointment_data))
         self.assertTrue(any(obj.location is not None for obj in current_appointment_data))
         self.assertTrue(any(obj.contact_number is not None for obj in current_appointment_data))
