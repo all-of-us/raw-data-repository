@@ -16,7 +16,6 @@ from werkzeug.exceptions import NotFound
 from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.genomic import genomic_mappings
 from rdr_service.genomic_enums import ResultsModuleType, ResultsWorkflowState
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -35,8 +34,7 @@ from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
     GenomicGCValidationMetrics,
-    GenomicSampleContamination,
-    GenomicGcDataFileMissing)
+    GenomicSampleContamination)
 from rdr_service.participant_enums import (
     WithdrawalStatus,
     QuestionnaireStatus,
@@ -2484,106 +2482,6 @@ class GenomicReconciler:
         self.file_mover = file_mover
         self.storage_provider = storage_provider
         self.controller = controller
-
-    def reconcile_metrics_to_data_files(self, genome_type, _gc_site_id):
-        if genome_type == "aou_wgs":
-            logging.info("Running WGS reconciliation to Data Files...")
-            metrics = self.metrics_dao.get_with_missing_wgs_files(_gc_site_id)
-            identifier = 'sampleId'
-            lookup_method = self.data_file_dao.get_with_sample_id
-            file_types = genomic_mappings.wgs_file_types_attributes
-            self.ready_signal = 'cvl-ready'
-
-        elif genome_type == "aou_array":
-            logging.info("Running Array reconciliation to Data Files...")
-            metrics = self.metrics_dao.get_with_missing_array_files(_gc_site_id)
-            identifier = 'chipwellbarcode'
-            lookup_method = self.data_file_dao.get_with_chipwellbarcode
-            file_types = genomic_mappings.array_file_types_attributes
-            self.ready_signal = 'gem-ready'
-
-        else:
-            logging.error('Invalid Genome Type')
-            return GenomicSubProcessResult.ERROR
-
-        if not metrics:
-            logging.error(f'No metrics found for {_gc_site_id}')
-            return GenomicSubProcessResult.SUCCESS
-
-        required_files_set = set([f['file_type'] for f in file_types if f['required']])
-
-        logging.info(f"Found {len(metrics)} metrics records missing data...")
-
-        for result in metrics:
-            # Lookup identifier in data files table
-            id_value = getattr(result, identifier)
-            files = lookup_method(id_value)
-
-            file_types_received = set([f.file_type for f in files])
-            missing_data_files = required_files_set - file_types_received
-            metric_touched = False
-
-            # WGS query results require GenomicGCValidationMetrics model to be specified
-            if isinstance(result, GenomicGCValidationMetrics):
-                _obj = result
-            else:
-                _obj = result.GenomicGCValidationMetrics
-
-            logging.info(f'files for {_obj.id}: {files}')
-
-            # Iterate file types and mark received
-            for file in files:
-                # look in files received list for the file type
-                for file_type_config in file_types:
-                    if file_type_config['file_type'] == file.file_type:
-                        logging.info(f'Setting attributes for metric {_obj.id}...')
-                        if not getattr(_obj, file_type_config['file_received_attribute']):
-                            setattr(_obj, file_type_config['file_received_attribute'], 1)  # received
-                            setattr(_obj, file_type_config['file_path_attribute'], f'gs://{file.file_path}')
-                            metric_touched = True
-
-            if metric_touched or missing_data_files:
-                logging.info(f'Updating metric record {_obj.id}')
-                self.update_reconciled_metric(
-                    _obj,
-                    missing_data_files,
-                    _gc_site_id,
-                    genome_type
-                )
-
-        return GenomicSubProcessResult.SUCCESS
-
-    def update_reconciled_metric(self, _obj, missing_data_files, _gc_site_id, genome_type):
-        # Only upsert the metric if changed
-        self.metrics_dao.upsert(_obj)
-        logging.info(f'id {_obj.id} updated with attributes')
-
-        member = self.member_dao.get(_obj.genomicSetMemberId)
-        next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal=self.ready_signal)
-
-        # Handle for missing data files
-        if missing_data_files:
-            next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
-            for file_type in missing_data_files:
-                missing_file_object = GenomicGcDataFileMissing(
-                    gc_site_id=_gc_site_id,
-                    file_type=file_type,
-                    run_id=self.run_id,
-                    gc_validation_metric_id=_obj.id
-                )
-                self.data_file_missing_dao.insert(missing_file_object)
-
-            incident = self.controller.incident_dao.get_by_source_file_id(_obj.genomicFileProcessedId)
-            if not incident or (incident and not any([i for i in incident if i.code == 'MISSING_FILES'])):
-                self.process_missing_data(
-                    _obj,
-                    missing_data_files,
-                    genome_type
-                )
-
-        # Update Member
-        if next_state and next_state != member.genomicWorkflowState:
-            self.member_dao.update_member_workflow_state(member, next_state)
 
     def process_missing_data(self, metric, missing_data_files, genome_type):
         missing_files_config = config.getSettingJson(config.GENOMIC_SKIP_MISSING_FILETYPES, {})

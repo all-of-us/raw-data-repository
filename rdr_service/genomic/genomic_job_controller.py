@@ -872,24 +872,6 @@ class GenomicJobController:
             num_days=num_days
         )
 
-    def resolve_missing_gc_files(self, limit=800):
-        logging.info('Resolving missing gc data files')
-
-        files_to_resolve = self.missing_files_dao.get_files_to_resolve(limit)
-        if files_to_resolve:
-
-            resolve_arrays = [obj for obj in files_to_resolve if obj.identifier_type == 'chipwellbarcode']
-            if resolve_arrays:
-                self.missing_files_dao.batch_update_resolved_file(resolve_arrays)
-
-            resolve_wgs = [obj for obj in files_to_resolve if obj.identifier_type == 'sample_id']
-            if resolve_wgs:
-                self.missing_files_dao.batch_update_resolved_file(resolve_wgs)
-
-            logging.info('Resolving missing gc data files complete')
-        else:
-            logging.info('No missing gc data files to resolve')
-
     def update_member_aw2_missing_states_if_resolved(self):
         # get array member_ids that are resolved but still in GC_DATA_FILES_MISSING
         logging.info("Updating Array GC_DATA_FILES_MISSING members")
@@ -1242,42 +1224,6 @@ class GenomicJobController:
             member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
         return member
-
-    def run_reconciliation_to_data(self, *, genome_type):
-        """
-        Reconciles the metrics based on type of files using reconciler component
-        :param genome_type array or wgs
-        """
-        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id,
-                                            storage_provider=self.storage_provider,
-                                            controller=self)
-
-        try:
-            # Set reconciler's bucket and filter queries on gc_site_id for each bucket
-            for bucket_name in self.bucket_name_list:
-                self.reconciler.bucket_name = bucket_name
-                site_id_mapping = config.getSettingJson(config.GENOMIC_GC_ID_MAPPING)
-
-                gc_site_id = 'rdr'
-
-                if 'baylor' in bucket_name.lower():
-                    baylor = 'baylor_{}'.format(genome_type)
-                    gc_site_id = site_id_mapping[baylor]
-
-                if 'broad' in bucket_name.lower():
-                    gc_site_id = site_id_mapping['broad']
-
-                if 'northwest' in bucket_name.lower():
-                    gc_site_id = site_id_mapping['northwest']
-
-                # Run the reconciliation by GC
-                self.job_result = self.reconciler.reconcile_metrics_to_data_files(
-                    genome_type,
-                    _gc_site_id=gc_site_id
-                )
-
-        except RuntimeError:
-            self.job_result = GenomicSubProcessResult.ERROR
 
     def run_new_participant_workflow(self):
         """
