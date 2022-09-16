@@ -175,11 +175,11 @@ wgs_file_types_attributes = ({'file_path_attribute': 'hfVcfPath',
                              {'file_path_attribute': 'gvcfPath',
                               'file_received_attribute': 'gvcfReceived',
                               'file_type': 'hard-filtered.gvcf.gz',
-                              'required': False},
+                              'required': True},
                              {'file_path_attribute': 'gvcfMd5Path',
                               'file_received_attribute': 'gvcfMd5Received',
                               'file_type': 'hard-filtered.gvcf.gz.md5sum',
-                              'required': False}
+                              'required': True}
                              )
 
 array_file_types_attributes = ({'file_path_attribute': 'idatRedPath',

@@ -2376,14 +2376,14 @@ class UpdateMissingFiles(ToolBase):
         members_to_update.extend(self.member_dao.get_wgs_members_files_available(samples_list))
         if not self.args.dryrun:
             for member in members_to_update:
-                updated = self._update_member(member)
+                updated = self._update_metric(member)
                 if updated:
                     updated_count += 1
         else:
             _logger.info(f"Will update {len(members_to_update)} samples")
         _logger.info(f"Found {len(members_to_update)} members to update. Updated {updated_count}.")
 
-    def _update_member(self, member: GenomicSetMember) -> bool:
+    def _update_metric(self, member: GenomicSetMember) -> bool:
         file_list = {}
         files = None
         file_types_attributes = None
@@ -2400,8 +2400,7 @@ class UpdateMissingFiles(ToolBase):
             file_list[file.file_type] = file.file_path
         for file_type in file_types_attributes:
             if file_type['required'] and file_type['file_type'] in file_list:
-                if getattr(metrics, file_type['file_received_attribute']) == 0:
-                    setattr(metrics, file_type['file_received_attribute'], 1)
+                if not getattr(metrics, file_type['file_path_attribute']):
                     setattr(metrics, file_type['file_path_attribute'], file_list[file_type['file_type']])
                     metric_updated = True
         if metric_updated:

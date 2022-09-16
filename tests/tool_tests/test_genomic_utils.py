@@ -220,7 +220,6 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         metric_dao = GenomicGCValidationMetricsDao()
         metric_obj = metric_dao.get(1)
 
-        self.assertEqual(metric_obj.gvcfReceived, 1)
         self.assertEqual(metric_obj.gvcfPath, expected_path)
 
     def test_unblock_samples(self):
@@ -463,22 +462,11 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         self.data_generator.create_database_genomic_gc_validation_metrics(
             genomicSetMemberId=array_member.id,
             chipwellbarcode='10001_R01C01',
-            idatRedReceived=0,
-            idatGreenReceived=0,
-            idatRedMd5Received=0,
-            idatGreenMd5Received=0,
-            vcfReceived=0,
-            vcfTbiReceived=0,
-            vcfMd5Received=0
+
         )
         self.data_generator.create_database_genomic_gc_validation_metrics(
             genomicSetMemberId=wgs_member.id,
-            cramReceived=0,
-            craiReceived=0,
-            cramMd5Received=0,
-            hfVcfReceived=0,
-            hfVcfMd5Received=0,
-            hfVcfTbiReceived=0,
+
         )
         array_files = [
             f'test_data_folder/10001_R01C01.vcf.gz',
@@ -495,7 +483,9 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             'Wgs_sample_raw_data/test.cram.md5sum',
             'Wgs_sample_raw_data/test.hard-filtered.vcf.gz',
             'Wgs_sample_raw_data/test.hard-filtered.vcf.gz.md5sum',
-            'Wgs_sample_raw_data/test.hard-filtered.vcf.gz.tbi'
+            'Wgs_sample_raw_data/test.hard-filtered.vcf.gz.tbi',
+            'Wgs_sample_raw_data/test.hard-filtered.gvcf.gz',
+            'Wgs_sample_raw_data/test.hard-filtered.gvcf.gz.md5sum'
         ]
         bucket_name = 'gs://test-bucket'
         for file_name in array_files:
@@ -536,8 +526,6 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
 
         metrics_dao = GenomicGCValidationMetricsDao()
         array_metrics = metrics_dao.get_metrics_by_member_id(array_member.id)
-        self.assertEqual(1, array_metrics.idatRedReceived)
         self.assertEqual("gs://test-bucket/test_data_folder/10001_R01C01_Red.idat", array_metrics.idatRedPath)
         wgs_metrics = metrics_dao.get_metrics_by_member_id(wgs_member.id)
-        self.assertEqual(1, wgs_metrics.cramReceived)
         self.assertEqual('gs://test-bucket/Wgs_sample_raw_data/test.cram', wgs_metrics.cramPath)

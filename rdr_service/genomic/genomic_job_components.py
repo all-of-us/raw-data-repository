@@ -1712,13 +1712,6 @@ class GenomicFileIngester:
                         file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}.' + \
                                     f'{file_def["file_type"]}'
                     row[file_def['file_path_attribute']] = file_path
-                    row[file_def['file_received_attribute']] = 1
-            # Need to set wgs file received flags to 0 to prevent an error when ingesting updated AW2
-            for file_def in wgs_file_types_attributes:
-                if file_def['required']:
-                    row[file_def['file_received_attribute']] = 0
-                elif 'gvcf' in file_def['file_type']:
-                    row[file_def['file_received_attribute']] = 0
 
         elif row['genometype'] == 'aou_wgs':
             for file_def in wgs_file_types_attributes:
@@ -1726,17 +1719,7 @@ class GenomicFileIngester:
                     file_path = f'gs://{gc_bucket}/{prefix_map[site_id][file_def["file_type"]]}/{site_id.upper()}_' + \
                                 f'{row["biobankid"]}_{row["sampleid"]}_{row["limsid"]}_1.{file_def["file_type"]}'
                     row[file_def['file_path_attribute']] = file_path
-                    row[file_def['file_received_attribute']] = 1
-                # gvcf files not required but needed for AW3 generation
-                elif 'gvcf' in file_def['file_type']:
-                    file_path = f'gs://{gc_bucket}/{prefix_map[site_id][file_def["file_type"]]}/{site_id.upper()}_' + \
-                                f'{row["biobankid"]}_{row["sampleid"]}_{row["limsid"]}_1.{file_def["file_type"]}'
-                    row[file_def['file_path_attribute']] = file_path
-                    row[file_def['file_received_attribute']] = 1
-            # Need to set array file received flags to 0 to prevent an error when ingesting updated AW2
-            for file_def in array_file_types_attributes:
-                if file_def['required']:
-                    row[file_def['file_received_attribute']] = 0
+
 
         return row
 

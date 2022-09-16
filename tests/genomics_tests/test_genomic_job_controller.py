@@ -98,19 +98,15 @@ class GenomicJobControllerTest(BaseTestCase):
 
         metrics = self.metrics_dao.get_metrics_by_member_id(gen_member.id)
 
-        self.assertIsNotNone(metrics.gvcfMd5Received)
         self.assertIsNotNone(metrics.gvcfMd5Path)
         self.assertEqual(metrics.gvcfMd5Path, full_path_md5)
-        self.assertEqual(metrics.gvcfMd5Received, 1)
 
         job_controller.ingest_data_files_into_gc_metrics(file_path, bucket_name)
 
         metrics = self.metrics_dao.get_metrics_by_member_id(gen_member.id)
 
-        self.assertIsNotNone(metrics.gvcfReceived)
         self.assertIsNotNone(metrics.gvcfPath)
         self.assertEqual(metrics.gvcfPath, full_path)
-        self.assertEqual(metrics.gvcfReceived, 1)
 
     def test_gvcf_files_ingestion_create_incident(self):
         bucket_name = "test_bucket"

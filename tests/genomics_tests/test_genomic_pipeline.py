@@ -3465,10 +3465,8 @@ class GenomicPipelineTest(BaseTestCase):
 
             row = rows[0]
             metric = self.metrics_dao.get(1)
-            received = [val for val in metric if 'Received' in val[0] and val[1] == 1]
             paths = [val for val in metric if 'Path' in val[0] and val[1] is not None]
 
-            self.assertEqual(len(sequencing_test_files), len(received))
             self.assertEqual(len(sequencing_test_files), len(paths))
 
             self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}',
@@ -5397,36 +5395,23 @@ class GenomicPipelineTest(BaseTestCase):
             if member[1] == "aou_array":
                 self.data_generator.create_database_genomic_gc_validation_metrics(
                     genomicSetMemberId=member[0],
-                    idatRedReceived=1,
                     idatRedPath="test/path",
-                    idatGreenReceived=1,
                     idatGreenPath="test/path",
-                    idatRedMd5Received=1,
                     idatRedMd5Path="test/path",
-                    idatGreenMd5Received=0 if member[0] == 5 else 1,  # one still missing a file
                     idatGreenMd5Path="test/path",
-                    vcfReceived=1,
                     vcfPath="test/path",
-                    vcfMd5Received=1,
                     vcfMd5Path="test/path",
-                    vcfTbiReceived=1,
                     vcfTbiPath="test/path",
                 )
 
             if member[1] == "aou_wgs":
                 self.data_generator.create_database_genomic_gc_validation_metrics(
                     genomicSetMemberId=member[0],
-                    hfVcfReceived=1,
                     hfVcfPath="test/path",
-                    hfVcfTbiReceived=1,
                     hfVcfTbiPath="test/path",
-                    hfVcfMd5Received=0 if member[0] == 6 else 1,  # one still missing a file,
                     hfVcfMd5Path="test/path",
-                    cramReceived=1,
                     cramPath="test/path",
-                    cramMd5Received=1,
                     cramMd5Path="test/path",
-                    craiReceived=1,
                     craiPath="test/path",
                 )
 
@@ -5436,9 +5421,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test all members are in correct state
         members = self.member_dao.get_all()
         for member in members:
-            if member.id in (5, 6):
-                self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
-            elif member.genomeType == "aou_array":
+            if member.genomeType == "aou_array":
                 self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
             else:
                 self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
@@ -5920,14 +5903,6 @@ class GenomicPipelineTest(BaseTestCase):
         gc_record = self.metrics_dao.get(1)
 
         # Test the gc_metrics were populated at ingestion
-        self.assertEqual(1, gc_record.vcfReceived)
-        self.assertEqual(1, gc_record.vcfTbiReceived)
-        self.assertEqual(1, gc_record.vcfMd5Received)
-        self.assertEqual(1, gc_record.idatRedReceived)
-        self.assertEqual(1, gc_record.idatGreenReceived)
-        self.assertEqual(1, gc_record.idatRedMd5Received)
-        self.assertEqual(1, gc_record.idatGreenMd5Received)
-
         self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01.vcf.gz", gc_record.vcfPath)
         self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01.vcf.gz.tbi", gc_record.vcfTbiPath)
         self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01.vcf.gz.md5sum", gc_record.vcfMd5Path)
@@ -5936,17 +5911,6 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01_Red.idat.md5sum", gc_record.idatRedMd5Path)
         self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01_Grn.idat.md5sum",
                          gc_record.idatGreenMd5Path)
-
-        gc_record = self.metrics_dao.get(2)
-
-        # Test the gc_metrics were populated at ingestion
-        self.assertEqual(1, gc_record.vcfReceived)
-        self.assertEqual(1, gc_record.vcfTbiReceived)
-        self.assertEqual(1, gc_record.vcfMd5Received)
-        self.assertEqual(1, gc_record.idatRedReceived)
-        self.assertEqual(1, gc_record.idatGreenReceived)
-        self.assertEqual(1, gc_record.idatRedMd5Received)
-        self.assertEqual(1, gc_record.idatGreenMd5Received)
 
         # Test member updated with job ID
         member = self.member_dao.get(1)
@@ -6010,16 +5974,6 @@ class GenomicPipelineTest(BaseTestCase):
         gc_record = self.metrics_dao.get(1)
 
         # Test the gc_metrics were updated with reconciliation data
-        self.assertEqual(1, gc_record.hfVcfReceived)
-        self.assertEqual(1, gc_record.hfVcfTbiReceived)
-        self.assertEqual(1, gc_record.hfVcfMd5Received)
-        self.assertEqual(0, gc_record.rawVcfReceived)
-        self.assertEqual(0, gc_record.rawVcfTbiReceived)
-        self.assertEqual(0, gc_record.rawVcfMd5Received)
-        self.assertEqual(1, gc_record.cramReceived)
-        self.assertEqual(1, gc_record.cramMd5Received)
-        self.assertEqual(1, gc_record.craiReceived)
-
         self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[0]}", gc_record.hfVcfPath)
         self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.hfVcfTbiPath)
         self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[2]}", gc_record.hfVcfMd5Path)
@@ -6064,20 +6018,20 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test sequencing file (required for GEM)
         sequencing_test_files = (
-            f'test_data_folder/10001_R01C01.vcf.gz',
-            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
-            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
-            f'test_data_folder/10001_R01C01_Red.idat',
-            f'test_data_folder/10001_R01C01_Grn.idat',
-            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
-            f'test_data_folder/10001_R01C01_Grn.idat.md5sum',
-            f'test_data_folder/10002_R01C02.vcf.gz',
-            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
-            f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
-            # f'test_data_folder/10002_R01C02_Red.idat',
-            f'test_data_folder/10002_R01C02_Grn.idat',
-            f'test_data_folder/10002_R01C02_Red.idat.md5sum',
-            f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
+            'test_data_folder/10001_R01C01.vcf.gz',
+            'test_data_folder/10001_R01C01.vcf.gz.tbi',
+            'test_data_folder/10001_R01C01.vcf.gz.md5sum',
+            'test_data_folder/10001_R01C01_Red.idat',
+            'test_data_folder/10001_R01C01_Grn.idat',
+            'test_data_folder/10001_R01C01_Red.idat.md5sum',
+            'test_data_folder/10001_R01C01_Grn.idat.md5sum',
+            'test_data_folder/10002_R01C02.vcf.gz',
+            'test_data_folder/10002_R01C02.vcf.gz.tbi',
+            'test_data_folder/10002_R01C02.vcf.gz.md5sum',
+            #'test_data_folder/10002_R01C02_Red.idat',
+            'test_data_folder/10002_R01C02_Grn.idat',
+            'test_data_folder/10002_R01C02_Red.idat.md5sum',
+            'test_data_folder/10002_R01C02_Grn.idat.md5sum',
         )
 
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
@@ -6250,22 +6204,22 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test sequencing file (required for AW3 WGS)
         sequencing_test_files = (
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_1.cram',
-            f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
-            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz',
-            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.md5sum',
-            f'test_data_folder/RDR_3_1003_10003_1.cram',
-            f'test_data_folder/RDR_3_1003_10003_1.cram.md5sum',
-            f'test_data_folder/RDR_3_1003_10003_1.cram.crai',
-            #f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz',
-            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz.md5sum',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+            'test_data_folder/RDR_2_1002_10002_1.cram',
+            'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
+            'test_data_folder/RDR_2_1002_10002_1.cram.crai',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
+            'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz',
+            'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.tbi',
+            'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.md5sum',
+            'test_data_folder/RDR_3_1003_10003_1.cram',
+            'test_data_folder/RDR_3_1003_10003_1.cram.md5sum',
+            'test_data_folder/RDR_3_1003_10003_1.cram.crai',
+            #'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz',
+            'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz.md5sum',
         )
         test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
 
@@ -6436,22 +6390,22 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test sequencing file (required for AW3 WGS)
         sequencing_test_files = (
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_1.cram',
-            f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
-            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz',
-            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.md5sum',
-            f'test_data_folder/RDR_3_1003_10003_1.cram',
-            f'test_data_folder/RDR_3_1003_10003_1.cram.md5sum',
-            f'test_data_folder/RDR_3_1003_10003_1.cram.crai',
-            #f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz',
-            f'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz.md5sum',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+            'test_data_folder/RDR_2_1002_10002_1.cram',
+            'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
+            'test_data_folder/RDR_2_1002_10002_1.cram.crai',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
+            'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz',
+            'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.tbi',
+            'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.md5sum',
+            'test_data_folder/RDR_3_1003_10003_1.cram',
+            'test_data_folder/RDR_3_1003_10003_1.cram.md5sum',
+            'test_data_folder/RDR_3_1003_10003_1.cram.crai',
+            #'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz',
+            'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz.md5sum',
         )
         test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
 
