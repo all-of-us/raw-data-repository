@@ -1329,6 +1329,26 @@ class BQPDRWearConsentView(BQModuleView):
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
+#
+# PDR-1200: Life Functioning Survey
+#
+class BQPDRLifeFunctioningSurveySchema(_BQModuleSchema):
+    """ Life Functioning Survey Module """
+    _module = 'lfs'
+
+class BQPDRLifeFunctioningSurvey(BQTable):
+    """ PDR Life Functioning Survey BigQuery Table """
+    __tablename__ = 'pdr_mod_life_functioning'
+    __schema__ = BQPDRLifeFunctioningSurveySchema
+
+
+class BQPDRLifeFunctioningSurveyView(BQModuleView):
+    """ PDR Life Functioning Survey BigQuery View """
+    __viewname__ = 'v_pdr_mod_life_functioning'
+    __viewdescr__ = 'PDR Life Functioning Survey Module View'
+    __table__ = BQPDRLifeFunctioningSurvey
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
 
 #
 #
@@ -1362,7 +1382,8 @@ PDR_MODULE_LIST = (
     BQPDRGeneralFeedback,
     BQPDRPostPMBFeedback,
     BQPDRPPIModuleFeedback,
-    BQPDRWearConsent
+    BQPDRWearConsent,
+    BQPDRLifeFunctioningSurvey
 )
 
 # Create a dictionary of module codes and table object references.
