@@ -469,13 +469,13 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
 
         )
         array_files = [
-            f'test_data_folder/10001_R01C01.vcf.gz',
-            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
-            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
-            f'test_data_folder/10001_R01C01_Red.idat',
-            f'test_data_folder/10001_R01C01_Grn.idat',
-            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
-            f'test_data_folder/10001_R01C01_Grn.idat.md5sum',
+            'test_data_folder/10001_R01C01.vcf.gz',
+            'test_data_folder/10001_R01C01.vcf.gz.tbi',
+            'test_data_folder/10001_R01C01.vcf.gz.md5sum',
+            'test_data_folder/10001_R01C01_Red.idat',
+            'test_data_folder/10001_R01C01_Grn.idat',
+            'test_data_folder/10001_R01C01_Red.idat.md5sum',
+            'test_data_folder/10001_R01C01_Grn.idat.md5sum',
         ]
         wgs_files = [
             'Wgs_sample_raw_data/test.cram',

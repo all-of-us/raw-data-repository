@@ -229,7 +229,7 @@ cron:
   timezone: America/New_York
   schedule: every day 06:00
   target: offline
-- description: Report for AW3 Ready Samples Missing Data Files (Weekly)
+- description: Genomic Report for AW3 Ready Samples Missing Data Files (Weekly)
   url: /offline/AW3ReadyMissingDataFilesReport
   timezone: America/New_York
   schedule: every monday 08:30
