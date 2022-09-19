@@ -77,7 +77,9 @@ from rdr_service.config import (
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
     GENOME_TYPE_ARRAY,
+    GENOME_TYPE_ARRAY_INVESTIGATION,
     GENOME_TYPE_WGS,
+    GENOME_TYPE_WGS_INVESTIGATION,
     GENOMIC_AW3_ARRAY_SUBFOLDER,
     GENOMIC_AW3_WGS_SUBFOLDER,
     BIOBANK_AW2F_SUBFOLDER,
@@ -669,7 +671,10 @@ class GenomicFileIngester:
             row = self._clean_row_keys(row)
 
         # Beging prep aw2 row
-        row = self._set_metrics_data_file_paths(row)
+        if row['genometype'] in (GENOME_TYPE_WGS, GENOME_TYPE_WGS_INVESTIGATION):
+            row = self._set_metrics_wgs_data_file_paths(row)
+        elif row['genometype'] in (GENOME_TYPE_ARRAY, GENOME_TYPE_ARRAY_INVESTIGATION):
+            row = self._set_metrics_array_data_file_paths(row)
         row = self.prep_aw2_row_attributes(row, member)
 
         if row == GenomicSubProcessResult.ERROR:
@@ -1125,11 +1130,16 @@ class GenomicFileIngester:
         :param rows:
         :return result code
         """
+        wgs_members_to_update = []
+        array_members_to_update = []
         # iterate over each row from CSV and insert into gc metrics table
         for row in rows:
             # change all key names to lower
             row_copy = self._clean_row_keys(row)
-            row_copy = self._set_metrics_data_file_paths(row_copy)
+            if row_copy['genometype'] in (GENOME_TYPE_ARRAY, GENOME_TYPE_ARRAY_INVESTIGATION):
+                row_copy = self._set_metrics_array_data_file_paths(row_copy)
+            elif row_copy['genometype'] in (GENOME_TYPE_WGS, GENOME_TYPE_WGS_INVESTIGATION):
+                row_copy = self._set_metrics_wgs_data_file_paths(row_copy)
             member = self.member_dao.get_member_from_sample_id(
                 int(row_copy['sampleid']),
             )
@@ -1161,7 +1171,11 @@ class GenomicFileIngester:
                             self.insert_member_for_replating(member, row_copy['contamination_category'])
                 self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
                 self.update_member_for_aw2(member)
-                self._update_member_state_after_aw2(member)
+                # set lists of members to update workflow state
+                if row_copy['genometype'] == GENOME_TYPE_ARRAY:
+                    array_members_to_update.append(member.id)
+                elif row_copy['genometype'] == GENOME_TYPE_WGS:
+                    wgs_members_to_update.append(member.id)
 
                 # For feedback manifest loop
                 # Get the genomic_manifest_file
@@ -1183,7 +1197,10 @@ class GenomicFileIngester:
                                                 biobank_id=bid,
                                                 sample_id=row_copy['sampleid'],
                                                 )
-
+        if array_members_to_update:
+            self.member_dao.bulk_update_genomics_workflow_state(array_members_to_update, GenomicWorkflowState.GEM_READY)
+        if wgs_members_to_update:
+            self.member_dao.bulk_update_genomics_workflow_state(wgs_members_to_update, GenomicWorkflowState.CVL_READY)
         return GenomicSubProcessResult.SUCCESS
 
     def copy_member_for_replating(
@@ -1695,31 +1712,36 @@ class GenomicFileIngester:
 
         return contamination_category
 
-    def _set_metrics_data_file_paths(self, row: dict):
+    def _set_metrics_array_data_file_paths(self, row: dict) -> dict:
+        gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP)
+        site_id = self.file_obj.fileName.split('_')[0].lower()
+        gc_bucket_name = gc_site_bucket_map[site_id]
+        gc_bucket = config.getSetting(gc_bucket_name)
+
+        for file_def in array_file_types_attributes:
+            if file_def['required']:
+                if 'idat' in file_def["file_type"]:
+                    file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}' + \
+                                f'_{file_def["file_type"]}'
+                else:
+                    file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}.' + \
+                                f'{file_def["file_type"]}'
+                row[file_def['file_path_attribute']] = file_path
+
+        return row
+
+    def _set_metrics_wgs_data_file_paths(self, row: dict) -> dict:
         gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP)
         prefix_map = config.getSettingJson(config.GENOMIC_GC_SITE_PREFIX_MAP)
         site_id = self.file_obj.fileName.split('_')[0].lower()
         gc_bucket_name = gc_site_bucket_map[site_id]
         gc_bucket = config.getSetting(gc_bucket_name)
 
-        if row['genometype'] == 'aou_array':
-            for file_def in array_file_types_attributes:
-                if file_def['required']:
-                    if 'idat' in file_def["file_type"]:
-                        file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}' + \
-                                    f'_{file_def["file_type"]}'
-                    else:
-                        file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}.' + \
-                                    f'{file_def["file_type"]}'
-                    row[file_def['file_path_attribute']] = file_path
-
-        elif row['genometype'] == 'aou_wgs':
-            for file_def in wgs_file_types_attributes:
-                if file_def['required']:
-                    file_path = f'gs://{gc_bucket}/{prefix_map[site_id][file_def["file_type"]]}/{site_id.upper()}_' + \
-                                f'{row["biobankid"]}_{row["sampleid"]}_{row["limsid"]}_1.{file_def["file_type"]}'
-                    row[file_def['file_path_attribute']] = file_path
-
+        for file_def in wgs_file_types_attributes:
+            if file_def['required']:
+                file_path = f'gs://{gc_bucket}/{prefix_map[site_id][file_def["file_type"]]}/{site_id.upper()}_' + \
+                            f'{row["biobankid"]}_{row["sampleid"]}_{row["limsid"]}_1.{file_def["file_type"]}'
+                row[file_def['file_path_attribute']] = file_path
 
         return row
 
