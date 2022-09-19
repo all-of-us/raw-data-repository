@@ -92,6 +92,7 @@ _FAKE_CVL_MANIFEST_FOLDER = 'fake_cvl_manifest_folder'
 _FAKE_GEM_BUCKET = 'fake_gem_bucket'
 _FAKE_FAILURE_FOLDER = 'AW1F_genotyping_accessioning_results'
 _FAKE_CVL_SITE_BUCKET_MAP = {"rdr": "rdr_bucket_name"}
+_FAKE_GC_SITE_BUCKET_MAP = _FAKE_CVL_SITE_BUCKET_MAP
 _OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
@@ -201,8 +202,9 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.GENOMIC_AW1F_SUBFOLDER, [_FAKE_FAILURE_FOLDER])
         config.override_setting(config.RDR_SLACK_WEBHOOKS, self.slack_webhooks)
         config.override_setting(config.GENOMIC_CVL_SITE_BUCKET_MAP, _FAKE_CVL_SITE_BUCKET_MAP)
+        config.override_setting(config.GENOMIC_GC_SITE_BUCKET_MAP, _FAKE_GC_SITE_BUCKET_MAP)
         config.override_setting('rdr_bucket_name', [_FAKE_BUCKET])
-        config.override_setting(config.GENOMIC_CVL_SITE_PREFIX_MAP, {'rdr': {
+        config.override_setting(config.GENOMIC_GC_SITE_PREFIX_MAP, {'rdr': {
             'cram': 'Wgs_sample_raw_data/CRAMs_CRAIs',
             'cram.crai': 'Wgs_sample_raw_data/CRAMs_CRAIs',
             'cram.md5sum': 'Wgs_sample_raw_data/CRAMs_CRAIs',

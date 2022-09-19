@@ -1696,11 +1696,11 @@ class GenomicFileIngester:
         return contamination_category
 
     def _set_metrics_data_file_paths(self, row: dict):
-        cvl_site_bucket_map = config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP)
-        prefix_map = config.getSettingJson(config.GENOMIC_CVL_SITE_PREFIX_MAP)
+        gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP)
+        prefix_map = config.getSettingJson(config.GENOMIC_GC_SITE_PREFIX_MAP)
         site_id = self.file_obj.fileName.split('_')[0].lower()
-        cvl_bucket = cvl_site_bucket_map[site_id]
-        gc_bucket = config.getSetting(cvl_bucket)
+        gc_bucket_name = gc_site_bucket_map[site_id]
+        gc_bucket = config.getSetting(gc_bucket_name)
 
         if row['genometype'] == 'aou_array':
             for file_def in array_file_types_attributes:
