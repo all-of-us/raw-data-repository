@@ -453,7 +453,7 @@ class MailKitOrderApiTestPostSupplyDelivery(MailKitOrderApiTestBase):
         self.mock_mayolink_api.return_value.post.assert_not_called()
 
     @mock.patch("rdr_service.dao.mail_kit_order_dao.get_code_id")
-    def test_biobank_address_received(self, patched_code_id):
+    def test_exam_one_order_delivery(self, patched_code_id):
         patched_code_id.return_value = 1
         code = Code(system="a", value="b", display="c", topic="d", codeType=CodeType.MODULE, mapped=True)
         self.code_dao.insert(code)
