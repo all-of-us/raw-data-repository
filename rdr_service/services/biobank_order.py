@@ -17,6 +17,11 @@ class BiobankOrderService:
         if not order_origin_client_id in BiobankMailKitOrder.ID_SYSTEM:
             raise BadRequest(f'No identifier for clientID {order_origin_client_id}')
 
+        if mailkit_order.is_exam_one_order:
+            raise BadRequest(
+                f'Order {mailkit_order.order_id} is identified as an ExamOne order and should not be sent to MayoLINK'
+            )
+
         # Make sure the barcode doesn't exist on another mailkit order
         mailkit_dao = MailKitOrderDao()
         with mailkit_dao.session() as session:
