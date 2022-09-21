@@ -1024,7 +1024,9 @@ class GenomicJobController:
             self.manifest_file_dao,
             self.manifest_feedback_dao,
             self.informing_loop_dao,
-            self.cvl_result_past_due_dao
+            self.cvl_result_past_due_dao,
+            self.report_state_dao,  # Points to GenomicMemberReportStateDao.
+            self.result_viewed_dao,
         ]
 
         for dao in reconcile_daos:

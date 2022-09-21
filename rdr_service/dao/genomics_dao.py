@@ -3066,7 +3066,7 @@ class GenomicInformingLoopDao(UpdatableDao, GenomicDaoMixin):
         ))
 
 
-class GenomicResultViewedDao(UpdatableDao):
+class GenomicResultViewedDao(UpdatableDao, GenomicDaoMixin):
     validate_version_match = False
 
     def __init__(self):
