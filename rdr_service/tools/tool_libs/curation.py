@@ -334,7 +334,7 @@ class CurationExportClass(ToolBase):
             else_=code_reference.value
         )
 
-    def _populate_questionnaire_answers_by_module(self, session):
+    def _populate_questionnaire_answers_by_module(self, session, cutoff_date=None):
         self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept, QuestionnaireHistory,
                                     QuestionnaireQuestion, QuestionnaireResponseAnswer, CdrExcludedCode])
         column_map = {
@@ -371,6 +371,10 @@ class CurationExportClass(ToolBase):
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE
         )
+        if cutoff_date:
+            answers_by_module_select = answers_by_module_select.filter(
+                QuestionnaireResponse.authored < cutoff_date
+            )
 
         insert_query = insert(QuestionnaireAnswersByModule).from_select(column_map.keys(), answers_by_module_select)
         session.execute(insert_query)
@@ -651,7 +655,7 @@ class CurationExportClass(ToolBase):
 
         # using alembic here to get the database_factory code to set up a connection to the CDM database
         with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
-            self._populate_questionnaire_answers_by_module(session)
+            self._populate_questionnaire_answers_by_module(session, cutoff_date)
             self._populate_src_clean(session, cutoff_date)
 
         with self.get_session() as session:
