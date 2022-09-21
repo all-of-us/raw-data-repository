@@ -42,7 +42,7 @@ from rdr_service.resource import generators
 from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_informing_loop_update, \
-    genomic_cvl_result_past_due_update
+    genomic_cvl_result_past_due_update, genomic_member_report_state_update, genomic_result_viewed_update
 from rdr_service.resource.constants import SKIP_TEST_PIDS_FOR_PDR
 from rdr_service.resource.tasks import batch_rebuild_consent_metrics_task
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
@@ -66,7 +66,8 @@ PDR_PROJECT_ID_MAP = {
 
 GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'genomic_gc_validation_metrics',
                      'genomic_file_processed', 'genomic_manifest_file', 'genomic_manifest_feedback',
-                     'genomic_informing_loop', 'genomic_cvl_result_past_due')
+                     'genomic_informing_loop', 'genomic_cvl_result_past_due', 'genomic_member_report_state',
+                     'genomic_result_viewed')
 
 RESEARCH_WORKBENCH_TABLES = ('workspace', 'workspace_user', 'researcher', 'institutional_affiliations', 'audit')
 
@@ -505,6 +506,10 @@ class GenomicResourceClass(object):
                 genomic_informing_loop_update(_id)
             elif table == 'genomic_cvl_result_past_due':
                 genomic_cvl_result_past_due_update(_id)
+            elif table == 'genomic_member_report_state':
+                genomic_member_report_state_update(_id)
+            elif table == 'genomic_result_viewed':
+                genomic_result_viewed_update(_id)
         except NotFound:
             return 1
         return 0
