@@ -79,7 +79,7 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_
             if build_locally:
                 batch_rebuild_participants_task(payload, project_id=project_id)
             else:
-                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                task.execute('rebuild_participants_task', payload=payload, in_seconds=30,
                              queue='resource-rebuild', quiet=True, project_id=project_id)
 
             batch_count += 1
@@ -95,7 +95,7 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_
         if build_locally:
             batch_rebuild_participants_task(payload, project_id=project_id)
         else:
-            task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+            task.execute('rebuild_participants_task', payload=payload, in_seconds=30,
                          queue='resource-rebuild', quiet=True, project_id=project_id)
 
     logging.info(f'Submitted {batch_count} tasks.')

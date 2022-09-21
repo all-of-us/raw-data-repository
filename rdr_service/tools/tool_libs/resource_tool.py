@@ -283,7 +283,7 @@ class ParticipantResourceClass(object):
                 if self.gcp_env.project == 'localhost':
                     batch_rebuild_participants_task(payload)
                 else:
-                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                    task.execute('rebuild_participants_task', payload=payload, in_seconds=30,
                                         queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
                 batch_count += 1
@@ -309,7 +309,7 @@ class ParticipantResourceClass(object):
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_participants_task(payload)
             else:
-                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                task.execute('rebuild_participants_task', payload=payload, in_seconds=30,
                                     queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             if not self.args.debug:
@@ -525,7 +525,7 @@ class GenomicResourceClass(object):
                     self.update_single_id(table, _id)
             else:
                 payload = {'table': table, 'ids': batch}
-                task.execute('rebuild_genomic_table_records_task', payload=payload, in_seconds=15,
+                task.execute('rebuild_genomic_table_records_task', payload=payload, in_seconds=30,
                              queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             count += len(batch)
@@ -668,7 +668,7 @@ class EHRReceiptClass(object):
                 if self.gcp_env.project == 'localhost':
                     batch_rebuild_participants_task(payload)
                 else:
-                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                    task.execute('rebuild_participants_task', payload=payload, in_seconds=30,
                                         queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
                 batch_count += 1
@@ -691,7 +691,7 @@ class EHRReceiptClass(object):
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_participants_task(payload)
             else:
-                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                task.execute('rebuild_participants_task', payload=payload, in_seconds=30,
                                     queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             if not self.args.debug:
@@ -783,7 +783,7 @@ class ResearchWorkbenchResourceClass(object):
                     self.update_single_id(table, _id)
             else:
                 payload = {'table': table, 'ids': batch}
-                task.execute('rebuild_research_workbench_table_records_task', payload=payload, in_seconds=15,
+                task.execute('rebuild_research_workbench_table_records_task', payload=payload, in_seconds=30,
                              queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             count += len(batch)
@@ -984,7 +984,7 @@ class RetentionEligibleMetricClass:
                     payload = {'rebuild_all': False, 'batch': batch}
                 else:
                     payload = {'rebuild_all': False, 'batch': [x[0] for x in batch]}
-                task.execute('batch_rebuild_retention_eligible_task', payload=payload, in_seconds=15,
+                task.execute('batch_rebuild_retention_eligible_task', payload=payload, in_seconds=30,
                              queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             count += len(batch)
@@ -1094,7 +1094,7 @@ class ConsentMetricClass(object):
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_consent_metrics_task(payload)
             else:
-                task.execute('batch_rebuild_consent_metrics_task', payload=payload, in_seconds=15,
+                task.execute('batch_rebuild_consent_metrics_task', payload=payload, in_seconds=30,
                              queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             count += 1
@@ -1235,7 +1235,7 @@ class UserEventMetricsClass(object):
                     payload = {'rebuild_all': False, 'batch': batch}
                 else:
                     payload = {'rebuild_all': False, 'batch': [x[0] for x in batch]}
-                task.execute('batch_rebuild_user_event_metrics_task', payload=payload, in_seconds=15,
+                task.execute('batch_rebuild_user_event_metrics_task', payload=payload, in_seconds=30,
                              queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             count += len(batch)

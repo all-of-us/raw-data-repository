@@ -192,7 +192,7 @@ class BaseApi(Resource):
             else:
                 params = {'p_id': participant_id}
                 self._task.execute('rebuild_one_participant_task',
-                                    queue='resource-tasks', payload=params, in_seconds=5)
+                                    queue='resource-tasks', payload=params, in_seconds=30)
 
         log_api_request(log=request.log_record, model_obj=result)
         self._archive_request_log()
@@ -379,7 +379,7 @@ class UpdatableApi(BaseApi):
             else:
                 params = {'p_id': participant_id}
                 self._task.execute('rebuild_one_participant_task',
-                                    queue='resource-tasks', payload=params, in_seconds=5)
+                                    queue='resource-tasks', payload=params, in_seconds=30)
 
         log_api_request(log=request.log_record, model_obj=m)
         self._archive_request_log()
@@ -414,7 +414,7 @@ class UpdatableApi(BaseApi):
             else:
                 params = {'p_id': participant_id}
                 self._task.execute('rebuild_one_participant_task',
-                                   queue='resource-tasks', payload=params, in_seconds=5)
+                                   queue='resource-tasks', payload=params, in_seconds=30)
 
         log_api_request(log=request.log_record, model_obj=obj)
         self._archive_request_log()

@@ -39,10 +39,10 @@ class WorkbenchWorkspaceApi(BaseApi):
 
             if len(workspaces_payload['ids']) > 0:
                 self._task.execute('rebuild_research_workbench_table_records_task', payload=workspaces_payload,
-                                   in_seconds=15, queue='resource-rebuild')
+                                   in_seconds=30, queue='resource-rebuild')
             if len(workspace_users_payload['ids']) > 0:
                 self._task.execute('rebuild_research_workbench_table_records_task', payload=workspace_users_payload,
-                                   in_seconds=15, queue='resource-rebuild')
+                                   in_seconds=30, queue='resource-rebuild')
         return workspaces
 
 
