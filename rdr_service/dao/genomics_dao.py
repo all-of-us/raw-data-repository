@@ -3066,7 +3066,7 @@ class GenomicInformingLoopDao(UpdatableDao, GenomicDaoMixin):
         ))
 
 
-class GenomicResultViewedDao(UpdatableDao):
+class GenomicResultViewedDao(UpdatableDao, GenomicDaoMixin):
     validate_version_match = False
 
     def __init__(self):
@@ -3089,7 +3089,7 @@ class GenomicResultViewedDao(UpdatableDao):
             ).one_or_none()
 
 
-class GenomicAppointmentEventDao(BaseDao):
+class GenomicAppointmentEventDao(BaseDao, GenomicDaoMixin):
 
     def __init__(self):
         super(GenomicAppointmentEventDao, self).__init__(

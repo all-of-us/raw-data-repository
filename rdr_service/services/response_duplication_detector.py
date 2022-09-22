@@ -116,7 +116,7 @@ class ResponseDuplicationDetector:
                 batch_rebuild_participants_task(payload)
             else:
                 task.execute('rebuild_participants_task', payload=payload, project_id=project,
-                             queue='resource-rebuild', in_seconds=15, quiet=True)
+                             queue='resource-rebuild', in_seconds=30, quiet=True)
 
     def flag_duplicate_responses(self, num_days_ago=2, from_ts=datetime.utcnow()):
         """

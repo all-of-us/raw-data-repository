@@ -74,7 +74,7 @@ class RedcapWorkbenchAuditApi(BaseRedcapApi):
                 for chunk in list_chunks(ids, chunk_size=250):
                     payload = {'table': 'audit', 'ids': chunk}
                     self._task.execute('rebuild_research_workbench_table_records_task', payload=payload,
-                                 in_seconds=15, queue='resource-rebuild')
+                                 in_seconds=30, queue='resource-rebuild')
         return audit_records
 
 class RedcapResearcherAuditApi(BaseRedcapApi):
