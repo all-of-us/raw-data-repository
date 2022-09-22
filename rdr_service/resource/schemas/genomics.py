@@ -401,3 +401,72 @@ class GenomicCVLResultPastDueSchema(Schema):
         pii_fields = ()  # List fields that contain PII data.
         pii_filter = {}  # dict(field: lambda function)
 
+class GenomicMemberReportStateSchema(Schema):
+
+    id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
+    genomic_set_member_id = fields.Int32()
+    genomic_report_state = fields.Int16()
+    module = fields.String(validate=validate.Length(max=128))
+    participant_id = fields.String(validate=validate.Length(max=10))
+    genomic_report_state_str = fields.String(validate=validate.Length(max=128))
+    event_authored_time = fields.DateTime()
+    event_type = fields.String(validate=validate.Length(max=128))
+    message_record_id = fields.Int16()
+    sample_id = fields.String(validate=validate.Length(max=128))
+    report_revision_number = fields.Int16()
+
+    class Meta:
+        schema_id = SchemaID.genomic_member_report_state
+        resource_uri = 'GenomicMemberReportState'
+        resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function)
+
+class GenomicResultViewedSchema(Schema):
+
+    id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
+    message_record_id = fields.Int32()
+    participant_id = fields.String(validate=validate.Length(max=10))
+    event_type = fields.String(validate=validate.Length(max=256))
+    event_authored_time = fields.DateTime()
+    module_type = fields.String(validate=validate.Length(max=128))
+    first_viewed = fields.DateTime()
+    last_viewed = fields.DateTime()
+    sample_id = fields.String(validate=validate.Length(max=80))
+
+    class Meta:
+        schema_id = SchemaID.genomic_result_viewed
+        resource_uri = 'GenomicResultViewed'
+        resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function)
+
+
+class GenomicAppointmentEventSchema(Schema):
+
+    id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
+    message_record_id = fields.Int32()
+    participant_id = fields.String(validate=validate.Length(max=10))
+    event_type = fields.String(validate=validate.Length(max=256))
+    event_authored_time = fields.DateTime()
+    module_type = fields.String(validate=validate.Length(max=255))
+    source = fields.String(validate=validate.Length(max=255))
+    location = fields.String(validate=validate.Length(max=255))
+    contact_number = fields.String(validate=validate.Length(max=255))
+    language = fields.String(validate=validate.Length(max=255))
+    cancellation_reason = fields.String(validate=validate.Length(max=255))
+    appointment_timezone = fields.String(validate=validate.Length(max=255))
+    appointment_timestamp = fields.DateTime()
+
+    class Meta:
+        schema_id = SchemaID.genomic_appointment_event
+        resource_uri = 'GenomicAppointmentEvent'
+        resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function)

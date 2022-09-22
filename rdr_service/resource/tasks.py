@@ -154,7 +154,7 @@ def batch_rebuild_user_event_metrics_task(payload):
 # generic dispatch routine also available for other resource type rebuilds.  May need to have
 # endpoint-specific logic and/or some fancy code to dynamically populate the task.execute() args (or to allow for
 # local rebuilds vs. cloud tasks)
-def dispatch_rebuild_consent_metrics_tasks(id_list, in_seconds=15, quiet=True, batch_size=150,
+def dispatch_rebuild_consent_metrics_tasks(id_list, in_seconds=30, quiet=True, batch_size=150,
                                            project_id=None, build_locally=False):
     """
     Helper method to handle queuing batch rebuild requests for rebuilding consent metrics resource data

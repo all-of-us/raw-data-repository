@@ -43,7 +43,7 @@ class QuestionnaireResponseApi(BaseApi):
             else:
                 params = {'p_id': p_id, 'qr_id': qr_id}
                 self._task.execute('rebuild_questionnaire_task',
-                                    queue='resource-tasks', payload=params, in_seconds=5)
+                                    queue='resource-tasks', payload=params, in_seconds=30)
 
         return resp
 
