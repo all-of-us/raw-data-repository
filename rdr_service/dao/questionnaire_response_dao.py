@@ -483,16 +483,9 @@ class QuestionnaireResponseDao(BaseDao):
         elif questionnaire_response.status == QuestionnaireResponseStatus.IN_PROGRESS:
             questionnaire_response.classificationType = QuestionnaireResponseClassificationType.PARTIAL
 
-        # IMPORTANT: update the participant summary first to grab an exclusive lock on the participant
-        # row. If you instead do this after the insert of the questionnaire response, MySQL will get a
-        # shared lock on the participant row due the foreign key, and potentially deadlock later trying
-        # to get the exclusive lock if another thread is updating the participant. See DA-269.
-        # (We need to lock both participant and participant summary because the summary row may not
-        # exist yet.)
-        #
         # TODO:  If we later classify ConsentPII payloads that contain updates to participant's own profile data
-        # (name, address, email, etc.) as PROFILE_UPDATE (vs. only classifying secondary contact profile updates via
-        # TheBasics), then this check must allow those ConsentPII responses trigger _update_participant_summary()
+        #  (name, address, email, etc.) as PROFILE_UPDATE (vs. only classifying secondary contact profile updates via
+        #  TheBasics), then this check must allow those ConsentPII responses trigger _update_participant_summary()
         if (questionnaire_response.status == QuestionnaireResponseStatus.COMPLETED and
                questionnaire_response.classificationType == QuestionnaireResponseClassificationType.COMPLETE):
             with self.session() as new_session:
@@ -512,8 +505,8 @@ class QuestionnaireResponseDao(BaseDao):
             answer.endTime = questionnaire_response.created
             session.merge(answer)
 
-        participant = ParticipantDao().get_for_update(session, questionnaire_response.participantId)
-        ParticipantSummaryDao().update_enrollment_status(participant.participantSummary, session=session)
+        summary = ParticipantSummaryDao().get_for_update(session, questionnaire_response.participantId)
+        ParticipantSummaryDao().update_enrollment_status(summary, session=session)
 
         return questionnaire_response
 
