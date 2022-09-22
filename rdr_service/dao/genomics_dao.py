@@ -3089,7 +3089,7 @@ class GenomicResultViewedDao(UpdatableDao, GenomicDaoMixin):
             ).one_or_none()
 
 
-class GenomicAppointmentEventDao(BaseDao):
+class GenomicAppointmentEventDao(BaseDao, GenomicDaoMixin):
 
     def __init__(self):
         super(GenomicAppointmentEventDao, self).__init__(

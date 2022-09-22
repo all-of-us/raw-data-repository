@@ -444,3 +444,29 @@ class GenomicResultViewedSchema(Schema):
         resource_pk_field = 'id'
         pii_fields = ()  # List fields that contain PII data.
         pii_filter = {}  # dict(field: lambda function)
+
+
+class GenomicAppointmentEventSchema(Schema):
+
+    id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
+    message_record_id = fields.Int32()
+    participant_id = fields.String(validate=validate.Length(max=10))
+    event_type = fields.String(validate=validate.Length(max=256))
+    event_authored_time = fields.DateTime()
+    module_type = fields.String(validate=validate.Length(max=255))
+    source = fields.String(validate=validate.Length(max=255))
+    location = fields.String(validate=validate.Length(max=255))
+    contact_number = fields.String(validate=validate.Length(max=255))
+    language = fields.String(validate=validate.Length(max=255))
+    cancellation_reason = fields.String(validate=validate.Length(max=255))
+    appointment_timezone = fields.String(validate=validate.Length(max=255))
+    appointment_timestamp = fields.DateTime()
+
+    class Meta:
+        schema_id = SchemaID.genomic_appointment_event
+        resource_uri = 'GenomicAppointmentEvent'
+        resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function)

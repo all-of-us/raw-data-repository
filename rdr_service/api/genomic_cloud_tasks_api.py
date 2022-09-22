@@ -24,7 +24,7 @@ from rdr_service.resource.generators.genomics import genomic_set_batch_update, g
     genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, \
     genomic_user_event_metrics_batch_update, genomic_informing_loop_batch_update, \
     genomic_cvl_result_past_due_batch_update, genomic_member_report_state_batch_update, \
-    genomic_result_viewed_batch_update
+    genomic_result_viewed_batch_update, genomic_appointment_event_batch_update
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -615,6 +615,9 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
             ],
             'genomic_result_viewed': [
                 genomic_result_viewed_batch_update
+            ],
+            'genomic_appointment_event': [
+                genomic_appointment_event_batch_update
             ]
         }
 
