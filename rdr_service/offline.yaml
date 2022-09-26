@@ -11,5 +11,5 @@ instance_class: B4
 # We need to specify basic scaling in order to use a backend instance class.
 basic_scaling:
   max_instances: 10
-  idle_timeout: 60m
+  idle_timeout: 1m
 

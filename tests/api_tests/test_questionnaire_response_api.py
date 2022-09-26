@@ -1667,6 +1667,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
             self.send_consent(participant_id)
+
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        num_completed_ppi = summary.get('numCompletedPPIModules')
         questionnaire_id = self.create_questionnaire("questionnaire_life_functioning.json")
         resource = self._load_response_json("questionnaire_life_functioning_resp.json", questionnaire_id, participant_id)
         self._save_codes(resource)
@@ -1674,6 +1677,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             self.send_post(_questionnaire_response_url(participant_id), resource)
 
         summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual(num_completed_ppi+1, summary.get('numCompletedPPIModules'))
         self.assertEqual(summary['questionnaireOnLifeFunctioning'], 'SUBMITTED')
         self.assertEqual(summary['questionnaireOnLifeFunctioningAuthored'], '2022-09-06T14:32:28')
         self.assertEqual(summary['questionnaireOnLifeFunctioningTime'], '2022-09-07T01:02:03')

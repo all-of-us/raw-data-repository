@@ -42,7 +42,8 @@ from rdr_service.resource import generators
 from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_informing_loop_update, \
-    genomic_cvl_result_past_due_update
+    genomic_cvl_result_past_due_update, genomic_member_report_state_update, genomic_result_viewed_update, \
+    genomic_appointment_event_update
 from rdr_service.resource.constants import SKIP_TEST_PIDS_FOR_PDR
 from rdr_service.resource.tasks import batch_rebuild_consent_metrics_task
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
@@ -66,7 +67,8 @@ PDR_PROJECT_ID_MAP = {
 
 GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'genomic_gc_validation_metrics',
                      'genomic_file_processed', 'genomic_manifest_file', 'genomic_manifest_feedback',
-                     'genomic_informing_loop', 'genomic_cvl_result_past_due')
+                     'genomic_informing_loop', 'genomic_cvl_result_past_due', 'genomic_member_report_state',
+                     'genomic_result_viewed', 'genomic_appointment_event')
 
 RESEARCH_WORKBENCH_TABLES = ('workspace', 'workspace_user', 'researcher', 'institutional_affiliations', 'audit')
 
@@ -203,6 +205,7 @@ class ParticipantResourceClass(object):
         self.args = args
         self.gcp_env = gcp_env
         self.pid_list = pid_list
+        self.qc_error_list = []
 
     def update_single_pid(self, pid):
         """
@@ -212,10 +215,20 @@ class ParticipantResourceClass(object):
         """
         try:
             if not self.args.modules_only:
-                rebuild_bq_participant(pid, project_id=self.gcp_env.project)
-                generators.participant.rebuild_participant_summary_resource(pid)
+                if not self.args.qc:
+                    # Skip the BQ build in QC mode;  will just test the resource data return
+                    rebuild_bq_participant(pid, project_id=self.gcp_env.project)
+                res = generators.participant.rebuild_participant_summary_resource(pid, qc_mode=self.args.qc)
+                if self.args.qc:
+                    pid_dict = res.get_data()
+                    rdr_status = pid_dict.get('enrollment_status_legacy_v2', None)
+                    pdr_status = pid_dict.get('enrollment_status', None)
+                    if not rdr_status and pdr_status == 'REGISTERED':
+                        pass
+                    elif rdr_status != pdr_status:
+                        self.qc_error_list.append(f'P{pid} RDR {rdr_status} / PDR {pdr_status}')
 
-            if not self.args.no_modules:
+            if not self.args.no_modules and not self.args.qc:
                 mod_bqgen = BQPDRQuestionnaireResponseGenerator()
 
                 # Generate participant questionnaire module response data
@@ -272,7 +285,7 @@ class ParticipantResourceClass(object):
                 if self.gcp_env.project == 'localhost':
                     batch_rebuild_participants_task(payload)
                 else:
-                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                    task.execute('rebuild_participants_task', payload=payload, in_seconds=30,
                                         queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
                 batch_count += 1
@@ -298,7 +311,7 @@ class ParticipantResourceClass(object):
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_participants_task(payload)
             else:
-                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                task.execute('rebuild_participants_task', payload=payload, in_seconds=30,
                                     queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             if not self.args.debug:
@@ -318,7 +331,7 @@ class ParticipantResourceClass(object):
         if not pids:
             return 1
 
-        if self.args.batch or self.args.all_pids:
+        if self.args.batch or (self.args.all_pids and not self.args.qc):
             return self.update_batch(pids)
 
         total_pids = len(pids)
@@ -386,10 +399,17 @@ class ParticipantResourceClass(object):
             return self.update_many_pids(pids)
 
         if self.args.pid:
-            if self.update_single_pid(self.args.pid) == 0:
+            if self.update_single_pid(self.args.pid) == 0 and not self.args.qc:
                 _logger.info(f'Participant {self.args.pid} updated.')
-            else:
+            elif not self.args.qc:
                 _logger.error(f'Participant ID {self.args.pid} not found.')
+
+        if self.qc_error_list:
+            print('\nDiffs between RDR enrollment_status[_legacy_v2] and PDR enrollment_status:\n')
+            for err in self.qc_error_list:
+                print(err)
+        elif self.args.qc:
+            print('\nNo enrollment status discrepancies found')
 
         return 1
 
@@ -487,6 +507,12 @@ class GenomicResourceClass(object):
                 genomic_informing_loop_update(_id)
             elif table == 'genomic_cvl_result_past_due':
                 genomic_cvl_result_past_due_update(_id)
+            elif table == 'genomic_member_report_state':
+                genomic_member_report_state_update(_id)
+            elif table == 'genomic_result_viewed':
+                genomic_result_viewed_update(_id)
+            elif table == 'genomic_appointment_event':
+                genomic_appointment_event_update(_id)
         except NotFound:
             return 1
         return 0
@@ -507,7 +533,7 @@ class GenomicResourceClass(object):
                     self.update_single_id(table, _id)
             else:
                 payload = {'table': table, 'ids': batch}
-                task.execute('rebuild_genomic_table_records_task', payload=payload, in_seconds=15,
+                task.execute('rebuild_genomic_table_records_task', payload=payload, in_seconds=30,
                              queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             count += len(batch)
@@ -650,7 +676,7 @@ class EHRReceiptClass(object):
                 if self.gcp_env.project == 'localhost':
                     batch_rebuild_participants_task(payload)
                 else:
-                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                    task.execute('rebuild_participants_task', payload=payload, in_seconds=30,
                                         queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
                 batch_count += 1
@@ -673,7 +699,7 @@ class EHRReceiptClass(object):
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_participants_task(payload)
             else:
-                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                task.execute('rebuild_participants_task', payload=payload, in_seconds=30,
                                     queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             if not self.args.debug:
@@ -765,7 +791,7 @@ class ResearchWorkbenchResourceClass(object):
                     self.update_single_id(table, _id)
             else:
                 payload = {'table': table, 'ids': batch}
-                task.execute('rebuild_research_workbench_table_records_task', payload=payload, in_seconds=15,
+                task.execute('rebuild_research_workbench_table_records_task', payload=payload, in_seconds=30,
                              queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             count += len(batch)
@@ -806,7 +832,6 @@ class ResearchWorkbenchResourceClass(object):
             _logger.warning(f'\n\nThere were {errors} IDs not found during processing.')
 
         return 0
-
 
 
     def run(self):
@@ -967,7 +992,7 @@ class RetentionEligibleMetricClass:
                     payload = {'rebuild_all': False, 'batch': batch}
                 else:
                     payload = {'rebuild_all': False, 'batch': [x[0] for x in batch]}
-                task.execute('batch_rebuild_retention_eligible_task', payload=payload, in_seconds=15,
+                task.execute('batch_rebuild_retention_eligible_task', payload=payload, in_seconds=30,
                              queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             count += len(batch)
@@ -1077,7 +1102,7 @@ class ConsentMetricClass(object):
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_consent_metrics_task(payload)
             else:
-                task.execute('batch_rebuild_consent_metrics_task', payload=payload, in_seconds=15,
+                task.execute('batch_rebuild_consent_metrics_task', payload=payload, in_seconds=30,
                              queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             count += 1
@@ -1218,7 +1243,7 @@ class UserEventMetricsClass(object):
                     payload = {'rebuild_all': False, 'batch': batch}
                 else:
                     payload = {'rebuild_all': False, 'batch': [x[0] for x in batch]}
-                task.execute('batch_rebuild_user_event_metrics_task', payload=payload, in_seconds=15,
+                task.execute('batch_rebuild_user_event_metrics_task', payload=payload, in_seconds=30,
                              queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             count += len(batch)
@@ -1402,6 +1427,8 @@ def run():
                                 help="do not rebuild participant questionnaire response data for pdr_mod_* tables")
     rebuild_parser.add_argument("--modules-only", default=False, action="store_true",
                                 help="only rebuild participant questionnaire response data for pdr_mod_* tables")
+    rebuild_parser.add_argument("--qc", default=False, action="store_true",
+                                help="Goal 1 quality control to compare RDR and PDR enrollment status values")
     update_argument(rebuild_parser, dest='from_file',
                     help="rebuild participant ids from a file with a list of pids")
 

@@ -564,3 +564,144 @@ def genomic_cvl_result_past_due_batch_update(_pk_ids):
     w_dao = ResourceDataDao()
     for _pk in _pk_ids:
         genomic_cvl_result_past_due_update(_pk, gen=gen, w_dao=w_dao)
+
+
+class GenomicMemberReportStateSchemaGenerator(generators.BaseGenerator):
+    """
+    Generate a GenomicMemberReportState resource object
+    """
+    ro_dao = None
+
+    def make_resource(self, _pk, backup=False):
+        """
+        Build a resource object from the given primary key id.
+        :param _pk: Primary key value from rdr table.
+        :param backup: if True, get from backup database instead of Primary.
+        :return: resource object
+        """
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
+            row = ro_session.execute(text('select * from genomic_member_report_state where id = :id'),
+                                     {'id': _pk}).first()
+            data = self.ro_dao.to_dict(row)
+            return generators.ResourceRecordSet(schemas.GenomicMemberReportStateSchema, data)
+
+
+def genomic_member_report_state_update(_pk, gen=None, w_dao=None):
+    """
+    Generate GenomicMemberReportState resource record.
+    :param _pk: Primary Key
+    :param gen: GenomicMemberReportStateSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicMemberReportStateSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_member_report_state_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
+    """
+    gen = GenomicMemberReportStateSchemaGenerator()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_member_report_state_update(_pk, gen=gen, w_dao=w_dao)
+
+
+class GenomicResultViewedSchemaGenerator(generators.BaseGenerator):
+    """
+    Generate a GenomicResultViewed resource object
+    """
+    ro_dao = None
+
+    def make_resource(self, _pk, backup=False):
+        """
+        Build a resource object from the given primary key id.
+        :param _pk: Primary key value from rdr table.
+        :param backup: if True, get from backup database instead of Primary.
+        :return: resource object
+        """
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
+            row = ro_session.execute(text('select * from genomic_result_viewed where id = :id'),
+                                     {'id': _pk}).first()
+            data = self.ro_dao.to_dict(row)
+            return generators.ResourceRecordSet(schemas.GenomicResultViewedSchema, data)
+
+
+def genomic_result_viewed_update(_pk, gen=None, w_dao=None):
+    """
+    Generate GenomicResultViewed resource record.
+    :param _pk: Primary Key
+    :param gen: GenomicResultViewedSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicResultViewedSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_result_viewed_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
+    """
+    gen = GenomicResultViewedSchemaGenerator()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_result_viewed_update(_pk, gen=gen, w_dao=w_dao)
+
+
+class GenomicAppointmentEventSchemaGenerator(generators.BaseGenerator):
+    """
+    Generate a GenomicAppointmentEvent resource object
+    """
+    ro_dao = None
+
+    def make_resource(self, _pk, backup=False):
+        """
+        Build a resource object from the given primary key id.
+        :param _pk: Primary key value from rdr table.
+        :param backup: if True, get from backup database instead of Primary.
+        :return: resource object
+        """
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
+            row = ro_session.execute(text('select * from genomic_appointment_event where id = :id'),
+                                     {'id': _pk}).first()
+            data = self.ro_dao.to_dict(row)
+            return generators.ResourceRecordSet(schemas.GenomicAppointmentEventSchema, data)
+
+
+def genomic_appointment_event_update(_pk, gen=None, w_dao=None):
+    """
+    Generate GenomicAppointmentEvent resource record.
+    :param _pk: Primary Key
+    :param gen: GenomicAppointmentEventSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicAppointmentEventSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_appointment_event_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
+    """
+    gen = GenomicAppointmentEventSchemaGenerator()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_appointment_event_update(_pk, gen=gen, w_dao=w_dao)

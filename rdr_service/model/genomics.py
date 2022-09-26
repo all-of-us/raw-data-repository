@@ -1346,7 +1346,7 @@ class GenomicAppointmentEvent(Base):
     event_authored_time = Column(UTCDateTime6)
     module_type = Column(String(255))
     appointment_id = Column(Integer, nullable=False)
-    appointment_time = Column(UTCDateTime6)
+    appointment_timestamp = Column(UTCDateTime6)
     appointment_timezone = Column(String(255))
     source = Column(String(255))
     location = Column(String(255))

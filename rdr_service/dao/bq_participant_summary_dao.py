@@ -110,7 +110,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         return None
 
 
-def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None, patch_data=None):
+def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None, patch_data=None,
+                           qc_mode=False):
     """
     Rebuild a BQ record for a specific participant
     :param p_id: participant id
@@ -118,6 +119,7 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None,
     :param pdr_bqgen: BQPDRParticipantSummaryGenerator object
     :param project_id: Project ID override value.
     :param patch_data: dict of resource values to update/insert.
+    :param qc_mode: if True, the BQ data will be generated and returned but will not be saved to the database
     :return:
     """
     # Allow for batch requests to rebuild participant summary data.
@@ -137,17 +139,18 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None,
     # Participant Summary generator and take what we need from it.
     pdr_bqr = pdr_bqgen.make_bqrecord(p_id, ps_bqr=ps_bqr)
 
-    w_dao = BigQuerySyncDao()
+    if not qc_mode:
+        w_dao = BigQuerySyncDao()
 
-    with w_dao.session() as w_session:
-        # save the participant summary record if this is a full rebuild.
-        if not patch_data and isinstance(patch_data, dict):
-            ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, w_dao=w_dao, w_session=w_session,
-                               project_id=project_id)
-        # save the PDR participant summary record
-        pdr_bqgen.save_bqrecord(p_id, pdr_bqr, bqtable=BQPDRParticipantSummary, w_dao=w_dao, w_session=w_session,
-                                project_id=project_id)
-        w_session.flush()
+        with w_dao.session() as w_session:
+            # save the participant summary record if this is a full rebuild.
+            if not patch_data and isinstance(patch_data, dict):
+                ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, w_dao=w_dao, w_session=w_session,
+                                       project_id=project_id)
+            # save the PDR participant summary record
+            pdr_bqgen.save_bqrecord(p_id, pdr_bqr, bqtable=BQPDRParticipantSummary, w_dao=w_dao, w_session=w_session,
+                                    project_id=project_id)
+            w_session.flush()
 
     return ps_bqr
 

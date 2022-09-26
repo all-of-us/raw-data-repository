@@ -452,6 +452,28 @@ class MailKitOrderApiTestPostSupplyDelivery(MailKitOrderApiTestBase):
         # Ensure that the Mayolink API wasn't called
         self.mock_mayolink_api.return_value.post.assert_not_called()
 
+    @mock.patch("rdr_service.dao.mail_kit_order_dao.get_code_id")
+    def test_exam_one_order_delivery(self, patched_code_id):
+        patched_code_id.return_value = 1
+        code = Code(system="a", value="b", display="c", topic="d", codeType=CodeType.MODULE, mapped=True)
+        self.code_dao.insert(code)
+
+        # Send a request for an ExamOne order
+        supply_request_json = self.get_payload("dv_order_api_post_supply_request.json")
+        supply_request_json['extension'][1]['valueString'] = 'Salivary Order of ExamOne Order'
+        self.send_post(
+            "SupplyRequest",
+            request_data=supply_request_json,
+            expected_status=http.client.CREATED,
+        )
+
+        # Be sure that an error is raised if a delivery is sent for the ExamOne order
+        self.send_post(
+            "SupplyDelivery",
+            request_data=self.get_payload("dv_order_api_post_supply_delivery.json"),
+            expected_status=http.client.BAD_REQUEST,
+        )
+
 
 class MailKitOrderApiTestPutSupplyDelivery(MailKitOrderApiTestBase):
     mayolink_response = {

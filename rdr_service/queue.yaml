@@ -27,6 +27,7 @@ queue:
   rate: 50/s
   max_concurrent_requests: 35
   retry_parameters:
+    min_backoff_seconds: 90
     task_retry_limit: 5
 
 - name: resource-tasks

@@ -47,7 +47,7 @@ class RetentionEligibleMetricsDao(UpdatableDao):
             task = GCPCloudTask()
             params = {'batch': pids}
             task.execute('batch_rebuild_retention_eligible_task', queue='resource-tasks', payload=params,
-                         in_seconds=15)
+                         in_seconds=30)
 
     def upsert_all_with_session(self, session, retention_eligible_metrics_records):
         update_queue = list()

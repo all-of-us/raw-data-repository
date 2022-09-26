@@ -3,6 +3,7 @@ from sqlalchemy import (
     ForeignKey, Integer, String,
     Text, UniqueConstraint, event, Boolean
 )
+from sqlalchemy.sql import expression
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.hpo import HPO
@@ -172,6 +173,8 @@ class BiobankMailKitOrder(Base):
     Participant's paired HPO at the time of receiving the mail-kit order.
     None for DV participants
     """
+
+    is_exam_one_order = Column(Boolean, default=False, server_default=expression.false())
 
     __table_args__ = (UniqueConstraint("participant_id", "order_id", name="uidx_partic_id_order_id"),)
 

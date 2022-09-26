@@ -1193,12 +1193,12 @@ class WorkbenchResearcherDao(UpdatableDao):
                 for chunk in list_chunks(researcher_ids, chunk_size=250):
                     payload = {'table': 'researcher', 'ids': chunk}
                     task.execute('rebuild_research_workbench_table_records_task', payload=payload,
-                                   in_seconds=15, queue='resource-rebuild')
+                                   in_seconds=30, queue='resource-rebuild')
             if affiliation_ids:
                 for chunk in list_chunks(affiliation_ids, chunk_size=250):
                     payload = {'table': 'institutional_affiliations', 'ids': chunk}
                     task.execute('rebuild_research_workbench_table_records_task', payload=payload,
-                                   in_seconds=15, queue='resource-rebuild')
+                                   in_seconds=30, queue='resource-rebuild')
 
     @staticmethod
     def get_researcher_by_user_id_with_session(session, user_id):

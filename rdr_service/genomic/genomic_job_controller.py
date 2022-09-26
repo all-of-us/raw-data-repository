@@ -755,7 +755,7 @@ class GenomicJobController:
                     event_authored_time=first_record.eventAuthoredTime,
                     module_type=module_type,
                     appointment_id=appointment_id.valueInteger,
-                    appointment_time=_set_value_from_parsed_values(record, ['appointment_timestamp']),
+                    appointment_timestamp=_set_value_from_parsed_values(record, ['appointment_timestamp']),
                     appointment_timezone=_set_value_from_parsed_values(record, ['appointment_timezone']),
                     source=_set_value_from_parsed_values(record, ['source']),
                     location=_set_value_from_parsed_values(record, ['location']),
@@ -1006,7 +1006,10 @@ class GenomicJobController:
             self.manifest_file_dao,
             self.manifest_feedback_dao,
             self.informing_loop_dao,
-            self.cvl_result_past_due_dao
+            self.cvl_result_past_due_dao,
+            self.report_state_dao,  # Points to GenomicMemberReportStateDao.
+            self.result_viewed_dao,
+            self.appointment_dao,  # Points to GenomicAppointmentEventDao
         ]
 
         for dao in reconcile_daos:

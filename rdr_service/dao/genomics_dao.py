@@ -2291,7 +2291,7 @@ class GenomicSchedulingDao(BaseDao):
                 GenomicAppointmentEvent.participant_id,
                 GenomicAppointmentEvent.module_type.label('module'),
                 GenomicAppointmentEvent.event_type.label('status'),
-                GenomicAppointmentEvent.appointment_time,
+                GenomicAppointmentEvent.appointment_timestamp,
                 GenomicAppointmentEvent.appointment_timezone,
                 GenomicAppointmentEvent.source,
                 GenomicAppointmentEvent.location,
@@ -3054,7 +3054,7 @@ class GenomicInformingLoopDao(UpdatableDao, GenomicDaoMixin):
         ))
 
 
-class GenomicResultViewedDao(UpdatableDao):
+class GenomicResultViewedDao(UpdatableDao, GenomicDaoMixin):
     validate_version_match = False
 
     def __init__(self):
@@ -3077,7 +3077,7 @@ class GenomicResultViewedDao(UpdatableDao):
             ).one_or_none()
 
 
-class GenomicAppointmentEventDao(BaseDao):
+class GenomicAppointmentEventDao(BaseDao, GenomicDaoMixin):
 
     def __init__(self):
         super(GenomicAppointmentEventDao, self).__init__(

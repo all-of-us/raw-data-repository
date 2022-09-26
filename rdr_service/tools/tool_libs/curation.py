@@ -193,43 +193,44 @@ class CurationExportClass(ToolBase):
             export_sql=f"""
                 SELECT qr.questionnaire_response_id survey_conduct_id,
                         p.participant_id person_id,
-                        voc_c.concept_id survey_concept_id,
-                        mc.code_id survey_source_concept_id,
-                        mc.value survey_source_value,
-                        qr.questionnaire_response_id survey_source_identifier,
-                        p.participant_origin provider_id,
+                        COALESCE(voc_c.concept_id, 0) survey_concept_id,
+                        NULL survey_start_date,
+                        NULL survey_start_datetime,
+                        DATE(qr.authored) survey_end_date,
+                        qr.authored survey_end_datetime,
+                        CASE WHEN
+                            p.participant_origin = 'vibrent' THEN       1
+                            ELSE                                        2
+                        END provider_id,
                         CASE WHEN
                             qr.non_participant_author = 'CATI' THEN     42530794
                             ELSE                                        0
                         END assisted_concept_id,
-                        CASE WHEN
-                            qr.non_participant_author = 'CATI' THEN     'Telephone'
-                            ELSE                                        'No matching concept'
-                        END assisted_source_value,
+                        0 respondent_type_concept_id,
+                        0 timing_concept_id,
                         CASE WHEN
                             qr.non_participant_author = 'CATI' THEN     42530794
                             ELSE                                        42531021
                         END collection_method_concept_id,
                         CASE WHEN
                             qr.non_participant_author = 'CATI' THEN     'Telephone'
+                            ELSE                                        'No matching concept'
+                        END assisted_source_value,
+                        NULL respondent_type_source_value,
+                        '' timing_source_value,
+                        CASE WHEN
+                            qr.non_participant_author = 'CATI' THEN     'Telephone'
                             ELSE                                        'Electronic'
                         END collection_method_source_value,
-                        DATE(qr.authored) survey_end_date,
-                        qr.authored survey_end_datetime,
-                        0 timing_concept_id,
-                        '' timing_source_value,
+                        mc.value survey_source_value,
+                        mc.code_id survey_source_concept_id,
+                        qr.questionnaire_response_id survey_source_identifier,
                         0 validated_survey_concept_id,
                         '' validated_survey_source_value,
-                        '' visit_occurence_id,
-                        '' response_visit_occurrence_id,
-                        NULL survey_start_date,
-                        NULL survey_start_datetime,
-                        0 respondent_type_concept_id,
-                        NULL respondent_type_source_value,
-                        NULL survey_version_number
+                        NULL survey_version_number,
+                        '' visit_occurrence_id,
+                        '' response_visit_occurrence_id
                 FROM questionnaire_response qr
-                -- join to src_clean to filter down to only responses going into etl
-                INNER JOIN cdm.src_clean sc ON sc.questionnaire_response_id = qr.questionnaire_response_id
                 INNER JOIN questionnaire_concept qc
                     ON qc.questionnaire_id = qr.questionnaire_id AND qc.questionnaire_version = qr.questionnaire_version
                 INNER JOIN code mc ON mc.code_id = qc.code_id
@@ -237,16 +238,36 @@ class CurationExportClass(ToolBase):
                 LEFT JOIN voc.concept voc_c
                     ON voc_c.concept_code = mc.value AND voc_c.vocabulary_id = 'PPI'
                     AND voc_c.domain_id = 'observation' AND voc_c.concept_class_id = 'module'
+                WHERE qr.questionnaire_response_id in (
+                    SELECT DISTINCT sc.questionnaire_response_id
+                    FROM cdm.src_clean sc
+                )
             """,
             column_name_list=[
-                'survey_conduct_id', 'person_id', 'survey_concept_id', 'survey_source_concept_id',
-                'survey_source_value', 'survey_source_identifier', 'provider_id',
-                'assisted_concept_id', 'assisted_source_value', 'collection_method_concept_id',
-                'collection_method_source_value', 'survey_end_date', 'survey_end_datetime',
-                'timing_concept_id', 'timing_source_value', 'validated_survey_concept_id',
-                'validated_survey_source_value', 'visit_occurence_id', 'response_visit_occurrence_id',
-                'survey_start_date', 'survey_start_datetime', 'respondent_type_concept_id',
-                'respondent_type_source_value', 'survey_version_number'
+                'survey_conduct_id',
+                'person_id',
+                'survey_concept_id',
+                'survey_start_date',
+                'survey_start_datetime',
+                'survey_end_date',
+                'survey_end_datetime',
+                'provider_id',
+                'assisted_concept_id',
+                'respondent_type_concept_id',
+                'timing_concept_id',
+                'collection_method_concept_id',
+                'assisted_source_value',
+                'respondent_type_source_value',
+                'timing_source_value',
+                'collection_method_source_value',
+                'survey_source_value',
+                'survey_source_concept_id',
+                'survey_source_identifier',
+                'validated_survey_concept_id',
+                'validated_survey_source_value',
+                'survey_version_number',
+                'visit_occurrence_id',
+                'response_visit_occurrence_id'
             ]
         )
         export_name = 'survey_conduct'
@@ -313,7 +334,7 @@ class CurationExportClass(ToolBase):
             else_=code_reference.value
         )
 
-    def _populate_questionnaire_answers_by_module(self, session):
+    def _populate_questionnaire_answers_by_module(self, session, cutoff_date=None):
         self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept, QuestionnaireHistory,
                                     QuestionnaireQuestion, QuestionnaireResponseAnswer, CdrExcludedCode])
         column_map = {
@@ -350,6 +371,10 @@ class CurationExportClass(ToolBase):
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE
         )
+        if cutoff_date:
+            answers_by_module_select = answers_by_module_select.filter(
+                QuestionnaireResponse.authored < cutoff_date
+            )
 
         insert_query = insert(QuestionnaireAnswersByModule).from_select(column_map.keys(), answers_by_module_select)
         session.execute(insert_query)
@@ -630,7 +655,7 @@ class CurationExportClass(ToolBase):
 
         # using alembic here to get the database_factory code to set up a connection to the CDM database
         with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
-            self._populate_questionnaire_answers_by_module(session)
+            self._populate_questionnaire_answers_by_module(session, cutoff_date)
             self._populate_src_clean(session, cutoff_date)
 
         with self.get_session() as session:
