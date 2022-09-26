@@ -3,6 +3,8 @@ import json
 import mock
 from typing import List, Type
 
+from rdr_service import config
+from rdr_service.code_constants import SENSITIVE_EHR_STATES
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType, ConsentOtherErrors
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -20,11 +22,11 @@ class ConsentValidationTesting(BaseTestCase):
         self.another_hpo = HPO(hpoId=8)
 
         self._default_signature = 'Test'
-        default_consent_timestamp = datetime(2019, 8, 27, 17, 9)
-        self._default_signing_date = default_consent_timestamp.date()
+        self._default_consent_timestamp = datetime(2019, 8, 27, 17, 9)
+        self._default_signing_date = self._default_consent_timestamp.date()
 
         self.participant_summary = ParticipantSummary(
-            consentForStudyEnrollmentFirstYesAuthored=default_consent_timestamp
+            consentForStudyEnrollmentFirstYesAuthored=self._default_consent_timestamp
         )
         self.consent_factory_mock = mock.MagicMock(spec=files.ConsentFileAbstractFactory)
 
@@ -379,6 +381,58 @@ class ConsentValidationTesting(BaseTestCase):
                 }
             ],
             self.validator.get_primary_update_validation_results()
+        )
+
+    @mock.patch('rdr_service.services.consent.validation.QuestionnaireResponseDao')
+    def test_sensitive_state_of_residence(self, response_dao_mock):
+        """Check that state of residence is used to determine if a PDF should be the sensitive version"""
+        self.temporarily_override_config_setting(config.SENSITIVE_EHR_RELEASE_DATE, '1990-1-1')
+        response_dao_mock.get_latest_answer_for_state_receiving_care.return_value = None
+        response_dao_mock.get_latest_answer_for_state_of_residence.return_value = SENSITIVE_EHR_STATES[0]
+
+        self.participant_summary.consentForElectronicHealthRecordsAuthored = self._default_consent_timestamp
+        self.consent_factory_mock.get_ehr_consents.return_value = [
+            self._mock_consent(
+                consent_class=files.EhrConsentFile,
+                is_sensitive_form=False
+            )
+        ]
+        self.assertMatchesExpectedResults(
+            [
+                {
+                    'participant_id': self.participant_summary.participantId,
+                    'type': ConsentType.EHR,
+                    'other_errors': ConsentOtherErrors.SENSITIVE_EHR_EXPECTED,
+                    'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
+                }
+            ],
+            self.validator.get_ehr_validation_results()
+        )
+
+    @mock.patch('rdr_service.services.consent.validation.QuestionnaireResponseDao')
+    def test_sensitive_state_of_care(self, response_dao_mock):
+        """Check that state of care is used over state of residence when it is available"""
+        self.temporarily_override_config_setting(config.SENSITIVE_EHR_RELEASE_DATE, '1990-1-1')
+        response_dao_mock.get_latest_answer_for_state_receiving_care.return_value = SENSITIVE_EHR_STATES[0]
+        response_dao_mock.get_latest_answer_for_state_of_residence.return_value = 'otherstate'
+
+        self.participant_summary.consentForElectronicHealthRecordsAuthored = self._default_consent_timestamp
+        self.consent_factory_mock.get_ehr_consents.return_value = [
+            self._mock_consent(
+                consent_class=files.EhrConsentFile,
+                is_sensitive_form=False
+            )
+        ]
+        self.assertMatchesExpectedResults(
+            [
+                {
+                    'participant_id': self.participant_summary.participantId,
+                    'type': ConsentType.EHR,
+                    'other_errors': ConsentOtherErrors.SENSITIVE_EHR_EXPECTED,
+                    'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
+                }
+            ],
+            self.validator.get_ehr_validation_results()
         )
 
     def test_long_signature_gets_truncated(self):

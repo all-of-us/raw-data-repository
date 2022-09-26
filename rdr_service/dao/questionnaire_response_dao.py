@@ -1455,7 +1455,7 @@ class QuestionnaireResponseDao(BaseDao):
         return [result_row.participantId for result_row in query.all()]
 
     @classmethod
-    def get_latest_answer_for_state_receiving_care(cls, session: Session, participant_id) -> str:
+    def get_latest_answer_to_question(cls, session: Session, participant_id, question_code) -> str:
         answer_code = aliased(Code)
         question_code = aliased(Code)
         query = (
@@ -1467,10 +1467,9 @@ class QuestionnaireResponseDao(BaseDao):
                 question_code,
                 and_(
                     question_code.codeId == QuestionnaireQuestion.codeId,
-                    question_code.value == code_constants.RECEIVE_CARE_STATE
+                    question_code.value == question_code
                 )
-            )
-            .join(
+            ).join(
                 answer_code,
                 answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId
             )
@@ -1480,6 +1479,22 @@ class QuestionnaireResponseDao(BaseDao):
         )
 
         return query.scalar()
+
+    @classmethod
+    def get_latest_answer_for_state_of_residence(cls, session: Session, participant_id) -> str:
+        return cls.get_latest_answer_to_question(
+            session=session,
+            participant_id=participant_id,
+            question_code=code_constants.STATE_QUESTION_CODE
+        )
+
+    @classmethod
+    def get_latest_answer_for_state_receiving_care(cls, session: Session, participant_id) -> str:
+        return cls.get_latest_answer_to_question(
+            session=session,
+            participant_id=participant_id,
+            question_code=code_constants.RECEIVE_CARE_STATE
+        )
 
     @classmethod
     def _code_in_list(cls, code_value: str, code_list: List[str]):
