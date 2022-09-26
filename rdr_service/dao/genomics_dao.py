@@ -1286,37 +1286,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         with self.session() as session:
             session.bulk_update_mappings(GenomicSetMember, members)
 
-    def bulk_update_genomics_workflow_state(self, members, new_state):
-        """
-        Sets the members state to a new state
-        :param members:
-        :param new_state: genomicsWorkflowState
-        """
-        now = clock.CLOCK.now()
-        with self.session() as session:
-            query = (
-                sqlalchemy.update(GenomicSetMember)
-                .where(GenomicSetMember.id == sqlalchemy.bindparam("member_id_param"))
-                .values(
-                    {
-                        GenomicSetMember.genomicWorkflowState: sqlalchemy.bindparam("workflow_state_param"),
-                        GenomicSetMember.genomicWorkflowStateStr: sqlalchemy.bindparam("workflow_state_str_param"),
-                        GenomicSetMember.genomicWorkflowStateModifiedTime: sqlalchemy.bindparam(
-                            "workflow_state_time_param"),
-                    }
-                )
-            )
-            parameter_sets = [
-                {
-                    'member_id_param': member,
-                    'workflow_state_param': new_state,
-                    'workflow_state_str_param': new_state.name,
-                    'workflow_state_time_param': now
-                }
-                for member in members
-            ]
-            return session.execute(query, parameter_sets)
-
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
     """ Stub for GenomicJobRun model """

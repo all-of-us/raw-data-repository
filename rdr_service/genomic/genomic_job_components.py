@@ -1130,8 +1130,7 @@ class GenomicFileIngester:
         :param rows:
         :return result code
         """
-        wgs_members_to_update = []
-        array_members_to_update = []
+        members_to_update = []
         # iterate over each row from CSV and insert into gc metrics table
         for row in rows:
             # change all key names to lower
@@ -1172,10 +1171,17 @@ class GenomicFileIngester:
                 self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
                 self.update_member_for_aw2(member)
                 # set lists of members to update workflow state
+                member_dict = {'id': member.id}
                 if row_copy['genometype'] == GENOME_TYPE_ARRAY:
-                    array_members_to_update.append(member.id)
+                    member_dict['genomicWorkflowState'] = int(GenomicWorkflowState.GEM_READY)
+                    member_dict['genomicWorkflowStateStr'] = str(GenomicWorkflowState.GEM_READY)
+                    member_dict['genomicWorkflowStateModifiedTime'] = clock.CLOCK.now()
+                    members_to_update.append(member_dict)
                 elif row_copy['genometype'] == GENOME_TYPE_WGS:
-                    wgs_members_to_update.append(member.id)
+                    member_dict['genomicWorkflowState'] = int(GenomicWorkflowState.CVL_READY)
+                    member_dict['genomicWorkflowStateStr'] = str(GenomicWorkflowState.CVL_READY)
+                    member_dict['genomicWorkflowStateModifiedTime'] = clock.CLOCK.now()
+                    members_to_update.append(member_dict)
 
                 # For feedback manifest loop
                 # Get the genomic_manifest_file
@@ -1197,10 +1203,8 @@ class GenomicFileIngester:
                                                 biobank_id=bid,
                                                 sample_id=row_copy['sampleid'],
                                                 )
-        if array_members_to_update:
-            self.member_dao.bulk_update_genomics_workflow_state(array_members_to_update, GenomicWorkflowState.GEM_READY)
-        if wgs_members_to_update:
-            self.member_dao.bulk_update_genomics_workflow_state(wgs_members_to_update, GenomicWorkflowState.CVL_READY)
+        if members_to_update:
+            self.member_dao.bulk_update_members(members_to_update)
         return GenomicSubProcessResult.SUCCESS
 
     def copy_member_for_replating(
