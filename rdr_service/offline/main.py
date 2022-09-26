@@ -1248,8 +1248,8 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + 'AW3ReadyMissingDataFilesReport',
-        endpoint='aw3_ready_missing_files_report',
+        OFFLINE_PREFIX + 'GenomicAW3ReadyMissingDataFilesReport',
+        endpoint='genomic_aw3_ready_missing_files_report',
         view_func=genomic_aw3_ready_missing_files_report,
         methods=['GET']
     )
