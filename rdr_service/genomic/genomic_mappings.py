@@ -235,3 +235,47 @@ informing_loop_event_mappings = {
     'hdr.informing_loop_decision.yes': 'hdr.informing_loop.screen10_yes',
     'hdr.informing_loop_decision.maybe_later': 'hdr.informing_loop.screen10_maybe_later'
 }
+
+genome_center_datafile_prefix_map = {
+   'bi': {
+       'cram': 'wgs_sample_raw_data/crams_crais',
+       'cram.crai': 'wgs_sample_raw_data/crams_crais',
+       'cram.md5sum': 'wgs_sample_raw_data/crams_crais',
+       'hard-filtered.vcf.gz': 'wgs_sample_raw_data/ss_vcf_clinical',
+       'hard-filtered.vcf.gz.md5sum': 'wgs_sample_raw_data/ss_vcf_clinical',
+       'hard-filtered.vcf.gz.tbi': 'wgs_sample_raw_data/ss_vcf_clinical',
+       'hard-filtered.gvcf.gz': 'wgs_sample_raw_data/ss_vcf_research',
+       'hard-filtered.gvcf.gz.md5sum': 'wgs_sample_raw_data/ss_vcf_research',
+
+   },
+   'uw': {
+       'cram': 'Wgs_sample_raw_data/CRAMs_CRAIs',
+       'cram.crai': 'Wgs_sample_raw_data/CRAMs_CRAIs',
+       'cram.md5sum': 'Wgs_sample_raw_data/CRAMs_CRAIs',
+       'hard-filtered.vcf.gz': 'Wgs_sample_raw_data/SS_VCF_clinical',
+       'hard-filtered.vcf.gz.md5sum': 'Wgs_sample_raw_data/SS_VCF_clinical',
+       'hard-filtered.vcf.gz.tbi': 'Wgs_sample_raw_data/SS_VCF_clinical',
+       'hard-filtered.gvcf.gz': 'Wgs_sample_raw_data/SS_VCF_research',
+       'hard-filtered.gvcf.gz.md5sum': 'Wgs_sample_raw_data/SS_VCF_research'
+   },
+   'bcm': {
+       'cram': 'Wgs_sample_raw_data/CRAMs_CRAIs',
+       'cram.crai': 'Wgs_sample_raw_data/CRAMs_CRAIs',
+       'cram.md5sum': 'Wgs_sample_raw_data/CRAMs_CRAIs',
+       'hard-filtered.vcf.gz': 'Wgs_sample_raw_data/SS_VCF_clinical',
+       'hard-filtered.vcf.gz.md5sum': 'Wgs_sample_raw_data/SS_VCF_clinical',
+       'hard-filtered.vcf.gz.tbi': 'Wgs_sample_raw_data/SS_VCF_clinical',
+       'hard-filtered.gvcf.gz': 'Wgs_sample_raw_data/SS_VCF_research',
+       'hard-filtered.gvcf.gz.md5sum': 'Wgs_sample_raw_data/SS_VCF_research'
+   },
+   'rdr': {
+       'cram': 'Wgs_sample_raw_data/CRAMs_CRAIs',
+       'cram.crai': 'Wgs_sample_raw_data/CRAMs_CRAIs',
+       'cram.md5sum': 'Wgs_sample_raw_data/CRAMs_CRAIs',
+       'hard-filtered.vcf.gz': 'Wgs_sample_raw_data/SS_VCF_clinical',
+       'hard-filtered.vcf.gz.md5sum': 'Wgs_sample_raw_data/SS_VCF_clinical',
+       'hard-filtered.vcf.gz.tbi': 'Wgs_sample_raw_data/SS_VCF_clinical',
+       'hard-filtered.gvcf.gz': 'Wgs_sample_raw_data/SS_VCF_research',
+       'hard-filtered.gvcf.gz.md5sum': 'Wgs_sample_raw_data/SS_VCF_research'
+   }
+}

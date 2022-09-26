@@ -204,16 +204,6 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.GENOMIC_CVL_SITE_BUCKET_MAP, _FAKE_CVL_SITE_BUCKET_MAP)
         config.override_setting(config.GENOMIC_GC_SITE_BUCKET_MAP, _FAKE_GC_SITE_BUCKET_MAP)
         config.override_setting('rdr_bucket_name', [_FAKE_BUCKET])
-        config.override_setting(config.GENOMIC_GC_SITE_PREFIX_MAP, {'rdr': {
-            'cram': 'Wgs_sample_raw_data/CRAMs_CRAIs',
-            'cram.crai': 'Wgs_sample_raw_data/CRAMs_CRAIs',
-            'cram.md5sum': 'Wgs_sample_raw_data/CRAMs_CRAIs',
-            'hard-filtered.vcf.gz': 'Wgs_sample_raw_data/SS_VCF_clinical',
-            'hard-filtered.vcf.gz.md5sum': 'Wgs_sample_raw_data/SS_VCF_clinical',
-            'hard-filtered.vcf.gz.tbi': 'Wgs_sample_raw_data/SS_VCF_clinical',
-            'hard-filtered.gvcf.gz': 'Wgs_sample_raw_data/SS_VCF_research',
-            'hard-filtered.gvcf.gz.md5sum': 'Wgs_sample_raw_data/SS_VCF_research'
-        }})
 
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()

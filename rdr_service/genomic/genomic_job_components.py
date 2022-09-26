@@ -90,7 +90,8 @@ from rdr_service.config import (
     CVL_W3SR_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
-from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes
+from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes, \
+    genome_center_datafile_prefix_map
 from sqlalchemy.orm import aliased
 
 
@@ -1717,10 +1718,12 @@ class GenomicFileIngester:
         return contamination_category
 
     def _set_metrics_array_data_file_paths(self, row: dict) -> dict:
-        gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP)
+        gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP, {})
         site_id = self.file_obj.fileName.split('_')[0].lower()
-        gc_bucket_name = gc_site_bucket_map[site_id]
-        gc_bucket = config.getSetting(gc_bucket_name)
+        gc_bucket_name = gc_site_bucket_map.get(site_id)
+        gc_bucket = config.getSetting(gc_bucket_name, None)
+        if not gc_bucket:
+            return
 
         for file_def in array_file_types_attributes:
             if file_def['required']:
@@ -1735,16 +1738,18 @@ class GenomicFileIngester:
         return row
 
     def _set_metrics_wgs_data_file_paths(self, row: dict) -> dict:
-        gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP)
-        prefix_map = config.getSettingJson(config.GENOMIC_GC_SITE_PREFIX_MAP)
+        gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP, {})
         site_id = self.file_obj.fileName.split('_')[0].lower()
-        gc_bucket_name = gc_site_bucket_map[site_id]
-        gc_bucket = config.getSetting(gc_bucket_name)
+        gc_bucket_name = gc_site_bucket_map.get(site_id)
+        gc_bucket = config.getSetting(gc_bucket_name, None)
+        if not gc_bucket:
+            return
 
         for file_def in wgs_file_types_attributes:
             if file_def['required']:
-                file_path = f'gs://{gc_bucket}/{prefix_map[site_id][file_def["file_type"]]}/{site_id.upper()}_' + \
-                            f'{row["biobankid"]}_{row["sampleid"]}_{row["limsid"]}_1.{file_def["file_type"]}'
+                file_path = f'gs://{gc_bucket}/{genome_center_datafile_prefix_map[site_id][file_def["file_type"]]}/' + \
+                            f'{site_id.upper()}_{row["biobankid"]}_{row["sampleid"]}_{row["limsid"]}_1.' + \
+                            f'{file_def["file_type"]}'
                 row[file_def['file_path_attribute']] = file_path
 
         return row
