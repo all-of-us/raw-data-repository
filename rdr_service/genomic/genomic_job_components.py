@@ -1723,7 +1723,7 @@ class GenomicFileIngester:
         gc_bucket_name = gc_site_bucket_map.get(site_id)
         gc_bucket = config.getSetting(gc_bucket_name, None)
         if not gc_bucket:
-            return
+            return row
 
         for file_def in array_file_types_attributes:
             if file_def['required']:
@@ -1743,7 +1743,7 @@ class GenomicFileIngester:
         gc_bucket_name = gc_site_bucket_map.get(site_id)
         gc_bucket = config.getSetting(gc_bucket_name, None)
         if not gc_bucket:
-            return
+            return row
 
         for file_def in wgs_file_types_attributes:
             if file_def['required']:
