@@ -1073,7 +1073,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 BiobankOrder.finalizedTime
             )
             if limit:
-                return records.limit(limit).all()
+                return records.distinct().limit(limit).all()
 
             return records.all()
 
