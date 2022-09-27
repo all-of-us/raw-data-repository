@@ -736,7 +736,13 @@ class GenomicJobControllerTest(BaseTestCase):
                 )
                 self.data_generator.create_database_biobank_order_identifier(
                     value=stored_sample.biobankOrderIdentifier,
-                    biobankOrderId=order.biobankOrderId
+                    biobankOrderId=order.biobankOrderId,
+                    system="1",
+                )
+                self.data_generator.create_database_biobank_order_identifier(
+                    value=stored_sample.biobankOrderIdentifier,
+                    biobankOrderId=order.biobankOrderId,
+                    system="2",
                 )
                 member = self.data_generator.create_database_genomic_set_member(
                     genomicSetId=gen_set.id,
