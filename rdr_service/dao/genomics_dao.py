@@ -2015,16 +2015,21 @@ class GenomicOutreachDaoV2(BaseDao):
             if 'result' in participant_data.type:
                 report_status, report_module = self._determine_report_state(participant_data.genomic_report_state)
 
-                genomic_swap_module = _get_sample_swap_module(
-                    sample_swap=participant_data.GenomicSampleSwapMember
-                )
-
                 report_obj = {
-                    "module": f'{report_module}{genomic_swap_module}',
                     "type": 'result',
-                    "status": report_status,
                     "participant_id": f'P{pid}',
+                    "module": report_module,
+                    "status": report_status
                 }
+
+                if hasattr(participant_data, 'GenomicSampleSwapMember'):
+                    genomic_swap_module = _get_sample_swap_module(
+                        sample_swap=participant_data.GenomicSampleSwapMember
+                    )
+                    report_obj['module'] = f'{report_module}{genomic_swap_module}'
+
+                if 'viewed' in participant_data.type:
+                    report_obj['status'] = 'viewed'
 
                 if participant_data.report_revision_number is not None:
                     report_obj['report_revision_number'] = participant_data.report_revision_number
@@ -2034,12 +2039,6 @@ class GenomicOutreachDaoV2(BaseDao):
                         -1].lower()
 
                 report_statuses.append(report_obj)
-
-                # if participant_data.result_viewed:
-                #     result_obj = report_obj.copy()
-                #     result_obj['status'] = 'viewed'
-                #
-                #     report_statuses.append(result_obj)
 
             elif 'informing_loop' in participant_data.type:
                 if 'ready' in participant_data.type:
@@ -2158,19 +2157,13 @@ class GenomicOutreachDaoV2(BaseDao):
                 informing_loops = _get_max_decision_loops(decision_loop.all()) + ready_loop.all()
 
             if 'result' in self.req_type:
-                result_query = (
+                result_ready_query = (
                     session.query(
                         distinct(GenomicMemberReportState.participant_id).label('participant_id'),
                         GenomicMemberReportState.genomic_report_state,
                         GenomicMemberReportState.report_revision_number,
                         GenomicSampleSwapMember,
-                        sqlalchemy.case(
-                            [
-                                (GenomicResultViewed.id.isnot(None), True)
-                            ],
-                            else_=False
-                        ).label('result_viewed'),
-                        literal('result').label('type')
+                        literal('result_ready').label('type')
                     )
                     .join(
                         ParticipantSummary,
@@ -2183,12 +2176,6 @@ class GenomicOutreachDaoV2(BaseDao):
                             GenomicSetMember.genomeType.in_(query_genome_types)
                         )
                     ).outerjoin(
-                        GenomicResultViewed,
-                        and_(
-                            GenomicResultViewed.sample_id == GenomicMemberReportState.sample_id,
-                            GenomicResultViewed.module_type == GenomicMemberReportState.module
-                        )
-                    ).outerjoin(
                         GenomicSampleSwapMember,
                         GenomicSampleSwapMember.genomic_set_member_id == GenomicSetMember.id
                     ).filter(
@@ -2199,17 +2186,48 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.ignoreFlag != 1
                     )
                 )
+
+                result_viewed_query = (
+                    session.query(
+                        distinct(GenomicResultViewed.participant_id).label('participant_id'),
+                        GenomicMemberReportState.genomic_report_state,
+                        GenomicMemberReportState.report_revision_number,
+                        literal('result_viewed').label('type')
+                    ).join(
+                        GenomicMemberReportState,
+                        and_(
+                            GenomicMemberReportState.sample_id == GenomicResultViewed.sample_id,
+                            GenomicMemberReportState.module == GenomicResultViewed.module_type
+                        )
+                    ).filter(
+                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                        ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                        GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
+                        GenomicMemberReportState.event_authored_time.isnot(None),
+                        GenomicResultViewed.event_authored_time.isnot(None),
+                        GenomicSetMember.ignoreFlag != 1
+                    )
+                )
+
                 if participant_id:
-                    result_query = result_query.filter(
+                    result_ready_query = result_ready_query.filter(
                         ParticipantSummary.participantId == participant_id
                     )
+                    result_viewed_query = result_viewed_query.filter(
+                        ParticipantSummary.participantId == participant_id
+                    )
+
                 if start_date:
-                    result_query = result_query.filter(
+                    result_ready_query = result_ready_query.filter(
                         GenomicMemberReportState.event_authored_time > start_date,
                         GenomicMemberReportState.event_authored_time < end_date,
                     )
+                    result_viewed_query = result_viewed_query.filter(
+                        GenomicResultViewed.event_authored_time > start_date,
+                        GenomicResultViewed.event_authored_time < end_date,
+                    )
 
-                results = result_query.all()
+                results = result_ready_query.all() + result_viewed_query.all()
 
             return informing_loops + results
 
