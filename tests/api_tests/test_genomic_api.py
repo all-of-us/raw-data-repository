@@ -1661,7 +1661,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
     def test_get_result_viewed(self):
         fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
         fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
-        # fake_now = clock.CLOCK.now().replace(microsecond=0)
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
 
         gem_module = 'gem'
         gem_report_state = GenomicReportState.GEM_RPT_READY
@@ -1768,6 +1768,20 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
         all_hdr_keys_data = all(not len(obj.keys() - hdr_result_keys) and obj.values() for obj in hdr_objs)
         self.assertTrue(all_hdr_keys_data)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}'
+            )
+
+        # should only be viewed states * 2
+        self.assertEqual(len(resp['data']), 2)
+
+        self.assertTrue(all(obj['type'] == 'result' for obj in resp['data']))
+        # should all be viewed
+        self.assertTrue(all(obj['status'] == 'viewed' for obj in resp['data']))
+
+        self.assertTrue(all(obj['module'] in ['gem', 'hdr'] for obj in resp['data']))
 
     # POST/PUT
     def test_validate_post_put_data(self):
