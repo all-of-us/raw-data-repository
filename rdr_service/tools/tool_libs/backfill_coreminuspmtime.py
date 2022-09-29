@@ -1,3 +1,5 @@
+import logging
+
 from rdr_service import clock
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentDependencies
@@ -10,23 +12,43 @@ from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 tool_cmd = 'backfill-coreminuspmtime'
 tool_desc = 'Backfill CoreMinusPMTime values that had been incorrectly updated'
 
+logger = logging.getLogger("rdr_logger")
+
 
 class BackfillCoreMinusPMTime(ToolBase):
     def run(self):
         super().run()
         with self.get_session() as session:
-            summary_list = session.query(ParticipantSummary).all()
+            participant_ids = session.query(
+                ParticipantSummary.participantId
+            ).filter(
+                ParticipantSummary.enrollmentStatusCoreMinusPMTime.isnot(None)
+            ).order_by(
+                ParticipantSummary.participantId
+            ).all()
             summary_dao = ParticipantSummaryDao()
-
+            logger.info(f'PIDs to validate Core Minus PM Time: {len(participant_ids)}')
             chunk_size = 50
-            for summary_list_subset in list_chunks(lst=summary_list, chunk_size=chunk_size):
-                for summary in summary_list_subset:
+            count = 0
+            for participant_id_subset in list_chunks(lst=participant_ids, chunk_size=chunk_size):
+                batch_count = 0
+                logger.debug(f'pid subset: {participant_id_subset}')
+                logger.info(f'Validating PIDs {count*chunk_size} - {((count+1) * chunk_size)-1}')
+                summary_list = session.query(
+                    ParticipantSummary
+                ).filter(
+                    ParticipantSummary.participantId.in_(participant_id_subset)
+                ).with_for_update().all()
+                for summary in summary_list:
                     calculated_date = self.calculate_core_minus_pm_time(summary, session)
-                    if calculated_date:
-                        if calculated_date < summary.enrollmentStatusCoreMinusPMTime:
-                            summary.enrollmentStatusCoreMinusPMTime = calculated_date
-                            summary.modifiedTime = clock.CLOCK.now()
-                            summary_dao.update(summary)
+                    if calculated_date and calculated_date < summary.enrollmentStatusCoreMinusPMTime:
+                        batch_count += 1
+                        summary.enrollmentStatusCoreMinusPMTime = calculated_date
+                        summary.modifiedTime = clock.CLOCK.now()
+                        summary_dao.update(summary)
+                session.commit()
+                logger.info(f'Updated {batch_count} of {chunk_size}')
+                count += 1
 
     @staticmethod
     def calculate_core_minus_pm_time(summary: ParticipantSummary, session):
