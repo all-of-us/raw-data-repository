@@ -3601,7 +3601,8 @@ class GenomicQueriesDao(BaseDao):
                 GenomicAW3Raw,
                 and_(
                     GenomicAW3Raw.sample_id == GenomicSetMember.sampleId,
-                    GenomicAW3Raw.genome_type == genome_type
+                    GenomicAW3Raw.genome_type == genome_type,
+                    GenomicAW3Raw.ignore_flag == 0,
                 )
             ).filter(
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
@@ -3674,7 +3675,8 @@ class GenomicQueriesDao(BaseDao):
                 GenomicAW3Raw,
                 and_(
                     GenomicAW3Raw.sample_id == GenomicSetMember.sampleId,
-                    GenomicAW3Raw.genome_type == genome_type
+                    GenomicAW3Raw.genome_type == genome_type,
+                    GenomicAW3Raw.ignore_flag == 0,
                 )
             ).filter(
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
