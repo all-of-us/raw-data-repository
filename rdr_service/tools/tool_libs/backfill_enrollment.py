@@ -32,7 +32,7 @@ class BackfillEnrollment(ToolBase):
                 summary_list = session.query(
                     ParticipantSummary
                 ).filter(
-                    ParticipantSummary.participantId.in_([id_list_subset])
+                    ParticipantSummary.participantId.in_(id_list_subset)
                 ).with_for_update().all()
 
                 for summary in summary_list:
