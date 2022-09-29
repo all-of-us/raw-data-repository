@@ -85,5 +85,12 @@ def retention_eligible_import_function(_event, _context):
     :param context: (google.cloud.functions.Context): Metadata of triggering event.
     """
     with GCPCloudFunctionContext(function_name, None) as gcp_env:
-        func = RetentionEligibleImportFunction(gcp_env, _event, _context)
-        func.run()
+        # checking to see if the file being dropped in the bucket is the retention file before executing the function
+        file_name = _event['name']
+        if 'retention' in file_name:
+            func = RetentionEligibleImportFunction(gcp_env, _event, _context)
+            func.run()
+        else:
+            _logger.info(f"skipping file: {file_name}, as it is not the retention file.")
+
+
