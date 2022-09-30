@@ -1448,7 +1448,7 @@ class QuestionnaireResponseDao(BaseDao):
         return [result_row.participantId for result_row in query.all()]
 
     @classmethod
-    def get_latest_answer_to_question(cls, session: Session, participant_id, question_code) -> str:
+    def get_latest_answer_to_question(cls, session: Session, participant_id, question_code_value) -> str:
         answer_code = aliased(Code)
         question_code = aliased(Code)
         query = (
@@ -1460,7 +1460,7 @@ class QuestionnaireResponseDao(BaseDao):
                 question_code,
                 and_(
                     question_code.codeId == QuestionnaireQuestion.codeId,
-                    question_code.value == question_code
+                    question_code.value == question_code_value
                 )
             ).join(
                 answer_code,
@@ -1478,7 +1478,7 @@ class QuestionnaireResponseDao(BaseDao):
         return cls.get_latest_answer_to_question(
             session=session,
             participant_id=participant_id,
-            question_code=code_constants.STATE_QUESTION_CODE
+            question_code_value=code_constants.STATE_QUESTION_CODE
         )
 
     @classmethod
@@ -1486,7 +1486,7 @@ class QuestionnaireResponseDao(BaseDao):
         return cls.get_latest_answer_to_question(
             session=session,
             participant_id=participant_id,
-            question_code=code_constants.RECEIVE_CARE_STATE
+            question_code_value=code_constants.RECEIVE_CARE_STATE
         )
 
     @classmethod
