@@ -32,9 +32,6 @@ commands:
           name: Code static analysis checks
           command: ci/full_static_analysis.sh
       - run:
-          name: Safety Check
-          command: source venv/bin/activate && safety check
-      - run:
           name: Check Licenses
           command : |
             export PYTHONPATH=$PYTHONPATH:`pwd`
@@ -50,6 +47,9 @@ commands:
       - run:
           name: Upload Coverage Report
           command: ./ci/run_upload_coverage_report.sh
+      - run:
+          name: Safety Check
+          command: source venv/bin/activate && safety check
 
   deploy-app-steps:
     parameters:
