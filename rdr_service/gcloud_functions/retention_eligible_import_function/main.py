@@ -42,10 +42,14 @@ class RetentionEligibleImportFunction(FunctionStoragePubSubHandler):
             "upload_date": self.event.timeCreated,
         }
 
-        _logger.info("Pushing cloud task...")
+        # check to see if the file being dropped in the bucket is the retention file before executing the function
+        if 'retention' in self.event.name:
+            _logger.info("Pushing cloud task...")
 
-        _task = GCPCloudTask()
-        _task.execute('/resource/task/ImportRetentionEligibleFileApi', payload=data, queue=task_queue)
+            _task = GCPCloudTask()
+            _task.execute('/resource/task/ImportRetentionEligibleFileApi', payload=data, queue=task_queue)
+        else:
+            _logger.info(f"skipping file: {self.event.name}, as it is not the retention file.")
 
 
 def get_deploy_args(gcp_env):
@@ -85,10 +89,5 @@ def retention_eligible_import_function(_event, _context):
     :param _context: (google.cloud.functions.Context): Metadata of triggering event.
     """
     with GCPCloudFunctionContext(function_name, None) as gcp_env:
-        # checking to see if the file being dropped in the bucket is the retention file before executing the function
-        file_name = _event['name']
-        if 'retention' in file_name:
-            func = RetentionEligibleImportFunction(gcp_env, _event, _context)
-            func.run()
-        else:
-            _logger.info(f"skipping file: {file_name}, as it is not the retention file.")
+        func = RetentionEligibleImportFunction(gcp_env, _event, _context)
+        func.run()
