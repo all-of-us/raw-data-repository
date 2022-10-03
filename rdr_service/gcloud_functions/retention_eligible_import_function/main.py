@@ -78,11 +78,11 @@ def retention_eligible_import_function(_event, _context):
     """
     GCloud Function Entry Point (Storage Pub/Sub Event).
     https://cloud.google.com/functions/docs/concepts/events-triggers#functions_parameters-python
-    :param event: (dict):  The dictionary with data specific to this type of event.
+    :param _event: (dict):  The dictionary with data specific to this type of event.
                        The `data` field contains a description of the event in
                        the Cloud Storage `object` format described here:
                        https://cloud.google.com/storage/docs/json_api/v1/objects#resource
-    :param context: (google.cloud.functions.Context): Metadata of triggering event.
+    :param _context: (google.cloud.functions.Context): Metadata of triggering event.
     """
     with GCPCloudFunctionContext(function_name, None) as gcp_env:
         # checking to see if the file being dropped in the bucket is the retention file before executing the function
@@ -92,5 +92,3 @@ def retention_eligible_import_function(_event, _context):
             func.run()
         else:
             _logger.info(f"skipping file: {file_name}, as it is not the retention file.")
-
-
