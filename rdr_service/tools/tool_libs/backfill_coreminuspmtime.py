@@ -1,7 +1,6 @@
 import logging
 
 from rdr_service import clock
-from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentDependencies
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import EnrollmentStatus
@@ -26,7 +25,7 @@ class BackfillCoreMinusPMTime(ToolBase):
             ).order_by(
                 ParticipantSummary.participantId
             ).all()
-            summary_dao = ParticipantSummaryDao()
+
             logger.info(f'PIDs to validate Core Minus PM Time: {len(participant_ids)}')
             chunk_size = 50
             count = 0
@@ -45,7 +44,6 @@ class BackfillCoreMinusPMTime(ToolBase):
                         batch_count += 1
                         summary.enrollmentStatusCoreMinusPMTime = calculated_date
                         summary.modifiedTime = clock.CLOCK.now()
-                        summary_dao.update(summary)
                 session.commit()
                 logger.info(f'Updated {batch_count} of {chunk_size}')
                 count += 1
