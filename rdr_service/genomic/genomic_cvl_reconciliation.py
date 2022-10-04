@@ -101,7 +101,7 @@ class GenomicCVLReconcile:
             )
             EmailService.send_email(email_message)
 
-            logging.info(f'{len(reconcile_alerts)} alerts sent for {site.upper()}')
+            logging.info(f'{len(site_samples)} alerts sent for {site.upper()}')
 
             self.result_dao.batch_update_samples(
                 update_type=self.reconcile_type,
