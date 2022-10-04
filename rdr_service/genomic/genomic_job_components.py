@@ -4,6 +4,7 @@ Components are assembled by the JobController for a particular Genomic Job
 """
 
 import csv
+import json
 import logging
 import re
 import pytz
@@ -62,7 +63,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     UserEventMetricsDao,
     GenomicQueriesDao,
-    GenomicCVLAnalysisDao, GenomicResultWorkflowStateDao, GenomicCVLSecondSampleDao)
+    GenomicCVLAnalysisDao, GenomicResultWorkflowStateDao, GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -954,6 +955,51 @@ class GenomicFileIngester:
                 session.commit()
                 # Batch update PDR resource records.
                 genomic_user_event_metrics_batch_update([r.id for r in batch])
+
+        return GenomicSubProcessResult.SUCCESS
+
+    @staticmethod
+    def ingest_appointment_metrics(file_path):
+        try:
+            with open_cloud_file(file_path) as json_file:
+                json_appointment_data = json.load(json_file)
+
+            if not json_appointment_data:
+                logging.warning(f'Appointment metric file {file_path} is empty')
+                return GenomicSubProcessResult.NO_RESULTS
+
+            batch_size, item_count, batch = 100, 0, []
+            appointment_metric_dao = GenomicAppointmentEventMetricsDao()
+
+            for event in json_appointment_data:
+                event_obj = {}
+
+                if event.get('participantId'):
+                    participant_id = event.get('participantId')
+                    if 'P' in participant_id:
+                        participant_id = participant_id.split('P')[-1]
+
+                    event_obj['participant_id'] = int(participant_id)
+
+                event_obj['appointment_event'] = json.dumps(event)
+                event_obj['file_path'] = file_path
+                event_obj['created'] = clock.CLOCK.now()
+                event_obj['modified'] = clock.CLOCK.now()
+
+                batch.append(event_obj)
+                item_count += 1
+
+                if item_count == batch_size:
+                    appointment_metric_dao.insert_bulk(batch)
+                    item_count = 0
+                    batch.clear()
+
+            if item_count:
+                appointment_metric_dao.insert_bulk(batch)
+
+        except ValueError:
+            logging.warning('Appointment metric file must be valid json')
+            return GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.SUCCESS
 

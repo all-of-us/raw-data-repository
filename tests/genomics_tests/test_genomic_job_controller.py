@@ -1,11 +1,14 @@
 import datetime
+import json
+
 import mock
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
-    GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao, GenomicResultWithdrawalsDao, GenomicMemberReportStateDao
+    GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao, GenomicResultWithdrawalsDao, \
+    GenomicMemberReportStateDao, GenomicAppointmentEventMetricsDao
 
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult, \
@@ -14,6 +17,7 @@ from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.participant_enums import WithdrawalStatus
+from tests import test_data
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -29,6 +33,7 @@ class GenomicJobControllerTest(BaseTestCase):
         self.user_event_metrics_dao = UserEventMetricsDao()
         self.job_run_dao = GenomicJobRunDao()
         self.report_state_dao = GenomicMemberReportStateDao()
+        self.appointment_metrics_dao = GenomicAppointmentEventMetricsDao()
 
     def test_incident_with_long_message(self):
         """Make sure the length of incident messages doesn't cause issues when recording them"""
@@ -968,3 +973,44 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.NO_RESULTS)
 
         self.clear_table_after_test('genomic_member_report_state')
+
+    def test_ingest_appointment_metrics_file(self):
+        test_file = 'Genomic-Metrics-File-Appointment-Events-Test.json'
+        bucket_name = 'test_bucket'
+        sub_folder = 'appointment_events'
+        pids = []
+
+        for _ in range(4):
+            summary = self.data_generator.create_database_participant_summary()
+            pids.append(summary.participantId)
+
+        test_file_path = f'{bucket_name}/{sub_folder}/{test_file}'
+
+        appointment_data = test_data.load_test_data_json(
+            "Genomic-Metrics-File-Appointment-Events-Test.json")
+        appointment_data_str = json.dumps(appointment_data, indent=4)
+
+        with open_cloud_file(test_file_path, mode='wb') as cloud_file:
+            cloud_file.write(appointment_data_str.encode("utf-8"))
+
+        with GenomicJobController(GenomicJob.APPOINTMENT_METRICS_FILE_INGEST) as controller:
+            controller.ingest_appointment_metrics_file(
+                file_path=test_file_path,
+            )
+
+        all_metrics = self.appointment_metrics_dao.get_all()
+
+        # should be 5 metric records for whats in json file
+        self.assertEqual(len(all_metrics), 5)
+        self.assertTrue(all((obj.participant_id in pids for obj in all_metrics)))
+        self.assertTrue(all((obj.file_path == test_file_path for obj in all_metrics)))
+        self.assertTrue(all((obj.appointment_event is not None for obj in all_metrics)))
+        self.assertTrue(all((obj.created is not None for obj in all_metrics)))
+        self.assertTrue(all((obj.modified is not None for obj in all_metrics)))
+
+        current_job_runs = self.job_run_dao.get_all()
+        self.assertEqual(len(current_job_runs), 1)
+
+        current_job_run = current_job_runs[0]
+        self.assertTrue(current_job_run.jobId == GenomicJob.APPOINTMENT_METRICS_FILE_INGEST)
+        self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)

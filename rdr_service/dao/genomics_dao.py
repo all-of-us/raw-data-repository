@@ -45,7 +45,7 @@ from rdr_service.model.genomics import (
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
-    GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals)
+    GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -4176,6 +4176,19 @@ class GenomicResultWithdrawalsDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicResultWithdrawalsDao, self).__init__(
             GenomicResultWithdrawals, order_by_ending=['id']
+        )
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+
+class GenomicAppointmentEventMetricsDao(BaseDao, GenomicDaoMixin):
+    def __init__(self):
+        super(GenomicAppointmentEventMetricsDao, self).__init__(
+            GenomicAppointmentEventMetrics, order_by_ending=['id']
         )
 
     def from_client_json(self):

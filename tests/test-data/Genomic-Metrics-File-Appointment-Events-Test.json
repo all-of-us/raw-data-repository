@@ -1,0 +1,77 @@
+[
+    {
+        "event": "appointment_scheduled",
+        "eventAuthoredTime": "2022-09-16T08:48:45Z",
+        "participantId": "P900000000",
+        "messageBody": {
+            "module_type": "hdr",
+            "appointment_timestamp": "2022-10-20T14:30:00+00:00",
+            "id": 54,
+            "appointment_timezone": "America/Los_Angeles",
+            "location": "AZ",
+            "contact_number": "14152634152",
+            "language": "es",
+            "source": "Color"
+        }
+    },
+    {
+        "event": "appointment_scheduled",
+        "eventAuthoredTime": "2022-09-16T17:18:38Z",
+        "participantId": "P900000001",
+        "messageBody": {
+            "module_type": "hdr",
+            "appointment_timestamp": "2022-09-19T19:30:00+00:00",
+            "id": 55,
+            "appointment_timezone": "America/Los_Angeles",
+            "location": "CA",
+            "contact_number": "18043704252",
+            "language": "en",
+            "source": "Color"
+        }
+    },
+    {
+        "event": "appointment_updated",
+        "eventAuthoredTime": "2022-09-16T17:22:11Z",
+        "participantId": "P900000001",
+        "messageBody": {
+            "module_type": "hdr",
+            "appointment_timestamp": "2022-09-20T14:30:00+00:00",
+            "id": 55,
+            "appointment_timezone": "America/Los_Angeles",
+            "location": "GA",
+            "contact_number": "18043704252",
+            "language": "en",
+            "source": "Color"
+        }
+    },
+    {
+        "event": "appointment_scheduled",
+        "eventAuthoredTime": "2022-09-16T17:55:39Z",
+        "participantId": "P900000002",
+        "messageBody": {
+            "module_type": "pgx",
+            "appointment_timestamp": "2022-09-19T15:15:00+00:00",
+            "id": 65,
+            "appointment_timezone": "America/Los_Angeles",
+            "location": "MI",
+            "contact_number": "13018024470",
+            "language": "en",
+            "source": "Color"
+        }
+    },
+    {
+        "event": "appointment_scheduled",
+        "eventAuthoredTime": "2022-09-16T21:17:37Z",
+        "participantId": "P900000003",
+        "messageBody": {
+            "module_type": "pgx",
+            "appointment_timestamp": "2022-10-10T21:45:00+00:00",
+            "id": 66,
+            "appointment_timezone": "America/Los_Angeles",
+            "location": "KY",
+            "contact_number": "13018024470",
+            "language": "en",
+            "source": "Color"
+        }
+    }
+]

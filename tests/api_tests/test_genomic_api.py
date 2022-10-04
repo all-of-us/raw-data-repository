@@ -3276,6 +3276,39 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(user_metrics['success'], True)
         self.assertEqual(ingest_mock.call_count, 1)
 
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.ingest_metrics_file')
+    def test_ingest_appointment_metrics_api(self, ingest_mock):
+
+        from rdr_service.resource import main as resource_main
+
+        data = {}
+
+        appointment_metrics = self.send_post(
+            local_path='IngestAppointmentMetricsApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(appointment_metrics)
+        self.assertEqual(appointment_metrics['success'], False)
+        self.assertEqual(ingest_mock.call_count, 0)
+
+        data = {
+            'file_path': 'test_file_path'
+        }
+
+        appointment_metrics = self.send_post(
+            local_path='IngestAppointmentMetricsApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(appointment_metrics)
+        self.assertEqual(appointment_metrics['success'], True)
+        self.assertEqual(ingest_mock.call_count, 1)
+
     @mock.patch('rdr_service.api.genomic_cloud_tasks_api.bq_genomic_set_member_batch_update')
     @mock.patch('rdr_service.api.genomic_cloud_tasks_api.genomic_set_member_batch_update')
     def test_genomic_rebuild_task_api(self, bq_batch_mock, batch_mock):
