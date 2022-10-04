@@ -1573,7 +1573,6 @@ class GenomicJobController:
         Currently supports GEM, HDR or PGx.
         """
         modules = {key.split('.')[0] for key in informing_loop_event_mappings.keys()}
-        #event_mappings = {event_value: il_value for (il_value, event_value) in informing_loop_event_mappings.items()}
 
         for module in modules:
             # Get unreconciled user_event_metrics records
@@ -1582,25 +1581,12 @@ class GenomicJobController:
             # compare to latest state by participant in genomic_informing_loop
             if missed_messages:
                 for message in missed_messages:
-                    # incident_message = f'{self.job_id.name}: Informing Loop out of sync with User Events! ' \
-                    #                    f'PID: {message.participant_id}'
-                    # incident_params = {
-                    #     "source_job_run_id": self.job_run.id,
-                    #     "code": GenomicIncidentCode.INFORMING_LOOP_TO_EVENTS_MISMATCH.name,
-                    #     "message": incident_message,
-                    #     "participant_id": message.participant_id,
-                    #     "save_incident": True,
-                    #     "slack": False
-                    # }
-
-                    # TODO: Do this in bulk, not individually
-                    # self.create_incident(**incident_params)
                     new_il_record = GenomicInformingLoop(
                         participant_id=message.participant_id,
                         event_type="informing_loop_decision",
                         event_authored_time=message.created_at,
                         module_type=module,
-                        decision_value=message.event_name,
+                        decision_value=message.event_value,
                         sample_id=message.sample_id,
                     )
 

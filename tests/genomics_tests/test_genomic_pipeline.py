@@ -6547,18 +6547,39 @@ class GenomicPipelineTest(BaseTestCase):
 
         for pid in range(8):
             self.data_generator.create_database_participant(participantId=1+pid, biobankId=1+pid)
+
         # Set up initial job run ID
         self.data_generator.create_database_genomic_job_run(
             jobId=GenomicJob.METRICS_FILE_INGEST,
             startTime=clock.CLOCK.now()
         )
 
+        # create genomic set
+        self.data_generator.create_database_genomic_set(
+            genomicSetName='test',
+            genomicSetCriteria='.',
+            genomicSetVersion=1
+        )
+        # insert set members
+        for b in ["aou_array", "aou_wgs"]:
+            for i in range(1, 9):
+                self.data_generator.create_database_genomic_set_member(
+                    participantId=i,
+                    genomicSetId=1,
+                    biobankId=i,
+                    collectionTubeId=100 + i,
+                    sampleId=10 + i,
+                    genomeType=b,
+                )
+
         # Set up ingested metrics data
         events = ['gem.informing_loop.started',
                   'gem.informing_loop.screen8_no',
                   'gem.informing_loop.screen8_yes',
                   'hdr.informing_loop.started',
-                  'gem.informing_loop.screen3']
+                  'gem.informing_loop.screen3',
+                  'pgx.informing_loop.screen8_no',
+                  'hdr.informing_loop.screen10_no']
 
         for p in range(4):
             for i in range(len(events)):
@@ -6570,7 +6591,6 @@ class GenomicPipelineTest(BaseTestCase):
                     event_name=events[i],
                     run_id=1,
                     ignore_flag=0,
-                    reconcile_job_run_id=1 if p == 3 and i in [0, 2] else None  # For edge case
                 )
 
         # Insert last event for pid 5 (test for no IL response)
@@ -6623,15 +6643,26 @@ class GenomicPipelineTest(BaseTestCase):
         # Run reconcile job
         genomic_pipeline.reconcile_informing_loop_responses()
 
-        # Test mismatched data ingested correctly
+        # Test mismatched GEM data ingested correctly
         pid_list = [1, 2, 3, 6]
 
         new_il_values = il_dao.get_latest_il_for_pids(
             pid_list=pid_list,
+            module="gem"
         )
 
         for value in new_il_values:
             self.assertEqual("yes", value.decision_value)
+
+        pid_list = [1, 2, 3, 4]
+        for module in ["hdr", "pgx"]:
+            new_il_values = il_dao.get_latest_il_for_pids(
+                pid_list=pid_list,
+                module=module
+            )
+
+            for value in new_il_values:
+                self.assertEqual("no", value.decision_value)
 
     def test_investigation_aw2_ingestion(self):
         self._create_fake_datasets_for_gc_tests(3,

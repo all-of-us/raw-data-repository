@@ -3366,7 +3366,7 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
         event_type_str = "informing_loop_decision"
         replace_string = f"{module}.{event_type_str}."
 
-        # genome_type = "aou_wgs" if module in ['hdr', 'pgx'] else 'aou_array'
+        genome_type = "aou_wgs" if module in ['hdr', 'pgx'] else 'aou_array'
 
         event_mappings = {il.replace(replace_string, ""): event for il, event
                           in informing_loop_event_mappings.items() if il.startswith(module)}
@@ -3374,6 +3374,7 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
         with self.session() as session:
             event_metrics_alias = aliased(UserEventMetrics)
             informing_loop_alias = aliased(GenomicInformingLoop)
+            set_member_alias = aliased(GenomicSetMember)
 
             records_subquery = session.query(
                 UserEventMetrics.participant_id,
@@ -3381,6 +3382,7 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
                 coalesce(GenomicInformingLoop.decision_value, "missing").label("decision_value"),
                 UserEventMetrics.created_at,
                 GenomicInformingLoop.sample_id,
+                coalesce(GenomicInformingLoop.event_authored_time, "0").label("event_authored_time"),
                 sqlalchemy.case(
                     [
                         (UserEventMetrics.event_name == event_mappings['yes'], 'yes'),
@@ -3419,11 +3421,37 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
                 event_metrics_alias.created_at.is_(None)
             ).subquery()
 
+            sample_ids_subquery = session.query(
+                    GenomicSetMember.sampleId,
+                    GenomicSetMember.participantId
+                ).outerjoin(
+                    set_member_alias,
+                    and_(
+                        set_member_alias.participantId == GenomicSetMember.participantId,
+                        set_member_alias.ignoreFlag == 0,
+                        set_member_alias.genomeType == GenomicSetMember.genomeType,
+                        GenomicSetMember.id < set_member_alias.id,
+                    )
+                ).filter(
+                    GenomicSetMember.genomeType == genome_type,
+                    GenomicSetMember.ignoreFlag == 0,
+                    GenomicSetMember.sampleId.isnot(None),
+                    set_member_alias.id.is_(None)
+                ).subquery()
+
             records = session.query(
-                records_subquery
+                records_subquery.c.participant_id,
+                records_subquery.c.decision_value,
+                records_subquery.c.event_value,
+                records_subquery.c.created_at,
+                coalesce(records_subquery.c.sample_id, sample_ids_subquery.c.sample_id).label("sample_id"),
+            ).join(
+                sample_ids_subquery,
+                sample_ids_subquery.c.participant_id == records_subquery.c.participant_id
             ).filter(
-                records_subquery.c.decision_value != records_subquery.c.event_value
-            )
+                records_subquery.c.decision_value != records_subquery.c.event_value,
+                records_subquery.c.event_authored_time < records_subquery.c.created_at
+            ).distinct()
 
             return records.all()
 
