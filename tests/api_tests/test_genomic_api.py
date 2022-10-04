@@ -3276,7 +3276,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(user_metrics['success'], True)
         self.assertEqual(ingest_mock.call_count, 1)
 
-    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.ingest_metrics_file')
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.ingest_appointment_metrics_file')
     def test_ingest_appointment_metrics_api(self, ingest_mock):
 
         from rdr_service.resource import main as resource_main
