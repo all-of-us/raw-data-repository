@@ -125,6 +125,11 @@ def _build_resource_app():
                       TASK_PREFIX + "IngestUserEventMetricsApi",
                       endpoint="ingest_user_event_metrics", methods=["POST"])
 
+    # Ingest appointment event metrics from files
+    _api.add_resource(genomic_cloud_tasks_api.IngestAppointmentMetricsApi,
+                      TASK_PREFIX + "IngestAppointmentMetricsApi",
+                      endpoint="ingest_appointment_event_metrics", methods=["POST"])
+
     # Ingest member samples from raw models
     _api.add_resource(genomic_cloud_tasks_api.IngestDataFilesTaskApi,
                       TASK_PREFIX + "IngestDataFilesTaskApi",
