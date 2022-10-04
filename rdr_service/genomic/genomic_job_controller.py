@@ -1854,15 +1854,15 @@ class GenomicJobController:
             ','.join([f'{participant.participantId}' for participant in participant_list])
         )
 
-        notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
-        if notification_email_address and participant_list:
+        notification_emails = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
+        if notification_emails and participant_list:
             message = 'The following participants recently provided GROR consent again ' \
                       '(after having appeared in a W1IL manifest and then revoking their GROR consent):\n\n'
             message += '\n'.join([f'P{participant.participantId}' for participant in participant_list])
 
             EmailService.send_email(
                 Email(
-                    recipients=[notification_email_address],
+                    recipients=notification_emails,
                     subject='GHR3 participants recently re-submitting GROR consent',
                     plain_text_content=message
                 )
@@ -1892,15 +1892,15 @@ class GenomicJobController:
 
         result_withdrawal_dao.insert_bulk(batch)
 
-        notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
-        if notification_email_address:
+        notification_emails = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
+        if notification_emails:
             message = 'The following participants have withdrawn from the program and are currently'
             message += ' in the genomics result pipelines:\n\n'
             message += '\n'.join([f'P{participant.participant_id}' for participant in result_withdrawals])
 
             EmailService.send_email(
                 Email(
-                    recipients=[notification_email_address],
+                    recipients=notification_emails,
                     subject='Participants that have withdrawn and are currently in results pipeline(s)',
                     plain_text_content=message
                 )
