@@ -445,6 +445,11 @@ def gem_results_to_report_state():
         controller.gem_results_to_report_state()
 
 
+def reconcile_appointment_events():
+    with GenomicJobController(GenomicJob.GEM_RESULT_REPORTS) as controller:
+        controller.reconcile_appointment_events()
+
+
 def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
     """
     Entrypoint for new genomic manifest file pipelines

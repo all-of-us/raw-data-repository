@@ -763,6 +763,13 @@ def genomic_gem_result_reports():
 
 
 @app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_appointment_events')
+def genomic_reconcile_appointment_events():
+    genomic_pipeline.reconcile_appointment_events()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 @run_genomic_cron_job('daily_ingestion_summary')
 def genomic_data_quality_daily_ingestion_summary():
     genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
@@ -794,6 +801,7 @@ def genomic_data_quality_validation_fails_resolved():
 def export_va_workqueue_report():
     export_va_workqueue.generate_workqueue_report()
     return '{"success": "true"}'
+
 
 @app_util.auth_required_cron
 def delete_old_va_workqueue_reports():
@@ -1190,6 +1198,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicGemResultReports",
         endpoint="genomic_gem_result_reports",
         view_func=genomic_gem_result_reports,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicReconcileAppointmentEvents",
+        endpoint="genomic_reconcile_appointment_events",
+        view_func=genomic_reconcile_appointment_events,
         methods=["GET"]
     )
     # END Genomic Pipeline Jobs

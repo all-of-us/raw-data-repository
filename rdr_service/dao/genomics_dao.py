@@ -80,9 +80,7 @@ class GenomicDaoMixin:
 
     def get_last_updated_records(self, from_date, _ids=True):
         from_date = from_date.replace(microsecond=0)
-
-        if not hasattr(self.model_type, 'created') or \
-                not hasattr(self.model_type, 'modified'):
+        if not hasattr(self.model_type, 'modified'):
             return []
 
         with self.session() as session:
@@ -97,7 +95,6 @@ class GenomicDaoMixin:
             return records.all()
 
     def get_from_filepath(self, filepath):
-
         if not hasattr(self.model_type, 'file_path'):
             return []
 
@@ -4196,4 +4193,16 @@ class GenomicAppointmentEventMetricsDao(BaseDao, GenomicDaoMixin):
 
     def get_id(self, obj):
         pass
+
+    def get_created_from_date(self, from_date):
+        with self.session() as session:
+            return session.query(
+                GenomicAppointmentEventMetrics.id,
+                GenomicAppointmentEventMetrics.participant_id,
+                GenomicAppointmentEventMetrics.appointment_event
+            ).filter(
+                GenomicAppointmentEventMetrics.created >= from_date,
+                GenomicAppointmentEventMetrics.reconcile_job_run_id.is_(None)
+            ).all()
+
 

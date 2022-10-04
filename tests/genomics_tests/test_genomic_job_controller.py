@@ -1014,3 +1014,4 @@ class GenomicJobControllerTest(BaseTestCase):
         current_job_run = current_job_runs[0]
         self.assertTrue(current_job_run.jobId == GenomicJob.APPOINTMENT_METRICS_FILE_INGEST)
         self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
+
