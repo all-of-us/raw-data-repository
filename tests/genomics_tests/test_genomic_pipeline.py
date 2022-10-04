@@ -30,7 +30,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicAW2RawDao,
     GenomicIncidentDao,
     GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao, UserEventMetricsDao, GenomicAW4RawDao, GenomicAW3RawDao)
+    GenomicGcDataFileMissingDao, UserEventMetricsDao, GenomicAW4RawDao, GenomicAW3RawDao, GenomicInformingLoopDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -6543,6 +6543,7 @@ class GenomicPipelineTest(BaseTestCase):
     def test_reconcile_informing_loop(self):
         event_dao = UserEventMetricsDao()
         event_dao.truncate()  # for test suite
+        il_dao = GenomicInformingLoopDao()
 
         for pid in range(8):
             self.data_generator.create_database_participant(participantId=1+pid, biobankId=1+pid)
@@ -6596,72 +6597,41 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Set up informing loop from message broker records
         decisions = [None, 'no', 'yes']
-        for p in range(4):
-            for i in range(3):
+        for p in range(3):
+            for i in range(2):
                 self.data_generator.create_database_genomic_informing_loop(
                     message_record_id=i,
                     event_type='informing_loop_started' if i == 0 else 'informing_loop_decision',
                     module_type='gem',
                     participant_id=p+1,
                     decision_value=decisions[i],
+                    sample_id=100+p,
                     event_authored_time=datetime.datetime(2021, 12, 29, 00) + datetime.timedelta(hours=i)
                 )
 
-        # Test for only started event
+        # Test for no message but yes user event
         self.data_generator.create_database_genomic_user_event_metrics(
             created=clock.CLOCK.now(),
             modified=clock.CLOCK.now(),
             participant_id=6,
             created_at=datetime.datetime(2021, 12, 29, 00),
-            event_name='gem.informing_loop.started',
+            event_name='gem.informing_loop.screen8_yes',
             run_id=1,
             ignore_flag=0,
-        )
-        self.data_generator.create_database_genomic_informing_loop(
-            message_record_id=100,
-            event_type='informing_loop_started',
-            module_type='gem',
-            participant_id=6,
-            decision_value=None,
-            event_authored_time=datetime.datetime(2021, 12, 29, 00)
-        )
-
-        self.data_generator.create_database_genomic_informing_loop(
-            message_record_id=100,
-            event_type='informing_loop_decision',
-            module_type='gem',
-            participant_id=7,
-            decision_value='maybe_later',
-            event_authored_time=datetime.datetime(2021, 12, 29, 00)
         )
 
         # Run reconcile job
         genomic_pipeline.reconcile_informing_loop_responses()
 
-        # Test no incident created for "started" event mismatch
-        incidents = self.incident_dao.get_all()
-        self.assertEqual(0, len(incidents))
+        # Test mismatched data ingested correctly
+        pid_list = [1, 2, 3, 6]
 
-        # Test data ingested correctly
-        pid_list = [1, 2, 3, 6, 7]
-        event_list = ['gem.informing_loop.screen8_no',
-                      'gem.informing_loop.screen8_yes',
-                      'gem.informing_loop.screen8_maybe_later']
-
-        updated_events = event_dao.get_all_event_objects_for_pid_list(
-            pid_list,
-            module='gem',
-            event_list=event_list
+        new_il_values = il_dao.get_latest_il_for_pids(
+            pid_list=pid_list,
         )
 
-        for event in updated_events:
-            self.assertEqual(2, event.reconcile_job_run_id)
-
-        old_event = event_dao.get(1)
-
-        old_event.created = old_event.created - datetime.timedelta(days=8)
-        with event_dao.session() as session:
-            session.merge(old_event)
+        for value in new_il_values:
+            self.assertEqual("yes", value.decision_value)
 
     def test_investigation_aw2_ingestion(self):
         self._create_fake_datasets_for_gc_tests(3,
