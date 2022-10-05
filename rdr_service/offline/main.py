@@ -43,6 +43,7 @@ from rdr_service.offline.response_validation import ResponseValidationController
 from rdr_service.offline.service_accounts import ServiceAccountKeyManager
 from rdr_service.offline.sync_consent_files import ConsentSyncController
 from rdr_service.offline.table_exporter import TableExporter
+from rdr_service.repository.obfuscation_repository import ObfuscationRepository
 from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
     StoreResultStrategy
 from rdr_service.services.data_quality import DataQualityChecker
@@ -206,6 +207,13 @@ def skew_duplicates():
 def delete_old_keys():
     manager = ServiceAccountKeyManager()
     manager.expire_old_keys()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+def delete_expired_obfuscations():
+    with ParticipantSummaryDao().session() as session:
+        ObfuscationRepository.delete_expired_data(session=session)
     return '{"success": "true"}'
 
 
@@ -879,6 +887,13 @@ def _build_pipeline_app():
 
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "DeleteOldKeys", endpoint="delete_old_keys", view_func=delete_old_keys, methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'DeleteExpiredObfuscation',
+        endpoint='delete_expired_obfuscation',
+        view_func=delete_expired_obfuscations,
+        methods=['GET']
     )
 
     offline_app.add_url_rule(

@@ -1213,22 +1213,22 @@ class ParticipantSummaryDao(UpdatableDao):
 
     @staticmethod
     def _make_pagination_token(item_dict, field_names):
-        pagination_value_list = [item_dict.get(field_name) for field_name in field_names]
+        pagination_value_list = [str(item_dict.get(field_name)) for field_name in field_names]
         repo = ObfuscationRepository()
-        self_dao = ParticipantSummaryDao()
         expire_time = clock.CLOCK.now() + datetime.timedelta(days=1)
-        with self_dao.session() as session:
+        with ParticipantSummaryDao().session() as session:
             lookup_key = repo.store(
-                {'field_list': [str(value) for value in pagination_value_list]},
+                {'field_list': pagination_value_list},
                 expiration=expire_time,
                 session=session
             )
         return super(ParticipantSummaryDao, ParticipantSummaryDao)._make_pagination_token(
             item_dict={
+                'name': 'opaque_token',
                 'expires': expire_time.isoformat(),
                 'key': lookup_key
             },
-            field_names=['expires', 'key']
+            field_names=['name', 'expires', 'key']
         )
 
     def _decode_token(self, query_def, fields):
@@ -1236,12 +1236,18 @@ class ParticipantSummaryDao(UpdatableDao):
     of 60 seconds. This ensures when a _sync link is used no one is missed. This will return
     at a minimum, the last participant and any more that have been modified in the previous 60
     seconds. Duplicate participants returned should be handled on the client side."""
-        lookup_json = self._unpack_page_token(query_def.pagination_token)
-        repo = ObfuscationRepository()
-        with self.session() as session:
-            pagination_data = repo.get(lookup_json[1], session=session)
-            # TODO: handle nothing found error
-        decoded_vals = self._parse_pagination_data(pagination_data['field_list'], fields)
+        page_data = self._unpack_page_token(query_def.pagination_token)
+
+        if page_data[0] == 'opaque_token':
+            repo = ObfuscationRepository()
+            with self.session() as session:
+                obfuscation_object = repo.get(page_data[2], session=session)
+                if obfuscation_object is None:
+                    return NotFound('Unable to find pagination data for token.')
+                pagination_data = ['field_list']
+        else:
+            pagination_data = page_data
+        decoded_vals = self._parse_pagination_data(pagination_data, fields)
 
         if query_def.order_by and (
             query_def.order_by.field_name == "lastModified"

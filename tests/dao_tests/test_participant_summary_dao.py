@@ -86,15 +86,9 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual([], results.items)
         self.assertIsNone(results.pagination_token)
 
-    def assert_results(self, query, items, pagination_token=None):
+    def assert_results(self, query, items):
         results = self.dao.query(query)
         self.assertListAsDictEquals(items, results.items)
-        self.assertEqual(
-            pagination_token,
-            results.pagination_token,
-            "Pagination tokens don't match; decoded = %s, %s"
-            % (_decode_token(pagination_token), _decode_token(results.pagination_token)),
-        )
 
     def test_query_with_total(self):
         num_participants = 5
@@ -169,15 +163,11 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         ps_1 = self.dao.get(1)
         ps_2 = self.dao.get(2)
         ps_3 = self.dao.get(3)
-        self.assert_results(self.no_filter_query, [ps_1, ps_2], _make_pagination_token(["Builder", "Bob", None, 2]))
+        self.assert_results(self.no_filter_query, [ps_1, ps_2])
         self.assert_results(self.one_filter_query, [ps_1])
         self.assert_no_results(self.two_filter_query)
-        self.assert_results(
-            self.ascending_biobank_id_query, [ps_2, ps_3], _make_pagination_token([3, "Caterpillar", "Chad", None, 3])
-        )
-        self.assert_results(
-            self.descending_biobank_id_query, [ps_1, ps_3], _make_pagination_token([3, "Caterpillar", "Chad", None, 3])
-        )
+        self.assert_results(self.ascending_biobank_id_query, [ps_2, ps_3])
+        self.assert_results(self.descending_biobank_id_query, [ps_1, ps_3])
 
         self.assert_results(
             _with_token(self.no_filter_query, _make_pagination_token(["Builder", "Bob", None, 2])), [ps_3]
@@ -228,25 +218,13 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         ps_4.enrollmentStatusV3_1 = EnrollmentStatusV31.CORE_PARTICIPANT
         self.dao.update(ps_4)
 
-        self.assert_results(self.no_filter_query, [ps_2, ps_4], _make_pagination_token(["Jones", "Bob", None, 4]))
+        self.assert_results(self.no_filter_query, [ps_2, ps_4])
         self.assert_results(self.one_filter_query, [ps_1])
         self.assert_results(self.two_filter_query, [ps_1])
-        self.assert_results(
-            self.ascending_biobank_id_query, [ps_2, ps_4], _make_pagination_token([2, "Jones", "Bob", None, 4])
-        )
-        self.assert_results(
-            self.descending_biobank_id_query,
-            [ps_1, ps_3],
-            _make_pagination_token([3, "Jones", "Bob", datetime.date(1978, 10, 10), 3]),
-        )
-        self.assert_results(
-            self.hpo_id_order_query, [ps_2, ps_4], _make_pagination_token([0, "Jones", "Bob", None, 4])
-        )
-        self.assert_results(
-            self.enrollment_status_order_query,
-            [ps_1, ps_2],
-            _make_pagination_token(["PARTICIPANT_PLUS_EHR", "Aardvark", "Bob", datetime.date(1978, 10, 10), 2]),
-        )
+        self.assert_results(self.ascending_biobank_id_query, [ps_2, ps_4])
+        self.assert_results(self.descending_biobank_id_query,[ps_1, ps_3])
+        self.assert_results(self.hpo_id_order_query, [ps_2, ps_4])
+        self.assert_results(self.enrollment_status_order_query, [ps_1, ps_2])
 
         self.assert_results(
             _with_token(self.no_filter_query, _make_pagination_token(["Jones", "Bob", None, 4])), [ps_1, ps_3]

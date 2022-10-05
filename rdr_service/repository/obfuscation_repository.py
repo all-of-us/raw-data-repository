@@ -6,6 +6,7 @@ from typing import Optional
 import backoff
 from sqlalchemy.orm import Session
 
+from rdr_service.clock import CLOCK
 from rdr_service.dao.database_utils import NamedLock
 from rdr_service.model.obfuscation import Obfuscation
 
@@ -50,6 +51,15 @@ class ObfuscationRepository:
             session.flush()
 
         return obfuscation_obj.id
+
+    @classmethod
+    def delete_expired_data(cls, session: Session):
+        """Remove all expired data"""
+        session.query(
+            Obfuscation
+        ).filter(
+            Obfuscation.expires < CLOCK.now()
+        ).delete()
 
     @classmethod
     def _generate_random_key(cls):
