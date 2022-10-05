@@ -91,32 +91,6 @@ def ingest_genomic_centers_metrics_files(provider=None):
         controller.ingest_gc_metrics()
 
 
-def reconcile_metrics_vs_array_data(provider=None):
-    """
-    Entrypoint for GC Metrics File reconciliation
-    Array Files vs Listed in Manifest.
-    """
-    with GenomicJobController(GenomicJob.RECONCILE_ARRAY_DATA,
-                              storage_provider=provider,
-                              bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
-        controller.run_reconciliation_to_data(
-            genome_type=config.GENOME_TYPE_ARRAY,
-        )
-
-
-def reconcile_metrics_vs_wgs_data(provider=None):
-    """
-    Entrypoint for GC Metrics File reconciliation
-    WGS Files vs Listed in Manifest.
-    """
-    with GenomicJobController(GenomicJob.RECONCILE_WGS_DATA,
-                              storage_provider=provider,
-                              bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
-        controller.run_reconciliation_to_data(
-            genome_type=config.GENOME_TYPE_WGS
-        )
-
-
 def aw3_array_manifest_workflow():
     """
     Entrypoint for AW3 Array Workflow
@@ -367,11 +341,6 @@ def genomic_missing_files_clean_up(num_days=90):
         controller.gc_missing_files_record_clean_up(num_days)
 
 
-def genomic_missing_files_resolve():
-    with GenomicJobController(GenomicJob.RESOLVE_MISSING_FILES) as controller:
-        controller.resolve_missing_gc_files()
-
-
 def update_members_state_resolved_data_files():
     with GenomicJobController(GenomicJob.UPDATE_MEMBERS_STATE_RESOLVED_DATA_FILES) as controller:
         controller.update_member_aw2_missing_states_if_resolved()
@@ -386,10 +355,6 @@ def reconcile_informing_loop_responses():
     with GenomicJobController(GenomicJob.RECONCILE_INFORMING_LOOP_RESPONSES) as controller:
         controller.reconcile_informing_loop_responses()
 
-
-def reconcile_gc_data_file_to_table():
-    with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE) as controller:
-        controller.reconcile_gc_data_file_to_table()
 
 # Disabling job until further notice
 # def reconcile_raw_to_aw1_ingested():
@@ -618,3 +583,8 @@ def load_awn_manifest_into_raw_table(
 def notify_email_group_of_w1il_gror_resubmit_participants(since_datetime):
     with GenomicJobController(GenomicJob.CHECK_FOR_W1IL_GROR_RESUBMIT) as controller:
         controller.check_w1il_gror_resubmit(since_datetime=since_datetime)
+
+
+def notify_aw3_ready_missing_data_files():
+    with GenomicJobController(GenomicJob.AW3_MISSING_DATA_FILE_REPORT) as controller:
+        controller.check_aw3_ready_missing_files()
