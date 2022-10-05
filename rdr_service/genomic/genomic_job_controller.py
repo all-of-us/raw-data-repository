@@ -27,7 +27,7 @@ from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_f
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, \
-    GenomicGCValidationMetrics, GenomicGcDataFile
+    GenomicGCValidationMetrics, GenomicGcDataFile, GenomicInformingLoop
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicIncidentCode, GenomicManifestTypes, GenomicReportState
 from rdr_service.genomic.genomic_job_components import (
@@ -1519,55 +1519,25 @@ class GenomicJobController:
         Currently supports GEM, HDR or PGx.
         """
         modules = {key.split('.')[0] for key in informing_loop_event_mappings.keys()}
-        event_mappings = informing_loop_event_mappings
+
         for module in modules:
             # Get unreconciled user_event_metrics records
-            latest_events = self.event_dao.get_latest_events(module)
+            missed_messages = self.event_dao.get_event_message_informing_loop_mismatches(module=module)
 
             # compare to latest state by participant in genomic_informing_loop
-            if latest_events:
-                update_pids = []
-                for event in latest_events:
-                    incident_message = f'{self.job_id.name}: Informing Loop out of sync with User Events! ' \
-                                       f'PID: {event.participant_id}'
-                    incident_params = {
-                        "source_job_run_id": self.job_run.id,
-                        "code": GenomicIncidentCode.INFORMING_LOOP_TO_EVENTS_MISMATCH.name,
-                        "message": incident_message,
-                        "participant_id": event.participant_id,
-                        "save_incident": True,
-                        "slack": True
-                    }
-
-                    latest_state = self.informing_loop_dao.get_latest_state_for_pid(event.participant_id)
-                    if latest_state:
-                        # Parse informing loop state
-                        latest_state = [x for x in latest_state[0] if x]
-                        lookup_state = f"{module}.{'.'.join(latest_state)}"
-                        try:
-                            if event.event_name != event_mappings[lookup_state]:
-                                # create incident
-                                self.create_incident(**incident_params)
-                            else:
-                                # add to update_pids reconcile_job_run_id
-                                update_pids.append(event.participant_id)
-                        except KeyError:
-                            incident_params['message'] = f'{self.job_id.name}: Key Error on IL lookup.' \
-                                                         f'PID: {event.participant_id}'
-                            self.create_incident(**incident_params)
-                    else:
-                        # No informing loop for pid, create incident
-                        self.create_incident(**incident_params)
-
-                if update_pids:
-                    self.event_dao.update_reconcile_job_pids(
-                        pid_list=update_pids,
-                        job_run_id=self.job_run.id,
-                        module=module
+            if missed_messages:
+                for message in missed_messages:
+                    new_il_record = GenomicInformingLoop(
+                        participant_id=message.participant_id,
+                        event_type="informing_loop_decision",
+                        event_authored_time=message.created_at,
+                        module_type=module,
+                        decision_value=message.event_value,
+                        sample_id=message.sample_id,
+                        created_from_metric_id=message.event_id
                     )
 
-    def delete_old_gp_user_event_metrics(self, days=7):
-        self.event_dao.delete_old_events(days=days)
+                    self.informing_loop_dao.insert(new_il_record)
 
     def run_general_ingestion_workflow(self):
         """
