@@ -1315,6 +1315,7 @@ class GenomicInformingLoop(Base):
     module_type = Column(String(128), index=True)
     decision_value = Column(String(128), index=True)
     sample_id = Column(String(80), nullable=True, index=True)
+    created_from_metric_id = Column(Integer, ForeignKey("user_event_metrics.id"), nullable=True)
 
 
 event.listen(GenomicInformingLoop, 'before_insert', model_insert_listener)

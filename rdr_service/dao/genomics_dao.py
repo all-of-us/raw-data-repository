@@ -3059,7 +3059,8 @@ class GenomicInformingLoopDao(UpdatableDao, GenomicDaoMixin):
         with self.session() as session:
             query = self.build_latest_decision_query(module).with_entities(
                 GenomicInformingLoop.event_type,
-                GenomicInformingLoop.decision_value
+                GenomicInformingLoop.decision_value,
+                GenomicInformingLoop.created_from_metric_id
             ).filter(
                 GenomicInformingLoop.participant_id.in_(pid_list)
             )
@@ -3378,6 +3379,7 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
 
             records_subquery = session.query(
                 UserEventMetrics.participant_id,
+                UserEventMetrics.id,
                 UserEventMetrics.event_name,
                 coalesce(GenomicInformingLoop.decision_value, "missing").label("decision_value"),
                 UserEventMetrics.created_at,
@@ -3441,6 +3443,7 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
 
             records = session.query(
                 records_subquery.c.participant_id,
+                sqlalchemy.func.max(records_subquery.c.id).label("event_id"),
                 records_subquery.c.decision_value,
                 records_subquery.c.event_value,
                 records_subquery.c.created_at,
@@ -3451,7 +3454,13 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
             ).filter(
                 records_subquery.c.decision_value != records_subquery.c.event_value,
                 records_subquery.c.event_authored_time < records_subquery.c.created_at
-            ).distinct()
+            ).group_by(
+                records_subquery.c.participant_id,
+                records_subquery.c.decision_value,
+                records_subquery.c.event_value,
+                records_subquery.c.created_at,
+                coalesce(records_subquery.c.sample_id, sample_ids_subquery.c.sample_id)
+            )
 
             return records.all()
 

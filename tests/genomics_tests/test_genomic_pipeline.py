@@ -6663,6 +6663,7 @@ class GenomicPipelineTest(BaseTestCase):
 
             for value in new_il_values:
                 self.assertEqual("no", value.decision_value)
+                self.assertIsNotNone(value.created_from_metric_id)
 
     def test_investigation_aw2_ingestion(self):
         self._create_fake_datasets_for_gc_tests(3,

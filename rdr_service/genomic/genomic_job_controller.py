@@ -1588,6 +1588,7 @@ class GenomicJobController:
                         module_type=module,
                         decision_value=message.event_value,
                         sample_id=message.sample_id,
+                        created_from_metric_id=message.event_id
                     )
 
                     self.informing_loop_dao.insert(new_il_record)
