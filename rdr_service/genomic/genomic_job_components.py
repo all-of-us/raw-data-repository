@@ -16,7 +16,6 @@ from werkzeug.exceptions import NotFound
 from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.genomic import genomic_mappings
 from rdr_service.genomic_enums import ResultsModuleType, ResultsWorkflowState
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -35,8 +34,7 @@ from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
     GenomicGCValidationMetrics,
-    GenomicSampleContamination,
-    GenomicGcDataFileMissing)
+    GenomicSampleContamination)
 from rdr_service.participant_enums import (
     WithdrawalStatus,
     QuestionnaireStatus,
@@ -79,7 +77,9 @@ from rdr_service.config import (
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
     GENOME_TYPE_ARRAY,
+    GENOME_TYPE_ARRAY_INVESTIGATION,
     GENOME_TYPE_WGS,
+    GENOME_TYPE_WGS_INVESTIGATION,
     GENOMIC_AW3_ARRAY_SUBFOLDER,
     GENOMIC_AW3_WGS_SUBFOLDER,
     BIOBANK_AW2F_SUBFOLDER,
@@ -90,6 +90,8 @@ from rdr_service.config import (
     CVL_W3SR_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
+from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes, \
+    genome_center_datafile_prefix_map
 from sqlalchemy.orm import aliased
 
 
@@ -670,6 +672,10 @@ class GenomicFileIngester:
             row = self._clean_row_keys(row)
 
         # Beging prep aw2 row
+        if row['genometype'] in (GENOME_TYPE_WGS, GENOME_TYPE_WGS_INVESTIGATION):
+            row = self._set_metrics_wgs_data_file_paths(row)
+        elif row['genometype'] in (GENOME_TYPE_ARRAY, GENOME_TYPE_ARRAY_INVESTIGATION):
+            row = self._set_metrics_array_data_file_paths(row)
         row = self.prep_aw2_row_attributes(row, member)
 
         if row == GenomicSubProcessResult.ERROR:
@@ -688,6 +694,7 @@ class GenomicFileIngester:
 
         # Update member in DB
         self.member_dao.update(member)
+        self._update_member_state_after_aw2(member)
 
         # Update AW1 manifest feedback record count
         if existing_metrics_obj is None and not self.controller.bypass_record_count:
@@ -1124,11 +1131,15 @@ class GenomicFileIngester:
         :param rows:
         :return result code
         """
+        members_to_update = []
         # iterate over each row from CSV and insert into gc metrics table
         for row in rows:
             # change all key names to lower
             row_copy = self._clean_row_keys(row)
-
+            if row_copy['genometype'] in (GENOME_TYPE_ARRAY, GENOME_TYPE_ARRAY_INVESTIGATION):
+                row_copy = self._set_metrics_array_data_file_paths(row_copy)
+            elif row_copy['genometype'] in (GENOME_TYPE_WGS, GENOME_TYPE_WGS_INVESTIGATION):
+                row_copy = self._set_metrics_wgs_data_file_paths(row_copy)
             member = self.member_dao.get_member_from_sample_id(
                 int(row_copy['sampleid']),
             )
@@ -1158,9 +1169,20 @@ class GenomicFileIngester:
                                                                   GenomicContaminationCategory.EXTRACT_BOTH]:
                             # Insert a new member
                             self.insert_member_for_replating(member, row_copy['contamination_category'])
-
                 self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
                 self.update_member_for_aw2(member)
+                # set lists of members to update workflow state
+                member_dict = {'id': member.id}
+                if row_copy['genometype'] == GENOME_TYPE_ARRAY:
+                    member_dict['genomicWorkflowState'] = int(GenomicWorkflowState.GEM_READY)
+                    member_dict['genomicWorkflowStateStr'] = str(GenomicWorkflowState.GEM_READY)
+                    member_dict['genomicWorkflowStateModifiedTime'] = clock.CLOCK.now()
+                    members_to_update.append(member_dict)
+                elif row_copy['genometype'] == GENOME_TYPE_WGS:
+                    member_dict['genomicWorkflowState'] = int(GenomicWorkflowState.CVL_READY)
+                    member_dict['genomicWorkflowStateStr'] = str(GenomicWorkflowState.CVL_READY)
+                    member_dict['genomicWorkflowStateModifiedTime'] = clock.CLOCK.now()
+                    members_to_update.append(member_dict)
 
                 # For feedback manifest loop
                 # Get the genomic_manifest_file
@@ -1182,7 +1204,8 @@ class GenomicFileIngester:
                                                 biobank_id=bid,
                                                 sample_id=row_copy['sampleid'],
                                                 )
-
+        if members_to_update:
+            self.member_dao.bulk_update_members(members_to_update)
         return GenomicSubProcessResult.SUCCESS
 
     def copy_member_for_replating(
@@ -1693,6 +1716,55 @@ class GenomicFileIngester:
                 contamination_category = GenomicContaminationCategory.TERMINAL_NO_EXTRACT
 
         return contamination_category
+
+    def _set_metrics_array_data_file_paths(self, row: dict) -> dict:
+        gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP, {})
+        site_id = self.file_obj.fileName.split('_')[0].lower()
+        gc_bucket_name = gc_site_bucket_map.get(site_id)
+        gc_bucket = config.getSetting(gc_bucket_name, None)
+        if not gc_bucket:
+            return row
+
+        for file_def in array_file_types_attributes:
+            if file_def['required']:
+                if 'idat' in file_def["file_type"]:
+                    file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}' + \
+                                f'_{file_def["file_type"]}'
+                else:
+                    file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}.' + \
+                                f'{file_def["file_type"]}'
+                row[file_def['file_path_attribute']] = file_path
+
+        return row
+
+    def _set_metrics_wgs_data_file_paths(self, row: dict) -> dict:
+        gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP, {})
+        site_id = self.file_obj.fileName.split('_')[0].lower()
+        gc_bucket_name = gc_site_bucket_map.get(site_id)
+        gc_bucket = config.getSetting(gc_bucket_name, None)
+        if not gc_bucket:
+            return row
+
+        for file_def in wgs_file_types_attributes:
+            if file_def['required']:
+                file_path = f'gs://{gc_bucket}/{genome_center_datafile_prefix_map[site_id][file_def["file_type"]]}/' + \
+                            f'{site_id.upper()}_{row["biobankid"]}_{row["sampleid"]}_{row["limsid"]}_1.' + \
+                            f'{file_def["file_type"]}'
+                row[file_def['file_path_attribute']] = file_path
+
+        return row
+
+    def _update_member_state_after_aw2(self, member: GenomicSetMember):
+        if member.genomeType == 'aou_array':
+            ready_signal = 'gem-ready'
+        elif member.genomeType == 'aou_wgs':
+            ready_signal = 'cvl-ready'
+        else:
+            # Don't update state for investigation genome types
+            return
+        next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal=ready_signal)
+        if next_state and next_state != member.genomicWorkflowState:
+            self.member_dao.update_member_workflow_state(member, next_state)
 
 
 class GenomicFileValidator:
@@ -2424,106 +2496,6 @@ class GenomicReconciler:
         self.file_mover = file_mover
         self.storage_provider = storage_provider
         self.controller = controller
-
-    def reconcile_metrics_to_data_files(self, genome_type, _gc_site_id):
-        if genome_type == "aou_wgs":
-            logging.info("Running WGS reconciliation to Data Files...")
-            metrics = self.metrics_dao.get_with_missing_wgs_files(_gc_site_id)
-            identifier = 'sampleId'
-            lookup_method = self.data_file_dao.get_with_sample_id
-            file_types = genomic_mappings.wgs_file_types_attributes
-            self.ready_signal = 'cvl-ready'
-
-        elif genome_type == "aou_array":
-            logging.info("Running Array reconciliation to Data Files...")
-            metrics = self.metrics_dao.get_with_missing_array_files(_gc_site_id)
-            identifier = 'chipwellbarcode'
-            lookup_method = self.data_file_dao.get_with_chipwellbarcode
-            file_types = genomic_mappings.array_file_types_attributes
-            self.ready_signal = 'gem-ready'
-
-        else:
-            logging.error('Invalid Genome Type')
-            return GenomicSubProcessResult.ERROR
-
-        if not metrics:
-            logging.error(f'No metrics found for {_gc_site_id}')
-            return GenomicSubProcessResult.SUCCESS
-
-        required_files_set = set([f['file_type'] for f in file_types if f['required']])
-
-        logging.info(f"Found {len(metrics)} metrics records missing data...")
-
-        for result in metrics:
-            # Lookup identifier in data files table
-            id_value = getattr(result, identifier)
-            files = lookup_method(id_value)
-
-            file_types_received = set([f.file_type for f in files])
-            missing_data_files = required_files_set - file_types_received
-            metric_touched = False
-
-            # WGS query results require GenomicGCValidationMetrics model to be specified
-            if isinstance(result, GenomicGCValidationMetrics):
-                _obj = result
-            else:
-                _obj = result.GenomicGCValidationMetrics
-
-            logging.info(f'files for {_obj.id}: {files}')
-
-            # Iterate file types and mark received
-            for file in files:
-                # look in files received list for the file type
-                for file_type_config in file_types:
-                    if file_type_config['file_type'] == file.file_type:
-                        logging.info(f'Setting attributes for metric {_obj.id}...')
-                        if not getattr(_obj, file_type_config['file_received_attribute']):
-                            setattr(_obj, file_type_config['file_received_attribute'], 1)  # received
-                            setattr(_obj, file_type_config['file_path_attribute'], f'gs://{file.file_path}')
-                            metric_touched = True
-
-            if metric_touched or missing_data_files:
-                logging.info(f'Updating metric record {_obj.id}')
-                self.update_reconciled_metric(
-                    _obj,
-                    missing_data_files,
-                    _gc_site_id,
-                    genome_type
-                )
-
-        return GenomicSubProcessResult.SUCCESS
-
-    def update_reconciled_metric(self, _obj, missing_data_files, _gc_site_id, genome_type):
-        # Only upsert the metric if changed
-        self.metrics_dao.upsert(_obj)
-        logging.info(f'id {_obj.id} updated with attributes')
-
-        member = self.member_dao.get(_obj.genomicSetMemberId)
-        next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal=self.ready_signal)
-
-        # Handle for missing data files
-        if missing_data_files:
-            next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
-            for file_type in missing_data_files:
-                missing_file_object = GenomicGcDataFileMissing(
-                    gc_site_id=_gc_site_id,
-                    file_type=file_type,
-                    run_id=self.run_id,
-                    gc_validation_metric_id=_obj.id
-                )
-                self.data_file_missing_dao.insert(missing_file_object)
-
-            incident = self.controller.incident_dao.get_by_source_file_id(_obj.genomicFileProcessedId)
-            if not incident or (incident and not any([i for i in incident if i.code == 'MISSING_FILES'])):
-                self.process_missing_data(
-                    _obj,
-                    missing_data_files,
-                    genome_type
-                )
-
-        # Update Member
-        if next_state and next_state != member.genomicWorkflowState:
-            self.member_dao.update_member_workflow_state(member, next_state)
 
     def process_missing_data(self, metric, missing_data_files, genome_type):
         missing_files_config = config.getSettingJson(config.GENOMIC_SKIP_MISSING_FILETYPES, {})

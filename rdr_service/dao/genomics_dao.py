@@ -62,6 +62,7 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
 from rdr_service.genomic.genomic_mappings import informing_loop_event_mappings
+from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes
 
 
 class GenomicDaoMixin:
@@ -679,13 +680,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             if genome_type == config.GENOME_TYPE_ARRAY:
                 members_query = members_query.filter(
                     GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
-                    GenomicGCValidationMetrics.idatRedReceived == 1,
-                    GenomicGCValidationMetrics.idatGreenReceived == 1,
-                    GenomicGCValidationMetrics.idatRedMd5Received == 1,
-                    GenomicGCValidationMetrics.idatGreenMd5Received == 1,
-                    GenomicGCValidationMetrics.vcfReceived == 1,
-                    GenomicGCValidationMetrics.vcfTbiReceived == 1,
-                    GenomicGCValidationMetrics.vcfMd5Received == 1,
                     GenomicGCValidationMetrics.idatRedPath.isnot(None),
                     GenomicGCValidationMetrics.idatGreenPath.isnot(None),
                     GenomicGCValidationMetrics.idatRedMd5Path.isnot(None),
@@ -697,12 +691,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             if genome_type == config.GENOME_TYPE_WGS:
                 members_query = members_query.filter(
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
-                    GenomicGCValidationMetrics.hfVcfReceived == 1,
-                    GenomicGCValidationMetrics.hfVcfTbiReceived == 1,
-                    GenomicGCValidationMetrics.hfVcfMd5Received == 1,
-                    GenomicGCValidationMetrics.cramReceived == 1,
-                    GenomicGCValidationMetrics.cramMd5Received == 1,
-                    GenomicGCValidationMetrics.craiReceived == 1,
                     GenomicGCValidationMetrics.hfVcfPath.isnot(None),
                     GenomicGCValidationMetrics.hfVcfTbiPath.isnot(None),
                     GenomicGCValidationMetrics.hfVcfMd5Path.isnot(None),
@@ -1217,6 +1205,83 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 )
             return members.all()
 
+    def get_array_members_files_available(self, sample_list=None):
+        required_file_types = [file_type['file_type'] for file_type in array_file_types_attributes if
+                               file_type['required']]
+        with self.session() as session:
+            subquery = session.query(
+                GenomicSetMember.id,
+                func.count(GenomicGcDataFile.file_type).label("file_count")
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).outerjoin(
+                GenomicGcDataFile,
+                GenomicGcDataFile.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GC_DATA_FILES_MISSING,
+                GenomicSetMember.genomeType == 'aou_array',
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicGCValidationMetrics.ignoreFlag != 1,
+                GenomicGcDataFile.ignore_flag != 1,
+                GenomicGcDataFile.file_type.in_(required_file_types)
+            ).group_by(GenomicSetMember.id).subquery()
+
+            members = session.query(
+                GenomicSetMember
+            ).select_from(
+                GenomicSetMember
+            ).join(
+                subquery,
+                subquery.c.id == GenomicSetMember.id,
+            ).filter(
+                subquery.c.file_count == len(required_file_types)
+            )
+
+            if sample_list:
+                members = members.filter(
+                    GenomicSetMember.sampleId.in_(sample_list)
+                )
+            return members.all()
+
+    def get_wgs_members_files_available(self, sample_list=None):
+        required_file_types = [file_type['file_type'] for file_type in wgs_file_types_attributes
+                     if file_type['required']]
+        with self.session() as session:
+            subquery = session.query(
+                GenomicSetMember.id,
+                func.count(GenomicGcDataFile.file_type).label("file_count")
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).outerjoin(
+                GenomicGcDataFile,
+                GenomicGcDataFile.identifier_value == GenomicSetMember.sampleId
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GC_DATA_FILES_MISSING,
+                GenomicSetMember.genomeType == 'aou_wgs',
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicGCValidationMetrics.ignoreFlag != 1,
+                GenomicGcDataFile.ignore_flag != 1,
+                GenomicGcDataFile.file_type.in_(required_file_types)
+            ).group_by(GenomicSetMember.id).subquery()
+
+            members = session.query(
+                GenomicSetMember
+            ).select_from(
+                GenomicSetMember
+            ).join(
+                subquery,
+                subquery.c.id == GenomicSetMember.id,
+            ).filter(
+                subquery.c.file_count == len(required_file_types)
+            )
+            if sample_list:
+                members = members.filter(
+                    GenomicSetMember.sampleId.in_(sample_list)
+                )
+            return members.all()
+
     def bulk_update_members(self, members: List[Dict]):
         with self.session() as session:
             session.bulk_update_mappings(GenomicSetMember, members)
@@ -1504,7 +1569,22 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
             'processingStatus': 'processingstatus',
             'notes': 'notes',
             'siteId': 'siteid',
-            'pipelineId': 'pipelineid'
+            'pipelineId': 'pipelineid',
+            'cramPath': 'cramPath',
+            'craiPath': 'craiPath',
+            'cramMd5Path': 'cramMd5Path',
+            'hfVcfPath': 'hfVcfPath',
+            'hfVcfMd5Path': 'hfVcfMd5Path',
+            'hfVcfTbiPath': 'hfVcfTbiPath',
+            'idatRedPath': 'idatRedPath',
+            'idatGreenPath': 'idatGreenPath',
+            'idatRedMd5Path': 'idatRedMd5Path',
+            'idatGreenMd5Path': 'idatGreenMd5Path',
+            'vcfPath': 'vcfPath',
+            'vcfTbiPath': 'vcfTbiPath',
+            'vcfMd5Path': 'vcfMd5Path',
+            'gvcfPath': 'gvcfPath',
+            'gvcfMd5Path': 'gvcfMd5Path',
         }
         # The mapping between the columns in the DB and the data to ingest
 
@@ -1585,98 +1665,6 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                     .filter(GenomicGCValidationMetrics.genomicSetMemberId == None,
                             GenomicGCValidationMetrics.ignoreFlag != 1)
                     .all()
-            )
-
-    def get_with_missing_array_files(self, _gc_site_id):
-        """
-        Retrieves all gc metrics with missing genotyping files for a gc
-        :param: _date: last run time
-        :param: _gc_site_id: 'uw', 'bcm', 'jh', 'bi', etc.
-        :return: list of returned GenomicGCValidationMetrics objects
-        """
-        pipeline_id_config = config.getSettingJson(config.GENOMIC_PIPELINE_IDS, {})
-        array_pipeline_id_config = pipeline_id_config.get('aou_array')
-
-        with self.session() as session:
-            records = (
-                session.query(GenomicGCValidationMetrics)
-                .join(
-                    (GenomicSetMember,
-                     GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
-                )
-                .outerjoin(
-                    GenomicGcDataFileMissing,
-                    and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
-                         GenomicGcDataFileMissing.resolved == 0,
-                         GenomicGcDataFileMissing.ignore_flag == 0)
-                )
-                .filter(
-                    GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
-                    GenomicSetMember.genomeType.in_((config.GENOME_TYPE_ARRAY, config.GENOME_TYPE_ARRAY_INVESTIGATION)),
-                    GenomicSetMember.gcSiteId == _gc_site_id,
-                    GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
-                    func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
-                    GenomicGcDataFileMissing.id.is_(None),
-                    GenomicGCValidationMetrics.ignoreFlag == 0,
-                    (GenomicGCValidationMetrics.idatRedReceived == 0) |
-                    (GenomicGCValidationMetrics.idatGreenReceived == 0) |
-                    (GenomicGCValidationMetrics.idatRedMd5Received == 0) |
-                    (GenomicGCValidationMetrics.idatGreenMd5Received == 0) |
-                    (GenomicGCValidationMetrics.vcfReceived == 0) |
-                    (GenomicGCValidationMetrics.vcfTbiReceived == 0) |
-                    (GenomicGCValidationMetrics.vcfMd5Received == 0)
-                )
-            )
-
-            if array_pipeline_id_config:
-                records = records.filter(
-                    GenomicGCValidationMetrics.pipelineId.isnot(None),
-                    GenomicGCValidationMetrics.pipelineId.in_(array_pipeline_id_config)
-                )
-
-            return records.all()
-
-    def get_with_missing_wgs_files(self, _gc_site_id):
-        """
-        Retrieves all gc metrics with missing sequencing files
-        :param: _date: last run time
-        :param: _gc_site_id: 'uw', 'bcm', 'jh', 'bi', etc.
-        :return: list of returned GenomicGCValidationMetrics objects
-        """
-        with self.session() as session:
-            return (
-                session.query(
-                    GenomicGCValidationMetrics,
-                    GenomicSetMember.biobankId,
-                    GenomicSetMember.sampleId, )
-                .join(
-                    (GenomicSetMember,
-                     GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
-                )
-                .outerjoin(
-                    GenomicGcDataFileMissing,
-                    and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
-                         GenomicGcDataFileMissing.resolved == 0,
-                         GenomicGcDataFileMissing.ignore_flag == 0)
-                )
-                .filter(
-                    GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
-                    GenomicSetMember.genomeType.in_((config.GENOME_TYPE_WGS, config.GENOME_TYPE_WGS_INVESTIGATION)),
-                    GenomicSetMember.gcSiteId == _gc_site_id,
-                    GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
-                    func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
-                    GenomicGcDataFileMissing.id.is_(None),
-                    GenomicGCValidationMetrics.ignoreFlag == 0,
-                    (GenomicGCValidationMetrics.hfVcfReceived == 0) |
-                    (GenomicGCValidationMetrics.hfVcfTbiReceived == 0) |
-                    (GenomicGCValidationMetrics.hfVcfMd5Received == 0) |
-                    (GenomicGCValidationMetrics.gvcfReceived == 0) |
-                    (GenomicGCValidationMetrics.gvcfMd5Received == 0) |
-                    (GenomicGCValidationMetrics.cramReceived == 0) |
-                    (GenomicGCValidationMetrics.cramMd5Received == 0) |
-                    (GenomicGCValidationMetrics.craiReceived == 0)
-                )
-                .all()
             )
 
     def get_metrics_by_member_id(self, member_id):
@@ -3582,8 +3570,26 @@ class GenomicQueriesDao(BaseDao):
         # should be only array genome but query also
         # used for array investigation workflow
         genome_type = kwargs.get('genome_type', config.GENOME_TYPE_ARRAY)
+        return_missing_files = kwargs.get('return_missing_files', False)
+        required_file_types = [file_type['file_type'] for file_type in array_file_types_attributes
+                               if file_type['required']]
         with self.session() as session:
-            return session.query(
+            subquery = session.query(
+                GenomicSetMember.id,
+                func.count(GenomicGcDataFile.file_type).label("file_count")
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).outerjoin(
+                GenomicGcDataFile,
+                GenomicGcDataFile.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
+            ).filter(
+                GenomicSetMember.genomeType == genome_type,
+                GenomicGcDataFile.ignore_flag != 1,
+                GenomicGcDataFile.file_type.in_(required_file_types)
+            ).group_by(GenomicSetMember.id).subquery()
+
+            aw3_rows = session.query(
                 GenomicGCValidationMetrics.chipwellbarcode,
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                 GenomicSetMember.sampleId,
@@ -3624,11 +3630,15 @@ class GenomicQueriesDao(BaseDao):
             ).join(
                 Participant,
                 Participant.participantId == ParticipantSummary.participantId
+            ).join(
+                subquery,
+                subquery.c.id == GenomicSetMember.id
             ).outerjoin(
                 GenomicAW3Raw,
                 and_(
                     GenomicAW3Raw.sample_id == GenomicSetMember.sampleId,
-                    GenomicAW3Raw.genome_type == genome_type
+                    GenomicAW3Raw.genome_type == genome_type,
+                    GenomicAW3Raw.ignore_flag == 0,
                 )
             ).filter(
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
@@ -3637,25 +3647,45 @@ class GenomicQueriesDao(BaseDao):
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicGCValidationMetrics.ignoreFlag != 1,
-                GenomicGCValidationMetrics.idatRedReceived == 1,
-                GenomicGCValidationMetrics.idatGreenReceived == 1,
-                GenomicGCValidationMetrics.idatRedMd5Received == 1,
-                GenomicGCValidationMetrics.idatGreenMd5Received == 1,
-                GenomicGCValidationMetrics.vcfReceived == 1,
-                GenomicGCValidationMetrics.vcfMd5Received == 1,
-                GenomicGCValidationMetrics.vcfTbiReceived == 1,
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 GenomicAW3Raw.id.is_(None)
-            ).distinct().all()
+            )
+            if return_missing_files:
+                aw3_rows = aw3_rows.filter(
+                    subquery.c.file_count != len(required_file_types)
+                )
+            else:
+                aw3_rows = aw3_rows.filter(
+                    subquery.c.file_count == len(required_file_types)
+                )
+            return aw3_rows.distinct().all()
 
     def get_aw3_wgs_records(self, **kwargs):
         # should be only wgs genome but query also
         # used for wgs investigation workflow
         genome_type = kwargs.get('genome_type', config.GENOME_TYPE_WGS)
+        return_missing_files = kwargs.get('return_missing_files', False)
+        required_file_types = [file_type['file_type'] for file_type in wgs_file_types_attributes if
+                               file_type['required']]
         wgs_parent_sample = self.wgs_parent_sample().subquery()
         with self.session() as session:
-            return session.query(
+            subquery = session.query(
+                GenomicSetMember.id,
+                func.count(GenomicGcDataFile.file_type).label("file_count")
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).outerjoin(
+                GenomicGcDataFile,
+                GenomicGcDataFile.identifier_value == GenomicSetMember.sampleId
+            ).filter(
+                GenomicSetMember.genomeType == genome_type,
+                GenomicGcDataFile.ignore_flag != 1,
+                GenomicGcDataFile.file_type.in_(required_file_types)
+            ).group_by(GenomicSetMember.id).subquery()
+
+            aw3_rows = session.query(
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                 GenomicSetMember.sampleId,
                 sqlalchemy.func.concat(get_biobank_id_prefix(),
@@ -3697,11 +3727,17 @@ class GenomicQueriesDao(BaseDao):
             ).join(
                 Participant,
                 Participant.participantId == ParticipantSummary.participantId
+            ).join(
+                subquery,
+                and_(
+                    subquery.c.id == GenomicSetMember.id
+                )
             ).outerjoin(
                 GenomicAW3Raw,
                 and_(
                     GenomicAW3Raw.sample_id == GenomicSetMember.sampleId,
-                    GenomicAW3Raw.genome_type == genome_type
+                    GenomicAW3Raw.genome_type == genome_type,
+                    GenomicAW3Raw.ignore_flag == 0,
                 )
             ).filter(
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
@@ -3711,18 +3747,21 @@ class GenomicQueriesDao(BaseDao):
                 GenomicSetMember.gcManifestParentSampleId.in_(wgs_parent_sample),
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicGCValidationMetrics.ignoreFlag != 1,
-                GenomicGCValidationMetrics.hfVcfReceived == 1,
-                GenomicGCValidationMetrics.hfVcfTbiReceived == 1,
-                GenomicGCValidationMetrics.hfVcfMd5Received == 1,
-                GenomicGCValidationMetrics.cramReceived == 1,
-                GenomicGCValidationMetrics.cramMd5Received == 1,
-                GenomicGCValidationMetrics.craiReceived == 1,
-                GenomicGCValidationMetrics.gvcfReceived == 1,
-                GenomicGCValidationMetrics.gvcfMd5Received == 1,
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 GenomicAW3Raw.id.is_(None)
-            ).distinct().all()
+            )
+            if return_missing_files:
+                aw3_rows = aw3_rows.filter(
+                    subquery.c.file_count !=
+                    len(required_file_types)
+                )
+            else:
+                aw3_rows = aw3_rows.filter(
+                    subquery.c.file_count ==
+                    len(required_file_types)
+                )
+            return aw3_rows.distinct().all()
 
     # CVL pipeline start
     def get_w3sr_records(self, **kwargs):
