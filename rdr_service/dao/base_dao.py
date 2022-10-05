@@ -454,7 +454,7 @@ class BaseDao(object):
 
     def _parse_pagination_data(self, pagination_json_data, field_list):
         if not isinstance(pagination_json_data, list) or len(pagination_json_data) != len(field_list):
-            raise BadRequest(f"Pagination token does not match url fields.")
+            raise BadRequest("Pagination token does not match url fields.")
         return [
             self._from_json_value(field_name, pagination_json_data[index])
             for index, field_name in enumerate(field_list)
