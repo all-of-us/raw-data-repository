@@ -37,6 +37,7 @@ from rdr_service.model.metric_set import AggregateMetrics, MetricSet
 from rdr_service.model.metrics import MetricsVersion, MetricsBucket
 from rdr_service.model.metrics_cache import MetricsEnrollmentStatusCache, MetricsAgeCache, MetricsRaceCache, \
   MetricsRegionCache, MetricsGenderCache, MetricsLanguageCache, MetricsLifecycleCache
+from rdr_service.model.obfuscation import Obfuscation
 from rdr_service.model.organization import Organization
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire import QuestionnaireConcept
