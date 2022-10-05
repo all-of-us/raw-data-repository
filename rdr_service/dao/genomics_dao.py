@@ -12,10 +12,11 @@ from sqlalchemy import and_, or_, func
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import functions
-from sqlalchemy.sql.expression import literal, distinct, delete
+from sqlalchemy.sql.expression import literal, distinct
 
 from typing import List, Dict
 
+from sqlalchemy.sql.functions import coalesce
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, code_constants, config
@@ -61,7 +62,6 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
 from rdr_service.genomic.genomic_mappings import informing_loop_event_mappings
-from rdr_service.resource.generators.genomics import genomic_user_event_metrics_batch_update
 from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes
 
 
@@ -3035,21 +3035,22 @@ class GenomicInformingLoopDao(UpdatableDao, GenomicDaoMixin):
             )
         )
 
-    def get_latest_state_for_pid(self, pid, module="gem", decision_values_only=True):
+    def get_latest_il_for_pids(self, pid_list, module="gem", decision_values_only=True):
         """
         Returns latest event_type and decision_value
-        genomic_informing_loop record for a specific participant
+        genomic_informing_loop record for a set of participants
         :param decision_values_only: default true; don't want "started" events
-        :param pid: participant_id
+        :param pid_list: list of participant_id
         :param module: gem (default), hdr, or pgx
         :return: query result
         """
         with self.session() as session:
             query = self.build_latest_decision_query(module).with_entities(
                 GenomicInformingLoop.event_type,
-                GenomicInformingLoop.decision_value
+                GenomicInformingLoop.decision_value,
+                GenomicInformingLoop.created_from_metric_id
             ).filter(
-                GenomicInformingLoop.participant_id == pid
+                GenomicInformingLoop.participant_id.in_(pid_list)
             )
             if decision_values_only:
                 query.filter(GenomicInformingLoop.event_type == 'informing_loop_decision')
@@ -3345,85 +3346,111 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
     def get_id(self, obj):
         pass
 
-    def get_latest_events(self, module="gem"):
+    def get_event_message_informing_loop_mismatches(self, module="gem"):
         """
         Returns participant_ID and latest event_name for unreconciled events
         :param module: gem (default), hdr, or pgx
         :return: query result
         """
-        event_mappings = [event for event in informing_loop_event_mappings.values() if event.startswith(module)]
+        event_type_str = "informing_loop_decision"
+        replace_string = f"{module}.{event_type_str}."
+
+        genome_type = "aou_wgs" if module in ['hdr', 'pgx'] else 'aou_array'
+
+        event_mappings = {il.replace(replace_string, ""): event for il, event
+                          in informing_loop_event_mappings.items() if il.startswith(module)}
 
         with self.session() as session:
             event_metrics_alias = aliased(UserEventMetrics)
-            return session.query(
-                UserEventMetrics.id,
+            informing_loop_alias = aliased(GenomicInformingLoop)
+            set_member_alias = aliased(GenomicSetMember)
+
+            records_subquery = session.query(
                 UserEventMetrics.participant_id,
+                UserEventMetrics.id,
                 UserEventMetrics.event_name,
+                coalesce(GenomicInformingLoop.decision_value, "missing").label("decision_value"),
+                UserEventMetrics.created_at,
+                GenomicInformingLoop.sample_id,
+                coalesce(GenomicInformingLoop.event_authored_time, "0").label("event_authored_time"),
+                sqlalchemy.case(
+                    [
+                        (UserEventMetrics.event_name == event_mappings['yes'], 'yes'),
+                        (UserEventMetrics.event_name == event_mappings['no'], 'no'),
+                        (UserEventMetrics.event_name == event_mappings['maybe_later'], 'maybe_later')
+                    ],
+                    else_="missing"
+                ).label('event_value')
+            ).select_from(
+                UserEventMetrics
             ).outerjoin(
                 event_metrics_alias,
                 and_(
                     event_metrics_alias.participant_id == UserEventMetrics.participant_id,
-                    event_metrics_alias.event_name.in_(event_mappings),
+                    event_metrics_alias.event_name.in_(event_mappings.values()),
                     UserEventMetrics.created_at < event_metrics_alias.created_at,
+                )
+            ).outerjoin(
+                GenomicInformingLoop,
+                and_(
+                    UserEventMetrics.participant_id == GenomicInformingLoop.participant_id,
+                    GenomicInformingLoop.event_type == event_type_str,
+                    GenomicInformingLoop.module_type == module,
+                )
+            ).outerjoin(
+                informing_loop_alias,
+                and_(
+                    informing_loop_alias.participant_id == GenomicInformingLoop.participant_id,
+                    informing_loop_alias.module_type == GenomicInformingLoop.module_type,
+                    GenomicInformingLoop.event_authored_time < informing_loop_alias.event_authored_time,
                 )
             ).filter(
                 UserEventMetrics.ignore_flag == 0,
-                UserEventMetrics.event_name.in_(event_mappings),
+                UserEventMetrics.event_name.in_(event_mappings.values()),
                 UserEventMetrics.reconcile_job_run_id.is_(None),
                 event_metrics_alias.created_at.is_(None)
-            ).all()
+            ).subquery()
 
-    def delete_old_events(self, days=7):
-        """
-        Remove records older than arbitrary days
-        :param days: int
-        """
-        cutoff_date = clock.CLOCK.now() - timedelta(days=days)
+            sample_ids_subquery = session.query(
+                    GenomicSetMember.sampleId,
+                    GenomicSetMember.participantId
+                ).outerjoin(
+                    set_member_alias,
+                    and_(
+                        set_member_alias.participantId == GenomicSetMember.participantId,
+                        set_member_alias.ignoreFlag == 0,
+                        set_member_alias.genomeType == GenomicSetMember.genomeType,
+                        GenomicSetMember.id < set_member_alias.id,
+                    )
+                ).filter(
+                    GenomicSetMember.genomeType == genome_type,
+                    GenomicSetMember.ignoreFlag == 0,
+                    GenomicSetMember.sampleId.isnot(None),
+                    set_member_alias.id.is_(None)
+                ).subquery()
 
-        with self.session() as session:
-            stmt = delete(UserEventMetrics).where(
-                (UserEventMetrics.created < cutoff_date) &
-                (UserEventMetrics.reconcile_job_run_id.isnot(None))
-            )
-            session.execute(stmt)
-
-    def update_reconcile_job_pids(self, pid_list, job_run_id, module):
-        id_list = [i[0] for i in list(self.get_all_event_ids_for_pid_list(pid_list, module))]
-        update_mappings = [{
-            'id': i,
-            'reconcile_job_run_id': job_run_id
-        } for i in id_list]
-        with self.session() as session:
-            session.bulk_update_mappings(UserEventMetrics, update_mappings)
-        # Batch update PDR resource records.
-        genomic_user_event_metrics_batch_update(id_list)
-
-    def get_all_event_ids_for_pid_list(self, pid_list, module=None):
-        with self.session() as session:
-            query = session.query(
-                UserEventMetrics.id
+            records = session.query(
+                records_subquery.c.participant_id,
+                sqlalchemy.func.max(records_subquery.c.id).label("event_id"),
+                records_subquery.c.decision_value,
+                records_subquery.c.event_value,
+                records_subquery.c.created_at,
+                coalesce(records_subquery.c.sample_id, sample_ids_subquery.c.sample_id).label("sample_id"),
+            ).join(
+                sample_ids_subquery,
+                sample_ids_subquery.c.participant_id == records_subquery.c.participant_id
             ).filter(
-                UserEventMetrics.participant_id.in_(pid_list),
+                records_subquery.c.decision_value != records_subquery.c.event_value,
+                records_subquery.c.event_authored_time < records_subquery.c.created_at
+            ).group_by(
+                records_subquery.c.participant_id,
+                records_subquery.c.decision_value,
+                records_subquery.c.event_value,
+                records_subquery.c.created_at,
+                coalesce(records_subquery.c.sample_id, sample_ids_subquery.c.sample_id)
             )
-            if module:
-                return query.filter(UserEventMetrics.event_name.like(f"{module}.informing%")).all()
-            else:
-                return query.all()
 
-    def get_all_event_objects_for_pid_list(self, pid_list, module=None, event_list=None):
-        with self.session() as session:
-            query = session.query(
-                UserEventMetrics
-            ).filter(
-                UserEventMetrics.participant_id.in_(pid_list)
-            )
-            if event_list:
-                query = query.filter(UserEventMetrics.event_name.in_(event_list))
-
-            if module:
-                query = query.filter(UserEventMetrics.event_name.like(f"{module}.informing%"))
-
-            return query.all()
+            return records.all()
 
 
 class GenomicCVLSecondSampleDao(BaseDao):
