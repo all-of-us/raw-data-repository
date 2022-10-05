@@ -74,6 +74,7 @@ from rdr_service.participant_enums import (
 )
 from rdr_service.model.code import Code
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
+from rdr_service.repository.obfuscation_repository import ObfuscationRepository
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from rdr_service.services.system_utils import min_or_none
 
@@ -656,8 +657,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
     def update_enrollment_status(self, summary: ParticipantSummary, session):
         """
-        Updates the enrollment status field on the provided participant summary to
-        the correct value.
+        Updates the enrollment status field on the provided participant summary to the correct value.
         """
 
         earliest_physical_measurements_time = min_or_none([
@@ -1211,12 +1211,38 @@ class ParticipantSummaryDao(UpdatableDao):
             'latestEhrReceiptTime': 'ehrUpdateTime'
         }
 
+    @staticmethod
+    def _make_pagination_token(item_dict, field_names):
+        pagination_value_list = [item_dict.get(field_name) for field_name in field_names]
+        repo = ObfuscationRepository()
+        self_dao = ParticipantSummaryDao()
+        expire_time = clock.CLOCK.now() + datetime.timedelta(days=1)
+        with self_dao.session() as session:
+            lookup_key = repo.store(
+                {'field_list': [str(value) for value in pagination_value_list]},
+                expiration=expire_time,
+                session=session
+            )
+        return super(ParticipantSummaryDao, ParticipantSummaryDao)._make_pagination_token(
+            item_dict={
+                'expires': expire_time.isoformat(),
+                'key': lookup_key
+            },
+            field_names=['expires', 'key']
+        )
+
     def _decode_token(self, query_def, fields):
         """ If token exists in participant_summary api, decode and use lastModified to add a buffer
     of 60 seconds. This ensures when a _sync link is used no one is missed. This will return
     at a minimum, the last participant and any more that have been modified in the previous 60
     seconds. Duplicate participants returned should be handled on the client side."""
-        decoded_vals = super(ParticipantSummaryDao, self)._decode_token(query_def, fields)
+        lookup_json = self._unpack_page_token(query_def.pagination_token)
+        repo = ObfuscationRepository()
+        with self.session() as session:
+            pagination_data = repo.get(lookup_json[1], session=session)
+            # TODO: handle nothing found error
+        decoded_vals = self._parse_pagination_data(pagination_data['field_list'], fields)
+
         if query_def.order_by and (
             query_def.order_by.field_name == "lastModified"
             and query_def.always_return_token is True

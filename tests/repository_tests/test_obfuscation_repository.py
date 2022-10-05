@@ -33,7 +33,7 @@ class TestObfuscationRepository(BaseTestCase):
     def test_storing_data(self):
         """Check that storing data works"""
         data_lookup_key = self.repo.store(
-            data={'bar': 9, 'foo': 3},
+            data={'data': ['test', 7, 'bob']},
             expiration=datetime(2080, 1, 1),
             session=self.session
         )
@@ -43,7 +43,7 @@ class TestObfuscationRepository(BaseTestCase):
             Obfuscation.id == data_lookup_key
         ).one()
         self.assertDictEqual(
-            {'bar': 9, 'foo': 3},
+            {'data': ['test', 7, 'bob']},
             stored_object.data
         )
         self.assertEqual(datetime(2080, 1, 1), stored_object.expires)

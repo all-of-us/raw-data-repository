@@ -441,17 +441,24 @@ class BaseDao(object):
             or_clauses.append(and_(*and_clauses))
         return query.filter(or_(*or_clauses))
 
+    def _unpack_page_token(self, token):
+        try:
+            return json.loads(urlsafe_b64decode(token))
+        except:
+            raise BadRequest(f"Invalid pagination token: {token}.")
+
     def _decode_token(self, query_def, fields):
         pagination_token = query_def.pagination_token
-        try:
-            decoded_vals = json.loads(urlsafe_b64decode(pagination_token))
-        except:
-            raise BadRequest(f"Invalid pagination token: {pagination_token}.")
-        if not isinstance(decoded_vals, list) or len(decoded_vals) != len(fields):
-            raise BadRequest(f"Invalid pagination token: {pagination_token}.")
-        for i in range(0, len(fields)):
-            decoded_vals[i] = self._from_json_value(fields[i], decoded_vals[i])
-        return decoded_vals
+        decoded_vals = self._unpack_page_token(pagination_token)
+        return self._parse_pagination_data(decoded_vals, fields)
+
+    def _parse_pagination_data(self, pagination_json_data, field_list):
+        if not isinstance(pagination_json_data, list) or len(pagination_json_data) != len(field_list):
+            raise BadRequest(f"Pagination token does not match url fields.")
+        return [
+            self._from_json_value(field_name, pagination_json_data[index])
+            for index, field_name in enumerate(field_list)
+        ]
 
     def _add_order_by(self, query, order_by, field_names, fields):
         """Adds a single order by field, as the primary sort order."""
