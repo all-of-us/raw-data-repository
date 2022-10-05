@@ -1244,7 +1244,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 obfuscation_object = repo.get(page_data[2], session=session)
                 if obfuscation_object is None:
                     return NotFound('Unable to find pagination data for token.')
-                pagination_data = ['field_list']
+                pagination_data = obfuscation_object['field_list']
         else:
             pagination_data = page_data
         decoded_vals = self._parse_pagination_data(pagination_data, fields)
