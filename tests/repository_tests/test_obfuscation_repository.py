@@ -81,5 +81,3 @@ class TestObfuscationRepository(BaseTestCase):
             session=self.session
         )
         self.assertEqual('second_key', second_key_used)
-
-        # TODO: integrate with the ParticipantSummaryDao, and create a cron job that handles expired
