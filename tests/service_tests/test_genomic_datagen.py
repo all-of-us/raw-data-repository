@@ -104,7 +104,6 @@ class GenomicDataGenParticipantGeneratorTest(GenomicDataGenMixin):
                 'hf_vcf_path': 'gs://stable-rdr-genomics/Wgs_sample_raw_data/SS_VCF_clinical/%genomic_set_member'
                                '.gc_site_id%_T%participant.biobank_id%_'
                                '%genomic_set_member.sample_id%_v1.vcf.gz',
-                'hf_vcf_tbi_received': 1
             }
         }
 

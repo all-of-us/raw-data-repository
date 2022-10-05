@@ -494,20 +494,6 @@ def genomic_data_manifest_workflow():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('array_reconciliation_workflow')
-def genomic_array_data_reconciliation_workflow():
-    genomic_pipeline.reconcile_metrics_vs_array_data()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@run_genomic_cron_job('wgs_reconciliation_workflow')
-def genomic_wgs_data_reconciliation_workflow():
-    genomic_pipeline.reconcile_metrics_vs_wgs_data()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
 @run_genomic_cron_job('aw2f_manifest_workflow')
 def genomic_scan_feedback_records():
     genomic_pipeline.scan_and_complete_feedback_records()
@@ -625,20 +611,6 @@ def genomic_feedback_record_reconciliation():
 @run_genomic_cron_job('missing_files_clean_up_workflow')
 def genomic_missing_files_clean_up():
     genomic_pipeline.genomic_missing_files_clean_up()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@run_genomic_cron_job('missing_files_resolve_workflow')
-def genomic_missing_files_resolve():
-    genomic_pipeline.genomic_missing_files_resolve()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_gc_data_file_to_table_workflow')
-def reconcile_gc_data_file_to_table():
-    genomic_pipeline.reconcile_gc_data_file_to_table()
     return '{"success": "true"}'
 
 
@@ -795,9 +767,17 @@ def export_va_workqueue_report():
     export_va_workqueue.generate_workqueue_report()
     return '{"success": "true"}'
 
+
 @app_util.auth_required_cron
 def delete_old_va_workqueue_reports():
     export_va_workqueue.delete_old_reports()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('aw3_ready_missing_files_report')
+def genomic_aw3_ready_missing_files_report():
+    genomic_pipeline.notify_aw3_ready_missing_data_files()
     return '{"success": "true"}'
 
 
@@ -978,18 +958,6 @@ def _build_pipeline_app():
         methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicArrayReconciliationWorkflow",
-        endpoint="genomic_array_data_reconciliation_workflow",
-        view_func=genomic_array_data_reconciliation_workflow,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicWGSReconciliationWorkflow",
-        endpoint="genomic_wgs_data_reconciliation_workflow",
-        view_func=genomic_wgs_data_reconciliation_workflow,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicAW2FManifestWorkflow",
         endpoint="genomic_scan_feedback_records",
         view_func=genomic_scan_feedback_records,
@@ -1082,18 +1050,6 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicMissingFilesCleanUp",
         endpoint="genomic_missing_files_clean_up",
         view_func=genomic_missing_files_clean_up,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicMissingFilesResolve",
-        endpoint="genomic_missing_files_resolve",
-        view_func=genomic_missing_files_resolve,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "ReconcileGCDataFileToTable",
-        endpoint="reconcile_gc_data_file_to_table",
-        view_func=reconcile_gc_data_file_to_table,
         methods=["GET"]
     )
     offline_app.add_url_rule(
@@ -1288,6 +1244,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'ExportVaWorkQueue',
         endpoint='export_va_workqueue_report',
         view_func=export_va_workqueue_report,
+        methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'GenomicAW3ReadyMissingDataFilesReport',
+        endpoint='genomic_aw3_ready_missing_files_report',
+        view_func=genomic_aw3_ready_missing_files_report,
         methods=['GET']
     )
 
