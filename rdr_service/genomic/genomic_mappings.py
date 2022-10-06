@@ -1,6 +1,7 @@
 """
 This module provides central location for all genomics_mappings
 """
+from rdr_service.genomic_enums import GenomicReportState
 
 genome_type_to_aw1_aw2_file_prefix = {
     "aou_array": "GEN",
@@ -235,6 +236,22 @@ informing_loop_event_mappings = {
     'hdr.informing_loop_decision.yes': 'hdr.informing_loop.screen10_yes',
     'hdr.informing_loop_decision.maybe_later': 'hdr.informing_loop.screen10_maybe_later'
 }
+
+cvl_result_reconciliation_modules = {
+    "hdr": "hdr_v1",
+    "pgx": "pgx_v1"
+}
+
+message_broker_report_ready_event_state_mappings = {
+    "pgx.result_ready": GenomicReportState.PGX_RPT_READY,
+    "hdr.result_ready.informative": GenomicReportState.HDR_RPT_POSITIVE,
+    "hdr.result_ready.uninformative": GenomicReportState.HDR_RPT_UNINFORMATIVE
+}
+
+message_broker_report_viewed_event_state_mappings = [
+    "hdr.opened_at",
+    "pgx.opened_at"
+]
 
 genome_center_datafile_prefix_map = {
    'bi': {

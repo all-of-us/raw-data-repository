@@ -24,12 +24,13 @@ from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
     raw_aw2_to_genomic_set_member_fields, genomic_data_file_mappings, genome_centers_id_from_bucket_array, \
-    wgs_file_types_attributes, array_file_types_attributes, informing_loop_event_mappings
+    wgs_file_types_attributes, array_file_types_attributes, informing_loop_event_mappings, \
+    cvl_result_reconciliation_modules, message_broker_report_ready_event_state_mappings
 from rdr_service.genomic.genomic_message_broker import GenomicMessageBroker
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, \
-    GenomicGCValidationMetrics, GenomicGcDataFile, GenomicInformingLoop
+    GenomicGCValidationMetrics, GenomicGcDataFile
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicIncidentCode, GenomicManifestTypes, GenomicReportState
 from rdr_service.genomic.genomic_job_components import (
@@ -1543,13 +1544,13 @@ class GenomicJobController:
         modules = {key.split('.')[0] for key in informing_loop_event_mappings.keys()}
 
         for module in modules:
-            # Get unreconciled user_event_metrics records
+            # Get mismatches between user_event_metrics and genomic_informing_loop
             missed_messages = self.event_dao.get_event_message_informing_loop_mismatches(module=module)
 
-            # compare to latest state by participant in genomic_informing_loop
+            # Create new genomic_informing_loop records
             if missed_messages:
                 for message in missed_messages:
-                    new_il_record = GenomicInformingLoop(
+                    new_il_record = self.informing_loop_dao.model_type(
                         participant_id=message.participant_id,
                         event_type="informing_loop_decision",
                         event_authored_time=message.created_at,
@@ -1560,6 +1561,48 @@ class GenomicJobController:
                     )
 
                     self.informing_loop_dao.insert(new_il_record)
+
+    def reconcile_message_broker_results_ready(self):
+        mappings = message_broker_report_ready_event_state_mappings
+
+        # Get mismatches between user_event_metrics and genomic_member_report_state
+        for module in cvl_result_reconciliation_modules:
+            missed_messages = self.event_dao.get_event_message_results_ready_mismatches(module=module)
+
+            if missed_messages:
+                for message in missed_messages:
+                    new_report_state_record = self.report_state_dao.model_type(
+                        genomic_set_member_id=message.member_id,
+                        genomic_report_state=mappings[message.event_name],
+                        genomic_report_state_str=mappings[message.event_name].name,
+                        participant_id=message.participant_id,
+                        event_type="result_ready",
+                        event_authored_time=message.created_at,
+                        module=cvl_result_reconciliation_modules[module],
+                        sample_id=message.sample_id,
+                        created_from_metric_id=message.event_id,
+                    )
+
+                    self.report_state_dao.insert(new_report_state_record)
+
+    def reconcile_message_broker_results_viewed(self):
+        # Get mismatches between user_event_metrics and genomic_report_viewed
+        for module in cvl_result_reconciliation_modules:
+            missed_messages = self.event_dao.get_event_message_results_viewed_mismatches(module=module)
+
+            if missed_messages:
+                for message in missed_messages:
+                    new_result_viewed_record = self.result_viewed_dao.model_type(
+                        participant_id=message.participant_id,
+                        event_type="result_viewed",
+                        event_authored_time=message.created_at,
+                        module_type=cvl_result_reconciliation_modules[module],
+                        first_viewed=message.created_at,
+                        last_viewed=message.created_at,
+                        sample_id=message.sample_id,
+                        created_from_metric_id=message.event_id
+                    )
+                    self.result_viewed_dao.insert(new_result_viewed_record)
 
     def run_general_ingestion_workflow(self):
         """

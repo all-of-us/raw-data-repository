@@ -126,6 +126,8 @@ class GenomicJob(messages.Enum):
     APPOINTMENT_METRICS_FILE_INGEST = 69
     AW3_MISSING_DATA_FILE_REPORT = 70
     APPOINTMENT_METRICS_RECONCILE = 71
+    RECONCILE_MESSAGE_BROKER_CVL_RESULTS_READY = 72
+    RECONCILE_MESSAGE_BROKER_CVL_RESULTS_VIEWED = 73
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

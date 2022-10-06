@@ -356,10 +356,14 @@ def reconcile_informing_loop_responses():
         controller.reconcile_informing_loop_responses()
 
 
-# Disabling job until further notice
-# def reconcile_raw_to_aw1_ingested():
-#     with GenomicJobController(GenomicJob.RECONCILE_RAW_AW1_INGESTED) as controller:
-#         controller.reconcile_raw_to_aw1_ingested()
+def reconcile_message_broker_results_ready():
+    with GenomicJobController(GenomicJob.RECONCILE_MESSAGE_BROKER_CVL_RESULTS_READY) as controller:
+        controller.reconcile_message_broker_results_ready()
+
+
+def reconcile_message_broker_results_viewed():
+    with GenomicJobController(GenomicJob.RECONCILE_MESSAGE_BROKER_CVL_RESULTS_VIEWED) as controller:
+        controller.reconcile_message_broker_results_viewed()
 
 
 def reconcile_raw_to_aw2_ingested():
