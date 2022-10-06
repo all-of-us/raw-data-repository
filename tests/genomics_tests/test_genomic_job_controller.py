@@ -1,13 +1,17 @@
 import datetime
+import json
+
+from dateutil import parser
 import mock
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
+from rdr_service.dao.database_utils import format_datetime
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
     GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao, GenomicResultWithdrawalsDao, \
-    GenomicMemberReportStateDao, GenomicResultViewedDao, GenomicInformingLoopDao
-
+    GenomicMemberReportStateDao, GenomicAppointmentEventMetricsDao, GenomicAppointmentEventDao, GenomicResultViewedDao, \
+    GenomicInformingLoopDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult, \
     GenomicSubProcessStatus, GenomicManifestTypes, GenomicQcStatus, GenomicReportState
@@ -16,6 +20,7 @@ from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import WithdrawalStatus
+from tests import test_data
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -31,6 +36,8 @@ class GenomicJobControllerTest(BaseTestCase):
         self.user_event_metrics_dao = UserEventMetricsDao()
         self.job_run_dao = GenomicJobRunDao()
         self.report_state_dao = GenomicMemberReportStateDao()
+        self.appointment_event_dao = GenomicAppointmentEventDao()
+        self.appointment_metrics_dao = GenomicAppointmentEventMetricsDao()
 
     def test_incident_with_long_message(self):
         """Make sure the length of incident messages doesn't cause issues when recording them"""
@@ -1223,3 +1230,133 @@ class GenomicJobControllerTest(BaseTestCase):
             self.assertEqual("result_viewed", record.event_type)
             self.assertEqual(datetime.datetime(2022, 10, 6, 00), record.first_viewed)
             self.assertIsNotNone(record.created_from_metric_id)
+
+    def test_ingest_appointment_metrics_file(self):
+        test_file = 'Genomic-Metrics-File-Appointment-Events-Test.json'
+        bucket_name = 'test_bucket'
+        sub_folder = 'appointment_events'
+        pids = []
+
+        for _ in range(4):
+            summary = self.data_generator.create_database_participant_summary()
+            pids.append(summary.participantId)
+
+        test_file_path = f'{bucket_name}/{sub_folder}/{test_file}'
+
+        appointment_data = test_data.load_test_data_json(
+            "Genomic-Metrics-File-Appointment-Events-Test.json")
+        appointment_data_str = json.dumps(appointment_data, indent=4)
+
+        with open_cloud_file(test_file_path, mode='wb') as cloud_file:
+            cloud_file.write(appointment_data_str.encode("utf-8"))
+
+        with GenomicJobController(GenomicJob.APPOINTMENT_METRICS_FILE_INGEST) as controller:
+            controller.ingest_appointment_metrics_file(
+                file_path=test_file_path,
+            )
+
+        all_metrics = self.appointment_metrics_dao.get_all()
+
+        # should be 5 metric records for whats in json file
+        self.assertEqual(len(all_metrics), 5)
+        self.assertTrue(all((obj.participant_id in pids for obj in all_metrics)))
+        self.assertTrue(all((obj.file_path == test_file_path for obj in all_metrics)))
+        self.assertTrue(all((obj.appointment_event is not None for obj in all_metrics)))
+        self.assertTrue(all((obj.created is not None for obj in all_metrics)))
+        self.assertTrue(all((obj.modified is not None for obj in all_metrics)))
+        self.assertTrue(all((obj.module_type is not None for obj in all_metrics)))
+        self.assertTrue(all((obj.event_authored_time is not None for obj in all_metrics)))
+        self.assertTrue(all((obj.event_type is not None for obj in all_metrics)))
+
+        current_job_runs = self.job_run_dao.get_all()
+        self.assertEqual(len(current_job_runs), 1)
+
+        current_job_run = current_job_runs[0]
+        self.assertTrue(current_job_run.jobId == GenomicJob.APPOINTMENT_METRICS_FILE_INGEST)
+        self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
+
+        self.clear_table_after_test('genomic_appointment_event_metrics')
+
+    def test_reconcile_appointments_with_metrics(self):
+        fake_date = parser.parse('2020-05-29T08:00:01-05:00')
+
+        for num in range(4):
+            summary = self.data_generator.create_database_participant_summary()
+
+            missing_json = {
+                "event": "appointment_updated",
+                "eventAuthoredTime": "2022-09-16T17:18:38Z",
+                "participantId": f'P{summary.participantId}',
+                "messageBody": {
+                    "module_type": "hdr",
+                    "appointment_timestamp": "2022-09-19T19:30:00+00:00",
+                    "id": 55,
+                    "appointment_timezone": "America/Los_Angeles",
+                    "location": "CA",
+                    "contact_number": "18043704252",
+                    "language": "en",
+                    "source": "Color"
+                }
+            }
+
+            if num % 2 == 0:
+                self.data_generator.create_database_genomic_appointment(
+                    message_record_id=num,
+                    appointment_id=num,
+                    event_type='appointment_scheduled',
+                    module_type='hdr',
+                    participant_id=summary.participantId,
+                    event_authored_time=fake_date,
+                    source='Color',
+                    appointment_timestamp=format_datetime(clock.CLOCK.now()),
+                    appointment_timezone='America/Los_Angeles',
+                    location='123 address st',
+                    contact_number='17348675309',
+                    language='en'
+                )
+
+            self.data_generator.create_database_genomic_appointment_metric(
+                participant_id=summary.participantId,
+                appointment_event=json.dumps(missing_json, indent=4) if num % 2 != 0 else 'foo',
+                file_path='test_file_path',
+                module_type='hdr',
+                event_authored_time=fake_date,
+                event_type='appointment_updated' if num % 2 != 0 else 'appointment_scheduled'
+            )
+
+        current_events = self.appointment_event_dao.get_all()
+        # should be 2 initial appointment events
+        self.assertEqual(len(current_events), 2)
+
+        current_metrics = self.appointment_metrics_dao.get_all()
+        # should be 4 initial appointment events
+        self.assertEqual(len(current_metrics), 4)
+        self.assertTrue(all(obj.reconcile_job_run_id is None for obj in current_metrics))
+
+        with GenomicJobController(GenomicJob.APPOINTMENT_METRICS_RECONCILE) as controller:
+            controller.reconcile_appointment_events_from_metrics()
+
+        job_run = self.job_run_dao.get_all()
+        self.assertEqual(len(job_run), 1)
+        self.assertTrue(job_run[0].jobId == GenomicJob.APPOINTMENT_METRICS_RECONCILE)
+
+        current_events = self.appointment_event_dao.get_all()
+        # should be 4  appointment events 2 initial + 2 added
+        self.assertEqual(len(current_events), 4)
+
+        scheduled = list(filter(lambda x: x.event_type == 'appointment_scheduled', current_events))
+        self.assertEqual(len(scheduled), 2)
+        self.assertTrue(all(obj.created_from_metric_id is None for obj in scheduled))
+
+        updated = list(filter(lambda x: x.event_type == 'appointment_updated', current_events))
+        self.assertEqual(len(updated), 2)
+        self.assertTrue(all(obj.created_from_metric_id is not None for obj in updated))
+
+        current_metrics = self.appointment_metrics_dao.get_all()
+        # should STILL be 4 initial appointment events
+        self.assertEqual(len(current_metrics), 4)
+        self.assertTrue(all(obj.reconcile_job_run_id is not None for obj in current_metrics))
+        self.assertTrue(all(obj.reconcile_job_run_id == job_run[0].id for obj in current_metrics))
+
+        self.clear_table_after_test('genomic_appointment_event_metrics')
+
