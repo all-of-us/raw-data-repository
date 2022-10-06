@@ -1017,6 +1017,8 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertTrue(current_job_run.jobId == GenomicJob.APPOINTMENT_METRICS_FILE_INGEST)
         self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
 
+        self.clear_table_after_test('genomic_appointment_event_metrics')
+
     def test_reconcile_appointments_with_metrics(self):
         fake_date = parser.parse('2020-05-29T08:00:01-05:00')
 
@@ -1098,5 +1100,6 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertTrue(all(obj.reconcile_job_run_id is not None for obj in current_metrics))
         self.assertTrue(all(obj.reconcile_job_run_id == job_run[0].id for obj in current_metrics))
 
+        self.clear_table_after_test('genomic_appointment_event_metrics')
 
 
