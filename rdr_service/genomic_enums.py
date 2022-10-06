@@ -124,6 +124,8 @@ class GenomicJob(messages.Enum):
     RESULTS_PIPELINE_WITHDRAWALS = 67
     GEM_RESULT_REPORTS = 68
     AW3_MISSING_DATA_FILE_REPORT = 69
+    RECONCILE_MESSAGE_BROKER_CVL_RESULTS_READY = 70
+    RECONCILE_MESSAGE_BROKER_CVL_RESULTS_VIEWED = 71
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

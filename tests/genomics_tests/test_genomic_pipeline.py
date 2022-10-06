@@ -30,7 +30,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicAW2RawDao,
     GenomicIncidentDao,
     GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao, UserEventMetricsDao, GenomicAW4RawDao, GenomicAW3RawDao, GenomicInformingLoopDao)
+    GenomicGcDataFileMissingDao, UserEventMetricsDao, GenomicAW4RawDao, GenomicAW3RawDao, GenomicInformingLoopDao,
+    GenomicMemberReportStateDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -70,7 +71,7 @@ from rdr_service.participant_enums import (
 )
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
-    GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus
+    GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState
 
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -6407,3 +6408,127 @@ class GenomicPipelineTest(BaseTestCase):
             for value in new_il_values:
                 self.assertEqual("no", value.decision_value)
                 self.assertIsNotNone(value.created_from_metric_id)
+
+    def test_reconcile_message_broker_results_ready(self):
+        # Create Test Participants' data
+        # create genomic set
+        self.data_generator.create_database_genomic_set(
+            genomicSetName='test',
+            genomicSetCriteria='.',
+            genomicSetVersion=1
+        )
+        # Set up initial job run ID
+        self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.METRICS_FILE_INGEST,
+            startTime=clock.CLOCK.now()
+        )
+
+        for pid in range(7):
+            self.data_generator.create_database_participant(participantId=1 + pid, biobankId=1 + pid)
+
+        # insert set members and event metrics records
+        for i in range(1, 6):
+            self.data_generator.create_database_genomic_set_member(
+                participantId=i,
+                genomicSetId=1,
+                biobankId=i,
+                collectionTubeId=100 + i,
+                sampleId=10 + i,
+                genomeType="aou_wgs",
+            )
+
+            # 3 PGX records
+            if i < 4:
+                self.data_generator.create_database_genomic_user_event_metrics(
+                    participant_id=i,
+                    created_at=datetime.datetime(2022, 10, 6, 00),
+                    event_name="pgx.result_ready",
+                    run_id=1,
+                )
+
+            # 1 HDR Positive
+            if i == 4:
+                self.data_generator.create_database_genomic_user_event_metrics(
+                    participant_id=i,
+                    created_at=datetime.datetime(2022, 10, 6, 00),
+                    event_name="hdr.result_ready.informative",
+                    run_id=1,
+                )
+
+            # 1 HDR uninformative
+            if i == 5:
+                self.data_generator.create_database_genomic_user_event_metrics(
+                    participant_id=i,
+                    created_at=datetime.datetime(2022, 10, 6, 00),
+                    event_name="hdr.result_ready.uninformative",
+                    run_id=1,
+                )
+
+        # Run job
+        genomic_pipeline.reconcile_message_broker_results_ready()
+
+        # Test correct data inserted
+        report_state_dao = GenomicMemberReportStateDao()
+        states = report_state_dao.get_all()
+
+        self.assertEqual(5, len(states))
+
+        pgx_records = [rec for rec in states if rec.module == "pgx_v1"]
+        hdr_record_uninf = [rec for rec in states
+                            if rec.genomic_report_state == GenomicReportState.HDR_RPT_UNINFORMATIVE][0]
+
+        hdr_record_pos = [rec for rec in states
+                            if rec.genomic_report_state == GenomicReportState.HDR_RPT_POSITIVE][0]
+
+        for pgx_record in pgx_records:
+            self.assertEqual(GenomicReportState.PGX_RPT_READY, pgx_record.genomic_report_state)
+            self.assertEqual("PGX_RPT_READY", pgx_record.genomic_report_state_str)
+            self.assertEqual(int(pgx_record.sample_id), pgx_record.participant_id + 10)
+            self.assertEqual("result_ready", pgx_record.event_type)
+            self.assertEqual(datetime.datetime(2022, 10, 6, 00), pgx_record.event_authored_time)
+
+        self.assertEqual("HDR_RPT_UNINFORMATIVE", hdr_record_uninf.genomic_report_state_str)
+        self.assertEqual(int(hdr_record_uninf.sample_id), hdr_record_uninf.participant_id + 10)
+        self.assertEqual("result_ready", hdr_record_uninf.event_type)
+        self.assertEqual(datetime.datetime(2022, 10, 6, 00), hdr_record_uninf.event_authored_time)
+
+        self.assertEqual("HDR_RPT_POSITIVE", hdr_record_pos.genomic_report_state_str)
+        self.assertEqual(int(hdr_record_pos.sample_id), hdr_record_pos.participant_id + 10)
+        self.assertEqual("result_ready", hdr_record_pos.event_type)
+        self.assertEqual(datetime.datetime(2022, 10, 6, 00), hdr_record_pos.event_authored_time)
+
+    def test_reconcile_message_broker_results_viewed(self):
+        # Create Test Participants' data
+        # create genomic set
+        self.data_generator.create_database_genomic_set(
+            genomicSetName='test',
+            genomicSetCriteria='.',
+            genomicSetVersion=1
+        )
+
+        for pid in range(7):
+            self.data_generator.create_database_participant(participantId=1 + pid, biobankId=1 + pid)
+
+        # insert set members
+        for i in range(1, 7):
+            self.data_generator.create_database_genomic_set_member(
+                participantId=i,
+                genomicSetId=1,
+                biobankId=i,
+                collectionTubeId=100 + i,
+                sampleId=10 + i,
+                genomeType="aou_wgs",
+            )
+            self.data_generator.create_database_genomic_member_report_state(
+                message_record_id=i,
+                genomic_set_member_id=i,
+                genomic_report_state=GenomicReportState.PGX_RPT_READY,
+                genomic_report_state_str=GenomicReportState.PGX_RPT_READY.name,
+                participant_id=i,
+                event_type="result_ready",
+                event_authored_time=datetime.datetime(2022, 10, 6, 00),
+                module="pgx_v1",
+                sample_id=10 + i,
+                report_revision_number=1,
+            )
+        genomic_pipeline.reconcile_message_broker_results_viewed()

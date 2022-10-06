@@ -184,6 +184,16 @@ cron:
   timezone: America/New_York
   schedule: every day 04:00
   target: offline
+- description: Genomic Reconcile Message Broker Results Ready
+  url: /offline/GenomicReconcileMessageBrokerResultsReady
+  timezone: America/New_York
+  schedule: every day 05:00
+  target: offline
+- description: Genomic Reconcile Message Broker Results Viewed
+  url: /offline/GenomicReconcileMessageBrokerResultsViewed
+  timezone: America/New_York
+  schedule: every day 05:00
+  target: offline
 - description: Genomic Retry Manifest Ingestion Failures
   url: /offline/GenomicRetryManifestIngestions
   timezone: America/New_York
