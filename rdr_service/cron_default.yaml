@@ -19,6 +19,11 @@ cron:
   schedule: every day 02:00
   timezone: America/New_York
   target: offline
+- description: Remove any obfuscation data that is expired
+  url: /offline/DeleteExpiredObfuscation
+  schedule: every day 03:00
+  timezone: America/New_York
+  target: offline
 - description: Participant count metrics (Do not manually start)
   url: /offline/ParticipantCountsOverTime
   schedule: every day 03:30
