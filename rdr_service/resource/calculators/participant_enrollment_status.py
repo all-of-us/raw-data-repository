@@ -82,44 +82,49 @@ class EnrollmentStatusCalculator:
         # that might have been considered a Core Participant at one point, but would not by
         # looking at their current state.
         for x in range(1, len(self.activity)+1):
-            events = self.activity[0:x]
+            self.calculate_from_events(self.activity[0:x])
 
-            # Get each datum needed for calculating the enrollment status.
-            signed_up = self.calc_signup(events)
-            consented, cohort = self.calc_consent(events)
-            ehr_consented = self.calc_ehr_consent(events)
-            gror_received = self.calc_gror_received(events)
-            biobank_samples = self.calc_biobank_samples(events)
-            physical_measurements = self.calc_physical_measurements(events)
-            modules = self.calc_baseline_modules(events)
+    def calculate_from_events(self, events):
+        """
+        Use the events list to calculate the participant enrolment status and status timestamps.
+        :param events: List of events to use in calculations
+        """
+        # Get each datum needed for calculating the enrollment status.
+        signed_up = self.calc_signup(events)
+        consented, cohort = self.calc_consent(events)
+        ehr_consented = self.calc_ehr_consent(events)
+        gror_received = self.calc_gror_received(events)
+        biobank_samples = self.calc_biobank_samples(events)
+        physical_measurements = self.calc_physical_measurements(events)
+        modules = self.calc_baseline_modules(events)
 
-            if not self.cohort:
-                self.cohort = cohort
+        if not self.cohort:
+            self.cohort = cohort
 
-            # Calculate enrollment status
-            status = PDREnrollmentStatusEnum.Unset
-            if signed_up:
-                status = PDREnrollmentStatusEnum.Registered
-            if status == PDREnrollmentStatusEnum.Registered and consented:
-                status = PDREnrollmentStatusEnum.Participant
-            if status == PDREnrollmentStatusEnum.Participant and ehr_consented:
-                status = PDREnrollmentStatusEnum.ParticipantPlusEHR
-            if status == PDREnrollmentStatusEnum.ParticipantPlusEHR and biobank_samples and \
-                    (cohort != ConsentCohortEnum.COHORT_3 or gror_received) and \
-                    (modules and len(modules.values) >= len(self._module_enums)):
-                status = PDREnrollmentStatusEnum.CoreParticipantMinusPM
-            if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and \
-                    physical_measurements and \
-                    (cohort != ConsentCohortEnum.COHORT_3 or gror_received):
-                status = PDREnrollmentStatusEnum.CoreParticipant
+        # Calculate enrollment status
+        status = PDREnrollmentStatusEnum.Unset
+        if signed_up:
+            status = PDREnrollmentStatusEnum.Registered
+        if status == PDREnrollmentStatusEnum.Registered and consented:
+            status = PDREnrollmentStatusEnum.Participant
+        if status == PDREnrollmentStatusEnum.Participant and ehr_consented:
+            status = PDREnrollmentStatusEnum.ParticipantPlusEHR
+        if status == PDREnrollmentStatusEnum.ParticipantPlusEHR and biobank_samples and \
+            (cohort != ConsentCohortEnum.COHORT_3 or gror_received) and \
+            (modules and len(modules.values) >= len(self._module_enums)):
+            status = PDREnrollmentStatusEnum.CoreParticipantMinusPM
+        if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and \
+            physical_measurements and \
+            (cohort != ConsentCohortEnum.COHORT_3 or gror_received):
+            status = PDREnrollmentStatusEnum.CoreParticipant
 
-            # Set the permanent enrollment status value if needed. Enrollment status can go down
-            # unless the enrollment status has reached a 'Core' status.
-            if status > self.status or self.status < PDREnrollmentStatusEnum.CoreParticipantMinusPM:
-                self.status = status
+        # Set the permanent enrollment status value if needed. Enrollment status can go down
+        # unless the enrollment status has reached a 'Core' status.
+        if status > self.status or self.status < PDREnrollmentStatusEnum.CoreParticipantMinusPM:
+            self.status = status
 
-            # Save the timestamp when each status was reached.
-            self.save_status_timestamp(status)
+        # Save the timestamp when each status was reached.
+        self.save_status_timestamp(status)
 
     def save_status_timestamp(self, status):
         """

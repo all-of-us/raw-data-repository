@@ -354,6 +354,17 @@ class ParticipantSchema(Schema):
     enrl_core_participant_minus_pm_time = fields.DateTime()
     enrl_core_participant_time = fields.DateTime()
 
+    # TODO: Future: Remove after RDR 3.0 calculations are finalized.
+    # PDR v3.0 Enrollment Status Calculations
+    enrl_v3_0_status = fields.EnumString(enum=EnrollmentStatusV30)
+    enrl_v3_0_status_id = fields.EnumInteger(enum=EnrollmentStatusV30)
+    enrl_v3_0_registered_time = fields.DateTime()
+    enrl_v3_0_participant_time = fields.DateTime()
+    enrl_v3_0_participant_plus_ehr_time = fields.DateTime()
+    enrl_v3_0_participant_pmb_eligible_time = fields.DateTime()
+    enrl_v3_0_core_participant_minus_pm_time = fields.DateTime()
+    enrl_v3_0_core_participant_time = fields.DateTime()
+
     # Retaining during Goal 1 transition;  may be deprecated after V30/V31 acceptance
     enrollment_status = fields.EnumString(enum=EnrollmentStatusV2)
     enrollment_status_id = fields.EnumInteger(enum=EnrollmentStatusV2)
@@ -366,6 +377,7 @@ class ParticipantSchema(Schema):
     # TODO:  The v2 fields are temporary to do consistency checks for PEO report vs. RDR values
     enrollment_status_legacy_v2 = fields.EnumString(enum=EnrollmentStatusV2)
     enrollment_status_legacy_v2_id = fields.EnumInteger(enum=EnrollmentStatusV2)
+    # RDR v3.0 Enrollment Status Calculations
     enrollment_status_v3_0 = fields.EnumString(enum=EnrollmentStatusV30)
     enrollment_status_v3_0_id = fields.EnumInteger(enum=EnrollmentStatusV30)
     enrollment_status_v3_0_participant_time = fields.DateTime()
@@ -373,7 +385,7 @@ class ParticipantSchema(Schema):
     enrollment_status_v3_0_pmb_eligible_time = fields.DateTime()
     enrollment_status_v3_0_core_minus_pm_time = fields.DateTime()
     enrollment_status_v3_0_core_time = fields.DateTime()
-
+    # RDR v3.1 Enrollment Status Calculations
     enrollment_status_v3_1 = fields.EnumString(enum=EnrollmentStatusV31)
     enrollment_status_v3_1_id = fields.EnumInteger(enum=EnrollmentStatusV31)
     enrollment_status_v3_1_participant_time = fields.DateTime()
