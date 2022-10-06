@@ -46,7 +46,7 @@ from rdr_service.model.genomics import (
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
-    GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals)
+    GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -81,9 +81,7 @@ class GenomicDaoMixin:
 
     def get_last_updated_records(self, from_date, _ids=True):
         from_date = from_date.replace(microsecond=0)
-
-        if not hasattr(self.model_type, 'created') or \
-                not hasattr(self.model_type, 'modified'):
+        if not hasattr(self.model_type, 'modified'):
             return []
 
         with self.session() as session:
@@ -98,7 +96,6 @@ class GenomicDaoMixin:
             return records.all()
 
     def get_from_filepath(self, filepath):
-
         if not hasattr(self.model_type, 'file_path'):
             return []
 
@@ -113,6 +110,10 @@ class GenomicDaoMixin:
     def insert_bulk(self, batch):
         with self.session() as session:
             session.bulk_insert_mappings(self.model_type, batch)
+
+    def bulk_update(self, model_objects: List[Dict]):
+        with self.session() as session:
+            session.bulk_update_mappings(self.model_type, model_objects)
 
 
 class GenomicSetDao(UpdatableDao, GenomicDaoMixin):
@@ -4249,4 +4250,40 @@ class GenomicResultWithdrawalsDao(BaseDao, GenomicDaoMixin):
 
     def get_id(self, obj):
         pass
+
+
+class GenomicAppointmentEventMetricsDao(UpdatableDao, GenomicDaoMixin):
+    def __init__(self):
+        super(GenomicAppointmentEventMetricsDao, self).__init__(
+            GenomicAppointmentEventMetrics, order_by_ending=['id']
+        )
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        return obj.id
+
+    def get_missing_appointments(self):
+        with self.session() as session:
+            return session.query(
+                GenomicAppointmentEventMetrics.id,
+                GenomicAppointmentEventMetrics.event_type,
+                GenomicAppointmentEventMetrics.event_authored_time,
+                GenomicAppointmentEventMetrics.participant_id,
+                GenomicAppointmentEventMetrics.appointment_event,
+                GenomicAppointmentEventMetrics.reconcile_job_run_id,
+                GenomicAppointmentEvent.id.label('appointment_event_id')
+            ).outerjoin(
+                GenomicAppointmentEvent,
+                and_(
+                    GenomicAppointmentEvent.participant_id == GenomicAppointmentEventMetrics.participant_id,
+                    GenomicAppointmentEvent.module_type == GenomicAppointmentEventMetrics.module_type,
+                    GenomicAppointmentEvent.event_type == GenomicAppointmentEventMetrics.event_type,
+                    GenomicAppointmentEvent.event_authored_time == GenomicAppointmentEventMetrics.event_authored_time
+                )
+            ).filter(
+                GenomicAppointmentEventMetrics.reconcile_job_run_id.is_(None)
+            ).all()
+
 

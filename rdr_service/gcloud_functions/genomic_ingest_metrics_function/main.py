@@ -37,6 +37,7 @@ class GenomicIngestMetricsFunction(FunctionPubSubHandler):
 
         self.task_mappings = {
             "user_metrics": "IngestUserEventMetricsApi",
+            "appointment_metrics": "IngestAppointmentMetricsApi"
         }
 
     def run(self):
@@ -46,11 +47,15 @@ class GenomicIngestMetricsFunction(FunctionPubSubHandler):
         _logger.info("""This Function was triggered by messageId {} published at {}
             """.format(self.context.event_id, self.context.timestamp))
 
+        task_key = None
         object_id = self.event.attributes.objectId.lower()
 
-        if 'user_events' in object_id:
-            task_key = "user_metrics"
-        else:
+        for metric_str_key, api_route in self.task_mappings.items():
+            if metric_str_key in object_id:
+                task_key = metric_str_key
+                break
+
+        if not task_key:
             _logger.info(f"No files match ingestion criteria. {object_id}")
             return
 
