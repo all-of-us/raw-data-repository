@@ -980,6 +980,7 @@ class GenomicFileIngester:
 
             for event in json_appointment_data:
                 event_obj = {}
+                message_body = event.get('messageBody')
 
                 if event.get('participantId'):
                     participant_id = event.get('participantId')
@@ -988,6 +989,9 @@ class GenomicFileIngester:
 
                     event_obj['participant_id'] = int(participant_id)
 
+                event_obj['event_authored_time'] = event.get('eventAuthoredTime')
+                event_obj['event_type'] = event.get('event')
+                event_obj['module_type'] = message_body.get('module_type')
                 event_obj['appointment_event'] = json.dumps(event)
                 event_obj['file_path'] = file_path
                 event_obj['created'] = clock.CLOCK.now()

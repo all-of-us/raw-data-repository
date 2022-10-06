@@ -111,6 +111,10 @@ class GenomicDaoMixin:
         with self.session() as session:
             session.bulk_insert_mappings(self.model_type, batch)
 
+    def bulk_update(self, model_objects: List[Dict]):
+        with self.session() as session:
+            session.bulk_update_mappings(self.model_type, model_objects)
+
 
 class GenomicSetDao(UpdatableDao, GenomicDaoMixin):
     """ Stub for GenomicSet model """
@@ -4248,7 +4252,7 @@ class GenomicResultWithdrawalsDao(BaseDao, GenomicDaoMixin):
         pass
 
 
-class GenomicAppointmentEventMetricsDao(BaseDao, GenomicDaoMixin):
+class GenomicAppointmentEventMetricsDao(UpdatableDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicAppointmentEventMetricsDao, self).__init__(
             GenomicAppointmentEventMetrics, order_by_ending=['id']
@@ -4258,16 +4262,27 @@ class GenomicAppointmentEventMetricsDao(BaseDao, GenomicDaoMixin):
         pass
 
     def get_id(self, obj):
-        pass
+        return obj.id
 
-    def get_created_from_date(self, from_date):
+    def get_missing_appointments(self):
         with self.session() as session:
             return session.query(
                 GenomicAppointmentEventMetrics.id,
+                GenomicAppointmentEventMetrics.event_type,
+                GenomicAppointmentEventMetrics.event_authored_time,
                 GenomicAppointmentEventMetrics.participant_id,
-                GenomicAppointmentEventMetrics.appointment_event
+                GenomicAppointmentEventMetrics.appointment_event,
+                GenomicAppointmentEventMetrics.reconcile_job_run_id,
+                GenomicAppointmentEvent.id.label('appointment_event_id')
+            ).outerjoin(
+                GenomicAppointmentEvent,
+                and_(
+                    GenomicAppointmentEvent.participant_id == GenomicAppointmentEventMetrics.participant_id,
+                    GenomicAppointmentEvent.module_type == GenomicAppointmentEventMetrics.module_type,
+                    GenomicAppointmentEvent.event_type == GenomicAppointmentEventMetrics.event_type,
+                    GenomicAppointmentEvent.event_authored_time == GenomicAppointmentEventMetrics.event_authored_time
+                )
             ).filter(
-                GenomicAppointmentEventMetrics.created >= from_date,
                 GenomicAppointmentEventMetrics.reconcile_job_run_id.is_(None)
             ).all()
 

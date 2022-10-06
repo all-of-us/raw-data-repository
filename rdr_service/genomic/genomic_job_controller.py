@@ -2,9 +2,11 @@
 This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
 import logging
+import json
+import pytz
+
 from datetime import datetime, timedelta
 
-import pytz
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from rdr_service import clock, config
@@ -54,7 +56,7 @@ from rdr_service.dao.genomics_dao import (
     UserEventMetricsDao,
     GenomicResultViewedDao,
     GenomicQueriesDao, GenomicMemberReportStateDao, GenomicAppointmentEventDao,
-    GenomicCVLResultPastDueDao, GenomicResultWithdrawalsDao
+    GenomicCVLResultPastDueDao, GenomicResultWithdrawalsDao, GenomicAppointmentEventMetricsDao
 )
 from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
@@ -471,8 +473,56 @@ class GenomicJobController:
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 
-    def reconcile_appointment_events(self):
-        pass
+    def reconcile_appointment_events_from_metrics(self):
+        appointment_metrics_dao = GenomicAppointmentEventMetricsDao()
+        metrics_missing_appointments = appointment_metrics_dao.get_missing_appointments()
+
+        if not metrics_missing_appointments:
+            logging.info('There are no missing appointment events to reconcile')
+            self.job_result = GenomicSubProcessResult.NO_RESULTS
+            return
+
+        logging.info(f'Creating {len(metrics_missing_appointments)} missing appointment events from metrics')
+
+        metrics_to_update = []
+        for metric in metrics_missing_appointments:
+            try:
+                if not metric.appointment_event_id:
+                    logging.info(
+                        f'Inserting appointment event from metric_id {metric.id} for participant'
+                        f' {metric.participant_id}'
+                    )
+
+                    appointment_obj = {
+                        'participant_id': metric.participant_id,
+                        'event_type': metric.event_type,
+                        'event_authored_time': metric.event_authored_time
+                    }
+
+                    message_body = json.loads(metric.appointment_event).get('messageBody')
+                    for k, value in message_body.items():
+                        key = 'appointment_id' if k == 'id' else k
+                        appointment_obj[key] = value
+
+                    appointment_obj = self.appointment_dao.get_model_obj_from_items(appointment_obj.items())
+                    self.appointment_dao.insert(appointment_obj)
+
+                metrics_to_update.append(
+                    {
+                        'id': metric.id,
+                        'reconcile_job_run_id': self.job_run.id
+                    }
+                )
+
+            # pylint: disable=broad-except
+            except Exception as e:
+                logging.warning(e)
+                return GenomicSubProcessResult.ERROR
+
+        if metrics_to_update:
+            appointment_metrics_dao.bulk_update(metrics_to_update)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
 
     def ingest_records_from_message_broker_data(self, *, message_record_id: int, event_type: str) -> None:
 
@@ -738,11 +788,7 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.ERROR
                 return
 
-            GenomicMessageBroker.ingest_appointment_data(
-                appointment_dao=self.appointment_dao,
-                records=appointment_records,
-                module_type=module_type
-            )
+            GenomicMessageBroker.ingest_appointment_data(appointment_records)
 
             self.job_result = GenomicSubProcessResult.SUCCESS
 
@@ -1866,7 +1912,6 @@ class GenomicJobController:
 
     def _create_run(self, job_id):
         new_run = self.job_run_dao.insert_run_record(job_id)
-
         return new_run
 
     def _compile_accesioning_failure_alert_email(self, alert_files) -> Email:

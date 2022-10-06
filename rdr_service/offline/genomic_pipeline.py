@@ -410,9 +410,9 @@ def gem_results_to_report_state():
         controller.gem_results_to_report_state()
 
 
-def reconcile_appointment_events():
+def reconcile_appointment_events_from_metrics():
     with GenomicJobController(GenomicJob.GEM_RESULT_REPORTS) as controller:
-        controller.reconcile_appointment_events()
+        controller.reconcile_appointment_events_from_metrics()
 
 
 def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):

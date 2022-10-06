@@ -1,11 +1,13 @@
 import datetime
 import json
 
+from dateutil import parser
 import mock
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
+from rdr_service.dao.database_utils import format_datetime
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
     GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao, GenomicResultWithdrawalsDao, \
     GenomicMemberReportStateDao, GenomicAppointmentEventMetricsDao
@@ -1003,6 +1005,9 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertTrue(all((obj.appointment_event is not None for obj in all_metrics)))
         self.assertTrue(all((obj.created is not None for obj in all_metrics)))
         self.assertTrue(all((obj.modified is not None for obj in all_metrics)))
+        self.assertTrue(all((obj.module_type is not None for obj in all_metrics)))
+        self.assertTrue(all((obj.event_authored_time is not None for obj in all_metrics)))
+        self.assertTrue(all((obj.event_type is not None for obj in all_metrics)))
 
         current_job_runs = self.job_run_dao.get_all()
         self.assertEqual(len(current_job_runs), 1)
@@ -1010,4 +1015,56 @@ class GenomicJobControllerTest(BaseTestCase):
         current_job_run = current_job_runs[0]
         self.assertTrue(current_job_run.jobId == GenomicJob.APPOINTMENT_METRICS_FILE_INGEST)
         self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
+
+    def test_reconcile_appointments_with_metrics(self):
+        fake_date = parser.parse('2020-05-29T08:00:01-05:00')
+
+        for num in range(4):
+            summary = self.data_generator.create_database_participant_summary()
+
+            missing_json = {
+                "event": "appointment_updated",
+                "eventAuthoredTime": "2022-09-16T17:18:38Z",
+                "participantId": f'P{summary.participantId}',
+                "messageBody": {
+                    "module_type": "hdr",
+                    "appointment_timestamp": "2022-09-19T19:30:00+00:00",
+                    "id": 55,
+                    "appointment_timezone": "America/Los_Angeles",
+                    "location": "CA",
+                    "contact_number": "18043704252",
+                    "language": "en",
+                    "source": "Color"
+                }
+            }
+
+            if num % 2 == 0:
+                self.data_generator.create_database_genomic_appointment(
+                    message_record_id=num,
+                    appointment_id=num,
+                    event_type='appointment_scheduled',
+                    module_type='hdr',
+                    participant_id=summary.participantId,
+                    event_authored_time=fake_date,
+                    source='Color',
+                    appointment_timestamp=format_datetime(clock.CLOCK.now()),
+                    appointment_timezone='America/Los_Angeles',
+                    location='123 address st',
+                    contact_number='17348675309',
+                    language='en'
+                )
+
+            self.data_generator.create_database_genomic_appointment_metric(
+                participant_id=summary.participantId,
+                appointment_event=json.dumps(missing_json, indent=4) if num % 2 != 0 else 'foo',
+                file_path='test_file_path',
+                module_type='hdr',
+                event_authored_time=fake_date,
+                event_type='appointment_updated' if num % 2 != 0 else 'appointment_scheduled'
+            )
+
+        with GenomicJobController(GenomicJob.APPOINTMENT_METRICS_FILE_RECONCILE) as controller:
+            controller.reconcile_appointment_events_from_metrics()
+
+
 

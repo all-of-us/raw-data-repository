@@ -1374,6 +1374,9 @@ class GenomicAppointmentEventMetrics(Base):
     modified = Column(DateTime)
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False, index=True)
     appointment_event = Column(JSON, nullable=False)
+    module_type = Column(String(255), nullable=False)
+    event_authored_time = Column(UTCDateTime6, nullable=False)
+    event_type = Column(String(256), nullable=False)
     file_path = Column(String(512), index=True, nullable=False)
     reconcile_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"), nullable=True)
 

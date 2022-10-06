@@ -735,9 +735,9 @@ def genomic_gem_result_reports():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_appointment_events')
+@run_genomic_cron_job('reconcile_appointment_events_from_metrics')
 def genomic_reconcile_appointment_events():
-    genomic_pipeline.reconcile_appointment_events()
+    genomic_pipeline.reconcile_appointment_events_from_metrics()
     return '{"success": "true"}'
 
 
