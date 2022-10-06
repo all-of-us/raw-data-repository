@@ -54,6 +54,7 @@ from rdr_service.resource.calculators import EnrollmentStatusCalculator, Partici
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
     PDREnrollmentStatusEnum
 from rdr_service.resource.schemas.participant import StreetAddressTypeEnum, BIOBANK_UNIQUE_TEST_IDS
+from rdr_service.resource.calculators.participant_enrollment_status_v30 import EnrollmentStatusCalculator_v3_0
 
 
 class ModuleLookupEnum(enum.Enum):
@@ -1337,6 +1338,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         esc = EnrollmentStatusCalculator()
         esc.run(activity)
 
+        esc_v3_0 = EnrollmentStatusCalculator_v3_0()
+        esc_v3_0.run(activity)
+
         # Support depreciated enrollment status field values.
         status = EnrollmentStatusV2.REGISTERED
         if esc.status == PDREnrollmentStatusEnum.Participant:
@@ -1357,12 +1361,21 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'enrl_participant_plus_ehr_time': esc.participant_plus_ehr_time,
             'enrl_core_participant_minus_pm_time': esc.core_participant_minus_pm_time,
             'enrl_core_participant_time': esc.core_participant_time,
+            # Version 3.0 Enrollment Calculations
+            'enrl_v3_0_status': esc_v3_0.status.name,
+            'enrl_v3_0_status_id': esc_v3_0.status.value,
+            'enrl_v3_0_registered_time': esc_v3_0.registered_time,
+            'enrl_v3_0_participant_time': esc_v3_0.participant_time,
+            'enrl_v3_0_participant_plus_ehr_time': esc_v3_0.participant_plus_ehr_time,
+            'enrl_v3_0_participant_pmb_eligible_time': esc_v3_0.participant_pmb_eligible_time,
+            'enrl_v3_0_core_participant_minus_pm_time': esc_v3_0.core_participant_minus_pm_time,
+            'enrl_v3_0_core_participant_time': esc_v3_0.core_participant_time,
+
             # TODO: PDR-calculated fields that can be deprecated / moved to _prep_participant_profile after goal 1 QC
             'enrollment_status': str(status),
             'enrollment_status_id': int(status),
             'enrollment_member': esc.participant_time,
             'enrollment_core_minus_pm': esc.core_participant_minus_pm_time
-
         }
 
         # Calculate age at consent.
