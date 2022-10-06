@@ -101,6 +101,7 @@ class PDREnrollmentStatusEnum(IntEnum):
     Registered = 10  # EnrollmentStatusV2.REGISTERED
     Participant = 20  # EnrollmentStatusV2.PARTICIPANT
     ParticipantPlusEHR = 30  # EnrollmentStatusV2.FULLY_CONSENTED
+    ParticipantPMBEligible = 35 # N/A in EnrollmentStatusV2
     CoreParticipantMinusPM = 40  # EnrollmentStatusV2.CORE_MINUS_PM
     CoreParticipant = 50  # EnrollmentStatusV2.CORE_PARTICIPANT
 
@@ -157,6 +158,7 @@ class ParticipantEventEnum(IntEnum):
     REGISTERED = 100
     PARTICIPANT = 104
     FULLY_CONSENTED = 108
+    PMB_ELIGIBLE = 110
     CORE_MINUS_PM = 112
     CORE_PARTICIPANT = 114
 
