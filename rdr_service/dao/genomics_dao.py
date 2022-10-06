@@ -60,7 +60,9 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
-from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
+from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map, \
+    cvl_result_reconciliation_modules, message_broker_report_ready_event_state_mappings, \
+    message_broker_report_viewed_event_state_mappings
 from rdr_service.genomic.genomic_mappings import informing_loop_event_mappings
 from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes
 
@@ -3347,9 +3349,35 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
     def get_id(self, obj):
         pass
 
+    def build_set_member_sample_id_subquery(self, genome_type):
+
+        set_member_alias = aliased(GenomicSetMember)
+
+        sample_id_query = sqlalchemy.orm.Query(
+            [GenomicSetMember.sampleId.label("sample_id"),
+             GenomicSetMember.participantId.label("participant_id"),
+             GenomicSetMember.id.label("member_id")]
+        ).outerjoin(
+            set_member_alias,
+            and_(
+                set_member_alias.participantId == GenomicSetMember.participantId,
+                set_member_alias.ignoreFlag == 0,
+                set_member_alias.genomeType == GenomicSetMember.genomeType,
+                GenomicSetMember.id < set_member_alias.id,
+            )
+        ).filter(
+            GenomicSetMember.genomeType == genome_type,
+            GenomicSetMember.ignoreFlag == 0,
+            GenomicSetMember.sampleId.isnot(None),
+            set_member_alias.id.is_(None)
+        ).subquery()
+
+        return sample_id_query
+
     def get_event_message_informing_loop_mismatches(self, module="gem"):
         """
-        Returns participant_ID and latest event_name for unreconciled events
+        Returns message data for records in user_event_metrics
+        but not in genomic_informing_loop
         :param module: gem (default), hdr, or pgx
         :return: query result
         """
@@ -3364,7 +3392,6 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
         with self.session() as session:
             event_metrics_alias = aliased(UserEventMetrics)
             informing_loop_alias = aliased(GenomicInformingLoop)
-            set_member_alias = aliased(GenomicSetMember)
 
             records_subquery = session.query(
                 UserEventMetrics.participant_id,
@@ -3412,23 +3439,7 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
                 event_metrics_alias.created_at.is_(None)
             ).subquery()
 
-            sample_ids_subquery = session.query(
-                    GenomicSetMember.sampleId,
-                    GenomicSetMember.participantId
-                ).outerjoin(
-                    set_member_alias,
-                    and_(
-                        set_member_alias.participantId == GenomicSetMember.participantId,
-                        set_member_alias.ignoreFlag == 0,
-                        set_member_alias.genomeType == GenomicSetMember.genomeType,
-                        GenomicSetMember.id < set_member_alias.id,
-                    )
-                ).filter(
-                    GenomicSetMember.genomeType == genome_type,
-                    GenomicSetMember.ignoreFlag == 0,
-                    GenomicSetMember.sampleId.isnot(None),
-                    set_member_alias.id.is_(None)
-                ).subquery()
+            sample_ids_subquery = self.build_set_member_sample_id_subquery(genome_type)
 
             records = session.query(
                 records_subquery.c.participant_id,
@@ -3449,6 +3460,86 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
                 records_subquery.c.event_value,
                 records_subquery.c.created_at,
                 coalesce(records_subquery.c.sample_id, sample_ids_subquery.c.sample_id)
+            )
+
+            return records.all()
+
+    def get_event_message_results_ready_mismatches(self, module="pgx"):
+        """
+        Returns message data for records in user_event_metrics
+        but not in genomic_report_state
+        :param module: hdr, or pgx
+        :return: query result
+        """
+        module_mappings = cvl_result_reconciliation_modules
+        event_type = "result_ready"
+
+        event_names = [name for name in message_broker_report_ready_event_state_mappings.keys()
+                       if name.startswith(module)]
+
+        with self.session() as session:
+            sample_ids_subquery = self.build_set_member_sample_id_subquery("aou_wgs")
+
+            records = session.query(
+                sample_ids_subquery.c.sample_id,
+                sample_ids_subquery.c.member_id,
+                UserEventMetrics.participant_id,
+                UserEventMetrics.event_name,
+                UserEventMetrics.created_at,
+                UserEventMetrics.id.label("event_id")
+            ).outerjoin(
+                GenomicMemberReportState,
+                and_(
+                    GenomicMemberReportState.participant_id == UserEventMetrics.participant_id,
+                    GenomicMemberReportState.module == module_mappings[module],
+                    GenomicMemberReportState.event_type == event_type
+                )
+            ).join(
+                sample_ids_subquery,
+                sample_ids_subquery.c.participant_id == UserEventMetrics.participant_id
+            ).filter(
+                GenomicMemberReportState.id.is_(None),
+                UserEventMetrics.event_name.in_(event_names)
+            )
+
+            return records.all()
+
+    def get_event_message_results_viewed_mismatches(self, module="pgx"):
+        """
+        Returns message data for records in user_event_metrics
+        but not in genomic_report_viewed
+        :param module: hdr, or pgx
+        :return: query result
+        """
+        module_mappings = cvl_result_reconciliation_modules
+        event_type = "result_viewed"
+
+        event_names = [name for name in message_broker_report_viewed_event_state_mappings
+                       if name.startswith(module)]
+
+        with self.session() as session:
+            sample_ids_subquery = self.build_set_member_sample_id_subquery("aou_wgs")
+
+            records = session.query(
+                sample_ids_subquery.c.sample_id,
+                sample_ids_subquery.c.member_id,
+                UserEventMetrics.participant_id,
+                UserEventMetrics.event_name,
+                UserEventMetrics.created_at,
+                UserEventMetrics.id.label("event_id")
+            ).outerjoin(
+                GenomicResultViewed,
+                and_(
+                    GenomicResultViewed.participant_id == UserEventMetrics.participant_id,
+                    GenomicResultViewed.module_type == module_mappings[module],
+                    GenomicResultViewed.event_type == event_type
+                )
+            ).join(
+                sample_ids_subquery,
+                sample_ids_subquery.c.participant_id == UserEventMetrics.participant_id
+            ).filter(
+                GenomicResultViewed.id.is_(None),
+                UserEventMetrics.event_name.in_(event_names)
             )
 
             return records.all()

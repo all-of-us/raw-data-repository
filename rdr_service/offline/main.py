@@ -665,6 +665,20 @@ def genomic_reconcile_informing_loop_responses():
 
 
 @app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_message_broker_results_ready')
+def genomic_reconcile_message_broker_results_ready():
+    genomic_pipeline.reconcile_message_broker_results_ready()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_message_broker_results_viewed')
+def genomic_reconcile_message_broker_results_viewed():
+    genomic_pipeline.reconcile_message_broker_results_viewed()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 @run_genomic_cron_job('retry_manifest_ingestion_failures')
 def genomic_retry_manifest_ingestion_failures():
     genomic_pipeline.retry_manifest_ingestions()
@@ -1109,6 +1123,18 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicReconcileInformingLoopResponses",
         endpoint="reconcile_informing_loop_responses",
         view_func=genomic_reconcile_informing_loop_responses,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicReconcileMessageBrokerResultsReady",
+        endpoint="genomic_reconcile_message_broker_results_ready",
+        view_func=genomic_reconcile_message_broker_results_ready,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicReconcileMessageBrokerResultsViewed",
+        endpoint="genomic_reconcile_message_broker_results_viewed",
+        view_func=genomic_reconcile_message_broker_results_viewed,
         methods=["GET"]
     )
     offline_app.add_url_rule(
