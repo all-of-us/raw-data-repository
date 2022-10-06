@@ -747,24 +747,23 @@ class GenomicJobController:
                 return
 
             appointment_id = list(filter(lambda x: x.fieldName == 'id', appointment_records))[0]
-            for record in appointment_records:
-                report_obj = self.appointment_dao.model_type(
-                    message_record_id=message_record_id,
-                    participant_id=member.participantId,
-                    event_type=event_type,
-                    event_authored_time=first_record.eventAuthoredTime,
-                    module_type=module_type,
-                    appointment_id=appointment_id.valueInteger,
-                    appointment_timestamp=_set_value_from_parsed_values(record, ['appointment_timestamp']),
-                    appointment_timezone=_set_value_from_parsed_values(record, ['appointment_timezone']),
-                    source=_set_value_from_parsed_values(record, ['source']),
-                    location=_set_value_from_parsed_values(record, ['location']),
-                    contact_number=_set_value_from_parsed_values(record, ['contact_number']),
-                    language=_set_value_from_parsed_values(record, ['language']),
-                    cancellation_reason=_set_value_from_parsed_values(record, ['reason'])
-                )
 
-                self.appointment_dao.insert(report_obj)
+            report_obj = self.appointment_dao.model_type(
+                message_record_id=message_record_id,
+                participant_id=member.participantId,
+                event_type=event_type,
+                event_authored_time=first_record.eventAuthoredTime,
+                module_type=module_type,
+                appointment_id=appointment_id.valueInteger,
+                appointment_timestamp=_set_value_from_parsed_values(appointment_records, ['appointment_timestamp']),
+                appointment_timezone=_set_value_from_parsed_values(appointment_records, ['appointment_timezone']),
+                source=_set_value_from_parsed_values(appointment_records, ['source']),
+                location=_set_value_from_parsed_values(appointment_records, ['location']),
+                contact_number=_set_value_from_parsed_values(appointment_records, ['contact_number']),
+                language=_set_value_from_parsed_values(appointment_records, ['language']),
+                cancellation_reason=_set_value_from_parsed_values(appointment_records, ['reason'])
+            )
+            self.appointment_dao.insert(report_obj)
 
             self.job_result = GenomicSubProcessResult.SUCCESS
 
