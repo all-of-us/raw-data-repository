@@ -1,5 +1,5 @@
 import os
-import csv
+import json
 import datetime
 import mock
 
@@ -43,63 +43,67 @@ class ExportVaWorkQueueTest(BaseTestCase, PDRGeneratorTestMixin):
             elif pid == 7:
                 participant.isTestParticipant = 1
             participant_dao.update(participant)
-            ps = summary_dao.insert(self.participant_summary(participant))
+            summary = summary_dao.insert(self.participant_summary(participant))
             if pid == 1:
-                ps.dateOfBirth = datetime.date(1979, 3, 11)
-                ps.questionnaireOnCopeDec = 1
-                ps.questionnaireOnCopeDecAuthored = datetime.datetime(2022, 1, 3, 13, 23)
-                ps.digitalHealthSharingStatus = {'fitbit':{'status':'YES', 'authoredTime': '2022-04-03T17:12:34Z'}}
-                ps.patientStatus = [{'status': 'YES', 'organization': 'VA_BOSTON_VAMC'}]
-                ps.consentCohort = 2
-                ps.cohort2PilotFlag = 1
-                ps.consentForElectronicHealthRecords = 1
-                ps.ehrConsentExpireStatus = 2
-                ps.primaryLanguage = 'en'
-                ps.enrollmentStatus = 2
+                summary.dateOfBirth = datetime.date(1979, 3, 11)
+                summary.questionnaireOnCopeDec = 1
+                summary.questionnaireOnCopeDecAuthored = datetime.datetime(2022, 1, 3, 13, 23)
+                summary.digitalHealthSharingStatus = {
+                    'fitbit': {'status': 'YES', 'authoredTime': '2022-04-03T17:12:34Z'}
+                }
+                summary.patientStatus = [{'status': 'YES', 'organization': 'VA_BOSTON_VAMC'}]
+                summary.consentCohort = 2
+                summary.cohort2PilotFlag = 1
+                summary.consentForElectronicHealthRecords = 1
+                summary.ehrConsentExpireStatus = 2
+                summary.primaryLanguage = 'en'
+                summary.enrollmentStatus = 2
 
-                summary_dao.update(ps)
+                summary_dao.update(summary)
             elif pid == 9:
-                ps.withdrawalStatus = WithdrawalStatus.NO_USE
-                ps.withdrawalTime = datetime.datetime(2019, 7, 11, 13, 2)
-                summary_dao.update(ps)
+                summary.withdrawalStatus = WithdrawalStatus.NO_USE
+                summary.withdrawalTime = datetime.datetime(2019, 7, 11, 13, 2)
+                summary_dao.update(summary)
         generate_workqueue_report()
-        with open_cloud_file(os.path.normpath(
-            self.bucket + "/" + self.subfolder + "/va_daily_participant_wq_2022-01-13-07-04-00.csv")) as test_csv:
-            reader = csv.DictReader(test_csv)
-            row_count = 0
-            for item in reader:
-                row_count += 1
-                if item['PMI ID'] == 'P'+test_participant_id:
-                    self.assertEqual(item["Date of Birth"], "03/11/1979")
-                    self.assertEqual(item["COPE Dec PPI Survey Complete"], "1")
-                    self.assertEqual(item["COPE Dec PPI Survey Completion Date"], "01/03/2022 13:23:00")
-                    self.assertEqual(item["Fitbit Consent"], "1")
-                    self.assertEqual(item["Fitbit Consent Date"], "04/03/2022 17:12:34")
-                    self.assertEqual(item["Patient Status: Yes"], "VA_BOSTON_VAMC")
-                    self.assertEqual(item["Consent Cohort"], "Cohort 2.1")
-                    self.assertEqual(item["EHR Expiration Status"], "1")
-                    self.assertEqual(item["Language of Primary Consent"], "English")
-                    self.assertEqual(item["Participant Status"], "Participant + EHR Consent")
-            self.assertEqual(row_count, nids - 2)
+        with open_cloud_file(
+            os.path.normpath(self.bucket + "/" + self.subfolder + "/va_daily_participant_wq_2022-01-13-07-04-00.json")
+        ) as test_file:
+            report = json.load(test_file)
+
+            self.assertEqual(len(report), nids - 2)
+            for summary_json in report:
+                if summary_json["participantId"] == "P" + test_participant_id:
+                    self.assertEqual(summary_json["dateOfBirth"], "1979-03-11")
+                    self.assertEqual(summary_json["questionnaireOnCopeDec"], "SUBMITTED")
+                    self.assertEqual(summary_json["questionnaireOnCopeDecAuthored"], "2022-01-03T13:23:00")
+                    self.assertEqual(summary_json["digitalHealthSharingStatus"]["fitbit"]["status"], "YES")
+                    self.assertEqual(summary_json["digitalHealthSharingStatus"]["fitbit"]["authoredTime"],
+                                     "2022-04-03T17:12:34Z")
+                    self.assertEqual(summary_json["patientStatus"][0]["status"], "YES")
+                    self.assertEqual(summary_json["patientStatus"][0]["organization"], "VA_BOSTON_VAMC")
+                    self.assertEqual(summary_json["consentCohort"], "COHORT_2")
+                    self.assertEqual(summary_json["cohort2PilotFlag"], "COHORT_2_PILOT")
+                    self.assertEqual(summary_json["ehrConsentExpireStatus"], "EXPIRED")
+                    self.assertEqual(summary_json["primaryLanguage"], "en")
+                    self.assertEqual(summary_json["enrollmentStatus"], "MEMBER")
 
     @mock.patch('rdr_service.offline.export_va_workqueue.clock.CLOCK')
     def test_delete_old_reports(self, mock_clock):
         mock_clock.now.return_value = datetime.datetime(2022, 1, 13, 7, 4, 0)
         self.clear_default_storage()
-        self.create_mock_buckets([self.bucket,
-                                  self.bucket + "/" + self.subfolder])
+        self.create_mock_buckets([self.bucket, self.bucket + "/" + self.subfolder])
         # Create files in bucket
         file_list = [
-            "va_daily_participant_wq_2022-01-13-07-04-00.csv",
-            "va_daily_participant_wq_2022-01-12-05-00-00.csv",
-            "va_daily_participant_wq_2022-01-05-00-00-00.csv",
-            "va_daily_participant_wq_2023-01-01-01-00-00.csv",
-            "va_daily_participant_wq_2022-01-01-00-00-00.csv",
-            "test.csv",
+            "va_daily_participant_wq_2022-01-13-07-04-00.json",
+            "va_daily_participant_wq_2022-01-12-05-00-00.json",
+            "va_daily_participant_wq_2022-01-05-00-00-00.json",
+            "va_daily_participant_wq_2023-01-01-01-00-00.json",
+            "va_daily_participant_wq_2022-01-01-00-00-00.json",
+            "test.json",
         ]
         for file in file_list:
             upload_from_string("test", self.bucket + "/" + self.subfolder + "/" + file)
         delete_old_reports()
         bucket_file_list = [file.name for file in list_blobs(self.bucket, self.subfolder)]
-        self.assertIn(self.subfolder + "/va_daily_participant_wq_2022-01-12-05-00-00.csv", bucket_file_list)
-        self.assertNotIn(self.subfolder + "/va_daily_participant_wq_2022-01-05-00-00-00.csv", bucket_file_list)
+        self.assertIn(self.subfolder + "/va_daily_participant_wq_2022-01-12-05-00-00.json", bucket_file_list)
+        self.assertNotIn(self.subfolder + "/va_daily_participant_wq_2022-01-05-00-00-00.json", bucket_file_list)

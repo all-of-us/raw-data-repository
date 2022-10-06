@@ -1022,79 +1022,61 @@ class GenomicGCValidationMetrics(Base):
     drcFpConcordance = Column('drc_fp_concordance', String(255), nullable=True)
 
     # Genotyping Data (Array) reconciliation
-    idatRedReceived = Column('idat_red_received', SmallInteger, nullable=False, default=0)
     idatRedDeleted = Column('idat_red_deleted', SmallInteger, nullable=False, default=0)
     idatRedPath = Column('idat_red_path', String(255), nullable=True)
 
-    idatGreenReceived = Column('idat_green_received', SmallInteger, nullable=False, default=0)
     idatGreenDeleted = Column('idat_green_deleted', SmallInteger, nullable=False, default=0)
     idatGreenPath = Column('idat_green_path', String(255), nullable=True)
 
-    idatRedMd5Received = Column('idat_red_md5_received', SmallInteger, nullable=False, default=0)
     idatRedMd5Deleted = Column('idat_red_md5_deleted', SmallInteger, nullable=False, default=0)
     idatRedMd5Path = Column('idat_red_md5_path', String(255), nullable=True)
 
-    idatGreenMd5Received = Column('idat_green_md5_received', SmallInteger, nullable=False, default=0)
     idatGreenMd5Deleted = Column('idat_green_md5_deleted', SmallInteger, nullable=False, default=0)
     idatGreenMd5Path = Column('idat_green_md5_path', String(255), nullable=True)
 
-    vcfReceived = Column('vcf_received', SmallInteger, nullable=False, default=0)
     vcfDeleted = Column('vcf_deleted', SmallInteger, nullable=False, default=0)
     vcfPath = Column('vcf_path', String(255), nullable=True)
 
-    vcfMd5Received = Column('vcf_md5_received', SmallInteger, nullable=False, default=0)
     vcfMd5Deleted = Column('vcf_md5_deleted', SmallInteger, nullable=False, default=0)
     vcfMd5Path = Column('vcf_md5_path', String(255), nullable=True)
 
-    vcfTbiReceived = Column('vcf_tbi_received', SmallInteger, nullable=False, default=0)
     vcfTbiDeleted = Column('vcf_tbi_deleted', SmallInteger, nullable=False, default=0)
     vcfTbiPath = Column('vcf_tbi_path', String(255), nullable=True)
 
     # Sequencing Data (WGS) reconciliation
     # Single sample VCF: Hard - filtered for clinical purpose
-    hfVcfReceived = Column('hf_vcf_received', SmallInteger, nullable=False, default=0)
     hfVcfDeleted = Column('hf_vcf_deleted', SmallInteger, nullable=False, default=0)
     hfVcfPath = Column('hf_vcf_path', String(255), nullable=True)
 
-    hfVcfTbiReceived = Column('hf_vcf_tbi_received', SmallInteger, nullable=False, default=0)
     hfVcfTbiDeleted = Column('hf_vcf_tbi_deleted', SmallInteger, nullable=False, default=0)
     hfVcfTbiPath = Column('hf_vcf_tbi_path', String(255), nullable=True)
 
-    hfVcfMd5Received = Column('hf_vcf_md5_received', SmallInteger, nullable=False, default=0)
     hfVcfMd5Deleted = Column('hf_vcf_md5_deleted', SmallInteger, nullable=False, default=0)
     hfVcfMd5Path = Column('hf_vcf_md5_path', String(255), nullable=True)
 
     # Single sample VCF: Raw for research purpose
-    rawVcfReceived = Column('raw_vcf_received', SmallInteger, nullable=False, default=0)
     rawVcfDeleted = Column('raw_vcf_deleted', SmallInteger, nullable=False, default=0)
     rawVcfPath = Column('raw_vcf_path', String(255), nullable=True)
 
-    rawVcfTbiReceived = Column('raw_vcf_tbi_received', SmallInteger, nullable=False, default=0)
     rawVcfTbiDeleted = Column('raw_vcf_tbi_deleted', SmallInteger, nullable=False, default=0)
     rawVcfTbiPath = Column('raw_vcf_tbi_path', String(255), nullable=True)
 
-    rawVcfMd5Received = Column('raw_vcf_md5_received', SmallInteger, nullable=False, default=0)
     rawVcfMd5Deleted = Column('raw_vcf_md5_deleted', SmallInteger, nullable=False, default=0)
     rawVcfMd5Path = Column('raw_vcf_md5_path', String(255), nullable=True)
 
     # CRAMs and CRAIs
-    cramReceived = Column('cram_received', SmallInteger, nullable=False, default=0)
     cramDeleted = Column('cram_deleted', SmallInteger, nullable=False, default=0)
     cramPath = Column('cram_path', String(255), nullable=True)
 
-    cramMd5Received = Column('cram_md5_received', SmallInteger, nullable=False, default=0)
     cramMd5Deleted = Column('cram_md5_deleted', SmallInteger, nullable=False, default=0)
     cramMd5Path = Column('cram_md5_path', String(255), nullable=True)
 
-    craiReceived = Column('crai_received', SmallInteger, nullable=False, default=0)
     craiDeleted = Column('crai_deleted', SmallInteger, nullable=False, default=0)
     craiPath = Column('crai_path', String(255), nullable=True)
 
-    gvcfReceived = Column('gvcf_received', SmallInteger, nullable=False, default=0)
     gvcfDeleted = Column('gvcf_deleted', SmallInteger, nullable=False, default=0)
     gvcfPath = Column('gvcf_path', String(512), nullable=True)
 
-    gvcfMd5Received = Column('gvcf_md5_received', SmallInteger, nullable=False, default=0)
     gvcfMd5Deleted = Column('gvcf_md5_deleted', SmallInteger, nullable=False, default=0)
     gvcfMd5Path = Column('gvcf_md5_path', String(255), nullable=True)
 
@@ -1310,11 +1292,12 @@ class GenomicInformingLoop(Base):
     modified = Column(DateTime, nullable=True)
     message_record_id = Column(Integer, nullable=True)
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False)
-    event_type = Column(String(256), nullable=False)
-    event_authored_time = Column(UTCDateTime6)
-    module_type = Column(String(128))
-    decision_value = Column(String(128))
+    event_type = Column(String(256), nullable=False, index=True)
+    event_authored_time = Column(UTCDateTime6, index=True)
+    module_type = Column(String(128), index=True)
+    decision_value = Column(String(128), index=True)
     sample_id = Column(String(80), nullable=True, index=True)
+    created_from_metric_id = Column(Integer, ForeignKey("user_event_metrics.id"), nullable=True)
 
 
 event.listen(GenomicInformingLoop, 'before_insert', model_insert_listener)
@@ -1481,8 +1464,8 @@ class UserEventMetrics(Base):
     created = Column(DateTime)
     modified = Column(DateTime)
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False, index=True)
-    created_at = Column(String(255))
-    event_name = Column(String(512))
+    created_at = Column(String(255), index=True)
+    event_name = Column(String(512), index=True)
     device = Column(String(255))
     operating_system = Column(String(255))
     browser = Column(String(255))
