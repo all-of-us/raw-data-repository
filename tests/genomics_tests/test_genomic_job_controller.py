@@ -10,7 +10,7 @@ from rdr_service.clock import FakeClock
 from rdr_service.dao.database_utils import format_datetime
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
     GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao, GenomicResultWithdrawalsDao, \
-    GenomicMemberReportStateDao, GenomicAppointmentEventMetricsDao
+    GenomicMemberReportStateDao, GenomicAppointmentEventMetricsDao, GenomicAppointmentEventDao
 
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult, \
@@ -35,6 +35,7 @@ class GenomicJobControllerTest(BaseTestCase):
         self.user_event_metrics_dao = UserEventMetricsDao()
         self.job_run_dao = GenomicJobRunDao()
         self.report_state_dao = GenomicMemberReportStateDao()
+        self.appointment_event_dao = GenomicAppointmentEventDao()
         self.appointment_metrics_dao = GenomicAppointmentEventMetricsDao()
 
     def test_incident_with_long_message(self):
@@ -1063,9 +1064,39 @@ class GenomicJobControllerTest(BaseTestCase):
                 event_type='appointment_updated' if num % 2 != 0 else 'appointment_scheduled'
             )
 
-        with GenomicJobController(GenomicJob.APPOINTMENT_METRICS_FILE_RECONCILE) as controller:
+        current_events = self.appointment_event_dao.get_all()
+        # should be 2 initial appointment events
+        self.assertEqual(len(current_events), 2)
+
+        current_metrics = self.appointment_metrics_dao.get_all()
+        # should be 4 initial appointment events
+        self.assertEqual(len(current_metrics), 4)
+        self.assertTrue(all(obj.reconcile_job_run_id is None for obj in current_metrics))
+
+        with GenomicJobController(GenomicJob.APPOINTMENT_METRICS_RECONCILE) as controller:
             controller.reconcile_appointment_events_from_metrics()
 
-        print('Darryl')
+        job_run = self.job_run_dao.get_all()
+        self.assertEqual(len(job_run), 1)
+        self.assertTrue(job_run[0].jobId == GenomicJob.APPOINTMENT_METRICS_RECONCILE)
+
+        current_events = self.appointment_event_dao.get_all()
+        # should be 4  appointment events 2 initial + 2 added
+        self.assertEqual(len(current_events), 4)
+
+        scheduled = list(filter(lambda x: x.event_type == 'appointment_scheduled', current_events))
+        self.assertEqual(len(scheduled), 2)
+        self.assertTrue(all(obj.created_from_metric_id is None for obj in scheduled))
+
+        updated = list(filter(lambda x: x.event_type == 'appointment_updated', current_events))
+        self.assertEqual(len(updated), 2)
+        self.assertTrue(all(obj.created_from_metric_id is not None for obj in updated))
+
+        current_metrics = self.appointment_metrics_dao.get_all()
+        # should STILL be 4 initial appointment events
+        self.assertEqual(len(current_metrics), 4)
+        self.assertTrue(all(obj.reconcile_job_run_id is not None for obj in current_metrics))
+        self.assertTrue(all(obj.reconcile_job_run_id == job_run[0].id for obj in current_metrics))
+
 
 

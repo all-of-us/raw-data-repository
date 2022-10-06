@@ -508,12 +508,9 @@ class GenomicJobController:
                     appointment_obj = self.appointment_dao.get_model_obj_from_items(appointment_obj.items())
                     self.appointment_dao.insert(appointment_obj)
 
-                metrics_to_update.append(
-                    {
+                metrics_to_update.append({
                         'id': metric.id,
-                        'reconcile_job_run_id': self.job_run.id
-                    }
-                )
+                        'reconcile_job_run_id': self.job_run.id})
 
             # pylint: disable=broad-except
             except Exception as e:
