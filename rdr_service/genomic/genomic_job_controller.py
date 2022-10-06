@@ -496,7 +496,8 @@ class GenomicJobController:
                     appointment_obj = {
                         'participant_id': metric.participant_id,
                         'event_type': metric.event_type,
-                        'event_authored_time': metric.event_authored_time
+                        'event_authored_time': metric.event_authored_time,
+                        'created_from_metric_id': metric.id
                     }
 
                     message_body = json.loads(metric.appointment_event).get('messageBody')

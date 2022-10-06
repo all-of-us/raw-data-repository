@@ -1066,5 +1066,6 @@ class GenomicJobControllerTest(BaseTestCase):
         with GenomicJobController(GenomicJob.APPOINTMENT_METRICS_FILE_RECONCILE) as controller:
             controller.reconcile_appointment_events_from_metrics()
 
+        print('Darryl')
 
 

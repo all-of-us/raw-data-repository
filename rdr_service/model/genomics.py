@@ -1354,7 +1354,7 @@ class GenomicAppointmentEvent(Base):
     contact_number = Column(String(255))
     language = Column(String(255))
     cancellation_reason = Column(String(255))
-    created_from_metric_id = Column(Integer, ForeignKey("genomic_appointment_event.id"))
+    created_from_metric_id = Column(Integer, ForeignKey("genomic_appointment_event_metrics.id"))
 
 
 event.listen(GenomicAppointmentEvent, 'before_insert', model_insert_listener)
