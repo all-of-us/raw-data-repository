@@ -325,7 +325,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "consentForStudyEnrollmentTime": TIME_1.isoformat(),
                 "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
                 "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
-                "ageRange": "36-45",
+                "ageRange": "35-44",
                 "email": self.email,
                 "consentCohort": "COHORT_1",
                 "cohort2PilotFlag": "UNSET",
