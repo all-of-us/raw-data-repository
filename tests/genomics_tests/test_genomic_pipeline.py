@@ -31,7 +31,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     GenomicGcDataFileDao,
     GenomicGcDataFileMissingDao, UserEventMetricsDao, GenomicAW4RawDao, GenomicAW3RawDao, GenomicInformingLoopDao,
-    GenomicMemberReportStateDao)
+    GenomicMemberReportStateDao, GenomicResultViewedDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -52,8 +52,7 @@ from rdr_service.model.genomics import (
     GenomicSetMember,
     GenomicJobRun,
     GenomicGCValidationMetrics,
-    GenomicSampleContamination, GenomicAW3Raw
-)
+    GenomicSampleContamination, GenomicAW3Raw)
 from rdr_service.model.participant import Participant
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
@@ -6478,7 +6477,7 @@ class GenomicPipelineTest(BaseTestCase):
                             if rec.genomic_report_state == GenomicReportState.HDR_RPT_UNINFORMATIVE][0]
 
         hdr_record_pos = [rec for rec in states
-                            if rec.genomic_report_state == GenomicReportState.HDR_RPT_POSITIVE][0]
+                          if rec.genomic_report_state == GenomicReportState.HDR_RPT_POSITIVE][0]
 
         for pgx_record in pgx_records:
             self.assertEqual(GenomicReportState.PGX_RPT_READY, pgx_record.genomic_report_state)
@@ -6505,12 +6504,17 @@ class GenomicPipelineTest(BaseTestCase):
             genomicSetCriteria='.',
             genomicSetVersion=1
         )
+        # Set up initial job run ID
+        self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.METRICS_FILE_INGEST,
+            startTime=clock.CLOCK.now()
+        )
 
-        for pid in range(7):
+        for pid in range(3):
             self.data_generator.create_database_participant(participantId=1 + pid, biobankId=1 + pid)
 
-        # insert set members
-        for i in range(1, 7):
+        # insert set members and event metrics records
+        for i in range(1, 3):
             self.data_generator.create_database_genomic_set_member(
                 participantId=i,
                 genomicSetId=1,
@@ -6519,16 +6523,39 @@ class GenomicPipelineTest(BaseTestCase):
                 sampleId=10 + i,
                 genomeType="aou_wgs",
             )
-            self.data_generator.create_database_genomic_member_report_state(
-                message_record_id=i,
-                genomic_set_member_id=i,
-                genomic_report_state=GenomicReportState.PGX_RPT_READY,
-                genomic_report_state_str=GenomicReportState.PGX_RPT_READY.name,
-                participant_id=i,
-                event_type="result_ready",
-                event_authored_time=datetime.datetime(2022, 10, 6, 00),
-                module="pgx_v1",
-                sample_id=10 + i,
-                report_revision_number=1,
-            )
+
+            # 1 PGX Viewed
+            if i == 1:
+                self.data_generator.create_database_genomic_user_event_metrics(
+                    participant_id=i,
+                    created_at=datetime.datetime(2022, 10, 6, 00),
+                    event_name="pgx.opened_at",
+                    run_id=1,
+                )
+
+            # 1 HDR Viewed
+            if i == 2:
+                self.data_generator.create_database_genomic_user_event_metrics(
+                    participant_id=i,
+                    created_at=datetime.datetime(2022, 10, 6, 00),
+                    event_name="hdr.opened_at",
+                    run_id=1,
+                )
+
         genomic_pipeline.reconcile_message_broker_results_viewed()
+
+        # Test correct data inserted
+        result_viewed_dao = GenomicResultViewedDao()
+        results = result_viewed_dao.get_all()
+
+        self.assertEqual(2, len(results))
+
+        for record in results:
+            if record.participant_id == 1:
+                self.assertEqual("pgx_v1", record.module_type)
+            else:
+                self.assertEqual("hdr_v1", record.module_type)
+            self.assertEqual(int(record.sample_id), record.participant_id + 10)
+            self.assertEqual("result_viewed", record.event_type)
+            self.assertEqual(datetime.datetime(2022, 10, 6, 00), record.first_viewed)
+

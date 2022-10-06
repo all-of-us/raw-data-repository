@@ -1563,7 +1563,22 @@ class GenomicJobController:
                     self.report_state_dao.insert(new_report_state_record)
 
     def reconcile_message_broker_results_viewed(self):
-        pass
+        # Get mismatches between user_event_metrics and genomic_report_viewed
+        for module in cvl_result_reconciliation_modules:
+            missed_messages = self.event_dao.get_event_message_results_viewed_mismatches(module=module)
+
+            if missed_messages:
+                for message in missed_messages:
+                    new_result_viewed_record = self.result_viewed_dao.model_type(
+                        participant_id=message.participant_id,
+                        event_type="result_viewed",
+                        event_authored_time=message.created_at,
+                        module_type=cvl_result_reconciliation_modules[module],
+                        first_viewed=message.created_at,
+                        last_viewed=message.created_at,
+                        sample_id=message.sample_id
+                    )
+                    self.result_viewed_dao.insert(new_result_viewed_record)
 
     def run_general_ingestion_workflow(self):
         """

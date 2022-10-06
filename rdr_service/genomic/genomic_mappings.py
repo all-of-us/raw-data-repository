@@ -248,6 +248,11 @@ message_broker_report_ready_event_state_mappings = {
     "hdr.result_ready.uninformative": GenomicReportState.HDR_RPT_UNINFORMATIVE
 }
 
+message_broker_report_viewed_event_state_mappings = [
+    "hdr.opened_at",
+    "pgx.opened_at"
+]
+
 genome_center_datafile_prefix_map = {
    'bi': {
        'cram': 'wgs_sample_raw_data/crams_crais',

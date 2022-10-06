@@ -61,7 +61,8 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map, \
-    cvl_result_reconciliation_modules, message_broker_report_ready_event_state_mappings
+    cvl_result_reconciliation_modules, message_broker_report_ready_event_state_mappings, \
+    message_broker_report_viewed_event_state_mappings
 from rdr_service.genomic.genomic_mappings import informing_loop_event_mappings
 from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes
 
@@ -3500,6 +3501,46 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
             )
 
             return records.all()
+
+    def get_event_message_results_viewed_mismatches(self, module="pgx"):
+        """
+        Returns message data for records in user_event_metrics
+        but not in genomic_report_viewed
+        :param module: hdr, or pgx
+        :return: query result
+        """
+        module_mappings = cvl_result_reconciliation_modules
+        event_type = "result_viewed"
+
+        event_names = [name for name in message_broker_report_viewed_event_state_mappings
+                       if name.startswith(module)]
+
+        with self.session() as session:
+            sample_ids_subquery = self.build_set_member_sample_id_subquery("aou_wgs")
+
+            records = session.query(
+                sample_ids_subquery.c.sample_id,
+                sample_ids_subquery.c.member_id,
+                UserEventMetrics.participant_id,
+                UserEventMetrics.event_name,
+                UserEventMetrics.created_at
+            ).outerjoin(
+                GenomicResultViewed,
+                and_(
+                    GenomicResultViewed.participant_id == UserEventMetrics.participant_id,
+                    GenomicResultViewed.module_type == module_mappings[module],
+                    GenomicResultViewed.event_type == event_type
+                )
+            ).join(
+                sample_ids_subquery,
+                sample_ids_subquery.c.participant_id == UserEventMetrics.participant_id
+            ).filter(
+                GenomicResultViewed.id.is_(None),
+                UserEventMetrics.event_name.in_(event_names)
+            )
+
+            return records.all()
+
 
 class GenomicCVLSecondSampleDao(BaseDao):
 
