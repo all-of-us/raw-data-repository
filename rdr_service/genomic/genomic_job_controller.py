@@ -2,10 +2,11 @@
 This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
 import logging
-from datetime import datetime, timedelta
-from typing import List, Optional
-
+import json
 import pytz
+
+from datetime import datetime, timedelta
+
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from rdr_service import clock, config
@@ -24,6 +25,7 @@ from rdr_service.genomic.genomic_data_quality_components import ReportingCompone
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
     raw_aw2_to_genomic_set_member_fields, genomic_data_file_mappings, genome_centers_id_from_bucket_array, \
     wgs_file_types_attributes, array_file_types_attributes, informing_loop_event_mappings
+from rdr_service.genomic.genomic_message_broker import GenomicMessageBroker
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, \
@@ -54,9 +56,8 @@ from rdr_service.dao.genomics_dao import (
     UserEventMetricsDao,
     GenomicResultViewedDao,
     GenomicQueriesDao, GenomicMemberReportStateDao, GenomicAppointmentEventDao,
-    GenomicCVLResultPastDueDao, GenomicResultWithdrawalsDao
+    GenomicCVLResultPastDueDao, GenomicResultWithdrawalsDao, GenomicAppointmentEventMetricsDao
 )
-from rdr_service.model.message_broker import MessageBrokerEventData
 from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
 
@@ -294,6 +295,19 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def ingest_appointment_metrics_file(self, *, file_path):
+        try:
+            self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                job_run_id=self.job_run.id,
+                                                bucket=self.bucket_name,
+                                                target_file=file_path,
+                                                _controller=self)
+
+            self.job_result = self.ingester.ingest_appointment_metrics(file_path)
+
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     def ingest_specific_manifest(self, filename):
         """
         Uses GenomicFileIngester to ingest specific Manifest file.
@@ -459,23 +473,58 @@ class GenomicJobController:
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 
+    def reconcile_appointment_events_from_metrics(self):
+        appointment_metrics_dao = GenomicAppointmentEventMetricsDao()
+        metrics_missing_appointments = appointment_metrics_dao.get_missing_appointments()
+
+        if not metrics_missing_appointments:
+            logging.info('There are no missing appointment events to reconcile')
+            self.job_result = GenomicSubProcessResult.NO_RESULTS
+            return
+
+        logging.info(f'Creating {len(metrics_missing_appointments)} missing appointment events from metrics')
+
+        metrics_to_update = []
+        for metric in metrics_missing_appointments:
+            try:
+                if not metric.appointment_event_id:
+                    logging.info(
+                        f'Inserting appointment event from metric_id {metric.id} for participant'
+                        f' {metric.participant_id}'
+                    )
+
+                    appointment_obj = {
+                        'participant_id': metric.participant_id,
+                        'event_type': metric.event_type,
+                        'event_authored_time': metric.event_authored_time,
+                        'created_from_metric_id': metric.id
+                    }
+
+                    message_body = json.loads(metric.appointment_event).get('messageBody')
+                    for k, value in message_body.items():
+                        key = 'appointment_id' if k == 'id' else k
+                        appointment_obj[key] = value
+
+                    appointment_obj = self.appointment_dao.get_model_obj_from_items(appointment_obj.items())
+                    self.appointment_dao.insert(appointment_obj)
+
+                metrics_to_update.append({
+                        'id': metric.id,
+                        'reconcile_job_run_id': self.job_run.id})
+
+            # pylint: disable=broad-except
+            except Exception as e:
+                logging.warning(e)
+                return GenomicSubProcessResult.ERROR
+
+        if metrics_to_update:
+            appointment_metrics_dao.bulk_update(metrics_to_update)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
     def ingest_records_from_message_broker_data(self, *, message_record_id: int, event_type: str) -> None:
 
         module_fields = ['module_type', 'result_type']
-
-        def _set_value_from_parsed_values(
-            records: List[MessageBrokerEventData],
-            field_names: List[str]
-        ) -> Optional[str]:
-
-            records = [records] if type(records) is not list else records
-            field_records = list(filter(lambda x: x.fieldName in field_names, records))
-            if not field_records:
-                return None
-
-            field_records = field_records[0].asdict()
-            value = [v for k, v in field_records.items() if v is not None and 'value' in k]
-            return value[0] if value else None
 
         def _set_genome_type(module):
             return {
@@ -538,7 +587,7 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.NO_RESULTS
                 return
 
-            module_type = _set_value_from_parsed_values(
+            module_type = GenomicMessageBroker.set_value_from_parsed_values(
                 informing_loop_records,
                 module_fields
             )
@@ -594,7 +643,7 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.NO_RESULTS
                 return
 
-            module_type = _set_value_from_parsed_values(
+            module_type = GenomicMessageBroker.set_value_from_parsed_values(
                 result_viewed_records,
                 module_fields
             )
@@ -659,7 +708,7 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.NO_RESULTS
                 return
 
-            module_type = _set_value_from_parsed_values(
+            module_type = GenomicMessageBroker.set_value_from_parsed_values(
                 result_ready_records,
                 module_fields
             )
@@ -685,7 +734,7 @@ class GenomicJobController:
                 return
 
             report_type = _set_report_type(result_ready_records)
-            result_revision_number = _set_value_from_parsed_values(
+            result_revision_number = GenomicMessageBroker.set_value_from_parsed_values(
                 result_ready_records,
                 ['report_revision_number']
             )
@@ -721,49 +770,23 @@ class GenomicJobController:
                 self.job_result = GenomicSubProcessResult.NO_RESULTS
                 return
 
-            module_type = _set_value_from_parsed_values(
+            module_type = GenomicMessageBroker.set_value_from_parsed_values(
                 appointment_records,
                 module_fields
             )
 
-            if not module_type:
-                logging.warning(f'Cannot find module type in message record id: '
-                                f'{appointment_records[0].messageRecordId}')
-                self.job_result = GenomicSubProcessResult.ERROR
-                return
-
-            first_record = appointment_records[0]
-            logging.info(f'Inserting appointment event for Participant: {first_record.participantId}')
-
             member = self.member_dao.get_member_by_participant_id(
-                participant_id=first_record.participantId,
+                participant_id=appointment_records[0].participantId,
                 genome_type=_set_genome_type(module_type)
             )
 
             if not member:
                 logging.warning(f'Cannot find member for appointment event insert: '
-                                f'{first_record.messageRecordId}')
+                                f'{appointment_records[0].messageRecordId}')
                 self.job_result = GenomicSubProcessResult.ERROR
                 return
 
-            appointment_id = list(filter(lambda x: x.fieldName == 'id', appointment_records))[0]
-
-            report_obj = self.appointment_dao.model_type(
-                message_record_id=message_record_id,
-                participant_id=member.participantId,
-                event_type=event_type,
-                event_authored_time=first_record.eventAuthoredTime,
-                module_type=module_type,
-                appointment_id=appointment_id.valueInteger,
-                appointment_timestamp=_set_value_from_parsed_values(appointment_records, ['appointment_timestamp']),
-                appointment_timezone=_set_value_from_parsed_values(appointment_records, ['appointment_timezone']),
-                source=_set_value_from_parsed_values(appointment_records, ['source']),
-                location=_set_value_from_parsed_values(appointment_records, ['location']),
-                contact_number=_set_value_from_parsed_values(appointment_records, ['contact_number']),
-                language=_set_value_from_parsed_values(appointment_records, ['language']),
-                cancellation_reason=_set_value_from_parsed_values(appointment_records, ['reason'])
-            )
-            self.appointment_dao.insert(report_obj)
+            GenomicMessageBroker.ingest_appointment_data(appointment_records)
 
             self.job_result = GenomicSubProcessResult.SUCCESS
 
@@ -1887,7 +1910,6 @@ class GenomicJobController:
 
     def _create_run(self, job_id):
         new_run = self.job_run_dao.insert_run_record(job_id)
-
         return new_run
 
     def _compile_accesioning_failure_alert_email(self, alert_files) -> Email:

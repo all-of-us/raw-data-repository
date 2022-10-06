@@ -1354,10 +1354,35 @@ class GenomicAppointmentEvent(Base):
     contact_number = Column(String(255))
     language = Column(String(255))
     cancellation_reason = Column(String(255))
+    created_from_metric_id = Column(Integer, ForeignKey("genomic_appointment_event_metrics.id"))
 
 
 event.listen(GenomicAppointmentEvent, 'before_insert', model_insert_listener)
 event.listen(GenomicAppointmentEvent, 'before_update', model_update_listener)
+
+
+class GenomicAppointmentEventMetrics(Base):
+    """
+    Used for storage GHR3 appointment metrics
+    """
+
+    __tablename__ = 'genomic_appointment_event_metrics'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False, index=True)
+    appointment_event = Column(JSON, nullable=False)
+    module_type = Column(String(255), nullable=False)
+    event_authored_time = Column(UTCDateTime6, nullable=False)
+    event_type = Column(String(256), nullable=False)
+    file_path = Column(String(512), index=True, nullable=False)
+    reconcile_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"), nullable=True)
+
+
+event.listen(GenomicAppointmentEventMetrics, 'before_insert', model_insert_listener)
+event.listen(GenomicAppointmentEventMetrics, 'before_update', model_update_listener)
 
 
 class GenomicGcDataFile(Base):
