@@ -27,7 +27,7 @@ from rdr_service.genomic.genomic_message_broker import GenomicMessageBroker
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, \
-    GenomicGCValidationMetrics, GenomicGcDataFile
+    GenomicGCValidationMetrics, GenomicGcDataFile, GenomicInformingLoop
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicIncidentCode, GenomicManifestTypes, GenomicReportState
 from rdr_service.genomic.genomic_job_components import (
@@ -850,24 +850,6 @@ class GenomicJobController:
             num_days=num_days
         )
 
-    def resolve_missing_gc_files(self, limit=800):
-        logging.info('Resolving missing gc data files')
-
-        files_to_resolve = self.missing_files_dao.get_files_to_resolve(limit)
-        if files_to_resolve:
-
-            resolve_arrays = [obj for obj in files_to_resolve if obj.identifier_type == 'chipwellbarcode']
-            if resolve_arrays:
-                self.missing_files_dao.batch_update_resolved_file(resolve_arrays)
-
-            resolve_wgs = [obj for obj in files_to_resolve if obj.identifier_type == 'sample_id']
-            if resolve_wgs:
-                self.missing_files_dao.batch_update_resolved_file(resolve_wgs)
-
-            logging.info('Resolving missing gc data files complete')
-        else:
-            logging.info('No missing gc data files to resolve')
-
     def update_member_aw2_missing_states_if_resolved(self):
         # get array member_ids that are resolved but still in GC_DATA_FILES_MISSING
         logging.info("Updating Array GC_DATA_FILES_MISSING members")
@@ -1224,42 +1206,6 @@ class GenomicJobController:
 
         return member
 
-    def run_reconciliation_to_data(self, *, genome_type):
-        """
-        Reconciles the metrics based on type of files using reconciler component
-        :param genome_type array or wgs
-        """
-        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id,
-                                            storage_provider=self.storage_provider,
-                                            controller=self)
-
-        try:
-            # Set reconciler's bucket and filter queries on gc_site_id for each bucket
-            for bucket_name in self.bucket_name_list:
-                self.reconciler.bucket_name = bucket_name
-                site_id_mapping = config.getSettingJson(config.GENOMIC_GC_ID_MAPPING)
-
-                gc_site_id = 'rdr'
-
-                if 'baylor' in bucket_name.lower():
-                    baylor = 'baylor_{}'.format(genome_type)
-                    gc_site_id = site_id_mapping[baylor]
-
-                if 'broad' in bucket_name.lower():
-                    gc_site_id = site_id_mapping['broad']
-
-                if 'northwest' in bucket_name.lower():
-                    gc_site_id = site_id_mapping['northwest']
-
-                # Run the reconciliation by GC
-                self.job_result = self.reconciler.reconcile_metrics_to_data_files(
-                    genome_type,
-                    _gc_site_id=gc_site_id
-                )
-
-        except RuntimeError:
-            self.job_result = GenomicSubProcessResult.ERROR
-
     def run_new_participant_workflow(self):
         """
         Creates new GenomicSet, GenomicSetMembers,
@@ -1551,55 +1497,25 @@ class GenomicJobController:
         Currently supports GEM, HDR or PGx.
         """
         modules = {key.split('.')[0] for key in informing_loop_event_mappings.keys()}
-        event_mappings = informing_loop_event_mappings
+
         for module in modules:
             # Get unreconciled user_event_metrics records
-            latest_events = self.event_dao.get_latest_events(module)
+            missed_messages = self.event_dao.get_event_message_informing_loop_mismatches(module=module)
 
             # compare to latest state by participant in genomic_informing_loop
-            if latest_events:
-                update_pids = []
-                for event in latest_events:
-                    incident_message = f'{self.job_id.name}: Informing Loop out of sync with User Events! ' \
-                                       f'PID: {event.participant_id}'
-                    incident_params = {
-                        "source_job_run_id": self.job_run.id,
-                        "code": GenomicIncidentCode.INFORMING_LOOP_TO_EVENTS_MISMATCH.name,
-                        "message": incident_message,
-                        "participant_id": event.participant_id,
-                        "save_incident": True,
-                        "slack": True
-                    }
-
-                    latest_state = self.informing_loop_dao.get_latest_state_for_pid(event.participant_id)
-                    if latest_state:
-                        # Parse informing loop state
-                        latest_state = [x for x in latest_state[0] if x]
-                        lookup_state = f"{module}.{'.'.join(latest_state)}"
-                        try:
-                            if event.event_name != event_mappings[lookup_state]:
-                                # create incident
-                                self.create_incident(**incident_params)
-                            else:
-                                # add to update_pids reconcile_job_run_id
-                                update_pids.append(event.participant_id)
-                        except KeyError:
-                            incident_params['message'] = f'{self.job_id.name}: Key Error on IL lookup.' \
-                                                         f'PID: {event.participant_id}'
-                            self.create_incident(**incident_params)
-                    else:
-                        # No informing loop for pid, create incident
-                        self.create_incident(**incident_params)
-
-                if update_pids:
-                    self.event_dao.update_reconcile_job_pids(
-                        pid_list=update_pids,
-                        job_run_id=self.job_run.id,
-                        module=module
+            if missed_messages:
+                for message in missed_messages:
+                    new_il_record = GenomicInformingLoop(
+                        participant_id=message.participant_id,
+                        event_type="informing_loop_decision",
+                        event_authored_time=message.created_at,
+                        module_type=module,
+                        decision_value=message.event_value,
+                        sample_id=message.sample_id,
+                        created_from_metric_id=message.event_id
                     )
 
-    def delete_old_gp_user_event_metrics(self, days=7):
-        self.event_dao.delete_old_events(days=days)
+                    self.informing_loop_dao.insert(new_il_record)
 
     def run_general_ingestion_workflow(self):
         """
@@ -1832,15 +1748,15 @@ class GenomicJobController:
             ','.join([f'{participant.participantId}' for participant in participant_list])
         )
 
-        notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
-        if notification_email_address and participant_list:
+        notification_emails = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
+        if notification_emails and participant_list:
             message = 'The following participants recently provided GROR consent again ' \
                       '(after having appeared in a W1IL manifest and then revoking their GROR consent):\n\n'
             message += '\n'.join([f'P{participant.participantId}' for participant in participant_list])
 
             EmailService.send_email(
                 Email(
-                    recipients=[notification_email_address],
+                    recipients=notification_emails,
                     subject='GHR3 participants recently re-submitting GROR consent',
                     plain_text_content=message
                 )
@@ -1870,21 +1786,43 @@ class GenomicJobController:
 
         result_withdrawal_dao.insert_bulk(batch)
 
-        notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
-        if notification_email_address:
+        notification_emails = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
+        if notification_emails:
             message = 'The following participants have withdrawn from the program and are currently'
             message += ' in the genomics result pipelines:\n\n'
             message += '\n'.join([f'P{participant.participant_id}' for participant in result_withdrawals])
 
             EmailService.send_email(
                 Email(
-                    recipients=[notification_email_address],
+                    recipients=notification_emails,
                     subject='Participants that have withdrawn and are currently in results pipeline(s)',
                     plain_text_content=message
                 )
             )
 
         self.job_result = GenomicSubProcessResult.SUCCESS
+
+    def check_aw3_ready_missing_files(self):
+        """ Runs report to email list of samples that are ready for AW3 manifest generation but missing data files"""
+        genomics_dao = GenomicQueriesDao()
+        notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
+
+        array_missing_data = genomics_dao.get_aw3_array_records(return_missing_files=True)
+        wgs_missing_data = genomics_dao.get_aw3_wgs_records(return_missing_files=True)
+        if notification_email_address and any((array_missing_data, wgs_missing_data)):
+            message = 'The following samples matched AW3 manifest criteria except for the data file count:\n\n'
+            message += 'sample_id,genome_type\n'
+            message += '\n'.join([f'{f[1]},aou_array' for f in array_missing_data])
+            message += '\n'.join([f'{f[1]},aou_wgs' for f in wgs_missing_data])
+            EmailService.send_email(
+                Email(
+                    recipients=[notification_email_address],
+                    subject='AW3 ready samples with missing data files',
+                    plain_text_content=message
+                )
+            )
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
 
     @staticmethod
     def execute_cloud_task(payload, endpoint):
