@@ -604,24 +604,20 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
 
         current_appointment_data = self.appointment_dao.get_all()
 
-        # record for each line in message body
-        self.assertEqual(len(current_appointment_data), len(message_broker_record.requestBody))
+        self.assertEqual(len(current_appointment_data), 1)
 
-        # should be in every record
         self.assertTrue(all(obj.appointment_id == appointment_id for obj in current_appointment_data))
         self.assertTrue(all(obj.message_record_id == message_broker_record.id for obj in current_appointment_data))
         self.assertTrue(all(obj.module_type == 'hdr' for obj in current_appointment_data))
         self.assertTrue(all(obj.participant_id == participant.participantId for obj in current_appointment_data))
         self.assertTrue(all(obj.event_type == scheduled_event_type for obj in current_appointment_data))
         self.assertTrue(all(obj.event_authored_time is not None for obj in current_appointment_data))
-
-        # should be in some record(s)
-        self.assertTrue(any(obj.source is not None for obj in current_appointment_data))
-        self.assertTrue(any(obj.appointment_timestamp is not None for obj in current_appointment_data))
-        self.assertTrue(any(obj.appointment_timezone is not None for obj in current_appointment_data))
-        self.assertTrue(any(obj.location is not None for obj in current_appointment_data))
-        self.assertTrue(any(obj.contact_number is not None for obj in current_appointment_data))
-        self.assertTrue(any(obj.language is not None for obj in current_appointment_data))
+        self.assertTrue(all(obj.source is not None for obj in current_appointment_data))
+        self.assertTrue(all(obj.appointment_timestamp is not None for obj in current_appointment_data))
+        self.assertTrue(all(obj.appointment_timezone is not None for obj in current_appointment_data))
+        self.assertTrue(all(obj.location is not None for obj in current_appointment_data))
+        self.assertTrue(all(obj.contact_number is not None for obj in current_appointment_data))
+        self.assertTrue(all(obj.language is not None for obj in current_appointment_data))
 
         # should be None for all
         self.assertTrue(all(obj.cancellation_reason is None for obj in current_appointment_data))
@@ -665,20 +661,16 @@ class GenomicMessageBrokerIngestionTest(BaseTestCase):
         current_appointment_data = list(filter(lambda x: x.message_record_id == message_broker_record.id,
                                                current_appointment_data))
 
-        # record for each line in message body
-        self.assertEqual(len(current_appointment_data), len(message_broker_record.requestBody))
+        self.assertEqual(len(current_appointment_data), 1)
 
-        # should be in every record
         self.assertTrue(all(obj.appointment_id == appointment_id for obj in current_appointment_data))
         self.assertTrue(all(obj.message_record_id == message_broker_record.id for obj in current_appointment_data))
         self.assertTrue(all(obj.module_type == 'hdr' for obj in current_appointment_data))
         self.assertTrue(all(obj.participant_id == participant.participantId for obj in current_appointment_data))
         self.assertTrue(all(obj.event_type == cancelled_event_type for obj in current_appointment_data))
         self.assertTrue(all(obj.event_authored_time is not None for obj in current_appointment_data))
-
-        # should be in some record(s)
-        self.assertTrue(any(obj.source is not None for obj in current_appointment_data))
-        self.assertTrue(any(obj.cancellation_reason is not None for obj in current_appointment_data))
+        self.assertTrue(all(obj.source is not None for obj in current_appointment_data))
+        self.assertTrue(all(obj.cancellation_reason is not None for obj in current_appointment_data))
 
         self.assertTrue(obj.cancellation_reason == message_broker_record.requestBody['reason'] for obj in
                         current_appointment_data if obj.cancellation_reason is not None)
