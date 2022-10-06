@@ -3484,7 +3484,8 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
                 sample_ids_subquery.c.member_id,
                 UserEventMetrics.participant_id,
                 UserEventMetrics.event_name,
-                UserEventMetrics.created_at
+                UserEventMetrics.created_at,
+                UserEventMetrics.id.label("event_id")
             ).outerjoin(
                 GenomicMemberReportState,
                 and_(
@@ -3523,7 +3524,8 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
                 sample_ids_subquery.c.member_id,
                 UserEventMetrics.participant_id,
                 UserEventMetrics.event_name,
-                UserEventMetrics.created_at
+                UserEventMetrics.created_at,
+                UserEventMetrics.id.label("event_id")
             ).outerjoin(
                 GenomicResultViewed,
                 and_(

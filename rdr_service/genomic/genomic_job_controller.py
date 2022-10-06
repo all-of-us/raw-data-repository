@@ -1557,6 +1557,7 @@ class GenomicJobController:
                         event_authored_time=message.created_at,
                         module=cvl_result_reconciliation_modules[module],
                         sample_id=message.sample_id,
+                        created_from_metric_id=message.event_id,
                     )
 
                     self.report_state_dao.insert(new_report_state_record)
@@ -1575,7 +1576,8 @@ class GenomicJobController:
                         module_type=cvl_result_reconciliation_modules[module],
                         first_viewed=message.created_at,
                         last_viewed=message.created_at,
-                        sample_id=message.sample_id
+                        sample_id=message.sample_id,
+                        created_from_metric_id=message.event_id
                     )
                     self.result_viewed_dao.insert(new_result_viewed_record)
 

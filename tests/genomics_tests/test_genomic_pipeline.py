@@ -6485,16 +6485,19 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(int(pgx_record.sample_id), pgx_record.participant_id + 10)
             self.assertEqual("result_ready", pgx_record.event_type)
             self.assertEqual(datetime.datetime(2022, 10, 6, 00), pgx_record.event_authored_time)
+            self.assertIsNotNone(pgx_record.created_from_metric_id)
 
         self.assertEqual("HDR_RPT_UNINFORMATIVE", hdr_record_uninf.genomic_report_state_str)
         self.assertEqual(int(hdr_record_uninf.sample_id), hdr_record_uninf.participant_id + 10)
         self.assertEqual("result_ready", hdr_record_uninf.event_type)
         self.assertEqual(datetime.datetime(2022, 10, 6, 00), hdr_record_uninf.event_authored_time)
+        self.assertIsNotNone(hdr_record_uninf.created_from_metric_id)
 
         self.assertEqual("HDR_RPT_POSITIVE", hdr_record_pos.genomic_report_state_str)
         self.assertEqual(int(hdr_record_pos.sample_id), hdr_record_pos.participant_id + 10)
         self.assertEqual("result_ready", hdr_record_pos.event_type)
         self.assertEqual(datetime.datetime(2022, 10, 6, 00), hdr_record_pos.event_authored_time)
+        self.assertIsNotNone(hdr_record_pos.created_from_metric_id)
 
     def test_reconcile_message_broker_results_viewed(self):
         # Create Test Participants' data
@@ -6558,4 +6561,4 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(int(record.sample_id), record.participant_id + 10)
             self.assertEqual("result_viewed", record.event_type)
             self.assertEqual(datetime.datetime(2022, 10, 6, 00), record.first_viewed)
-
+            self.assertIsNotNone(record.created_from_metric_id)

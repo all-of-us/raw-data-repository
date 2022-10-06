@@ -1272,6 +1272,7 @@ class GenomicMemberReportState(Base):
     module = Column(String(80), nullable=False)
     sample_id = Column(String(80), nullable=True, index=True)
     report_revision_number = Column(SmallInteger, nullable=True)
+    created_from_metric_id = Column(Integer, ForeignKey("user_event_metrics.id"), nullable=True)
 
 
 event.listen(GenomicMemberReportState, 'before_insert', model_insert_listener)
@@ -1324,6 +1325,7 @@ class GenomicResultViewed(Base):
     first_viewed = Column(UTCDateTime6)
     last_viewed = Column(UTCDateTime6)
     sample_id = Column(String(80), nullable=True, index=True)
+    created_from_metric_id = Column(Integer, ForeignKey("user_event_metrics.id"), nullable=True)
 
 
 event.listen(GenomicResultViewed, 'before_insert', model_insert_listener)
