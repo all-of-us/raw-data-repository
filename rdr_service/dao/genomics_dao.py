@@ -2185,16 +2185,21 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicMemberReportState.report_revision_number,
                         literal('result_viewed').label('type')
                     ).join(
+                        ParticipantSummary,
+                        ParticipantSummary.participantId == GenomicResultViewed.participant_id
+                    ).join(
                         GenomicMemberReportState,
                         and_(
                             GenomicMemberReportState.sample_id == GenomicResultViewed.sample_id,
                             GenomicMemberReportState.module == GenomicResultViewed.module_type
                         )
+                    ).join(
+                        GenomicSetMember,
+                        GenomicSetMember.id == GenomicMemberReportState.genomic_set_member_id,
                     ).filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
-                        GenomicMemberReportState.event_authored_time.isnot(None),
                         GenomicResultViewed.event_authored_time.isnot(None),
                         GenomicSetMember.ignoreFlag != 1
                     )
