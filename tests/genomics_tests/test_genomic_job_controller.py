@@ -1360,3 +1360,36 @@ class GenomicJobControllerTest(BaseTestCase):
 
         self.clear_table_after_test('genomic_appointment_event_metrics')
 
+    @mock.patch('rdr_service.services.email_service.EmailService.send_email')
+    def test_check_appointments_gror_revoked(self, email_mock):
+        fake_date = parser.parse("2022-09-01T13:43:23")
+        config.override_setting(config.GENOMIC_APPOINTMENT_GROR_EMAIL, ['test@example.com'])
+        num_participants = 4
+        for num in range(num_participants):
+            gror = num if num > 1 else 1
+            summary = self.data_generator.create_database_participant_summary(
+                consentForStudyEnrollment=1,
+                consentForGenomicsROR=gror
+            )
+            self.data_generator.create_database_genomic_appointment(
+                message_record_id=num,
+                appointment_id=num,
+                event_type='appointment_scheduled',
+                module_type='hdr',
+                participant_id=summary.participantId,
+                event_authored_time=fake_date,
+                source='Color',
+                appointment_timestamp=format_datetime(clock.CLOCK.now()),
+                appointment_timezone='America/Los_Angeles',
+                location='123 address st',
+                contact_number='17348675309',
+                language='en'
+            )
+
+        revoked_ppts = self.appointment_event_dao.get_appointments_gror_revoked()
+        self.assertEqual(2, len(revoked_ppts))
+        with genomic_pipeline.GenomicJobController(GenomicJob.CHECK_APPOINTMENT_GROR_REVOKED) as controller:
+            controller.check_appointments_gror_revoked()
+
+        self.assertEqual(email_mock.call_count, 1)
+

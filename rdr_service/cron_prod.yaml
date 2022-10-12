@@ -104,3 +104,8 @@ cron:
   timezone: America/New_York
   schedule: every day 01:00
   target: offline
+- description: Genomic GC Appointment GRoR Revoked Notification (Daily)
+  url: /offline/GenomicNotifyAppointmentGRoRRevoked
+  timezone: America/New_York
+  schedule: every day 04:15
+  target: offline

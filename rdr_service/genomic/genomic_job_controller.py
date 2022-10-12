@@ -1910,6 +1910,26 @@ class GenomicJobController:
             )
         self.job_result = GenomicSubProcessResult.SUCCESS
 
+    def check_appointments_gror_revoked(self):
+        """ Alerts Color when a participant with scheduled appointment has revoked GRoR consent """
+        appointments_dao = GenomicAppointmentEventDao()
+        notification_email_address = config.getSetting(config.GENOMIC_APPOINTMENT_GROR_EMAIL, default=None)
+        revoked_appointments = appointments_dao.get_appointments_gror_revoked()
+        if notification_email_address and revoked_appointments:
+            body = "Participants with scheduled GC appointments and revoked GRoR:\n"
+            body += "participant_id,appointment_id,event_authored_time\n"
+            for appointment in revoked_appointments:
+                body += f'{appointment.participant_id}, {appointment.appointment_id}, '
+                body += f'{appointment.event_authored_time}\n'
+            EmailService.send_email(
+                Email(
+                    recipients=[notification_email_address],
+                    subject='GC Appointments With GRoR Revoked Participants',
+                    plain_text_content=body
+                )
+            )
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
 
     @staticmethod
     def execute_cloud_task(payload, endpoint):

@@ -3116,6 +3116,46 @@ class GenomicAppointmentEventDao(BaseDao, GenomicDaoMixin):
     def from_client_json(self):
         pass
 
+    def get_appointments_gror_revoked(self):
+        max_appointment_id_subquery = sqlalchemy.orm.Query(
+            functions.max(GenomicAppointmentEvent.appointment_id).label(
+                'max_appointment_id'
+            )
+        ).filter(
+            GenomicAppointmentEvent.event_type.notlike('%note_available')
+        ).group_by(
+            GenomicAppointmentEvent.participant_id,
+            GenomicAppointmentEvent.module_type
+        ).subquery()
+
+        max_event_authored_time_subquery = sqlalchemy.orm.Query(
+            functions.max(GenomicAppointmentEvent.event_authored_time).label(
+                'max_event_authored_time'
+            )
+        ).filter(
+            GenomicAppointmentEvent.event_type.notlike('%note_available')
+        ).group_by(
+            GenomicAppointmentEvent.participant_id,
+            GenomicAppointmentEvent.module_type
+        ).subquery()
+
+        with self.session() as session:
+            return session.query(
+                GenomicAppointmentEvent
+            ).join(
+                ParticipantSummary,
+                GenomicAppointmentEvent.participant_id == ParticipantSummary.participantId
+            ).filter(
+                GenomicAppointmentEvent.event_type.in_(('appointment_scheduled', 'appointment_updated')),
+                and_(
+                    GenomicAppointmentEvent.appointment_id == max_appointment_id_subquery.c.max_appointment_id,
+                    GenomicAppointmentEvent.event_authored_time ==
+                    max_event_authored_time_subquery.c.max_event_authored_time
+                ),
+                ParticipantSummary.consentForGenomicsROR.in_((QuestionnaireStatus.SUBMITTED_NO_CONSENT,
+                                                              QuestionnaireStatus.SUBMITTED_NOT_SURE))
+            ).all()
+
 
 class GenomicGcDataFileDao(BaseDao):
     def __init__(self):
