@@ -57,7 +57,8 @@ from rdr_service.dao.genomics_dao import (
     UserEventMetricsDao,
     GenomicResultViewedDao,
     GenomicQueriesDao, GenomicMemberReportStateDao, GenomicAppointmentEventDao,
-    GenomicCVLResultPastDueDao, GenomicResultWithdrawalsDao, GenomicAppointmentEventMetricsDao
+    GenomicCVLResultPastDueDao, GenomicResultWithdrawalsDao, GenomicAppointmentEventMetricsDao,
+    GenomicAppointmentEventNotifiedDao
 )
 from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
@@ -1910,25 +1911,31 @@ class GenomicJobController:
             )
         self.job_result = GenomicSubProcessResult.SUCCESS
 
-    def check_appointments_gror_revoked(self):
-        """ Alerts Color when a participant with scheduled appointment has revoked GRoR consent """
-        appointments_dao = GenomicAppointmentEventDao()
-        notification_email_address = config.getSetting(config.GENOMIC_APPOINTMENT_GROR_EMAIL, default=None)
-        revoked_appointments = appointments_dao.get_appointments_gror_revoked()
-        if notification_email_address and revoked_appointments:
-            body = "Participants with scheduled GC appointments and revoked GRoR:\n"
+    def check_appointments_gror_changed(self):
+        """ Alerts Color when a participant with scheduled appointment has withdrawn GRoR consent """
+        notification_email_address = config.getSetting(config.GENOMIC_COLOR_PM_EMAIL, default=None)
+        notified_dao = GenomicAppointmentEventNotifiedDao()
+        changed_gror = self.appointment_dao.get_appointments_gror_changed()
+        notified_appointments = []
+        if notification_email_address and changed_gror:
+            body = "Participants with scheduled GC appointments and changed GRoR:\n"
             body += "participant_id,appointment_id,event_authored_time\n"
-            for appointment in revoked_appointments:
+            for appointment in changed_gror:
                 body += f'{appointment.participant_id}, {appointment.appointment_id}, '
                 body += f'{appointment.event_authored_time}\n'
+                notified_appointments.append({
+                    'participant_id': appointment.participant_id,
+                    'created': clock.CLOCK.now(),
+                    'modified': clock.CLOCK.now()
+                })
             EmailService.send_email(
                 Email(
                     recipients=[notification_email_address],
-                    subject='GC Appointments With GRoR Revoked Participants',
+                    subject='GC Appointments With GRoR Changed Participants',
                     plain_text_content=body
                 )
             )
-
+            notified_dao.insert_bulk(notified_appointments)
         self.job_result = GenomicSubProcessResult.SUCCESS
 
     @staticmethod

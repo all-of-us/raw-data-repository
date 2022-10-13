@@ -810,9 +810,9 @@ def genomic_aw3_ready_missing_files_report():
     return '{"success": "true"}'
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('notify_appointment_gror_revoked')
-def genomic_appointment_gror_revoked():
-    genomic_pipeline.notify_appointment_gror_revoked()
+@run_genomic_cron_job('notify_appointment_gror_changed')
+def genomic_appointment_gror_changed():
+    genomic_pipeline.notify_appointment_gror_changed()
     return '{"success": "true"}'
 
 
@@ -1317,7 +1317,7 @@ def _build_pipeline_app():
     offline_app.add_url_rule(
         OFFLINE_PREFIX + 'GenomicNotifyAppointmentGRoRRevoked',
         endpoint='genomic_appointment_gror_revoked',
-        view_func=genomic_appointment_gror_revoked,
+        view_func=genomic_appointment_gror_changed,
         methods=['GET']
     )
 

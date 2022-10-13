@@ -599,6 +599,6 @@ def notify_aw3_ready_missing_data_files():
         controller.check_aw3_ready_missing_files()
 
 
-def notify_appointment_gror_revoked():
-    with GenomicJobController(GenomicJob.CHECK_APPOINTMENT_GROR_REVOKED) as controller:
-        controller.check_appointments_gror_revoked()
+def notify_appointment_gror_changed():
+    with GenomicJobController(GenomicJob.CHECK_APPOINTMENT_GROR_CHANGED) as controller:
+        controller.check_appointments_gror_changed()

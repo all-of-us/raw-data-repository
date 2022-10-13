@@ -128,7 +128,7 @@ class GenomicJob(messages.Enum):
     APPOINTMENT_METRICS_RECONCILE = 71
     RECONCILE_MESSAGE_BROKER_CVL_RESULTS_READY = 72
     RECONCILE_MESSAGE_BROKER_CVL_RESULTS_VIEWED = 73
-    CHECK_APPOINTMENT_GROR_REVOKED = 74
+    CHECK_APPOINTMENT_GROR_CHANGED = 74
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

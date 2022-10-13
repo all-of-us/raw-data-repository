@@ -46,7 +46,8 @@ from rdr_service.model.genomics import (
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
-    GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics)
+    GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
+    GenomicAppointmentEventNotified)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -3116,45 +3117,35 @@ class GenomicAppointmentEventDao(BaseDao, GenomicDaoMixin):
     def from_client_json(self):
         pass
 
-    def get_appointments_gror_revoked(self):
-        max_appointment_id_subquery = sqlalchemy.orm.Query(
-            functions.max(GenomicAppointmentEvent.appointment_id).label(
-                'max_appointment_id'
-            )
-        ).filter(
-            GenomicAppointmentEvent.event_type.notlike('%note_available')
-        ).group_by(
-            GenomicAppointmentEvent.participant_id,
-            GenomicAppointmentEvent.module_type
-        ).subquery()
-
-        max_event_authored_time_subquery = sqlalchemy.orm.Query(
-            functions.max(GenomicAppointmentEvent.event_authored_time).label(
-                'max_event_authored_time'
-            )
-        ).filter(
-            GenomicAppointmentEvent.event_type.notlike('%note_available')
-        ).group_by(
-            GenomicAppointmentEvent.participant_id,
-            GenomicAppointmentEvent.module_type
-        ).subquery()
-
+    def get_appointments_gror_changed(self):
         with self.session() as session:
             return session.query(
                 GenomicAppointmentEvent
             ).join(
                 ParticipantSummary,
                 GenomicAppointmentEvent.participant_id == ParticipantSummary.participantId
+            ).outerjoin(
+                GenomicAppointmentEventNotified,
+                GenomicAppointmentEvent.participant_id == GenomicAppointmentEventNotified.participant_id
             ).filter(
-                GenomicAppointmentEvent.event_type.in_(('appointment_scheduled', 'appointment_updated')),
-                and_(
-                    GenomicAppointmentEvent.appointment_id == max_appointment_id_subquery.c.max_appointment_id,
-                    GenomicAppointmentEvent.event_authored_time ==
-                    max_event_authored_time_subquery.c.max_event_authored_time
-                ),
+                GenomicAppointmentEvent.event_type == 'appointment_scheduled',
+                GenomicAppointmentEventNotified.participant_id == None,
                 ParticipantSummary.consentForGenomicsROR.in_((QuestionnaireStatus.SUBMITTED_NO_CONSENT,
                                                               QuestionnaireStatus.SUBMITTED_NOT_SURE))
             ).all()
+
+
+class GenomicAppointmentEventNotifiedDao(BaseDao, GenomicDaoMixin):
+
+    def __init__(self):
+        super(GenomicAppointmentEventNotifiedDao, self).__init__(
+            GenomicAppointmentEventNotified, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
 
 
 class GenomicGcDataFileDao(BaseDao):
