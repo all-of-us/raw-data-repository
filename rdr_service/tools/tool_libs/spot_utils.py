@@ -509,6 +509,7 @@ class SpotTool(ToolBase):
         rdr_attributes = [
             GenomicSetMember.participantId,
             GenomicSetMember.sampleId,
+            GenomicSetMember.genomeType,
             Participant.researchId,
             func.now().label('created_timestamp'),
         ]
@@ -663,6 +664,7 @@ class SpotTool(ToolBase):
                     'participant_id': old_row.participantId,
                     'research_id': old_row.researchId,
                     'sample_id': old_row.sampleId,
+                    'genome_type': old_row.genomeType.upper(),
                     'data_element_id': data_element.data_element_id,
                     'value_string': de_val,
                     'created_timestamp': old_row.created_timestamp.isoformat()
