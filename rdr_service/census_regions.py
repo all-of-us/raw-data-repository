@@ -51,4 +51,12 @@ census_regions = {
     "HI": "WEST",
     "OR": "WEST",
     "WA": "WEST",
+    "AS": "TERRITORIES",
+    "FM": "TERRITORIES",
+    "GU": "TERRITORIES",
+    "MH": "TERRITORIES",
+    "MP": "TERRITORIES",
+    "PR": "TERRITORIES",
+    "PW": "TERRITORIES",
+    "VI": "TERRITORIES"
 }

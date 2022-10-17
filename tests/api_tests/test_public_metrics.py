@@ -1905,9 +1905,20 @@ class PublicMetricsApiTest(BaseTestCase):
             mapped=True,
         )
 
+        code4 = Code(
+            codeId=4,
+            system="c",
+            value="PIIState_PR",
+            display="PIIState_PR",
+            topic="c",
+            codeType=CodeType.MODULE,
+            mapped=True,
+        )
+
         self.code_dao.insert(code1)
         self.code_dao.insert(code2)
         self.code_dao.insert(code3)
+        self.code_dao.insert(code4)
 
         p1 = Participant(participantId=1, biobankId=4)
         self._insert(
@@ -1993,6 +2004,20 @@ class PublicMetricsApiTest(BaseTestCase):
             state_id=1,
         )
 
+        p6 = Participant(participantId=7, biobankId=10)
+        self._insert(
+            p6,
+            "Angela",
+            "Alligator",
+            "PITT",
+            "PITT_BANNER_HEALTH",
+            time_int=self.time1,
+            time_study=self.time1,
+            time_mem=self.time2,
+            time_fp_stored=self.time3,
+            state_id=4,
+        )
+
         calculate_participant_metrics()
 
         qs1 = "&stratification=GEO_STATE" "&endDate=2017-12-31"
@@ -2062,15 +2087,24 @@ class PublicMetricsApiTest(BaseTestCase):
                     "KY": 0,
                     "OR": 0,
                     "SD": 0,
+                    "AS": 0,
+                    "FM": 0,
+                    "GU": 0,
+                    "MH": 0,
+                    "MP": 0,
+                    "PR": 1,
+                    "PW": 0,
+                    "VI": 0
                 },
             },
             results1,
         )
         self.assertIn(
-            {"date": "2018-01-01", "metrics": {"WEST": 0, "NORTHEAST": 0, "MIDWEST": 3, "SOUTH": 0}}, results2
+            {"date": "2018-01-01", "metrics": {"WEST": 0, "NORTHEAST": 0, "MIDWEST": 3, "SOUTH": 0, "TERRITORIES": 1}},
+            results2
         )
         self.assertIn({"date": "2018-01-02", "count": 1, "hpo": "UNSET"}, results3)
-        self.assertIn({"date": "2018-01-02", "count": 2, "hpo": "PITT"}, results3)
+        self.assertIn({"date": "2018-01-02", "count": 3, "hpo": "PITT"}, results3)
         self.assertIn({"date": "2018-01-02", "count": 2, "hpo": "AZ_TUCSON"}, results3)
 
     def test_public_metrics_get_lifecycle_api(self):

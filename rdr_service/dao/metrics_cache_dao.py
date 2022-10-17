@@ -1960,7 +1960,8 @@ class MetricsRegionCacheDao(BaseDao):
                             'NORTHEAST': 0,
                             'MIDWEST': 0,
                             'SOUTH': 0,
-                            'WEST': 0
+                            'WEST': 0,
+                            'TERRITORIES': 0
                         }
                     }
                     new_item['metrics'][census_name] = int(record.total)
@@ -1987,7 +1988,8 @@ class MetricsRegionCacheDao(BaseDao):
                             'NORTHEAST': 0,
                             'MIDWEST': 0,
                             'SOUTH': 0,
-                            'WEST': 0
+                            'WEST': 0,
+                            'TERRITORIES': 0
                         }
                     }
                     new_item['metrics'][census_name] = int(record.total)
