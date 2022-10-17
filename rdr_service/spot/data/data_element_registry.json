@@ -174,7 +174,7 @@
   "normalization_rule": ["boolean_to_upper_string"]
 }, {
   "data_element_id": "c07d2c98e67148d8aad694c745a7261b",
-  "active_flag": "true",
+  "active_flag": "false",
   "target_table": "sample_data_element"
 }, {
   "data_element_id": "7c4c49b41d974fcf826e9b6183d912b8",

@@ -97,12 +97,12 @@
   "schema_name": "genomic_research_wgs",
   "data_element_id": "c07d2c98e67148d8aad694c745a7261b",
   "display_name": "sex_at_birth",
-  "active_flag": "true"
+  "active_flag": "false"
 }, {
   "schema_name": "genomic_research_wgs",
   "data_element_id": "7c4c49b41d974fcf826e9b6183d912b8",
   "display_name": "genome_type",
-  "active_flag": "true"
+  "active_flag": "false"
 }, {
   "schema_name": "genomic_research_wgs",
   "data_element_id": "3f00fac0df834cbfbcf359ec36ce9628",
@@ -417,12 +417,12 @@
   "schema_name": "genomic_research_array",
   "data_element_id": "c07d2c98e67148d8aad694c745a7261b",
   "display_name": "sex_at_birth",
-  "active_flag": "true"
+  "active_flag": "false"
 }, {
   "schema_name": "genomic_research_array",
   "data_element_id": "7c4c49b41d974fcf826e9b6183d912b8",
   "display_name": "genome_type",
-  "active_flag": "true"
+  "active_flag": "false"
 }, {
   "schema_name": "genomic_research_array",
   "data_element_id": "3f00fac0df834cbfbcf359ec36ce9628",
