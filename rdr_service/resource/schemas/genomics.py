@@ -456,6 +456,7 @@ class GenomicAppointmentEventSchema(Schema):
     event_type = fields.String(validate=validate.Length(max=256))
     event_authored_time = fields.DateTime()
     module_type = fields.String(validate=validate.Length(max=255))
+    appointment_id = fields.Int32()
     source = fields.String(validate=validate.Length(max=255))
     location = fields.String(validate=validate.Length(max=255))
     contact_number = fields.String(validate=validate.Length(max=255))
