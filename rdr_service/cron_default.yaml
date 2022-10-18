@@ -224,15 +224,15 @@ cron:
   timezone: America/New_York
   schedule: every day 07:15
   target: offline
+- description: Genomic CVL Resolve Samples (Daily)
+  url: /offline/GenomicCVLResolveSamples
+  timezone: America/New_York
+  schedule: every day 07:30
+  target: offline
 - description: Genomic CVL Reconciliation Alerts (Weekly)
   url: /offline/GenomicCVLReconciliationAlerts
   timezone: America/New_York
   schedule: every monday 09:00
-  target: offline
-- description: Genomic CVL Resolve Samples (Weekly)
-  url: /offline/GenomicCVLResolveSamples
-  timezone: America/New_York
-  schedule: every monday 10:00
   target: offline
 - description: Genomic Results Pipeline Withdrawals
   url: /offline/GenomicResultsPipelineWithdrawals
