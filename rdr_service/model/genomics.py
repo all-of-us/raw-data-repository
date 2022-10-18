@@ -1612,6 +1612,7 @@ class GenomicStorageUpdate(Base):
     created = Column(DateTime)
     modified = Column(DateTime)
     metrics_id = Column(Integer, ForeignKey("genomic_gc_validation_metrics.id"), nullable=False, index=True)
+    genome_type = Column(String(80), nullable=True)
     storage_class = Column(String(250), nullable=False)
 
 

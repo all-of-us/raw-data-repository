@@ -68,6 +68,7 @@ class GenomicStorageClass:
         logging.info(f'Updating {len(file_paths)} file path(s) to {self.storage_class} storage class')
 
         for file_path in file_paths:
+
             try:
                 self.storage_provider.change_file_storage_class(
                     source_path=file_path,
