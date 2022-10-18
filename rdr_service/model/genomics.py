@@ -1398,6 +1398,7 @@ class GenomicAppointmentEventNotified(Base):
     created = Column(DateTime)
     modified = Column(DateTime)
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False, index=True)
+    appointment_event_id = Column(Integer, ForeignKey("genomic_appointment_event.id"), nullable=False, index=True)
 
 
 event.listen(GenomicAppointmentEventNotified, 'before_insert', model_insert_listener)

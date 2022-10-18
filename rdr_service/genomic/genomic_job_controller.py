@@ -1925,18 +1925,21 @@ class GenomicJobController:
                 body += f'{appointment.event_authored_time}\n'
                 notified_appointments.append({
                     'participant_id': appointment.participant_id,
+                    'appointment_event_id': appointment.id,
                     'created': clock.CLOCK.now(),
                     'modified': clock.CLOCK.now()
                 })
             EmailService.send_email(
                 Email(
-                    recipients=[notification_email_address],
+                    recipients=notification_email_address,
                     subject='GC Appointments With GRoR Changed Participants',
                     plain_text_content=body
                 )
             )
             notified_dao.insert_bulk(notified_appointments)
-        self.job_result = GenomicSubProcessResult.SUCCESS
+            self.job_result = GenomicSubProcessResult.SUCCESS
+        else:
+            self.job_result = GenomicSubProcessResult.NO_RESULTS
 
     @staticmethod
     def execute_cloud_task(payload, endpoint):

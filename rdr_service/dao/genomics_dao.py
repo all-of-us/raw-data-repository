@@ -3129,7 +3129,7 @@ class GenomicAppointmentEventDao(BaseDao, GenomicDaoMixin):
                 GenomicAppointmentEvent.participant_id == GenomicAppointmentEventNotified.participant_id
             ).filter(
                 GenomicAppointmentEvent.event_type == 'appointment_scheduled',
-                GenomicAppointmentEventNotified.participant_id == None,
+                GenomicAppointmentEventNotified.id.is_(None),
                 ParticipantSummary.consentForGenomicsROR.in_((QuestionnaireStatus.SUBMITTED_NO_CONSENT,
                                                               QuestionnaireStatus.SUBMITTED_NOT_SURE))
             ).all()
