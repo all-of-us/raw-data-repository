@@ -46,7 +46,8 @@ from rdr_service.model.genomics import (
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
-    GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics)
+    GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
+    GenomicStorageUpdate)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -1695,6 +1696,22 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                 GenomicFileProcessed.filePath == filepath,
                 GenomicGCValidationMetrics.ignoreFlag != 1
             ).one_or_none()
+
+    def get_fully_processed_array_metrics(self):
+        with self.session() as session:
+            return session.query(
+                GenomicGCValidationMetrics
+            ).join(
+                GenomicSetMember,
+                GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
+            ).outerjoin(
+                GenomicStorageUpdate,
+                GenomicStorageUpdate.metrics_id == GenomicGCValidationMetrics.id
+            ).filter(
+                GenomicSetMember.aw4ManifestJobRunID.isnot(None),
+                GenomicSetMember.gemA2ManifestJobRunId.isnot(None),
+                GenomicStorageUpdate.id.is_(None)
+            )
 
     def update_metric_set_member_id(self, metric_obj, member_id):
         """
@@ -4383,3 +4400,14 @@ class GenomicAppointmentEventMetricsDao(UpdatableDao, GenomicDaoMixin):
             ).all()
 
 
+class GenomicDefaultBaseDao(BaseDao, GenomicDaoMixin):
+    def __init__(self, model_type):
+        super(GenomicDefaultBaseDao, self).__init__(
+            model_type, order_by_ending=['id']
+        )
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass

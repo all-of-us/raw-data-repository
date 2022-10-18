@@ -6,8 +6,10 @@ from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, Gen
     GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, GenomicW2WRawDao, GenomicW1ILRawDao
 from rdr_service.genomic.genomic_cvl_reconciliation import GenomicCVLReconcile
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
+from rdr_service.genomic.genomic_storage_class import GenomicStorageClass
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
 from rdr_service.services.system_utils import JSONObject
+from rdr_service.storage import GoogleCloudStorageProvider
 
 
 def run_genomic_cron_job(val):
@@ -417,6 +419,16 @@ def gem_results_to_report_state():
 def reconcile_appointment_events_from_metrics():
     with GenomicJobController(GenomicJob.APPOINTMENT_METRICS_RECONCILE) as controller:
         controller.reconcile_appointment_events_from_metrics()
+
+
+def genomic_update_storage_class(storage_job_type):
+    with GenomicJobController(storage_job_type) as controller:
+        genomic_storage = GenomicStorageClass(
+            storage_job_type=storage_job_type,
+            storage_provider=GoogleCloudStorageProvider()
+        )
+        genomic_storage.run_storage_update()
+        controller.job_result = GenomicSubProcessResult.SUCCESS
 
 
 def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
