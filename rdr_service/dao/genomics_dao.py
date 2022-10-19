@@ -1697,9 +1697,9 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                 GenomicGCValidationMetrics.ignoreFlag != 1
             ).one_or_none()
 
-    def get_fully_processed_array_metrics(self):
+    def get_fully_processed_metrics(self, is_array=False):
         with self.session() as session:
-            return session.query(
+            records = session.query(
                 GenomicGCValidationMetrics
             ).join(
                 GenomicSetMember,
@@ -1709,9 +1709,16 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                 GenomicStorageUpdate.metrics_id == GenomicGCValidationMetrics.id
             ).filter(
                 GenomicSetMember.aw4ManifestJobRunID.isnot(None),
-                GenomicSetMember.gemA2ManifestJobRunId.isnot(None),
                 GenomicStorageUpdate.id.is_(None)
             )
+
+            if not is_array:
+                return records.all()
+
+            records = records.filter(
+                GenomicSetMember.gemA2ManifestJobRunId.isnot(None),
+            )
+            return records.all()
 
     def update_metric_set_member_id(self, metric_obj, member_id):
         """

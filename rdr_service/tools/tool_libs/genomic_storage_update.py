@@ -55,7 +55,9 @@ def run():
     parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
-    parser.add_argument("--storage_type", help="enable debug output", required=True)  # noqa
+    parser.add_argument("--storage_type", help="add storage type for file update", choices=['array', 'wgs'],
+                        required=True)
+    # noqa
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
