@@ -1615,6 +1615,7 @@ class GenomicStorageUpdate(Base):
     genome_type = Column(String(80), nullable=True)
     storage_class = Column(String(250), nullable=False)
     has_error = Column(SmallInteger, nullable=False, default=0)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
 
 
 event.listen(GenomicStorageUpdate, 'before_insert', model_insert_listener)

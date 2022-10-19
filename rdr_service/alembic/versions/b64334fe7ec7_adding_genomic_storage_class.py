@@ -44,6 +44,7 @@ def upgrade_rdr():
     sa.Column('genome_type', sa.String(length=80), nullable=True),
     sa.Column('storage_class', sa.String(length=250), nullable=False),
     sa.Column('has_error', sa.SmallInteger(), nullable=False),
+    sa.Column('ignore_flag', sa.SmallInteger(), nullable=False),
     sa.ForeignKeyConstraint(['metrics_id'], ['genomic_gc_validation_metrics.id'], ),
     sa.PrimaryKeyConstraint('id')
     )

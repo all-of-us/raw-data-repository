@@ -67,7 +67,7 @@ class GenomicStorageClass:
             logging.info('There are currently no array data files to update')
             return
 
-        self.update_file_paths(
+        self.update_storage_class_for_file_paths(
             file_dict=self.get_file_dict_from_metrics(
                 metrics=array_metrics,
                 metric_type=config.GENOME_TYPE_ARRAY
@@ -83,14 +83,14 @@ class GenomicStorageClass:
             logging.info('There are currently no wgs data files to update')
             return
 
-        self.update_file_paths(
+        self.update_storage_class_for_file_paths(
             file_dict=self.get_file_dict_from_metrics(
                 metrics=wgs_metrics,
                 metric_type=config.GENOME_TYPE_WGS
             )
         )
 
-    def update_file_paths(self, file_dict: List[dict]):
+    def update_storage_class_for_file_paths(self, file_dict: List[dict]):
 
         storage_objs = []
         for metrics_update in file_dict:
