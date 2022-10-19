@@ -9,7 +9,6 @@ from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_storage_class import GenomicStorageClass
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
 from rdr_service.services.system_utils import JSONObject
-from rdr_service.storage import GoogleCloudStorageProvider
 
 
 def run_genomic_cron_job(val):
@@ -424,8 +423,7 @@ def reconcile_appointment_events_from_metrics():
 def genomic_update_storage_class(storage_job_type):
     with GenomicJobController(storage_job_type) as controller:
         genomic_storage = GenomicStorageClass(
-            storage_job_type=storage_job_type,
-            storage_provider=GoogleCloudStorageProvider()
+            storage_job_type=storage_job_type
         )
         genomic_storage.run_storage_update()
         controller.job_result = GenomicSubProcessResult.SUCCESS

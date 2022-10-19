@@ -9,7 +9,6 @@ import sys
 from rdr_service.genomic.genomic_storage_class import GenomicStorageClass
 from rdr_service.genomic_enums import GenomicJob
 from rdr_service.services.system_utils import setup_logging, setup_i18n
-from rdr_service.storage import GoogleCloudStorageProvider
 
 from rdr_service.tools.tool_libs import GCPProcessContext
 from rdr_service.tools.tool_libs.tool_base import ToolBase
@@ -26,7 +25,6 @@ class GenomicStorageTool(ToolBase):
 
     def run(self):
         self.gcp_env.activate_sql_proxy()
-        # server_config = self.get_server_config()
 
         storage_job_type = {
             'array': GenomicJob.UPDATE_ARRAY_STORAGE_CLASS,
@@ -34,10 +32,8 @@ class GenomicStorageTool(ToolBase):
         }[self.args.storage_type]
 
         genomic_storage = GenomicStorageClass(
-            storage_job_type=storage_job_type,
-            storage_provider=GoogleCloudStorageProvider()
+            storage_job_type=storage_job_type
         )
-
         genomic_storage.run_storage_update()
 
 

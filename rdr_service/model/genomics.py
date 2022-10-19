@@ -1614,6 +1614,7 @@ class GenomicStorageUpdate(Base):
     metrics_id = Column(Integer, ForeignKey("genomic_gc_validation_metrics.id"), nullable=False, index=True)
     genome_type = Column(String(80), nullable=True)
     storage_class = Column(String(250), nullable=False)
+    has_error = Column(SmallInteger, nullable=False, default=0)
 
 
 event.listen(GenomicStorageUpdate, 'before_insert', model_insert_listener)

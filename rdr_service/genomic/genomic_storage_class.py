@@ -1,8 +1,8 @@
 import logging
 
-from typing import List
+from typing import List, Dict, Union
 
-from rdr_service import config
+from rdr_service import config, clock
 from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao, GenomicDefaultBaseDao
 from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes
 from rdr_service.genomic_enums import GenomicJob
@@ -14,15 +14,13 @@ class GenomicStorageClass:
 
     def __init__(self,
                  storage_job_type,
-                 storage_provider: GoogleCloudStorageProvider,
                  storage_class='COLDLINE'
                  ):
-
         self.storage_job_type = storage_job_type
         self.storage_class = storage_class
-        self.storage_provider = storage_provider
         self.updated_count = 0
 
+        self.storage_provider = GoogleCloudStorageProvider()
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.storage_update_dao = GenomicDefaultBaseDao(
             model_type=GenomicStorageUpdate
@@ -39,10 +37,10 @@ class GenomicStorageClass:
         run_method()
 
     @classmethod
-    def get_file_paths_from_metrics(cls, *,
-                                    metrics: List[GenomicGCValidationMetrics],
-                                    metric_type: str
-                                    ) -> List[str]:
+    def get_file_dict_from_metrics(cls, *,
+                                   metrics: List[GenomicGCValidationMetrics],
+                                   metric_type: str
+                                   ) -> List[Dict[str, Union[int, list]]]:
 
         metric_file_type_map = {
             config.GENOME_TYPE_ARRAY: [obj['file_path_attribute'] for obj in array_file_types_attributes],
@@ -51,11 +49,14 @@ class GenomicStorageClass:
 
         files_to_update = []
         for metric in metrics:
-            metric_paths = [obj[1] for obj in metric if 'Path' in obj[0] and obj[0] in metric_file_type_map and obj[1]
-                            is not None]
+            metric_obj = {'metric_id': metric.id,
+                          'metric_paths': [obj[1] for obj in metric if 'Path' in obj[0] and obj[0] in
+                                           metric_file_type_map and obj[1]
+                                           is not None],
+                          'metric_type': metric_type}
 
-            files_to_update.extend(
-                metric_paths
+            files_to_update.append(
+                metric_obj
             )
         return files_to_update
 
@@ -67,40 +68,63 @@ class GenomicStorageClass:
             return
 
         self.update_file_paths(
-            file_paths=self.get_file_paths_from_metrics(
+            file_dict=self.get_file_dict_from_metrics(
                 metrics=array_metrics,
                 metric_type=config.GENOME_TYPE_ARRAY
             )
         )
 
     def update_wgs_files(self):
-        wgs_metrics = self.metrics_dao.get_fully_processed_metrics()
+        wgs_metrics = self.metrics_dao.get_fully_processed_metrics(
+            metric_type=config.GENOME_TYPE_WGS
+        )
 
         if not wgs_metrics:
             logging.info('There are currently no wgs data files to update')
             return
 
         self.update_file_paths(
-            file_paths=self.get_file_paths_from_metrics(
+            file_dict=self.get_file_dict_from_metrics(
                 metrics=wgs_metrics,
                 metric_type=config.GENOME_TYPE_WGS
             )
         )
 
-    def update_file_paths(self, file_paths: List[str]):
+    def update_file_paths(self, file_dict: List[dict]):
 
-        logging.info(f'Updating {len(file_paths)} file path(s) to {self.storage_class} storage class')
+        storage_objs = []
+        for metrics_update in file_dict:
+            metrics_id = metrics_update.get('metric_id')
+            metrics_paths = metrics_update.get('metric_paths')
 
-        for file_path in file_paths:
-            try:
-                self.storage_provider.change_file_storage_class(
-                    source_path=file_path,
-                    storage_class=self.storage_class
-                )
-                self.updated_count += 1
+            insert_obj = {
+                'metrics_id': metrics_id,
+                'storage_class': self.storage_class,
+                'genome_type': metrics_update.get('metric_type'),
+                'created': clock.CLOCK.now(),
+                'modified': clock.CLOCK.now()
+            }
 
-            # pylint: disable=broad-except
-            except Exception:
-                logging.warning(f'Storage class update for {file_path} failed to update', exc_info=True)
+            logging.info(f"Updating metric_id: {metrics_id} "
+                         f"{len(metrics_update)} file path("
+                         f"s) to {self.storage_class} storage class")
+
+            for metric_path in metrics_paths:
+                try:
+                    self.storage_provider.change_file_storage_class(
+                        source_path=metric_path,
+                        storage_class=self.storage_class
+                    )
+                    self.updated_count += 1
+
+                # pylint: disable=broad-except
+                except Exception as e:
+                    logging.warning(f'Storage class update for {metric_path} failed to update: error: {e}',
+                                    exc_info=True)
+                    insert_obj['has_error'] = 1
+
+            storage_objs.append(insert_obj)
+
+        self.storage_update_dao.insert_bulk(storage_objs)
 
         logging.info(f'{self.updated_count} genomic data files changed to {self.storage_class} storage class')
