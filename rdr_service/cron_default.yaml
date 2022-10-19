@@ -254,9 +254,4 @@ cron:
   timezone: America/New_York
   schedule: every monday 08:30
   target: offline
-- description: Genomic Update Array Storage Class
-  url: /offline/GenomicUpdateArrayStorageClass
-  timezone: America/New_York
-  schedule: every day 04:00
-  target: offline
 
