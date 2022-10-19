@@ -1315,8 +1315,8 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + 'GenomicNotifyAppointmentGRoRRevoked',
-        endpoint='genomic_appointment_gror_revoked',
+        OFFLINE_PREFIX + 'GenomicNotifyAppointmentGRoRChanged',
+        endpoint='genomic_appointment_gror_changed',
         view_func=genomic_appointment_gror_changed,
         methods=['GET']
     )
