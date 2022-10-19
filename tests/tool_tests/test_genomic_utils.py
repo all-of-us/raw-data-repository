@@ -437,7 +437,9 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         self.assertEqual(sid_member16.blockResearch, 1)
         self.assertEqual(sid_member16.gcManifestWellPosition, None)
 
-    def test_update_missing_files(self):
+    @mock.patch('os.path.exists')
+    @mock.patch('builtins.open', mock.mock_open(read_data="211147"))
+    def test_update_missing_files(self, mock_exists):
         gen_set = self.data_generator.create_database_genomic_set(
             genomicSetName=".",
             genomicSetCriteria=".",
@@ -459,6 +461,16 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             genomeType="aou_wgs",
             genomicWorkflowState=GenomicWorkflowState.GC_DATA_FILES_MISSING
         )
+
+        filepath_wgs_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="3114",
+            sampleId="211147",
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.CVL_READY
+        )
+        mock_exists.return_value = True
+
         self.data_generator.create_database_genomic_gc_validation_metrics(
             genomicSetMemberId=array_member.id,
             chipwellbarcode='10001_R01C01',
@@ -467,6 +479,10 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         self.data_generator.create_database_genomic_gc_validation_metrics(
             genomicSetMemberId=wgs_member.id,
 
+        )
+        self.data_generator.create_database_genomic_gc_validation_metrics(
+            genomicSetMemberId=filepath_wgs_member.id,
+            cramPath='test-bucket/Wgs_sample_raw_data/test.cram'
         )
         array_files = [
             'test_data_folder/10001_R01C01.vcf.gz',
@@ -487,7 +503,7 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             'Wgs_sample_raw_data/test.hard-filtered.gvcf.gz',
             'Wgs_sample_raw_data/test.hard-filtered.gvcf.gz.md5sum'
         ]
-        bucket_name = 'gs://test-bucket'
+        bucket_name = 'test-bucket'
         for file_name in array_files:
             # Set file type
             file_type = file_name.split('/')[-1].split("_")[-1] if "idat" in file_name.lower() else \
@@ -521,7 +537,8 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         GenomicUtilsGeneralTest.run_tool(UpdateMissingFiles, tool_args={
             "command": "update-missing-files",
             "file_path": None,
-            "dryrun": False
+            "dryrun": False,
+            "update_filepath_scheme": False
         })
 
         metrics_dao = GenomicGCValidationMetricsDao()
@@ -529,3 +546,13 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         self.assertEqual("gs://test-bucket/test_data_folder/10001_R01C01_Red.idat", array_metrics.idatRedPath)
         wgs_metrics = metrics_dao.get_metrics_by_member_id(wgs_member.id)
         self.assertEqual('gs://test-bucket/Wgs_sample_raw_data/test.cram', wgs_metrics.cramPath)
+
+        GenomicUtilsGeneralTest.run_tool(UpdateMissingFiles, tool_args={
+            "command": "update-missing-files",
+            "file_path": 'test.txt',
+            "dryrun": False,
+            "update_filepath_scheme": True
+        })
+
+        wgs_filepath_metrics = metrics_dao.get_metrics_by_member_id(filepath_wgs_member.id)
+        self.assertEqual('gs://test-bucket/Wgs_sample_raw_data/test.cram', wgs_filepath_metrics.cramPath)
