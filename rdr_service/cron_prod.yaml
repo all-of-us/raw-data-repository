@@ -104,6 +104,11 @@ cron:
   timezone: America/New_York
   schedule: every day 01:00
   target: offline
+- description: Genomic GC Appointment GRoR Changed Notification (Daily)
+  url: /offline/GenomicNotifyAppointmentGRoRChanged
+  timezone: America/New_York
+  schedule: every day 04:15
+  target: offline
 - description: Genomic Update Array Storage Class
   url: /offline/GenomicUpdateArrayStorageClass
   timezone: America/New_York
