@@ -809,6 +809,12 @@ def genomic_aw3_ready_missing_files_report():
     genomic_pipeline.notify_aw3_ready_missing_data_files()
     return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@run_genomic_cron_job('notify_appointment_gror_changed')
+def genomic_appointment_gror_changed():
+    genomic_pipeline.notify_appointment_gror_changed()
+    return '{"success": "true"}'
+
 
 @app_util.auth_required_cron
 @run_genomic_cron_job('update_array_storage_class')
@@ -1319,6 +1325,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'GenomicAW3ReadyMissingDataFilesReport',
         endpoint='genomic_aw3_ready_missing_files_report',
         view_func=genomic_aw3_ready_missing_files_report,
+        methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'GenomicNotifyAppointmentGRoRChanged',
+        endpoint='genomic_appointment_gror_changed',
+        view_func=genomic_appointment_gror_changed,
         methods=['GET']
     )
 

@@ -47,7 +47,7 @@ from rdr_service.model.genomics import (
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
-    GenomicStorageUpdate)
+    GenomicAppointmentEventNotified, GenomicStorageUpdate)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -3137,6 +3137,36 @@ class GenomicAppointmentEventDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicAppointmentEventDao, self).__init__(
             GenomicAppointmentEvent, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def get_appointments_gror_changed(self):
+        with self.session() as session:
+            return session.query(
+                GenomicAppointmentEvent
+            ).join(
+                ParticipantSummary,
+                GenomicAppointmentEvent.participant_id == ParticipantSummary.participantId
+            ).outerjoin(
+                GenomicAppointmentEventNotified,
+                GenomicAppointmentEvent.participant_id == GenomicAppointmentEventNotified.participant_id
+            ).filter(
+                GenomicAppointmentEvent.event_type == 'appointment_scheduled',
+                GenomicAppointmentEventNotified.id.is_(None),
+                ParticipantSummary.consentForGenomicsROR.in_((QuestionnaireStatus.SUBMITTED_NO_CONSENT,
+                                                              QuestionnaireStatus.SUBMITTED_NOT_SURE))
+            ).all()
+
+
+class GenomicAppointmentEventNotifiedDao(BaseDao, GenomicDaoMixin):
+
+    def __init__(self):
+        super(GenomicAppointmentEventNotifiedDao, self).__init__(
+            GenomicAppointmentEventNotified, order_by_ending=['id'])
 
     def get_id(self, obj):
         pass

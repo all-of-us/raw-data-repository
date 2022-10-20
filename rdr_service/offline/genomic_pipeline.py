@@ -607,3 +607,8 @@ def notify_email_group_of_w1il_gror_resubmit_participants(since_datetime):
 def notify_aw3_ready_missing_data_files():
     with GenomicJobController(GenomicJob.AW3_MISSING_DATA_FILE_REPORT) as controller:
         controller.check_aw3_ready_missing_files()
+
+
+def notify_appointment_gror_changed():
+    with GenomicJobController(GenomicJob.CHECK_APPOINTMENT_GROR_CHANGED) as controller:
+        controller.check_appointments_gror_changed()
