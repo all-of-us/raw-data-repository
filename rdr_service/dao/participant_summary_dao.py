@@ -690,7 +690,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 basics_authored_time=summary.questionnaireOnTheBasicsAuthored,
                 overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
                 lifestyle_authored_time=summary.questionnaireOnLifestyleAuthored,
-                earliest_ehr_file_received_time=summary.firstEhrReceiptTime,
+                earliest_ehr_file_received_time=summary.ehrReceiptTime,
                 earliest_physical_measurements_time=earliest_physical_measurements_time,
                 earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
                 ehr_consent_date_range_list=ehr_consent_ranges,
