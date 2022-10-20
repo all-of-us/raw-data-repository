@@ -1,9 +1,7 @@
-"""Generates 2 CSV files using the Data Analysis team's swoop & n3c query and drops the files in a google bucket"""
-from os.path import exists as file_exists
-from os import remove
-
-import subprocess
-import csv
+"""Generates 2 JSON files using the Data Analysis team's swoop & n3c query in a google bucket"""
+import json
+import sys
+from google.cloud import storage
 
 from sqlalchemy import text
 
@@ -60,39 +58,39 @@ WHERE consent_for_study_enrollment = 1 and consent_for_study_enrollment_time >= 
 
 
 def main(args):
+    # Establish a connection to the cloud bucket
+    client = storage.Client()
+    # Copy file to bucket, and delete file from local
+    if args.project.lower() == 'all-of-us-rdr-sandbox':
+        bucket = client.get_bucket('test_data_transfer_1')
+    elif args.project.lower() == 'all-of-us-rdr-prod':
+        # TODO: ENTER CORRECT BUCKET FOR PROD
+        bucket = client.get_bucket('MISSING_BUCKET')
+    else:
+        sys.exit(1, 'Invalid bucket, please use sandbox or prod')
+
     # Download data from SQL to local
-    for i, file_name in enumerate(['swoop_data.csv', "n3c_data.csv"]):
-        with open(file_name, "w") as csvfile:
-            writer = csv.writer(csvfile)
-            with database_factory.get_database().session() as session:
-                if i == 0:
-                    cursor = session.execute(text(_SWOOP_SQL))
-                elif i == 1:
-                    cursor = session.execute(text(_N3C_SQL))
-                try:
-                    writer.writerow(list(cursor.keys()))
-                    results = cursor.fetchall()
-                    for result in results:
-                        writer.writerow(result)
-                finally:
-                    cursor.close()
-
-        # Copy file to bucket, and delete file from local
-        if args.project.lower() == 'all-of-us-rdr-sandbox':
-            bucket = 'gs://test_data_transfer_1'
-        elif args.project.lower() == 'all-of-us-rdr-prod':
-            # TODO: ENTER CORRECT BUCKET FOR PROD
-            bucket = 'gs://MISSING_BUCKET'
-        result = subprocess.run(['gsutil', 'cp', file_name, bucket], stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, text=True, check=True)
-        print(result.stdout)
-
-        if file_exists(file_name):
+    for i in range(2):
+        with database_factory.get_database().session() as session:
+            if i == 0:
+                blob = bucket.blob('swoop_data.json')
+                cursor = session.execute(text(_SWOOP_SQL))
+                query_name = 'SWOOP'
+            elif i == 1:
+                blob = bucket.blob('n3c_data.json')
+                cursor = session.execute(text(_N3C_SQL))
+                query_name = 'N3C'
             try:
-                remove(file_name)
-                print(f'Removed {file_name} from local')
-            except FileNotFoundError as err:
-                print(f'File {file_name} does not exist \n {err}')
+                data = dict()
+                data['headers'] = list(cursor.keys())
+                data['values'] = []
+                results = cursor.fetchall()
+                for result in results:
+                    data['values'].append(list(result))
+                print(f'writing {query_name} query to file in bucket')
+                blob.upload_from_string(json.dumps(data, indent=4, sort_keys=True, default=str))
+            finally:
+                cursor.close()
 
 
 if __name__ == "__main__":
