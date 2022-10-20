@@ -61,8 +61,8 @@ WHERE consent_for_study_enrollment = 1 and consent_for_study_enrollment_time >= 
 
 def main(args):
     # Download data from SQL to local
-    for i, f in enumerate(['swoop_data.csv', "n3c_data.csv"]):
-        with open(f, "w") as csvfile:
+    for i, file_name in enumerate(['swoop_data.csv', "n3c_data.csv"]):
+        with open(file_name, "w") as csvfile:
             writer = csv.writer(csvfile)
             with database_factory.get_database().session() as session:
                 if i == 0:
@@ -83,16 +83,16 @@ def main(args):
         elif args.project.lower() == 'all-of-us-rdr-prod':
             # TODO: ENTER CORRECT BUCKET FOR PROD
             bucket = 'gs://MISSING_BUCKET'
-        result = subprocess.run(['gsutil', 'cp', f, bucket], stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, text=True)
+        result = subprocess.run(['gsutil', 'cp', file_name, bucket], stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True, check=True)
         print(result.stdout)
 
-        if file_exists(f):
+        if file_exists(file_name):
             try:
-                remove(f)
-                print(f'Removed {f} from local')
-            except FileNotFoundError as e:
-                print(f'File {f} does not exist \n {e}')
+                remove(file_name)
+                print(f'Removed {file_name} from local')
+            except FileNotFoundError as err:
+                print(f'File {file_name} does not exist \n {err}')
 
 
 if __name__ == "__main__":
