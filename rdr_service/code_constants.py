@@ -41,6 +41,9 @@ COPE_CONSENT_QUESTION_CODE = "section_participation"
 WEAR_CONSENT_QUESTION_CODE = "resultsconsent_wear"
 PRIMARY_CONSENT_UPDATE_QUESTION_CODE = "Reconsent_ReviewConsentAgree"
 VA_EHR_RECONSENT_QUESTION_CODE = "vaehrreconsent_agree"
+VA_PRIMARY_RECONSENT_C1_C2_QUESTION = 'vaprimaryreconsent_c1_2_agree'
+VA_PRIMARY_RECONSENT_C3_QUESTION = 'vaprimaryreconsent_c3_agree'
+NON_VA_PRIMARY_RECONSENT_QUESTION = 'nonvaprimaryreconsent_agree'
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
@@ -184,10 +187,7 @@ COPE_FEB_MODULE = "cope_feb"
 GENETIC_ANCESTRY_MODULE = 'GeneticAncestry'
 LIFE_FUNCTIONING_SURVEY = 'lfs'
 
-VA_PRIMARY_RECONSENT_C1_C2 = 'vaprimaryreconsent_c1_2'
-VA_PRIMARY_RECONSENT_C3 = 'vaprimaryreconsent_c3'
 VA_EHR_RECONSENT = 'vaehrreconsent'
-NON_VA_PRIMARY_RECONSENT = 'nonvaprimaryreconsent'
 
 # ConsentPII Questions
 RECEIVE_CARE_STATE = "ReceiveCare_PIIState"
