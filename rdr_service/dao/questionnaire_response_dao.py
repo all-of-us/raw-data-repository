@@ -74,11 +74,12 @@ from rdr_service.code_constants import (
     REMOTE_PM_MODULE,
     REMOTE_PM_UNIT,
     MEASUREMENT_SYS,
-    VA_PRIMARY_RECONSENT_C1_C2,
-    VA_PRIMARY_RECONSENT_C3,
+    VA_PRIMARY_RECONSENT_C1_C2_QUESTION,
+    VA_PRIMARY_RECONSENT_C3_QUESTION,
     VA_EHR_RECONSENT,
-    NON_VA_PRIMARY_RECONSENT,
+    NON_VA_PRIMARY_RECONSENT_QUESTION,
     VA_EHR_RECONSENT_QUESTION_CODE,
+    AGREE_YES,
     AGREE_NO
 )
 from rdr_service.dao.base_dao import BaseDao
@@ -872,6 +873,18 @@ class QuestionnaireResponseDao(BaseDao):
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value.lower() == WEAR_YES_ANSWER_CODE:
                             self.consents_provided.append(ConsentType.WEAR)
+                    elif self._code_in_list(
+                        code.value,
+                        [
+                            VA_PRIMARY_RECONSENT_C1_C2_QUESTION,
+                            VA_PRIMARY_RECONSENT_C3_QUESTION,
+                            NON_VA_PRIMARY_RECONSENT_QUESTION
+                        ]
+                    ):
+                        answer_value = code_dao.get(answer.valueCodeId).value
+                        if answer_value.lower() == AGREE_YES:
+                            self.consents_provided.append(ConsentType.PRIMARY_RECONSENT)
+                            participant_summary.reconsentForStudyEnrollmentAuthored = authored
                     elif code.value.lower() == VA_EHR_RECONSENT_QUESTION_CODE:
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value.lower() == AGREE_NO:
@@ -1014,12 +1027,6 @@ class QuestionnaireResponseDao(BaseDao):
                         setattr(participant_summary, mod_submitted, QuestionnaireStatus.SUBMITTED)
                         setattr(participant_summary, mod_authored, authored)
                         module_changed = True
-                elif self._code_in_list(
-                    code.value,
-                    [VA_PRIMARY_RECONSENT_C1_C2, VA_PRIMARY_RECONSENT_C3, NON_VA_PRIMARY_RECONSENT]
-                ):
-                    self.consents_provided.append(ConsentType.PRIMARY_RECONSENT)
-                    participant_summary.reconsentForStudyEnrollmentAuthored = authored
                 elif self._code_in_list(code.value, [VA_EHR_RECONSENT]) and not rejected_reconsent:
                     self.consents_provided.append(ConsentType.EHR_RECONSENT)
                     participant_summary.reconsentForElectronicHealthRecordsAuthored = authored
