@@ -1708,7 +1708,8 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                 GenomicStorageUpdate,
                 and_(
                     GenomicStorageUpdate.metrics_id == GenomicGCValidationMetrics.id,
-                    GenomicStorageUpdate.storage_class == metric_type
+                    GenomicStorageUpdate.storage_class == metric_type,
+                    GenomicStorageUpdate.ignore_flag != 1
                 )
             ).filter(
                 GenomicSetMember.aw4ManifestJobRunID.isnot(None),
