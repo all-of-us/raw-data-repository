@@ -480,14 +480,18 @@ def _query_and_write_reports(exporter, now: datetime, report_type, path_received
                 report_predicate=received_predicate
             )
 
-    # Generate the missing salivary report, within last n days (10 1/20)
+    # Generate the missing salivary report, within last n days
     if report_type != "monthly" and path_salivary_missing is not None:
+        missing_report_day_interval = config.getSettingJson(
+            config.BIOBANK_MISSING_REPORT_DAY_INTERVAL,
+            default=report_cover_range
+        )
         exporter.run_export(
             path_salivary_missing,
             _SALIVARY_MISSING_REPORT_SQL,
             {
                 "biobank_id_prefix": get_biobank_id_prefix(),
-                "n_days_interval": 10,
+                "n_days_interval": missing_report_day_interval,
             },
             backup=True,
         )
