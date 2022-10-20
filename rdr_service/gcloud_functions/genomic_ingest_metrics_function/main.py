@@ -36,8 +36,8 @@ class GenomicIngestMetricsFunction(FunctionPubSubHandler):
         self.task_root = '/resource/task/'
 
         self.task_mappings = {
-            "user_metrics": "IngestUserEventMetricsApi",
-            "appointment_metrics": "IngestAppointmentMetricsApi"
+            "user_events": "IngestUserEventMetricsApi",
+            "appointment_events": "IngestAppointmentMetricsApi"
         }
 
     def run(self):
@@ -116,6 +116,7 @@ def genomic_ingest_metrics_function(_event, _context):
     with GCPCloudFunctionContext(function_name, None) as gcp_env:
         func = GenomicIngestMetricsFunction(gcp_env, _event, _context)
         func.run()
+
 
 """ --- Main Program Call --- """
 if __name__ == '__main__':
