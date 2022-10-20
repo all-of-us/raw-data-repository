@@ -47,7 +47,7 @@ from rdr_service.model.genomics import (
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
-    GenomicAppointmentEventNotified)
+    GenomicAppointmentEventNotified, GenomicStorageUpdate)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -1696,6 +1696,33 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                 GenomicFileProcessed.filePath == filepath,
                 GenomicGCValidationMetrics.ignoreFlag != 1
             ).one_or_none()
+
+    def get_fully_processed_metrics(self, metric_type=config.GENOME_TYPE_ARRAY):
+        with self.session() as session:
+            records = session.query(
+                GenomicGCValidationMetrics
+            ).join(
+                GenomicSetMember,
+                GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
+            ).outerjoin(
+                GenomicStorageUpdate,
+                and_(
+                    GenomicStorageUpdate.metrics_id == GenomicGCValidationMetrics.id,
+                    GenomicStorageUpdate.storage_class == metric_type,
+                    GenomicStorageUpdate.ignore_flag != 1
+                )
+            ).filter(
+                GenomicSetMember.aw4ManifestJobRunID.isnot(None),
+                GenomicStorageUpdate.id.is_(None)
+            )
+
+            if metric_type != config.GENOME_TYPE_ARRAY:
+                return records.all()
+
+            records = records.filter(
+                GenomicSetMember.gemA2ManifestJobRunId.isnot(None),
+            )
+            return records.all()
 
     def update_metric_set_member_id(self, metric_obj, member_id):
         """
@@ -4414,3 +4441,14 @@ class GenomicAppointmentEventMetricsDao(UpdatableDao, GenomicDaoMixin):
             ).all()
 
 
+class GenomicDefaultBaseDao(BaseDao, GenomicDaoMixin):
+    def __init__(self, model_type):
+        super(GenomicDefaultBaseDao, self).__init__(
+            model_type, order_by_ending=['id']
+        )
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass

@@ -2371,19 +2371,25 @@ class UpdateMissingFiles(ToolBase):
             else:
                 _logger.error(f"Unable to open {self.args.file_path}")
                 return 1
+        if self.args.update_filepath_scheme and not samples_list:
+            _logger.error(f"List of sample ids required to check filepath scheme.")
+            return 1
 
-        members_to_update = self.member_dao.get_array_members_files_available(samples_list)
-        members_to_update.extend(self.member_dao.get_wgs_members_files_available(samples_list))
+        if self.args.update_filepath_scheme:
+            members_to_update = self.member_dao.get_members_from_sample_ids(samples_list)
+        else:
+            members_to_update = self.member_dao.get_array_members_files_available(samples_list)
+            members_to_update.extend(self.member_dao.get_wgs_members_files_available(samples_list))
         if not self.args.dryrun:
             for member in members_to_update:
-                updated = self._update_metric(member)
+                updated = self._update_metric(member, self.args.update_filepath_scheme)
                 if updated:
                     updated_count += 1
         else:
             _logger.info(f"Will update {len(members_to_update)} samples")
         _logger.info(f"Found {len(members_to_update)} members to update. Updated {updated_count}.")
 
-    def _update_metric(self, member: GenomicSetMember) -> bool:
+    def _update_metric(self, member: GenomicSetMember, update_scheme=False) -> bool:
         file_list = {}
         files = None
         file_types_attributes = None
@@ -2399,9 +2405,15 @@ class UpdateMissingFiles(ToolBase):
         for file in files:
             file_list[file.file_type] = file.file_path
         for file_type in file_types_attributes:
-            if file_type['required'] and file_type['file_type'] in file_list:
-                if not getattr(metrics, file_type['file_path_attribute']):
-                    setattr(metrics, file_type['file_path_attribute'], file_list[file_type['file_type']])
+            if not update_scheme:
+                if file_type['required'] and file_type['file_type'] in file_list:
+                    if not getattr(metrics, file_type['file_path_attribute']):
+                        setattr(metrics, file_type['file_path_attribute'], 'gs://' + file_list[file_type['file_type']])
+                        metric_updated = True
+            else:
+                file_path = getattr(metrics, file_type['file_path_attribute'])
+                if file_path and file_path[:5] != 'gs://':
+                    setattr(metrics, file_type['file_path_attribute'], 'gs://' + file_path)
                     metric_updated = True
         if metric_updated:
             self.metrics_dao.upsert(metrics)
@@ -2799,6 +2811,12 @@ def run():
         "--file-path",
         help="A newline separated list of sample ids.",
         default=None,
+        required=False
+    )
+    update_missing_files.add_argument(
+        "--update-filepath-scheme",
+        help="Checks and updates metric filepath if gs:// is missing.",
+        default=False,
         required=False
     )
 

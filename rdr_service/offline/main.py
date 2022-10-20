@@ -816,6 +816,20 @@ def genomic_appointment_gror_changed():
     return '{"success": "true"}'
 
 
+@app_util.auth_required_cron
+@run_genomic_cron_job('update_array_storage_class')
+def genomic_update_array_storage_class():
+    genomic_pipeline.genomic_update_storage_class(GenomicJob.UPDATE_ARRAY_STORAGE_CLASS)
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('update_wgs_storage_class')
+def genomic_update_wgs_storage_class():
+    genomic_pipeline.genomic_update_storage_class(GenomicJob.UPDATE_WGS_STORAGE_CLASS)
+    return '{"success": "true"}'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
@@ -1318,6 +1332,20 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'GenomicNotifyAppointmentGRoRChanged',
         endpoint='genomic_appointment_gror_changed',
         view_func=genomic_appointment_gror_changed,
+        methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'GenomicUpdateArrayStorageClass',
+        endpoint='genomic_update_array_storage_class',
+        view_func=genomic_update_array_storage_class,
+        methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'GenomicUpdateWGSStorageClass',
+        endpoint='genomic_update_wgs_storage_class',
+        view_func=genomic_update_wgs_storage_class,
         methods=['GET']
     )
 

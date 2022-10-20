@@ -20,6 +20,7 @@ EXECUTE IMMEDIATE
       , sample_id
       , research_id
       , es.display_name
+      , sde.genome_type
       , LAST_VALUE(value_string)
       OVER (
         PARTITION BY sde.data_element_id, sample_id
@@ -35,6 +36,7 @@ EXECUTE IMMEDIATE
         , sde.sample_id
         , pde.research_id
         , es.display_name
+        , "AOU_ARRAY" as genome_type
         , LAST_VALUE(pde.value_string)
         OVER (
           PARTITION BY pde.data_element_id, pde.participant_id
@@ -52,6 +54,7 @@ EXECUTE IMMEDIATE
         , sde.sample_id
         , cde.research_id
         , es.display_name
+        , "AOU_ARRAY" as genome_type
         , LAST_VALUE(cde.value_string)
         OVER (
           PARTITION BY cde.data_element_id, cde.participant_id

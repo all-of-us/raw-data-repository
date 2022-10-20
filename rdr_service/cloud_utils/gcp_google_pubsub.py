@@ -105,6 +105,7 @@ def _validate_pk_values(values_list: List, expected_len=1) -> List[List[str]] or
 
     return converted_list
 
+
 def publish_pdr_pubsub(table: str, action: str, pk_columns : List[str] = [],
                        pk_values: List = [], project=GAE_PROJECT):
     """

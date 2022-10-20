@@ -75,6 +75,7 @@ default_rdr_ods_tables = [
              'data_element_id', 'STRING', 'NULLABLE', 'data_element_id from rdr_ods.data_element', ()),
          bigquery.SchemaField('value_string', 'STRING', 'NULLABLE', 'value of of data element.', ()),
          bigquery.SchemaField('created_timestamp', 'TIMESTAMP', 'NULLABLE', 'timestamp of record insertion.', ()),
+         bigquery.SchemaField('genome_type', 'STRING', 'NULLABLE', 'genome_type from RDR for sample_id', ()),
      ]}
 ]
 data_file_path = os.path.join(os.path.dirname(__file__), "data")
