@@ -198,7 +198,7 @@ class PtscHealthDataTransferValidTaskApi(Resource):
         logging.info(f'Ptsc Health Data Transfer Result: {data.get("attributes").get("eventType")}')
         # possible event types: TRANSFER_OPERATION_SUCCESS, TRANSFER_OPERATION_FAILED, TRANSFER_OPERATION_ABORTED
         event_type = data.get("attributes").get("eventType")
-        if event_type in ['TRANSFER_OPERATION_FAILED', 'TRANSFER_OPERATION_ABORTED']:
+        if event_type == 'TRANSFER_OPERATION_ABORTED':
             slack_config = config.getSettingJson(RDR_SLACK_WEBHOOKS, {})
             webhook_url = slack_config.get('rdr_ptsc_health_data_transfer_alerts')
             slack_alert_helper = SlackMessageHandler(webhook_url=webhook_url)
