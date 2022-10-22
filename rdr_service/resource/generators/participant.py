@@ -721,6 +721,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     continue
                 consent_added = False
                 module_name = self._lookup_code_value(row.codeId, ro_session)
+
+                # DA-3076 Workaround:  Exclude IN_PROGRESS (classification type PARTIAL) EHR responses sent in error
+                # to RDR, until RDR cleans these by flagging as invalid/DUPLICATE
+                if (module_name == 'EHRConsentPII'
+                        and row.classificationType == QuestionnaireResponseClassificationType.PARTIAL):
+                    continue
                 # Start with a default submittal status.  May be updated if this is a consent module with a specific
                 # consent question/answer that determines module submittal status
                 module_status = BQModuleStatusEnum.SUBMITTED
