@@ -30,6 +30,7 @@ EXECUTE IMMEDIATE
       FROM `rdr_ods.sample_data_element` sde
       JOIN `rdr_ods.export_schema_data_element` es ON es.data_element_id = sde.data_element_id
         and es.schema_name = "genomic_research_wgs"
+      where sde.genome_type = "AOU_WGS"
       UNION ALL
       # Survey Data
       SELECT DISTINCT pde.participant_id
@@ -47,6 +48,7 @@ EXECUTE IMMEDIATE
         JOIN `rdr_ods.export_schema_data_element` es ON es.data_element_id = pde.data_element_id
           and es.schema_name = "genomic_research_wgs"
         JOIN `rdr_ods.sample_data_element` sde ON sde.participant_id = pde.participant_id
+          and sde.genome_type = "AOU_WGS"
         WHERE pde.authored_timestamp < '%t'
       UNION ALL
       # Consent Data
@@ -65,6 +67,7 @@ EXECUTE IMMEDIATE
         JOIN `rdr_ods.export_schema_data_element` es ON es.data_element_id = cde.data_element_id
           and es.schema_name = "genomic_research_wgs"
         JOIN `rdr_ods.sample_data_element` sde ON sde.participant_id = cde.participant_id
+          and sde.genome_type = "AOU_WGS"
         WHERE cde.authored_timestamp < '%t'
       ) sub
   ) a
