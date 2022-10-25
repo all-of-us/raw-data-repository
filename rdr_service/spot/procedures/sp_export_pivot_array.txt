@@ -75,4 +75,4 @@ PIVOT(MAX(a.latest_data_element_value) FOR a.display_name IN (%s))
 WHERE genome_type = "AOU_ARRAY"
 """, auth_ts, auth_ts, des
 );
-END;
+END
