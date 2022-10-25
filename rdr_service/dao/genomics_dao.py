@@ -82,7 +82,7 @@ class GenomicDaoMixin:
 
     exclude_states = [GenomicWorkflowState.IGNORE]
 
-    def get_last_updated_records(self, from_date, _ids=True):
+    def get_last_updated_records(self, from_date, _ids=True) -> List:
         from_date = from_date.replace(microsecond=0)
         if not hasattr(self.model_type, 'modified'):
             return []
@@ -98,7 +98,7 @@ class GenomicDaoMixin:
             )
             return records.all()
 
-    def get_from_filepath(self, filepath):
+    def get_from_filepath(self, filepath) -> List:
         if not hasattr(self.model_type, 'file_path'):
             return []
 
@@ -110,11 +110,11 @@ class GenomicDaoMixin:
                 self.model_type.ignore_flag == 0,
             ).all()
 
-    def insert_bulk(self, batch):
+    def insert_bulk(self, batch: List[Dict]) -> None:
         with self.session() as session:
             session.bulk_insert_mappings(self.model_type, batch)
 
-    def bulk_update(self, model_objects: List[Dict]):
+    def bulk_update(self, model_objects: List[Dict]) -> None:
         with self.session() as session:
             session.bulk_update_mappings(self.model_type, model_objects)
 
@@ -1285,10 +1285,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                     GenomicSetMember.sampleId.in_(sample_list)
                 )
             return members.all()
-
-    def bulk_update_members(self, members: List[Dict]):
-        with self.session() as session:
-            session.bulk_update_mappings(GenomicSetMember, members)
 
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
