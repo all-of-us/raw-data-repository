@@ -2311,7 +2311,9 @@ class GenomicSchedulingDao(BaseDao):
             appointment['participant_id'] = participant_id
             appointment['status'] = status
             appointment['type'] = 'appointment'
-            appointment = format_datetime_objs(appointment)
+            if any(isinstance(value, datetime) for value in appointment.values()):
+                appointment = format_datetime_objs(appointment)
+
             appointments.append(appointment)
 
         return {
