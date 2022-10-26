@@ -2292,6 +2292,12 @@ class GenomicSchedulingDao(BaseDao):
         timestamp = pytz.utc.localize(payload_dict.get('date'))
         appointments = []
 
+        def format_datetime_objs(obj: Dict) -> Dict:
+            for key, value in obj.items():
+                if isinstance(value, datetime):
+                    obj[key] = pytz.utc.localize(value)
+            return obj
+
         if not payload_dict.get('data'):
             return {
                 "data": appointments,
@@ -2301,13 +2307,14 @@ class GenomicSchedulingDao(BaseDao):
         for appointment in payload_dict.get('data'):
             status = appointment.status.split('_')[-1]
             participant_id = f'P{appointment.participant_id}'
-            appointment = appointment._asdict()
+            appointment = {k: v for k, v in appointment._asdict().items() if v is not None}
             appointment['participant_id'] = participant_id
             appointment['status'] = status
             appointment['type'] = 'appointment'
-            appointments.append(
-                {k: v for k, v in appointment.items() if v is not None}
-            )
+            if any(isinstance(value, datetime) for value in appointment.values()):
+                appointment = format_datetime_objs(appointment)
+
+            appointments.append(appointment)
 
         return {
             "data": appointments,
