@@ -2146,7 +2146,8 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         self.assertTrue(all(obj['type'] == 'appointment' for obj in resp['data']))
         self.assertTrue(all(obj['module'] == appointment_record.module_type for obj in resp['data']))
         self.assertTrue(all(obj['status'] == appointment_record.event_type.split('_')[-1] for obj in resp['data']))
-        self.assertTrue(all(obj['appointment_timestamp'] is not None for obj in resp['data']))
+        self.assertTrue(all(obj['appointment_timestamp'] is not None and '+00:00' in obj['appointment_timestamp'] for
+                            obj in resp['data']))
         self.assertTrue(all(obj['appointment_timezone'] == appointment_record.appointment_timezone for obj in
                             resp['data']))
         self.assertTrue(all(obj['source'] == appointment_record.source for obj in resp['data']))
