@@ -13,7 +13,8 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_batch_update, bq_geno
     bq_genomic_job_run_batch_update, bq_genomic_file_processed_batch_update, \
     bq_genomic_gc_validation_metrics_batch_update, bq_genomic_manifest_file_batch_update, \
     bq_genomic_manifest_feedback_batch_update
-from rdr_service.dao.genomics_dao import GenomicManifestFileDao, GenomicCloudRequestsDao, GenomicSetMemberDao
+from rdr_service.dao.genomics_dao import GenomicManifestFileDao, GenomicCloudRequestsDao, GenomicSetMemberDao, \
+    GenomicGCValidationMetricsDao
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
@@ -34,6 +35,7 @@ class BaseGenomicTaskApi(Resource):
         self.data = None
         self.cloud_req_dao = GenomicCloudRequestsDao()
         self.member_dao = GenomicSetMemberDao()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
         self.file_paths = None
         self.disallowed_jobs = []
 
@@ -695,3 +697,24 @@ class GenomicSetMemberUpdateApi(BaseGenomicTaskApi):
         logging.info('Complete.')
         return {"success": True}
 
+
+class GenomicGCMetricsUpsertApi(BaseGenomicTaskApi):
+    """
+    Cloud task endpoint: Upserts Genomic GC validation metric records
+    """
+    def post(self):
+        super().post()
+        metric_id = self.data.get('metric_id')
+        payload_dict = self.data.get('payload_dict')
+
+        if not metric_id or not payload_dict:
+            logging.warning('Combination of metric_id/payload_dict is required.')
+            return {"success": False}
+
+        self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+            data_to_upsert=payload_dict,
+            existing_id=metric_id
+        )
+
+        logging.info('Complete.')
+        return {"success": True}

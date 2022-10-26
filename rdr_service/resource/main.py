@@ -159,6 +159,11 @@ def _build_resource_app():
                       TASK_PREFIX + "GenomicSetMemberUpdateApi",
                       endpoint="genomic_set_member_update_task", methods=["POST"])
 
+    # Upsert GC validation metrics
+    _api.add_resource(genomic_cloud_tasks_api.GenomicGCMetricsUpsertApi,
+                      TASK_PREFIX + "GenomicGCMetricsUpsertApi",
+                      endpoint="genomic_gc_metrics_upsert", methods=["POST"])
+
     #
     # End Genomic Cloud Task API endpoints
     #

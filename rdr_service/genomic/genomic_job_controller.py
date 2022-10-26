@@ -1804,7 +1804,7 @@ class GenomicJobController:
                 return
 
             logging.info(f'Updating {len(updated_members)} genomic member(s) blocklists')
-            self.member_dao.bulk_update_members(updated_members)
+            self.member_dao.bulk_update(updated_members)
 
             self.job_result = GenomicSubProcessResult.SUCCESS
 
@@ -1943,13 +1943,11 @@ class GenomicJobController:
 
     @staticmethod
     def execute_cloud_task(payload, endpoint):
-        if GAE_PROJECT != 'localhost':
-            _task = GCPCloudTask()
-            _task.execute(
-                endpoint,
-                payload=payload,
-                queue='genomics'
-            )
+        if GAE_PROJECT == 'localhost':
+            return
+
+        cloud_task = GCPCloudTask()
+        cloud_task.execute(endpoint=endpoint, payload=payload, queue='genomics')
 
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
