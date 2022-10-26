@@ -712,8 +712,8 @@ class GenomicGCMetricsUpsertApi(BaseGenomicTaskApi):
             return {"success": False}
 
         self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-            payload_dict,
-            metric_id
+            data_to_upsert=payload_dict,
+            existing_id=metric_id
         )
 
         logging.info('Complete.')

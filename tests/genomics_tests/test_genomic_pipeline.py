@@ -585,7 +585,8 @@ class GenomicPipelineTest(BaseTestCase):
             codeType=CodeType.ANSWER, mapped=True)
         return self.code_dao.insert(code_to_insert).codeId
 
-    def test_ingest_array_aw2_end_to_end(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_ingest_array_aw2_end_to_end(self, metric_cloud_task):
         # Create the fake Google Cloud CSV files to ingest
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         subfolder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
@@ -627,6 +628,19 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Execute from cloud task
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 2)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 2)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
 
         # test file processing queue
         file_processed = self.file_processed_dao.get(1)
@@ -688,6 +702,20 @@ class GenomicPipelineTest(BaseTestCase):
         # Simulate new file uploaded
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
+        # NEW metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 4)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 4)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            if 'payload_dict' in call_arg_data.keys() and i > 1:
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
+
         gc_metrics = self.metrics_dao.get_all()
         # Test that no new records were inserted
         self.assertEqual(len(gc_metrics), 2)
@@ -745,7 +773,8 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end result code is recorded
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
 
-    def test_ingest_aw5_file(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_ingest_aw5_file(self, metric_cloud_task):
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2, genomic_workflow_state=GenomicWorkflowState.AW1)
         self._create_fake_datasets_for_gc_tests(2, arr_override=True, id_start_from=2, array_participants=[3, 4],
@@ -796,6 +825,19 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_seq)
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_gen)
 
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 4)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 4)
+
+        # assimilate cloud task ingestion via call args for tests
+        for call_arg_data in call_args:
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
+
         # ingest AW5 files
         with clock.FakeClock(test_date):
             test_file_name_aw5_array = create_ingestion_test_file('aw5_deletion_array.csv',
@@ -836,7 +878,6 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()
-
         self.assertEqual(len(gc_metrics), 4)
         for metrics_record in gc_metrics:
             self.assertIn(metrics_record.limsId, ['10001', '10002', '10003', '10004'])
@@ -1049,7 +1090,8 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_aw2_wgs_gc_metrics_ingestion(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw2_wgs_gc_metrics_ingestion(self, metric_cloud_task):
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2, genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
@@ -1083,9 +1125,20 @@ class GenomicPipelineTest(BaseTestCase):
         # Execute from cloud task
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # run_id = 1 & 2
 
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 1)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 1)
+
+        call_arg_data = call_args[0].args[0]
+        # assimilate cloud task ingestion via call args for tests
+        self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+            data_to_upsert=call_arg_data.get('payload_dict'),
+            existing_id=call_arg_data.get('metric_id')
+        )
+
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()
-
         self.assertEqual(len(gc_metrics), 1)
         self.assertEqual(gc_metrics[0].genomicSetMemberId, 2)
         self.assertEqual(gc_metrics[0].genomicFileProcessedId, 1)
@@ -2261,7 +2314,8 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
-    def test_gem_a1_manifest_end_to_end(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_gem_a1_manifest_end_to_end(self, metric_cloud_task):
         # Need GC Manifest for source query : run_id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
@@ -2306,6 +2360,18 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 3)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 3)
+
+        # assimilate cloud task ingestion via call args for tests
+        for call_arg_data in call_args:
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
         # Test sequencing file (required for GEM)
         sequencing_test_files = (
             f'test_data_folder/10001_R01C01.vcf.gz',
@@ -2703,6 +2769,19 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
+        # metrics insert called via cloud task
+        self.assertEqual(cloud_task.call_count, 3)
+        call_args = cloud_task.call_args_list
+        self.assertEqual(len(call_args), 3)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
+
         # Test sequencing file (required for GEM)
         sequencing_test_files = (
             f'test_data_folder/10001_R01C01.vcf.gz',
@@ -2755,13 +2834,24 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertTrue(cloud_task.called)
-        cloud_task_args = cloud_task.call_args.args[0]
-        self.assertEqual(cloud_task_args['field'], 'aw3ManifestFileId')
+        self.assertEqual(cloud_task.call_count, 5)
+        call_args = cloud_task.call_args_list
+        self.assertEqual(len(call_args), 5)
 
-        member_ids = cloud_task_args['member_ids']
-        self.assertIsNotNone(member_ids)
-        self.assertTrue(len(set(member_ids)) == len(member_ids))
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            if i == 3:
+                member_ids = call_arg_data.get('member_ids')
+                field = call_arg_data.get('field')
+                self.assertIsNotNone(member_ids)
+                self.assertTrue(len(set(member_ids)) == len(member_ids))
+                self.assertEqual(field, 'aw3ManifestJobRunID')
+            if i == 4:
+                member_ids = call_arg_data.get('member_ids')
+                field = call_arg_data.get('field')
+                self.assertIsNotNone(member_ids)
+                self.assertTrue(len(set(member_ids)) == len(member_ids))
+                self.assertEqual(field, 'aw3ManifestFileId')
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -2877,7 +2967,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
 
-    def test_aw3_array_blocklist_populated(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_array_blocklist_populated(self, metric_cloud_task):
         block_research_reason = 'Sample Swap'
 
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
@@ -2911,6 +3002,20 @@ class GenomicPipelineTest(BaseTestCase):
         ])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 3)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 3)
+
+        # assimilate cloud task ingestion via call args for tests
+        for call_arg_data in call_args:
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
+
         # Test sequencing file (required for GEM)
         sequencing_test_files = (
             f'test_data_folder/10001_R01C01.vcf.gz',
@@ -2977,7 +3082,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
 
-    def test_aw3_array_manifest_with_max_num(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_array_manifest_with_max_num(self, metric_cloud_task):
         stored_samples = [
             (1, 1001),
             (2, 1002),
@@ -3013,6 +3119,19 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_stored_samples(stored_samples)
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 7)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 7)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
 
         sequencing_test_files = []
         for sample in stored_samples:
@@ -3119,7 +3238,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_job_run')
         config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [4000])
 
-    def test_aw3_array_manifest_validation(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_array_manifest_validation(self, metric_cloud_task):
         stored_samples = [
             (1, 1001),
             (2, 1002),
@@ -3156,6 +3276,19 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_stored_samples(stored_samples)
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 6)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 6)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
 
         sequencing_test_files = []
         for sample in stored_samples:
@@ -3356,6 +3489,19 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
+        # metrics insert called via cloud task
+        self.assertEqual(cloud_task.call_count, 2)
+        call_args = cloud_task.call_args_list
+        self.assertEqual(len(call_args), 2)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
+
         # Test sequencing file (required for AW3 WGS)
         sequencing_test_files = (
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
@@ -3402,13 +3548,24 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertTrue(cloud_task.called)
-        cloud_task_args = cloud_task.call_args.args[0]
-        self.assertEqual(cloud_task_args['field'], 'aw3ManifestFileId')
+        self.assertEqual(cloud_task.call_count, 4)
+        call_args = cloud_task.call_args_list
+        self.assertEqual(len(call_args), 4)
 
-        member_ids = cloud_task_args['member_ids']
-        self.assertIsNotNone(member_ids)
-        self.assertTrue(len(set(member_ids)) == len(member_ids))
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            if i == 2:
+                member_ids = call_arg_data.get('member_ids')
+                field = call_arg_data.get('field')
+                self.assertIsNotNone(member_ids)
+                self.assertTrue(len(set(member_ids)) == len(member_ids))
+                self.assertEqual(field, 'aw3ManifestJobRunID')
+            if i == 3:
+                member_ids = call_arg_data.get('member_ids')
+                field = call_arg_data.get('field')
+                self.assertIsNotNone(member_ids)
+                self.assertTrue(len(set(member_ids)) == len(member_ids))
+                self.assertEqual(field, 'aw3ManifestFileId')
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -3526,7 +3683,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
 
-    def test_aw3_wgs_blocklist_populated(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_wgs_blocklist_populated(self, metric_cloud_task):
         block_research_reason = 'Sample Swap'
 
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
@@ -3567,6 +3725,19 @@ class GenomicPipelineTest(BaseTestCase):
             )
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 2)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 2)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
 
         # Test sequencing file (required for AW3 WGS)
         sequencing_test_files = (
@@ -3631,7 +3802,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
 
-    def test_aw3_wgs_manifest_validation(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_wgs_manifest_validation(self, metric_cloud_task):
         stored_samples = [
             (2, 1002),
             (3, 1003),
@@ -3676,6 +3848,19 @@ class GenomicPipelineTest(BaseTestCase):
             )
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 5)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 5)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
 
         sequencing_test_files = []
         for sample in stored_samples:
@@ -3836,7 +4021,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
 
-    def test_aw3_wgs_manifest_with_max_num(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_wgs_manifest_with_max_num(self, metric_cloud_task):
         stored_samples = [
             (2, 1002),
             (3, 1003),
@@ -3879,6 +4065,19 @@ class GenomicPipelineTest(BaseTestCase):
             )
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 5)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 5)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
 
         sequencing_test_files = []
         for sample in stored_samples:
@@ -4430,6 +4629,19 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 3
 
+        # metrics insert called via cloud task
+        self.assertEqual(cloud_task.call_count, 2)
+        call_args = cloud_task.call_args_list
+        self.assertEqual(len(call_args), 2)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
+
         # Set up test for ignored gc_metrics records
         metrics_record_2 = self.metrics_dao.get(2)
 
@@ -4448,8 +4660,8 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(dt_40d):
             genomic_pipeline.scan_and_complete_feedback_records()
 
-        # Should NOT call cloud task since no records
-        self.assertFalse(cloud_task.called)
+        # Should NOT call cloud task since no records should still be 2 calls
+        self.assertEqual(cloud_task.call_count, 2)
 
         # run the AW2F manifest workflow
         dt_60d = test_date + datetime.timedelta(days=60)
@@ -4457,8 +4669,9 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(dt_60d):
             genomic_pipeline.scan_and_complete_feedback_records()  # run_id = 4 & 5
 
-        # Should call cloud task since there are records
-        self.assertTrue(cloud_task.called)
+        # Should call cloud task since there are records, increasing call count
+        self.assertEqual(cloud_task.call_count, 3)
+
         cloud_task_args = cloud_task.call_args.args[0]
         req_keys = ['member_ids', 'is_job_run', 'field', 'value']
         self.assertTrue(set(cloud_task_args.keys()) == set(req_keys))
@@ -4593,6 +4806,20 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_run_id 5 & 6
+
+        # NEW metrics insert called via cloud task
+        self.assertEqual(cloud_task.call_count, 5)
+        call_args = cloud_task.call_args_list
+        self.assertEqual(len(call_args), 5)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            if 'payload_dict' in call_arg_data.keys() and i > 2:
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Generate remainder AW2F
         genomic_pipeline.send_remainder_contamination_manifests()  # job_run_id 7
@@ -5652,7 +5879,8 @@ class GenomicPipelineTest(BaseTestCase):
         records = self.aw2_raw_dao.get_all()
         self.assertEqual(0, len(records))
 
-    def test_investigation_aw2_ingestion(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_investigation_aw2_ingestion(self, metric_cloud_task):
         self._create_fake_datasets_for_gc_tests(3,
                                                 genome_type='aou_array',
                                                 array_participants=range(1, 4),
@@ -5737,6 +5965,19 @@ class GenomicPipelineTest(BaseTestCase):
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_aw2)
 
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 2)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 2)
+
+        # assimilate cloud task ingestion via call args for tests
+        for call_arg_data in call_args:
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
+
         # verify AW2 data
         metrics = self.metrics_dao.get_all()
         self.assertEqual(2, len(metrics))
@@ -5748,7 +5989,8 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(GenomicWorkflowState.AW2, member.genomicWorkflowState)
             self.assertEqual(GenomicWorkflowState.AW2.name, member.genomicWorkflowStateStr)
 
-    def test_gc_metrics_array_data(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_gc_metrics_array_data(self, metric_cloud_task):
 
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2, arr_override=True, array_participants=[1, 2],
@@ -5768,8 +6010,20 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
-        gc_record = self.metrics_dao.get(1)
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 2)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 2)
 
+        # assimilate cloud task ingestion via call args for tests
+        for call_arg_data in call_args:
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
+
+        gc_record = self.metrics_dao.get(1)
         # Test the gc_metrics were populated at ingestion
         self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01.vcf.gz", gc_record.vcfPath)
         self.assertEqual(f"gs://{bucket_name}/Genotyping_sample_raw_data/10001_R01C01.vcf.gz.tbi", gc_record.vcfTbiPath)
@@ -5790,8 +6044,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
         self.assertEqual('GEM_READY', member.genomicWorkflowStateStr)
 
-    def test_gc_metrics_wgs_data(self):
-
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_gc_metrics_wgs_data(self, metric_cloud_task):
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_RDR
@@ -5806,6 +6060,19 @@ class GenomicPipelineTest(BaseTestCase):
         ])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 1)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 1)
+
+        # assimilate cloud task ingestion via call args for tests
+        for call_arg_data in call_args:
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
 
         # Test the reconciliation process
         sequencing_test_files = (
@@ -5840,7 +6107,6 @@ class GenomicPipelineTest(BaseTestCase):
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
         gc_record = self.metrics_dao.get(1)
-
         # Test the gc_metrics were updated with reconciliation data
         self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[0]}", gc_record.hfVcfPath)
         self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.hfVcfTbiPath)
@@ -5884,6 +6150,19 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
+        # metrics insert called via cloud task
+        self.assertEqual(cloud_task.call_count, 3)
+        call_args = cloud_task.call_args_list
+        self.assertEqual(len(call_args), 3)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
+
         # Test sequencing file (required for GEM)
         sequencing_test_files = (
             'test_data_folder/10001_R01C01.vcf.gz',
@@ -5896,7 +6175,6 @@ class GenomicPipelineTest(BaseTestCase):
             'test_data_folder/10002_R01C02.vcf.gz',
             'test_data_folder/10002_R01C02.vcf.gz.tbi',
             'test_data_folder/10002_R01C02.vcf.gz.md5sum',
-            #'test_data_folder/10002_R01C02_Red.idat',
             'test_data_folder/10002_R01C02_Grn.idat',
             'test_data_folder/10002_R01C02_Red.idat.md5sum',
             'test_data_folder/10002_R01C02_Grn.idat.md5sum',
@@ -5936,13 +6214,24 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertTrue(cloud_task.called)
-        cloud_task_args = cloud_task.call_args.args[0]
-        self.assertEqual(cloud_task_args['field'], 'aw3ManifestFileId')
+        self.assertEqual(cloud_task.call_count, 5)
+        call_args = cloud_task.call_args_list
+        self.assertEqual(len(call_args), 5)
 
-        member_ids = cloud_task_args['member_ids']
-        self.assertIsNotNone(member_ids)
-        self.assertTrue(len(set(member_ids)) == len(member_ids))
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            if i == 3:
+                member_ids = call_arg_data.get('member_ids')
+                field = call_arg_data.get('field')
+                self.assertIsNotNone(member_ids)
+                self.assertTrue(len(set(member_ids)) == len(member_ids))
+                self.assertEqual(field, 'aw3ManifestJobRunID')
+            if i == 4:
+                member_ids = call_arg_data.get('member_ids')
+                field = call_arg_data.get('field')
+                self.assertIsNotNone(member_ids)
+                self.assertTrue(len(set(member_ids)) == len(member_ids))
+                self.assertEqual(field, 'aw3ManifestFileId')
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -6070,6 +6359,19 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
+        # metrics insert called via cloud task
+        self.assertEqual(cloud_task.call_count, 2)
+        call_args = cloud_task.call_args_list
+        self.assertEqual(len(call_args), 2)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
+
         # Test sequencing file (required for AW3 WGS)
         sequencing_test_files = (
             'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
@@ -6086,7 +6388,6 @@ class GenomicPipelineTest(BaseTestCase):
             'test_data_folder/RDR_3_1003_10003_1.cram',
             'test_data_folder/RDR_3_1003_10003_1.cram.md5sum',
             'test_data_folder/RDR_3_1003_10003_1.cram.crai',
-            #'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz',
             'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz.md5sum',
         )
         test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
@@ -6124,13 +6425,24 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertTrue(cloud_task.called)
-        cloud_task_args = cloud_task.call_args.args[0]
-        self.assertEqual(cloud_task_args['field'], 'aw3ManifestFileId')
+        self.assertEqual(cloud_task.call_count, 4)
+        call_args = cloud_task.call_args_list
+        self.assertEqual(len(call_args), 4)
 
-        member_ids = cloud_task_args['member_ids']
-        self.assertIsNotNone(member_ids)
-        self.assertTrue(len(set(member_ids)) == len(member_ids))
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            if i == 2:
+                member_ids = call_arg_data.get('member_ids')
+                field = call_arg_data.get('field')
+                self.assertIsNotNone(member_ids)
+                self.assertTrue(len(set(member_ids)) == len(member_ids))
+                self.assertEqual(field, 'aw3ManifestJobRunID')
+            if i == 3:
+                member_ids = call_arg_data.get('member_ids')
+                field = call_arg_data.get('field')
+                self.assertIsNotNone(member_ids)
+                self.assertTrue(len(set(member_ids)) == len(member_ids))
+                self.assertEqual(field, 'aw3ManifestFileId')
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -6216,8 +6528,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
 
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     @mock.patch('rdr_service.services.email_service.EmailService.send_email')
-    def test_aw3_ready_missing_data_files_report(self, email_mock):
+    def test_aw3_ready_missing_data_files_report(self, email_mock, metric_cloud_task):
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
                                               runStatus=GenomicSubProcessStatus.COMPLETED,
@@ -6256,6 +6569,19 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 2)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 2)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
+
         # Test sequencing file (required for AW3 WGS)
         sequencing_test_files = (
             'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
@@ -6272,7 +6598,6 @@ class GenomicPipelineTest(BaseTestCase):
             'test_data_folder/RDR_3_1003_10003_1.cram',
             'test_data_folder/RDR_3_1003_10003_1.cram.md5sum',
             'test_data_folder/RDR_3_1003_10003_1.cram.crai',
-            #'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz',
             'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz.md5sum',
         )
         test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)

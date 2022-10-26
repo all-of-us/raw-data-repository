@@ -1238,8 +1238,11 @@ class GenomicFileIngester:
             if manifest_file is not None and existing_metrics_obj is None:
                 self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
 
+            self.update_member_for_aw2(member)
             # set lists of members to update workflow state
-            member_dict = {'id': member.id}
+            member_dict = {
+                'id': member.id
+            }
             if row_copy['genometype'] == GENOME_TYPE_ARRAY:
                 member_dict['genomicWorkflowState'] = int(GenomicWorkflowState.GEM_READY)
                 member_dict['genomicWorkflowStateStr'] = str(GenomicWorkflowState.GEM_READY)
