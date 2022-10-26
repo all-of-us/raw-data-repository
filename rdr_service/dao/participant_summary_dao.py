@@ -560,6 +560,8 @@ class ParticipantSummaryDao(UpdatableDao):
             if value not in ORIGINATING_SOURCES:
                 raise BadRequest(f"No origin source found for {value}")
             return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
+        if field_name == 'updatedSince':
+            return self._make_updated_since_filter(value)
 
         return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
 
@@ -594,6 +596,9 @@ class ParticipantSummaryDao(UpdatableDao):
             filter_obj = FieldJsonContainsFilter(field_name, Operator.EQUALS, filter_value)
 
         return filter_obj
+
+    def _make_updated_since_filter(self, updated_since_value):
+        return FieldFilter('lastModified', Operator.GREATER_THAN_OR_EQUALS, updated_since_value)
 
     def update_from_biobank_stored_samples(self, participant_id=None, biobank_ids=None):
         """Rewrites sample-related summary data. Call this after updating BiobankStoredSamples.

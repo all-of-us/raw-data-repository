@@ -4204,3 +4204,52 @@ class ParticipantSummaryApiTest(BaseTestCase):
                          participant_summary["physicalMeasurementsFinalizedTime"])
         self.assertEqual(participant_summary["physicalMeasurementsFinalizedSite"], "UNSET")
         self.assertEqual(participant_summary["physicalMeasurementsCreatedSite"], "UNSET")
+
+    def test_updated_since_parameter(self):
+        """
+        The API should have the ability to only return a set of
+        participant's that have been modified since a specified date
+        """
+        cutoff_date = datetime.datetime(2022, 3, 15)
+        expected_participant_list = [
+            self.data_generator.create_database_participant_summary(
+                lastModified=cutoff_date + datetime.timedelta(days=5)
+            ),
+            self.data_generator.create_database_participant_summary(
+                lastModified=cutoff_date + datetime.timedelta(minutes=1)
+            ),
+            self.data_generator.create_database_participant_summary(
+                lastModified=cutoff_date + datetime.timedelta(days=20)
+            ),
+            self.data_generator.create_database_participant_summary(
+                lastModified=cutoff_date + datetime.timedelta(days=30)
+            )
+        ]
+        unexpected_participant_list = [
+            self.data_generator.create_database_participant_summary(
+                lastModified=cutoff_date - datetime.timedelta(days=5)
+            ),
+            self.data_generator.create_database_participant_summary(
+                lastModified=cutoff_date - datetime.timedelta(minutes=1)
+            ),
+            self.data_generator.create_database_participant_summary(
+                lastModified=cutoff_date - datetime.timedelta(days=400)
+            ),
+            self.data_generator.create_database_participant_summary(
+                lastModified=cutoff_date - datetime.timedelta(days=30)
+            )
+        ]
+
+        response = self.send_get('ParticipantSummary?updatedSince=2022-03-15')
+        response_ids = [
+            from_client_participant_id(participant_json['resource']['participantId'])
+            for participant_json in response['entry']
+        ]
+        self.assertTrue(all(
+            expected_participant.participantId in response_ids
+            for expected_participant in expected_participant_list
+        ))
+        self.assertFalse(any(
+            unexpected_participant.participantId in response_ids
+            for unexpected_participant in unexpected_participant_list
+        ))
