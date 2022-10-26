@@ -3379,3 +3379,38 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(bq_batch_mock.call_count, 1)
         self.assertEqual(batch_mock.call_count, 1)
 
+    @mock.patch('rdr_service.dao.genomics_dao.GenomicGCValidationMetricsDao.upsert_gc_validation_metrics_from_dict')
+    def test_call_gc_metrics_api(self, ingest_mock):
+
+        from rdr_service.resource import main as resource_main
+
+        data = {}
+
+        gc_metrics = self.send_post(
+            local_path='GenomicGCMetricsUpsertApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(gc_metrics)
+        self.assertEqual(gc_metrics['success'], False)
+        self.assertEqual(ingest_mock.call_count, 0)
+
+        data = {
+            'metric_id': 1,
+            'payload_dict': {
+                'test_key': 1
+            }
+        }
+
+        gc_metrics = self.send_post(
+            local_path='GenomicGCMetricsUpsertApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(gc_metrics)
+        self.assertEqual(gc_metrics['success'], True)
+        self.assertEqual(ingest_mock.call_count, 1)

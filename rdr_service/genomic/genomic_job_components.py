@@ -1181,8 +1181,8 @@ class GenomicFileIngester:
         :param rows:
         :return result code
         """
+
         members_to_update = []
-        # iterate over each row from CSV and insert into gc metrics table
         for row in rows:
             # change all key names to lower
             row_copy = self._clean_row_keys(row)
@@ -1194,52 +1194,7 @@ class GenomicFileIngester:
                 int(row_copy['sampleid']),
             )
 
-            if member:
-                row_copy = self.prep_aw2_row_attributes(row_copy, member)
-
-                if row_copy == GenomicSubProcessResult.ERROR:
-                    continue
-
-                # check whether metrics object exists for that member
-                existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
-
-                if existing_metrics_obj is not None:
-
-                    if self.controller.skip_updates:
-                        # when running tool, updates can be skipped
-                        continue
-
-                    else:
-                        metric_id = existing_metrics_obj.id
-                else:
-                    metric_id = None
-                    if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS]:
-
-                        if row_copy['contamination_category'] in [GenomicContaminationCategory.EXTRACT_WGS,
-                                                                  GenomicContaminationCategory.EXTRACT_BOTH]:
-                            # Insert a new member
-                            self.insert_member_for_replating(member, row_copy['contamination_category'])
-                self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
-                self.update_member_for_aw2(member)
-                # set lists of members to update workflow state
-                member_dict = {'id': member.id}
-                if row_copy['genometype'] == GENOME_TYPE_ARRAY:
-                    member_dict['genomicWorkflowState'] = int(GenomicWorkflowState.GEM_READY)
-                    member_dict['genomicWorkflowStateStr'] = str(GenomicWorkflowState.GEM_READY)
-                    member_dict['genomicWorkflowStateModifiedTime'] = clock.CLOCK.now()
-                    members_to_update.append(member_dict)
-                elif row_copy['genometype'] == GENOME_TYPE_WGS:
-                    member_dict['genomicWorkflowState'] = int(GenomicWorkflowState.CVL_READY)
-                    member_dict['genomicWorkflowStateStr'] = str(GenomicWorkflowState.CVL_READY)
-                    member_dict['genomicWorkflowStateModifiedTime'] = clock.CLOCK.now()
-                    members_to_update.append(member_dict)
-
-                # For feedback manifest loop
-                # Get the genomic_manifest_file
-                manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
-                if manifest_file is not None and existing_metrics_obj is None:
-                    self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
-            else:
+            if not member:
                 bid = row_copy['biobankid']
                 if bid[0] in [get_biobank_id_prefix(), 'T']:
                     bid = bid[1:]
@@ -1254,8 +1209,59 @@ class GenomicFileIngester:
                                                 biobank_id=bid,
                                                 sample_id=row_copy['sampleid'],
                                                 )
+                continue
+
+            row_copy = self.prep_aw2_row_attributes(row_copy, member)
+            if row_copy == GenomicSubProcessResult.ERROR:
+                continue
+
+            # check whether metrics object exists for that member
+            existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+            metric_id = None
+
+            if existing_metrics_obj:
+                if self.controller.skip_updates:
+                    # when running tool, updates can be skipped
+                    continue
+                else:
+                    metric_id = existing_metrics_obj.id
+            else:
+                if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS]:
+                    if row_copy['contamination_category'] in [GenomicContaminationCategory.EXTRACT_WGS,
+                                                              GenomicContaminationCategory.EXTRACT_BOTH]:
+                        # Insert a new member
+                        self.insert_member_for_replating(member, row_copy['contamination_category'])
+
+            # For feedback manifest loop
+            # Get the genomic_manifest_file
+            manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
+            if manifest_file is not None and existing_metrics_obj is None:
+                self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
+
+            self.update_member_for_aw2(member)
+            # set lists of members to update workflow state
+            member_dict = {
+                'id': member.id
+            }
+            if row_copy['genometype'] == GENOME_TYPE_ARRAY:
+                member_dict['genomicWorkflowState'] = int(GenomicWorkflowState.GEM_READY)
+                member_dict['genomicWorkflowStateStr'] = str(GenomicWorkflowState.GEM_READY)
+                member_dict['genomicWorkflowStateModifiedTime'] = clock.CLOCK.now()
+            elif row_copy['genometype'] == GENOME_TYPE_WGS:
+                member_dict['genomicWorkflowState'] = int(GenomicWorkflowState.CVL_READY)
+                member_dict['genomicWorkflowStateStr'] = str(GenomicWorkflowState.CVL_READY)
+                member_dict['genomicWorkflowStateModifiedTime'] = clock.CLOCK.now()
+            members_to_update.append(member_dict)
+
+            # upsert metrics record via cloud task
+            self.controller.execute_cloud_task({
+                'metric_id': metric_id,
+                'payload_dict': row_copy,
+            }, 'genomic_gc_metrics_upsert')
+
         if members_to_update:
-            self.member_dao.bulk_update_members(members_to_update)
+            self.member_dao.bulk_update(members_to_update)
+
         return GenomicSubProcessResult.SUCCESS
 
     def copy_member_for_replating(

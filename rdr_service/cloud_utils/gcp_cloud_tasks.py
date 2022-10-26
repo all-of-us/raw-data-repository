@@ -18,8 +18,8 @@ class GCPCloudTask(object):
     # Create a client.
     _client = None
 
-    def execute(self, endpoint: str, payload: (dict, list)=None, in_seconds: int = 0, project_id: str = GAE_PROJECT,
-               location: str = 'us-central1', queue: str = 'default', quiet=False):
+    def execute(self, endpoint: str, payload: (dict, list) = None, in_seconds: int = 0, project_id: str = GAE_PROJECT,
+                location: str = 'us-central1', queue: str = 'default', quiet=False):
         """
         Make GCP Cloud Task API request to run task later.
         :param endpoint: Flask API endpoint to call.
