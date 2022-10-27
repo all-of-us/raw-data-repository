@@ -258,7 +258,8 @@ class WorkbenchApiTest(BaseTestCase):
                         "NHPI_FIJIAN",
                         "MENA_MOROCCAN",
                         "HISPANIC_CUBAN",
-                        "WHITE_GERMAN"
+                        "WHITE_GERMAN",
+                        "HISPANIC_COLOMBIAN"
                     ],
                     "ethnicityAiAnOtherText": None,
                     "ethnicityAsianOtherText": "Tibetan",
@@ -304,8 +305,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(result.sexAtBirth, [1, 3])
         self.assertEqual(result.ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
         self.assertEqual(result.dsv2CompletionTime, datetime.datetime(2022, 5, 20, 14, 32, 56))
-        self.assertEqual(result.dsv2EthnicCategories, [15, 12, 4, 20, 58, 52, 36, 70])
-        self.assertEqual(result.dsv2EthnicCategories, [15, 12, 4, 20, 58, 52, 36, 70])
+        self.assertEqual(result.dsv2EthnicCategories, [15, 12, 4, 20, 58, 52, 36, 70, 35])
         self.assertEqual(result.dsv2GenderIdentities, [2, 5])
         self.assertEqual(result.dsv2SexualOrientations, [3, 2])
         self.assertEqual(result.dsv2DisabilityHearing, WorkbenchResearcherYesNoPreferNot('YES'))
