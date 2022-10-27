@@ -140,6 +140,8 @@ class BQRWBWorkspaceUsersGenerator(BigQueryGenerator):
             data['orig_id'] = row.id
             data['orig_created'] = row.created
             data['orig_modified'] = row.modified
+            data['researcher_id'] = row.researcher_Id
+            del data['researcher_Id']
 
             if row.role:
                 data['role'] = str(WorkbenchWorkspaceUserRole(row.role))
