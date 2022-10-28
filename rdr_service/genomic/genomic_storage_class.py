@@ -98,19 +98,18 @@ class GenomicStorageClass:
         )
 
     def update_storage_class_for_file_paths(self, metric_dict: List[dict]):
-        # storage_objs = []
         for metrics_update in metric_dict:
             metrics_id = metrics_update.get('metric_id')
             metrics_paths = metrics_update.get('metric_paths')
 
             if metrics_paths:
-                insert_obj = {
+                insert_obj = self.storage_update_dao.get_model_obj_from_items({
                     'metrics_id': metrics_id,
                     'storage_class': self.storage_class,
                     'genome_type': metrics_update.get('metric_type'),
                     'created': clock.CLOCK.now(),
                     'modified': clock.CLOCK.now()
-                }
+                }.items())
 
                 self.logger.info(f"Updating metric_id: {metrics_id} "
                                  f"{len(metrics_paths)} {metrics_update.get('metric_type')} file path("
@@ -133,8 +132,6 @@ class GenomicStorageClass:
                     f'{insert_obj["metrics_id"]} metric id data files has been updated to {self.storage_class}'
                     f' storage class')
                 self.logger.info(f'{self.updated_count} is the current updated data file count')
-                self.storage_update_dao.insert_bulk([insert_obj])
-                # storage_objs.append(insert_obj)
+                self.storage_update_dao.insert(insert_obj)
 
-        # self.storage_update_dao.insert_bulk(storage_objs)
         self.logger.info(f'{self.updated_count} genomic data files changed to {self.storage_class} storage class')
