@@ -14,9 +14,11 @@ class GenomicStorageClass:
 
     def __init__(self,
                  storage_job_type,
+                 logger,
                  storage_class='COLDLINE'
                  ):
         self.storage_job_type = storage_job_type
+        self.logger = logger or logging
         self.storage_class = storage_class
         self.updated_count = 0
 
@@ -67,8 +69,9 @@ class GenomicStorageClass:
             logging.info('There are currently no array data files to update')
             return
 
+        self.logger.info(f'Updating {len(array_metrics)} array metric data files to {self.storage_class} storage class')
         self.update_storage_class_for_file_paths(
-            file_dict=self.get_file_dict_from_metrics(
+            metric_dict=self.get_file_dict_from_metrics(
                 metrics=array_metrics,
                 metric_type=config.GENOME_TYPE_ARRAY
             )
@@ -83,48 +86,53 @@ class GenomicStorageClass:
             logging.info('There are currently no wgs data files to update')
             return
 
+        self.logger.info(f'Updating {len(wgs_metrics)} wgs metric data files to {self.storage_class} storage class')
+
         self.update_storage_class_for_file_paths(
-            file_dict=self.get_file_dict_from_metrics(
+            metric_dict=self.get_file_dict_from_metrics(
                 metrics=wgs_metrics,
                 metric_type=config.GENOME_TYPE_WGS
             )
         )
 
-    def update_storage_class_for_file_paths(self, file_dict: List[dict]):
-
+    def update_storage_class_for_file_paths(self, metric_dict: List[dict]):
         storage_objs = []
-        for metrics_update in file_dict:
+
+        for metrics_update in metric_dict:
             metrics_id = metrics_update.get('metric_id')
             metrics_paths = metrics_update.get('metric_paths')
 
-            insert_obj = {
-                'metrics_id': metrics_id,
-                'storage_class': self.storage_class,
-                'genome_type': metrics_update.get('metric_type'),
-                'created': clock.CLOCK.now(),
-                'modified': clock.CLOCK.now()
-            }
+            if metrics_paths:
+                insert_obj = {
+                    'metrics_id': metrics_id,
+                    'storage_class': self.storage_class,
+                    'genome_type': metrics_update.get('metric_type'),
+                    'created': clock.CLOCK.now(),
+                    'modified': clock.CLOCK.now()
+                }
 
-            logging.info(f"Updating metric_id: {metrics_id} "
-                         f"{len(metrics_update)} file path("
-                         f"s) to {self.storage_class} storage class")
-
-            for metric_path in metrics_paths:
+                self.logger.info(f"Updating metric_id: {metrics_id} "
+                                 f"{len(metrics_paths)} file path("
+                                 f"s) to {self.storage_class} storage class")
                 try:
+                    metrics_paths = [obj.replace('gs://', '') for obj in metrics_paths]
                     self.storage_provider.change_file_storage_class(
-                        source_path=metric_path,
+                        source_path=metrics_paths,
                         storage_class=self.storage_class
                     )
-                    self.updated_count += 1
+                    self.updated_count += len(metrics_paths)
 
                 # pylint: disable=broad-except
                 except Exception as e:
-                    logging.warning(f'Storage class update for {metric_path} failed to update: error: {e}',
-                                    exc_info=True)
+                    self.logger.warning(f'Storage class update for {metrics_id} failed to update: error: {e}',
+                                        exc_info=True)
                     insert_obj['has_error'] = 1
 
-            storage_objs.append(insert_obj)
+                self.logger.info(
+                    f'{insert_obj["metrics_id"]} metric id data files has been updated to {self.storage_class}'
+                    f' storage class')
+                self.logger.info(f'{self.updated_count} is the current updated data file count')
+                storage_objs.append(insert_obj)
 
         self.storage_update_dao.insert_bulk(storage_objs)
-
-        logging.info(f'{self.updated_count} genomic data files changed to {self.storage_class} storage class')
+        self.logger.info(f'{self.updated_count} genomic data files changed to {self.storage_class} storage class')

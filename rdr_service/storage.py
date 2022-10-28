@@ -368,14 +368,16 @@ class GoogleCloudStorageProvider(StorageProvider):
         bucket = bucket if bucket[0:1] != '/' else bucket[1:]
         return bucket
 
-    def change_file_storage_class(self, source_path: str, storage_class: str):
+    def change_file_storage_class(self, source_path, storage_class: str):
         storage_client = storage.Client()
-        source_bucket_name, source_blob_name = self._parse_path(source_path)
-        bucket = storage_client.get_bucket(source_bucket_name)
-        blob = bucket.get_blob(source_blob_name)
-        blob.update_storage_class(storage_class)
-        return blob
-
+        if type(source_path) is not list:
+            source_path = [source_path]
+        for path in source_path:
+            source_bucket_name, source_blob_name = self._parse_path(path)
+            bucket = storage_client.get_bucket(source_bucket_name)
+            blob = bucket.get_blob(source_blob_name)
+            blob.update_storage_class(storage_class)
+            # return blob
 
 def get_storage_provider():
     # Set a good default and let the environment var be the override.
