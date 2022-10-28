@@ -1704,7 +1704,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                 GenomicStorageUpdate,
                 and_(
                     GenomicStorageUpdate.metrics_id == GenomicGCValidationMetrics.id,
-                    GenomicStorageUpdate.storage_class == metric_type,
+                    GenomicStorageUpdate.genome_type == metric_type,
                     GenomicStorageUpdate.ignore_flag != 1
                 )
             ).filter(
