@@ -41,13 +41,13 @@ class GenomicStorageClass:
     @classmethod
     def get_file_dict_from_metrics(cls, *,
                                    metrics: List[GenomicGCValidationMetrics],
-                                   metric_type: str
+                                   genome_type: str
                                    ) -> List[Dict[str, Union[int, list]]]:
 
         metric_file_type_map = {
             config.GENOME_TYPE_ARRAY: [obj['file_path_attribute'] for obj in array_file_types_attributes],
             config.GENOME_TYPE_WGS: [obj['file_path_attribute'] for obj in wgs_file_types_attributes]
-        }[metric_type]
+        }[genome_type]
 
         files_to_update = []
         for metric in metrics:
@@ -55,7 +55,7 @@ class GenomicStorageClass:
                           'metric_paths': [obj[1] for obj in metric if 'Path' in obj[0] and obj[0] in
                                            metric_file_type_map and obj[1]
                                            is not None],
-                          'metric_type': metric_type}
+                          'metric_type': genome_type}
 
             files_to_update.append(
                 metric_obj
@@ -69,29 +69,31 @@ class GenomicStorageClass:
             logging.info('There are currently no array data files to update')
             return
 
-        self.logger.info(f'Updating {len(array_metrics)} array metric data files to {self.storage_class} storage class')
+        self.logger.info(
+            f'Updating {len(array_metrics)} aou_wgs metric data files to {self.storage_class} storage class')
+
         self.update_storage_class_for_file_paths(
             metric_dict=self.get_file_dict_from_metrics(
                 metrics=array_metrics,
-                metric_type=config.GENOME_TYPE_ARRAY
+                genome_type=config.GENOME_TYPE_ARRAY
             )
         )
 
     def update_wgs_files(self):
         wgs_metrics = self.metrics_dao.get_fully_processed_metrics(
-            metric_type=config.GENOME_TYPE_WGS
+            genome_type=config.GENOME_TYPE_WGS
         )
 
         if not wgs_metrics:
             logging.info('There are currently no wgs data files to update')
             return
 
-        self.logger.info(f'Updating {len(wgs_metrics)} wgs metric data files to {self.storage_class} storage class')
+        self.logger.info(f'Updating {len(wgs_metrics)} aou_wgs metric data files to {self.storage_class} storage class')
 
         self.update_storage_class_for_file_paths(
             metric_dict=self.get_file_dict_from_metrics(
                 metrics=wgs_metrics,
-                metric_type=config.GENOME_TYPE_WGS
+                genome_type=config.GENOME_TYPE_WGS
             )
         )
 
@@ -111,7 +113,7 @@ class GenomicStorageClass:
                 }
 
                 self.logger.info(f"Updating metric_id: {metrics_id} "
-                                 f"{len(metrics_paths)} file path("
+                                 f"{len(metrics_paths)} {metrics_update.get('metric_type')} file path("
                                  f"s) to {self.storage_class} storage class")
                 try:
                     metrics_paths = [obj.replace('gs://', '') for obj in metrics_paths]
