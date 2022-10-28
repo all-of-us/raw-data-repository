@@ -3565,7 +3565,8 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
                 sample_ids_subquery.c.participant_id == UserEventMetrics.participant_id
             ).filter(
                 GenomicMemberReportState.id.is_(None),
-                UserEventMetrics.event_name.in_(event_names)
+                UserEventMetrics.event_name.in_(event_names),
+                UserEventMetrics.ignore_flag != 1
             )
 
             return records.all()
@@ -3605,7 +3606,8 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
                 sample_ids_subquery.c.participant_id == UserEventMetrics.participant_id
             ).filter(
                 GenomicResultViewed.id.is_(None),
-                UserEventMetrics.event_name.in_(event_names)
+                UserEventMetrics.event_name.in_(event_names),
+                UserEventMetrics.ignore_flag != 1
             )
 
             return records.all()
