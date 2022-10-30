@@ -129,7 +129,7 @@ class GenomicStorageClass:
                     insert_obj['has_error'] = 1
 
                 self.logger.info(
-                    f'{insert_obj["metrics_id"]} metric id data files has been updated to {self.storage_class}'
+                    f'{metrics_id} metric id data files has been updated to {self.storage_class}'
                     f' storage class')
                 self.logger.info(f'{self.updated_count} is the current updated data file count')
                 self.storage_update_dao.insert(insert_obj)
