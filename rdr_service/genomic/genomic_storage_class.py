@@ -126,7 +126,7 @@ class GenomicStorageClass:
                 except Exception as e:
                     self.logger.warning(f'Storage class update for {metrics_id} failed to update: error: {e}',
                                         exc_info=True)
-                    insert_obj['has_error'] = 1
+                    insert_obj.has_error = 1
 
                 self.logger.info(
                     f'{metrics_id} metric id data files has been updated to {self.storage_class}'
