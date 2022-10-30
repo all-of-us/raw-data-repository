@@ -11,7 +11,7 @@ import tempfile
 
 from contextlib import ContextDecorator
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List
 
 from google.api_core.exceptions import RequestRangeNotSatisfiable
 from google.cloud import storage
@@ -369,7 +369,7 @@ class GoogleCloudStorageProvider(StorageProvider):
         bucket = bucket if bucket[0:1] != '/' else bucket[1:]
         return bucket
 
-    def change_file_storage_class(self, source_path: Optional[List[str], str], storage_class: str):
+    def change_file_storage_class(self, source_path: List[str], storage_class: str):
         storage_client = storage.Client()
         if type(source_path) is not list:
             source_bucket_name, source_blob_name = self._parse_path(source_path)
