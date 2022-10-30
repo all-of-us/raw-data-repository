@@ -70,7 +70,7 @@ class GenomicStorageClass:
             return
 
         self.logger.info(
-            f'Updating {len(array_metrics)} aou_wgs metric data files to {self.storage_class} storage class')
+            f'Updating {len(array_metrics)} aou_array metric data files to {self.storage_class} storage class')
 
         self.update_storage_class_for_file_paths(
             metric_dict=self.get_file_dict_from_metrics(
