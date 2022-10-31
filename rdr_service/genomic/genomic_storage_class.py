@@ -27,6 +27,10 @@ class GenomicStorageClass:
         self.storage_update_dao = GenomicDefaultBaseDao(
             model_type=GenomicStorageUpdate
         )
+        self.update_limit = config.getSetting(
+            config.GENOMIC_METRIC_DATA_FILE_UPDATE_LIMIT,
+            default=1000
+        )
 
     def __get_storage_method(self):
         return {
@@ -63,7 +67,10 @@ class GenomicStorageClass:
         return files_to_update
 
     def update_array_files(self):
-        array_metrics = self.metrics_dao.get_fully_processed_metrics()
+        array_metrics = self.metrics_dao.get_fully_processed_metrics(
+            genome_type=config.GENOME_TYPE_ARRAY,
+            limit=self.update_limit
+        )
 
         if not array_metrics:
             logging.info('There are currently no array data files to update')
@@ -81,7 +88,8 @@ class GenomicStorageClass:
 
     def update_wgs_files(self):
         wgs_metrics = self.metrics_dao.get_fully_processed_metrics(
-            genome_type=config.GENOME_TYPE_WGS
+            genome_type=config.GENOME_TYPE_WGS,
+            limit=self.update_limit
         )
 
         if not wgs_metrics:
