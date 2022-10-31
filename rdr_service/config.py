@@ -104,6 +104,7 @@ GENOMIC_SKIP_MISSING_FILETYPES = "genomic_skip_missing_file_types"
 GENOMIC_GC_ID_MAPPING = "gc_name_to_id_mapping"
 GENOMIC_PIPELINE_IDS = "genomic_pipeline_ids"
 GENOMIC_COLOR_PM_EMAIL = "genomic_color_pm_email"
+GENOMIC_METRIC_DATA_FILE_UPDATE_LIMIT = "genomic_metric_data_file_update_limit"
 CALCULATE_READY_FLAG_LIMIT = 'calculate_ready_flag_limit'
 DRC_BROAD_BUCKET_NAME = "drc_broad_bucket_name"
 CO_BUCKET_NAME = "co_bucket_name"
