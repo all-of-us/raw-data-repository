@@ -73,7 +73,7 @@ class GenomicStorageTest(BaseTestCase):
 
         update_dict = GenomicStorageClass.get_file_dict_from_metrics(
             metrics=all_metrics,
-            metric_type=config.GENOME_TYPE_ARRAY
+            genome_type=config.GENOME_TYPE_ARRAY
         )
 
         self.assertTrue(obj['metric_id'] in metric_ids for obj in update_dict)
@@ -108,7 +108,7 @@ class GenomicStorageTest(BaseTestCase):
 
         update_dict = GenomicStorageClass.get_file_dict_from_metrics(
             metrics=all_metrics,
-            metric_type=config.GENOME_TYPE_WGS
+            genome_type=config.GENOME_TYPE_WGS
         )
 
         self.assertTrue(obj['metric_id'] in metric_ids for obj in update_dict)
@@ -168,7 +168,7 @@ class GenomicStorageTest(BaseTestCase):
 
         # mock checks
         self.assertTrue(storage_mock.called is True)
-        self.assertTrue((len(metric_data_files) * num_metrics) == storage_mock.call_count)
+        self.assertTrue(num_metrics == storage_mock.call_count)
 
         for mock_call in storage_mock.call_args_list:
             self.assertTrue(mock_call[1]['storage_class'] == 'COLDLINE')
@@ -218,7 +218,7 @@ class GenomicStorageTest(BaseTestCase):
 
         # mock checks
         self.assertTrue(storage_mock.called is True)
-        self.assertTrue((len(metric_data_files) * num_metrics) == storage_mock.call_count)
+        self.assertTrue(num_metrics == storage_mock.call_count)
 
         for mock_call in storage_mock.call_args_list:
             self.assertTrue(mock_call[1]['storage_class'] == 'COLDLINE')

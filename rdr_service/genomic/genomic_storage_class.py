@@ -14,7 +14,7 @@ class GenomicStorageClass:
 
     def __init__(self,
                  storage_job_type,
-                 logger,
+                 logger=None,
                  storage_class='COLDLINE'
                  ):
         self.storage_job_type = storage_job_type
