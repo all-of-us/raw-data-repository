@@ -720,10 +720,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         self.assertEqual(first_count, len(consents_map.keys()))
 
-        # DA-2895: This assertion should be removed once the misspelled field name is no longer needed.
-        self.assertEqual(first_summary["reconsentForStudyEnrollmentFilePath"],
-                         first_summary["reconsentForStudyEnrollementFilePath"])
-
         self.overwrite_test_user_roles([PTC])
 
         first_summary = self.send_get(f"Participant/P{first_pid}/Summary")
