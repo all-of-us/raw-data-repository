@@ -17,7 +17,7 @@ _logger = logging.getLogger("rdr_logger")
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
-tool_cmd = "genomic_storage_update"
+tool_cmd = "genomic-storage-update"
 tool_desc = "Tool for updating genomic data file storage types"
 
 
@@ -32,7 +32,8 @@ class GenomicStorageTool(ToolBase):
         }[self.args.storage_type]
 
         genomic_storage = GenomicStorageClass(
-            storage_job_type=storage_job_type
+            storage_job_type=storage_job_type,
+            logger=_logger
         )
         genomic_storage.run_storage_update()
 
@@ -51,7 +52,7 @@ def run():
     parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
-    parser.add_argument("--storage_type", help="add storage type for file update", choices=['array', 'wgs'],
+    parser.add_argument("--storage-type", help="add storage type for file update", choices=['array', 'wgs'],
                         required=True)
     # noqa
     args = parser.parse_args()
