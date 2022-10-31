@@ -1693,7 +1693,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                 GenomicGCValidationMetrics.ignoreFlag != 1
             ).one_or_none()
 
-    def get_fully_processed_metrics(self, metric_type=config.GENOME_TYPE_ARRAY):
+    def get_fully_processed_metrics(self, genome_type, limit=None):
         with self.session() as session:
             records = session.query(
                 GenomicGCValidationMetrics
@@ -1704,7 +1704,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                 GenomicStorageUpdate,
                 and_(
                     GenomicStorageUpdate.metrics_id == GenomicGCValidationMetrics.id,
-                    GenomicStorageUpdate.storage_class == metric_type,
+                    GenomicStorageUpdate.genome_type == genome_type,
                     GenomicStorageUpdate.ignore_flag != 1
                 )
             ).filter(
@@ -1712,13 +1712,13 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                 GenomicStorageUpdate.id.is_(None)
             )
 
-            if metric_type != config.GENOME_TYPE_ARRAY:
-                return records.all()
+            if genome_type != config.GENOME_TYPE_ARRAY:
+                return records.limit(limit).all() if limit else records.all()
 
             records = records.filter(
                 GenomicSetMember.gemA2ManifestJobRunId.isnot(None),
             )
-            return records.all()
+            return records.limit(limit).all() if limit else records.all()
 
     def update_metric_set_member_id(self, metric_obj, member_id):
         """
