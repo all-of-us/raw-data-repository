@@ -30,7 +30,7 @@ commands:
           command: ./ci/setup_python_env.sh
       - run:
           name: Safety Check
-          command: source venv/bin/activate && safety check
+          command: source venv/bin/activate && safety check && sleep 300
 
   deploy-app-steps:
     parameters:
