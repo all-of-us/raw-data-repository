@@ -1498,7 +1498,7 @@ class QuestionnaireResponseDao(BaseDao):
 
     @classmethod
     def _code_in_list(cls, code_value: str, code_list: List[str]):
-        return code_value.lower in [list_value.lower for list_value in code_list]
+        return code_value.lower in [list_value.lower() for list_value in code_list]
 
 
 def _validate_consent_pdfs(resource):
