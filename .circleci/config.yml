@@ -29,25 +29,6 @@ commands:
           name: Setup Python Environment
           command: ./ci/setup_python_env.sh
       - run:
-          name: Code static analysis checks
-          command: ci/full_static_analysis.sh
-      - run:
-          name: Check Licenses
-          command : |
-            export PYTHONPATH=$PYTHONPATH:`pwd`
-            python3.7 ./ci/check_licenses.py --root ./venv/lib/python3.7/site-packages \
-                            --licenses_file ci/license_allowed_list.txt --exceptions_file ci/license_exceptions.txt
-      - run:
-          name: Launch Flask Unittest Service
-          command: ./ci/run_unittest_flask_server.sh
-          background: true
-      - run:
-          name: Running Unittests
-          command: ./ci/run_unittests.sh
-      - run:
-          name: Upload Coverage Report
-          command: ./ci/run_upload_coverage_report.sh
-      - run:
           name: Safety Check
           command: source venv/bin/activate && safety check
 
