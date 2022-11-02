@@ -49,7 +49,7 @@ commands:
           command: ./ci/run_upload_coverage_report.sh
       - run:
           name: Safety Check
-          command: source venv/bin/activate && safety check
+          command: source venv/bin/activate && safety check --policy-file .safety-policy.yml
 
   deploy-app-steps:
     parameters:
