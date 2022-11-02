@@ -690,7 +690,7 @@ class ParticipantSummaryDao(UpdatableDao):
         enrollment_info = EnrollmentCalculation.get_enrollment_info(
             EnrollmentDependencies(
                 consent_cohort=summary.consentCohort,
-                primary_consent_authored_time=summary.consentForStudyEnrollmentAuthored,
+                primary_consent_authored_time=summary.consentForStudyEnrollmentFirstYesAuthored,
                 gror_authored_time=summary.consentForGenomicsRORAuthored,
                 basics_authored_time=summary.questionnaireOnTheBasicsAuthored,
                 overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
