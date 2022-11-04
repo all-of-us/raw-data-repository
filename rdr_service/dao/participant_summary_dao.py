@@ -669,13 +669,15 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.clinicPhysicalMeasurementsFinalizedTime,
             summary.selfReportedPhysicalMeasurementsAuthored
         ])
-        earliest_biobank_received_dna_time = min_or_none([
-            summary.sampleStatus1ED10Time,
-            summary.sampleStatus2ED10Time,
-            summary.sampleStatus1ED04Time,
-            summary.sampleStatus1SALTime,
-            summary.sampleStatus1SAL2Time
-        ])
+        earliest_biobank_received_dna_time = None
+        if summary.samplesToIsolateDNA == SampleStatus.RECEIVED:
+            earliest_biobank_received_dna_time = min_or_none([
+                summary.sampleStatus1ED10Time,
+                summary.sampleStatus2ED10Time,
+                summary.sampleStatus1ED04Time,
+                summary.sampleStatus1SALTime,
+                summary.sampleStatus1SAL2Time
+            ])
 
         ehr_consent_ranges = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
             participant_id=summary.participantId,
