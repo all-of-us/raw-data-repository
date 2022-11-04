@@ -250,7 +250,7 @@ class MailKitOrderDao(UpdatableDao):
             order.zipCode = fhir_address.postalCode
 
             order.orderType = fhir_resource.extension.get(url=DV_ORDER_URL).valueString
-            order.is_exam_one_order = order.orderType == 'Salivary Order of ExamOne Order'
+            order.is_exam_one_order = order.orderType == 'Exam One Order'
 
             if id_ is None:
                 order.version = 1

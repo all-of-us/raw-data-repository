@@ -460,7 +460,7 @@ class MailKitOrderApiTestPostSupplyDelivery(MailKitOrderApiTestBase):
 
         # Send a request for an ExamOne order
         supply_request_json = self.get_payload("dv_order_api_post_supply_request.json")
-        supply_request_json['extension'][1]['valueString'] = 'Salivary Order of ExamOne Order'
+        supply_request_json['extension'][1]['valueString'] = 'Exam One Order'
         self.send_post(
             "SupplyRequest",
             request_data=supply_request_json,
