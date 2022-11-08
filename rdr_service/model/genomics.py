@@ -1405,6 +1405,23 @@ event.listen(GenomicAppointmentEventNotified, 'before_insert', model_insert_list
 event.listen(GenomicAppointmentEventNotified, 'before_update', model_update_listener)
 
 
+class GenomicGCROutreachEscalationNotified(Base):
+    """
+    Used to record notifications sent for participants when GCR outreach 14 day escalation email sent
+    """
+
+    __tablename__ = 'genomic_gcr_outreach_escalation_notified'
+
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False, index=True)
+
+
+event.listen(GenomicGCROutreachEscalationNotified, 'before_insert', model_insert_listener)
+event.listen(GenomicGCROutreachEscalationNotified, 'before_update', model_update_listener)
+
+
 class GenomicGcDataFile(Base):
     """
     Used for tracking genomic data files produced by the GCs

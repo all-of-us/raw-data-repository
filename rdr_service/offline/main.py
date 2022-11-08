@@ -829,6 +829,11 @@ def genomic_update_wgs_storage_class():
     genomic_pipeline.genomic_update_storage_class(GenomicJob.UPDATE_WGS_STORAGE_CLASS)
     return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@run_genomic_cron_job('notify_gcr_outreach_escalation')
+def genomic_notify_gcr_outreach_escalation():
+    genomic_pipeline.notify_gcr_outreach_escalation()
+    return '{"success": "true"}'
 
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -1346,6 +1351,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'GenomicUpdateWGSStorageClass',
         endpoint='genomic_update_wgs_storage_class',
         view_func=genomic_update_wgs_storage_class,
+        methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'GenomicNotifyGCROutreachEscalation',
+        endpoint='genomic_notify_outreach_escalation',
+        view_func=genomic_notify_gcr_outreach_escalation,
         methods=['GET']
     )
 
