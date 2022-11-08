@@ -520,6 +520,37 @@ class GenomicJobControllerTest(BaseTestCase):
                     genomic_set_member_id=gen_member.id
                 )
 
+                self.data_generator.create_database_genomic_appointment(
+                    message_record_id=i,
+                    appointment_id=i,
+                    event_type='appointment_scheduled',
+                    module_type='hdr',
+                    participant_id=participant.participantId,
+                    event_authored_time=clock.CLOCK.now(),
+                    source='Color',
+                    appointment_timestamp=format_datetime(clock.CLOCK.now()),
+                    appointment_timezone='America/Los_Angeles',
+                    location='123 address st',
+                    contact_number='17348675309',
+                    language='en'
+                )
+
+                self.data_generator.create_database_genomic_member_report_state(
+                    genomic_set_member_id=gen_member.id,
+                    participant_id=participant.participantId,
+                    module='gem',
+                    genomic_report_state=GenomicReportState.GEM_RPT_READY,
+                    event_authored_time=clock.CLOCK.now()
+                )
+
+                self.data_generator.create_genomic_result_viewed(
+                    participant_id=participant.participantId,
+                    event_type='result_viewed',
+                    event_authored_time=clock.CLOCK.now(),
+                    module_type='gem',
+                    sample_id=gen_member.sampleId
+                )
+
         # gets new records that were created with last job run from above
         with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
             controller.reconcile_pdr_data()
@@ -533,7 +564,11 @@ class GenomicJobControllerTest(BaseTestCase):
             'genomic_manifest_file',
             'genomic_manifest_feedback',
             'genomic_informing_loop',
-            'genomic_cvl_results_past_due'
+            'genomic_cvl_results_past_due',
+            'user_event_metrics',
+            'genomic_member_report_state',
+            'genomic_result_viewed',
+            'genomic_appointment_event'
         ]
 
         num_calls = len(affected_tables) + 1
