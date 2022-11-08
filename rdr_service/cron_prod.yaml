@@ -112,10 +112,10 @@ cron:
 - description: Genomic Update Array Storage Class
   url: /offline/GenomicUpdateArrayStorageClass
   timezone: America/New_York
-  schedule: every day 03:00
+  schedule: every day 22:00
   target: offline
 - description: Genomic Update WGS Storage Class
   url: /offline/GenomicUpdateWGSStorageClass
   timezone: America/New_York
-  schedule: every day 04:00
+  schedule: every day 22:15
   target: offline
