@@ -4,7 +4,7 @@
 #
 import re
 
-from dateutil.parser import parse as dt_parse
+from dateutil.parser import parse as dt_parse, ParserError
 from sqlalchemy.sql import text
 
 from rdr_service.dao.resource_dao import ResourceDataDao
@@ -444,7 +444,10 @@ class GenomicUserEventMetricsSchemaGenerator(generators.BaseGenerator):
             row = ro_session.execute(text('select * from user_event_metrics where id = :id'),
                                      {'id': _pk}).first()
             data = self.ro_dao.to_dict(row)
-            data['created_at'] = dt_parse(data['created_at'])
+            try:
+                data['created_at'] = dt_parse(data['created_at'])
+            except ParserError:
+                data.pop('created_at')
 
             return generators.ResourceRecordSet(schemas.GenomicUserEventMetricsSchema, data)
 
