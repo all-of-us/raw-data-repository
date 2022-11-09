@@ -1944,7 +1944,7 @@ class GenomicJobController:
     def check_gcr_14day_escalation(self):
         """Alerts color when participant with hdr positive result does not have a scheduled or completed appointment"""
         notified_dao = GenomicGCROutreachEscalationNotifiedDao()
-        notification_email_addresses = config.getSetting(config.GENOMIC_GCR_ESCALATION_EMAILS, default=None)
+        notification_email_addresses = config.getSettingList(config.GENOMIC_GCR_ESCALATION_EMAILS, default=None)
         escalate_participants = self.report_state_dao.get_hdr_result_positive_no_appointment()
         if notification_email_addresses and escalate_participants:
             notified_participants = []
@@ -1953,7 +1953,7 @@ class GenomicJobController:
                     Email(
                         recipients=notification_email_addresses,
                         subject='GCR Outreach 14 Day Escalation',
-                        plain_text_content=pid
+                        plain_text_content=str(pid)
                     )
                 )
                 notified_participants.append({
