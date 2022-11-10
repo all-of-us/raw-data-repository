@@ -115,13 +115,10 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
                     new_ids_with_status_checked.add(participant_id)
 
             _track_historical_participant_ehr_data(session, parameter_sets)
-            query_result = summary_dao.bulk_update_ehr_status_with_session(session, parameter_sets)
+            summary_dao.bulk_update_ehr_status_with_session(session, parameter_sets)
             session.commit()
 
-            total_rows = query_result.rowcount
-            LOG.info("Affected {} rows.".format(total_rows))
-
-            if total_rows > 0:
+            if parameter_sets:
                 # Rebuild participants in the page that have new data available. Checking that the participant
                 #  ehr receipts were created since the job started (offsetting by an hour to account for any
                 #  difference between server times)
