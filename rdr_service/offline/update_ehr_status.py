@@ -108,7 +108,10 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
                     # For any participants that got EHR files for the first time: check their enrollment status and
                     # make sure we don't check it again if they have another file
                     summary = summary_dao.get_for_update(session=session, obj_id=participant_id)
-                    summary_dao.update_enrollment_status(session=session, summary=summary)
+                    if summary is None:
+                        LOG.error(f'No summary found for P{participant_id}')
+                    else:
+                        summary_dao.update_enrollment_status(session=session, summary=summary)
                     new_ids_with_status_checked.add(participant_id)
 
             _track_historical_participant_ehr_data(session, parameter_sets)
