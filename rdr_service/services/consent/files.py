@@ -392,7 +392,12 @@ class ConsentFile(ABC):
 
 class PrimaryConsentFile(ConsentFile, ABC):
     def get_is_va_consent(self):
-        return self.pdf.get_page_number_of_text(['you will get care at a VA facility']) is not None
+        return self.pdf.get_page_number_of_text([
+            (
+                'you will get care at a VA facility',
+                'Si necesita atención de seguimiento para su lesión, VA lo cubrirá.'
+            )
+        ]) is not None
 
 
 class CaborConsentFile(ConsentFile, ABC):
@@ -401,7 +406,12 @@ class CaborConsentFile(ConsentFile, ABC):
 
 class EhrConsentFile(ConsentFile, ABC):
     def get_is_va_consent(self):
-        return self.pdf.get_page_number_of_text(['We may ask you to go to a local clinic to be measured']) is not None
+        return self.pdf.get_page_number_of_text([
+            (
+                'We may ask you to go to a local clinic to be measured',
+                'Es posible que le pidamos que visite a una clínica local para dar sus muestras \nbiológicas.'
+            )
+        ]) is not None
 
     def is_sensitive_form(self):
         return False
