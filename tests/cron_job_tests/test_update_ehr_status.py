@@ -22,11 +22,7 @@ from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.uses_database = False
-
-    # pylint: disable=unused-argument
-    def setUp(self, use_mysql=False, with_data=False, with_consent_codes=False):
-        super(UpdateEhrStatusMakeJobsTestCase, self).setUp()
+        self.uses_database = False\
 
     @mock.patch("rdr_service.cloud_utils.bigquery.build")
     @mock.patch("rdr_service.cloud_utils.bigquery.GAE_PROJECT")
@@ -402,6 +398,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         # Check that the participant was handed off to the status update method
         checked_participant_id = update_status_mock.call_args.kwargs['summary'].participantId
         self.assertEqual(test_participant_id, checked_participant_id)
+
+        self.clear_table_after_test(ParticipantEhrReceipt.__tablename__)
 
 
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_organizations_job")
