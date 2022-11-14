@@ -809,6 +809,7 @@ def genomic_aw3_ready_missing_files_report():
     genomic_pipeline.notify_aw3_ready_missing_data_files()
     return '{"success": "true"}'
 
+
 @app_util.auth_required_cron
 @run_genomic_cron_job('notify_appointment_gror_changed')
 def genomic_appointment_gror_changed():
