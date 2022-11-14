@@ -14,7 +14,7 @@ from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import literal, distinct
 
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from sqlalchemy.sql.functions import coalesce
 from werkzeug.exceptions import BadRequest, NotFound
@@ -3040,9 +3040,9 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
                 return value
         return None
 
-    def get_hdr_result_positive_no_appointment(self) -> List[str]:
+    def get_hdr_result_positive_no_appointment(self, days=14) -> List[Tuple[int, None]]:
         """Returns participants with hdr positive result over 14 days ago and no appointment scheduled/completed"""
-        result_before = clock.CLOCK.now() - timedelta(days=14)
+        result_before = clock.CLOCK.now() - timedelta(days=days)
 
         max_event_authored_time_subquery = sqlalchemy.orm.Query(
             functions.max(GenomicAppointmentEvent.event_authored_time).label(
@@ -3056,7 +3056,7 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
         ).subquery()
 
         with self.session() as session:
-            pids = session.query(
+            return session.query(
                 GenomicMemberReportState.participant_id
             ).outerjoin(
                 GenomicAppointmentEvent,
@@ -3078,7 +3078,6 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
                     max_event_authored_time_subquery.c.max_event_authored_time,
                     GenomicAppointmentEvent.event_authored_time.is_(None))
             ).distinct().all()
-        return [pid[0] for pid in pids]
 
 
 class GenomicInformingLoopDao(UpdatableDao, GenomicDaoMixin):
@@ -3210,19 +3209,6 @@ class GenomicAppointmentEventNotifiedDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
         super(GenomicAppointmentEventNotifiedDao, self).__init__(
             GenomicAppointmentEventNotified, order_by_ending=['id'])
-
-    def get_id(self, obj):
-        pass
-
-    def from_client_json(self):
-        pass
-
-
-class GenomicGCROutreachEscalationNotifiedDao(BaseDao, GenomicDaoMixin):
-
-    def __init__(self):
-        super(GenomicGCROutreachEscalationNotifiedDao, self).__init__(
-            GenomicGCROutreachEscalationNotified, order_by_ending=['id'])
 
     def get_id(self, obj):
         pass

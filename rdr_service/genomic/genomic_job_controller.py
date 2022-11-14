@@ -30,7 +30,7 @@ from rdr_service.genomic.genomic_message_broker import GenomicMessageBroker
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, \
-    GenomicGCValidationMetrics, GenomicGcDataFile
+    GenomicGCValidationMetrics, GenomicGcDataFile, GenomicGCROutreachEscalationNotified
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicIncidentCode, GenomicManifestTypes, GenomicReportState
 from rdr_service.genomic.genomic_job_components import (
@@ -58,7 +58,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicResultViewedDao,
     GenomicQueriesDao, GenomicMemberReportStateDao, GenomicAppointmentEventDao,
     GenomicCVLResultPastDueDao, GenomicResultWithdrawalsDao, GenomicAppointmentEventMetricsDao,
-    GenomicAppointmentEventNotifiedDao, GenomicGCROutreachEscalationNotifiedDao
+    GenomicAppointmentEventNotifiedDao, GenomicDefaultBaseDao
 )
 from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
@@ -1943,10 +1943,11 @@ class GenomicJobController:
 
     def check_gcr_14day_escalation(self):
         """Alerts color when participant with hdr positive result does not have a scheduled or completed appointment"""
-        notified_dao = GenomicGCROutreachEscalationNotifiedDao()
+        notified_dao = GenomicDefaultBaseDao(model_type=GenomicGCROutreachEscalationNotified)
         notification_email_addresses = config.getSettingList(config.GENOMIC_GCR_ESCALATION_EMAILS, default=None)
         escalate_participants = self.report_state_dao.get_hdr_result_positive_no_appointment()
-        if notification_email_addresses and escalate_participants:
+        escalate_pids = [pid[0] for pid in escalate_participants]
+        if notification_email_addresses and escalate_pids:
             notified_participants = []
             for pid in escalate_participants:
                 EmailService.send_email(

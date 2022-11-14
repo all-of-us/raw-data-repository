@@ -832,7 +832,7 @@ def genomic_update_wgs_storage_class():
 @app_util.auth_required_cron
 @run_genomic_cron_job('notify_gcr_outreach_escalation')
 def genomic_notify_gcr_outreach_escalation():
-    genomic_pipeline.notify_gcr_outreach_escalation()
+    genomic_pipeline.check_gcr_appointment_escalation()
     return '{"success": "true"}'
 
 def _build_pipeline_app():

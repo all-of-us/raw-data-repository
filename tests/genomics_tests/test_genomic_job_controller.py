@@ -11,13 +11,14 @@ from rdr_service.dao.database_utils import format_datetime
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
     GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao, GenomicResultWithdrawalsDao, \
     GenomicMemberReportStateDao, GenomicAppointmentEventMetricsDao, GenomicAppointmentEventDao, GenomicResultViewedDao, \
-    GenomicInformingLoopDao, GenomicAppointmentEventNotifiedDao, GenomicGCROutreachEscalationNotifiedDao
+    GenomicInformingLoopDao, GenomicAppointmentEventNotifiedDao, GenomicDefaultBaseDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult, \
     GenomicSubProcessStatus, GenomicManifestTypes, GenomicQcStatus, GenomicReportState
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
-from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics
+from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics, \
+    GenomicGCROutreachEscalationNotified
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import WithdrawalStatus
 from tests import test_data
@@ -1515,7 +1516,7 @@ class GenomicJobControllerTest(BaseTestCase):
             language='en'
         )
 
-        notified_dao = GenomicGCROutreachEscalationNotifiedDao()
+        notified_dao = GenomicDefaultBaseDao(model_type=GenomicGCROutreachEscalationNotified)
         notified_dao.insert_bulk([{
             'participant_id': pids[4],
             'created': clock.CLOCK.now(),
@@ -1523,7 +1524,8 @@ class GenomicJobControllerTest(BaseTestCase):
         }])
 
         with clock.FakeClock(parser.parse('2022-11-1T05:15:00')):
-            results = self.report_state_dao.get_hdr_result_positive_no_appointment()
+            escalated_participants = self.report_state_dao.get_hdr_result_positive_no_appointment()
+            results = [pid[0] for pid in escalated_participants]
         self.assertIn(pids[2], results)
         self.assertIn(pids[3], results)
         self.assertNotIn(pids[0], results)

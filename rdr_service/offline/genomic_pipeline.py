@@ -614,6 +614,6 @@ def notify_appointment_gror_changed():
         controller.check_appointments_gror_changed()
 
 
-def notify_gcr_outreach_escalation():
+def check_gcr_appointment_escalation():
     with GenomicJobController(GenomicJob.CHECK_GCR_OUTREACH_ESCALATION) as controller:
         controller.check_gcr_14day_escalation()
