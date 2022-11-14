@@ -707,8 +707,8 @@ class GenomicGCMetricsUpsertApi(BaseGenomicTaskApi):
         metric_id = self.data.get('metric_id')
         payload_dict = self.data.get('payload_dict')
 
-        if not metric_id or not payload_dict:
-            logging.warning('Combination of metric_id/payload_dict is required.')
+        if not payload_dict:
+            logging.warning('Payload_dict is required for upserting gc metrics.')
             return {"success": False}
 
         self.metrics_dao.upsert_gc_validation_metrics_from_dict(
