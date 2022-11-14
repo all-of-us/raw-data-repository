@@ -22,7 +22,7 @@ from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.uses_database = False\
+        self.uses_database = False
 
     @mock.patch("rdr_service.cloud_utils.bigquery.build")
     @mock.patch("rdr_service.cloud_utils.bigquery.GAE_PROJECT")
