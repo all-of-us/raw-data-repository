@@ -24,10 +24,6 @@ class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
         super().__init__(*args, **kwargs)
         self.uses_database = False
 
-    # pylint: disable=unused-argument
-    def setUp(self, use_mysql=False, with_data=False, with_consent_codes=False):
-        super(UpdateEhrStatusMakeJobsTestCase, self).setUp()
-
     @mock.patch("rdr_service.cloud_utils.bigquery.build")
     @mock.patch("rdr_service.cloud_utils.bigquery.GAE_PROJECT")
     def test_make_update_participant_summaries_job(self, mock_build, mock_gae_project):
@@ -306,7 +302,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
     @mock.patch('rdr_service.offline.update_ehr_status.dispatch_participant_rebuild_tasks')
     @mock.patch('rdr_service.offline.update_ehr_status.make_update_participant_summaries_job')
     def test_participant_pdr_patch_requests(self, mock_summary_job, mock_rebuild_tasks):
-        """Checking that participant ehr data gets patched und different scenarios"""
+        """Checking that participant ehr data gets patched under different scenarios"""
 
         # There are four different scenarios tested here, each of them requiring that different data be sent to PDR:
         #   1 - participants that still appear in the view, but don't have a new file upload timestamp should not be
@@ -387,6 +383,23 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
                 fourth_upload_time
             )
         ], mock_rebuild_tasks)
+
+    @mock.patch('rdr_service.offline.update_ehr_status.make_update_participant_summaries_job')
+    @mock.patch('rdr_service.dao.participant_summary_dao.ParticipantSummaryDao.update_enrollment_status')
+    def test_ehr_receipt_updates_enrollment_status(self, update_status_mock, mock_summary_job):
+        """Checking that a participant's enrollment status gets updated when they have EHR submitted for them"""
+
+        test_participant_id = self.data_generator.create_database_participant_summary().participantId
+        view_data = self.EhrUpdatePidRow(test_participant_id, datetime.datetime(2020, 3, 12, 10))
+
+        mock_summary_job.return_value.__iter__.return_value = [[view_data]]
+        update_ehr_status.update_ehr_status_participant()
+
+        # Check that the participant was handed off to the status update method
+        checked_participant_id = update_status_mock.call_args.kwargs['summary'].participantId
+        self.assertEqual(test_participant_id, checked_participant_id)
+
+        self.clear_table_after_test(ParticipantEhrReceipt.__tablename__)
 
 
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_organizations_job")
