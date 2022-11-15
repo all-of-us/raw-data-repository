@@ -83,6 +83,7 @@ def _track_historical_participant_ehr_data(session, parameter_sets):
 def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
     summary_dao = ParticipantSummaryDao()
     participant_ids_that_previously_had_ehr = summary_dao.get_participant_ids_with_ehr_data_available()
+    new_ids_with_status_checked = set()  # Any participant ids with new files that have already had their status updated
     summary_dao.prepare_for_ehr_status_update()
     job_start_time = datetime.utcnow()
 
@@ -99,9 +100,19 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
                     "pid": participant_id,
                     "receipt_time": file_upload_time
                 })
-                # Remove any participants that are part of the current page, they're being rebuilt currently, so they
-                #  won't need to rebuilt again at the end (when we get the ones that are no longer in the view)
-                participant_ids_that_previously_had_ehr.discard(participant_id)
+                if participant_id in participant_ids_that_previously_had_ehr:
+                    # Remove any participants that are part of the current page, they're being rebuilt currently, so
+                    # they won't need to rebuilt again at the end (when we get the ones that are no longer in the view)
+                    participant_ids_that_previously_had_ehr.discard(participant_id)
+                elif participant_id not in new_ids_with_status_checked:
+                    # For any participants that got EHR files for the first time: check their enrollment status and
+                    # make sure we don't check it again if they have another file
+                    summary = summary_dao.get_for_update(session=session, obj_id=participant_id)
+                    if summary is None:
+                        LOG.error(f'No summary found for P{participant_id}')
+                    else:
+                        summary_dao.update_enrollment_status(session=session, summary=summary)
+                    new_ids_with_status_checked.add(participant_id)
 
             _track_historical_participant_ehr_data(session, parameter_sets)
             query_result = summary_dao.bulk_update_ehr_status_with_session(session, parameter_sets)
