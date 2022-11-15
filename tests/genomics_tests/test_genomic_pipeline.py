@@ -6623,11 +6623,13 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
-        config.override_setting(config.RDR_GENOMICS_NOTIFICATION_EMAIL, 'email@test.com')
+        config.override_setting(config.RDR_GENOMICS_NOTIFICATION_EMAIL, ['email@test.com', 'email2@test.com'])
         with GenomicJobController(GenomicJob.AW3_MISSING_DATA_FILE_REPORT) as controller:
             controller.check_aw3_ready_missing_files()
 
         # mock checks
         self.assertEqual(email_mock.call_count, 1)
+        self.assertEqual(email_mock.call_args[0][0].recipients, ['email@test.com', 'email2@test.com'])
+
 
 
