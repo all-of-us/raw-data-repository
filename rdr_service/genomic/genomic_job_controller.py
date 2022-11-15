@@ -1904,7 +1904,7 @@ class GenomicJobController:
             message += '\n'.join([f'{f[1]},aou_wgs' for f in wgs_missing_data])
             EmailService.send_email(
                 Email(
-                    recipients=[notification_email_address],
+                    recipients=notification_email_address,
                     subject='AW3 ready samples with missing data files',
                     plain_text_content=message
                 )
