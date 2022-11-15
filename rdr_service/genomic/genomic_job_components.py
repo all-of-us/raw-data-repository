@@ -1254,6 +1254,7 @@ class GenomicFileIngester:
             members_to_update.append(member_dict)
 
             # upsert metrics record via cloud task
+            row_copy['contamination_category'] = int(row_copy['contamination_category'])
             self.controller.execute_cloud_task({
                 'metric_id': metric_id,
                 'payload_dict': row_copy,
