@@ -989,6 +989,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :return:
         """
 
+        # PDR-1432: Workaround for an edge case where HPRO created an "orphaned" biobank order that should be ignored
+        # TODO: When DA-3150 is implemented, need to adjust the biobank table queries in this method to filter on
+        # ignore flags, as appropriate
+        ignore_biobank_orders = ['WEBF77CR2BX5', ]
+
         def _get_stored_sample_row(stored_samples, ordered_sample):
             """
             Search a list of biobank_stored_sample rows to find a match to the biobank_ordered_sample record
@@ -1099,8 +1104,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         _biobank_stored_samples_sql = """
             select
                 (select p.participant_id from participant p where p.biobank_id = bss.biobank_id) as participant_id,
-                (select distinct boi.biobank_order_id from
-                   biobank_order_identifier boi where boi.`value` = bss.biobank_order_identifier
+                (select distinct boi.biobank_order_id from biobank_order_identifier boi
+                   where boi.`value` = bss.biobank_order_identifier and boi.biobank_order_id not in :ignore_orders
                 ) as biobank_order_id,
                 bss.*
             from biobank_stored_sample bss
@@ -1111,9 +1116,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data = {}
         orders = list()
         activity = list()
-        # Find all biobank orders associated with this participant
+        # Find all biobank orders associated with this participant.  PDR-1432 WORKAROUND:  Certain biobank orders may
+        # be excluded from the list due to rare occurrences of "orphaned" orders created by HPRO
+        # TODO:  Update to use a new ignore column as filter when implemented for DA-3150
         cursor = ro_session.execute(_biobank_orders_sql, {'p_id': p_id})
-        biobank_orders = [r for r in cursor]
+        biobank_orders = [r for r in cursor if r.biobank_order_id not in ignore_biobank_orders]
         # Create a unique identifier for each biobank order. This uid must be repeatable, so we sort by 'created'.
         # This unique biobank order id will be used as the prefix of the unique id for each biobank sample record.
         # Note: This is why every database table should have an 'id' integer field as the primary key, so we don't
@@ -1127,7 +1134,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # Find stored samples associated with this participant. For any stored samples for which there
         # is no known biobank order, create a separate list that will be consolidated into a "pseudo" order record
-        cursor = ro_session.execute(_biobank_stored_samples_sql, {'bb_id': p_bb_id})
+        cursor = ro_session.execute(_biobank_stored_samples_sql, {'bb_id': p_bb_id,
+                                                                  'ignore_orders': ignore_biobank_orders})
         bss_results = [r for r in cursor]
         bss_missing_orders = list(filter(lambda r: r.biobank_order_id is None, bss_results))
 
