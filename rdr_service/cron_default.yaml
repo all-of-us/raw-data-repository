@@ -254,4 +254,9 @@ cron:
   timezone: America/New_York
   schedule: every monday 08:30
   target: offline
+- description: Genomic GCR Outreach Escalation Notification (Daily)
+  url: /offline/GenomicNotifyGCROutreachEscalation
+  timezone: America/New_York
+  schedule: every day 04:30
+  target: offline
 

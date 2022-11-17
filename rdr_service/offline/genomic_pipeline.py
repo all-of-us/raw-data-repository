@@ -612,3 +612,8 @@ def notify_aw3_ready_missing_data_files():
 def notify_appointment_gror_changed():
     with GenomicJobController(GenomicJob.CHECK_APPOINTMENT_GROR_CHANGED) as controller:
         controller.check_appointments_gror_changed()
+
+
+def check_gcr_appointment_escalation():
+    with GenomicJobController(GenomicJob.CHECK_GCR_OUTREACH_ESCALATION) as controller:
+        controller.check_gcr_14day_escalation()
