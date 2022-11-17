@@ -2161,7 +2161,10 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                 if start_date:
                     decision_loop = decision_loop.filter(
-                        GenomicInformingLoop.event_authored_time > start_date,
+                        or_(
+                            GenomicInformingLoop.event_authored_time > start_date,
+                            GenomicInformingLoop.created > start_date
+                        ),
                         GenomicInformingLoop.event_authored_time < end_date
                     )
                     ready_loop = ready_loop.filter(
@@ -2239,11 +2242,17 @@ class GenomicOutreachDaoV2(BaseDao):
 
                 if start_date:
                     result_ready_query = result_ready_query.filter(
-                        GenomicMemberReportState.event_authored_time > start_date,
+                        or_(
+                            GenomicMemberReportState.event_authored_time > start_date,
+                            GenomicMemberReportState.created > start_date
+                        ),
                         GenomicMemberReportState.event_authored_time < end_date,
                     )
                     result_viewed_query = result_viewed_query.filter(
-                        GenomicResultViewed.event_authored_time > start_date,
+                        or_(
+                            GenomicResultViewed.event_authored_time > start_date,
+                            GenomicResultViewed.created > start_date
+                        ),
                         GenomicResultViewed.event_authored_time < end_date,
                     )
 
