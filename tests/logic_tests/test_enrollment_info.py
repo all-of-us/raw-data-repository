@@ -202,6 +202,48 @@ class TestEnrollmentInfo(BaseTestCase):
             EnrollmentCalculation.get_enrollment_info(participant_info)
         )
 
+    def test_core_achieved_with_rescinded_ehr(self):
+        """
+        We only need a Yes response at any time for status upgrades.
+        Any further status upgrades should be allowed even if they've since said No to EHR consent.
+        """
+        participant_info = self._build_participant_info(
+            consent_cohort=ParticipantCohort.COHORT_2,
+            primary_authored_time=datetime(2018, 1, 17),
+            ehr_consent_ranges=[
+                DateRange(start=datetime(2018, 1, 17), end=datetime(2018, 1, 20))
+            ],
+            basics_time=datetime(2018, 1, 17),
+            overall_health_time=datetime(2018, 1, 17),
+            lifestyle_time=datetime(2018, 1, 17),
+            biobank_received_dna_sample_time=datetime(2018, 2, 21),
+            physical_measurements_time=datetime(2018, 3, 1)
+        )
+        self.assertEnrollmentInfoEqual(
+            self._build_expected_enrollment_info(
+                legacy_data=[
+                    (EnrollmentStatus.INTERESTED, participant_info.primary_consent_authored_time),
+                    (EnrollmentStatus.MEMBER, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatus.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
+                    (EnrollmentStatus.FULL_PARTICIPANT, participant_info.earliest_physical_measurements_time)
+                ],
+                v30_data=[
+                    (EnrollmentStatusV30.PARTICIPANT, participant_info.primary_consent_authored_time),
+                    (EnrollmentStatusV30.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE, participant_info.basics_authored_time),
+                    (EnrollmentStatusV30.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
+                    (EnrollmentStatusV30.CORE_PARTICIPANT, participant_info.earliest_physical_measurements_time)
+                ],
+                v31_data=[
+                    (EnrollmentStatusV31.PARTICIPANT, participant_info.primary_consent_authored_time),
+                    (EnrollmentStatusV31.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatusV31.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
+                    (EnrollmentStatusV31.CORE_PARTICIPANT, participant_info.earliest_physical_measurements_time)
+                ]
+            ),
+            EnrollmentCalculation.get_enrollment_info(participant_info)
+        )
+
     def test_baseline(self):
         """
         Check that 3.1 upgrades to BASELINE with an EHR file (and that others stay the same).
