@@ -82,6 +82,14 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.mock_ehr_interest_ranges.return_value = []
         self.addCleanup(response_dao_patch.stop)
 
+        sample_dao_patch = mock.patch(
+            'rdr_service.dao.participant_summary_dao.BiobankStoredSampleDao'
+        )
+        sample_dao_mock = sample_dao_patch.start()
+        self.received_samples_mock = sample_dao_mock.load_confirmed_dna_samples
+        self.received_samples_mock.return_value = []
+        self.addCleanup(sample_dao_patch.stop)
+
     def assert_no_results(self, query):
         results = self.dao.query(query)
         self.assertEqual([], results.items)
@@ -444,6 +452,10 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(ehr_consent_authored_time, summary.enrollmentStatusParticipantPlusEhrV3_1Time)
 
         sample_time = datetime.datetime(2019, 3, 1)
+
+        self.received_samples_mock.return_value = [
+            BiobankStoredSample(confirmed=sample_time)
+        ]
         summary = ParticipantSummary(
             participantId=1,
             biobankId=2,
@@ -458,7 +470,6 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
             selfReportedPhysicalMeasurementsStatus=SelfReportedPhysicalMeasurementsStatus.UNSET,
             enrollmentStatus=EnrollmentStatus.MEMBER,
-            sampleStatus2ED10Time=sample_time,
             enrollmentStatusV3_0=EnrollmentStatusV30.PARTICIPANT,
             enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT
         )
@@ -479,6 +490,9 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         ]
 
         sample_time = datetime.datetime(2019, 3, 1)
+        self.received_samples_mock.return_value = [
+            BiobankStoredSample(confirmed=sample_time)
+        ]
         summary = ParticipantSummary(
             participantId=1,
             biobankId=2,
@@ -493,7 +507,6 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             questionnaireOnTheBasicsAuthored=ehr_consent_authored_time,
             questionnaireOnLifestyleAuthored=ehr_consent_authored_time,
             questionnaireOnOverallHealthAuthored=ehr_consent_authored_time,
-            sampleStatus2ED10Time=sample_time,
             enrollmentStatusV3_0=EnrollmentStatusV30.PARTICIPANT,
             enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT
         )
