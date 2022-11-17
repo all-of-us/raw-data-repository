@@ -1,5 +1,8 @@
 import logging
 
+from sqlalchemy.orm import Session
+
+from rdr_service import config
 from rdr_service.code_constants import BIOBANK_TESTS_SET
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrder
@@ -60,3 +63,13 @@ class BiobankStoredSampleDao(BaseDao):
                 return getattr(results, 'siteId')
             else:
                 return
+
+    @classmethod
+    def load_confirmed_dna_samples(cls, session: Session, biobank_id):
+        return session.query(
+            BiobankStoredSample
+        ).filter(
+            BiobankStoredSample.biobankId == biobank_id,
+            BiobankStoredSample.confirmed.isnot(None),
+            BiobankStoredSample.test.in_(config.getSettingList(config.DNA_SAMPLE_TEST_CODES))
+        ).all()

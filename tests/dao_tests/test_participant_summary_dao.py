@@ -13,6 +13,7 @@ from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
+from rdr_service.logic.enrollment_info import EnrollmentInfo
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.measurements import PhysicalMeasurements
@@ -80,6 +81,14 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.mock_ehr_interest_ranges = response_dao_mock.get_interest_in_sharing_ehr_ranges
         self.mock_ehr_interest_ranges.return_value = []
         self.addCleanup(response_dao_patch.stop)
+
+        sample_dao_patch = mock.patch(
+            'rdr_service.dao.participant_summary_dao.BiobankStoredSampleDao'
+        )
+        sample_dao_mock = sample_dao_patch.start()
+        self.received_samples_mock = sample_dao_mock.load_confirmed_dna_samples
+        self.received_samples_mock.return_value = []
+        self.addCleanup(sample_dao_patch.stop)
 
     def assert_no_results(self, query):
         results = self.dao.query(query)
@@ -443,6 +452,10 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(ehr_consent_authored_time, summary.enrollmentStatusParticipantPlusEhrV3_1Time)
 
         sample_time = datetime.datetime(2019, 3, 1)
+
+        self.received_samples_mock.return_value = [
+            BiobankStoredSample(confirmed=sample_time)
+        ]
         summary = ParticipantSummary(
             participantId=1,
             biobankId=2,
@@ -457,7 +470,6 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
             selfReportedPhysicalMeasurementsStatus=SelfReportedPhysicalMeasurementsStatus.UNSET,
             enrollmentStatus=EnrollmentStatus.MEMBER,
-            sampleStatus2ED10Time=sample_time,
             enrollmentStatusV3_0=EnrollmentStatusV30.PARTICIPANT,
             enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT
         )
@@ -478,6 +490,9 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         ]
 
         sample_time = datetime.datetime(2019, 3, 1)
+        self.received_samples_mock.return_value = [
+            BiobankStoredSample(confirmed=sample_time)
+        ]
         summary = ParticipantSummary(
             participantId=1,
             biobankId=2,
@@ -492,7 +507,6 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             questionnaireOnTheBasicsAuthored=ehr_consent_authored_time,
             questionnaireOnLifestyleAuthored=ehr_consent_authored_time,
             questionnaireOnOverallHealthAuthored=ehr_consent_authored_time,
-            sampleStatus2ED10Time=sample_time,
             enrollmentStatusV3_0=EnrollmentStatusV30.PARTICIPANT,
             enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT
         )
@@ -1066,6 +1080,39 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(results["selfReportedPhysicalMeasurementsStatus"], "COMPLETED")
         self.assertEqual(results["physicalMeasurementsFinalizedTime"], TIME_3.isoformat())
         self.assertEqual(results["physicalMeasurementsCollectType"], "SITE")
+
+    @mock.patch('rdr_service.logic.enrollment_info.EnrollmentCalculation.get_enrollment_info')
+    @mock.patch('rdr_service.dao.participant_summary_dao.BiobankStoredSampleDao')
+    def test_status_calculation_uses_earliest_dna_time(self, sample_dao_mock, enrollment_calculation_mock):
+        """
+        The enrollment status calculation code should be provided with the earliest sample collection time,
+        even if multiple samples of the same type have been collected
+        """
+
+        enrollment_calculation_mock.return_value = EnrollmentInfo(
+            version_legacy_status=EnrollmentStatus.INTERESTED,
+            version_3_0_status=EnrollmentStatusV30.PARTICIPANT,
+            version_3_1_status=EnrollmentStatusV31.PARTICIPANT
+        )
+
+        earliest_sample_time = datetime.datetime(2022, 1, 27)
+        later_sample_time = datetime.datetime(2022, 3, 1)
+        summary = ParticipantSummary(
+            enrollmentStatus=EnrollmentStatus.INTERESTED,
+            samplesToIsolateDNA=SampleStatus.RECEIVED,
+            enrollmentStatusV3_0=EnrollmentStatusV30.PARTICIPANT,
+            enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT,
+            sampleStatus1SALTime=later_sample_time
+        )
+        sample_dao_mock.load_confirmed_dna_samples.return_value = [
+            BiobankStoredSample(test='1SAL2', confirmed=earliest_sample_time),
+            BiobankStoredSample(test='1SAL2', confirmed=later_sample_time)
+        ]
+
+        self.dao.update_enrollment_status(summary=summary, session=mock.MagicMock())
+
+        participant_info = enrollment_calculation_mock.call_args[0][0]
+        self.assertEqual(earliest_sample_time, participant_info.earliest_biobank_received_dna_time)
 
     def test_parse_enums_from_resource(self):
         resource = {
