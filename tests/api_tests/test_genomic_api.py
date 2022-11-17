@@ -915,7 +915,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 participantId=participant.participantId
             )
 
-            self.data_generator.create_database_genomic_member_report_state(
+            report_obj = self.data_generator.create_database_genomic_member_report_state(
                 genomic_set_member_id=gen_member.id,
                 participant_id=participant.participantId,
                 module=module,
@@ -923,8 +923,13 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 event_authored_time=fake_date_two if num > 4 else fake_date_one
             )
 
+            # update created
+            report = self.report_dao.get(report_obj.id)
+            report.created = fake_date_two if num > 4 else fake_date_one
+            self.report_dao.update(report)
+
             if num % 2 == 0:
-                self.data_generator.create_database_genomic_informing_loop(
+                loop_obj = self.data_generator.create_database_genomic_informing_loop(
                     message_record_id=1,
                     event_type='informing_loop_decision',
                     module_type=module,
@@ -932,6 +937,11 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                     decision_value='maybe_later',
                     event_authored_time=fake_date_two
                 )
+
+                # update created
+                loop = self.loop_dao.get(loop_obj.id)
+                loop.created = fake_date_two
+                self.loop_dao.update(loop)
 
         total_num_set = self.loop_dao.get_all() + self.report_dao.get_all()
         self.assertEqual(len(total_num_set), 15)
@@ -1168,7 +1178,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 participantId=participant.participantId,
             )
 
-            self.data_generator.create_database_genomic_member_report_state(
+            report_obj = self.data_generator.create_database_genomic_member_report_state(
                 genomic_set_member_id=gen_member.id,
                 participant_id=participant.participantId,
                 module=module,
@@ -1176,7 +1186,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 event_authored_time=fake_date_two if num % 2 == 0 else fake_date_one
             )
 
-            self.data_generator.create_database_genomic_informing_loop(
+            # update created
+            report = self.report_dao.get(report_obj.id)
+            report.created = fake_date_two if num % 2 == 0 else fake_date_one
+            self.report_dao.update(report)
+
+            loop_obj = self.data_generator.create_database_genomic_informing_loop(
                 message_record_id=1,
                 event_type='informing_loop_decision',
                 module_type=module,
@@ -1184,6 +1199,11 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 decision_value='maybe_later',
                 event_authored_time=fake_date_two if num % 2 == 0 else fake_date_one
             )
+
+            # update created
+            loop = self.loop_dao.get(loop_obj.id)
+            loop.created = fake_date_two if num % 2 == 0 else fake_date_one
+            self.loop_dao.update(loop)
 
         total_num_set = self.loop_dao.get_all() + self.report_dao.get_all()
         self.assertEqual(len(total_num_set), 20)
@@ -1695,7 +1715,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             participantId=participant.participantId,
         )
 
-        self.data_generator.create_database_genomic_member_report_state(
+        gem_member_report_state = self.data_generator.create_database_genomic_member_report_state(
             genomic_set_member_id=gem_member.id,
             participant_id=participant.participantId,
             module=gem_module,
@@ -1703,6 +1723,11 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             event_authored_time=fake_date_one,
             sample_id=gem_member.sampleId
         )
+
+        # update created to exclude report state
+        gem_member_report_state = self.report_dao.get(gem_member_report_state.id)
+        gem_member_report_state.created = fake_date_one
+        self.report_dao.update(gem_member_report_state)
 
         self.data_generator.create_genomic_result_viewed(
             participant_id=participant.participantId,
@@ -1735,7 +1760,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             participantId=participant.participantId,
         )
 
-        self.data_generator.create_database_genomic_member_report_state(
+        hdr_report_state = self.data_generator.create_database_genomic_member_report_state(
             genomic_set_member_id=hdr_member.id,
             participant_id=participant.participantId,
             module=hdr_module,
@@ -1745,12 +1770,19 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             report_revision_number=0
         )
 
+        # update created to exclude report state
+        hdr_report_state = self.report_dao.get(hdr_report_state.id)
+        hdr_report_state.created = fake_date_one
+        self.report_dao.update(hdr_report_state)
+
         self.data_generator.create_genomic_result_viewed(
             participant_id=participant.participantId,
             event_type='result_viewed',
             event_authored_time=fake_date_two,
             module_type=hdr_module,
-            sample_id=hdr_member.sampleId
+            sample_id=hdr_member.sampleId,
+            created=fake_date_two,
+            modified=fake_date_two
         )
 
         resp = self.send_get(f'GenomicOutreachV2?participant_id={participant.participantId}')
