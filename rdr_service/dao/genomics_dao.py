@@ -14,7 +14,7 @@ from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import literal, distinct
 
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from sqlalchemy.sql.functions import coalesce
 from werkzeug.exceptions import BadRequest, NotFound
@@ -47,7 +47,7 @@ from rdr_service.model.genomics import (
     GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
-    GenomicAppointmentEventNotified, GenomicStorageUpdate)
+    GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -3039,6 +3039,45 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
             if value.name.lower() == wf_state.name.lower():
                 return value
         return None
+
+    def get_hdr_result_positive_no_appointment(self, days=14) -> List[Tuple[int, None]]:
+        """Returns participants with hdr positive result over 14 days ago and no appointment scheduled/completed"""
+        result_before = clock.CLOCK.now() - timedelta(days=days)
+
+        max_event_authored_time_subquery = sqlalchemy.orm.Query(
+            functions.max(GenomicAppointmentEvent.event_authored_time).label(
+                'max_event_authored_time'
+            )
+        ).filter(
+            GenomicAppointmentEvent.event_type.notlike('%note_available'),
+            GenomicAppointmentEvent.module_type == 'hdr'
+        ).group_by(
+            GenomicAppointmentEvent.participant_id,
+        ).subquery()
+
+        with self.session() as session:
+            return session.query(
+                GenomicMemberReportState.participant_id
+            ).outerjoin(
+                GenomicAppointmentEvent,
+                and_(
+                    GenomicAppointmentEvent.participant_id == GenomicMemberReportState.participant_id,
+                    GenomicAppointmentEvent.module_type == 'hdr'
+                )
+            ).outerjoin(
+                GenomicGCROutreachEscalationNotified,
+                GenomicMemberReportState.participant_id == GenomicGCROutreachEscalationNotified.participant_id
+            ).filter(
+                GenomicGCROutreachEscalationNotified.participant_id.is_(None),
+                GenomicMemberReportState.genomic_report_state == GenomicReportState.HDR_RPT_POSITIVE,
+                GenomicMemberReportState.event_authored_time < result_before,
+                or_(GenomicAppointmentEvent.event_type.notin_(('appointment_completed', 'appointment_scheduled',
+                                                               'appointment_updated')),
+                    GenomicAppointmentEvent.event_type.is_(None)),
+                or_(GenomicAppointmentEvent.event_authored_time ==
+                    max_event_authored_time_subquery.c.max_event_authored_time,
+                    GenomicAppointmentEvent.event_authored_time.is_(None))
+            ).distinct().all()
 
 
 class GenomicInformingLoopDao(UpdatableDao, GenomicDaoMixin):
