@@ -28,6 +28,7 @@ from rdr_service.app_util import is_care_evo_and_not_prod
 from rdr_service.code_constants import BIOBANK_TESTS, COHORT_1_REVIEW_CONSENT_YES_CODE, ORIGINATING_SOURCES,\
     PMI_SKIP_CODE, PPI_SYSTEM, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE, UNSET
 from rdr_service.dao.base_dao import UpdatableDao
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
 from rdr_service.dao.hpo_dao import HPODao
@@ -670,14 +671,15 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.clinicPhysicalMeasurementsFinalizedTime,
             summary.selfReportedPhysicalMeasurementsAuthored
         ])
+
         earliest_biobank_received_dna_time = None
         if summary.samplesToIsolateDNA == SampleStatus.RECEIVED:
+            confirmed_dna_sample_list = BiobankStoredSampleDao.load_confirmed_dna_samples(
+                session=session,
+                biobank_id=summary.biobankId
+            )
             earliest_biobank_received_dna_time = min_or_none([
-                summary.sampleStatus1ED10Time,
-                summary.sampleStatus2ED10Time,
-                summary.sampleStatus1ED04Time,
-                summary.sampleStatus1SALTime,
-                summary.sampleStatus1SAL2Time
+                sample.confirmed for sample in confirmed_dna_sample_list
             ])
 
         ehr_consent_ranges = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(

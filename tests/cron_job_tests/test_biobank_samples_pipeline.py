@@ -272,7 +272,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             ParticipantSummary.participantId == core_minus_pm_participant_id
         ).one()
         self.assertEqual(core_minus_pm_summary.enrollmentStatus, EnrollmentStatus.CORE_MINUS_PM)
-        self.assertEqual(core_minus_pm_summary.enrollmentStatusCoreMinusPMTime, datetime(2017, 11, 30, 2, 59, 42))
+        self.assertEqual(core_minus_pm_summary.enrollmentStatusCoreMinusPMTime, datetime(2017, 11, 29, 22, 10, 17))
 
         core_summary = self.session.query(ParticipantSummary).filter(
             ParticipantSummary.participantId == core_participant_id
