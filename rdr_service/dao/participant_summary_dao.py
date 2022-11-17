@@ -25,7 +25,8 @@ from rdr_service.api_util import (
     parse_json_enum
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
-from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_SKIP_CODE, PPI_SYSTEM, UNSET
+from rdr_service.code_constants import BIOBANK_TESTS, COHORT_1_REVIEW_CONSENT_YES_CODE, ORIGINATING_SOURCES,\
+    PMI_SKIP_CODE, PPI_SYSTEM, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE, UNSET
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
@@ -685,8 +686,17 @@ class ParticipantSummaryDao(UpdatableDao):
         )
 
         dna_update_time_list = [summary.questionnaireOnDnaProgramAuthored]
-        if summary.consentForStudyEnrollmentAuthored != summary.consentForStudyEnrollmentFirstYesAuthored:
-            dna_update_time_list.append(summary.consentForStudyEnrollmentAuthored)
+        response_collection = QuestionnaireResponseRepository.get_responses_to_surveys(
+            session=session,
+            survey_codes=[PRIMARY_CONSENT_UPDATE_MODULE],
+            participant_ids=[summary.participantId]
+        )
+        if summary.participantId in response_collection:
+            program_update_response_list = response_collection[summary.participantId].responses.values()
+            for response in program_update_response_list:
+                reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE).value.lower()
+                if reconsent_answer == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
+                    dna_update_time_list.append(response.authored_datetime)
         dna_update_time = min_or_none(dna_update_time_list)
 
         enrollment_info = EnrollmentCalculation.get_enrollment_info(

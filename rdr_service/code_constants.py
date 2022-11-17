@@ -186,6 +186,7 @@ COPE_DEC_MODULE = "cope_dec"
 COPE_FEB_MODULE = "cope_feb"
 GENETIC_ANCESTRY_MODULE = 'GeneticAncestry'
 LIFE_FUNCTIONING_SURVEY = 'lfs'
+PRIMARY_CONSENT_UPDATE_MODULE = 'PrimaryConsentUpdate'
 
 VA_EHR_RECONSENT = 'vaehrreconsent'
 
