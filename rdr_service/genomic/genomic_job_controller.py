@@ -120,6 +120,7 @@ class GenomicJobController:
         self.missing_files_dao = GenomicGcDataFileMissingDao()
         self.message_broker_event_dao = MessageBrokenEventDataDao()
         self.event_dao = UserEventMetricsDao()
+        self.query_dao = GenomicQueriesDao()
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
@@ -1828,8 +1829,7 @@ class GenomicJobController:
         return file_attr
 
     def check_w1il_gror_resubmit(self, since_datetime):
-        dao = GenomicQueriesDao()
-        participant_list = dao.get_w1il_yes_no_yes_participants(start_datetime=since_datetime)
+        participant_list = self.query_dao.get_w1il_yes_no_yes_participants(start_datetime=since_datetime)
 
         logging.warning(
             f'The following {len(participant_list)} participants '
@@ -1854,8 +1854,7 @@ class GenomicJobController:
         self.job_result = GenomicSubProcessResult.SUCCESS
 
     def check_results_withdrawals(self):
-        query_dao = GenomicQueriesDao()
-        result_withdrawals = query_dao.get_results_withdrawn_participants()
+        result_withdrawals = self.query_dao.get_results_withdrawn_participants()
 
         if not result_withdrawals:
             logging.info('There are no new withdrawal records in the genomic results pipeline')
@@ -1893,16 +1892,21 @@ class GenomicJobController:
 
     def check_aw3_ready_missing_files(self):
         """ Runs report to email list of samples that are ready for AW3 manifest generation but missing data files"""
-        genomics_dao = GenomicQueriesDao()
         notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
 
-        array_missing_data = genomics_dao.get_aw3_array_records(return_missing_files=True)
-        wgs_missing_data = genomics_dao.get_aw3_wgs_records(return_missing_files=True)
+        array_missing_data = self.query_dao.get_missing_data_files_for_aw3(
+            genome_type=config.GENOME_TYPE_ARRAY
+        )
+        wgs_missing_data = self.query_dao.get_missing_data_files_for_aw3(
+            genome_type=config.GENOME_TYPE_WGS
+        )
         if notification_email_address and any((array_missing_data, wgs_missing_data)):
             message = 'The following samples matched AW3 manifest criteria except for the data file count:\n\n'
-            message += 'sample_id,genome_type\n'
-            message += '\n'.join([f'{f[1]},aou_array' for f in array_missing_data])
-            message += '\n'.join([f'{f[1]},aou_wgs' for f in wgs_missing_data])
+            message += 'sample_id, genome_type\n'
+            message += '\n'.join([f'{f[0]}, aou_array' for f in array_missing_data])
+            message += '\n'
+            message += '\n'.join([f'{f[0]}, aou_wgs' for f in wgs_missing_data])
+            message += '\n'
             EmailService.send_email(
                 Email(
                     recipients=notification_email_address,
