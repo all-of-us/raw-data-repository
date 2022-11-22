@@ -3767,7 +3767,7 @@ class GenomicQueriesDao(BaseDao):
     def wgs_parent_sample():
         return (
             sqlalchemy.orm.Query(
-                GenomicSetMember.gcManifestParentSampleId
+                GenomicSetMember.biobankId
             ).filter(
                 GenomicSetMember.aw3ManifestJobRunID.isnot(None),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY
@@ -3781,6 +3781,7 @@ class GenomicQueriesDao(BaseDao):
         return_missing_files = kwargs.get('return_missing_files', False)
         required_file_types = [file_type['file_type'] for file_type in array_file_types_attributes
                                if file_type['required']]
+
         with self.session() as session:
             subquery = session.query(
                 GenomicSetMember.id,
@@ -3813,6 +3814,7 @@ class GenomicQueriesDao(BaseDao):
                 GenomicGCValidationMetrics.vcfPath,
                 GenomicGCValidationMetrics.vcfTbiPath,
                 GenomicGCValidationMetrics.vcfMd5Path,
+
                 GenomicGCValidationMetrics.callRate,
                 GenomicGCValidationMetrics.sexConcordance,
                 GenomicGCValidationMetrics.contamination,
@@ -3876,14 +3878,12 @@ class GenomicQueriesDao(BaseDao):
         return_missing_files = kwargs.get('return_missing_files', False)
         required_file_types = [file_type['file_type'] for file_type in wgs_file_types_attributes if
                                file_type['required']]
-        wgs_parent_sample = self.wgs_parent_sample().subquery()
+
+        # wgs_parent_sample = self.wgs_parent_sample().subquery()
         with self.session() as session:
             subquery = session.query(
                 GenomicSetMember.id,
                 func.count(GenomicGcDataFile.file_type).label("file_count")
-            ).join(
-                GenomicGCValidationMetrics,
-                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
             ).outerjoin(
                 GenomicGcDataFile,
                 GenomicGcDataFile.identifier_value == GenomicSetMember.sampleId
@@ -3893,6 +3893,16 @@ class GenomicQueriesDao(BaseDao):
                 GenomicGcDataFile.file_type.in_(required_file_types)
             ).group_by(GenomicSetMember.id).subquery()
 
+            hard_filtered_vcf_gz = aliased(GenomicGcDataFile)
+            hard_filtered_vcf_gz_tbi = aliased(GenomicGcDataFile)
+            hard_filtered_vcf_gz_md5_sum = aliased(GenomicGcDataFile)
+            cram = aliased(GenomicGcDataFile)
+            cram_md5_sum = aliased(GenomicGcDataFile)
+            cram_crai = aliased(GenomicGcDataFile)
+            hard_filtered_gvcf_gz = aliased(GenomicGcDataFile)
+            hard_filtered_gvcf_gz_md5_sum = aliased(GenomicGcDataFile)
+            has_array = aliased(GenomicSetMember)
+
             aw3_rows = session.query(
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                 GenomicSetMember.sampleId,
@@ -3901,14 +3911,14 @@ class GenomicQueriesDao(BaseDao):
                                        GenomicSetMember.sampleId),
                 GenomicSetMember.sexAtBirth,
                 GenomicSetMember.gcSiteId,
-                GenomicGCValidationMetrics.hfVcfPath,
-                GenomicGCValidationMetrics.hfVcfTbiPath,
-                GenomicGCValidationMetrics.hfVcfMd5Path,
-                GenomicGCValidationMetrics.cramPath,
-                GenomicGCValidationMetrics.cramMd5Path,
-                GenomicGCValidationMetrics.craiPath,
-                GenomicGCValidationMetrics.gvcfPath,
-                GenomicGCValidationMetrics.gvcfMd5Path,
+                sqlalchemy.func.concat('gs://', hard_filtered_vcf_gz.file_path).label('hfVcfPath'),
+                sqlalchemy.func.concat('gs://', hard_filtered_vcf_gz_tbi.file_path).label('hfVcfTbiPath'),
+                sqlalchemy.func.concat('gs://', hard_filtered_vcf_gz_md5_sum.file_path).label('hfVcfMd5Path'),
+                sqlalchemy.func.concat('gs://', cram.file_path).label('cramPath'),
+                sqlalchemy.func.concat('gs://', cram_md5_sum.file_path).label('cramMd5Path'),
+                sqlalchemy.func.concat('gs://', cram_crai.file_path).label('craiPath'),
+                sqlalchemy.func.concat('gs://', hard_filtered_gvcf_gz.file_path).label('gvcfPath'),
+                sqlalchemy.func.concat('gs://', hard_filtered_gvcf_gz_md5_sum.file_path).label('gvcfMd5Path'),
                 GenomicGCValidationMetrics.contamination,
                 GenomicGCValidationMetrics.sexConcordance,
                 GenomicGCValidationMetrics.processingStatus,
@@ -3936,9 +3946,64 @@ class GenomicQueriesDao(BaseDao):
                 Participant,
                 Participant.participantId == ParticipantSummary.participantId
             ).join(
+                has_array,
+                and_(
+                    has_array.biobankId == GenomicSetMember.biobankId,
+                    has_array.aw3ManifestJobRunID.isnot(None),
+                    has_array.genomeType == config.GENOME_TYPE_ARRAY
+                )
+            ).join(
                 subquery,
                 and_(
                     subquery.c.id == GenomicSetMember.id
+                )
+            ).outerjoin(
+                hard_filtered_vcf_gz,
+                and_(
+                    hard_filtered_vcf_gz.file_type == 'hard-filtered.vcf.gz',
+                    hard_filtered_vcf_gz.identifier_value == GenomicSetMember.sampleId
+                )
+            ).outerjoin(
+                hard_filtered_vcf_gz_tbi,
+                and_(
+                    hard_filtered_vcf_gz_tbi.file_type == 'hard-filtered.vcf.gz.tbi',
+                    hard_filtered_vcf_gz_tbi.identifier_value == GenomicSetMember.sampleId
+                )
+            ).outerjoin(
+                hard_filtered_vcf_gz_md5_sum,
+                and_(
+                    hard_filtered_vcf_gz_md5_sum.file_type == 'hard-filtered.vcf.gz.md5sum',
+                    hard_filtered_vcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId
+                )
+            ).outerjoin(
+                cram,
+                and_(
+                    cram.file_type == 'cram',
+                    cram.identifier_value == GenomicSetMember.sampleId
+                )
+            ).outerjoin(
+                cram_md5_sum,
+                and_(
+                    cram_md5_sum.file_type == 'cram.md5sum',
+                    cram_md5_sum.identifier_value == GenomicSetMember.sampleId
+                )
+            ).outerjoin(
+                cram_crai,
+                and_(
+                    cram_crai.file_type == 'cram.crai',
+                    cram_crai.identifier_value == GenomicSetMember.sampleId
+                )
+            ).outerjoin(
+                hard_filtered_gvcf_gz,
+                and_(
+                    hard_filtered_gvcf_gz.file_type == 'hard-filtered.gvcf.gz',
+                    hard_filtered_gvcf_gz.identifier_value == GenomicSetMember.sampleId
+                )
+            ).outerjoin(
+                hard_filtered_gvcf_gz_md5_sum,
+                and_(
+                    hard_filtered_gvcf_gz_md5_sum.file_type == 'hard-filtered.gvcf.gz.md5sum',
+                    hard_filtered_gvcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId
                 )
             ).outerjoin(
                 GenomicAW3Raw,
@@ -3952,7 +4017,6 @@ class GenomicQueriesDao(BaseDao):
                 GenomicSetMember.genomeType == genome_type,
                 GenomicSetMember.aw3ManifestJobRunID.is_(None),
                 GenomicSetMember.ignoreFlag != 1,
-                GenomicSetMember.gcManifestParentSampleId.in_(wgs_parent_sample),
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicGCValidationMetrics.ignoreFlag != 1,
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
@@ -3966,8 +4030,14 @@ class GenomicQueriesDao(BaseDao):
                 )
             else:
                 aw3_rows = aw3_rows.filter(
-                    subquery.c.file_count ==
-                    len(required_file_types)
+                    hard_filtered_vcf_gz.id.isnot(None),
+                    hard_filtered_vcf_gz_tbi.id.isnot(None),
+                    hard_filtered_vcf_gz_md5_sum.id.isnot(None),
+                    cram.id.isnot(None),
+                    cram_md5_sum.id.isnot(None),
+                    cram_crai.id.isnot(None),
+                    hard_filtered_gvcf_gz.id.isnot(None),
+                    hard_filtered_gvcf_gz_md5_sum.id.isnot(None)
                 )
             return aw3_rows.distinct().all()
 
