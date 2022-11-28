@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from io import StringIO
 import pytz
-from typing import Collection, List, Optional
+from typing import Collection, List, Optional, Union
 
 from dateutil.parser import parse
 from sqlalchemy.orm import Session
@@ -372,6 +372,8 @@ class ConsentValidationController:
                     storage_strategy.add_all(validator.get_gror_validation_results())
                 elif consent_type == ConsentType.PRIMARY_UPDATE:
                     storage_strategy.add_all(validator.get_primary_update_validation_results())
+                elif consent_type == ConsentType.ETM:
+                    storage_strategy.add_all(validator.get_etm_validation_results())
 
     def validate_consent_responses(self, summary: ParticipantSummary, output_strategy: ValidationOutputStrategy,
                                    consent_responses: Collection[ConsentResponse]):
@@ -384,7 +386,8 @@ class ConsentValidationController:
             ConsentType.EHR_RECONSENT: validator.get_ehr_reconsent_validation_results,
             ConsentType.GROR: validator.get_gror_validation_results,
             ConsentType.PRIMARY_UPDATE: validator.get_primary_update_validation_results,
-            ConsentType.WEAR: validator.get_wear_validation_results
+            ConsentType.WEAR: validator.get_wear_validation_results,
+            ConsentType.ETM: validator.get_etm_validation_results
         }
 
         for consent_response in consent_responses:
@@ -493,6 +496,8 @@ class ConsentValidationController:
             output_strategy.add_all(validator.get_gror_validation_results())
         if self._has_primary_update_consent(summary):
             output_strategy.add_all(validator.get_primary_update_validation_results())
+        if self._has_consent(consent_status=summary.consentForEtM):
+            output_strategy.add_all(validator.get_etm_validation_results())
 
     def revalidate_file(self, summary: ParticipantSummary, file: ParsingResult,
                         output_strategy: ValidationOutputStrategy):
@@ -707,6 +712,16 @@ class ConsentValidator:
             expected_sign_datetime=expected_signing_date
         )
 
+    def get_etm_validation_results(self, expected_signing_date: datetime = None) -> List[ParsingResult]:
+        if expected_signing_date is None:
+            expected_signing_date = self.participant_summary.consentForEtMAuthored
+
+        return self._generate_validation_results(
+            consent_files=self.factory.get_etm_consents(),
+            consent_type=ConsentType.ETM,
+            expected_sign_datetime=expected_signing_date
+        )
+
     def revalidate(self, file: ParsingResult) -> ParsingResult:
         expected_signature_datetime = datetime(
             year=file.expected_sign_date.year,
@@ -730,6 +745,8 @@ class ConsentValidator:
             return self._check_for_checkmark
         elif consent_type == ConsentType.PRIMARY_UPDATE:
             return self._additional_primary_update_checks
+        elif consent_type == ConsentType.ETM:
+            return self._check_for_checkmark
         else:
             return None
 
@@ -748,7 +765,7 @@ class ConsentValidator:
             self._append_other_error(mismatch_error_str, result)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
-    def _check_for_checkmark(self, consent: files.GrorConsentFile, result: ParsingResult):
+    def _check_for_checkmark(self, consent: Union[files.GrorConsentFile, files.EtmConsentFile], result: ParsingResult):
         if not consent.is_confirmation_selected():
             self._append_other_error(ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK, result)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING

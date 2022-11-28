@@ -74,6 +74,13 @@ class ConsentFileParsingTest(BaseTestCase):
             self.assertEqual(consent_example.has_yes_selected, consent_file.is_agreement_selected())
             self.assertEqual(consent_example.expected_to_be_va_file, consent_file.get_is_va_consent())
 
+    def test_vibrent_etm_consent(self):
+        for consent_example in self._get_vibrent_etm_test_data():
+            consent_file = consent_example.file
+            self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
+            self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
+            self.assertEqual(consent_example.has_yes_selected, consent_file.is_confirmation_selected())
+
     def test_detection_of_sensitive_ehr_form(self):
         sensitive_ehr = self._build_sensitive_ehr(with_initials=False)
         self.assertTrue(sensitive_ehr.is_sensitive_form())
@@ -779,6 +786,45 @@ class ConsentFileParsingTest(BaseTestCase):
             current_rect.left += 4
         return chars
 
+    def _get_vibrent_etm_test_data(self):
+        # The EtM signature is expected to be on the 8th page
+        seven_empty_pages = [
+            [], [], [], [], [], [], []
+        ]
+        basic_etm_pdf = self._build_pdf(pages=[
+            *seven_empty_pages,
+            [
+                self._build_form_element(
+                    children=[self._build_pdf_element(LTCurve)],
+                    bbox=(65, 470, 75, 480)
+                ),
+                self._build_form_element(text='Test etm', bbox=(140, 150, 450, 180)),
+                self._build_form_element(text='Jan 1st, 2021', bbox=(125, 100, 450, 130))
+            ]
+        ])
+        basic_etm_case = EtMConsentTestData(
+            file=files.VibrentEtmConsentFile(pdf=basic_etm_pdf, blob=mock.MagicMock()),
+            expected_signature='Test etm',
+            expected_sign_date=date(2021, 1, 1),
+            has_yes_selected=True
+        )
+
+        etm_missing_check = self._build_pdf(pages=[
+            *seven_empty_pages,
+            [
+                self._build_form_element(text='no confirmation', bbox=(140, 150, 450, 180)),
+                self._build_form_element(text='Feb 1st, 2021', bbox=(125, 100, 450, 130))
+            ]
+        ])
+        no_confirmation_case = EtMConsentTestData(
+            file=files.VibrentEtmConsentFile(pdf=etm_missing_check, blob=mock.MagicMock()),
+            expected_signature='no confirmation',
+            expected_sign_date=date(2021, 2, 1),
+            has_yes_selected=False
+        )
+
+        return [basic_etm_case, no_confirmation_case]
+
 
 @dataclass
 class ConsentTestData:
@@ -810,6 +856,12 @@ class PrimaryUpdateConsentTestData(ConsentTestData):
     file: files.PrimaryConsentUpdateFile
     has_yes_selected: bool = False
     expected_to_be_va_file: bool = False
+
+
+@dataclass
+class EtMConsentTestData(ConsentTestData):
+    file: files.EtmConsentFile
+    has_yes_selected: bool = False
 
 
 @dataclass

@@ -28,6 +28,7 @@ class ConsentType(messages.Enum):
     WEAR = 7
     PRIMARY_RECONSENT = 8
     EHR_RECONSENT = 9
+    ETM = 10
 
 
 class ConsentSyncStatus(messages.Enum):
