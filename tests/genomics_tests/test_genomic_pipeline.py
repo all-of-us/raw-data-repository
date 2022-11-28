@@ -51,7 +51,8 @@ from rdr_service.model.genomics import (
     GenomicSetMember,
     GenomicJobRun,
     GenomicGCValidationMetrics,
-    GenomicSampleContamination, GenomicAW3Raw)
+    GenomicSampleContamination,
+    GenomicAW3Raw)
 from rdr_service.model.participant import Participant
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
@@ -2888,6 +2889,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.GENOMIC_AW3_ARRAY_SUBFOLDER
+        gc_data_file_paths = [f'gs://{obj.file_path}' for obj in self.data_file_dao.get_all()]
 
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_GEN_{aw3_dtf}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
@@ -2908,15 +2910,16 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual('cidr_egt_1', rows[1]['pipeline_id'])
             self.assertEqual('False', rows[1]['ai_an'])
 
-            # Test File Paths
             metric = self.metrics_dao.get(2)
-            self.assertEqual(metric.idatRedPath, rows[1]['red_idat_path'])
-            self.assertEqual(metric.idatRedMd5Path, rows[1]['red_idat_md5_path'])
-            self.assertEqual(metric.idatGreenPath, rows[1]['green_idat_path'])
-            self.assertEqual(metric.idatGreenMd5Path, rows[1]['green_idat_md5_path'])
-            self.assertEqual(metric.vcfPath, rows[1]['vcf_path'])
-            self.assertEqual(metric.vcfTbiPath, rows[1]['vcf_index_path'])
-            self.assertEqual(metric.vcfMd5Path, rows[1]['vcf_md5_path'])
+
+            # check that files from gc data file were sent
+            self.assertTrue(rows[1]['red_idat_path'] in gc_data_file_paths)
+            self.assertTrue(rows[1]['red_idat_md5_path'] in gc_data_file_paths)
+            self.assertTrue(rows[1]['green_idat_path'] in gc_data_file_paths)
+            self.assertTrue(rows[1]['green_idat_md5_path'] in gc_data_file_paths)
+            self.assertTrue(rows[1]['vcf_path'] in gc_data_file_paths)
+            self.assertTrue(rows[1]['vcf_index_path'] in gc_data_file_paths)
+            self.assertTrue(rows[1]['vcf_md5_path'] in gc_data_file_paths)
 
             # Test processing GC metrics columns
             self.assertEqual(metric.callRate, rows[1]['callrate'])
@@ -3364,60 +3367,6 @@ class GenomicPipelineTest(BaseTestCase):
         member.sampleId = last_sample_id
         self.member_dao.update(member)
 
-        current_metrics = self.metrics_dao.get_all()
-
-        bad_data_path = None
-        last_id = None
-
-        for i, _ in enumerate(current_metrics):
-            if (i + 1) == len(current_metrics):
-                metric = self.metrics_dao.get(current_metrics[i].id)
-                last_id = i + 1
-                edited_path = metric.idatRedPath.split('gs://')
-                edited_path = edited_path[1]
-                bad_data_path = edited_path
-                metric.idatRedPath = edited_path
-                self.metrics_dao.upsert(metric)
-
-        with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_array_manifest_workflow()
-
-        should_be_incident_count += 1
-        run_obj = self.job_run_dao.get(4)
-        self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
-
-        incident = self.incident_dao.get_by_message(
-            f'AW3_ARRAY_WORKFLOW: Path {bad_data_path} is invalid formatting'
-        )
-
-        self.assertIsNotNone(incident)
-        self.assertEqual(
-            incident.code,
-            incident_name
-        )
-
-        no_bucket_path = 'gs://test_data_folder/10006_R01C06_Red.idat'
-        update_metric = self.metrics_dao.get(last_id)
-        update_metric.idatRedPath = no_bucket_path
-        self.metrics_dao.upsert(update_metric)
-
-        with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_array_manifest_workflow()
-
-        should_be_incident_count += 1
-        run_obj = self.job_run_dao.get(5)
-        self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
-
-        incident = self.incident_dao.get_by_message(
-            f'AW3_ARRAY_WORKFLOW: Path {no_bucket_path} is invalid formatting'
-        )
-
-        self.assertIsNotNone(incident)
-        self.assertEqual(
-            incident.code,
-            incident_name
-        )
-
         updated_member = self.member_dao.get(3)
         updated_member.sexAtBirth = 'A'
         self.member_dao.update(updated_member)
@@ -3426,7 +3375,7 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_pipeline.aw3_array_manifest_workflow()
 
         should_be_incident_count += 1
-        run_obj = self.job_run_dao.get(6)
+        run_obj = self.job_run_dao.get(4)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
@@ -3613,6 +3562,7 @@ class GenomicPipelineTest(BaseTestCase):
 
             row = rows[0]
             metric = self.metrics_dao.get(1)
+            gc_data_file_paths = [f'gs://{obj.file_path}' for obj in self.data_file_dao.get_all()]
             paths = [val for val in metric if 'Path' in val[0] and val[1] is not None]
 
             self.assertEqual(len(sequencing_test_files), len(paths))
@@ -3630,11 +3580,12 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual('XY', row['sex_ploidy'])
             self.assertEqual('False', row['ai_an'])
 
-            self.assertEqual(metric.hfVcfPath, row["vcf_hf_path"])
-            self.assertEqual(metric.hfVcfTbiPath, row["vcf_hf_index_path"])
-            self.assertEqual(metric.cramPath, row["cram_path"])
-            self.assertEqual(metric.cramMd5Path, row["cram_md5_path"])
-            self.assertEqual(metric.craiPath, row["crai_path"])
+            # check that files from gc data file were sent
+            self.assertTrue(row["vcf_hf_path"] in gc_data_file_paths)
+            self.assertTrue(row["vcf_hf_index_path"] in gc_data_file_paths)
+            self.assertTrue(row["cram_path"] in gc_data_file_paths)
+            self.assertTrue(row["cram_md5_path"] in gc_data_file_paths)
+            self.assertTrue(row["crai_path"] in gc_data_file_paths)
 
             # Test GC metrics columns
             self.assertEqual(metric.contamination, row['contamination'])
@@ -3936,60 +3887,6 @@ class GenomicPipelineTest(BaseTestCase):
         member.sampleId = last_sample_id
         self.member_dao.update(member)
 
-        current_metrics = self.metrics_dao.get_all()
-
-        bad_data_path = None
-        last_id = None
-
-        for i, _ in enumerate(current_metrics):
-            if (i + 1) == len(current_metrics):
-                metric = self.metrics_dao.get(current_metrics[i].id)
-                last_id = i + 1
-                edited_path = metric.hfVcfTbiPath.split('gs://')
-                edited_path = edited_path[1]
-                bad_data_path = edited_path
-                metric.hfVcfTbiPath = edited_path
-                self.metrics_dao.upsert(metric)
-
-        with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()
-
-        should_be_incident_count += 1
-        run_obj = self.job_run_dao.get(5)
-        self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
-
-        incident = self.incident_dao.get_by_message(
-            f'AW3_WGS_WORKFLOW: Path {bad_data_path} is invalid formatting'
-        )
-
-        self.assertIsNotNone(incident)
-        self.assertEqual(
-            incident.code,
-            incident_name
-        )
-
-        no_bucket_path = 'gs://test_data_folder/RDR_6_1006_10006_1.vcf.gz.md5sum'
-        update_metric = self.metrics_dao.get(last_id)
-        update_metric.hfVcfTbiPath = no_bucket_path
-        self.metrics_dao.upsert(update_metric)
-
-        with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()
-
-        should_be_incident_count += 1
-        run_obj = self.job_run_dao.get(6)
-        self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
-
-        incident = self.incident_dao.get_by_message(
-            f'AW3_WGS_WORKFLOW: Path {no_bucket_path} is invalid formatting'
-        )
-
-        self.assertIsNotNone(incident)
-        self.assertEqual(
-            incident.code,
-            incident_name
-        )
-
         updated_member = self.member_dao.get(3)
         updated_member.sexAtBirth = 'A'
         self.member_dao.update(updated_member)
@@ -3998,7 +3895,7 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_pipeline.aw3_wgs_manifest_workflow()
 
         should_be_incident_count += 1
-        run_obj = self.job_run_dao.get(7)
+        run_obj = self.job_run_dao.get(5)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
@@ -4201,7 +4098,6 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.NO_FILES, run_obj.runResult)
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
-
 
     def test_aw4_array_manifest_ingest(self):
         # Create AW3 array manifest job run: id = 1
@@ -6241,6 +6137,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.GENOMIC_AW3_ARRAY_SUBFOLDER
+        gc_data_file_paths = [f'gs://{obj.file_path}' for obj in self.data_file_dao.get_all()]
 
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_GEN_{aw3_dtf}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
@@ -6261,13 +6158,15 @@ class GenomicPipelineTest(BaseTestCase):
 
             # Test File Paths
             metric = self.metrics_dao.get(1)
-            self.assertEqual(metric.idatRedPath, rows[0]['red_idat_path'])
-            self.assertEqual(metric.idatRedMd5Path, rows[0]['red_idat_md5_path'])
-            self.assertEqual(metric.idatGreenPath, rows[0]['green_idat_path'])
-            self.assertEqual(metric.idatGreenMd5Path, rows[0]['green_idat_md5_path'])
-            self.assertEqual(metric.vcfPath, rows[0]['vcf_path'])
-            self.assertEqual(metric.vcfTbiPath, rows[0]['vcf_index_path'])
-            self.assertEqual(metric.vcfMd5Path, rows[0]['vcf_md5_path'])
+
+            # check that files from gc data file were sent
+            self.assertTrue(rows[0]['red_idat_path'] in gc_data_file_paths)
+            self.assertTrue(rows[0]['red_idat_md5_path'] in gc_data_file_paths)
+            self.assertTrue(rows[0]['green_idat_path'] in gc_data_file_paths)
+            self.assertTrue(rows[0]['green_idat_md5_path'] in gc_data_file_paths)
+            self.assertTrue(rows[0]['vcf_path'] in gc_data_file_paths)
+            self.assertTrue(rows[0]['vcf_index_path'] in gc_data_file_paths)
+            self.assertTrue(rows[0]['vcf_md5_path'] in gc_data_file_paths)
 
             # Test processing GC metrics columns
             self.assertEqual(metric.callRate, rows[0]['callrate'])
@@ -6461,6 +6360,7 @@ class GenomicPipelineTest(BaseTestCase):
 
             row = rows[0]
             metric = self.metrics_dao.get(1)
+            gc_data_file_paths = [f'gs://{obj.file_path}' for obj in self.data_file_dao.get_all()]
 
             self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}',
                              row['biobank_id'])
@@ -6475,11 +6375,12 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual('XY', row['sex_ploidy'])
             self.assertEqual('False', row['ai_an'])
 
-            self.assertEqual(metric.hfVcfPath, row["vcf_hf_path"])
-            self.assertEqual(metric.hfVcfTbiPath, row["vcf_hf_index_path"])
-            self.assertEqual(metric.cramPath, row["cram_path"])
-            self.assertEqual(metric.cramMd5Path, row["cram_md5_path"])
-            self.assertEqual(metric.craiPath, row["crai_path"])
+            # check that files from gc data file were sent
+            self.assertTrue(row["vcf_hf_path"] in gc_data_file_paths)
+            self.assertTrue(row["vcf_hf_index_path"] in gc_data_file_paths)
+            self.assertTrue(row["cram_path"] in gc_data_file_paths)
+            self.assertTrue(row["cram_md5_path"] in gc_data_file_paths)
+            self.assertTrue(row["crai_path"] in gc_data_file_paths)
 
             # Test GC metrics columns
             self.assertEqual(metric.contamination, row['contamination'])
