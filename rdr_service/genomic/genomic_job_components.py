@@ -1225,7 +1225,7 @@ class GenomicFileIngester:
             )
             metric_id = None if not existing_metrics_obj else existing_metrics_obj.id
 
-            # MEMBER Replating (conditional)
+            # Member Replating (conditional) based on existing metric record
             if not metric_id:
                 if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS] and row_copy['contamination_category'] in [
                     GenomicContaminationCategory.EXTRACT_WGS,
