@@ -4074,15 +4074,20 @@ class GenomicQueriesDao(BaseDao):
                     GenomicAW3Raw.ignore_flag != 1,
                 )
             ).filter(
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                GenomicSetMember.genomeType == genome_type,
-                GenomicSetMember.aw3ManifestJobRunID.is_(None),
-                GenomicSetMember.ignoreFlag != 1,
-                GenomicGCValidationMetrics.processingStatus.ilike('pass'),
-                GenomicGCValidationMetrics.ignoreFlag != 1,
-                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                GenomicAW3Raw.id.is_(None)
+                or_(
+                    and_(
+                        GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                        GenomicSetMember.genomeType == genome_type,
+                        GenomicSetMember.aw3ManifestJobRunID.is_(None),
+                        GenomicSetMember.ignoreFlag != 1,
+                        GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+                        GenomicGCValidationMetrics.ignoreFlag != 1,
+                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                        ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                        GenomicAW3Raw.id.is_(None)
+                    ),
+                    GenomicGCValidationMetrics.aw3ReadyFlag == 1
+                )
             )
             return aw3_rows.distinct().all()
 

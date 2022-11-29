@@ -3348,11 +3348,10 @@ class ManifestDefinitionProvider:
         self.job_run_id = job_run_id
         self.bucket_name = bucket_name
         self.cvl_site_id = cvl_site_id
-        self.kwargs = kwargs
         self.genome_type = genome_type
-
+        self.kwargs = kwargs.get('kwargs')
         self.query = GenomicQueryClass(
-            input_manifest=self.kwargs['kwargs'].get('input_manifest'),
+            input_manifest=self.kwargs.get('input_manifest'),
             genome_type=self.genome_type
         )
         self.query_dao = GenomicQueriesDao()
@@ -3598,7 +3597,8 @@ class ManifestDefinitionProvider:
                 'signal': 'bypass',
                 'query': self.query_dao.get_aw3_wgs_records,
                 'params': {
-                    'genome_type': self.genome_type
+                    'genome_type': self.genome_type,
+                    'pipeline_id': self.kwargs.get('pipeline_id')
                 }
             },
             GenomicManifestTypes.AW2F: {

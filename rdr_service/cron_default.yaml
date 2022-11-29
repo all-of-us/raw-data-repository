@@ -119,10 +119,15 @@ cron:
   timezone: America/New_York
   schedule: every day 06:45
   target: offline
-- description: Genomic AW3 WGS Workflow
+- description: Genomic AW3 WGS Workflow (dragen_3.4.12)
   url: /offline/GenomicAW3WGSWorkflow
   timezone: America/New_York
   schedule: every monday 05:45
+  target: offline
+- description: Genomic AW3 WGS Workflow (dragen_3.7.8)
+  url: /offline/GenomicAW3WGSUpdatedWorkflow
+  timezone: America/New_York
+  schedule: every monday 06:00
   target: offline
 - description: Genomic CVL W1IL PGX Workflow
   url: /offline/GenomicCVLW1ILPgxWorkflow

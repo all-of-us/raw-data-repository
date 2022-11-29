@@ -1415,7 +1415,7 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def generate_manifest(self, manifest_type, _genome_type, **kwargs):
+    def generate_manifest(self, manifest_type, genome_type, **kwargs):
         """
         Creates Genomic manifest using ManifestCompiler component
         """
@@ -1435,7 +1435,7 @@ class GenomicJobController:
                 version_num = kwargs['feedback_record'].version
                 result = self.manifest_compiler.generate_and_transfer_manifest(
                     manifest_type,
-                    _genome_type,
+                    genome_type,
                     version=version_num + 1,
                     input_manifest=input_manifest
                 )
@@ -1443,7 +1443,7 @@ class GenomicJobController:
             else:
                 result = self.manifest_compiler.generate_and_transfer_manifest(
                     manifest_type,
-                    _genome_type
+                    genome_type
                 )
 
             if result.get('code') == GenomicSubProcessResult.NO_FILES:
@@ -1513,21 +1513,21 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def reconcile_report_states(self, _genome_type=None):
+    def reconcile_report_states(self, genome_type=None):
         """
         Wrapper for the Reconciler reconcile_report_states_for_consent_removal
         and reconcile_rhp_report_states
-        :param _genome_type: array or wgs
+        :param genome_type: array or wgs
         """
 
         self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, controller=self)
 
-        if _genome_type == GENOME_TYPE_ARRAY:
+        if genome_type == GENOME_TYPE_ARRAY:
             workflow_states = [GenomicWorkflowState.GEM_RPT_READY,
                                GenomicWorkflowState.A1,
                                GenomicWorkflowState.A2]
 
-        elif _genome_type == GENOME_TYPE_WGS:
+        elif genome_type == GENOME_TYPE_WGS:
             workflow_states = [GenomicWorkflowState.CVL_READY]
 
         else:
