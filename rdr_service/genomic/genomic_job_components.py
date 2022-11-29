@@ -1206,12 +1206,6 @@ class GenomicFileIngester:
             if row_copy == GenomicSubProcessResult.ERROR:
                 continue
 
-            # MEMBER Replating (conditional)
-            if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS] and row_copy['contamination_category'] in [
-                GenomicContaminationCategory.EXTRACT_WGS,
-                    GenomicContaminationCategory.EXTRACT_BOTH]:
-                self.insert_member_for_replating(member, row_copy['contamination_category'])
-
             # METRICS actions
             pipeline_id = None
             if row_copy['genometype'] in (GENOME_TYPE_ARRAY, GENOME_TYPE_ARRAY_INVESTIGATION):
@@ -1230,6 +1224,14 @@ class GenomicFileIngester:
                 pipeline_id=pipeline_id
             )
             metric_id = None if not existing_metrics_obj else existing_metrics_obj.id
+
+            # MEMBER Replating (conditional)
+            if not metric_id:
+                if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS] and row_copy['contamination_category'] in [
+                    GenomicContaminationCategory.EXTRACT_WGS,
+                        GenomicContaminationCategory.EXTRACT_BOTH]:
+                    self.insert_member_for_replating(member, row_copy['contamination_category'])
+
             # convert enum to int for json payload
             row_copy['contamination_category'] = int(row_copy['contamination_category'])
             self.controller.execute_cloud_task({
