@@ -1584,7 +1584,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
             'vcfTbiPath': 'vcfTbiPath',
             'vcfMd5Path': 'vcfMd5Path',
             'gvcfPath': 'gvcfPath',
-            'gvcfMd5Path': 'gvcfMd5Path',
+            'gvcfMd5Path': 'gvcfMd5Path'
         }
         # The mapping between the columns in the DB and the data to ingest
 
@@ -1667,19 +1667,26 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                     .all()
             )
 
-    def get_metrics_by_member_id(self, member_id):
+    def get_metrics_by_member_id(self, member_id, pipeline_id=None):
         """
         Retrieves gc metric record with the member_id
         :param: member_id
+        :param: pipeline_id
         :return: GenomicGCValidationMetrics object
         """
         with self.session() as session:
-            return (
-                session.query(GenomicGCValidationMetrics)
-                .filter(GenomicGCValidationMetrics.genomicSetMemberId == member_id,
-                        GenomicGCValidationMetrics.ignoreFlag != 1)
-                .one_or_none()
+            record = session.query(
+                GenomicGCValidationMetrics
+            ).filter(
+                GenomicGCValidationMetrics.genomicSetMemberId == member_id,
+                GenomicGCValidationMetrics.ignoreFlag != 1
             )
+            if pipeline_id:
+                record = record.filter(
+                    GenomicGCValidationMetrics.pipelineId == pipeline_id
+                )
+
+            return record.one_or_none()
 
     def get_metric_record_counts_from_filepath(self, filepath):
         with self.session() as session:
@@ -3992,7 +3999,9 @@ class GenomicQueriesDao(BaseDao):
                     GenomicSetMember.blockResearch == 1,
                     sqlalchemy.sql.expression.literal("True"),
                     sqlalchemy.sql.expression.literal("False")),
-                GenomicSetMember.blockResearchReason
+                GenomicSetMember.blockResearchReason,
+                GenomicGCValidationMetrics.pipelineId,
+                GenomicGCValidationMetrics.processingCount
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId

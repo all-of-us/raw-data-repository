@@ -588,6 +588,14 @@ class GenomicAW2Raw(Base):
     call_rate = Column(String(255), nullable=True)
     genome_type = Column(String(80), nullable=True)
     pipeline_id = Column(String(255), nullable=True)
+    vcf_hf_path = Column(String(255), nullable=True)
+    vcf_hf_index_path = Column(String(255), nullable=True)
+    vcf_hf_md5_path = Column(String(255), nullable=True)
+    cram_path = Column(String(255), nullable=True)
+    cram_md5_path = Column(String(255), nullable=True)
+    crai_path = Column(String(255), nullable=True)
+    gvcf_path = Column(String(255), nullable=True)
+    gvcf_md5_path = Column(String(255), nullable=True)
 
 
 event.listen(GenomicAW2Raw, 'before_insert', model_insert_listener)
@@ -647,6 +655,7 @@ class GenomicAW3Raw(Base):
     crai_path = Column(String(255), nullable=True)
     gvcf_path = Column(String(255), nullable=True)
     gvcf_md5_path = Column(String(255), nullable=True)
+    processing_count = Column(String(255), nullable=True)
 
 
 event.listen(GenomicAW3Raw, 'before_insert', model_insert_listener)
@@ -701,6 +710,8 @@ class GenomicAW4Raw(Base):
     drc_mean_coverage = Column(String(255), nullable=True)
     drc_fp_concordance = Column(String(255), nullable=True)
     pass_to_research_pipeline = Column(String(255), nullable=True)
+    pipeline_id = Column(String(255), nullable=True, index=True)
+    processing_count = Column(String(255), nullable=True)
 
 
 event.listen(GenomicAW4Raw, 'before_insert', model_insert_listener)
@@ -1091,6 +1102,15 @@ class GenomicGCValidationMetrics(Base):
     contaminationCategoryStr = Column('contamination_category_str', String(64), default="UNSET")
 
     pipelineId = Column('pipeline_id', String(255), nullable=True)
+    processingCount = Column('processing_count', SmallInteger, nullable=False, default=0)
+    aw3ReadyFlag = Column('aw3_ready_flag', SmallInteger, nullable=False, default=0)
+
+    aw3ManifestJobRunId = Column('aw3_manifest_job_run_id', Integer, ForeignKey('genomic_job_run.id'))
+    aw3ManifestId = Column('aw3_manifest_id', Integer, ForeignKey("genomic_manifest_file.id"))
+    aw4ManifestJobRunId = Column('aw4_manifest_job_run_id', Integer, ForeignKey('genomic_job_run.id'))
+    aw4ManifestId = Column('aw4_manifest_id', Integer, ForeignKey("genomic_manifest_file.id"))
+    aw5ManifestJobRunId = Column('aw5_manifest_job_run_id', Integer, ForeignKey('genomic_job_run.id'))
+    aw5ManifestId = Column('aw5_manifest_id', Integer, ForeignKey("genomic_manifest_file.id"))
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
