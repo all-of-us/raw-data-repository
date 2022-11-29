@@ -59,10 +59,12 @@ class AllParticipantQuery(ObjectType):
     participant = relay.ConnectionField(schema.AllParticipantConnection, field_name=String(required=True),
                                         field_value=String(required=True))
 
-    def resolve_all_participant(root):
+    def resolve_all_participant(root, info):
+        print(info)
         return db.datas
 
-    def resolve_participant(root, field_name, field_value):
+    def resolve_participant(root, info, field_name, field_value):
+        print(info)
         existed, field_type = check_field(field_name)
         try:
             if existed:
@@ -74,22 +76,28 @@ class AllParticipantQuery(ObjectType):
 
 participant_schema = Schema(query=AllParticipantQuery)
 
-# event_query = '{ participant (fieldName: "AouBasicsQuestionnaire.value", fieldValue: "HAHA"){ totalCount resultCount
-# pageInfo { startCursor endCursor hasNextPage } edges { node { sampleSa1{ordered{parent{current{value time}
-# historical{value time} } child{current {value time} historical{value time}}} stored{parent{current {value time}
-# historical{value time}} child{current{value time} historical{value time}}}}  } } } }'
-#
-# field_query = '{ participant (fieldName: "ParticipantNphId", fieldValue: "3"){ totalCount resultCount pageInfo
-# { startCursor endCursor hasNextPage } ' \
-#         'edges { node {aouBasicsQuestionnaire{value time} } } } }'
-#
-# Sample_collection_query = '{ participant (fieldName: "SampleSA1.ordered.parent.historical.value", fieldValue: "F")
-# { totalCount resultCount pageInfo { startCursor endCursor hasNextPage } ' \
-#         'edges { node {aouBasicsQuestionnaire{value time} } } } }'
-#
-# result = participant_schema.execute(Sample_collection_query)
-#
-# if result.errors:
-#     print(f"Error: {result.errors}")
-# else:
-#     print(json.dumps(result.data, indent=4))
+event_query = '''{ participant (fieldName: "AouBasicsQuestionnaire.value", fieldValue: "HAHA"){ totalCount resultCount
+pageInfo { startCursor endCursor hasNextPage } edges { node { sampleSa1{ordered{parent{current{value time}
+historical{value time} } child{current {value time} historical{value time}}} stored{parent{current {value time}
+historical{value time}} child{current{value time} historical{value time}}}}  } } } }'''
+
+field_query = '''{ participant (fieldName: "ParticipantNphId", fieldValue: "3"){ totalCount resultCount pageInfo
+{ startCursor endCursor hasNextPage } edges { node {aouBasicsQuestionnaire{value time} } } } }'''
+
+
+sample_collection_query = '''{ participant (fieldName: "SampleSA1.ordered.parent.historical.value", fieldValue: "F")
+{ totalCount resultCount pageInfo { startCursor endCursor hasNextPage }edges
+{ node {aouBasicsQuestionnaire{value time} } } } }'''
+
+event_collection_query = '''{ participant (fieldName: "FoodInsecurity.historical.value", fieldValue: "F")
+{ totalCount resultCount pageInfo { startCursor endCursor hasNextPage }edges
+{ node {firstName lastName streetAddress foodInsecurity{current{value time} historical{value time}} } } } }'''
+
+
+import json
+result = participant_schema.execute(event_collection_query)
+
+if result.errors:
+    print(f"Error: {result.errors}")
+else:
+    print(json.dumps(result.data, indent=4))

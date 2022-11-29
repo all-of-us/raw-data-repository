@@ -35,9 +35,8 @@ class EventCollection:
 
     def _fetch_historical(self, value: str):
         result = []
-        for x in db.datas.get(self.field):
-            if x.get('historical').get(self.parameter) == value:
-                result.append(x)
+        for each in db.datas:
+            [result.append(each) for x in each.get(self.field).get(self.sub_field) if x.get(self.parameter) == value]
         return result
 
 
@@ -87,7 +86,7 @@ class SampleCollection:
                         if b.get(self.parameter) == value:
                             append = True
                             break
-                if append:
-                    result.append(each)
-
+                    if append:
+                        result.append(each)
+                append = False
         return result

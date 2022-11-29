@@ -626,9 +626,11 @@ class AllParticipantConnection(relay.Connection):
     total_count = Int()
     result_count = Int()
 
-    def resolve_total_count(root):
+    def resolve_total_count(root, info, **kwargs):
+        print(info, kwargs)
         return len(db.datas)
 
-    def resolve_result_count(root):
+    def resolve_result_count(root, info , **kwargs):
+        print(info, kwargs)
         return len(root.edges)
 

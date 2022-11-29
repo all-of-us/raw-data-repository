@@ -28,6 +28,10 @@ for num in range(1, 1001):
     data['city'] = first_name
     data['street_address'] = fake.address().replace("\n", " ")
     data['gender'] = gender
+    data['food_insecurity'] = {"current": {"value": gender, "time": datetime.utcnow()}, "historical": [
+        {"value": gender, "time": datetime.utcnow()}, {"value": names.get_first_name(gender),
+                                                       "time": datetime.utcnow()},
+        {"value": names.get_first_name(gender), "time": datetime.utcnow()}]}
     data['aou_basics_questionnaire'] = {'value': "HAHA", 'time': datetime.utcnow()}
     data['sample_sa_1'] = {"ordered": [{"parent": [{"current": {"value": gender, "time": datetime.utcnow()},
                                                    "historical": [{"value": gender, "time": datetime.utcnow()}]}],
