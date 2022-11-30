@@ -3959,6 +3959,9 @@ class GenomicQueriesDao(BaseDao):
         if not pipeline_id:
             return []
 
+        # only updated dragen version files will be placed in 'dragen_v' subfolder
+        data_file_path = pipeline_id if pipeline_id == config.GENOMIC_UPDATED_WGS_DRAGEN else '/'
+
         with self.session() as session:
 
             hard_filtered_vcf_gz = aliased(GenomicGcDataFile)
@@ -4027,56 +4030,56 @@ class GenomicQueriesDao(BaseDao):
                 and_(
                     hard_filtered_vcf_gz.file_type == 'hard-filtered.vcf.gz',
                     hard_filtered_vcf_gz.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_vcf_gz.file_path.contains(pipeline_id)
+                    hard_filtered_vcf_gz.file_path.contains(data_file_path)
                 )
             ).join(
                 hard_filtered_vcf_gz_tbi,
                 and_(
                     hard_filtered_vcf_gz_tbi.file_type == 'hard-filtered.vcf.gz.tbi',
                     hard_filtered_vcf_gz_tbi.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_vcf_gz_tbi.file_path.contains(pipeline_id)
+                    hard_filtered_vcf_gz_tbi.file_path.contains(data_file_path)
                 )
             ).join(
                 hard_filtered_vcf_gz_md5_sum,
                 and_(
                     hard_filtered_vcf_gz_md5_sum.file_type == 'hard-filtered.vcf.gz.md5sum',
                     hard_filtered_vcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_vcf_gz_md5_sum.file_path.contains(pipeline_id)
+                    hard_filtered_vcf_gz_md5_sum.file_path.contains(data_file_path)
                 )
             ).join(
                 cram,
                 and_(
                     cram.file_type == 'cram',
                     cram.identifier_value == GenomicSetMember.sampleId,
-                    cram.file_path.contains(pipeline_id)
+                    cram.file_path.contains(data_file_path)
                 )
             ).join(
                 cram_md5_sum,
                 and_(
                     cram_md5_sum.file_type == 'cram.md5sum',
                     cram_md5_sum.identifier_value == GenomicSetMember.sampleId,
-                    cram_md5_sum.file_path.contains(pipeline_id)
+                    cram_md5_sum.file_path.contains(data_file_path)
                 )
             ).join(
                 cram_crai,
                 and_(
                     cram_crai.file_type == 'cram.crai',
                     cram_crai.identifier_value == GenomicSetMember.sampleId,
-                    cram_crai.file_path.contains(pipeline_id)
+                    cram_crai.file_path.contains(data_file_path)
                 )
             ).join(
                 hard_filtered_gvcf_gz,
                 and_(
                     hard_filtered_gvcf_gz.file_type == 'hard-filtered.gvcf.gz',
                     hard_filtered_gvcf_gz.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_gvcf_gz.file_path.contains(pipeline_id)
+                    hard_filtered_gvcf_gz.file_path.contains(data_file_path)
                 )
             ).join(
                 hard_filtered_gvcf_gz_md5_sum,
                 and_(
                     hard_filtered_gvcf_gz_md5_sum.file_type == 'hard-filtered.gvcf.gz.md5sum',
                     hard_filtered_gvcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_gvcf_gz_md5_sum.file_path.contains(pipeline_id)
+                    hard_filtered_gvcf_gz_md5_sum.file_path.contains(data_file_path)
                 )
             ).outerjoin(
                 GenomicAW3Raw,

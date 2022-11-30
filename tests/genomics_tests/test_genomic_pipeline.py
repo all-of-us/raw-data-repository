@@ -3625,7 +3625,7 @@ class GenomicPipelineTest(BaseTestCase):
                     file_prefix = "SS_VCF_CLINICAL"
 
                 test_file_dict = {
-                    'file_path': f'{bucket_name}/{pipeline_id}/{f}',
+                    'file_path': f'{bucket_name}/{f}',
                     'gc_site_id': 'rdr',
                     'bucket_name': bucket_name,
                     'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
@@ -3713,8 +3713,8 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.GENOMIC_AW3_WGS_SUBFOLDER
 
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{pipeline_id}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as \
-            csv_file:
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{pipeline_id}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) \
+                as csv_file:
             csv_reader = csv.DictReader(csv_file)
             self.assertEqual(len(set(expected_aw3_columns)), len(set(csv_reader.fieldnames)))
 
@@ -3880,7 +3880,7 @@ class GenomicPipelineTest(BaseTestCase):
                     file_prefix = "SS_VCF_CLINICAL"
 
                 test_file_dict = {
-                    'file_path': f'{bucket_name}/{pipeline_id}/{f}',
+                    'file_path': f'{bucket_name}/{f}',
                     'gc_site_id': 'rdr',
                     'bucket_name': bucket_name,
                     'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
@@ -4017,7 +4017,7 @@ class GenomicPipelineTest(BaseTestCase):
                     file_prefix = "SS_VCF_CLINICAL"
 
                 test_file_dict = {
-                    'file_path': f'{bucket_name}/{pipeline_id}/{f}',
+                    'file_path': f'{bucket_name}/{f}',
                     'gc_site_id': 'rdr',
                     'bucket_name': bucket_name,
                     'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
@@ -4194,7 +4194,7 @@ class GenomicPipelineTest(BaseTestCase):
                     file_prefix = "SS_VCF_CLINICAL"
 
                 test_file_dict = {
-                    'file_path': f'{bucket_name}/{pipeline_id}/{f}',
+                    'file_path': f'{bucket_name}/{f}',
                     'gc_site_id': 'rdr',
                     'bucket_name': bucket_name,
                     'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
@@ -6506,7 +6506,7 @@ class GenomicPipelineTest(BaseTestCase):
                     file_prefix = "SS_VCF_CLINICAL"
 
                 test_file_dict = {
-                    'file_path': f'{bucket_name}/{pipeline_id}/{f}',
+                    'file_path': f'{bucket_name}/{f}',
                     'gc_site_id': 'rdr',
                     'bucket_name': bucket_name,
                     'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
