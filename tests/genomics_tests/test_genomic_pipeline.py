@@ -3551,7 +3551,8 @@ class GenomicPipelineTest(BaseTestCase):
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_aw3_wgs_manifest_generation(self, cloud_task):
-        # Need GC Manifest for source query : run_id = 1
+        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
                                               runStatus=GenomicSubProcessStatus.COMPLETED,
@@ -3624,7 +3625,7 @@ class GenomicPipelineTest(BaseTestCase):
                     file_prefix = "SS_VCF_CLINICAL"
 
                 test_file_dict = {
-                    'file_path': f'{bucket_name}/{f}',
+                    'file_path': f'{bucket_name}/{pipeline_id}/{f}',
                     'gc_site_id': 'rdr',
                     'bucket_name': bucket_name,
                     'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
@@ -3638,9 +3639,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # test for correct (default) pipeline_id in metrics
         metrics = self.metrics_dao.get_all()
-        self.assertTrue(all(obj.pipelineId == config.GENOMIC_DEPRECATED_WGS_DRAGEN for obj in metrics))
-
-        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+        self.assertTrue(all(obj.pipelineId == pipeline_id for obj in metrics))
 
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
@@ -3805,6 +3804,7 @@ class GenomicPipelineTest(BaseTestCase):
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_aw3_wgs_blocklist_populated(self, metric_cloud_task):
         block_research_reason = 'Sample Swap'
+        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
 
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
@@ -3880,7 +3880,7 @@ class GenomicPipelineTest(BaseTestCase):
                     file_prefix = "SS_VCF_CLINICAL"
 
                 test_file_dict = {
-                    'file_path': f'{bucket_name}/{f}',
+                    'file_path': f'{bucket_name}/{pipeline_id}/{f}',
                     'gc_site_id': 'rdr',
                     'bucket_name': bucket_name,
                     'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
@@ -3894,9 +3894,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # test for correct (default) pipeline_id in metrics
         metrics = self.metrics_dao.get_all()
-        self.assertTrue(all(obj.pipelineId == config.GENOMIC_DEPRECATED_WGS_DRAGEN for obj in metrics))
-
-        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+        self.assertTrue(all(obj.pipelineId == pipeline_id for obj in metrics))
 
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
@@ -3932,6 +3930,8 @@ class GenomicPipelineTest(BaseTestCase):
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_aw3_wgs_manifest_validation(self, metric_cloud_task):
+        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+
         stored_samples = [
             (2, 1002),
             (3, 1003),
@@ -4017,7 +4017,7 @@ class GenomicPipelineTest(BaseTestCase):
                     file_prefix = "SS_VCF_CLINICAL"
 
                 test_file_dict = {
-                    'file_path': f'{bucket_name}/{f}',
+                    'file_path': f'{bucket_name}/{pipeline_id}/{f}',
                     'gc_site_id': 'rdr',
                     'bucket_name': bucket_name,
                     'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
@@ -4049,9 +4049,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # test for correct (default) pipeline_id in metrics
         metrics = self.metrics_dao.get_all()
-        self.assertTrue(all(obj.pipelineId == config.GENOMIC_DEPRECATED_WGS_DRAGEN for obj in metrics))
-
-        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+        self.assertTrue(all(obj.pipelineId == pipeline_id for obj in metrics))
 
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
@@ -4107,6 +4105,8 @@ class GenomicPipelineTest(BaseTestCase):
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_aw3_wgs_manifest_with_max_num(self, metric_cloud_task):
+        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+
         stored_samples = [
             (2, 1002),
             (3, 1003),
@@ -4194,7 +4194,7 @@ class GenomicPipelineTest(BaseTestCase):
                     file_prefix = "SS_VCF_CLINICAL"
 
                 test_file_dict = {
-                    'file_path': f'{bucket_name}/{f}',
+                    'file_path': f'{bucket_name}/{pipeline_id}/{f}',
                     'gc_site_id': 'rdr',
                     'bucket_name': bucket_name,
                     'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
@@ -4208,9 +4208,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # test for correct (default) pipeline_id in metrics
         metrics = self.metrics_dao.get_all()
-        self.assertTrue(all(obj.pipelineId == config.GENOMIC_DEPRECATED_WGS_DRAGEN for obj in metrics))
-
-        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+        self.assertTrue(all(obj.pipelineId == pipeline_id for obj in metrics))
 
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
@@ -4287,7 +4285,9 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [4000])
 
     def test_aw3_no_records(self):
-        genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 1
+        genomic_pipeline.aw3_wgs_manifest_workflow(
+            pipeline_id=config.GENOMIC_DEPRECATED_WGS_DRAGEN
+        )  # run_id = 1
 
         # Test run record result is success if no records
         run_obj = self.job_run_dao.get(1)
@@ -6424,7 +6424,8 @@ class GenomicPipelineTest(BaseTestCase):
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_aw3_wgs_manifest_generation_missing_files(self, cloud_task):
-        # Need GC Manifest for source query : run_id = 1
+        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
                                               runStatus=GenomicSubProcessStatus.COMPLETED,
@@ -6505,7 +6506,7 @@ class GenomicPipelineTest(BaseTestCase):
                     file_prefix = "SS_VCF_CLINICAL"
 
                 test_file_dict = {
-                    'file_path': f'{bucket_name}/{f}',
+                    'file_path': f'{bucket_name}/{pipeline_id}/{f}',
                     'gc_site_id': 'rdr',
                     'bucket_name': bucket_name,
                     'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
@@ -6522,9 +6523,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # test for correct (default) pipeline_id in metrics
         metrics = self.metrics_dao.get_all()
-        self.assertTrue(all(obj.pipelineId == config.GENOMIC_DEPRECATED_WGS_DRAGEN for obj in metrics))
-
-        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+        self.assertTrue(all(obj.pipelineId == pipeline_id for obj in metrics))
 
         with clock.FakeClock(fake_dt):
             genomic_pipeline.aw3_wgs_manifest_workflow(
