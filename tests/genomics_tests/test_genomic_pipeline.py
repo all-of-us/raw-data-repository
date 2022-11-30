@@ -3636,11 +3636,19 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
+        # test for correct (default) pipeline_id in metrics
+        metrics = self.metrics_dao.get_all()
+        self.assertTrue(all(obj.pipelineId == config.GENOMIC_DEPRECATED_WGS_DRAGEN for obj in metrics))
+
+        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 3
+            genomic_pipeline.aw3_wgs_manifest_workflow(
+                pipeline_id=pipeline_id
+            )  # run_id = 3
 
         manifest_records = self.manifest_file_dao.get_all()
         self.assertEqual(len(manifest_records), 1)
@@ -3706,7 +3714,8 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.GENOMIC_AW3_WGS_SUBFOLDER
 
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{pipeline_id}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as \
+            csv_file:
             csv_reader = csv.DictReader(csv_file)
             self.assertEqual(len(set(expected_aw3_columns)), len(set(csv_reader.fieldnames)))
 
@@ -3739,6 +3748,9 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertTrue(row["cram_path"] in gc_data_file_paths)
             self.assertTrue(row["cram_md5_path"] in gc_data_file_paths)
             self.assertTrue(row["crai_path"] in gc_data_file_paths)
+
+            self.assertEqual(row['pipeline_id'], pipeline_id)
+            self.assertEqual(row['processing_count'], '0')
 
             # Test GC metrics columns
             self.assertEqual(metric.contamination, row['contamination'])
@@ -3773,12 +3785,15 @@ class GenomicPipelineTest(BaseTestCase):
 
         fake_dt = datetime.datetime(2020, 8, 4, 0, 0, 0, 0)
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_investigation_workflow()
+            genomic_pipeline.aw3_wgs_investigation_workflow(
+                pipeline_id=pipeline_id
+            )
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
         # Check file WAS created
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{pipeline_id}/{sub_folder}/AoU_DRCV_SEQ'
+                                              f'_{aw3_dtf}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             rows = list(csv_reader)
             self.assertEqual(1, len(rows))
@@ -3877,18 +3892,27 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
+        # test for correct (default) pipeline_id in metrics
+        metrics = self.metrics_dao.get_all()
+        self.assertTrue(all(obj.pipelineId == config.GENOMIC_DEPRECATED_WGS_DRAGEN for obj in metrics))
+
+        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 3
+            genomic_pipeline.aw3_wgs_manifest_workflow(
+                pipeline_id=pipeline_id
+            )  # run_id = 3
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
-
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.GENOMIC_AW3_WGS_SUBFOLDER
 
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
+        with open_cloud_file(
+            os.path.normpath(f'{bucket_name}/{pipeline_id}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')
+        ) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             rows = list(csv_reader)
             self.assertEqual(1, len(rows))
@@ -4023,9 +4047,18 @@ class GenomicPipelineTest(BaseTestCase):
                 member.sampleId = first_sample_id
                 self.member_dao.update(member)
 
+        # test for correct (default) pipeline_id in metrics
+        metrics = self.metrics_dao.get_all()
+        self.assertTrue(all(obj.pipelineId == config.GENOMIC_DEPRECATED_WGS_DRAGEN for obj in metrics))
+
+        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 3
+            genomic_pipeline.aw3_wgs_manifest_workflow(
+                pipeline_id=pipeline_id
+            )  # run_id = 3
 
         # clear aw3 raw records so query finds source data
         with self.member_dao.session() as session:
@@ -4044,7 +4077,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.member_dao.update(updated_member)
 
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()
+            genomic_pipeline.aw3_wgs_manifest_workflow(
+                pipeline_id=pipeline_id
+            )
 
         should_be_incident_count += 1
         run_obj = self.job_run_dao.get(5)
@@ -4171,12 +4206,20 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
+        # test for correct (default) pipeline_id in metrics
+        metrics = self.metrics_dao.get_all()
+        self.assertTrue(all(obj.pipelineId == config.GENOMIC_DEPRECATED_WGS_DRAGEN for obj in metrics))
+
+        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
         config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [2])
 
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 3
+            genomic_pipeline.aw3_wgs_manifest_workflow(
+                pipeline_id=pipeline_id
+            )  # run_id = 3
 
         manifest_records = self.manifest_file_dao.get_all()
         self.assertEqual(len(manifest_records), 3)
@@ -6477,8 +6520,16 @@ class GenomicPipelineTest(BaseTestCase):
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
+        # test for correct (default) pipeline_id in metrics
+        metrics = self.metrics_dao.get_all()
+        self.assertTrue(all(obj.pipelineId == config.GENOMIC_DEPRECATED_WGS_DRAGEN for obj in metrics))
+
+        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 3
+            genomic_pipeline.aw3_wgs_manifest_workflow(
+                pipeline_id=pipeline_id
+            )  # run_id = 3
 
         manifest_records = self.manifest_file_dao.get_all()
         self.assertEqual(len(manifest_records), 1)
@@ -6514,7 +6565,11 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.GENOMIC_AW3_WGS_SUBFOLDER
 
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
+        with open_cloud_file(os.path.normpath(
+            f'{bucket_name}/{pipeline_id}/{sub_folder}/AoU_DRCV_SEQ'
+            f'_{aw3_dtf}.csv')
+        ) as csv_file:
+
             csv_reader = csv.DictReader(csv_file)
 
             rows = list(csv_reader)
@@ -6577,12 +6632,18 @@ class GenomicPipelineTest(BaseTestCase):
 
         fake_dt = datetime.datetime(2020, 8, 4, 0, 0, 0, 0)
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_investigation_workflow()
+            genomic_pipeline.aw3_wgs_investigation_workflow(
+                pipeline_id=pipeline_id
+            )
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
         # Check file WAS created
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
+        with open_cloud_file(os.path.normpath(
+            f'{bucket_name}/{pipeline_id}/{sub_folder}'
+            f'/AoU_DRCV_SEQ_{aw3_dtf}.csv')
+        ) as csv_file:
+
             csv_reader = csv.DictReader(csv_file)
             rows = list(csv_reader)
             self.assertEqual(1, len(rows))

@@ -615,7 +615,9 @@ def genomic_aw3_array_investigation_workflow():
 @app_util.auth_required_cron
 @run_genomic_cron_job('genomic_aw3_wgs_investigation_workflow')
 def genomic_aw3_wgs_investigation_workflow():
-    genomic_pipeline.aw3_wgs_investigation_workflow()
+    genomic_pipeline.aw3_wgs_investigation_workflow(
+        pipeline_id=config.GENOMIC_DEPRECATED_WGS_DRAGEN
+    )
     return '{"success": "true"}'
 
 

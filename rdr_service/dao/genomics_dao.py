@@ -3954,6 +3954,7 @@ class GenomicQueriesDao(BaseDao):
         # should be only wgs genome but query also
         # used for wgs investigation workflow
         genome_type = kwargs.get('genome_type', config.GENOME_TYPE_WGS)
+        pipeline_id = kwargs.get('pipeline_id')
 
         with self.session() as session:
 
@@ -4084,7 +4085,8 @@ class GenomicQueriesDao(BaseDao):
                         GenomicGCValidationMetrics.ignoreFlag != 1,
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                        GenomicAW3Raw.id.is_(None)
+                        GenomicAW3Raw.id.is_(None),
+                        GenomicGCValidationMetrics.pipelineId == pipeline_id
                     ),
                     GenomicGCValidationMetrics.aw3ReadyFlag == 1
                 )

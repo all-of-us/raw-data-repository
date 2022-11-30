@@ -3593,7 +3593,8 @@ class ManifestDefinitionProvider:
             },
             GenomicManifestTypes.AW3_WGS: {
                 'job_run_field': 'aw3ManifestJobRunID',
-                'output_filename': f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
+                'output_filename': f'{self.kwargs.get("pipeline_id")}/'
+                                   f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
                 'signal': 'bypass',
                 'query': self.query_dao.get_aw3_wgs_records,
                 'params': {

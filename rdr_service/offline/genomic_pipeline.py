@@ -232,7 +232,7 @@ def aw3_array_investigation_workflow():
             load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
-def aw3_wgs_investigation_workflow():
+def aw3_wgs_investigation_workflow(**kwargs):
     """
     Entrypoint for AW3 WGS Workflow
     """
@@ -242,6 +242,7 @@ def aw3_wgs_investigation_workflow():
         controller.generate_manifest(
             GenomicManifestTypes.AW3_WGS,
             genome_type="aou_wgs_investigation",
+            pipeline_id=kwargs.get('pipeline_id')
         )
 
         for manifest in controller.manifests_generated:
