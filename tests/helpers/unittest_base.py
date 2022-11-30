@@ -518,6 +518,11 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
             self.session = database_factory.get_database().make_session()
             self.data_generator = DataGenerator(self.session, self.fake)
+        else:
+            # Some side effects of common code (like auth_required) use the database.
+            database_patch = mock.patch('rdr_service.dao.database_factory.get_database')
+            database_patch.start()
+            self.addCleanup(database_patch.stop)
 
     def tearDown(self):
         super(BaseTestCase, self).tearDown()
