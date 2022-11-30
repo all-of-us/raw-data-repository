@@ -153,8 +153,6 @@ class ProfileUpdateApiTest(BaseTestCase):
             phone_number=None
         )
 
-        # TODO: do I need to worry about login_phone_number?
-
     def test_update_email(self):
         self.send_post(
             'Participant/ProfileUpdate',

@@ -2,6 +2,8 @@
 from flask import request
 from flask_restful import Resource
 
+from rdr_service.api_util import PTC
+from rdr_service.app_util import auth_required
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.patient import Patient as FhirPatient
@@ -242,6 +244,7 @@ class PatientPayload:
 
 
 class ProfileUpdateApi(Resource):
+    @auth_required(PTC)
     def post(self):
         update_payload = PatientPayload(request.json)
         update_field_list = {
