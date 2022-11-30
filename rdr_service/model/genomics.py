@@ -1101,7 +1101,7 @@ class GenomicGCValidationMetrics(Base):
                                    default=GenomicSubProcessResult.UNSET)
     contaminationCategoryStr = Column('contamination_category_str', String(64), default="UNSET")
 
-    pipelineId = Column('pipeline_id', String(255), nullable=True)
+    pipelineId = Column('pipeline_id', String(255), nullable=True, index=True)
     processingCount = Column('processing_count', SmallInteger, nullable=False, default=0)
     aw3ReadyFlag = Column('aw3_ready_flag', SmallInteger, nullable=False, default=0)
 
