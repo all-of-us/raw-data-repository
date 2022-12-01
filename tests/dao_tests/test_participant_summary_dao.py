@@ -1130,6 +1130,69 @@ class ParticipantSummaryDaoTest(BaseTestCase):
                          if type(key).__class__.__name__ == '_EnumClass'])
         self.assertTrue(all_enums)
 
+    def test_profile_update(self):
+        participant_id = self.data_generator.create_database_participant_summary(
+            firstName='Foo',
+            middleName='Mid',
+            lastName='Bar',
+            phoneNumber='1234567890',
+            email='test@example.com',
+            dateOfBirth=datetime.date(2000, 1, 1),
+            streetAddress='123 Main',
+            streetAddress2='Apt B',
+            city='New City',
+            zipCode='1234',
+            primaryLanguage='en'
+        ).participantId
+
+        ParticipantSummaryDao.update_profile_data(
+            participant_id=participant_id,
+            first_name='Foo2',
+            middle_name='Mid2',
+            last_name='Bar2',
+            phone_number='0987654321',
+            email='another@example.org',
+            birthdate=datetime.date(2012, 2, 3),
+            address_line1='456 Way',
+            address_line2='Unit 1',
+            address_city='Other City',
+            address_zip_code='54321',
+            preferred_language='es'
+        )
+
+        summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant_id
+        ).one()
+        self.assertEqual('Foo2', summary.firstName)
+        self.assertEqual('Mid2', summary.middleName)
+        self.assertEqual('Bar2', summary.lastName)
+        self.assertEqual('0987654321', summary.phoneNumber)
+        self.assertEqual('another@example.org', summary.email)
+        self.assertEqual(datetime.date(2012, 2, 3), summary.dateOfBirth)
+        self.assertEqual('456 Way', summary.streetAddress)
+        self.assertEqual('Unit 1', summary.streetAddress2)
+        self.assertEqual('Other City', summary.city)
+        self.assertEqual('54321', summary.zipCode)
+        self.assertEqual('es', summary.primaryLanguage)
+
+    def test_state_profile_update(self):
+        ca_state_code = self.data_generator.create_database_code(value='PIIState_CA')
+        or_state_code = self.data_generator.create_database_code(value='PIIState_OR')
+
+        participant_id = self.data_generator.create_database_participant_summary(
+            stateId=ca_state_code.codeId
+        ).participantId
+
+        ParticipantSummaryDao.update_profile_data(
+            participant_id=participant_id,
+            address_state='OR'
+        )
+
+        summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant_id
+        ).one()
+        self.assertEqual(or_state_code.codeId, summary.stateId)
+
     @staticmethod
     def _get_amended_info(order):
         amendment = dict(

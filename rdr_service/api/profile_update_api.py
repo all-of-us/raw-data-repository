@@ -7,6 +7,7 @@ from rdr_service.app_util import auth_required
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.patient import Patient as FhirPatient
+from rdr_service.repository.profile_update_repository import ProfileUpdateRepository
 
 
 class PatientPayload:
@@ -246,7 +247,12 @@ class PatientPayload:
 class ProfileUpdateApi(Resource):
     @auth_required(PTC)
     def post(self):
-        update_payload = PatientPayload(request.json)
+        json = request.json
+        self._process_request(json)
+        self._record_request(json)
+
+    def _process_request(self, json):
+        update_payload = PatientPayload(json)
         update_field_list = {
             'participant_id': from_client_participant_id(update_payload.participant_id)
         }
@@ -277,3 +283,7 @@ class ProfileUpdateApi(Resource):
             update_field_list['preferred_language'] = update_payload.preferred_language
 
         ParticipantSummaryDao.update_profile_data(**update_field_list)
+
+    def _record_request(self, json):
+        repository = ProfileUpdateRepository()
+        repository.store_update_json(json)
