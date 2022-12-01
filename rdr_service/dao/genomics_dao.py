@@ -1584,7 +1584,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
             'vcfTbiPath': 'vcfTbiPath',
             'vcfMd5Path': 'vcfMd5Path',
             'gvcfPath': 'gvcfPath',
-            'gvcfMd5Path': 'gvcfMd5Path',
+            'gvcfMd5Path': 'gvcfMd5Path'
         }
         # The mapping between the columns in the DB and the data to ingest
 
@@ -1628,9 +1628,10 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
             except KeyError:
                 gc_metrics_obj.__setattr__(key, None)
 
-        logging.info(f'Inserting GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId}.')
-        upserted_metrics_obj = self.upsert(gc_metrics_obj)
+        action = 'Inserting' if not existing_id else 'Updating'
+        logging.info(f'{action} GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId}.')
 
+        upserted_metrics_obj = self.upsert(gc_metrics_obj)
         return upserted_metrics_obj
 
     def update_gc_validation_metrics_deleted_flags_from_dict(self, data_to_upsert, existing_id):
@@ -1667,19 +1668,37 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                     .all()
             )
 
-    def get_metrics_by_member_id(self, member_id):
+    def get_metrics_by_member_id(self, member_id, pipeline_id=None):
         """
         Retrieves gc metric record with the member_id
         :param: member_id
+        :param: pipeline_id
         :return: GenomicGCValidationMetrics object
         """
         with self.session() as session:
-            return (
-                session.query(GenomicGCValidationMetrics)
-                .filter(GenomicGCValidationMetrics.genomicSetMemberId == member_id,
-                        GenomicGCValidationMetrics.ignoreFlag != 1)
-                .one_or_none()
+            record = session.query(
+                GenomicGCValidationMetrics
+            ).filter(
+                GenomicGCValidationMetrics.genomicSetMemberId == member_id,
+                GenomicGCValidationMetrics.ignoreFlag != 1
             )
+            if pipeline_id:
+                record = record.filter(
+                    GenomicGCValidationMetrics.pipelineId == pipeline_id
+                )
+            return record.one_or_none()
+
+    def get_bulk_metrics_for_process_update(self, *, member_ids: List[int], pipeline_id: str):
+        with self.session() as session:
+            record = session.query(
+                GenomicGCValidationMetrics.id,
+                GenomicGCValidationMetrics.processingCount
+            ).filter(
+                GenomicGCValidationMetrics.genomicSetMemberId.in_(member_ids),
+                GenomicGCValidationMetrics.ignoreFlag != 1,
+                GenomicGCValidationMetrics.pipelineId == pipeline_id
+            )
+            return record.all()
 
     def get_metric_record_counts_from_filepath(self, filepath):
         with self.session() as session:
@@ -3947,6 +3966,13 @@ class GenomicQueriesDao(BaseDao):
         # should be only wgs genome but query also
         # used for wgs investigation workflow
         genome_type = kwargs.get('genome_type', config.GENOME_TYPE_WGS)
+        pipeline_id = kwargs.get('pipeline_id')
+
+        if not pipeline_id:
+            return []
+
+        # only updated dragen version files will be placed in 'dragen_v' subfolder
+        data_file_path = pipeline_id if pipeline_id == config.GENOMIC_UPDATED_WGS_DRAGEN else '/'
 
         with self.session() as session:
 
@@ -3992,7 +4018,9 @@ class GenomicQueriesDao(BaseDao):
                     GenomicSetMember.blockResearch == 1,
                     sqlalchemy.sql.expression.literal("True"),
                     sqlalchemy.sql.expression.literal("False")),
-                GenomicSetMember.blockResearchReason
+                GenomicSetMember.blockResearchReason,
+                GenomicGCValidationMetrics.pipelineId,
+                (GenomicGCValidationMetrics.processingCount + 1).label('processingCount')
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
@@ -4013,49 +4041,57 @@ class GenomicQueriesDao(BaseDao):
                 hard_filtered_vcf_gz,
                 and_(
                     hard_filtered_vcf_gz.file_type == 'hard-filtered.vcf.gz',
-                    hard_filtered_vcf_gz.identifier_value == GenomicSetMember.sampleId
+                    hard_filtered_vcf_gz.identifier_value == GenomicSetMember.sampleId,
+                    hard_filtered_vcf_gz.file_path.contains(data_file_path)
                 )
             ).join(
                 hard_filtered_vcf_gz_tbi,
                 and_(
                     hard_filtered_vcf_gz_tbi.file_type == 'hard-filtered.vcf.gz.tbi',
-                    hard_filtered_vcf_gz_tbi.identifier_value == GenomicSetMember.sampleId
+                    hard_filtered_vcf_gz_tbi.identifier_value == GenomicSetMember.sampleId,
+                    hard_filtered_vcf_gz_tbi.file_path.contains(data_file_path)
                 )
             ).join(
                 hard_filtered_vcf_gz_md5_sum,
                 and_(
                     hard_filtered_vcf_gz_md5_sum.file_type == 'hard-filtered.vcf.gz.md5sum',
-                    hard_filtered_vcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId
+                    hard_filtered_vcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
+                    hard_filtered_vcf_gz_md5_sum.file_path.contains(data_file_path)
                 )
             ).join(
                 cram,
                 and_(
                     cram.file_type == 'cram',
-                    cram.identifier_value == GenomicSetMember.sampleId
+                    cram.identifier_value == GenomicSetMember.sampleId,
+                    cram.file_path.contains(data_file_path)
                 )
             ).join(
                 cram_md5_sum,
                 and_(
                     cram_md5_sum.file_type == 'cram.md5sum',
-                    cram_md5_sum.identifier_value == GenomicSetMember.sampleId
+                    cram_md5_sum.identifier_value == GenomicSetMember.sampleId,
+                    cram_md5_sum.file_path.contains(data_file_path)
                 )
             ).join(
                 cram_crai,
                 and_(
                     cram_crai.file_type == 'cram.crai',
-                    cram_crai.identifier_value == GenomicSetMember.sampleId
+                    cram_crai.identifier_value == GenomicSetMember.sampleId,
+                    cram_crai.file_path.contains(data_file_path)
                 )
             ).join(
                 hard_filtered_gvcf_gz,
                 and_(
                     hard_filtered_gvcf_gz.file_type == 'hard-filtered.gvcf.gz',
-                    hard_filtered_gvcf_gz.identifier_value == GenomicSetMember.sampleId
+                    hard_filtered_gvcf_gz.identifier_value == GenomicSetMember.sampleId,
+                    hard_filtered_gvcf_gz.file_path.contains(data_file_path)
                 )
             ).join(
                 hard_filtered_gvcf_gz_md5_sum,
                 and_(
                     hard_filtered_gvcf_gz_md5_sum.file_type == 'hard-filtered.gvcf.gz.md5sum',
-                    hard_filtered_gvcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId
+                    hard_filtered_gvcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
+                    hard_filtered_gvcf_gz_md5_sum.file_path.contains(data_file_path)
                 )
             ).outerjoin(
                 GenomicAW3Raw,
@@ -4065,15 +4101,21 @@ class GenomicQueriesDao(BaseDao):
                     GenomicAW3Raw.ignore_flag != 1,
                 )
             ).filter(
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                GenomicSetMember.genomeType == genome_type,
-                GenomicSetMember.aw3ManifestJobRunID.is_(None),
-                GenomicSetMember.ignoreFlag != 1,
-                GenomicGCValidationMetrics.processingStatus.ilike('pass'),
-                GenomicGCValidationMetrics.ignoreFlag != 1,
-                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                GenomicAW3Raw.id.is_(None)
+                or_(
+                    and_(
+                        GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                        GenomicSetMember.genomeType == genome_type,
+                        GenomicSetMember.aw3ManifestJobRunID.is_(None),
+                        GenomicSetMember.ignoreFlag != 1,
+                        GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+                        GenomicGCValidationMetrics.ignoreFlag != 1,
+                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                        ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                        GenomicAW3Raw.id.is_(None),
+                        GenomicGCValidationMetrics.pipelineId == pipeline_id
+                    ),
+                    GenomicGCValidationMetrics.aw3ReadyFlag == 1
+                )
             )
             return aw3_rows.distinct().all()
 
