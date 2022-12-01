@@ -287,4 +287,3 @@ class ProfileUpdateApi(Resource):
     def _record_request(self, json):
         repository = ProfileUpdateRepository()
         repository.store_update_json(json)
-
