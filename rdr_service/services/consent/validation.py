@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from io import StringIO
 import pytz
-from typing import Collection, List, Optional, Union
+from typing import Collection, List, Optional
 
 from dateutil.parser import parse
 from sqlalchemy.orm import Session
@@ -745,8 +745,6 @@ class ConsentValidator:
             return self._check_for_checkmark
         elif consent_type == ConsentType.PRIMARY_UPDATE:
             return self._additional_primary_update_checks
-        elif consent_type == ConsentType.ETM:
-            return self._check_for_checkmark
         else:
             return None
 
@@ -765,7 +763,7 @@ class ConsentValidator:
             self._append_other_error(mismatch_error_str, result)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
-    def _check_for_checkmark(self, consent: Union[files.GrorConsentFile, files.EtmConsentFile], result: ParsingResult):
+    def _check_for_checkmark(self, consent: files.GrorConsentFile, result: ParsingResult):
         if not consent.is_confirmation_selected():
             self._append_other_error(ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK, result)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING

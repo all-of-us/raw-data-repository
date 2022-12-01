@@ -79,7 +79,6 @@ class ConsentFileParsingTest(BaseTestCase):
             consent_file = consent_example.file
             self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
             self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
-            self.assertEqual(consent_example.has_yes_selected, consent_file.is_confirmation_selected())
 
     def test_detection_of_sensitive_ehr_form(self):
         sensitive_ehr = self._build_sensitive_ehr(with_initials=False)
@@ -802,28 +801,13 @@ class ConsentFileParsingTest(BaseTestCase):
                 self._build_form_element(text='Jan 1st, 2021', bbox=(125, 100, 450, 130))
             ]
         ])
-        basic_etm_case = EtMConsentTestData(
+        basic_etm_case = ConsentTestData(
             file=files.VibrentEtmConsentFile(pdf=basic_etm_pdf, blob=mock.MagicMock()),
             expected_signature='Test etm',
-            expected_sign_date=date(2021, 1, 1),
-            has_yes_selected=True
+            expected_sign_date=date(2021, 1, 1)
         )
 
-        etm_missing_check = self._build_pdf(pages=[
-            *seven_empty_pages,
-            [
-                self._build_form_element(text='no confirmation', bbox=(140, 150, 450, 180)),
-                self._build_form_element(text='Feb 1st, 2021', bbox=(125, 100, 450, 130))
-            ]
-        ])
-        no_confirmation_case = EtMConsentTestData(
-            file=files.VibrentEtmConsentFile(pdf=etm_missing_check, blob=mock.MagicMock()),
-            expected_signature='no confirmation',
-            expected_sign_date=date(2021, 2, 1),
-            has_yes_selected=False
-        )
-
-        return [basic_etm_case, no_confirmation_case]
+        return [basic_etm_case]
 
 
 @dataclass
@@ -856,12 +840,6 @@ class PrimaryUpdateConsentTestData(ConsentTestData):
     file: files.PrimaryConsentUpdateFile
     has_yes_selected: bool = False
     expected_to_be_va_file: bool = False
-
-
-@dataclass
-class EtMConsentTestData(ConsentTestData):
-    file: files.EtmConsentFile
-    has_yes_selected: bool = False
 
 
 @dataclass

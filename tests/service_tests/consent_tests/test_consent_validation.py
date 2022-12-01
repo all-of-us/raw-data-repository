@@ -474,29 +474,6 @@ class ConsentValidationTesting(BaseTestCase):
             self.validator.get_etm_validation_results()
         )
 
-    def test_etm_without_checkmark(self):
-        self.participant_summary.consentForEtMAuthored = datetime.combine(
-            self._default_signing_date,
-            datetime.now().time()
-        )
-        self.consent_factory_mock.get_etm_consents.return_value = [
-            self._mock_consent(
-                consent_class=files.EtmConsentFile,
-                is_confirmation_selected=False
-            )
-        ]
-        self.assertMatchesExpectedResults(
-            [
-                {
-                    'participant_id': self.participant_summary.participantId,
-                    'type': ConsentType.ETM,
-                    'other_errors': ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK,
-                    'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
-                }
-            ],
-            self.validator.get_etm_validation_results()
-        )
-
     def test_etm_missing(self):
         self.participant_summary.consentForEtMAuthored = datetime.combine(
             self._default_signing_date,

@@ -466,17 +466,7 @@ class GrorConsentFile(ConsentFile, ABC):
 
 
 class EtmConsentFile(ConsentFile, ABC):
-    def is_confirmation_selected(self):
-        for element in self._get_confirmation_check_elements():
-            for child in element:
-                if isinstance(child, LTCurve):
-                    return True
-
-        return False
-
-    @abstractmethod
-    def _get_confirmation_check_elements(self):
-        ...
+    ...
 
 
 class PrimaryConsentUpdateFile(PrimaryConsentFile, ABC):
@@ -743,12 +733,6 @@ class VibrentEtmConsentFile(EtmConsentFile):
     def _get_date_elements(self):
         return self.pdf.get_elements_intersecting_box(
             Rect.from_edges(left=130, right=400, bottom=110, top=115),
-            page=self._SIGNATURE_PAGE
-        )
-
-    def _get_confirmation_check_elements(self):
-        return self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=70, right=73, bottom=475, top=478),
             page=self._SIGNATURE_PAGE
         )
 
