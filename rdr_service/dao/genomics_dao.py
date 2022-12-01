@@ -4020,7 +4020,7 @@ class GenomicQueriesDao(BaseDao):
                     sqlalchemy.sql.expression.literal("False")),
                 GenomicSetMember.blockResearchReason,
                 GenomicGCValidationMetrics.pipelineId,
-                GenomicGCValidationMetrics.processingCount
+                (GenomicGCValidationMetrics.processingCount + 1).label('processingCount')
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId

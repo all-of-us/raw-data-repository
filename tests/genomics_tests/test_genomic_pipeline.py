@@ -3737,7 +3737,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertTrue(row["crai_path"] in gc_data_file_paths)
 
             self.assertEqual(row['pipeline_id'], pipeline_id)
-            self.assertEqual(row['processing_count'], '0')
+            self.assertEqual(row['processing_count'], '1')
 
             # Test GC metrics columns
             self.assertEqual(metric.contamination, row['contamination'])
