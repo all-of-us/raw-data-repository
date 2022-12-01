@@ -901,12 +901,11 @@ class QuestionnaireResponseDao(BaseDao):
                         if answer_value.lower() == ETM_YES_ANSWER_CODE:
                             self.consents_provided.append(ConsentType.ETM)
                             participant_summary.consentForEtM = QuestionnaireStatus.SUBMITTED
-                            participant_summary.consentForEtMTime = questionnaire_response.created
-                            participant_summary.consentForEtMAuthored = authored
                         elif answer_value.lower() == ETM_NO_ANSWER_CODE:
                             participant_summary.consentForEtM = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-                            participant_summary.consentForEtMTime = questionnaire_response.created
-                            participant_summary.consentForEtMAuthored = authored
+
+                        participant_summary.consentForEtMTime = questionnaire_response.created
+                        participant_summary.consentForEtMAuthored = authored
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
         # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.
