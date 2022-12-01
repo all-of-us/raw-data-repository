@@ -587,7 +587,7 @@ class GenomicAW2Raw(Base):
     chipwellbarcode = Column(String(255), nullable=True)
     call_rate = Column(String(255), nullable=True)
     genome_type = Column(String(80), nullable=True)
-    pipeline_id = Column(String(255), nullable=True)
+    pipeline_id = Column(String(255), nullable=True, index=True)
     vcf_hf_path = Column(String(255), nullable=True)
     vcf_hf_index_path = Column(String(255), nullable=True)
     vcf_hf_md5_path = Column(String(255), nullable=True)
@@ -1102,13 +1102,12 @@ class GenomicGCValidationMetrics(Base):
     contaminationCategoryStr = Column('contamination_category_str', String(64), default="UNSET")
 
     pipelineId = Column('pipeline_id', String(255), nullable=True, index=True)
+
     processingCount = Column('processing_count', SmallInteger, nullable=False, default=0)
     aw3ReadyFlag = Column('aw3_ready_flag', SmallInteger, nullable=False, default=0)
-
     aw3ManifestJobRunID = Column('aw3_manifest_job_run_id', Integer, ForeignKey('genomic_job_run.id'))
     aw3ManifestFileId = Column('aw3_manifest_file_id', Integer, ForeignKey("genomic_manifest_file.id"))
     aw4ManifestJobRunID = Column('aw4_manifest_job_run_id', Integer, ForeignKey('genomic_job_run.id'))
-    aw4ManifestFileId = Column('aw4_manifest_file_id', Integer, ForeignKey("genomic_manifest_file.id"))
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
