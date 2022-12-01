@@ -1347,6 +1347,10 @@ class ParticipantSummaryDao(UpdatableDao):
             )
             session.execute(query, {'file_upload_date': upload_date})
 
+    @classmethod
+    def update_profile_data(cls, participant_id: int, first_name=None, middle_name=None, last_name=None, email=None):
+        ...
+
 
 def _initialize_field_type_sets():
     """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are

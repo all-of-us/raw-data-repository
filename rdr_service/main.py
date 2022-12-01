@@ -32,6 +32,7 @@ from rdr_service.api.participant_summary_api import ParticipantSummaryApi, \
     ParticipantSummaryModifiedApi, ParticipantSummaryCheckLoginApi
 from rdr_service.api.patient_status import PatientStatusApi, PatientStatusHistoryApi
 from rdr_service.api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
+from rdr_service.api.profile_update_api import ProfileUpdateApi
 from rdr_service.api.public_metrics_api import PublicMetricsApi
 from rdr_service.api.questionnaire_api import QuestionnaireApi
 from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireAnswers, QuestionnaireResponseApi
@@ -326,6 +327,13 @@ api.add_resource(
     DeceasedReportApi,
     API_PREFIX + 'Participant/<string:participant_id>/Observation',
     endpoint='observation',
+    methods=['POST']
+)
+
+api.add_resource(
+    ProfileUpdateApi,
+    API_PREFIX + 'Participant/ProfileUpdate',
+    endpoint='profile_update',
     methods=['POST']
 )
 
