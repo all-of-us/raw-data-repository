@@ -552,7 +552,18 @@ def genomic_aw3_array_workflow():
 @app_util.auth_required_cron
 @run_genomic_cron_job('aw3_wgs_manifest_workflow')
 def genomic_aw3_wgs_workflow():
-    genomic_pipeline.aw3_wgs_manifest_workflow()
+    genomic_pipeline.aw3_wgs_manifest_workflow(
+        pipeline_id=config.GENOMIC_DEPRECATED_WGS_DRAGEN
+    )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('aw3_wgs_updated_manifest_workflow')
+def genomic_aw3_wgs_updated_workflow():
+    genomic_pipeline.aw3_wgs_manifest_workflow(
+        pipeline_id=config.GENOMIC_UPDATED_WGS_DRAGEN
+    )
     return '{"success": "true"}'
 
 
@@ -604,7 +615,9 @@ def genomic_aw3_array_investigation_workflow():
 @app_util.auth_required_cron
 @run_genomic_cron_job('genomic_aw3_wgs_investigation_workflow')
 def genomic_aw3_wgs_investigation_workflow():
-    genomic_pipeline.aw3_wgs_investigation_workflow()
+    genomic_pipeline.aw3_wgs_investigation_workflow(
+        pipeline_id=config.GENOMIC_DEPRECATED_WGS_DRAGEN
+    )
     return '{"success": "true"}'
 
 
@@ -1064,6 +1077,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicAW3WGSWorkflow",
         endpoint="genomic_aw3_wgs_workflow",
         view_func=genomic_aw3_wgs_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicAW3WGSUpdatedWorkflow",
+        endpoint="genomic_aw3_wgs_updated_workflow",
+        view_func=genomic_aw3_wgs_updated_workflow,
         methods=["GET"]
     )
     offline_app.add_url_rule(
