@@ -1105,10 +1105,10 @@ class GenomicGCValidationMetrics(Base):
     processingCount = Column('processing_count', SmallInteger, nullable=False, default=0)
     aw3ReadyFlag = Column('aw3_ready_flag', SmallInteger, nullable=False, default=0)
 
-    aw3ManifestJobRunId = Column('aw3_manifest_job_run_id', Integer, ForeignKey('genomic_job_run.id'))
-    aw3ManifestId = Column('aw3_manifest_id', Integer, ForeignKey("genomic_manifest_file.id"))
-    aw4ManifestJobRunId = Column('aw4_manifest_job_run_id', Integer, ForeignKey('genomic_job_run.id'))
-    aw4ManifestId = Column('aw4_manifest_id', Integer, ForeignKey("genomic_manifest_file.id"))
+    aw3ManifestJobRunID = Column('aw3_manifest_job_run_id', Integer, ForeignKey('genomic_job_run.id'))
+    aw3ManifestFileId = Column('aw3_manifest_file_id', Integer, ForeignKey("genomic_manifest_file.id"))
+    aw4ManifestJobRunID = Column('aw4_manifest_job_run_id', Integer, ForeignKey('genomic_job_run.id'))
+    aw4ManifestFileId = Column('aw4_manifest_file_id', Integer, ForeignKey("genomic_manifest_file.id"))
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)

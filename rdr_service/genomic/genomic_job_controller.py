@@ -1455,39 +1455,38 @@ class GenomicJobController:
                     and self.manifests_generated:
 
                 now_time = datetime.utcnow()
-
                 for manifest in self.manifests_generated:
                     compiled_file_name = manifest["file_path"].split(f'{self.bucket_name}/')[-1]
                     logging.info(f'Manifest created: {compiled_file_name}')
                     new_manifest_record = self.manifest_file_dao.get_manifest_file_from_filepath(manifest['file_path'])
 
                     if not new_manifest_record:
-                        # Insert manifest_file record
-                        new_manifest_obj = GenomicManifestFile(
-                            uploadDate=now_time,
-                            manifestTypeId=manifest_type,
-                            manifestTypeIdStr=manifest_type.name,
-                            filePath=manifest['file_path'],
-                            bucketName=self.bucket_name,
-                            recordCount=manifest['record_count'],
-                            rdrProcessingComplete=1,
-                            rdrProcessingCompleteDate=now_time,
-                            fileName=manifest['file_path'].split('/')[-1]
+                        # MANIFEST record created
+                        new_manifest_record = self.manifest_file_dao.insert(
+                            GenomicManifestFile(
+                                uploadDate=now_time,
+                                manifestTypeId=manifest_type,
+                                manifestTypeIdStr=manifest_type.name,
+                                filePath=manifest['file_path'],
+                                bucketName=self.bucket_name,
+                                recordCount=manifest['record_count'],
+                                rdrProcessingComplete=1,
+                                rdrProcessingCompleteDate=now_time,
+                                fileName=manifest['file_path'].split('/')[-1]
+                            )
                         )
-                        new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
 
-                    # update feedback records if manifest is a feedback manifest
+                    # MANIFEST FEEDBACK record updated
                     if "feedback_record" in kwargs.keys():
                         r = kwargs['feedback_record']
                         r.feedbackManifestFileId = new_manifest_record.id
                         r.feedbackComplete = 1
                         r.version += 1
                         r.feedbackCompleteDate = now_time
-
                         with self.manifest_feedback_dao.session() as session:
                             session.merge(r)
 
-                    # Insert the file_processed record
+                    # FILE Processed record
                     self.file_processed_dao.insert_file_record(
                         self.job_run.id,
                         f'{self.bucket_name}/{self.manifest_compiler.output_file_name}',
@@ -1499,6 +1498,7 @@ class GenomicJobController:
                         manifest_file_id=new_manifest_record.id
                     )
 
+                    # MEMBER Manifest file record update
                     file_record_attr = self.update_member_file_record(manifest_type)
                     if self.member_ids_for_update and file_record_attr:
                         self.execute_cloud_task({
@@ -1816,8 +1816,8 @@ class GenomicJobController:
             logging.error(e)
             self.job_result = GenomicSubProcessResult.ERROR
 
-    @staticmethod
-    def update_member_file_record(manifest_type):
+    @classmethod
+    def update_member_file_record(cls, manifest_type):
         file_attr = None
 
         attributes_map = {

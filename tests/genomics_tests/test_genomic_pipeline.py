@@ -1235,7 +1235,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(gc_metrics[0].alignedQ30Bases, 1000000000004)
         self.assertEqual(gc_metrics[0].processingStatus, 'Pass')
         self.assertEqual(gc_metrics[0].notes, 'This sample passed')
-        self.assertEqual(gc_metrics[0].pipelineId, 'updated_dragen')
+        self.assertEqual(gc_metrics[0].pipelineId, config.GENOMIC_UPDATED_WGS_DRAGEN)
 
         # Test file processing queue
         files_processed = self.file_processed_dao.get_all()
@@ -1312,7 +1312,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(len(gc_metrics), 2)
         self.assertTrue(all(obj.genomicSetMemberId == member.id for obj in gc_metrics))
         self.assertTrue(any(obj.pipelineId == config.GENOMIC_DEPRECATED_WGS_DRAGEN for obj in gc_metrics))
-        self.assertTrue(any(obj.pipelineId == 'updated_dragen' for obj in gc_metrics))
+        self.assertTrue(any(obj.pipelineId == config.GENOMIC_UPDATED_WGS_DRAGEN for obj in gc_metrics))
 
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
@@ -4355,10 +4355,10 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertIsNotNone(metrics.drcSexConcordance)
             self.assertIsNotNone(metrics.drcCallRate)
-
             self.assertIsNone(metrics.drcContamination)
             self.assertIsNone(metrics.drcMeanCoverage)
             self.assertIsNone(metrics.drcFpConcordance)
+            self.assertIsNotNone(metrics.aw4ManifestJobRunID)
 
             if member.id in (1, 2):
                 self.assertEqual(3, member.aw4ManifestJobRunID)
@@ -4408,7 +4408,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_aw4_raw')
 
     def test_aw4_wgs_manifest_ingest(self):
-        # Create AW3 WGS manifest job run: id = 1
+        pipeline_id = config.GENOMIC_UPDATED_WGS_DRAGEN
+
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW3_WGS_WORKFLOW,
                                               startTime=clock.CLOCK.now(),
                                               runStatus=GenomicSubProcessStatus.COMPLETED,
@@ -4425,6 +4426,7 @@ class GenomicPipelineTest(BaseTestCase):
             record = GenomicGCValidationMetrics()
             record.id = i + 1
             record.genomicSetMemberId = member.id
+            record.pipelineId = pipeline_id
             self.metrics_dao.upsert(record)
 
             # Change sample 2 to aou_array_investigation
@@ -4461,13 +4463,17 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test AW4 manifest updated fields
         for member in self.member_dao.get_all():
-            metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
+            metrics = self.metrics_dao.get_metrics_by_member_id(
+                member_id=member.id,
+                pipeline_id=pipeline_id
+            )
 
             self.assertIsNone(metrics.drcCallRate)
             self.assertIsNotNone(metrics.drcSexConcordance)
             self.assertIsNotNone(metrics.drcContamination)
             self.assertIsNotNone(metrics.drcMeanCoverage)
             self.assertIsNotNone(metrics.drcFpConcordance)
+            self.assertIsNotNone(metrics.aw4ManifestJobRunID)
 
             if member.id in (1, 2):
                 self.assertEqual(3, member.aw4ManifestJobRunID)

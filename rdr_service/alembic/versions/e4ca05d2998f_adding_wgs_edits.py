@@ -41,16 +41,18 @@ def upgrade_rdr():
     op.create_index(op.f('ix_genomic_gc_validation_metrics_pipeline_id'), 'genomic_gc_validation_metrics',
                     ['pipeline_id'], unique=False)
 
-    op.add_column('genomic_gc_validation_metrics', sa.Column('aw3_manifest_id', sa.Integer(), nullable=True))
+    op.add_column('genomic_gc_validation_metrics', sa.Column('aw3_manifest_file_id', sa.Integer(), nullable=True))
     op.add_column('genomic_gc_validation_metrics', sa.Column('aw3_manifest_job_run_id', sa.Integer(), nullable=True))
     op.add_column('genomic_gc_validation_metrics', sa.Column('aw3_ready_flag', sa.SmallInteger(), nullable=False))
-    op.add_column('genomic_gc_validation_metrics', sa.Column('aw4_manifest_id', sa.Integer(), nullable=True))
+    op.add_column('genomic_gc_validation_metrics', sa.Column('aw4_manifest_file_id', sa.Integer(), nullable=True))
     op.add_column('genomic_gc_validation_metrics', sa.Column('aw4_manifest_job_run_id', sa.Integer(), nullable=True))
     op.add_column('genomic_gc_validation_metrics', sa.Column('processing_count', sa.SmallInteger(), nullable=False))
 
     op.create_foreign_key(None, 'genomic_gc_validation_metrics', 'genomic_job_run', ['aw4_manifest_job_run_id'], ['id'])
-    op.create_foreign_key(None, 'genomic_gc_validation_metrics', 'genomic_manifest_file', ['aw4_manifest_id'], ['id'])
-    op.create_foreign_key(None, 'genomic_gc_validation_metrics', 'genomic_manifest_file', ['aw3_manifest_id'], ['id'])
+    op.create_foreign_key(None, 'genomic_gc_validation_metrics', 'genomic_manifest_file', ['aw4_manifest_file_id'],
+                          ['id'])
+    op.create_foreign_key(None, 'genomic_gc_validation_metrics', 'genomic_manifest_file', ['aw3_manifest_file_id'],
+                          ['id'])
     op.create_foreign_key(None, 'genomic_gc_validation_metrics', 'genomic_job_run', ['aw3_manifest_job_run_id'], ['id'])
 
     op.execute(

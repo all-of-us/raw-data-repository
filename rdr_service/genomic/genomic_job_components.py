@@ -875,7 +875,8 @@ class GenomicFileIngester:
             for row in rows:
                 row_copy = self._clean_row_keys(row)
 
-                sample_id = row_copy['sampleid']
+                pipeline_id = row_copy.get('pipelineid')
+                sample_id = row_copy.get('sampleid')
 
                 member = self.member_dao.get_member_from_aw3_sample(sample_id)
                 if member is None:
@@ -886,10 +887,14 @@ class GenomicFileIngester:
                 member.qcStatus = self._get_qc_status_from_value(row_copy['qcstatus'])
                 member.qcStatusStr = member.qcStatus.name
 
-                metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
+                metrics = self.metrics_dao.get_metrics_by_member_id(
+                    member_id=member.id,
+                    pipeline_id=pipeline_id
+                )
 
                 if metrics:
                     metrics.drcSexConcordance = row_copy['drcsexconcordance']
+                    metrics.aw4ManifestJobRunID = self.job_run_id
 
                     if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
                         metrics.drcCallRate = row_copy['drccallrate']
