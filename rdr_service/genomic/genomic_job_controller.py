@@ -1499,7 +1499,7 @@ class GenomicJobController:
                     )
 
                     # MEMBER/METRICS AW3 Manifest file record update
-                    self.process_manifest_record_updates(
+                    self.process_research_manifest_record_updates(
                         manifest_type,
                         manifest_id=new_manifest_record.id,
                         pipeline_id=kwargs.get('pipeline_id')
@@ -1814,7 +1814,7 @@ class GenomicJobController:
             logging.error(e)
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def process_manifest_record_updates(self, manifest_type, **kwargs):
+    def process_research_manifest_record_updates(self, manifest_type, **kwargs):
         if manifest_type not in [
             GenomicManifestTypes.AW3_ARRAY, GenomicManifestTypes.AW3_WGS
         ]:
@@ -1839,6 +1839,7 @@ class GenomicJobController:
                 metric_dict = {
                     'id': metric.id,
                     'aw3ReadyFlag': 0,
+                    'aw3ManifestJobRunID': self.job_run.id,
                     'aw3ManifestFileId': kwargs.get('manifest_id'),
                     'processingCount': metric.processingCount + 1
                 }

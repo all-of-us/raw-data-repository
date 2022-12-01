@@ -3747,6 +3747,7 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertEqual(metric.aw3ReadyFlag, 0)
             self.assertIsNotNone(metric.aw3ManifestFileId)
+            self.assertIsNotNone(metric.aw3ManifestJobRunID)
             self.assertEqual(metric.pipelineId, pipeline_id)
             self.assertEqual(metric.processingCount, 1)
 
