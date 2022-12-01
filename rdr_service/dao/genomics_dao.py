@@ -1628,9 +1628,10 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
             except KeyError:
                 gc_metrics_obj.__setattr__(key, None)
 
-        logging.info(f'Inserting GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId}.')
-        upserted_metrics_obj = self.upsert(gc_metrics_obj)
+        action = 'Inserting' if not existing_id else 'Updating'
+        logging.info(f'{action} GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId}.')
 
+        upserted_metrics_obj = self.upsert(gc_metrics_obj)
         return upserted_metrics_obj
 
     def update_gc_validation_metrics_deleted_flags_from_dict(self, data_to_upsert, existing_id):
@@ -1685,8 +1686,19 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                 record = record.filter(
                     GenomicGCValidationMetrics.pipelineId == pipeline_id
                 )
-
             return record.one_or_none()
+
+    def get_bulk_metrics_for_process_update(self, *, member_ids: List[int], pipeline_id: str):
+        with self.session() as session:
+            record = session.query(
+                GenomicGCValidationMetrics.id,
+                GenomicGCValidationMetrics.processingCount
+            ).filter(
+                GenomicGCValidationMetrics.genomicSetMemberId.in_(member_ids),
+                GenomicGCValidationMetrics.ignoreFlag != 1,
+                GenomicGCValidationMetrics.pipelineId == pipeline_id
+            )
+            return record.all()
 
     def get_metric_record_counts_from_filepath(self, filepath):
         with self.session() as session:

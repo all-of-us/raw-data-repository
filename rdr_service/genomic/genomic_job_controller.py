@@ -1498,16 +1498,14 @@ class GenomicJobController:
                         manifest_file_id=new_manifest_record.id
                     )
 
-                    # MEMBER Manifest file record update
-                    file_record_attr = self.update_member_file_record(manifest_type)
-                    if self.member_ids_for_update and file_record_attr:
-                        self.execute_cloud_task({
-                            'member_ids': self.member_ids_for_update,
-                            'field': file_record_attr,
-                            'value': new_manifest_record.id,
-                        }, 'genomic_set_member_update_task')
+                    # MEMBER/METRICS AW3 Manifest file record update
+                    self.process_manifest_record_updates(
+                        manifest_type,
+                        manifest_id=new_manifest_record.id,
+                        pipeline_id=kwargs.get('pipeline_id')
+                    )
 
-                    self.subprocess_results.add(result["code"])
+                    self.subprocess_results.add(result.get('code'))
 
             self.job_result = result.get('code')
 
@@ -1816,18 +1814,37 @@ class GenomicJobController:
             logging.error(e)
             self.job_result = GenomicSubProcessResult.ERROR
 
-    @classmethod
-    def update_member_file_record(cls, manifest_type):
-        file_attr = None
+    def process_manifest_record_updates(self, manifest_type, **kwargs):
+        if manifest_type not in [
+            GenomicManifestTypes.AW3_ARRAY, GenomicManifestTypes.AW3_WGS
+        ]:
+            return
 
-        attributes_map = {
-            GenomicManifestTypes.AW3_ARRAY: 'aw3ManifestFileId',
-            GenomicManifestTypes.AW3_WGS: 'aw3ManifestFileId'
-        }
-        if manifest_type in attributes_map.keys():
-            file_attr = attributes_map[manifest_type]
+        if self.member_ids_for_update:
+            process_metrics = self.metrics_dao.get_bulk_metrics_for_process_update(
+                member_ids=self.member_ids_for_update,
+                pipeline_id=kwargs.get('pipeline_id')
+            )
+            members_to_update, metrics_to_update = [], []
 
-        return file_attr
+            for member_id in self.member_ids_for_update:
+                member_dict = {
+                    'id': member_id,
+                    'aw3ManifestFileId': kwargs.get('manifest_id')
+                }
+                members_to_update.append(member_dict)
+            self.member_dao.bulk_update(members_to_update)
+
+            for metric in process_metrics:
+                metric_dict = {
+                    'id': metric.id,
+                    'aw3ReadyFlag': 0,
+                    'aw3ManifestFileId': kwargs.get('manifest_id'),
+                    'processingCount': metric.processingCount + 1
+                }
+                metrics_to_update.append(metric_dict)
+            self.metrics_dao.bulk_update(metrics_to_update)
+        return
 
     def check_w1il_gror_resubmit(self, since_datetime):
         participant_list = self.query_dao.get_w1il_yes_no_yes_participants(start_datetime=since_datetime)

@@ -2986,9 +2986,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertEqual(cloud_task.call_count, 5)
+        self.assertEqual(cloud_task.call_count, 4)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 5)
+        self.assertEqual(len(call_args), 4)
 
         for i, call_arg_data in enumerate(call_args):
             call_arg_data = call_arg_data.args[0]
@@ -2998,12 +2998,6 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertIsNotNone(member_ids)
                 self.assertTrue(len(set(member_ids)) == len(member_ids))
                 self.assertEqual(field, 'aw3ManifestJobRunID')
-            if i == 4:
-                member_ids = call_arg_data.get('member_ids')
-                field = call_arg_data.get('field')
-                self.assertIsNotNone(member_ids)
-                self.assertTrue(len(set(member_ids)) == len(member_ids))
-                self.assertEqual(field, 'aw3ManifestFileId')
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -3655,9 +3649,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertEqual(cloud_task.call_count, 4)
+        self.assertEqual(cloud_task.call_count, 3)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 4)
+        self.assertEqual(len(call_args), 3)
 
         for i, call_arg_data in enumerate(call_args):
             call_arg_data = call_arg_data.args[0]
@@ -3667,12 +3661,6 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertIsNotNone(member_ids)
                 self.assertTrue(len(set(member_ids)) == len(member_ids))
                 self.assertEqual(field, 'aw3ManifestJobRunID')
-            if i == 3:
-                member_ids = call_arg_data.get('member_ids')
-                field = call_arg_data.get('field')
-                self.assertIsNotNone(member_ids)
-                self.assertTrue(len(set(member_ids)) == len(member_ids))
-                self.assertEqual(field, 'aw3ManifestFileId')
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -3756,6 +3744,11 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.sexConcordance, row['sex_concordance'])
             self.assertEqual(metric.processingStatus, row['processing_status'])
             self.assertEqual(metric.meanCoverage, row['mean_coverage'])
+
+            self.assertEqual(metric.aw3ReadyFlag, 0)
+            self.assertIsNotNone(metric.aw3ManifestFileId)
+            self.assertEqual(metric.pipelineId, pipeline_id)
+            self.assertEqual(metric.processingCount, 1)
 
             # Test AW3 loaded into raw table
             aw3_dao = GenomicAW3RawDao()
@@ -6321,9 +6314,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertEqual(cloud_task.call_count, 5)
+        self.assertEqual(cloud_task.call_count, 4)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 5)
+        self.assertEqual(len(call_args), 4)
 
         for i, call_arg_data in enumerate(call_args):
             call_arg_data = call_arg_data.args[0]
@@ -6333,12 +6326,6 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertIsNotNone(member_ids)
                 self.assertTrue(len(set(member_ids)) == len(member_ids))
                 self.assertEqual(field, 'aw3ManifestJobRunID')
-            if i == 4:
-                member_ids = call_arg_data.get('member_ids')
-                field = call_arg_data.get('field')
-                self.assertIsNotNone(member_ids)
-                self.assertTrue(len(set(member_ids)) == len(member_ids))
-                self.assertEqual(field, 'aw3ManifestFileId')
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -6542,9 +6529,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertEqual(cloud_task.call_count, 4)
+        self.assertEqual(cloud_task.call_count, 3)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 4)
+        self.assertEqual(len(call_args), 3)
 
         for i, call_arg_data in enumerate(call_args):
             call_arg_data = call_arg_data.args[0]
@@ -6554,12 +6541,6 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertIsNotNone(member_ids)
                 self.assertTrue(len(set(member_ids)) == len(member_ids))
                 self.assertEqual(field, 'aw3ManifestJobRunID')
-            if i == 3:
-                member_ids = call_arg_data.get('member_ids')
-                field = call_arg_data.get('field')
-                self.assertIsNotNone(member_ids)
-                self.assertTrue(len(set(member_ids)) == len(member_ids))
-                self.assertEqual(field, 'aw3ManifestFileId')
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
