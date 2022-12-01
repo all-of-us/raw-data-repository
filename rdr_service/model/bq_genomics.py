@@ -450,6 +450,8 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     aw3_ready_flag = BQField('aw3_ready_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     aw3_manifest_job_run_id = BQField('aw3_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
                                       BQFieldModeEnum.NULLABLE)
+    aw3_manifest_file_id = BQField('aw3_manifest_file_id', BQFieldTypeEnum.INTEGER,
+                                   BQFieldModeEnum.NULLABLE)
     aw4_manifest_job_run_id = BQField('aw4_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
                                       BQFieldModeEnum.NULLABLE)
 
