@@ -47,6 +47,16 @@ def upgrade_rdr():
     op.create_foreign_key(None, 'genomic_gc_validation_metrics', 'genomic_manifest_file', ['aw3_manifest_file_id'], ['id'])
     op.create_foreign_key(None, 'genomic_gc_validation_metrics', 'genomic_job_run', ['aw4_manifest_job_run_id'], ['id'])
     op.create_foreign_key(None, 'genomic_gc_validation_metrics', 'genomic_job_run', ['aw3_manifest_job_run_id'], ['id'])
+
+    op.execute(
+        """
+        Update genomic_gc_validation_metrics m
+        Inner join genomic_set_member gsm
+            On gsm.id = m.genomic_set_member_id
+        Set m.pipeline_id = 'dragen_3.4.12'
+        Where gsm.genome_type = 'aou_wgs'
+        """
+    )
     # ### end Alembic commands ###
 
 
