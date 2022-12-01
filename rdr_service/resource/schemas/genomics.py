@@ -308,6 +308,11 @@ class GenomicGCValidationMetricsSchema(Schema):
     mapped_reads_pct = fields.String(validate=validate.Length(max=10))
     pipeline_id = fields.String(validate=validate.Length(max=255))
     contamination_category_str = fields.String(validate=validate.Length(max=64))
+    # DA-3072, PDR-1435 - WGS Reprocessing and Pipeline Upgrade columns
+    processing_count = fields.Int32()
+    aw3_ready_flag = fields.Int16()
+    aw3_manifest_job_run_id = fields.Int32()
+    aw4_manifest_job_run_id = fields.Int32()
 
     class Meta:
         schema_id = SchemaID.genomic_gc_validation_metrics

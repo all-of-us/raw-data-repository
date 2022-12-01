@@ -445,6 +445,13 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     pipeline_id = BQField('pipeline_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     contamination_category_str = BQField('contamination_category_str', BQFieldTypeEnum.STRING,
                                          BQFieldModeEnum.NULLABLE)
+    # DA-3072, PDR-1435 - WGS Reprocessing and Pipeline Upgrade columns
+    processing_count = BQField('processing_count', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    aw3_ready_flag = BQField('aw3_ready_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    aw3_manifest_job_run_id = BQField('aw3_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
+                                      BQFieldModeEnum.NULLABLE)
+    aw4_manifest_job_run_id = BQField('aw4_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
+                                      BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicGCValidationMetrics(BQTable):
