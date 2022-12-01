@@ -7,13 +7,6 @@ from tests.helpers.unittest_base import BaseTestCase
 
 
 class TestEnvironment(BaseTestCase):
-    """
-    Test our python environment
-    """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.uses_database = False
-
     def test_python_version(self):
         """ Make sure we are using Python 3.7 or higher """
         self.assertEqual(sys.version_info[0], 3)
