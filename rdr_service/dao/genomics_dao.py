@@ -2347,28 +2347,29 @@ class GenomicSchedulingDao(BaseDao):
 
     def get_latest_scheduling_data(self, participant_id=None, start_date=None, end_date=None, module=None):
         max_appointment_id_subquery = sqlalchemy.orm.Query(
-            functions.max(GenomicAppointmentEvent.appointment_id).label(
+            [functions.max(GenomicAppointmentEvent.appointment_id).label(
                 'max_appointment_id'
-            )
-        ).filter(
-            GenomicAppointmentEvent.event_type.notlike('%note_available')
+            ),
+                GenomicAppointmentEvent.participant_id,
+                GenomicAppointmentEvent.module_type]
         ).group_by(
             GenomicAppointmentEvent.participant_id,
             GenomicAppointmentEvent.module_type
         ).subquery()
 
         max_event_authored_time_subquery = sqlalchemy.orm.Query(
-            functions.max(GenomicAppointmentEvent.event_authored_time).label(
+            [functions.max(GenomicAppointmentEvent.event_authored_time).label(
                 'max_event_authored_time'
-            )
-        ).filter(
-            GenomicAppointmentEvent.event_type.notlike('%note_available')
+            ),
+                GenomicAppointmentEvent.participant_id,
+                GenomicAppointmentEvent.module_type]
         ).group_by(
             GenomicAppointmentEvent.participant_id,
             GenomicAppointmentEvent.module_type
         ).subquery()
 
         note_alias = aliased(GenomicAppointmentEvent)
+        event_alias = aliased(GenomicAppointmentEvent)
 
         with self.session() as session:
             records = session.query(
@@ -2389,17 +2390,39 @@ class GenomicSchedulingDao(BaseDao):
                     ],
                     else_=False
                 ).label('note_available'),
+            ).join(
+                max_event_authored_time_subquery,
+                and_(
+                    GenomicAppointmentEvent.participant_id == max_event_authored_time_subquery.c.participant_id,
+                    GenomicAppointmentEvent.module_type == max_event_authored_time_subquery.c.module_type,
+                )
+            ).join(
+                max_appointment_id_subquery,
+                and_(
+                    GenomicAppointmentEvent.participant_id == max_appointment_id_subquery.c.participant_id,
+                    GenomicAppointmentEvent.module_type == max_appointment_id_subquery.c.module_type,
+                )
             ).outerjoin(
                 note_alias,
                 and_(
-                    note_alias.appointment_id == GenomicAppointmentEvent.appointment_id,
-                    note_alias.event_type.like('%note_available')
+                    note_alias.event_type.like('%note_available'),
+                    note_alias.participant_id == GenomicAppointmentEvent.participant_id,
+                    note_alias.module_type == GenomicAppointmentEvent.module_type,
+                    note_alias.appointment_id == max_appointment_id_subquery.c.max_appointment_id
+                )
+            ).outerjoin(
+                event_alias,
+                and_(
+                    event_alias.event_type.notlike('%note_available'),
+                    event_alias.participant_id == GenomicAppointmentEvent.participant_id,
+                    event_alias.module_type == GenomicAppointmentEvent.module_type,
+                    GenomicAppointmentEvent.event_authored_time < event_alias.event_authored_time
                 )
             ).filter(
                 and_(
                     GenomicAppointmentEvent.appointment_id == max_appointment_id_subquery.c.max_appointment_id,
-                    GenomicAppointmentEvent.event_authored_time ==
-                    max_event_authored_time_subquery.c.max_event_authored_time
+                    event_alias.id.is_(None),
+                    GenomicAppointmentEvent.event_type.notlike('%note_available')
                 )
             )
 
@@ -2413,7 +2436,8 @@ class GenomicSchedulingDao(BaseDao):
                 )
             if start_date:
                 records = records.filter(
-                    GenomicAppointmentEvent.event_authored_time > start_date,
+                    or_(GenomicAppointmentEvent.event_authored_time > start_date,
+                        note_alias.event_authored_time > start_date),
                     GenomicAppointmentEvent.event_authored_time < end_date
                 )
 
