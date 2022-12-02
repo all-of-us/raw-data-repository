@@ -54,6 +54,8 @@ class ConsentFileAbstractFactory(ABC):
             return self._build_ehr_consent(blob_wrapper)
         elif self._is_gror_consent(blob_wrapper):
             return self._build_gror_consent(blob_wrapper)
+        elif self._is_etm_consent(blob_wrapper):
+            return self._build_etm_consent(blob_wrapper)
 
     def get_primary_consents(self) -> List['PrimaryConsentFile']:
         return [
@@ -97,6 +99,13 @@ class ConsentFileAbstractFactory(ABC):
             if self._is_wear_consent(blob_wrapper)
         ]
 
+    def get_etm_consents(self) -> List['EtmConsentFile']:
+        return [
+            self._build_etm_consent(blob_wrapper)
+            for blob_wrapper in self.consent_blobs
+            if self._is_etm_consent(blob_wrapper)
+        ]
+
     def get_from_path(self, file_path: str, consent_date=None) -> 'ConsentFile':
         wrapper = None
         for consent in self.consent_blobs:
@@ -115,6 +124,8 @@ class ConsentFileAbstractFactory(ABC):
             return self._build_primary_update_consent(wrapper, consent_date=consent_date)
         elif self._is_wear_consent(wrapper):
             return self._build_wear_consent(wrapper)
+        elif self._is_etm_consent(wrapper):
+            return self._build_etm_consent(wrapper)
 
     @abstractmethod
     def _is_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
@@ -141,6 +152,10 @@ class ConsentFileAbstractFactory(ABC):
         ...
 
     @abstractmethod
+    def _is_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        ...
+
+    @abstractmethod
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         ...
 
@@ -163,6 +178,10 @@ class ConsentFileAbstractFactory(ABC):
 
     @abstractmethod
     def _build_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'WearConsentFile':
+        ...
+
+    @abstractmethod
+    def _build_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EtmConsentFile':
         ...
 
     @abstractmethod
@@ -214,6 +233,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
     def _is_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         raise NotImplementedError('Wear consent validation not implemented for Vibrent')
 
+    def _is_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        return basename(blob_wrapper.blob.name).startswith('EtM')
+
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return VibrentPrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
@@ -236,6 +258,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
 
     def _build_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'WearConsentFile':
         raise NotImplementedError('Wear consent validation not implemented for Vibrent')
+
+    def _build_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EtmConsentFile':
+        return VibrentEtmConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['vibrent']
@@ -299,6 +324,9 @@ class CeConsentFactory(ConsentFileAbstractFactory):
             'All of Us Wearable\nStudy'
         )])
 
+    def _is_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        return False
+
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return CePrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
@@ -317,6 +345,9 @@ class CeConsentFactory(ConsentFileAbstractFactory):
 
     def _build_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'WearConsentFile':
         return CeWearConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
+
+    def _build_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EtmConsentFile':
+        pass
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['careevolution']
@@ -432,6 +463,10 @@ class GrorConsentFile(ConsentFile, ABC):
     @abstractmethod
     def _get_confirmation_check_elements(self):
         ...
+
+
+class EtmConsentFile(ConsentFile, ABC):
+    ...
 
 
 class PrimaryConsentUpdateFile(PrimaryConsentFile, ABC):
@@ -683,6 +718,28 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
         return self.pdf.get_elements_intersecting_box(
             Rect.from_edges(left=350, right=500, bottom=45, top=50),
             page=self._get_signature_page()
+        )
+
+
+class VibrentEtmConsentFile(EtmConsentFile):
+    _SIGNATURE_PAGE = 7
+
+    def _get_signature_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=150, right=400, bottom=155, top=160),
+            page=self._SIGNATURE_PAGE
+        )
+
+    def _get_date_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=130, right=400, bottom=110, top=115),
+            page=self._SIGNATURE_PAGE
+        )
+
+    def _get_printed_name_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=350, right=500, bottom=45, top=50),
+            page=self._SIGNATURE_PAGE
         )
 
 

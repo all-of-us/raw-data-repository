@@ -80,7 +80,10 @@ from rdr_service.code_constants import (
     NON_VA_PRIMARY_RECONSENT_QUESTION,
     VA_EHR_RECONSENT_QUESTION_CODE,
     AGREE_YES,
-    AGREE_NO
+    AGREE_NO,
+    ETM_CONSENT_QUESTION_CODE,
+    ETM_YES_ANSWER_CODE,
+    ETM_NO_ANSWER_CODE
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -893,6 +896,16 @@ class QuestionnaireResponseDao(BaseDao):
                                 QuestionnaireStatus.SUBMITTED_NO_CONSENT
                             participant_summary.consentForElectronicHealthRecordsAuthored = authored
                             participant_summary.consentForElectronicHealthRecordsTime = questionnaire_response.created
+                    elif code.value.lower() == ETM_CONSENT_QUESTION_CODE:
+                        answer_value = code_dao.get(answer.valueCodeId).value
+                        if answer_value.lower() == ETM_YES_ANSWER_CODE:
+                            self.consents_provided.append(ConsentType.ETM)
+                            participant_summary.consentForEtM = QuestionnaireStatus.SUBMITTED
+                        elif answer_value.lower() == ETM_NO_ANSWER_CODE:
+                            participant_summary.consentForEtM = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+
+                        participant_summary.consentForEtMTime = questionnaire_response.created
+                        participant_summary.consentForEtMAuthored = authored
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
         # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.

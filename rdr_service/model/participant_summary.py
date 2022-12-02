@@ -791,6 +791,22 @@ class ParticipantSummary(Base):
     regardless of when it was sent to RDR
     """
 
+    consentForEtM = Column("consent_for_etm", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
+    """
+    Indicates whether the participant has consented to the Exploring the Mind consent questionnaire
+
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+
+    consentForEtMTime = Column("consent_for_etm_time", UTCDateTime)
+    """Indicates the time at which the RDR received notice of consentForEtM"""
+
+    consentForEtMAuthored = Column("consent_for_etm_authored", UTCDateTime)
+    """
+    Indicates the time at which the participant completed Exploring the Mind consent,
+    regardless of when it was sent to RDR
+    """
+
     questionnaireOnOverallHealth = Column(
         "questionnaire_on_overall_health", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )

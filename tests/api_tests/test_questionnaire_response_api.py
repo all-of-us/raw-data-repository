@@ -1682,6 +1682,63 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(summary['questionnaireOnLifeFunctioningAuthored'], '2022-09-06T14:32:28')
         self.assertEqual(summary['questionnaireOnLifeFunctioningTime'], '2022-09-07T01:02:03')
 
+    def test_etm_consent(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id, language="es")
+
+        participant = self.send_get("Participant/%s" % participant_id)
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+
+        expected = dict(participant_summary_default_values_no_basics)
+        expected.update({
+            "genderIdentity": "UNSET",
+            "firstName": self.first_name,
+            "lastName": self.last_name,
+            "email": self.email,
+            "streetAddress": self.streetAddress,
+            "streetAddress2": self.streetAddress2,
+            "numCompletedPPIModules": 0,
+            "numCompletedBaselinePPIModules": 0,
+            "biobankId": participant["biobankId"],
+            "participantId": participant_id,
+            "consentForStudyEnrollmentTime": TIME_1.isoformat(),
+            "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
+            "primaryLanguage": "es",
+            "signUpTime": TIME_1.isoformat(),
+            "consentCohort": str(ParticipantCohort.COHORT_1),
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
+            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
+        })
+        self.assertJsonResponseMatches(expected, summary)
+
+        # verify if the response is not consent, the primary language will not change
+        questionnaire_id = self.create_questionnaire("consent_for_etm_question.json")
+
+        resource = self._load_response_json("consent_for_etm_resp.json", questionnaire_id, participant_id)
+        resource['authored'] = TIME_1.isoformat()
+
+        self._save_codes(resource)
+        self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['consentForEtM'], 'SUBMITTED')
+
+        resource = self._load_response_json("consent_for_etm_no.json", questionnaire_id, participant_id)
+        resource['authored'] = TIME_3.isoformat()
+
+        with FakeClock(TIME_3):
+            self._save_codes(resource)
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['semanticVersionForPrimaryConsent'], 'v1')
+        self.assertEqual(summary['consentForEtM'], 'SUBMITTED_NO_CONSENT')
+        self.assertEqual(summary['consentForEtMTime'], TIME_3.isoformat())
+        self.assertEqual(summary['consentForEtMAuthored'], TIME_3.isoformat())
+
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
         with open(data_path(template_file_name)) as fd:
