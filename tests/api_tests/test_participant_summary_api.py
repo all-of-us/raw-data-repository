@@ -77,6 +77,7 @@ participant_summary_default_values = {
     "consentForElectronicHealthRecords": "UNSET",
     "consentForStudyEnrollment": "SUBMITTED",
     "consentForCABoR": "UNSET",
+    "consentForEtM": "UNSET",
     "questionnaireOnFamilyHealth": "UNSET",
     "questionnaireOnHealthcareAccess": "UNSET",
     "questionnaireOnMedicalHistory": "UNSET",
