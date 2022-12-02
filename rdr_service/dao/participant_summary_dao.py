@@ -1347,6 +1347,42 @@ class ParticipantSummaryDao(UpdatableDao):
             )
             session.execute(query, {'file_upload_date': upload_date})
 
+    @classmethod
+    def update_profile_data(cls, participant_id: int, **kwargs):
+        instance = ParticipantSummaryDao()
+
+        with instance.session() as session:
+            summary: ParticipantSummary = instance.get_with_session(
+                session=session,
+                obj_id=participant_id,
+                for_update=True
+            )
+
+            field_map = {
+                'first_name': 'firstName',
+                'middle_name': 'middleName',
+                'last_name': 'lastName',
+                'phone_number': 'phoneNumber',
+                'email': 'email',
+                'birthdate': 'dateOfBirth',
+                'address_line1': 'streetAddress',
+                'address_line2': 'streetAddress2',
+                'address_city': 'city',
+                'address_zip_code': 'zipCode',
+                'preferred_language': 'primaryLanguage'
+            }
+            for param_name, model_name in field_map.items():
+                if param_name in kwargs:
+                    setattr(summary, model_name, kwargs[param_name])
+
+            if 'address_state' in kwargs:
+                state_str = kwargs['address_state']
+                state_code: Code = session.query(Code).filter(
+                    Code.value == f'PIIState_{state_str}'
+                ).one_or_none()
+                summary.stateId = state_code.codeId if state_code else None
+
+
 
 def _initialize_field_type_sets():
     """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are

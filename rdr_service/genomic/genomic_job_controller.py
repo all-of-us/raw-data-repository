@@ -120,6 +120,7 @@ class GenomicJobController:
         self.missing_files_dao = GenomicGcDataFileMissingDao()
         self.message_broker_event_dao = MessageBrokenEventDataDao()
         self.event_dao = UserEventMetricsDao()
+        self.query_dao = GenomicQueriesDao()
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
@@ -1414,7 +1415,7 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def generate_manifest(self, manifest_type, _genome_type, **kwargs):
+    def generate_manifest(self, manifest_type, genome_type, **kwargs):
         """
         Creates Genomic manifest using ManifestCompiler component
         """
@@ -1434,7 +1435,7 @@ class GenomicJobController:
                 version_num = kwargs['feedback_record'].version
                 result = self.manifest_compiler.generate_and_transfer_manifest(
                     manifest_type,
-                    _genome_type,
+                    genome_type,
                     version=version_num + 1,
                     input_manifest=input_manifest
                 )
@@ -1442,7 +1443,8 @@ class GenomicJobController:
             else:
                 result = self.manifest_compiler.generate_and_transfer_manifest(
                     manifest_type,
-                    _genome_type
+                    genome_type,
+                    pipeline_id=kwargs.get('pipeline_id')
                 )
 
             if result.get('code') == GenomicSubProcessResult.NO_FILES:
@@ -1453,39 +1455,38 @@ class GenomicJobController:
                     and self.manifests_generated:
 
                 now_time = datetime.utcnow()
-
                 for manifest in self.manifests_generated:
                     compiled_file_name = manifest["file_path"].split(f'{self.bucket_name}/')[-1]
                     logging.info(f'Manifest created: {compiled_file_name}')
                     new_manifest_record = self.manifest_file_dao.get_manifest_file_from_filepath(manifest['file_path'])
 
                     if not new_manifest_record:
-                        # Insert manifest_file record
-                        new_manifest_obj = GenomicManifestFile(
-                            uploadDate=now_time,
-                            manifestTypeId=manifest_type,
-                            manifestTypeIdStr=manifest_type.name,
-                            filePath=manifest['file_path'],
-                            bucketName=self.bucket_name,
-                            recordCount=manifest['record_count'],
-                            rdrProcessingComplete=1,
-                            rdrProcessingCompleteDate=now_time,
-                            fileName=manifest['file_path'].split('/')[-1]
+                        # MANIFEST record created
+                        new_manifest_record = self.manifest_file_dao.insert(
+                            GenomicManifestFile(
+                                uploadDate=now_time,
+                                manifestTypeId=manifest_type,
+                                manifestTypeIdStr=manifest_type.name,
+                                filePath=manifest['file_path'],
+                                bucketName=self.bucket_name,
+                                recordCount=manifest['record_count'],
+                                rdrProcessingComplete=1,
+                                rdrProcessingCompleteDate=now_time,
+                                fileName=manifest['file_path'].split('/')[-1]
+                            )
                         )
-                        new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
 
-                    # update feedback records if manifest is a feedback manifest
+                    # MANIFEST FEEDBACK record updated
                     if "feedback_record" in kwargs.keys():
                         r = kwargs['feedback_record']
                         r.feedbackManifestFileId = new_manifest_record.id
                         r.feedbackComplete = 1
                         r.version += 1
                         r.feedbackCompleteDate = now_time
-
                         with self.manifest_feedback_dao.session() as session:
                             session.merge(r)
 
-                    # Insert the file_processed record
+                    # FILE Processed record
                     self.file_processed_dao.insert_file_record(
                         self.job_run.id,
                         f'{self.bucket_name}/{self.manifest_compiler.output_file_name}',
@@ -1497,36 +1498,35 @@ class GenomicJobController:
                         manifest_file_id=new_manifest_record.id
                     )
 
-                    file_record_attr = self.update_member_file_record(manifest_type)
-                    if self.member_ids_for_update and file_record_attr:
-                        self.execute_cloud_task({
-                            'member_ids': self.member_ids_for_update,
-                            'field': file_record_attr,
-                            'value': new_manifest_record.id,
-                        }, 'genomic_set_member_update_task')
+                    # MEMBER/METRICS AW3 Manifest file record update
+                    self.process_research_manifest_record_updates(
+                        manifest_type,
+                        manifest_id=new_manifest_record.id,
+                        pipeline_id=kwargs.get('pipeline_id')
+                    )
 
-                    self.subprocess_results.add(result["code"])
+                    self.subprocess_results.add(result.get('code'))
 
             self.job_result = result.get('code')
 
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def reconcile_report_states(self, _genome_type=None):
+    def reconcile_report_states(self, genome_type=None):
         """
         Wrapper for the Reconciler reconcile_report_states_for_consent_removal
         and reconcile_rhp_report_states
-        :param _genome_type: array or wgs
+        :param genome_type: array or wgs
         """
 
         self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, controller=self)
 
-        if _genome_type == GENOME_TYPE_ARRAY:
+        if genome_type == GENOME_TYPE_ARRAY:
             workflow_states = [GenomicWorkflowState.GEM_RPT_READY,
                                GenomicWorkflowState.A1,
                                GenomicWorkflowState.A2]
 
-        elif _genome_type == GENOME_TYPE_WGS:
+        elif genome_type == GENOME_TYPE_WGS:
             workflow_states = [GenomicWorkflowState.CVL_READY]
 
         else:
@@ -1814,22 +1814,41 @@ class GenomicJobController:
             logging.error(e)
             self.job_result = GenomicSubProcessResult.ERROR
 
-    @staticmethod
-    def update_member_file_record(manifest_type):
-        file_attr = None
+    def process_research_manifest_record_updates(self, manifest_type, **kwargs):
+        if manifest_type not in [
+            GenomicManifestTypes.AW3_ARRAY, GenomicManifestTypes.AW3_WGS
+        ]:
+            return
 
-        attributes_map = {
-            GenomicManifestTypes.AW3_ARRAY: 'aw3ManifestFileId',
-            GenomicManifestTypes.AW3_WGS: 'aw3ManifestFileId'
-        }
-        if manifest_type in attributes_map.keys():
-            file_attr = attributes_map[manifest_type]
+        if self.member_ids_for_update:
+            process_metrics = self.metrics_dao.get_bulk_metrics_for_process_update(
+                member_ids=self.member_ids_for_update,
+                pipeline_id=kwargs.get('pipeline_id')
+            )
+            members_to_update, metrics_to_update = [], []
 
-        return file_attr
+            for member_id in self.member_ids_for_update:
+                member_dict = {
+                    'id': member_id,
+                    'aw3ManifestFileId': kwargs.get('manifest_id')
+                }
+                members_to_update.append(member_dict)
+            self.member_dao.bulk_update(members_to_update)
+
+            for metric in process_metrics:
+                metric_dict = {
+                    'id': metric.id,
+                    'aw3ReadyFlag': 0,
+                    'aw3ManifestJobRunID': self.job_run.id,
+                    'aw3ManifestFileId': kwargs.get('manifest_id'),
+                    'processingCount': metric.processingCount + 1
+                }
+                metrics_to_update.append(metric_dict)
+            self.metrics_dao.bulk_update(metrics_to_update)
+        return
 
     def check_w1il_gror_resubmit(self, since_datetime):
-        dao = GenomicQueriesDao()
-        participant_list = dao.get_w1il_yes_no_yes_participants(start_datetime=since_datetime)
+        participant_list = self.query_dao.get_w1il_yes_no_yes_participants(start_datetime=since_datetime)
 
         logging.warning(
             f'The following {len(participant_list)} participants '
@@ -1854,8 +1873,7 @@ class GenomicJobController:
         self.job_result = GenomicSubProcessResult.SUCCESS
 
     def check_results_withdrawals(self):
-        query_dao = GenomicQueriesDao()
-        result_withdrawals = query_dao.get_results_withdrawn_participants()
+        result_withdrawals = self.query_dao.get_results_withdrawn_participants()
 
         if not result_withdrawals:
             logging.info('There are no new withdrawal records in the genomic results pipeline')
@@ -1893,16 +1911,21 @@ class GenomicJobController:
 
     def check_aw3_ready_missing_files(self):
         """ Runs report to email list of samples that are ready for AW3 manifest generation but missing data files"""
-        genomics_dao = GenomicQueriesDao()
         notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
 
-        array_missing_data = genomics_dao.get_aw3_array_records(return_missing_files=True)
-        wgs_missing_data = genomics_dao.get_aw3_wgs_records(return_missing_files=True)
+        array_missing_data = self.query_dao.get_missing_data_files_for_aw3(
+            genome_type=config.GENOME_TYPE_ARRAY
+        )
+        wgs_missing_data = self.query_dao.get_missing_data_files_for_aw3(
+            genome_type=config.GENOME_TYPE_WGS
+        )
         if notification_email_address and any((array_missing_data, wgs_missing_data)):
             message = 'The following samples matched AW3 manifest criteria except for the data file count:\n\n'
-            message += 'sample_id,genome_type\n'
-            message += '\n'.join([f'{f[1]},aou_array' for f in array_missing_data])
-            message += '\n'.join([f'{f[1]},aou_wgs' for f in wgs_missing_data])
+            message += 'sample_id, genome_type\n'
+            message += '\n'.join([f'{f[0]}, aou_array' for f in array_missing_data])
+            message += '\n'
+            message += '\n'.join([f'{f[0]}, aou_wgs' for f in wgs_missing_data])
+            message += '\n'
             EmailService.send_email(
                 Email(
                     recipients=notification_email_address,
