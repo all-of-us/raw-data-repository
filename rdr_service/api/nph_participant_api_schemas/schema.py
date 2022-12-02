@@ -7,10 +7,9 @@ from graphene import (
     NonNull,
     Field,
     List,
-    Interface
+    Schema
 )
 from graphene import relay
-
 from rdr_service.api.nph_participant_api_schemas import db
 
 
@@ -21,558 +20,111 @@ class Event(ObjectType):
     time = NonNull(DateTime)
 
 
-class EventInterface(Interface):
-    """ NPH Participant Event Status """
-
-    value = NonNull(String)
-    time = NonNull(DateTime)
-
-
-class EventObjectType(ObjectType):
+class EventCollection(ObjectType):
     current = Field(Event)
     # TODO: historical field need to sort by newest to oldest for a given aspect of a participant’s data
-    historical = List(Event, default_value=[])
-
-
-class EventCollection(Interface):
-    """ List of a NPH Participant Event including historical events sort by newest to oldest """
-
-    current = Field(Event)
-    # TODO: historical field need to sort by newest to oldest for a given aspect of a participant’s data
-    historical = List(Event, default_value=[])
+    historical = List(Event)
 
 
 class Sample(ObjectType):
-    parent = List(EventObjectType)
-    child = List(EventObjectType)
+    parent = List(EventCollection)
+    child = List(EventCollection)
 
 
-class SampleCollection(Interface):
+class SampleCollection(ObjectType):
     ordered = List(Sample)
     stored = List(Sample)
 
 
-#  BASED ON SAMPLE-COLLECTION interfaces
-class Sample8_5mLSSTS1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class Sample4mLSSTS1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class Sample8mLLHPSTP1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class Sample4_5mLLHPSTP1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class Sample2mLP800P1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class Sample10mLEDTAP1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class Sample6mLEDTAP1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class Sample4mLEDTAP1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleRU1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleRU2(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleRU3(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleTU1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleSA1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleSA2(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleHA1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleNA1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleNA2(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleST1(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleST2(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleST3(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class SampleST4(ObjectType):
-    class Meta:
-        interfaces = (SampleCollection, )
-
-
-class AouBasicsQuestionnaire(ObjectType):
-    class Meta:
-        interfaces = (EventInterface, )
-
-
-class AouOverallHealthQuestionnaire(ObjectType):
-    class Meta:
-        interfaces = (EventInterface, )
-
-
-class AouLifestyleQuestionnaire(ObjectType):
-    class Meta:
-        interfaces = (EventInterface, )
-
-
-#  BASED ON EVENT-COLLECTION interfaces
-class InformedConsentModule1(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class InformedConsentModule2(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class InformedConsentModule3(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class RetrospectiveVisualAnalogueScales(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class EatingInventory(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class FoodCravingInventory(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class MultifactorialAssessmentOfEatingDisordersSymptoms(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class IntuitiveEatingScale2(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class RepetitiveEatingQuestionnaire(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class BarrattImpulsivityScale11(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class DietSatisfactionQuestionnaire(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class WeightHistoryQuestionnaire(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class NhanesSleepDisorderQuestionnaire(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class MunichChronotypeQuestionnaire(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class MacArthurScaleOfSubjectiveSocialStatus(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class AouQualityOfLife(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class PatientHealthQuestionnaire(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class AouMentalHealthAndWellBeing(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class GeneralizedAnxietyDisorder(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class TenItemPersonalityInventory(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class ChildhoodAndAdultAdversityTrauma(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class ChildhoodAdverseEventsQuestionnaire(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class FiveTrialAdjustingDelayDiscountingTask(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class BirthAndBreastfeedingHistory(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class AouSocialDeterminantsOfHealth(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class FoodInsecurity(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class InformationAboutTheHousehold(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class SocialNetworksAndSocialCircles(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class Geolocation(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class EatingAttitudesAndBehaviors(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class ModifiedFoodCravingInventory(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class DietAcceptabilityScale(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class PerceivedStressScale(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class EligibilityEvaluation(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class Height(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class Weight(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class Circumference(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class VitalSigns(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class CgmApplicationRemoval(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class AccelerometerHrApplicationRemoval(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class Bia(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class DietHistoryQuestionnaire(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class Randomization(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class DietaryAssessmentOrientation(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class DietaryAssessment(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class AdverseEventEvaluation(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class LiquidMmtt(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class OnDietMealTest(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class VisualAnalogueScale(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class OnDietMealsProvided(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class GripStrength(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class Domicile(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class LongCorridorWalkPushTest(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class GutTransitTime(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class RestingMetabolicRate(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class DoublyLabeledWater(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class Dxa(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class PregnancyTest(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class Awardee(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class Organization(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class Site(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class EnrollmentStatus(ObjectType):
-    class Meta:
-        interfaces = (EventCollection, )
-
-
-class ParticipantSchema(ObjectType):
-
-    accelerometer_hr_application_removal = Field(AccelerometerHrApplicationRemoval)
-    adverse_event_evaluation = Field(AdverseEventEvaluation)
-    aou_basics_questionnaire = Field(AouBasicsQuestionnaire)
-    aou_overall_health_questionnaire = Field(AouOverallHealthQuestionnaire)
-    aou_lifestyle_questionnaire = Field(AouLifestyleQuestionnaire)
-    informed_consent_module_1 = Field(InformedConsentModule1)
-    informed_consent_module_2 = Field(InformedConsentModule2)
-    informed_consent_module_3 = Field(InformedConsentModule3)
-    retrospective_visual_analogue_scales = Field(RetrospectiveVisualAnalogueScales)
-    eating_inventory = Field(EatingInventory)
-    food_craving_inventory = Field(FoodCravingInventory)
+class Participant(ObjectType):
+
+    accelerometer_hr_application_removal = Field(EventCollection)
+    adverse_event_evaluation = Field(EventCollection)
+    aou_basics_questionnaire = Field(Event)
+    aou_overall_health_questionnaire = Field(Event)
+    aou_lifestyle_questionnaire = Field(Event)
+    informed_consent_module_1 = Field(EventCollection)
+    informed_consent_module_2 = Field(EventCollection)
+    informed_consent_module_3 = Field(EventCollection)
+    retrospective_visual_analogue_scales = Field(EventCollection)
+    eating_inventory = Field(EventCollection)
+    food_craving_inventory = Field(EventCollection)
     multifactorial_assessment_of_eating_disorders_symptoms = \
-        Field(MultifactorialAssessmentOfEatingDisordersSymptoms)
-    intuitive_eating_scale_2 = Field(IntuitiveEatingScale2)
-    repetitive_eating_questionnaire = Field(RepetitiveEatingQuestionnaire)
-    barratt_impulsivity_scale_11 = Field(BarrattImpulsivityScale11)
-    diet_satisfaction_questionnaire = Field(DietSatisfactionQuestionnaire)
-    weight_history_questionnaire = Field(WeightHistoryQuestionnaire)
-    nhanes_sleep_disorder_questionnaire = Field(NhanesSleepDisorderQuestionnaire)
-    munich_chronotype_questionnaire = Field(MunichChronotypeQuestionnaire)
-    mac_arthur_scale_of_subjective_social_status = Field(MacArthurScaleOfSubjectiveSocialStatus)
-    aou_quality_of_life = Field(AouQualityOfLife)
-    patient_health_questionnaire = Field(PatientHealthQuestionnaire)
-    aou_mental_health_and_well_being = Field(AouMentalHealthAndWellBeing)
-    generalized_anxiety_disorder = Field(GeneralizedAnxietyDisorder)
-    ten_item_personality_inventory = Field(TenItemPersonalityInventory)
-    childhood_and_adult_adversity_trauma = Field(ChildhoodAndAdultAdversityTrauma)
-    childhood_adverse_events_questionnaire = Field(ChildhoodAdverseEventsQuestionnaire)
-    five_trial_adjusting_delay_discounting_task = Field(FiveTrialAdjustingDelayDiscountingTask)
-    birth_and_breastfeeding_history = Field(BirthAndBreastfeedingHistory)
-    aou_social_determinants_of_health = Field(AouSocialDeterminantsOfHealth)
-    food_insecurity = Field(FoodInsecurity)
-    information_about_the_household = Field(InformationAboutTheHousehold)
-    social_networks_and_social_circles = Field(SocialNetworksAndSocialCircles)
-    geolocation = Field(Geolocation)
-    eating_attitudes_and_behaviors = Field(EatingAttitudesAndBehaviors)
-    modified_food_craving_inventory = Field(ModifiedFoodCravingInventory)
-    diet_acceptability_scale = Field(DietAcceptabilityScale)
-    perceived_stress_scale = Field(PerceivedStressScale)
-    eligibility_evaluation = Field(EligibilityEvaluation)
-    height = Field(Height)
-    weight = Field(Weight)
-    circumference = Field(Circumference)
-    vital_signs = Field(VitalSigns)
-    cgm_application_removal = Field(CgmApplicationRemoval)
-    bia = Field(Bia)
-    diet_history_questionnaire = Field(DietHistoryQuestionnaire)
-    randomization = Field(Randomization)
-    dietary_assessment_orientation = Field(DietaryAssessmentOrientation)
-    dietary_assessment = Field(DietaryAssessment)
-    liquid_mmtt = Field(LiquidMmtt)
-    on_diet_meal_test = Field(OnDietMealTest)
-    visual_analogue_scale = Field(VisualAnalogueScale)
-    on_diet_meals_provided = Field(OnDietMealsProvided)
-    grip_strength = Field(GripStrength)
-    domicile = Field(Domicile)
-    long_corridor_walk_push_test = Field(LongCorridorWalkPushTest)
-    gut_transit_time = Field(GutTransitTime)
-    resting_metabolic_rate = Field(RestingMetabolicRate)
-    doubly_labeled_water = Field(DoublyLabeledWater)
-    dxa = Field(Dxa)
-    pregnancy_test = Field(PregnancyTest)
-    Awardee = Field(Awardee)
-    organization = Field(Organization)
-    site = Field(Site)
-    enrollment_status = Field(EnrollmentStatus)
-    sample_8_5ml_ssts_1 = Field(Sample8_5mLSSTS1)
-    sample_4ml_ssts_1 = Field(Sample4mLSSTS1)
-    sample_8_ml_lhpstp_1 = Field(Sample8mLLHPSTP1)
-    sample_4_5ml_lhpstp_1 = Field(Sample4_5mLLHPSTP1)
-    sample_2ml_p800p_1 = Field(Sample2mLP800P1)
-    sample_10ml_edtap_1 = Field(Sample10mLEDTAP1)
-    sample_6ml_edtap_1 = Field(Sample6mLEDTAP1)
-    sample_4ml_edtap_1 = Field(Sample4mLEDTAP1)
-    sample_ru_1 = Field(SampleRU1)
-    sample_ru_2 = Field(SampleRU2)
-    sample_ru_3 = Field(SampleRU3)
-    sample_tu_1 = Field(SampleTU1)
-    sample_sa_1 = Field(SampleSA1)
-    sample_sa_2 = Field(SampleSA2)
-    sample_ha_1 = Field(SampleHA1)
-    sample_na_1 = Field(SampleNA1)
-    sample_na_2 = Field(SampleNA2)
-    sample_st_1 = Field(SampleST1)
-    sample_st_2 = Field(SampleST2)
-    sample_st_3 = Field(SampleST3)
-    sample_st_4 = Field(SampleST4)
+        Field(EventCollection)
+    intuitive_eating_scale_2 = Field(EventCollection)
+    repetitive_eating_questionnaire = Field(EventCollection)
+    barratt_impulsivity_scale_11 = Field(EventCollection)
+    diet_satisfaction_questionnaire = Field(EventCollection)
+    weight_history_questionnaire = Field(EventCollection)
+    nhanes_sleep_disorder_questionnaire = Field(EventCollection)
+    munich_chronotype_questionnaire = Field(EventCollection)
+    mac_arthur_scale_of_subjective_social_status = Field(EventCollection)
+    aou_quality_of_life = Field(EventCollection)
+    patient_health_questionnaire = Field(EventCollection)
+    aou_mental_health_and_well_being = Field(EventCollection)
+    generalized_anxiety_disorder = Field(EventCollection)
+    ten_item_personality_inventory = Field(EventCollection)
+    childhood_and_adult_adversity_trauma = Field(EventCollection)
+    childhood_adverse_events_questionnaire = Field(EventCollection)
+    five_trial_adjusting_delay_discounting_task = Field(EventCollection)
+    birth_and_breastfeeding_history = Field(EventCollection)
+    aou_social_determinants_of_health = Field(EventCollection)
+    food_insecurity = Field(EventCollection)
+    information_about_the_household = Field(EventCollection)
+    social_networks_and_social_circles = Field(EventCollection)
+    geolocation = Field(EventCollection)
+    eating_attitudes_and_behaviors = Field(EventCollection)
+    modified_food_craving_inventory = Field(EventCollection)
+    diet_acceptability_scale = Field(EventCollection)
+    perceived_stress_scale = Field(EventCollection)
+    eligibility_evaluation = Field(EventCollection)
+    height = Field(EventCollection)
+    weight = Field(EventCollection)
+    circumference = Field(EventCollection)
+    vital_signs = Field(EventCollection)
+    cgm_application_removal = Field(EventCollection)
+    bia = Field(EventCollection)
+    diet_history_questionnaire = Field(EventCollection)
+    randomization = Field(EventCollection)
+    dietary_assessment_orientation = Field(EventCollection)
+    dietary_assessment = Field(EventCollection)
+    liquid_mmtt = Field(EventCollection)
+    on_diet_meal_test = Field(EventCollection)
+    visual_analogue_scale = Field(EventCollection)
+    on_diet_meals_provided = Field(EventCollection)
+    grip_strength = Field(EventCollection)
+    domicile = Field(EventCollection)
+    long_corridor_walk_push_test = Field(EventCollection)
+    gut_transit_time = Field(EventCollection)
+    resting_metabolic_rate = Field(EventCollection)
+    doubly_labeled_water = Field(EventCollection)
+    dxa = Field(EventCollection)
+    pregnancy_test = Field(EventCollection)
+    Awardee = Field(EventCollection)
+    organization = Field(EventCollection)
+    site = Field(EventCollection)
+    enrollment_status = Field(EventCollection)
+    sample_8_5ml_ssts_1 = Field(SampleCollection)
+    sample_4ml_ssts_1 = Field(SampleCollection)
+    sample_8_ml_lhpstp_1 = Field(SampleCollection)
+    sample_4_5ml_lhpstp_1 = Field(SampleCollection)
+    sample_2ml_p800p_1 = Field(SampleCollection)
+    sample_10ml_edtap_1 = Field(SampleCollection)
+    sample_6ml_edtap_1 = Field(SampleCollection)
+    sample_4ml_edtap_1 = Field(SampleCollection)
+    sample_ru_1 = Field(SampleCollection)
+    sample_ru_2 = Field(SampleCollection)
+    sample_ru_3 = Field(SampleCollection)
+    sample_tu_1 = Field(SampleCollection)
+    sample_sa_1 = Field(SampleCollection)
+    sample_sa_2 = Field(SampleCollection)
+    sample_ha_1 = Field(SampleCollection)
+    sample_na_1 = Field(SampleCollection)
+    sample_na_2 = Field(SampleCollection)
+    sample_st_1 = Field(SampleCollection)
+    sample_st_2 = Field(SampleCollection)
+    sample_st_3 = Field(SampleCollection)
+    sample_st_4 = Field(SampleCollection)
     first_name = Field(String)
     last_name = Field(String)
     onsite_id_verification_site = Field(String)
@@ -598,7 +150,6 @@ class ParticipantSchema(ObjectType):
     sex = Field(String, description='Participant')
     sexual_orientation = Field(String, description='Participant sexual orientation')
     last_modified = Field(Date)
-    # enrollment_status = Field(String)  TODO: Need to check with Kenny to confirm which one to use (vs Ln 85)
     ehr_consent_expire_status = Field(String)
     withdrawal_status = Field(String)
     withdrawal_reason = Field(String)
@@ -619,18 +170,40 @@ class ParticipantSchema(ObjectType):
     module_completed = Field(DateTime)
 
 
-class AllParticipantConnection(relay.Connection):
+class ParticipantConnection(relay.Connection):
     class Meta:
-        node = ParticipantSchema
+        node = Participant
 
-    total_count = Int()
-    result_count = Int()
+    total_count = Int() #1000
+    result_count = Int() #25
 
     def resolve_total_count(root, info, **kwargs):
         print(info, kwargs)
         return len(db.datas)
 
-    def resolve_result_count(root, info , **kwargs):
+    def resolve_result_count(root, info, **kwargs):
         print(info, kwargs)
         return len(root.edges)
+
+
+class ParticipantQuery(ObjectType):
+    class Meta:
+        interfaces = (relay.Node,)
+        connection_class = ParticipantConnection
+
+    participant = relay.ConnectionField(ParticipantConnection, nph_id=Int(required=False))
+
+
+    def resolve_participant(root, info, nph_id=None, **kwargs):
+        print(info, kwargs)
+        try:
+            if nph_id:
+                return [x for x in db.datas if nph_id == x.get("participant_nph_id")]
+            else:
+                return db.datas
+        except Exception as ex:
+            raise ex
+
+
+NPHParticipantSchema = Schema(query=ParticipantQuery)
 

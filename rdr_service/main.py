@@ -41,6 +41,7 @@ from rdr_service.api.research_projects_directory_api import ResearchProjectsDire
 from rdr_service.api.redcap_workbench_audit_api import RedcapResearcherAuditApi, RedcapWorkbenchAuditApi
 from rdr_service.api.message_broker_api import MessageBrokerApi
 from rdr_service.api.onsite_verification_api import OnsiteVerificationApi
+from rdr_service.api.nph_participant_api import nph_participant
 
 from rdr_service.services.flask import app, API_PREFIX, flask_warmup, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
@@ -390,6 +391,9 @@ api.add_resource(
 app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=flask_warmup, methods=["GET"])
 app.add_url_rule("/_ah/start", endpoint="start", view_func=flask_start, methods=["GET"])
 app.add_url_rule("/_ah/stop", endpoint="stop", view_func=flask_stop, methods=["GET"])
+
+
+app.add_url_rule(API_PREFIX + '/nph_participant', view_func=nph_participant, methods=["POST"])
 
 app.before_request(begin_request_logging)  # Must be first before_request() call.
 app.before_request(app_util.request_logging)
