@@ -1,0 +1,292 @@
+{
+    "resourceType": "Questionnaire",
+    "url": "https://research.joinallofus.org/fhir/emorecog",
+    "version": "EmoRecog_AoU.v1.Nov22",
+    "name": "emorecog",
+    "title": "TMB Multiracial Emotion Identification",
+    "status": "published",
+    "extension": [
+        {
+            "url": "https://research.joinallofus.org/fhir/metadata",
+            "valueCodeableConcept": {
+                "coding": [
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "response_device"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "user_agent"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "screen_height"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "screen_width"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "touch"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "operating_system"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "user_utc_offset"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_start_date_time"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_end_date_time"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_duration"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_restarted"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_version"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_name"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_short_name"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_params"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_language"
+                    }
+                ]
+            }
+        },
+        {
+            "url": "https://research.joinallofus.org/fhir/outcomes",
+            "valueCodeableConcept": {
+                "coding": [
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "score"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "accuracy"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "meanRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "medianRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "sdRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "happy_accuracy"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "happy_meanRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "happy_medianRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "happy_sdRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "angry_accuracy"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "angry_meanRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "angry_medianRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "angry_sdRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "fearful_accuracy"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "fearful_meanRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "fearful_medianRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "fearful_sdRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "sad_accuracy"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "sad_meanRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "sad_medianRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "sad_sdRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "any_timeouts"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "flag_medianRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "flag_sameResponse"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "flag_trialFlags"
+                    }
+                ]
+            }
+        }
+    ],
+    "group": [
+        {
+            "linkId": "1",
+            "required": true,
+            "question": [
+                {
+                    "linkId": "1.1",
+                    "text": "fearful1.jpg",
+                    "required": true,
+                    "repeats": true,
+                    "extension": [
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                        }
+                    ]
+                },
+                {
+                    "linkId": "1.2",
+                    "text": "angry1.jpg",
+                    "required": true,
+                    "repeats": true,
+                    "extension": [
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                        },
+                        {
+                            "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                            "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -3,6 +3,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import app_util
 from rdr_service.api.base_api import UpdatableApi
+from rdr_service.api.etm_api import ETM_OUTCOMES_EXT_URL, EtmApi
 from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.dao.code_dao import CodeDao
@@ -31,7 +32,19 @@ class QuestionnaireApi(UpdatableApi):
 
     @app_util.auth_required(PTC)
     def post(self):
-        return super(QuestionnaireApi, self).post()
+        # Detect if this is an EtM Questionnaire
+        request_json = request.json
+
+        if (
+            'extension' in request_json
+            and any(
+                extension.get('url') == ETM_OUTCOMES_EXT_URL
+                for extension in request_json['extension']
+            )
+        ):
+            return EtmApi.post_questionnaire(request_json)
+        else:
+            return super(QuestionnaireApi, self).post()
 
     @app_util.auth_required(PTC)
     def put(self, id_):
