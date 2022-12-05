@@ -1,6 +1,7 @@
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query
 
+from rdr_service.dao import database_factory
 from rdr_service.domain_model import etm as domain_model
 from rdr_service.model import etm as schema_model
 from rdr_service.repository import BaseRepository
@@ -16,17 +17,37 @@ class EtmQuestionnaireRepository(BaseRepository):
         schema_object.name = questionnaire.name
         schema_object.title = questionnaire.title
         schema_object.resource = questionnaire.resource_json
+        schema_object.version = self._get_next_version_number(questionnaire.questionnaire_type)
 
         self._add_to_session(schema_object)
         questionnaire.id = schema_object.etm_questionnaire_id
 
-
         # TODO: figure out version number
+
+    def _get_next_version_number(self, questionnaire_url):
+        previous_version_query = (
+            Query(schema_model.EtmQuestionnaire)
+            .filter(
+                schema_model.EtmQuestionnaire.questionnaire_type == questionnaire_url
+            ).order_by(schema_model.EtmQuestionnaire.version.desc())
+            .limit(1)
+        )
+
+        if self._session is None:
+            with database_factory.get_database().session() as session:
+                previous_version_query.session = session
+                previous_questionnaire = previous_version_query.one_or_none()
+        else:
+            previous_version_query.session = self._session
+            previous_questionnaire = previous_version_query.one_or_none()
+
+        if previous_questionnaire:
+            return previous_questionnaire.version + 1
+        else:
+            return 1
 
 
 class EtmResponseRepository(BaseRepository):
-    def __init__(self, session: Session = None):
-        self._session = session
 
     def store_response(self, response_obj: domain_model.EtmResponse):
         schema_object = schema_model.EtmQuestionnaireResponse()

@@ -47,7 +47,7 @@ class EtmApi:
         repository = etm_repository.EtmResponseRepository()
         repository.store_response(response_obj)
 
-        # TODO: perform validation and set version of questionnaire on response
+        # TODO: perform validation and set version of questionnaire used during validation on response
 
         return {
             'id': response_obj.id

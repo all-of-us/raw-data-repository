@@ -31,6 +31,25 @@ class EtmIngestionTest(BaseTestCase):
         self.assertEqual(questionnaire_json['name'], questionnaire_obj.name)
         self.assertEqual(questionnaire_json['title'], questionnaire_obj.title)
 
+    def test_questionnaire_versioning(self):
+        """Two questionnaires of the same type should receive different version numbers"""
+
+        with open(data_path('etm_questionnaire.json')) as file:
+            questionnaire_json = json.load(file)
+
+        first_response = self.send_post('Questionnaire', questionnaire_json)
+        second_response = self.send_post('Questionnaire', questionnaire_json)
+
+        first_questionnaire: etm.EtmQuestionnaire = self.session.query(etm.EtmQuestionnaire).filter(
+            etm.EtmQuestionnaire.etm_questionnaire_id == first_response['id']
+        ).one()
+        self.assertEqual(1, first_questionnaire.version)
+
+        second_questionnaire: etm.EtmQuestionnaire = self.session.query(etm.EtmQuestionnaire).filter(
+            etm.EtmQuestionnaire.etm_questionnaire_id == second_response['id']
+        ).one()
+        self.assertEqual(2, second_questionnaire.version)
+
     def test_questionnaire_response_ingestion(self):
         participant_id = self.data_generator.create_database_participant().participantId
 
