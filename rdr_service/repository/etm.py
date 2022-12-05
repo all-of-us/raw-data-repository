@@ -22,8 +22,6 @@ class EtmQuestionnaireRepository(BaseRepository):
         self._add_to_session(schema_object)
         questionnaire.id = schema_object.etm_questionnaire_id
 
-        # TODO: figure out version number
-
     def _get_next_version_number(self, questionnaire_url):
         previous_version_query = (
             Query(schema_model.EtmQuestionnaire)

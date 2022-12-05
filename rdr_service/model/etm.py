@@ -9,8 +9,6 @@ from rdr_service.participant_enums import QuestionnaireStatus
 
 
 class ExtensionType(messages.Enum):
-    """Given status of a questionnaire response"""
-
     METADATA = 0
     OUTCOME = 1
 
@@ -21,10 +19,7 @@ class EtmQuestionnaire(Base):
     created = sa.Column(UTCDateTime)
     modified = sa.Column(UTCDateTime)
     questionnaire_type = sa.Column(sa.String(100))
-
     version = sa.Column(sa.Integer)
-    # TODO: increments with newer values when another questionnaire of the same questionnaire_type is sent
-
     semantic_version = sa.Column(sa.String(100))
     name = sa.Column(sa.String(100))
     title = sa.Column(sa.String(100))

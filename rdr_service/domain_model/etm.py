@@ -35,8 +35,6 @@ class EtmResponse:
     answer_list: List['EtmResponseAnswer'] = None
     version: int = None  # TODO: needs to be set to the version of the questionnaire that was checked against
 
-    questionnaire_id: str = None  # TODO: unclear what this is or where it comes from
-
 
 @dataclass
 class EtmResponseExtension:
@@ -54,7 +52,3 @@ class EtmResponseAnswer:
     answer: str
 
     id: int = None
-
-
-
-
