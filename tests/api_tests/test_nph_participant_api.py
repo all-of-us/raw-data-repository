@@ -5,8 +5,10 @@ import names
 import faker
 from datetime import datetime
 from itertools import zip_longest
+from graphql import GraphQLSyntaxError
 
 from rdr_service.api.nph_participant_api_schemas.schema import NPHParticipantSchema
+import rdr_service.api.nph_participant_api as api
 
 fake = faker.Faker()
 
@@ -72,14 +74,29 @@ query_99 = '''{ participant{ totalCount resultCount pageInfo { startCursor endCu
 aouBasicsQuestionnaire{value time} sampleSa1{ordered{parent{current{value time}}} }} } } }'''
 
 query_with_id = '''{ participant(nphId: 25){ totalCount resultCount pageInfo { startCursor endCursor hasNextPage }edges
-{ node {firstName lastName streetAddress foodInsecurity{current{value time} historical{value time}}
+{ node {participantNphId firstName lastName streetAddress foodInsecurity{current{value time} historical{value time}}
 aouBasicsQuestionnaire{value time} sampleSa1{ordered{parent{current{value time}}} }} } } }'''
+
+query_with_syntax_error = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
+{ startCursor endCursor hasNextPage }edges{ node {firstName lastName streetAddress
+foodInsecurity{current{value time} historical{value time}}aouBasicsQuestionnaire{value time}
+sampleSa1{ordered{parent{current{value time}}} }} } } '''
+
+query_with_field_error = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
+{ startCursor endCursor hasNextPage }edges{ node {firstName lastName streetAddres
+foodInsecurity{current{value time} historical{value time}}aouBasicsQuestionnaire{value time}
+sampleSa1{ordered{parent{current{value time}}} }} } } }'''
+
+query_with_multiple_fields_error = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
+{ startCursor endCursor hasNextPage }edges{ node {firstNam lastNam streetAddres
+foodIsecurity{current{value time} historical{value time}} aouBasicsQuestionnaire{value time}
+sampleSa1{ordered{parent{current{value time}}} }} } } }'''
 
 
 class TestQueryExecution(TestCase):
 
     @patch('rdr_service.api.nph_participant_api_schemas.schema.db')
-    def test_client(self, mock_datas):
+    def test_client_good_result_check_length(self, mock_datas):
         mock_datas.datas = MOCK_DATAS
         client = Client(NPHParticipantSchema)
         queries = [query_99, query_5, query_10, query_25, query_with_id]
@@ -88,4 +105,44 @@ class TestQueryExecution(TestCase):
             executed = client.execute(query)
             self.assertEqual(length, len(executed.get('data').get('participant').get('edges')),
                              "{} - is not returning same amount of resultset".format(query))
+
+    @patch('rdr_service.api.nph_participant_api_schemas.schema.db')
+    def test_client_good_result_single_result(self, mock_datas):
+        mock_datas.datas = MOCK_DATAS
+        client = Client(NPHParticipantSchema)
+        executed = client.execute(query_with_id)
+        self.assertEqual(1, len(executed.get('data').get('participant').get('edges')),
+                         "{} - is not returning same amount of resultset".format(query_with_id))
+        self.assertEqual(25, executed.get('data').get('participant').get('edges')[0].get('node')
+                         .get('participantNphId'),
+                         "{} - is not returning same amount of resultset".format(query_with_id))
+
+    @patch('rdr_service.api.nph_participant_api_schemas.schema.db')
+    def test_client_graphql_syntax_error(self, mock_datas):
+        mock_datas.datas = MOCK_DATAS
+        client = Client(NPHParticipantSchema)
+        executed = client.execute(query_with_syntax_error)
+        self.assertIn("Syntax Error", executed.get('errors')[0].get('message'))
+
+    @patch('rdr_service.api.nph_participant_api_schemas.schema.db')
+    def test_client_graphql_field_error(self, mock_datas):
+        mock_datas.datas = MOCK_DATAS
+        client = Client(NPHParticipantSchema)
+        queries = [query_with_field_error, query_with_multiple_fields_error]
+        for query in queries:
+            executed = client.execute(query)
+            for error in executed.get('errors'):
+                self.assertIn('message', error)
+                self.assertIn('locations', error)
+                self.assertIn('path', error)
+
+
+class TestQueryValidator(TestCase):
+
+    def test_validation_error(self):
+        self.assertRaises(GraphQLSyntaxError, api.validate_query, query_with_syntax_error)
+
+    def test_validation_no_error(self):
+        result = api.validate_query(query_with_id)
+        self.assertEqual([], result)
 

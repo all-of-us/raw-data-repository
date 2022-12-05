@@ -193,7 +193,6 @@ class ParticipantQuery(ObjectType):
 
     participant = relay.ConnectionField(ParticipantConnection, nph_id=Int(required=False))
 
-
     def resolve_participant(root, info, nph_id=None, **kwargs):
         print(info, kwargs)
         try:

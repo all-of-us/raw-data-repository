@@ -1,16 +1,14 @@
-import graphql
 from graphene.validation import depth_limit_validator
 from graphql import validate, parse, GraphQLError, GraphQLSyntaxError
 from flask import request
 
-# from rdr_service.api_util import HEALTHPRO
+# from rdr_service.api_util import RTI_AND_HEALTHPRO
 # from rdr_service import app_util
 from rdr_service.api.nph_participant_api_schemas.schema import NPHParticipantSchema
 from rdr_service.api.nph_participant_api_schemas.util import validation_error_message, error_message
 
 
-
-# @app_util.auth_required(HEALTHPRO)
+# @app_util.auth_required(RTI_AND_HEALTHPRO)
 def nph_participant():
 
     try:
@@ -25,7 +23,7 @@ def nph_participant():
     except GraphQLSyntaxError as syntax_error:
         return error_message(syntax_error.formatted), 400
     except GraphQLError as graphql_error:
-        return error_message(graphql_error.formatted)
+        return error_message(graphql_error.formatted), 400
 
 
 def validate_query(request_query_string):
@@ -41,5 +39,5 @@ def validate_query(request_query_string):
         )
 
         return validation_errors
-    except graphql.GraphQLSyntaxError:
+    except GraphQLSyntaxError:
         raise
