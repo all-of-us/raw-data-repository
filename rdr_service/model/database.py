@@ -13,6 +13,8 @@ from rdr_service.model.base import Base, MetricsBase
 # All tables in the schema should be imported below here.
 # pylint: disable=unused-import
 from rdr_service.model.api_user import ApiUser
+from rdr_service.model.etm import EtmQuestionnaire, EtmQuestionnaireResponse, EtmQuestionnaireResponseAnswer, \
+    EtmQuestionnaireResponseMetadata
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_incentives import ParticipantIncentives
 from rdr_service.model.participant_summary import ParticipantSummary
