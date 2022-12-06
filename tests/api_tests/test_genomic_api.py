@@ -2240,7 +2240,6 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
             participant_id=participant_data.participantId,
             event_authored_time=clock.CLOCK.now()
         )
-
         resp = self.send_get(
             f"GenomicScheduling?participant_id=P{participant_data.participantId}"
         )
@@ -2418,6 +2417,7 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
 
     def test_pass_start_date_params(self):
         fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
+        fake_date_one = fake_date_one.astimezone(datetime.timezone.utc)
         fake_now = clock.CLOCK.now().replace(microsecond=0)
         participant_ids = []
 

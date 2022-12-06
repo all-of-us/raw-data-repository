@@ -1,0 +1,33 @@
+{
+  "resourceType": "Questionnaire",
+  "status": "published",
+  "date": "2015-01-01T00:00:00-00:00",
+  "publisher": "fake",
+  "version": "v1",
+  "group": {
+    "concept": [
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/consent-form",
+        "code": "enrollment"
+      },
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+        "code": "EtM"
+      }
+    ],
+    "question": [
+      {
+        "linkId": "etm_consent",
+        "text": "consent to etm",
+        "type": "choice",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "etm_consent",
+            "display": ""
+          }
+        ]
+      }
+    ]
+  }
+}

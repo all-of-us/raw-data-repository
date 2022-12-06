@@ -296,3 +296,14 @@ genome_center_datafile_prefix_map = {
        'hard-filtered.gvcf.gz.md5sum': 'Wgs_sample_raw_data/SS_VCF_research'
    }
 }
+
+wgs_metrics_manifest_mapping = {
+    'vcf_hf_path': 'hfVcfPath',
+    'vcf_hf_index_path': 'hfVcfTbiPath',
+    'vcf_hf_md5_path': 'hfVcfMd5Path',
+    'cram_path': 'cramPath',
+    'cram_md5_path': 'cramMd5Path',
+    'crai_path': 'craiPath',
+    'gvcf_path': 'gvcfPath',
+    'gvcf_md5_path': 'gvcfMd5Path'
+}

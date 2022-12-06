@@ -44,6 +44,7 @@ VA_EHR_RECONSENT_QUESTION_CODE = "vaehrreconsent_agree"
 VA_PRIMARY_RECONSENT_C1_C2_QUESTION = 'vaprimaryreconsent_c1_2_agree'
 VA_PRIMARY_RECONSENT_C3_QUESTION = 'vaprimaryreconsent_c3_agree'
 NON_VA_PRIMARY_RECONSENT_QUESTION = 'nonvaprimaryreconsent_agree'
+ETM_CONSENT_QUESTION_CODE = 'etm_consent'
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
@@ -127,6 +128,8 @@ COHORT_1_REVIEW_CONSENT_YES_CODE = "ReviewConsentAgree_Yes"
 COHORT_1_REVIEW_CONSENT_NO_CODE = "ReviewConsentAgree_No"
 
 WEAR_YES_ANSWER_CODE = "wear_yes"
+ETM_YES_ANSWER_CODE = "etm_yes"
+ETM_NO_ANSWER_CODE = "etm_no"
 
 # Cohort Group Code
 CONSENT_COHORT_GROUP_CODE = "ConsentPII_CohortGroup"

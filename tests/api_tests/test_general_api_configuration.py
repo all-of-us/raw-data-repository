@@ -14,8 +14,7 @@ class FlaskAppConfigTest(BaseTestCase):
 
         self.api_patches = [
             mock.patch('rdr_service.api.participant_api.ParticipantApi.get', return_value='success'),
-            mock.patch('rdr_service.api.deceased_report_api.DeceasedReportApi.post', return_value='success'),
-            mock.patch('rdr_service.dao.database_factory.get_database')  # Prevents errors in DAO inits
+            mock.patch('rdr_service.api.deceased_report_api.DeceasedReportApi.post', return_value='success')
         ]
         for patcher in self.api_patches:
             patcher.start()

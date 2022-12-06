@@ -1237,9 +1237,10 @@ class GenomicProcessRunner(GenomicManifestBase):
 
                 controller.bucket_name = server_config[config.BIOBANK_SAMPLES_BUCKET_NAME][0]
 
-                controller.generate_manifest(GenomicManifestTypes.AW2F,
-                                             _genome_type=None,
-                                             feedback_record=feedback_record)
+                controller.generate_manifest(
+                    GenomicManifestTypes.AW2F,
+                    genome_type=None,
+                    feedback_record=feedback_record)
 
             return 0
 
@@ -1258,7 +1259,7 @@ class GenomicProcessRunner(GenomicManifestBase):
 
             controller.generate_manifest(
                 manifest_type=manifest_type,
-                _genome_type=genome_type,
+                genome_type=genome_type,
             )
 
     def resolve_missing_files(self, job):
