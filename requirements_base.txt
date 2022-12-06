@@ -125,7 +125,6 @@ zope.interface==5.1.0     # via gevent
 Flask-GraphQL==2.0.0
 graphene==3.1.0
 graphql-core==3.1
-Cython==0.29.32
 graphql==0.0.4
 names==0.3.0
 
