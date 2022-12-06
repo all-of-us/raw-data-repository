@@ -17,9 +17,9 @@ depends_on = None
 
 sp_get_questionnaire_answers = ReplaceableObject(
     "sp_get_questionnaire_answers",
-    """  
- (IN participant_id INT, IN id INT)  
- BEGIN  
+    """
+ (IN participant_id INT, IN id INT)
+ BEGIN
    # Dynamically pivot the questionnaire answers for the given participant and module.
    # Results are ordered by 'created' descending.
    DECLARE CONTINUE HANDLER FOR 1064 SET @sql = NULL;
@@ -103,11 +103,17 @@ sp_get_questionnaire_answers = ReplaceableObject(
 
 
 def upgrade(engine_name):
-    globals()["upgrade_%s" % engine_name]()
+    if engine_name == "rdr" or engine_name == "metrics":
+        globals()[f"upgrade_{engine_name}"]()
+    else:
+        pass
 
 
 def downgrade(engine_name):
-    globals()["downgrade_%s" % engine_name]()
+    if engine_name == "rdr" or engine_name == "metrics":
+        globals()[f"downgrade_{engine_name}"]()
+    else:
+        pass
 
 
 def upgrade_rdr():

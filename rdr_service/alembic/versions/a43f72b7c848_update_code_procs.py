@@ -17,14 +17,14 @@ depends_on = None
 
 sp_get_code_module_items = ReplaceableObject(
     "sp_get_code_module_items",
-    """  
+    """
  (IN module VARCHAR(80))
  BEGIN
-   # Return all of the codebook items (topics, questions, answers) related to the passed 
+   # Return all of the codebook items (topics, questions, answers) related to the passed
    # module name.
    SELECT @code_id := code_id FROM code WHERE `value` = module and parent_id is NULL;
 
-   SELECT a.code_id, a.parent_id, a.topic, a.code_type, a.`value`, a.display, a.`system`, a.mapped, a.created, a.code_book_id, a.short_value 
+   SELECT a.code_id, a.parent_id, a.topic, a.code_type, a.`value`, a.display, a.`system`, a.mapped, a.created, a.code_book_id, a.short_value
    FROM (
       SELECT t1.*, '0' AS sort_id
       FROM code t1
@@ -160,18 +160,18 @@ END
 
 participant_answers_view = ReplaceableObject(
     "participant_answers_view",
-    """  
-  SELECT      
+    """
+  SELECT
       qr.participant_id,
       code.value AS module,
       (SELECT c.value FROM code c WHERE c.code_id = qq.code_id) AS question_code,
       COALESCE((SELECT c.value FROM code c WHERE c.code_id = qra.value_code_id),
-          qra.value_boolean, qra.value_date, qra.value_datetime, qra.value_decimal, qra.value_integer, 
+          qra.value_boolean, qra.value_date, qra.value_datetime, qra.value_decimal, qra.value_integer,
           qra.value_string, qra.value_system, qra.value_uri) AS answer,
       qr.questionnaire_response_id,
       qr.authored,
       qr.created
-  FROM questionnaire_response_answer qra 
+  FROM questionnaire_response_answer qra
       INNER JOIN questionnaire_response qr ON qr.questionnaire_response_id = qra.questionnaire_response_id
       INNER JOIN questionnaire_question qq ON qra.question_id = qq.questionnaire_question_id
       INNER JOIN questionnaire_concept qc ON qc.questionnaire_id = qr.questionnaire_id
@@ -182,11 +182,17 @@ participant_answers_view = ReplaceableObject(
 
 
 def upgrade(engine_name):
-    globals()["upgrade_%s" % engine_name]()
+    if engine_name == "rdr" or engine_name == "metrics":
+        globals()[f"upgrade_{engine_name}"]()
+    else:
+        pass
 
 
 def downgrade(engine_name):
-    globals()["downgrade_%s" % engine_name]()
+    if engine_name == "rdr" or engine_name == "metrics":
+        globals()[f"downgrade_{engine_name}"]()
+    else:
+        pass
 
 
 def upgrade_rdr():

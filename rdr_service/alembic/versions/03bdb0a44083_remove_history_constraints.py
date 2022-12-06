@@ -17,11 +17,17 @@ depends_on = None
 
 
 def upgrade(engine_name):
-    globals()["upgrade_%s" % engine_name]()
+    if engine_name == "rdr" or engine_name == "metrics":
+        globals()[f"upgrade_{engine_name}"]()
+    else:
+        pass
 
 
 def downgrade(engine_name):
-    globals()["downgrade_%s" % engine_name]()
+    if engine_name == "rdr" or engine_name == "metrics":
+        globals()[f"downgrade_{engine_name}"]()
+    else:
+        pass
 
 
 sp_drop_index_if_exists = ReplaceableObject(
@@ -50,11 +56,17 @@ sp_drop_index_if_exists = ReplaceableObject(
 
 
 def upgrade(engine_name):
-    globals()["upgrade_%s" % engine_name]()
+    if engine_name == "rdr" or engine_name == "metrics":
+        globals()[f"upgrade_{engine_name}"]()
+    else:
+        pass
 
 
 def downgrade(engine_name):
-    globals()["downgrade_%s" % engine_name]()
+    if engine_name == "rdr" or engine_name == "metrics":
+        globals()[f"downgrade_{engine_name}"]()
+    else:
+        pass
 
 
 def upgrade_rdr():

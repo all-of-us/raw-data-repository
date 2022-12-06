@@ -24,7 +24,7 @@ fn_get_code_id_from_key = ReplaceableObject(
   BEGIN
     # Return the record code_id for the given key from the code table.
     DECLARE result INT;
-    SET result = (SELECT code_id FROM code 
+    SET result = (SELECT code_id FROM code
                     WHERE `value` = code_value ORDER BY code_id DESC LIMIT 1);
     RETURN result;
   END
@@ -65,11 +65,17 @@ fn_get_participant_ethnicity = ReplaceableObject(
 
 
 def upgrade(engine_name):
-    globals()["upgrade_%s" % engine_name]()
+    if engine_name == "rdr" or engine_name == "metrics":
+        globals()[f"upgrade_{engine_name}"]()
+    else:
+        pass
 
 
 def downgrade(engine_name):
-    globals()["downgrade_%s" % engine_name]()
+    if engine_name == "rdr" or engine_name == "metrics":
+        globals()[f"downgrade_{engine_name}"]()
+    else:
+        pass
 
 
 def upgrade_rdr():

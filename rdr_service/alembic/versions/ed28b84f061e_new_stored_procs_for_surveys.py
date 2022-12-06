@@ -17,13 +17,13 @@ depends_on = None
 
 sp_get_code_module_items = ReplaceableObject(
     "sp_get_code_module_items",
-    """  
+    """
   (IN module VARCHAR(80))
   BEGIN
-    # Resurn all of the codebook items (topics, questions, answers) releated to the passed 
+    # Resurn all of the codebook items (topics, questions, answers) releated to the passed
     # module name.
     SELECT @code_id := code_id FROM code WHERE `value` = module and parent_id is NULL;
-  
+
     SELECT a.*
     FROM (
        SELECT c1.*
@@ -42,24 +42,24 @@ sp_get_code_module_items = ReplaceableObject(
     ) a
     ORDER BY
       a.code_id;
-  
+
   END
 """,
 )
 
 sp_get_questionnaire_answers = ReplaceableObject(
     "sp_get_questionnaire_answers",
-    """  
-  (IN participant_id INT, IN id INT)  
-  BEGIN  
+    """
+  (IN participant_id INT, IN id INT)
+  BEGIN
     # Dynamically pivot the questionnaire answers for the given participant and module.
     # Results are ordered by 'created' descending.
     DECLARE CONTINUE HANDLER FOR 1064 SET @sql = NULL;
     DECLARE CONTINUE HANDLER FOR 1243 SELECT 1 AS 'invalid_code_id' FROM dual WHERE FALSE;
-  
+
     SET @sql = '';
     SELECT @module := COALESCE(c.value, 0), @code_id := COALESCE(c.code_id, 0) FROM code c WHERE c.code_id = id;
-  
+
     SELECT @sql := CONCAT(@sql, IF(@sql = '', '', ', '), temp.output)
     FROM (
        SELECT DISTINCT CONCAT('MAX(IF(code_id = ', code_id, ', answer, NULL)) AS ', `value`) as output
@@ -85,7 +85,7 @@ sp_get_questionnaire_answers = ReplaceableObject(
        ) b
        WHERE b.code_type = 3
      ) AS temp;
-  
+
     SET @sql = CONCAT('
       SELECT
          a.questionnaire_id,
@@ -122,22 +122,28 @@ sp_get_questionnaire_answers = ReplaceableObject(
          GROUP BY a.questionnaire_response_id
          ORDER BY a.created DESC
     ');
-  
+
   PREPARE stmt FROM @sql;
   EXECUTE stmt;
   DEALLOCATE PREPARE stmt;
-  
+
   END
 """,
 )
 
 
 def upgrade(engine_name):
-    globals()["upgrade_%s" % engine_name]()
+    if engine_name == "rdr" or engine_name == "metrics":
+        globals()[f"upgrade_{engine_name}"]()
+    else:
+        pass
 
 
 def downgrade(engine_name):
-    globals()["downgrade_%s" % engine_name]()
+    if engine_name == "rdr" or engine_name == "metrics":
+        globals()[f"downgrade_{engine_name}"]()
+    else:
+        pass
 
 
 def upgrade_rdr():
