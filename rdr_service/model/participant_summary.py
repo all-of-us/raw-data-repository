@@ -446,6 +446,29 @@ class ParticipantSummary(Base):
     UTC timestamp indicating the latest time RDR was aware of signed and uploaded EHR documents
     """
 
+    # DA-3156:  Separate tracking for participant-mediated EHR (e.g., from CE participants)
+    # These values will be backfilled based on a report of mediated EHR activity imported into a temp table
+    wasParticipantMediatedEhrAvailable = Column(
+        "was_participant_mediated_ehr_available",
+        Boolean,
+        nullable=False,
+        server_default=expression.false()
+    )
+    """
+    A true or false value that indicates whether participant-mediated Electronic Health Records (EHR)
+    have ever been present for the participant.  Mediated EHR is a separate EHR source than HPO-provided EHR
+    """
+
+    firstParticipantMediatedEhrReceiptTime = None
+    """
+    UTC timestamp indicating first reported occurrence of participant-mediated EHR content
+    """
+
+    latestParticipantMediatedEhrReceiptTime = None
+    """
+    UTC timestamp indicating the latest reported occurrence of participant-mediated EHR content
+    """
+
     healthDataStreamSharingStatusV3_1 = Column(
         'health_data_stream_sharing_status_v_3_1',
         Enum(DigitalHealthSharingStatusV31),
