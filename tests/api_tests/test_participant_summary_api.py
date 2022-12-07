@@ -882,7 +882,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 firstName=f"Testy_{num}",
                 lastName=f"Tester_{num}",
                 dateOfBirth=datetime.date(1978, 10, 9),
-                aian=1 if num < 2 else 2
+                aian=1 if num < 2 else 0
             )
 
         current_summaries = self.ps_dao.get_all()
@@ -892,21 +892,21 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         first_summary = self.send_get(f"Participant/P{first_pid}/Summary")
         self.assertIsNotNone(first_summary.get('aian'))
-        self.assertEqual(first_summary.get('aian'), 'YES')
+        self.assertEqual(first_summary.get('aian'), True)
 
         second_summary = self.send_get(f"Participant/P{second_pid}/Summary")
         self.assertIsNotNone(second_summary.get('aian'))
-        self.assertEqual(second_summary.get('aian'), 'YES')
+        self.assertEqual(second_summary.get('aian'), True)
 
         third_summary = self.send_get(f"Participant/P{third_pid}/Summary")
         self.assertIsNotNone(third_summary.get('aian'))
-        self.assertEqual(third_summary.get('aian'), 'NO')
+        self.assertEqual(third_summary.get('aian'), False)
 
         response = self.send_get(f"ParticipantSummary?_sort=lastModified")
         entries = response['entry']
         resources = [obj.get('resource') for obj in entries]
 
-        self.assertTrue(all(obj.get('aian') in ('YES', 'NO') for obj in resources))
+        self.assertTrue(all(obj.get('aian') in (True, False) for obj in resources))
 
     def test_pairing_summary(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})

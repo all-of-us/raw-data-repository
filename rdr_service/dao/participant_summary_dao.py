@@ -22,7 +22,7 @@ from rdr_service.api_util import (
     format_json_hpo,
     format_json_org,
     format_json_site,
-    parse_json_enum
+    parse_json_enum, format_json_bool
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
 from rdr_service.code_constants import BIOBANK_TESTS, COHORT_1_REVIEW_CONSENT_YES_CODE, ORIGINATING_SOURCES,\
@@ -1135,6 +1135,7 @@ class ParticipantSummaryDao(UpdatableDao):
         result["patientStatus"] = model.patientStatus
 
         format_json_hpo(result, self.hpo_dao, "hpoId")
+        format_json_bool(result, 'aian')
         result["awardee"] = result["hpoId"]
         _initialize_field_type_sets()
 
@@ -1381,7 +1382,6 @@ class ParticipantSummaryDao(UpdatableDao):
                     Code.value == f'PIIState_{state_str}'
                 ).one_or_none()
                 summary.stateId = state_code.codeId if state_code else None
-
 
 
 def _initialize_field_type_sets():

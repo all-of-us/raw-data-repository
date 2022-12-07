@@ -45,7 +45,7 @@ from rdr_service.participant_enums import (
     RetentionType,
     SelfReportedPhysicalMeasurementsStatus,
     OnSiteVerificationType,
-    OnSiteVerificationVisitType, AIAN)
+    OnSiteVerificationVisitType)
 
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
@@ -1525,7 +1525,7 @@ class ParticipantSummary(Base):
     onsiteIdVerificationSite = Column("onsite_id_verification_site_id", Integer, ForeignKey("site.site_id"))
     """The site where ID verification took place"""
 
-    aian = Column(Enum(AIAN), default=AIAN.NO)
+    aian = Column(Integer, default=0)
     """Denotes if the participants race is AI_AN (AMERICAN_INDIAN_OR_ALASKA_NATIVE)"""
 
     lastModified = Column("last_modified", UTCDateTime6)

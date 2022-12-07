@@ -377,11 +377,6 @@ class Race(messages.Enum):
     PREFER_NOT_TO_SAY = 16
 
 
-class AIAN(messages.Enum):
-    YES = 1
-    NO = 2
-
-
 class GenderIdentity(messages.Enum):
     UNSET = 0
     PMI_Skip = 1
