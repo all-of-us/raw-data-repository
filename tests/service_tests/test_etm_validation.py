@@ -6,7 +6,7 @@ from tests.helpers.unittest_base import BaseTestCase
 
 class EtmValidationTest(BaseTestCase):
     def __init__(self, *args, **kwargs):
-        super(EtmValidationTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.uses_database = False
 
     def test_validating_metadata(self):

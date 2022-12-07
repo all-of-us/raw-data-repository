@@ -18,7 +18,7 @@ class EtmQuestionnaire:
     resource_json: dict = None
     metadata_name_list: List[str] = field(default_factory=list)
     outcome_name_list: List[str] = field(default_factory=list)
-    question_list: List['EtmQuestion'] = None
+    question_list: List['EtmQuestion'] = field(default_factory=list)
 
 
 @dataclass
