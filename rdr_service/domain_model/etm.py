@@ -40,7 +40,7 @@ class EtmResponse:
     metadata_list: List['EtmResponseExtension'] = field(default_factory=list)
     outcome_list: List['EtmResponseExtension'] = field(default_factory=list)
     answer_list: List['EtmResponseAnswer'] = None
-    version: int = None  # TODO: needs to be set to the version of the questionnaire that was checked against
+    version: int = None
 
 
 @dataclass
