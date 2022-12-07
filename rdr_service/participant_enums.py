@@ -354,6 +354,7 @@ METRIC_SET_KEYS = {
     )
 }
 
+
 # These race values are derived from one or more answers to the race/ethnicity question
 # in questionnaire responses.
 class Race(messages.Enum):
@@ -374,6 +375,11 @@ class Race(messages.Enum):
     MORE_THAN_ONE_RACE = 14
     OTHER_RACE = 15
     PREFER_NOT_TO_SAY = 16
+
+
+class AIAN(messages.Enum):
+    YES = 1
+    NO = 2
 
 
 class GenderIdentity(messages.Enum):

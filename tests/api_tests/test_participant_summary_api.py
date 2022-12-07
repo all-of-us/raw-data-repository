@@ -876,6 +876,38 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(len(entries), len(current_summaries))
         self.assertTrue(all(obj.get('participantIncentives') is not None for obj in resources))
 
+    def test_get_aian_flag(self):
+        for num in range(3):
+            self.data_generator.create_database_participant_summary(
+                firstName=f"Testy_{num}",
+                lastName=f"Tester_{num}",
+                dateOfBirth=datetime.date(1978, 10, 9),
+                aian=1 if num < 2 else 2
+            )
+
+        current_summaries = self.ps_dao.get_all()
+        first_pid = current_summaries[0].participantId
+        second_pid = current_summaries[1].participantId
+        third_pid = current_summaries[2].participantId
+
+        first_summary = self.send_get(f"Participant/P{first_pid}/Summary")
+        self.assertIsNotNone(first_summary.get('aian'))
+        self.assertEqual(first_summary.get('aian'), 'YES')
+
+        second_summary = self.send_get(f"Participant/P{second_pid}/Summary")
+        self.assertIsNotNone(second_summary.get('aian'))
+        self.assertEqual(second_summary.get('aian'), 'YES')
+
+        third_summary = self.send_get(f"Participant/P{third_pid}/Summary")
+        self.assertIsNotNone(third_summary.get('aian'))
+        self.assertEqual(third_summary.get('aian'), 'NO')
+
+        response = self.send_get(f"ParticipantSummary?_sort=lastModified")
+        entries = response['entry']
+        resources = [obj.get('resource') for obj in entries]
+
+        self.assertTrue(all(obj.get('aian') in ('YES', 'NO') for obj in resources))
+
     def test_pairing_summary(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
         participant_id = participant["participantId"]
