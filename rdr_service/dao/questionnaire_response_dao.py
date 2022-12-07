@@ -727,7 +727,6 @@ class QuestionnaireResponseDao(BaseDao):
 
         # Fetch the codes for all questions and concepts
         codes = code_dao.get_with_ids(code_ids)
-
         code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
         question_map = {question.questionnaireQuestionId: question for question in questions}
         race_code_ids = []
@@ -737,7 +736,6 @@ class QuestionnaireResponseDao(BaseDao):
         dvehr_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
         street_address_submitted = False
         street_address2_submitted = False
-
         rejected_reconsent = False
 
         # Skip updating the summary if the response being stored has an authored
@@ -791,7 +789,6 @@ class QuestionnaireResponseDao(BaseDao):
                             )
                     elif code.value == RACE_QUESTION_CODE:
                         race_code_ids.append(answer.valueCodeId)
-
                     elif code.value == DVEHR_SHARING_QUESTION_CODE:
                         code = code_dao.get(answer.valueCodeId)
                         if code and code.value == DVEHRSHARING_CONSENT_CODE_YES:

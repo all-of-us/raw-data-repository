@@ -161,6 +161,7 @@ participant_summary_default_values = {
     "onsiteIdVerificationType": "UNSET",
     "onsiteIdVerificationVisitType": "UNSET",
     "questionnaireOnLifeFunctioning": "UNSET",
+    "aian": False
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)

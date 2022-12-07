@@ -1256,6 +1256,53 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         for answer in answers:
             self.assertIn(answer.codeId, [code1.codeId, code2.codeId])
 
+    # def test_participant_race_answers_aian_summary(self):
+    #
+    #     with FakeClock(TIME_1):
+    #         participant_id = self.create_participant()
+    #         self.send_consent(participant_id)
+    #
+    #     questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
+    #     resource = self._load_response_json(
+    #         "questionnaire_the_basics_resp_multiple_race.json",
+    #         questionnaire_id,
+    #         participant_id
+    #     )
+    #
+    #     with FakeClock(TIME_2):
+    #         resource["authored"] = TIME_2.isoformat()
+    #         self.send_post(_questionnaire_response_url(participant_id), resource)
+    #
+    #     code_dao = CodeDao()
+    #     code1 = code_dao.get_code("http://terminology.pmi-ops.org/CodeSystem/ppi", "WhatRaceEthnicity_White")
+    #     code2 = code_dao.get_code("http://terminology.pmi-ops.org/CodeSystem/ppi", "WhatRaceEthnicity_Hispanic")
+    #
+    #     participant_race_answers_dao = ParticipantRaceAnswersDao()
+    #     answers = participant_race_answers_dao.get_all()
+    #     self.assertEqual(len(answers), 2)
+    #     for answer in answers:
+    #         self.assertIn(answer.codeId, [code1.codeId, code2.codeId])
+    #
+    #     # resubmit the answers, old value should be removed
+    #     resource = self._load_response_json(
+    #         "questionnaire_the_basics_resp_multiple_race_2.json",
+    #         questionnaire_id,
+    #         participant_id
+    #     )
+    #
+    #     with FakeClock(TIME_2):
+    #         resource["authored"] = TIME_2.isoformat()
+    #         self.send_post(_questionnaire_response_url(participant_id), resource)
+    #
+    #     code_dao = CodeDao()
+    #     code1 = code_dao.get_code("http://terminology.pmi-ops.org/CodeSystem/ppi", "WhatRaceEthnicity_NHPI")
+    #     code2 = code_dao.get_code("http://terminology.pmi-ops.org/CodeSystem/ppi", "PMI_PreferNotToAnswer")
+    #
+    #     answers = participant_race_answers_dao.get_all()
+    #     self.assertEqual(len(answers), 2)
+    #     for answer in answers:
+    #         self.assertIn(answer.codeId, [code1.codeId, code2.codeId])
+
     def test_gender_prefer_not_answer(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
