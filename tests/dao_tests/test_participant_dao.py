@@ -219,6 +219,7 @@ class ParticipantDaoTest(BaseTestCase):
             patientStatus=[],
             retentionEligibleStatus=None,
             wasEhrDataAvailable=False,
+            wasParticipantMediatedEhrAvailable=False,
             healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED
         )
         self.assertEqual(expected_ps.asdict(), ps.asdict())

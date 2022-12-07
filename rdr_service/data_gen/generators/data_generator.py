@@ -317,7 +317,8 @@ class DataGenerator:
             "enrollmentStatusV3_1": EnrollmentStatusV31.PARTICIPANT,
             "participantOrigin": participant.participantOrigin,
             "deceasedStatus": DeceasedStatus.UNSET,
-            "isEhrDataAvailable": False
+            "isEhrDataAvailable": False,
+            "wasParticipantMediatedEhrAvailable": False
         }
 
         defaults.update(kwargs)
