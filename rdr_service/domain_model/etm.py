@@ -13,7 +13,6 @@ class EtmQuestionnaire:
     modified: datetime = None
     questionnaire_type: str = None
     semantic_version: str = None
-    name: str = None
     title: str = None
     resource_json: dict = None
     metadata_name_list: List[str] = field(default_factory=list)

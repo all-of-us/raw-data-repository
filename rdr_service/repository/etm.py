@@ -14,7 +14,6 @@ class EtmQuestionnaireRepository(BaseRepository):
         schema_object.modified = questionnaire.modified
         schema_object.questionnaire_type = questionnaire.questionnaire_type
         schema_object.semantic_version = questionnaire.semantic_version
-        schema_object.name = questionnaire.name
         schema_object.title = questionnaire.title
         schema_object.resource = questionnaire.resource_json
         schema_object.version = self._get_next_version_number(questionnaire.questionnaire_type)
@@ -32,7 +31,6 @@ class EtmQuestionnaireRepository(BaseRepository):
             modified=db_object.modified,
             questionnaire_type=db_object.questionnaire_type,
             semantic_version=db_object.semantic_version,
-            name=db_object.name,
             title=db_object.title,
             resource_json=db_object.resource
         )
@@ -54,9 +52,9 @@ class EtmQuestionnaireRepository(BaseRepository):
 
         if (
             'group' in result.resource_json
-            and 'question' in result.resource_json['group'][0]
+            and 'question' in result.resource_json['group']
         ):
-            question_list = result.resource_json['group'][0]['question']
+            question_list = result.resource_json['group']['question']
             result.question_list = [
                 domain_model.EtmQuestion(
                     link_id=question_obj['linkId'],

@@ -26,10 +26,9 @@ class EtmIngestionTest(BaseTestCase):
         questionnaire_obj: etm.EtmQuestionnaire = self.session.query(etm.EtmQuestionnaire).filter(
             etm.EtmQuestionnaire.etm_questionnaire_id == response['id']
         ).one()
-        self.assertEqual(questionnaire_json['url'], questionnaire_obj.questionnaire_type)
+        self.assertEqual(questionnaire_json['id'], questionnaire_obj.questionnaire_type)
         self.assertEqual(questionnaire_json['version'], questionnaire_obj.semantic_version)
-        self.assertEqual(questionnaire_json['name'], questionnaire_obj.name)
-        self.assertEqual(questionnaire_json['title'], questionnaire_obj.title)
+        self.assertEqual(questionnaire_json['text']['div'], questionnaire_obj.title)
 
     def test_questionnaire_versioning(self):
         """Two questionnaires of the same type should receive different version numbers"""
@@ -66,7 +65,7 @@ class EtmIngestionTest(BaseTestCase):
             etm.EtmQuestionnaireResponse.etm_questionnaire_response_id == response['id']
         ).one()
         self.assertEqual(datetime(2022, 11, 28, 20, 29, 43), saved_response.authored)
-        self.assertEqual('https://research.joinallofus.org/fhir/emorecog', saved_response.questionnaire_type)
+        self.assertEqual('emorecog', saved_response.questionnaire_type)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, saved_response.status)
         self.assertEqual(participant_id, saved_response.participant_id)
         self.assertEqual(questionnaire_response_json, saved_response.resource)
