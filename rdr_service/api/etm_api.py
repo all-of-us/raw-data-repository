@@ -119,9 +119,6 @@ class EtmApi:
 
                 result.append(answer_obj)
 
-
-
-
         return result
 
     @classmethod
