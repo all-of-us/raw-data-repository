@@ -27,17 +27,11 @@ depends_on = None
 
 
 def upgrade(engine_name):
-    if engine_name == "rdr" or engine_name == "metrics":
-        globals()[f"upgrade_{engine_name}"]()
-    else:
-        pass
+    globals()[f"upgrade_{engine_name}"]()
 
 
 def downgrade(engine_name):
-    if engine_name == "rdr" or engine_name == "metrics":
-        globals()[f"downgrade_{engine_name}"]()
-    else:
-        pass
+    globals()[f"downgrade_{engine_name}"]()
 
 # Manually edited commands to force alter_column instead of add_column/drop_column sequence.  Maintains nullable=True
 # from original column creation (1dff4309d707_hash_and_duplicate_flag_on_.py) to minimize impact of migration

@@ -67,17 +67,11 @@ sp_get_code_module_items = ReplaceableObject(
 
 
 def upgrade(engine_name):
-    if engine_name == "rdr" or engine_name == "metrics":
-        globals()[f"upgrade_{engine_name}"]()
-    else:
-        pass
+    globals()[f"upgrade_{engine_name}"]()
 
 
 def downgrade(engine_name):
-    if engine_name == "rdr" or engine_name == "metrics":
-        globals()[f"downgrade_{engine_name}"]()
-    else:
-        pass
+    globals()[f"downgrade_{engine_name}"]()
 
 
 
