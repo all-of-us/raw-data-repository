@@ -65,7 +65,7 @@ class EtmIngestionTest(BaseTestCase):
             etm.EtmQuestionnaireResponse.etm_questionnaire_response_id == response['id']
         ).one()
         self.assertEqual(datetime(2022, 11, 28, 20, 29, 43), saved_response.authored)
-        self.assertEqual('https://research.joinallofus.org/fhir/emorecog', saved_response.questionnaire_type)
+        self.assertEqual('emorecog', saved_response.questionnaire_type)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, saved_response.status)
         self.assertEqual(participant_id, saved_response.participant_id)
         self.assertEqual(questionnaire_response_json, saved_response.resource)

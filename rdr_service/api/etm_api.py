@@ -73,7 +73,7 @@ class EtmApi:
             created=CLOCK.now(),
             modified=CLOCK.now(),
             authored=fhir_response.authored.date,
-            questionnaire_type=fhir_response.questionnaire.reference,
+            questionnaire_type=fhir_response.questionnaire.reference.split('/')[-1],
             status=QuestionnaireStatus.SUBMITTED,
             participant_id=cls._participant_id_from_patient_ref(fhir_response.subject.reference),
             resource_json=questionnaire_response_json
