@@ -40,7 +40,7 @@ def upgrade_rdr():
                   ALTER TABLE participant_summary
                   ADD COLUMN was_participant_mediated_ehr_available boolean not null default 0,
                   ADD COLUMN first_mediated_ehr_receipt_time datetime null default null,
-                  ADD COLUMN last_mediated_ehr_receipt_time datetime null default null;
+                  ADD COLUMN latest_mediated_ehr_receipt_time datetime null default null;
     """)
 
     # ### end Alembic commands ###
@@ -51,7 +51,7 @@ def downgrade_rdr():
     op.execute("""ALTER TABLE participant_summary
                   DROP COLUMN was_participant_mediated_ehr_available,
                   DROP COLUMN first_mediated_ehr_receipt_time,
-                  DROP COLUMN last_mediated_ehr_receipt_time;
+                  DROP COLUMN latest_mediated_ehr_receipt_time;
     """)
     # ### end Alembic commands ###
 
