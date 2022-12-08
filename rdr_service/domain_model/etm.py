@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List
 
@@ -7,33 +7,40 @@ from rdr_service.participant_enums import QuestionnaireStatus
 
 @dataclass
 class EtmQuestionnaire:
-    created: datetime
-    modified: datetime
-    questionnaire_type: str
-    semantic_version: str
-    name: str
-    title: str
-    resource_json: dict
-
     id: int = None
     version: int = None
+    created: datetime = None
+    modified: datetime = None
+    questionnaire_type: str = None
+    semantic_version: str = None
+    name: str = None
+    title: str = None
+    resource_json: dict = None
+    metadata_name_list: List[str] = field(default_factory=list)
+    outcome_name_list: List[str] = field(default_factory=list)
+    question_list: List['EtmQuestion'] = field(default_factory=list)
+
+
+@dataclass
+class EtmQuestion:
+    link_id: str = None
+    required: bool = None
 
 
 @dataclass
 class EtmResponse:
-    created: datetime
-    modified: datetime
-    authored: datetime
-    questionnaire_type: str
-    status: QuestionnaireStatus
-    participant_id: int
-    resource_json: dict
-
     id: int = None
-    metadata_list: List['EtmResponseExtension'] = None
-    outcome_list: List['EtmResponseExtension'] = None
+    created: datetime = None
+    modified: datetime = None
+    authored: datetime = None
+    questionnaire_type: str = None
+    status: QuestionnaireStatus = None
+    participant_id: int = None
+    resource_json: dict = None
+    metadata_list: List['EtmResponseExtension'] = field(default_factory=list)
+    outcome_list: List['EtmResponseExtension'] = field(default_factory=list)
     answer_list: List['EtmResponseAnswer'] = None
-    version: int = None  # TODO: needs to be set to the version of the questionnaire that was checked against
+    version: int = None
 
 
 @dataclass
@@ -48,7 +55,6 @@ class EtmResponseExtension:
 
 @dataclass
 class EtmResponseAnswer:
-    link_id: str
-    answer: str
-
     id: int = None
+    link_id: str = None
+    answer: str = None

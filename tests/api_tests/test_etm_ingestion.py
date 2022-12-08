@@ -51,6 +51,10 @@ class EtmIngestionTest(BaseTestCase):
         self.assertEqual(2, second_questionnaire.version)
 
     def test_questionnaire_response_ingestion(self):
+        with open(data_path('etm_questionnaire.json')) as file:
+            questionnaire_json = json.load(file)
+            self.send_post('Questionnaire', questionnaire_json)
+
         participant_id = self.data_generator.create_database_participant().participantId
 
         with open(data_path('etm_questionnaire_response.json')) as file:
