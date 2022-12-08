@@ -1,5 +1,8 @@
 import json
+import logging
 from typing import List
+
+from werkzeug.exceptions import BadRequest
 
 # from rdr_service.lib_fhir.fhirclient_4_0_0.models.questionnaire import Questionnaire as FhirQuestionnaire
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.questionnaireresponse import \
@@ -9,6 +12,7 @@ from rdr_service.clock import CLOCK
 from rdr_service.domain_model import etm as models
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.repository import etm as etm_repository
+from rdr_service.services.response_validation.etm_validation import EtmValidation
 
 ETM_OUTCOMES_EXT_URL = 'https://research.joinallofus.org/fhir/outcomes'
 ETM_EMOTIONAL_RECOGNITION_URL = 'https://research.joinallofus.org/fhir/emorecog'
@@ -44,14 +48,25 @@ class EtmApi:
     def post_questionnaire_response(cls, questionnaire_response_json):
         response_obj = cls._parse_response(questionnaire_response_json)
 
-        repository = etm_repository.EtmResponseRepository()
-        repository.store_response(response_obj)
+        questionnaire_repository = etm_repository.EtmQuestionnaireRepository()
+        questionnaire = questionnaire_repository.latest_questionnaire_for_type(response_obj.questionnaire_type)
+        validation_result = EtmValidation.validate_response(
+            response=response_obj,
+            questionnaire=questionnaire
+        )
+        response_obj.version = questionnaire.version
 
-        # TODO: perform validation and set version of questionnaire used during validation on response
+        if validation_result.success:
+            response_repository = etm_repository.EtmResponseRepository()
+            response_repository.store_response(response_obj)
 
-        return {
-            'id': response_obj.id
-        }
+            return {
+                'id': response_obj.id
+            }
+        else:
+            validation_errors = ','.join(validation_result.errors)
+            logging.warning(f'Validation failed: {validation_errors}')
+            raise BadRequest(validation_errors)
 
     @classmethod
     def _parse_response(cls, questionnaire_response_json) -> models.EtmResponse:

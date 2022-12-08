@@ -22,8 +22,54 @@ class EtmQuestionnaireRepository(BaseRepository):
         self._add_to_session(schema_object)
         questionnaire.id = schema_object.etm_questionnaire_id
 
-    def _get_next_version_number(self, questionnaire_url):
-        previous_version_query = (
+    def latest_questionnaire_for_type(self, questionnaire_url) -> domain_model.EtmQuestionnaire:
+        db_object = self._latest_db_object_for_version(questionnaire_url)
+
+        result = domain_model.EtmQuestionnaire(
+            id=db_object.etm_questionnaire_id,
+            version=db_object.version,
+            created=db_object.created,
+            modified=db_object.modified,
+            questionnaire_type=db_object.questionnaire_type,
+            semantic_version=db_object.semantic_version,
+            name=db_object.name,
+            title=db_object.title,
+            resource_json=db_object.resource
+        )
+
+        if 'extension' in result.resource_json:
+            for extension in result.resource_json['extension']:
+                is_metadata = 'metadata' in extension['url']
+                is_outcomes = 'outcomes' in extension['url']
+                if is_metadata or is_outcomes:
+                    name_list = [
+                        code_object['code']
+                        for code_object in extension['valueCodeableConcept']['coding']
+                    ]
+
+                    if is_metadata:
+                        result.metadata_name_list = name_list
+                    else:
+                        result.outcome_name_list = name_list
+
+        if (
+            'group' in result.resource_json
+            and 'question' in result.resource_json['group'][0]
+        ):
+            question_list = result.resource_json['group'][0]['question']
+            result.question_list = [
+                domain_model.EtmQuestion(
+                    link_id=question_obj['linkId'],
+                    required=question_obj['required']
+                )
+                for question_obj in question_list
+            ]
+
+        return result
+
+
+    def _latest_db_object_for_version(self, questionnaire_url) -> schema_model.EtmQuestionnaire:
+        latest_version_query = (
             Query(schema_model.EtmQuestionnaire)
             .filter(
                 schema_model.EtmQuestionnaire.questionnaire_type == questionnaire_url
@@ -33,11 +79,16 @@ class EtmQuestionnaireRepository(BaseRepository):
 
         if self._session is None:
             with database_factory.get_database().session() as session:
-                previous_version_query.session = session
-                previous_questionnaire = previous_version_query.one_or_none()
+                latest_version_query.session = session
+                previous_questionnaire = latest_version_query.one_or_none()
         else:
-            previous_version_query.session = self._session
-            previous_questionnaire = previous_version_query.one_or_none()
+            latest_version_query.session = self._session
+            previous_questionnaire = latest_version_query.one_or_none()
+
+        return previous_questionnaire
+
+    def _get_next_version_number(self, questionnaire_url):
+        previous_questionnaire = self._latest_db_object_for_version(questionnaire_url)
 
         if previous_questionnaire:
             return previous_questionnaire.version + 1
