@@ -85,6 +85,12 @@ set_local_db_connection_string alembic
 echo "Updating schema to latest..."
 tools/upgrade_database.sh
 
+echo "Updating schema to latest..."
+tools/upgrade_database_rex.sh
+
+echo "Updating schema to latest..."
+tools/upgrade_database_nph.sh
+
 echo "Setting general configuration..."
 #tools/install_config.sh --config config/config_dev.json --update
 
