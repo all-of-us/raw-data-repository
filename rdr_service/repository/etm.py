@@ -14,7 +14,6 @@ class EtmQuestionnaireRepository(BaseRepository):
         schema_object.modified = questionnaire.modified
         schema_object.questionnaire_type = questionnaire.questionnaire_type
         schema_object.semantic_version = questionnaire.semantic_version
-        schema_object.name = questionnaire.name
         schema_object.title = questionnaire.title
         schema_object.resource = questionnaire.resource_json
         schema_object.version = self._get_next_version_number(questionnaire.questionnaire_type)

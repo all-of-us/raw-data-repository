@@ -11,7 +11,6 @@ class EtmQuestionnaire:
     modified: datetime
     questionnaire_type: str
     semantic_version: str
-    name: str
     title: str
     resource_json: dict
 
