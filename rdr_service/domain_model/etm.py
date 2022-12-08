@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List
 
@@ -52,3 +52,10 @@ class EtmResponseAnswer:
     answer: str
 
     id: int = None
+    metadata_list: List['EtmAnswerMetadata'] = field(default_factory=list)
+
+
+@dataclass
+class EtmAnswerMetadata:
+    url: str
+    value: str
