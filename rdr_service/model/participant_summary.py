@@ -459,12 +459,12 @@ class ParticipantSummary(Base):
     have ever been present for the participant.  Mediated EHR is a separate EHR source than HPO-provided EHR
     """
 
-    firstParticipantMediatedEhrReceiptTime = None
+    firstParticipantMediatedEhrReceiptTime =  Column("first_participant_mediated_ehr_receipt_time", UTCDateTime)
     """
     UTC timestamp indicating first reported occurrence of participant-mediated EHR content
     """
 
-    latestParticipantMediatedEhrReceiptTime = None
+    latestParticipantMediatedEhrReceiptTime = Column("latest_participant_mediated_ehr_receipt_time", UTCDateTime)
     """
     UTC timestamp indicating the latest reported occurrence of participant-mediated EHR content
     """

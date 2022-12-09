@@ -1218,7 +1218,7 @@ class ParticipantSummaryDao(UpdatableDao):
             for field_name in ['wasParticipantMediatedEhrAvailable',
                                'firstParticipantMediatedEhrReceiptTime',
                                'latestParticipantMediatedEhrReceiptTime']:
-                if result[field_name]:
+                if field_name in result:
                     del result[field_name]
 
         # Strip None values.
