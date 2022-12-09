@@ -279,7 +279,8 @@ class GenomicGCValidationMetricsSchema(Schema):
     vcf_tbi_path = fields.String(validate=validate.Length(max=255))
     dev_note = fields.String(validate=validate.Length(max=255))
     ignore_flag = fields.Int16()
-    contamination_category = fields.Int16()
+    contamination_category = fields.String(validate=validate.Length(max=64))
+    contamination_category_id = fields.Int16()
     crai_deleted = fields.Int16()
     cram_deleted = fields.Int16()
     cram_md5_deleted = fields.Int16()
@@ -307,7 +308,6 @@ class GenomicGCValidationMetricsSchema(Schema):
     gvcf_path = fields.String(validate=validate.Length(max=512))
     mapped_reads_pct = fields.String(validate=validate.Length(max=10))
     pipeline_id = fields.String(validate=validate.Length(max=255))
-    contamination_category_str = fields.String(validate=validate.Length(max=64))
     # DA-3072, PDR-1435 - WGS Reprocessing and Pipeline Upgrade columns
     processing_count = fields.Int16()
     aw3_ready_flag = fields.Int16()
