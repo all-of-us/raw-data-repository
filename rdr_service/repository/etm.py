@@ -97,18 +97,18 @@ class EtmQuestionnaireRepository(BaseRepository):
 class EtmResponseRepository(BaseRepository):
 
     def store_response(self, response_obj: domain_model.EtmResponse):
-        schema_object = schema_model.EtmQuestionnaireResponse()
-        schema_object.created = response_obj.created
-        schema_object.modified = response_obj.modified
-        schema_object.authored = response_obj.authored
-        schema_object.questionnaire_type = response_obj.questionnaire_type
-        schema_object.status = response_obj.status
-        schema_object.participant_id = response_obj.participant_id
-        schema_object.resource = response_obj.resource_json
-        schema_object.version = response_obj.version
+        schema_response = schema_model.EtmQuestionnaireResponse()
+        schema_response.created = response_obj.created
+        schema_response.modified = response_obj.modified
+        schema_response.authored = response_obj.authored
+        schema_response.questionnaire_type = response_obj.questionnaire_type
+        schema_response.status = response_obj.status
+        schema_response.participant_id = response_obj.participant_id
+        schema_response.resource = response_obj.resource_json
+        schema_response.version = response_obj.version
 
         for metadata in response_obj.metadata_list:
-            schema_object.extension_list.append(
+            schema_response.extension_list.append(
                 schema_model.EtmQuestionnaireResponseMetadata(
                     extension_type=schema_model.ExtensionType.METADATA,
                     key=metadata.key,
@@ -118,7 +118,7 @@ class EtmResponseRepository(BaseRepository):
                 )
             )
         for outcome in response_obj.outcome_list:
-            schema_object.extension_list.append(
+            schema_response.extension_list.append(
                 schema_model.EtmQuestionnaireResponseMetadata(
                     extension_type=schema_model.ExtensionType.OUTCOME,
                     key=outcome.key,
@@ -128,13 +128,20 @@ class EtmResponseRepository(BaseRepository):
                 )
             )
 
-        for answer in response_obj.answer_list:
-            schema_object.answer_list.append(
-                schema_model.EtmQuestionnaireResponseAnswer(
-                    link_id=answer.link_id,
-                    answer_value=answer.answer
-                )
+        for domain_answer in response_obj.answer_list:
+            schema_answer = schema_model.EtmQuestionnaireResponseAnswer(
+                link_id=domain_answer.link_id,
+                answer_value=domain_answer.answer
             )
+            schema_response.answer_list.append(schema_answer)
 
-        self._add_to_session(schema_object)
-        response_obj.id = schema_object.etm_questionnaire_response_id
+            for domain_metadata in domain_answer.metadata_list:
+                schema_answer.metadata_list.append(
+                    schema_model.EtmAnswerMetadata(
+                        url=domain_metadata.url,
+                        value=domain_metadata.value
+                    )
+                )
+
+        self._add_to_session(schema_response)
+        response_obj.id = schema_response.etm_questionnaire_response_id

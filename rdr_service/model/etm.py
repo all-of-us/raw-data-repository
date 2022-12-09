@@ -64,10 +64,24 @@ class EtmQuestionnaireResponseAnswer(Base):
     __tablename__ = 'etm_questionnaire_response_answer'
     etm_questionnaire_response_answer_id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
     etm_questionnaire_response_id = sa.Column(
-        sa.Integer, sa.ForeignKey(EtmQuestionnaireResponse.etm_questionnaire_response_id)
+        sa.Integer,
+        sa.ForeignKey(EtmQuestionnaireResponse.etm_questionnaire_response_id)
     )
     link_id = sa.Column(sa.String(40))
     answer_value = sa.Column(MEDIUMTEXT)
+
+    metadata_list = sa.orm.relationship('EtmAnswerMetadata', backref='answer')
+
+
+class EtmAnswerMetadata(Base):
+    __tablename__ = 'etm_questionnaire_response_answer_metadata'
+    id = sa.Column(sa.BigInteger, primary_key=True, autoincrement=True)
+    answer_id = sa.Column(
+        sa.Integer,
+        sa.ForeignKey(EtmQuestionnaireResponseAnswer.etm_questionnaire_response_answer_id)
+    )
+    url = sa.Column(sa.String(128))
+    value = sa.Column(sa.String(128))
 
 
 sa.event.listen(EtmQuestionnaire, 'before_insert', model_insert_listener)
