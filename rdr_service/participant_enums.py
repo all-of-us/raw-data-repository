@@ -589,6 +589,10 @@ def _map_single_race(code):
     return ANSWER_CODE_TO_RACE.get(code.parent)
 
 
+def get_all_races_from_codes(race_codes):
+    return set([_map_single_race(race_code) for race_code in race_codes])
+
+
 def get_race(race_codes):
     """Transforms one or more race codes from questionnaire response answers about race
   into a single race enum; the enum includes values for multiple races.
@@ -598,7 +602,7 @@ def get_race(race_codes):
     if len(race_codes) == 1:
         return _map_single_race(race_codes[0])
     else:
-        all_races = set([_map_single_race(race_code) for race_code in race_codes])
+        all_races = get_all_races_from_codes(race_codes)
         if Race.HISPANIC_LATINO_OR_SPANISH in all_races:
             if len(all_races) > 2:
                 return Race.HLS_AND_MORE_THAN_ONE_OTHER_RACE

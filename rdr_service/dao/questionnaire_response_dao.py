@@ -17,8 +17,8 @@ from rdr_service import singletons
 from rdr_service.api_util import dispatch_task
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
-from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
-    PARTICIPANT_COHORT_3_START_TIME
+from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME, \
+    PARTICIPANT_COHORT_3_START_TIME, Race, get_all_races_from_codes
 from rdr_service.app_util import get_account_origin_id, is_self_request
 from rdr_service import storage
 from rdr_service import clock, code_constants, config
@@ -918,6 +918,10 @@ class QuestionnaireResponseDao(BaseDao):
             race = get_race(race_codes)
             if race != participant_summary.race:
                 participant_summary.race = race
+                something_changed = True
+            if not participant_summary.aian \
+                    and Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE in get_all_races_from_codes(race_codes):
+                participant_summary.aian = True
                 something_changed = True
 
         if gender_code_ids:
