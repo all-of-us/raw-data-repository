@@ -3792,6 +3792,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         # Check fields on participant that is sharing mediated EHR
         response = self.send_get(f'Participant/P{sharing_mediated_ehr_summary.participantId}/Summary')
+        self.assertEqual(first_mediated_ehr_receipt_time.isoformat(),
+                         response['firstParticipantMediatedEhrReceiptTime'])
+        self.assertEqual(latest_mediated_ehr_receipt_time.isoformat(),
+                         response['latestParticipantMediatedEhrReceiptTime'])
         self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
         self.assertEqual(latest_mediated_ehr_receipt_time.isoformat(),
                          response['healthDataStreamSharingStatusV3_1Time'])

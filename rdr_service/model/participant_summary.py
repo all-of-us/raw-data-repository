@@ -462,7 +462,6 @@ class ParticipantSummary(Base):
     """
 
     firstParticipantMediatedEhrReceiptTime =  Column("first_participant_mediated_ehr_receipt_time", UTCDateTime)
-
     """
     UTC timestamp indicating first reported occurrence of participant-mediated EHR content
     """
