@@ -447,6 +447,29 @@ class ParticipantSummary(Base):
     UTC timestamp indicating the latest time RDR was aware of signed and uploaded EHR documents
     """
 
+    # DA-3156:  Separate tracking for participant-mediated EHR (e.g., from CE participants)
+    # These values will be backfilled based on a report of mediated EHR activity imported into a temp table
+    wasParticipantMediatedEhrAvailable = Column(
+        "was_participant_mediated_ehr_available",
+        Boolean,
+        nullable=False,
+        server_default=expression.false()
+    )
+    """
+    A true or false value that indicates whether participant-mediated Electronic Health Records (EHR)
+    have ever been present for the participant.  Mediated EHR is a separate EHR source than HPO-provided EHR
+    """
+
+    firstParticipantMediatedEhrReceiptTime =  Column("first_participant_mediated_ehr_receipt_time", UTCDateTime)
+    """
+    UTC timestamp indicating first reported occurrence of participant-mediated EHR content
+    """
+
+    latestParticipantMediatedEhrReceiptTime = Column("latest_participant_mediated_ehr_receipt_time", UTCDateTime)
+    """
+    UTC timestamp indicating the latest reported occurrence of participant-mediated EHR content
+    """
+
     healthDataStreamSharingStatusV3_1 = Column(
         'health_data_stream_sharing_status_v_3_1',
         Enum(DigitalHealthSharingStatusV31),
@@ -561,7 +584,6 @@ class ParticipantSummary(Base):
     The date and time at which the participant has indicated they do not want to be contacted anymore;
     also shouldn't have any EHR data transferred after the given suspension date
     """
-
 
     # The originating resource for participant, this (unlike clientId) will not change.
     participantOrigin = Column("participant_origin", String(80), nullable=False)
@@ -1525,8 +1547,6 @@ class ParticipantSummary(Base):
     """User who recorded ID verification occurrence"""
     onsiteIdVerificationSite = Column("onsite_id_verification_site_id", Integer, ForeignKey("site.site_id"))
     """The site where ID verification took place"""
-
-
 
     lastModified = Column("last_modified", UTCDateTime6)
     """UTC timestamp of the last time the participant summary was modified"""

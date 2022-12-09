@@ -710,6 +710,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
                 lifestyle_authored_time=summary.questionnaireOnLifestyleAuthored,
                 earliest_ehr_file_received_time=summary.ehrReceiptTime,
+                earliest_mediated_ehr_receipt_time=summary.firstParticipantMediatedEhrReceiptTime,
                 earliest_physical_measurements_time=earliest_physical_measurements_time,
                 earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
                 ehr_consent_date_range_list=ehr_consent_ranges,
@@ -1211,6 +1212,14 @@ class ParticipantSummaryDao(UpdatableDao):
             del result['healthDataStreamSharingStatusV3_1']
             if 'healthDataStreamSharingStatusV3_1Time' in result:
                 del result['healthDataStreamSharingStatusV3_1Time']
+
+        # Check if we should hide the participant mediated EHR status fields
+        if not config.getSettingJson(config.ENABLE_PARTICIPANT_MEDIATED_EHR, default=False):
+            for field_name in ['wasParticipantMediatedEhrAvailable',
+                               'firstParticipantMediatedEhrReceiptTime',
+                               'latestParticipantMediatedEhrReceiptTime']:
+                if field_name in result:
+                    del result[field_name]
 
         # Strip None values.
         if strip_none_values is True:
