@@ -13,6 +13,7 @@ from rdr_service.genomic_enums import GenomicSetStatus as GenomicSetStatusEnum, 
     GenomicJob as GenomicJobEnum, GenomicWorkflowState as GenomicWorkflowStateEnum, \
     GenomicSubProcessStatus as GenomicSubProcessStatusEnum, GenomicSubProcessResult as GenomicSubProcessResultEnum, \
     GenomicManifestTypes as GenomicManifestTypesEnum, GenomicQcStatus as GenomicQcStatusEnum
+from rdr_service.model.bq_genomics import GenomicContaminationCategoryEnum
 from rdr_service.resource import generators, schemas
 
 
@@ -389,6 +390,12 @@ class GenomicGCValidationMetricsSchemaGenerator(generators.BaseGenerator):
             row = ro_session.execute(text('select * from genomic_gc_validation_metrics where id = :id'),
                                      {'id': _pk}).first()
             data = self.ro_dao.to_dict(row)
+            # Populate Enum fields.
+            if data['contamination_category']:
+                enum = GenomicContaminationCategoryEnum(data['contamination_category'])
+                data['contamination_category'] = enum.name
+                data['contamination_category_id'] = enum.value
+
             return generators.ResourceRecordSet(schemas.GenomicGCValidationMetricsSchema, data)
 
 

@@ -415,7 +415,9 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     vcf_tbi_path = BQField('vcf_tbi_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     ignore_flag = BQField('ignore_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    contamination_category = BQField('contamination_category', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    contamination_category = BQField('contamination_category', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    contamination_category_id = BQField('contamination_category_id', BQFieldTypeEnum.INTEGER,
+                                        BQFieldModeEnum.NULLABLE)
     crai_deleted = BQField('crai_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     cram_deleted = BQField('cram_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     cram_md5_deleted = BQField('cram_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
@@ -443,8 +445,6 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     gvcf_path = BQField('gvcf_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     mapped_reads_pct = BQField('mapped_reads_pct', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     pipeline_id = BQField('pipeline_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-    contamination_category_str = BQField('contamination_category_str', BQFieldTypeEnum.STRING,
-                                         BQFieldModeEnum.NULLABLE)
     # DA-3072, PDR-1435 - WGS Reprocessing and Pipeline Upgrade columns
     processing_count = BQField('processing_count', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     aw3_ready_flag = BQField('aw3_ready_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
