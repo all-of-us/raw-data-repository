@@ -8,6 +8,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    func,
     Index,
     Integer,
     SmallInteger,
@@ -477,7 +478,8 @@ class ParticipantSummary(Base):
             case(
                 [
                     (isEhrDataAvailable, int(DigitalHealthSharingStatusV31.CURRENTLY_SHARING)),
-                    (wasEhrDataAvailable, int(DigitalHealthSharingStatusV31.EVER_SHARED))
+                    (wasEhrDataAvailable, int(DigitalHealthSharingStatusV31.EVER_SHARED)),
+                    (wasParticipantMediatedEhrAvailable, int(DigitalHealthSharingStatusV31.EVER_SHARED))
                 ],
                 else_=int(DigitalHealthSharingStatusV31.NEVER_SHARED)
             ),
@@ -485,10 +487,16 @@ class ParticipantSummary(Base):
         )
     )
 
+    # If both ehrUpdateTime and latestParticipantMediatedEhrReceiptTime are null, result is null
+    # If one is null, result is the non-null timestamp
+    # If both are non-null, result is the most recent (GREATEST) timestamp
     healthDataStreamSharingStatusV3_1Time = Column(
         'health_data_stream_sharing_status_v_3_1_time',
         UTCDateTime,
-        Computed(ehrUpdateTime, persisted=True)
+        Computed(func.nullif(func.greatest(func.coalesce(ehrUpdateTime, 0),
+                                           func.coalesce(latestParticipantMediatedEhrReceiptTime, 0)
+                                           ),
+                             0), persisted=True)
     )
 
     clinicPhysicalMeasurementsStatus = Column(
