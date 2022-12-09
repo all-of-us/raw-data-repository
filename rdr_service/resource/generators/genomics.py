@@ -7,6 +7,7 @@ import re
 from dateutil.parser import parse as dt_parse, ParserError
 from sqlalchemy.sql import text
 
+from model.bq_genomics import GenomicContaminationCategoryEnum
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.genomic_enums import GenomicSetStatus as GenomicSetStatusEnum, \
     GenomicSetMemberStatus as GenomicSetMemberStatusEnum, GenomicValidationFlag as GenomicValidationFlagEnum, \
@@ -389,6 +390,12 @@ class GenomicGCValidationMetricsSchemaGenerator(generators.BaseGenerator):
             row = ro_session.execute(text('select * from genomic_gc_validation_metrics where id = :id'),
                                      {'id': _pk}).first()
             data = self.ro_dao.to_dict(row)
+            # Populate Enum fields.
+            if data['contamination_category']:
+                enum = GenomicContaminationCategoryEnum(data['contamination_category'])
+                data['contamination_category'] = enum.name
+                data['contamination_category_id'] = enum.value
+
             return generators.ResourceRecordSet(schemas.GenomicGCValidationMetricsSchema, data)
 
 
