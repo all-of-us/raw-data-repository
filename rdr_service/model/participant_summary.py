@@ -286,7 +286,8 @@ class ParticipantSummary(Base):
     # The time when we get a DNA order
     enrollmentStatusCoreOrderedSampleTime = Column("enrollment_status_core_ordered_sample_time", UTCDateTime)
     """
-    Present when a participant has completed all baseline modules, physical measurements, and has DNA samples stored.
+    Present when a participant has completed all baseline modules, physical measurements, and DNA samples have been
+    ordered
 
     Is the latest date from the list of:
 
