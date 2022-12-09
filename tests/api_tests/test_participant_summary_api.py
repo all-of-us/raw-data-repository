@@ -3773,6 +3773,98 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertNotIn('enrollmentStatusV3_1', api_response)
         self.assertNotIn('healthDataStreamSharingStatusV3_1', api_response)
 
+    def test_mediated_ehr(self):
+        """Check that the new set of participant mediated EHR data availability fields are present on the summary"""
+        first_mediated_ehr_receipt_time = datetime.datetime(2022, 11, 1)
+        latest_mediated_ehr_receipt_time = datetime.datetime(2022, 12, 5)
+
+        sharing_mediated_ehr_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,  # PITT
+            ehrStatus=EhrStatus.NOT_PRESENT,
+            wasParticipantMediatedEhrAvailable=True,
+            firstParticipantMediatedEhrReceiptTime=first_mediated_ehr_receipt_time,
+            latestParticipantMediatedEhrReceiptTime=latest_mediated_ehr_receipt_time
+        )
+
+        not_sharing_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,  # PITT
+        )
+
+        # Check fields on participant that is sharing mediated EHR
+        response = self.send_get(f'Participant/P{sharing_mediated_ehr_summary.participantId}/Summary')
+        self.assertEqual(first_mediated_ehr_receipt_time.isoformat(),
+                         response['firstParticipantMediatedEhrReceiptTime'])
+        self.assertEqual(latest_mediated_ehr_receipt_time.isoformat(),
+                         response['latestParticipantMediatedEhrReceiptTime'])
+        self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertEqual(latest_mediated_ehr_receipt_time.isoformat(),
+                         response['healthDataStreamSharingStatusV3_1Time'])
+
+        # Check fields on participant that is NOT sharing
+        response = self.send_get(f'Participant/P{not_sharing_summary.participantId}/Summary')
+        self.assertEqual('NEVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertNotIn('healthDataStreamSharingStatusV3_1Time', response)
+
+    def test_mediated_and_hpo_ehr_shared(self):
+        first_receipt_time = datetime.datetime(2020, 3, 27)
+        intermediate_receipt_time = datetime.datetime(2021, 6, 1)
+        latest_receipt_time = datetime.datetime(2022, 12, 5)
+
+        mediated_most_recently_shared_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,
+            isEhrDataAvailable=False,
+            ehrStatus=EhrStatus.PRESENT,
+            wasParticipantMediatedEhrAvailable=True,
+            ehrReceiptTime=first_receipt_time,
+            ehrUpdateTime=intermediate_receipt_time,
+            firstParticipantMediatedEhrReceiptTime=latest_receipt_time,
+            latestParticipantMediatedEhrReceiptTime=latest_receipt_time
+        )
+
+        hpo_ehr_most_recently_shared_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,
+            isEhrDataAvailable=False,
+            ehrStatus=EhrStatus.PRESENT,
+            wasParticipantMediatedEhrAvailable=True,
+            ehrReceiptTime=intermediate_receipt_time,
+            ehrUpdateTime=latest_receipt_time,
+            firstParticipantMediatedEhrReceiptTime=first_receipt_time,
+            latestParticipantMediatedEhrReceiptTime=first_receipt_time
+        )
+
+        # Check participant where most recently shared is the mediated EHR
+        response = self.send_get(f'Participant/P{mediated_most_recently_shared_summary.participantId}/Summary')
+        self.assertEqual(latest_receipt_time.isoformat(),
+                         response['latestParticipantMediatedEhrReceiptTime'])
+        self.assertEqual(intermediate_receipt_time.isoformat(),
+                         response['ehrUpdateTime'])
+        self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertEqual(latest_receipt_time.isoformat(),
+                         response['healthDataStreamSharingStatusV3_1Time'])
+
+        # Check participant where most recently shared is the HPO-provided EHR
+        response = self.send_get(f'Participant/P{hpo_ehr_most_recently_shared_summary.participantId}/Summary')
+        self.assertEqual(latest_receipt_time.isoformat(),
+                         response['ehrUpdateTime'])
+        self.assertEqual(first_receipt_time.isoformat(),
+                         response['latestParticipantMediatedEhrReceiptTime'])
+        self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertEqual(latest_receipt_time.isoformat(),
+                         response['healthDataStreamSharingStatusV3_1Time'])
+
+    def test_disabling_mediated_ehr_fields(self):
+        """Check that the participant mediated EHR fields are disabled by default"""
+        summary = self.data_generator.create_database_participant_summary()
+
+        # Override the default config, disabling the fields on the API
+        self.temporarily_override_config_setting(config.ENABLE_PARTICIPANT_MEDIATED_EHR, False)
+
+        # Check that the new fields are hidden
+        api_response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertNotIn('wasParticipantMediatedEhrAvailable', api_response)
+        self.assertNotIn('firstParticipantMediatedEhrReceiptTime', api_response)
+        self.assertNotIn('latestParticipantMediatedEhrReceiptTime', api_response)
+
     def test_blank_demographics_data_mapped_to_skip(self):
         # Create a participant summary that doesn't use skip codes for the demographics questions that weren't answered.
         # Some early summaries show this, we should map to displaying skip to have a more consistent output.
