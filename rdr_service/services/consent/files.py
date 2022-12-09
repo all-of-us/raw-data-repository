@@ -278,7 +278,8 @@ class CeConsentFactory(ConsentFileAbstractFactory):
         return pdf.has_text([(
             'Consent to Join the All of Us Research Program',
             'Consentimiento para Participar en el Programa Científico',
-            'Consentimiento para Participar en el\nPrograma Cientíﬁco'
+            'Consentimiento para Participar en el\nPrograma Cientíﬁco',
+            'Consentimiento para Participar en el Programa Cientíﬁco'
         )])
 
     def _is_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
