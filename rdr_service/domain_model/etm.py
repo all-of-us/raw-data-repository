@@ -57,3 +57,10 @@ class EtmResponseAnswer:
     id: int = None
     link_id: str = None
     answer: str = None
+    metadata_list: List['EtmAnswerMetadata'] = field(default_factory=list)
+
+
+@dataclass
+class EtmAnswerMetadata:
+    url: str
+    value: str

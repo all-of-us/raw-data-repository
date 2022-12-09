@@ -116,12 +116,20 @@ class EtmApi:
                 fhir_answer = question_answer.answer[0]
 
                 answer_value = fhir_answer.valueCoding.code
-                result.append(
-                    models.EtmResponseAnswer(
-                        link_id=question_answer.linkId,
-                        answer=answer_value
-                    )
+
+                answer_obj = models.EtmResponseAnswer(
+                    link_id=question_answer.linkId,
+                    answer=answer_value
                 )
+                for extension in fhir_answer.extension:
+                    answer_obj.metadata_list.append(
+                        models.EtmAnswerMetadata(
+                            url=extension.url,
+                            value=cls._first_non_none_value(extension)
+                        )
+                    )
+
+                result.append(answer_obj)
 
         return result
 
@@ -134,3 +142,16 @@ class EtmApi:
         for extension in extension_list:
             if extension.url == url_str:
                 return extension
+
+    @classmethod
+    def _first_non_none_value(cls, fhir_value_container):
+        for attr_name in [
+            'valueBoolean',
+            'valueDateTime',
+            'valueDecimal',
+            'valueInteger',
+            'valueString'
+        ]:
+            value = getattr(fhir_value_container, attr_name)
+            if value is not None:
+                return value
