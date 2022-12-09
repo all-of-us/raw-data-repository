@@ -6,9 +6,9 @@ from typing import Dict
 from sqlalchemy.orm import joinedload, Session
 
 from rdr_service.domain_model.response import Response
-from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.model.code import Code
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
+from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from rdr_service.services.response_validation.validation import ResponseValidator
 from rdr_service.services.slack_utils import SlackMessageHandler
 
@@ -24,7 +24,7 @@ class ResponseValidationController:
         self._response_validator_map: Dict[str, ResponseValidator] = {}
 
     def run_validation(self):
-        response_list = QuestionnaireResponseDao.get_responses_to_surveys(
+        response_list = QuestionnaireResponseRepository.get_responses_to_surveys(
             session=self._session,
             created_start_datetime=self._since_date
         )
