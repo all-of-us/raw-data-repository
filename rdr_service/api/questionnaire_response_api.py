@@ -5,7 +5,7 @@ from rdr_service import app_util
 from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.api.base_api import BaseApi
-from rdr_service.api.etm_api import EtmApi, ETM_EMOTIONAL_RECOGNITION_URL
+from rdr_service.api.etm_api import EtmApi
 from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao, raise_if_withdrawn
@@ -36,10 +36,7 @@ class QuestionnaireResponseApi(BaseApi):
         raise_if_withdrawn(participant)
 
         request_json = request.json
-        if (
-            'questionnaire' in request_json
-            and request_json['questionnaire'].get('reference') == ETM_EMOTIONAL_RECOGNITION_URL
-        ):
+        if EtmApi.is_etm_payload(request_json):
             return EtmApi.post_questionnaire_response(request_json)
         else:
             resp = super(QuestionnaireResponseApi, self).post(participant_id=p_id)

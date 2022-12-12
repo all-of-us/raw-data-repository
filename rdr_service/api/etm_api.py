@@ -13,12 +13,6 @@ from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.repository import etm as etm_repository
 from rdr_service.services.response_validation.etm_validation import EtmValidation
 
-ETM_OUTCOMES_EXT_URL = 'https://research.joinallofus.org/fhir/outcomes'
-ETM_EMOTIONAL_RECOGNITION_URL = 'https://research.joinallofus.org/fhir/emorecog'
-
-OUTCOMES_EXTENSION_URL = 'https://research.joinallofus.org/fhir/emorecog/outcomes'
-METADATA_EXTENSION_URL = 'https://research.joinallofus.org/fhir/emorecog/metadata'
-
 
 class EtmApi:
     @classmethod
@@ -66,6 +60,16 @@ class EtmApi:
             raise BadRequest(validation_errors)
 
     @classmethod
+    def is_etm_payload(cls, payload_json):
+        return (
+            'extension' in payload_json
+            and any(
+                extension.get('url') and 'outcomes' in extension.get('url')
+                for extension in payload_json['extension']
+            )
+        )
+
+    @classmethod
     def _parse_response(cls, questionnaire_response_json) -> models.EtmResponse:
         fhir_response = FhirQuestionnaireResponse(questionnaire_response_json)
 
@@ -81,11 +85,11 @@ class EtmApi:
 
         response_obj.metadata_list = cls._parse_extension_json(cls._find_extension(
             extension_list=fhir_response.extension,
-            url_str=METADATA_EXTENSION_URL
+            url_str_fragment='metadata'
         ))
         response_obj.outcome_list = cls._parse_extension_json(cls._find_extension(
             extension_list=fhir_response.extension,
-            url_str=OUTCOMES_EXTENSION_URL
+            url_str_fragment='outcomes'
         ))
         response_obj.answer_list = cls._parse_answers(fhir_response.group.question)
 
@@ -138,9 +142,9 @@ class EtmApi:
         return patient_ref_str[-9:]
 
     @classmethod
-    def _find_extension(cls, extension_list, url_str):
+    def _find_extension(cls, extension_list, url_str_fragment):
         for extension in extension_list:
-            if extension.url == url_str:
+            if url_str_fragment in extension.url:
                 return extension
 
     @classmethod
