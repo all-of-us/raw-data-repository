@@ -28,17 +28,11 @@ depends_on = None
 
 
 def upgrade(engine_name):
-    if engine_name == "rdr" and engine_name == "metrics":
-        globals()["upgrade_%s" % engine_name]()
-    else:
-        pass
+    globals()["upgrade_%s" % engine_name]()
 
 
 def downgrade(engine_name):
-    if engine_name == "rdr" and engine_name == "metrics":
-        globals()["downgrade_%s" % engine_name]()
-    else:
-        pass
+    globals()["downgrade_%s" % engine_name]()
 
 
 def upgrade_rdr():
