@@ -43,6 +43,7 @@ class EtmQuestionnaireRepository(BaseRepository):
                     name_list = [
                         code_object['code']
                         for code_object in extension['valueCodeableConcept']['coding']
+                        if 'code' in code_object
                     ]
 
                     if is_metadata:
