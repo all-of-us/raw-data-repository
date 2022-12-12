@@ -1256,6 +1256,31 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         for answer in answers:
             self.assertIn(answer.codeId, [code1.codeId, code2.codeId])
 
+    def test_participant_race_answers_aian_summary(self):
+
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id)
+
+        questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_race_aian.json",
+            questionnaire_id,
+            participant_id
+        )
+
+        with FakeClock(TIME_2):
+            resource["authored"] = TIME_2.isoformat()
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary_dao = ParticipantSummaryDao()
+
+        current_participant = \
+            list(filter(lambda x: x.participantId == int(participant_id.split('P')[-1]), summary_dao.get_all()))[0]
+
+        self.assertIsNotNone(current_participant)
+        self.assertEqual(current_participant.aian, 1)
+
     def test_gender_prefer_not_answer(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()

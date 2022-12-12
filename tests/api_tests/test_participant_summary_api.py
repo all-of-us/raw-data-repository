@@ -162,6 +162,7 @@ participant_summary_default_values = {
     "onsiteIdVerificationType": "UNSET",
     "onsiteIdVerificationVisitType": "UNSET",
     "questionnaireOnLifeFunctioning": "UNSET",
+    "aian": False
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
@@ -876,6 +877,38 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         self.assertEqual(len(entries), len(current_summaries))
         self.assertTrue(all(obj.get('participantIncentives') is not None for obj in resources))
+
+    def test_get_aian_flag(self):
+        for num in range(3):
+            self.data_generator.create_database_participant_summary(
+                firstName=f"Testy_{num}",
+                lastName=f"Tester_{num}",
+                dateOfBirth=datetime.date(1978, 10, 9),
+                aian=1 if num < 2 else 0
+            )
+
+        current_summaries = self.ps_dao.get_all()
+        first_pid = current_summaries[0].participantId
+        second_pid = current_summaries[1].participantId
+        third_pid = current_summaries[2].participantId
+
+        first_summary = self.send_get(f"Participant/P{first_pid}/Summary")
+        self.assertIsNotNone(first_summary.get('aian'))
+        self.assertEqual(first_summary.get('aian'), True)
+
+        second_summary = self.send_get(f"Participant/P{second_pid}/Summary")
+        self.assertIsNotNone(second_summary.get('aian'))
+        self.assertEqual(second_summary.get('aian'), True)
+
+        third_summary = self.send_get(f"Participant/P{third_pid}/Summary")
+        self.assertIsNotNone(third_summary.get('aian'))
+        self.assertEqual(third_summary.get('aian'), False)
+
+        response = self.send_get(f"ParticipantSummary?_sort=lastModified")
+        entries = response['entry']
+        resources = [obj.get('resource') for obj in entries]
+
+        self.assertTrue(all(obj.get('aian') in (True, False) for obj in resources))
 
     def test_pairing_summary(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
