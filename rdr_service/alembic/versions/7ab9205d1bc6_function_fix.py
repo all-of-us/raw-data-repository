@@ -67,11 +67,11 @@ sp_get_code_module_items = ReplaceableObject(
 
 
 def upgrade(engine_name):
-    globals()[f"upgrade_{engine_name}"]()
+    globals()["upgrade_%s" % engine_name]()
 
 
 def downgrade(engine_name):
-    globals()[f"downgrade_{engine_name}"]()
+    globals()["downgrade_%s" % engine_name]()
 
 
 

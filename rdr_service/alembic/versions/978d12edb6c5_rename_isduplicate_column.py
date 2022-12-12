@@ -27,11 +27,11 @@ depends_on = None
 
 
 def upgrade(engine_name):
-    globals()[f"upgrade_{engine_name}"]()
+    globals()["upgrade_%s" % engine_name]()
 
 
 def downgrade(engine_name):
-    globals()[f"downgrade_{engine_name}"]()
+    globals()["downgrade_%s" % engine_name]()
 
 # Manually edited commands to force alter_column instead of add_column/drop_column sequence.  Maintains nullable=True
 # from original column creation (1dff4309d707_hash_and_duplicate_flag_on_.py) to minimize impact of migration

@@ -32,11 +32,11 @@ update genomic_set_member set validation_status=if(validation_status > 1, 2, val
 
 
 def upgrade(engine_name):
-    globals()[f"upgrade_{engine_name}"]()
+    globals()["upgrade_%s" % engine_name]()
 
 
 def downgrade(engine_name):
-    globals()[f"downgrade_{engine_name}"]()
+    globals()["downgrade_%s" % engine_name]()
 
 
 def upgrade_rdr():

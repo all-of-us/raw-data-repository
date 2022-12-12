@@ -122,11 +122,11 @@ CREATE OR REPLACE VIEW raw_physical_measurements_view AS
 
 
 def upgrade(engine_name):
-    globals()[f"upgrade_{engine_name}"]()
+    globals()["upgrade_%s" % engine_name]()
 
 
 def downgrade(engine_name):
-    globals()[f"downgrade_{engine_name}"]()
+    globals()["downgrade_%s" % engine_name]()
 
 
 def upgrade_rdr():
