@@ -1555,7 +1555,8 @@ class ParticipantSummary(Base):
     """User who recorded ID verification occurrence"""
     onsiteIdVerificationSite = Column("onsite_id_verification_site_id", Integer, ForeignKey("site.site_id"))
     """The site where ID verification took place"""
-
+    aian = Column(Boolean, default=0)
+    """Denotes if the participants race is AI_AN (AMERICAN_INDIAN_OR_ALASKA_NATIVE)"""
     lastModified = Column("last_modified", UTCDateTime6)
     """UTC timestamp of the last time the participant summary was modified"""
 

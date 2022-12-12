@@ -69,7 +69,7 @@ def convert_to_datetime(date):
     return datetime.datetime.combine(date, datetime.datetime.min.time())
 
 
-def format_json_bool(obj, field_name):
+def format_json_bool(obj, field_name: str):
     if field_name not in obj:
         return
     bool_map = {

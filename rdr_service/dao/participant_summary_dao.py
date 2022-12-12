@@ -1392,7 +1392,6 @@ class ParticipantSummaryDao(UpdatableDao):
                 summary.stateId = state_code.codeId if state_code else None
 
 
-
 def _initialize_field_type_sets():
     """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are
   used when formatting JSON from participant summaries.
