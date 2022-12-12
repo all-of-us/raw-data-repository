@@ -11,6 +11,9 @@ security: # configuration for the `safety check` command
         25853: # Example vulnerability ID
             reason: we don't use the vulnerable function # optional, for internal note purposes to communicate with your team. This reason will be reported in the Safety reports
             expires: '2022-10-21' # datetime string - date this ignore will expire, best practice to use this variable
+        51668:
+            reason: using SQLAlchemy versions >=1.4.0 is causing failures # optional, for internal note purposes to communicate with your team. This reason will be reported in the Safety reports
+            expires: '2023-04-30' # datetime string - date this ignore will expire, best practice to use this variable
     continue-on-vulnerability-error: False # Suppress non-zero exit codes when vulnerabilities are found. Enable this in pipelines and CI/CD processes if you want to pass builds that have vulnerabilities. We recommend you set this to False.
 alert: # configuration for the `safety alert` command
     security:
