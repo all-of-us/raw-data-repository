@@ -1,0 +1,2500 @@
+{
+    "resourceType": "Questionnaire",
+    "version": "EmoRecog_AoU.v1.Nov22",
+    "id": "emorecog",
+    "text": {
+        "div": "TestMyBrain Multiracial Emotion Identification",
+        "status": "additional"
+    },
+    "status": "published",
+    "extension": [
+        {
+            "url": "https://research.joinallofus.org/fhir/metadata",
+            "valueCodeableConcept": {
+                "coding": [
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "response_device"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "user_agent"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "screen_height"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "screen_width"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "touch"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "operating_system"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "user_utc_offset"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_start_date_time"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_end_date_time"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_duration"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_restarted"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_version"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_name"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_short_name"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_params"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/metadata",
+                        "code": "test_language"
+                    }
+                ]
+            }
+        },
+        {
+            "url": "https://research.joinallofus.org/fhir/outcomes",
+            "valueCodeableConcept": {
+                "coding": [
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "score"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "accuracy"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "meanRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "medianRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "sdRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "happy_accuracy"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "happy_meanRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "happy_medianRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "happy_sdRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "angry_accuracy"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "angry_meanRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "angry_medianRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "angry_sdRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "fearful_accuracy"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "fearful_meanRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "fearful_medianRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "fearful_sdRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "sad_accuracy"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "sad_meanRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "sad_medianRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "sad_sdRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "any_timeouts"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "flag_medianRTc"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "flag_sameResponse"
+                    },
+                    {
+                        "system": "https://research.joinallofus.org/fhir/outcomes",
+                        "code": "flag_trialFlags"
+                    }
+                ]
+            }
+        }
+    ],
+    "group": {
+        "linkId": "1",
+        "required": true,
+        "question": [
+            {
+                "linkId": "1.1",
+                "text": "fearful1.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.2",
+                "text": "angry1.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.3",
+                "text": "angry2.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.4",
+                "text": "fearful2.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.5",
+                "text": "sad1.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.6",
+                "text": "sad2.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.7",
+                "text": "sad3.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.8",
+                "text": "angry3.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.9",
+                "text": "sad4.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.10",
+                "text": "sad5.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.11",
+                "text": "happy1.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.12",
+                "text": "happy2.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.13",
+                "text": "sad6.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.14",
+                "text": "angry4.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.15",
+                "text": "happy3.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.16",
+                "text": "happy4.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.17",
+                "text": "fearful3.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.18",
+                "text": "happy5.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.19",
+                "text": "sad7.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.20",
+                "text": "fearful4.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.21",
+                "text": "fearful5.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.22",
+                "text": "sad8.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.23",
+                "text": "sad9.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.24",
+                "text": "angry5.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.25",
+                "text": "angry6.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.26",
+                "text": "fearful6.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.27",
+                "text": "happy6.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.28",
+                "text": "fearful7.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.29",
+                "text": "happy7.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.30",
+                "text": "happy8.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.31",
+                "text": "angry7.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.32",
+                "text": "happy9.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.33",
+                "text": "fearful8.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.34",
+                "text": "fearful9.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.35",
+                "text": "fearful10.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.36",
+                "text": "fearful11.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.37",
+                "text": "angry8.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.38",
+                "text": "fearful12.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.39",
+                "text": "angry9.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.40",
+                "text": "sad10.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.41",
+                "text": "angry10.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.42",
+                "text": "sad11.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.43",
+                "text": "sad12.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.44",
+                "text": "angry11.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.45",
+                "text": "happy10.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.46",
+                "text": "angry12.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.47",
+                "text": "happy11.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            },
+            {
+                "linkId": "1.48",
+                "text": "happy12.jpg",
+                "required": true,
+                "repeats": true,
+                "extension": [
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/trial_id"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/image"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/emotion"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/response"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/correct"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/rt"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/state"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/repeated"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/flagged"
+                    },
+                    {
+                        "url": "https://research.joinallofus.org/fhir/emorecog/answer_extension",
+                        "valueUri": "https://research.joinallofus.org/fhir/emorecog/timestamp"
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -8,6 +8,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    func,
     Index,
     Integer,
     SmallInteger,
@@ -286,7 +287,8 @@ class ParticipantSummary(Base):
     # The time when we get a DNA order
     enrollmentStatusCoreOrderedSampleTime = Column("enrollment_status_core_ordered_sample_time", UTCDateTime)
     """
-    Present when a participant has completed all baseline modules, physical measurements, and has DNA samples stored.
+    Present when a participant has completed all baseline modules, physical measurements, and DNA samples have been
+    ordered
 
     Is the latest date from the list of:
 
@@ -446,6 +448,29 @@ class ParticipantSummary(Base):
     UTC timestamp indicating the latest time RDR was aware of signed and uploaded EHR documents
     """
 
+    # DA-3156:  Separate tracking for participant-mediated EHR (e.g., from CE participants)
+    # These values will be backfilled based on a report of mediated EHR activity imported into a temp table
+    wasParticipantMediatedEhrAvailable = Column(
+        "was_participant_mediated_ehr_available",
+        Boolean,
+        nullable=False,
+        server_default=expression.false()
+    )
+    """
+    A true or false value that indicates whether participant-mediated Electronic Health Records (EHR)
+    have ever been present for the participant.  Mediated EHR is a separate EHR source than HPO-provided EHR
+    """
+
+    firstParticipantMediatedEhrReceiptTime =  Column("first_participant_mediated_ehr_receipt_time", UTCDateTime)
+    """
+    UTC timestamp indicating first reported occurrence of participant-mediated EHR content
+    """
+
+    latestParticipantMediatedEhrReceiptTime = Column("latest_participant_mediated_ehr_receipt_time", UTCDateTime)
+    """
+    UTC timestamp indicating the latest reported occurrence of participant-mediated EHR content
+    """
+
     healthDataStreamSharingStatusV3_1 = Column(
         'health_data_stream_sharing_status_v_3_1',
         Enum(DigitalHealthSharingStatusV31),
@@ -453,7 +478,8 @@ class ParticipantSummary(Base):
             case(
                 [
                     (isEhrDataAvailable, int(DigitalHealthSharingStatusV31.CURRENTLY_SHARING)),
-                    (wasEhrDataAvailable, int(DigitalHealthSharingStatusV31.EVER_SHARED))
+                    (wasEhrDataAvailable, int(DigitalHealthSharingStatusV31.EVER_SHARED)),
+                    (wasParticipantMediatedEhrAvailable, int(DigitalHealthSharingStatusV31.EVER_SHARED))
                 ],
                 else_=int(DigitalHealthSharingStatusV31.NEVER_SHARED)
             ),
@@ -461,10 +487,16 @@ class ParticipantSummary(Base):
         )
     )
 
+    # If both ehrUpdateTime and latestParticipantMediatedEhrReceiptTime are null, result is null
+    # If one is null, result is the non-null timestamp
+    # If both are non-null, result is the most recent (GREATEST) timestamp
     healthDataStreamSharingStatusV3_1Time = Column(
         'health_data_stream_sharing_status_v_3_1_time',
         UTCDateTime,
-        Computed(ehrUpdateTime, persisted=True)
+        Computed(func.nullif(func.greatest(func.coalesce(ehrUpdateTime, 0),
+                                           func.coalesce(latestParticipantMediatedEhrReceiptTime, 0)
+                                           ),
+                             0), persisted=True)
     )
 
     clinicPhysicalMeasurementsStatus = Column(
@@ -560,7 +592,6 @@ class ParticipantSummary(Base):
     The date and time at which the participant has indicated they do not want to be contacted anymore;
     also shouldn't have any EHR data transferred after the given suspension date
     """
-
 
     # The originating resource for participant, this (unlike clientId) will not change.
     participantOrigin = Column("participant_origin", String(80), nullable=False)

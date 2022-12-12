@@ -160,6 +160,7 @@ VA_WORKQUEUE_SUBFOLDER = 'va_workqueue_subfolder'
 
 ENABLE_ENROLLMENT_STATUS_3 = 'enable_enrollment_status_3'
 ENABLE_HEALTH_SHARING_STATUS_3 = 'enable_health_sharing_status_3'
+ENABLE_PARTICIPANT_MEDIATED_EHR = 'enable_participant_mediated_ehr'
 
 # Buckets to listen for Pub/Sub notifications
 PUBSUB_NOTIFICATION_BUCKETS_PROD = [
