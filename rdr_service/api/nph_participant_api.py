@@ -12,7 +12,7 @@ from rdr_service.api.nph_participant_api_schemas.util import validation_error_me
 def nph_participant():
 
     try:
-        query = request.get_json().get("query")
+        query = request.get_data().decode('utf8')
         validate_error = validate_query(query)
         if validate_error:
             return validation_error_message(validate_error), 400
