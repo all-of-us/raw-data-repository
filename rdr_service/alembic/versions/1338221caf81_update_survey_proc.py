@@ -17,9 +17,9 @@ depends_on = None
 
 sp_get_questionnaire_answers = ReplaceableObject(
     "sp_get_questionnaire_answers",
-    """  
- (IN participant_id INT, IN id INT)  
- BEGIN  
+    """
+ (IN participant_id INT, IN id INT)
+ BEGIN
    # Dynamically pivot the questionnaire answers for the given participant and module.
    # Results are ordered by 'created' descending.
    DECLARE CONTINUE HANDLER FOR 1064 SET @sql = NULL;

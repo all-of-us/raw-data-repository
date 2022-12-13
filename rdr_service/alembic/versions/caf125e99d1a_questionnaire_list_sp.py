@@ -20,9 +20,9 @@ sp_questionnaire_list = ReplaceableObject(
         (IN participant_id int)
     SELECT
           qr.participant_id,
-          c.value as questionnaire_name,          
+          c.value as questionnaire_name,
           qr.created,
-          qr.authored,          
+          qr.authored,
           q.semantic_version,
           q.version,
           qr.language,
