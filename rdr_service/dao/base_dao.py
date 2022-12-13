@@ -329,8 +329,8 @@ class BaseDao(object):
         result = self._parse_value(prop, property_type, value)
         return result
 
-    def query(self, query_def):
-        if query_def.invalid_filters and not query_def.field_filters:
+    def query(self, query_definition):
+        if query_definition.invalid_filters and not query_definition.field_filters:
             raise BadRequest("No valid fields were provided")
 
         if not self.order_by_ending:
@@ -339,23 +339,24 @@ class BaseDao(object):
         with self.session() as session:
             total = None
 
-            query, field_names = self._make_query(session, query_def)
+            query, field_names = self._make_query(session, query_definition)
             items = query.with_session(session).all()
 
-            if query_def.include_total:
-                total = self._count_query(session, query_def)
+            if query_definition.include_total:
+                total = self._count_query(session, query_definition)
 
             if not items:
                 return Results([], total=total)
 
-        if len(items) > query_def.max_results:
+        if len(items) > query_definition.max_results:
             # Items, pagination token, and more are available
-            page = items[0 : query_def.max_results]
-            token = self._make_pagination_token(items[query_def.max_results - 1].asdict(), field_names)
+            page = items[0 : query_definition.max_results]
+            token = self._make_pagination_token(items[query_definition.max_results - 1].asdict(), field_names)
             return Results(page, token, more_available=True, total=total)
         else:
             token = (
-                self._make_pagination_token(items[-1].asdict(), field_names) if query_def.always_return_token else None
+                self._make_pagination_token(items[-1].asdict(),
+                                            field_names) if query_definition.always_return_token else None
             )
             return Results(items, token, more_available=False, total=total)
 
@@ -377,25 +378,25 @@ class BaseDao(object):
         query = self._set_filters(query, query_def.field_filters)
         return query.count()
 
-    def _make_query(self, session, query_def):
-        query = self._initialize_query(session, query_def)
-        query = self._set_filters(query, query_def.field_filters)
+    def _make_query(self, session, query_definition):
+        query = self._initialize_query(session, query_definition)
+        query = self._set_filters(query, query_definition.field_filters)
         order_by_field_names = []
         order_by_fields = []
         first_descending = False
-        if query_def.order_by:
-            query = self._add_order_by(query, query_def.order_by, order_by_field_names, order_by_fields)
-            first_descending = not query_def.order_by.ascending
+        if query_definition.order_by:
+            query = self._add_order_by(query, query_definition.order_by, order_by_field_names, order_by_fields)
+            first_descending = not query_definition.order_by.ascending
         query = self._add_order_by_ending(query, order_by_field_names, order_by_fields)
-        if query_def.pagination_token:
+        if query_definition.pagination_token:
             # Add a query filter based on the pagination token.
-            query = self._add_pagination_filter(query, query_def, order_by_fields, first_descending)
+            query = self._add_pagination_filter(query, query_definition, order_by_fields, first_descending)
         # Return one more than max_results, so that we know if there are more results.
-        query = query.limit(query_def.max_results + 1)
-        if query_def.offset:
-            query = query.offset(query_def.offset)
-        if query_def.options:
-            query = query.options(query_def.options)
+        query = query.limit(query_definition.max_results + 1)
+        if query_definition.offset:
+            query = query.offset(query_definition.offset)
+        if query_definition.options:
+            query = query.options(query_definition.options)
         return query, order_by_field_names
 
     def _set_filters(self, query, filters):

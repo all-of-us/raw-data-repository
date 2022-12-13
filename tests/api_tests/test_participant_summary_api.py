@@ -10,7 +10,7 @@ from mock import patch
 from urllib.parse import urlencode
 
 from rdr_service import config, main
-from rdr_service.api_util import PTC, CURATION, HEALTHPRO
+from rdr_service.api_util import PTC, CURATION, HEALTHPRO, SUPPORT
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE,
                                         DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -3974,7 +3974,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             wa_participant_id
         ], response_ids)
 
-    #### begin POST to ParticipantSummary API
+    # Begin POST to ParticipantSummary API
     def test_response_for_pid_not_found_in_post(self):
         bad_pid = 'P12345'
 
@@ -4234,6 +4234,44 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(len(responses), num_summary // 2)
         self.assertTrue(all(obj['resource']['site'] == monroe.googleGroup for obj in responses))
         self.assertFalse(any(obj['resource']['site'] == phoenix.googleGroup for obj in responses))
+
+    def test_filter_payload_roles(self):
+        num_summary, first_name = 4, 'Testy'
+
+        for num in range(num_summary):
+            self.data_generator.create_database_participant_summary(
+                firstName=first_name,
+                lastName=f'Tester_{num}',
+            )
+
+            # first_pid = ps.participantId if num == 0 else None
+
+        self.overwrite_test_user_roles([SUPPORT])
+        self.send_get(f"ParticipantSummary?firstName={first_name}")
+    #
+    #     print('Darryl')
+        # self.assertIsNotNone(response)
+        # self.assertEqual(response['site'], google_group)
+        #
+        # response = self.send_get(f"ParticipantSummary?firstName={first_name}")
+        # responses = response['entry']
+        #
+        # self.assertEqual(len(responses), num_summary)
+        # self.assertFalse(all(obj['resource']['site'] == monroe.googleGroup for obj in responses))
+        #
+        # self.overwrite_test_user_site(google_group)
+        #
+        # response = self.send_get(f"Participant/P{second_pid}/Summary")
+        #
+        # self.assertIsNotNone(response)
+        # self.assertEqual(response['site'], google_group)
+        #
+        # response = self.send_get(f"ParticipantSummary?firstName={first_name}")
+        # responses = response['entry']
+        #
+        # self.assertEqual(len(responses), num_summary // 2)
+        # self.assertTrue(all(obj['resource']['site'] == monroe.googleGroup for obj in responses))
+        # self.assertFalse(any(obj['resource']['site'] != monroe.googleGroup for obj in responses))
 
     def test_synthetic_pm_fields(self):
         questionnaire_id = self.create_questionnaire("all_consents_questionnaire.json")

@@ -280,9 +280,9 @@ class BaseApi(Resource):
         if results.pagination_token:
             query_params = request.args.copy()
             query_params["_token"] = results.pagination_token
-
             next_url = main.api.url_for(self.__class__, _external=True, **query_params.to_dict(flat=False))
             bundle_dict["link"] = [{"relation": "next", "url": next_url}]
+
         entries = []
         for item in results.items:
             response_json = self._make_response(item)

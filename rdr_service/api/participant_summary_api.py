@@ -1,10 +1,12 @@
 import logging
+from typing import Optional, List
 
 from flask import request
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
+from rdr_service import config
 from rdr_service.api.base_api import BaseApi, make_sync_results_for_request
-from rdr_service.api_util import AWARDEE, DEV_MAIL, RDR_AND_PTC, PTC_HEALTHPRO_AWARDEE_CURATION
+from rdr_service.api_util import AWARDEE, DEV_MAIL, RDR_AND_PTC, PTC_HEALTHPRO_AWARDEE_CURATION, SUPPORT
 from rdr_service.app_util import auth_required, get_validated_user_info, restrict_to_gae_project
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
@@ -30,14 +32,14 @@ class ParticipantSummaryApi(BaseApi):
     def __init__(self):
         super(ParticipantSummaryApi, self).__init__(ParticipantSummaryDao(), get_returns_children=True)
         self.user_info = None
-        self.query = None
+        self.query_definition = None
         self.site_dao = None
 
         self.participant_dao = ParticipantDao()
         self.hpro_consent_dao = HealthProConsentDao()
         self.incentives_dao = ParticipantIncentivesDao()
 
-    @auth_required(PTC_HEALTHPRO_AWARDEE_CURATION)
+    @auth_required(PTC_HEALTHPRO_AWARDEE_CURATION + [SUPPORT])
     def get(self, p_id=None):
         # Make sure participant id is in the correct range of possible values.
         if isinstance(p_id, int) and not _MIN_ID <= p_id <= _MAX_ID:
@@ -63,11 +65,11 @@ class ParticipantSummaryApi(BaseApi):
             if auth_awardee and user_email != DEV_MAIL:
                 raise Forbidden
             self._filter_by_user_site(participant_id=p_id)
+            # self._filter_payload_for_role()
 
             if any(role in ['healthpro'] for role in self.user_info.get('roles')):
                 self._fetch_hpro_consents(pids=p_id)
                 self._fetch_participant_incentives(pids=p_id)
-
             return super(ParticipantSummaryApi, self).get(p_id)
         else:
             if auth_awardee:
@@ -99,12 +101,16 @@ class ParticipantSummaryApi(BaseApi):
         if constraint_failed:
             raise BadRequest(f"{message}")
 
-        self.query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
-        self.query.always_return_token = self._get_request_arg_bool("_sync")
-        self.query.backfill_sync = self._get_request_arg_bool("_backfill", True)
+        self.query_definition = super(ParticipantSummaryApi, self)._make_query(check_invalid)
+        self.query_definition.always_return_token = self._get_request_arg_bool("_sync")
+        self.query_definition.backfill_sync = self._get_request_arg_bool("_backfill", True)
+        self.query_definition.attributes = self._filter_payload_for_role()
         self._filter_by_user_site()
+        return self.query_definition
 
-        return self.query
+    def _make_response(self, obj):
+        filter_payload = True if self.query_definition and self.query_definition.attributes else False
+        return self.dao.to_client_json(obj, filter_payload)
 
     def _make_bundle(self, results, id_field, participant_id):
         if self._get_request_arg_bool("_sync"):
@@ -145,8 +151,8 @@ class ParticipantSummaryApi(BaseApi):
     def _query(self, id_field, participant_id=None):
         logging.info(f"Preparing query for {self.dao.model_type}.")
 
-        query = self._make_query()
-        results = self.dao.query(query)
+        query_definition = self._make_query()
+        results = self.dao.query(query_definition)
         participant_ids = [obj.participantId for obj in results.items if hasattr(obj, 'participantId')]
 
         if any(role in ['healthpro'] for role in self.user_info.get('roles')) and participant_ids:
@@ -155,19 +161,27 @@ class ParticipantSummaryApi(BaseApi):
 
         logging.info("Query complete, bundling results.")
 
+        # handle
         response = self._make_bundle(results, id_field, participant_id)
         logging.info("Returning response.")
 
         return response
 
-    def _fetch_hpro_consents(self, pids):
-        if type(pids) is not list:
-            self.dao.hpro_consents = self.hpro_consent_dao.get_by_participant(pids)
-        else:
-            self.dao.hpro_consents = self.hpro_consent_dao.batch_get_by_participant(pids)
+    def _fetch_hpro_consents(self, pids: Optional[List[int]]):
+        self.dao.hpro_consents = self.hpro_consent_dao.get_by_participant(pids)
 
-    def _fetch_participant_incentives(self, pids):
+    def _fetch_participant_incentives(self, pids: Optional[List[int]]):
         self.dao.participant_incentives = self.incentives_dao.get_by_participant(pids)
+
+    def _filter_payload_for_role(self) -> Optional[dict]:
+        role_payload_config = config.getSettingJson(config.OPS_DATA_PAYLOAD_ROLES, {})
+        if not role_payload_config:
+            return
+
+        for role in self.user_info.get('roles'):
+            if role in role_payload_config:
+                return role_payload_config.get(role)['fields']
+        return None
 
     def _filter_by_user_site(self, participant_id=None):
         if not self.user_info.get('site'):
@@ -185,10 +199,11 @@ class ParticipantSummaryApi(BaseApi):
         if not participant_id:
             user_info_site_filter = self.dao.make_query_filter('site', user_site)
             if user_info_site_filter:
-                current_site_filter = list(filter(lambda x: x.field_name == 'siteId', self.query.field_filters))
+                current_site_filter = list(filter(lambda x: x.field_name == 'siteId',
+                                                  self.query_definition.field_filters))
                 if current_site_filter:
-                    self.query.field_filters.remove(current_site_filter[0])
-                self.query.field_filters.append(user_info_site_filter)
+                    self.query_definition.field_filters.remove(current_site_filter[0])
+                self.query_definition.field_filters.append(user_info_site_filter)
             return
 
         participant_summary = self.dao.get_by_participant_id(participant_id)
