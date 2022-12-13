@@ -72,9 +72,6 @@ from rdr_service.model.onsite_id_verification import OnsiteIdVerification
 from rdr_service.model.curation_etl import CdrEtlRunHistory, CdrEtlSurveyHistory, CdrExcludedCode
 from rdr_service.model.profile_update import ProfileUpdate
 
-from rdr_service.model.rex import TestModel
-from rdr_service.model.nph import TestModel
-
 
 RETRY_CONNECTION_LIMIT = 10
 
