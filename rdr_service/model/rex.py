@@ -1,14 +1,15 @@
-from sqlalchemy import Column, DateTime, BigInteger, String
+from sqlalchemy import Column, BigInteger, String
 from sqlalchemy.dialects.mysql import TINYINT
 
 from rdr_service.model.base import RexBase
+from rdr_service.model.utils import UTCDateTime
 
 
 class Study(RexBase):
     __tablename__ = 'study'
     id = Column('id', BigInteger, autoincrement=True, primary_key=True)
-    created = Column(DateTime)
-    modified = Column(DateTime)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT)
     name = Column(String(128))
     prefix = Column(BigInteger)
