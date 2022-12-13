@@ -1,7 +1,7 @@
 from sqlalchemy import Column, ForeignKey, BigInteger, String
 from sqlalchemy.dialects.mysql import TINYINT
 
-from rdr_service.model.base import RexBase, Base, NphBase
+from rdr_service.model.base import RexBase
 from rdr_service.model.utils import UTCDateTime
 
 
@@ -16,7 +16,7 @@ class Study(RexBase):
     prefix = Column(BigInteger)
 
 
-class ParticipantMapping(RexBase, Base, NphBase):
+class ParticipantMapping(RexBase):
     __tablename__ = 'participant_mapping'
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
