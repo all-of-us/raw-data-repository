@@ -24,7 +24,7 @@ fn_get_code_id_from_key = ReplaceableObject(
   BEGIN
     # Return the record code_id for the given key from the code table.
     DECLARE result INT;
-    SET result = (SELECT code_id FROM code 
+    SET result = (SELECT code_id FROM code
                     WHERE `value` = code_value ORDER BY code_id DESC LIMIT 1);
     RETURN result;
   END
