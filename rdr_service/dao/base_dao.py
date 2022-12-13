@@ -340,7 +340,7 @@ class BaseDao(object):
             total = None
 
             query, field_names = self._make_query(session, query_def)
-            items = query.all()
+            items = query.with_session(session).all()
 
             if query_def.include_total:
                 total = self._count_query(session, query_def)
