@@ -13,7 +13,7 @@
         "answer": [
           {
             "valueCoding": {
-              "code": "etm_yes",
+              "code": "agree_yes",
               "display": "",
               "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
             }
