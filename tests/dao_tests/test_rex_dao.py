@@ -3,7 +3,7 @@ from rdr_service.dao.rex_dao import RexStudyDao
 from tests.helpers.unittest_base import BaseTestCase
 
 
-class NphParticipantDaoTest(BaseTestCase):
+class RexStudyDaoTest(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.rex_study_dao = RexStudyDao()
