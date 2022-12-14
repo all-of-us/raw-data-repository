@@ -81,9 +81,7 @@ from rdr_service.code_constants import (
     VA_EHR_RECONSENT_QUESTION_CODE,
     AGREE_YES,
     AGREE_NO,
-    ETM_CONSENT_QUESTION_CODE,
-    ETM_YES_ANSWER_CODE,
-    ETM_NO_ANSWER_CODE
+    ETM_CONSENT_QUESTION_CODE
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -898,10 +896,10 @@ class QuestionnaireResponseDao(BaseDao):
                             participant_summary.consentForElectronicHealthRecordsTime = questionnaire_response.created
                     elif code.value.lower() == ETM_CONSENT_QUESTION_CODE:
                         answer_value = code_dao.get(answer.valueCodeId).value
-                        if answer_value.lower() == ETM_YES_ANSWER_CODE:
+                        if answer_value.lower() == AGREE_YES:
                             self.consents_provided.append(ConsentType.ETM)
                             participant_summary.consentForEtM = QuestionnaireStatus.SUBMITTED
-                        elif answer_value.lower() == ETM_NO_ANSWER_CODE:
+                        elif answer_value.lower() == AGREE_NO:
                             participant_summary.consentForEtM = QuestionnaireStatus.SUBMITTED_NO_CONSENT
 
                         participant_summary.consentForEtMTime = questionnaire_response.created
