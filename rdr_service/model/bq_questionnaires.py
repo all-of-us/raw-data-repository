@@ -846,6 +846,9 @@ class BQPDRCOPEVaccine2View(BQModuleView):
 class BQPDRWithdrawalIntroSchema(_BQModuleSchema):
     """ Withdrawal Intro Module """
     _module = 'withdrawal_intro'
+    _force_boolean_fields = (
+        'withdrawalreasonother_text',
+    )
 
 
 class BQPDRWithdrawalIntro(BQTable):
@@ -857,7 +860,9 @@ class BQPDRWithdrawalIntro(BQTable):
 class BQPDRStopParticipatingSchema(_BQModuleSchema):
     """ Stop Participating Module """
     _module   = 'StopParticipating'
-
+    _force_boolean_fields = (
+        'withdrawalreasonother_text',
+    )
 
 class BQPDRStopParticipating(BQTable):
     """ Stop Participating BigQuery Table """
