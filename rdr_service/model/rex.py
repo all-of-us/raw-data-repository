@@ -8,9 +8,9 @@ from rdr_service.model.utils import UTCDateTime
 
 
 class Study(RexBase):
-    __tablename__ = 'study'
+    __tablename__ = "study"
 
-    id = Column('id', BigInteger, autoincrement=True, primary_key=True)
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT)
@@ -23,7 +23,7 @@ event.listen(Study, "before_update", model_update_listener)
 
 
 class ParticipantMapping(RexBase):
-    __tablename__ = 'participant_mapping'
+    __tablename__ = "participant_mapping"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)

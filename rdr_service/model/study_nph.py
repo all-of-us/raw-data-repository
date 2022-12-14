@@ -7,9 +7,9 @@ from rdr_service.model.utils import UTCDateTime
 
 
 class Participant(NphBase):
-    __tablename__ = 'participant'
+    __tablename__ = "participant"
 
-    id = Column('id', BigInteger, primary_key=True)
+    id = Column("id", BigInteger, primary_key=True)
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT)
