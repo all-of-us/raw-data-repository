@@ -1,7 +1,9 @@
-from sqlalchemy import Column, ForeignKey, BigInteger, String
+from sqlalchemy import (
+    Column, ForeignKey, BigInteger, String, Index, event
+)
 from sqlalchemy.dialects.mysql import TINYINT
 
-from rdr_service.model.base import RexBase
+from rdr_service.model.base import RexBase, model_insert_listener, model_update_listener
 from rdr_service.model.utils import UTCDateTime
 
 
@@ -14,6 +16,10 @@ class Study(RexBase):
     ignore_flag = Column(TINYINT)
     name = Column(String(128))
     prefix = Column(BigInteger)
+
+
+event.listen(Study, "before_insert", model_insert_listener)
+event.listen(Study, "before_update", model_update_listener)
 
 
 class ParticipantMapping(RexBase):
