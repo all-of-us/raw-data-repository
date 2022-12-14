@@ -31,5 +31,12 @@ class ParticipantMapping(RexBase):
     ignore_flag = Column(TINYINT)
     primary_study_id = Column(BigInteger, ForeignKey("study.id"))
     ancillary_study_id = Column(BigInteger, ForeignKey("study.id"))
-    primary_participant_id = Column(BigInteger, ForeignKey("rdr.participant.participant_id"))
-    ancillary_participant_id = Column(BigInteger, ForeignKey("nph.participant.id"))
+    primary_participant_id = Column(BigInteger)
+    ancillary_participant_id = Column(BigInteger)
+
+
+Index("participant_mapping_primary_participant_id", ParticipantMapping.primary_participant_id)
+Index("participant_mapping_ancillary_participant_id", ParticipantMapping.ancillary_participant_id)
+
+event.listen(ParticipantMapping, "before_insert", model_insert_listener)
+event.listen(ParticipantMapping, "before_update", model_update_listener)
