@@ -128,8 +128,6 @@ COHORT_1_REVIEW_CONSENT_YES_CODE = "ReviewConsentAgree_Yes"
 COHORT_1_REVIEW_CONSENT_NO_CODE = "ReviewConsentAgree_No"
 
 WEAR_YES_ANSWER_CODE = "wear_yes"
-ETM_YES_ANSWER_CODE = "etm_yes"
-ETM_NO_ANSWER_CODE = "etm_no"
 
 # Cohort Group Code
 CONSENT_COHORT_GROUP_CODE = "ConsentPII_CohortGroup"
