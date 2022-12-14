@@ -21,7 +21,7 @@ class EtmQuestionnaire(Base):
     questionnaire_type = sa.Column(sa.String(100))
     version = sa.Column(sa.Integer)
     semantic_version = sa.Column(sa.String(100))
-    title = sa.Column(sa.String(100))
+    title = sa.Column(sa.String(512))
     resource = sa.Column(sa.JSON)
 
 
