@@ -267,7 +267,7 @@ class ParticipantSummaryCheckLoginApi(BaseApi):
         """
         Return status of IN_USE / NOT_IN_USE if participant found / not found
         """
-        req_data = request.get_json()
+        req_data = self.get_request_json()
         accepted_map = {
             'email': 'email',
             'login_phone_number': 'loginPhoneNumber'

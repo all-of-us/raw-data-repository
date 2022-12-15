@@ -35,7 +35,7 @@ class QuestionnaireResponseApi(BaseApi):
         participant = ParticipantDao().get(p_id)
         raise_if_withdrawn(participant)
 
-        request_json = request.json
+        request_json = self.get_request_json()
         if EtmApi.is_etm_payload(request_json):
             return EtmApi.post_questionnaire_response(request_json)
         else:
