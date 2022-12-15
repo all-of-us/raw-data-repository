@@ -70,17 +70,17 @@ class ParticipantSummaryApi(BaseApi):
                 self._fetch_hpro_consents(pids=p_id)
                 self._fetch_participant_incentives(pids=p_id)
             return super(ParticipantSummaryApi, self).get(p_id)
-        else:
-            if auth_awardee:
-                # make sure request has awardee
-                requested_awardee = request.args.get("awardee")
-                hpo_lite_awardees = getSettingList(HPO_LITE_AWARDEE, default=[])
-                if requested_awardee == UNSET and auth_awardee in hpo_lite_awardees:
-                    # allow hpo lite awardee to access UNSET participants
-                    pass
-                elif requested_awardee != auth_awardee:
-                    raise Forbidden
-            return self._query("participantId")
+
+        if auth_awardee:
+            # make sure request has awardee
+            requested_awardee = request.args.get("awardee")
+            hpo_lite_awardees = getSettingList(HPO_LITE_AWARDEE, default=[])
+            if requested_awardee == UNSET and auth_awardee in hpo_lite_awardees:
+                # allow hpo lite awardee to access UNSET participants
+                pass
+            elif requested_awardee != auth_awardee:
+                raise Forbidden
+        return self._query("participantId")
 
     @auth_required(RDR_AND_PTC)
     @restrict_to_gae_project(PTC_ALLOWED_ENVIRONMENTS)
@@ -100,7 +100,7 @@ class ParticipantSummaryApi(BaseApi):
         if constraint_failed:
             raise BadRequest(f"{message}")
 
-        self.query_definition = super(ParticipantSummaryApi, self)._make_query(check_invalid)
+        self.query_definition = super()._make_query(check_invalid)
         self.query_definition.always_return_token = self._get_request_arg_bool("_sync")
         self.query_definition.backfill_sync = self._get_request_arg_bool("_backfill", True)
         self.query_definition.attributes = self.filtered_attributes
@@ -179,7 +179,6 @@ class ParticipantSummaryApi(BaseApi):
         for role in self.user_info.get('roles'):
             if role in role_payload_config:
                 return role_payload_config.get(role)['fields']
-        return None
 
     def _filter_by_user_site(self, participant_id=None):
         if not self.user_info.get('site'):
