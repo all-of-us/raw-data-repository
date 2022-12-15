@@ -34,7 +34,7 @@ class ParticipantSummaryApi(BaseApi):
         self.user_info = None
         self.query_definition = None
         self.site_dao = None
-
+        self.filtered_attributes = None
         self.participant_dao = ParticipantDao()
         self.hpro_consent_dao = HealthProConsentDao()
         self.incentives_dao = ParticipantIncentivesDao()
@@ -47,6 +47,7 @@ class ParticipantSummaryApi(BaseApi):
         auth_awardee = None
         user_email, user_info = get_validated_user_info()
         self.user_info = user_info
+        self.filtered_attributes = self._filter_payload_for_role()
 
         if AWARDEE in user_info["roles"]:
             # if `user_email == DEV_MAIL and user_info.get("awardee") is not None` is True,
@@ -61,12 +62,10 @@ class ParticipantSummaryApi(BaseApi):
                     raise InternalServerError("Config error for awardee")
 
         # data only for user_awardee, assert that query has same awardee
-        if p_id is not None:
+        if p_id:
             if auth_awardee and user_email != DEV_MAIL:
                 raise Forbidden
             self._filter_by_user_site(participant_id=p_id)
-            # self._filter_payload_for_role()
-
             if any(role in ['healthpro'] for role in self.user_info.get('roles')):
                 self._fetch_hpro_consents(pids=p_id)
                 self._fetch_participant_incentives(pids=p_id)
@@ -104,13 +103,12 @@ class ParticipantSummaryApi(BaseApi):
         self.query_definition = super(ParticipantSummaryApi, self)._make_query(check_invalid)
         self.query_definition.always_return_token = self._get_request_arg_bool("_sync")
         self.query_definition.backfill_sync = self._get_request_arg_bool("_backfill", True)
-        self.query_definition.attributes = self._filter_payload_for_role()
+        self.query_definition.attributes = self.filtered_attributes
         self._filter_by_user_site()
         return self.query_definition
 
     def _make_response(self, obj):
-        filter_payload = True if self.query_definition and self.query_definition.attributes else False
-        return self.dao.to_client_json(obj, filter_payload)
+        return self.dao.to_client_json(obj, self.filtered_attributes)
 
     def _make_bundle(self, results, id_field, participant_id):
         if self._get_request_arg_bool("_sync"):

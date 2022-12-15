@@ -131,12 +131,12 @@ class BaseApi(Resource):
 
     def get(self, id_=None, participant_id=None):
         """Handle a GET request.
-
-    Args:
-      id: If provided this is the id of the object to fetch.  If this is not
-        present, this is assumed to be a "list" request, and the list() function
-        will be called.
-    """
+        Args:
+          id_: If provided this is the id of the object to fetch.  If this is not
+            present, this is assumed to be a "list" request, and the list() function
+            will be called.
+          participant_id:
+        """
         if id_ is None:
             return self.list(participant_id)
         obj = self.dao.get_with_children(id_) if self._get_returns_children else self.dao.get(id_)

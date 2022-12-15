@@ -4236,42 +4236,52 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertFalse(any(obj['resource']['site'] == phoenix.googleGroup for obj in responses))
 
     def test_filter_payload_roles(self):
-        num_summary, first_name = 4, 'Testy'
+        num_summary, first_name, first_pid = 4, 'Testy', None
 
         for num in range(num_summary):
-            self.data_generator.create_database_participant_summary(
+            ps = self.data_generator.create_database_participant_summary(
                 firstName=first_name,
                 lastName=f'Tester_{num}',
             )
+            if num == 0:
+                first_pid = ps.participantId
 
-            # first_pid = ps.participantId if num == 0 else None
-
+        # edit role to match config entry
         self.overwrite_test_user_roles([SUPPORT])
-        self.send_get(f"ParticipantSummary?firstName={first_name}")
-    #
-    #     print('Darryl')
-        # self.assertIsNotNone(response)
-        # self.assertEqual(response['site'], google_group)
-        #
-        # response = self.send_get(f"ParticipantSummary?firstName={first_name}")
-        # responses = response['entry']
-        #
-        # self.assertEqual(len(responses), num_summary)
-        # self.assertFalse(all(obj['resource']['site'] == monroe.googleGroup for obj in responses))
-        #
-        # self.overwrite_test_user_site(google_group)
-        #
-        # response = self.send_get(f"Participant/P{second_pid}/Summary")
-        #
-        # self.assertIsNotNone(response)
-        # self.assertEqual(response['site'], google_group)
-        #
-        # response = self.send_get(f"ParticipantSummary?firstName={first_name}")
-        # responses = response['entry']
-        #
-        # self.assertEqual(len(responses), num_summary // 2)
-        # self.assertTrue(all(obj['resource']['site'] == monroe.googleGroup for obj in responses))
-        # self.assertFalse(any(obj['resource']['site'] != monroe.googleGroup for obj in responses))
+
+        # only fields that should be returned
+        filtered_fields = config.getSettingJson(config.OPS_DATA_PAYLOAD_ROLES)['support']['fields']
+
+        response = self.send_get(f"ParticipantSummary?firstName={first_name}")
+        self.assertIsNotNone(response)
+        response_entries = response['entry']
+
+        for entry in response_entries:
+            resource = entry['resource']
+            # no extra keys in response resource
+            self.assertTrue(not len(resource.keys() - filtered_fields))
+
+        response = self.send_get(f"Participant/P{first_pid}/Summary")
+        self.assertIsNotNone(response)
+        # no extra keys in resource
+        self.assertTrue(not len(response.keys() - filtered_fields))
+
+        # change role to un-match config entry
+        self.overwrite_test_user_roles([HEALTHPRO])
+
+        response = self.send_get(f"ParticipantSummary?firstName={first_name}")
+        self.assertIsNotNone(response)
+        response_entries = response['entry']
+
+        for entry in response_entries:
+            resource = entry['resource']
+            # should have extra keys in response
+            self.assertTrue(len(resource.keys() - filtered_fields))
+
+        response = self.send_get(f"Participant/P{first_pid}/Summary")
+        self.assertIsNotNone(response)
+        # should have extra keys in response
+        self.assertTrue(len(response.keys() - filtered_fields))
 
     def test_synthetic_pm_fields(self):
         questionnaire_id = self.create_questionnaire("all_consents_questionnaire.json")

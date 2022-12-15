@@ -9,7 +9,7 @@ import sqlalchemy.orm
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Query
 from sqlalchemy.sql import expression
-from typing import Collection
+from typing import Collection, List
 
 # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
 # from sqlalchemy.orm import selectinload
@@ -1089,10 +1089,22 @@ class ParticipantSummaryDao(UpdatableDao):
         records = [self.incentive_dao.convert_json_obj(obj) for obj in records]
         return records
 
-    def to_client_json(self, obj: ParticipantSummary, filter_payload=False):
-        if filter_payload:
-            return {k: v for k, v in list(obj._asdict().items())}
+    def to_client_json(self, obj: ParticipantSummary, payload_attributes=None) -> dict:
+        if payload_attributes:
+            return self.build_filtered_obj_response(obj, payload_attributes)
         return self.build_default_obj_response(obj)
+
+    @classmethod
+    def build_filtered_obj_response(
+        cls,
+        obj: ParticipantSummary,
+        payload_attributes: List['str']
+    ) -> dict:
+        if hasattr(obj, '_asdict'):
+            obj = obj._asdict()
+        elif hasattr(obj, 'asdict'):
+            obj = obj.asdict()
+        return {k: v for k, v in list(obj.items()) if k in payload_attributes}
 
     def build_default_obj_response(self, obj: ParticipantSummary):
         result = obj.asdict()
