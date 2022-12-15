@@ -45,4 +45,6 @@ class NphParticipantDaoTest(BaseTestCase):
         participant_obj = self.nph_participant_dao.get(1)
         self.assertEqual(self.nph_participant_dao.get_id(participant_obj), 1)
         self.assertEqual(expected_nph_participant_.asdict(), participant_obj.asdict())
+
+    def tearDown(self):
         self.clear_table_after_test("nph.participant")

@@ -43,6 +43,8 @@ class RexStudyDaoTest(BaseTestCase):
         }
         expected_rex_study_ = Study(**expected_rex_study)
         self.assertEqual(expected_rex_study_.asdict(), self.rex_study_dao.get(1).asdict())
+
+    def tearDown(self):
         self.clear_table_after_test("rex.study")
 
 
