@@ -97,7 +97,21 @@ def log_api_request(log: RequestsLog = None, model_obj=None):
     return save_raw_request_record(log)
 
 
-class BaseApi(Resource):
+class ApiUtilMixin:
+    """
+    Class for encapsulating utility functions useful for any API functionality, making them available to subclasses
+    without defining how endpoints should behave.
+    """
+
+    @classmethod
+    def get_request_json(cls):
+        """
+        Get the JSON formatted data for the request. Use when only expecting JSON and when ignoring mimetype.
+        """
+        return request.get_json(force=True)
+
+
+class BaseApi(Resource, ApiUtilMixin):
     """Base class for API handlers.
 
   Provides a generic implementation for an API handler which is backed by a
@@ -171,7 +185,7 @@ class BaseApi(Resource):
         Handles a POST (insert) request.
         participant_id: The ancestor id.
         """
-        resource = request.get_json(force=True)
+        resource = self.get_request_json()
         m = self._get_model_to_insert(resource, participant_id)
         result = self._do_insert(m)
 
@@ -360,7 +374,7 @@ class UpdatableApi(BaseApi):
     :return: make_response
     """
         if not resource:
-            resource = request.get_json(force=True)
+            resource = self.get_request_json()
         if skip_etag:
             expected_version = self.dao.get_etag(id_, participant_id)
         else:
@@ -398,7 +412,7 @@ class UpdatableApi(BaseApi):
     Args:
       :param id_: The id of the object to update.
     """
-        resource = request.get_json(force=True)
+        resource = self.get_request_json()
         etag = request.headers.get("If-Match")
         if not etag:
             raise BadRequest("If-Match is missing for PATCH request")

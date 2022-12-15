@@ -21,7 +21,7 @@ class PhysicalMeasurementsApi(BaseApi):
 
     @app_util.auth_required(HEALTHPRO)
     def patch(self, id_, p_id):
-        resource = request.get_json(force=True)
+        resource = self.get_request_json()
         obj = self.dao.patch(id_, resource, p_id)
         log_api_request(log=request.log_record, model_obj=obj)
         return obj
