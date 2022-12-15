@@ -1682,6 +1682,11 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(summary['questionnaireOnLifeFunctioningAuthored'], '2022-09-06T14:32:28')
         self.assertEqual(summary['questionnaireOnLifeFunctioningTime'], '2022-09-07T01:02:03')
 
+    def test_remote_identity_verified(self):
+        with FakeClock(TIME_1):
+            # participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+            pass
+
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
         with open(data_path(template_file_name)) as fd:

@@ -1,0 +1,44 @@
+{
+    "resourceType": "QuestionnaireResponse",
+    "extension": [
+        {
+            "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+            "valueCode": "en"
+        }
+    ],
+    "identifier": {
+        "value": "71146"
+    },
+    "questionnaire": {
+        "reference": "Questionnaire/2735209"
+    },
+    "status": "completed",
+    "subject": {
+        "reference": "Patient/P526815025"
+    },
+    "authored": "2022-12-13T19:25:14+00:00",
+    "group": {
+        "linkId": "root_group",
+        "title": "Remote ID Verification",
+        "question": [
+            {
+                "linkId": "123",
+                "text": "Pick your answers from the following choices",
+                "answer": [
+                    {
+                        "valueDecimal": 1
+                    }
+                ]
+            },
+            {
+                "linkId": "456",
+                "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+                "answer": [
+                    {
+                      "valueDateTime": "2021-11-30T12:34:42"
+                    }
+                  ]
+            }
+        ]
+    }
+}

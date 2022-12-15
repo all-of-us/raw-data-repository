@@ -380,7 +380,10 @@ class GenomicJobController:
             except NoResultFound:
                 missing.append(member.id)
             else:
-                update_recs.append((member, raw_rec))
+                if raw_rec:
+                    update_recs.append((member, raw_rec))
+                else:
+                    missing.append(member.id)
 
         if update_recs:
             # Get unique file_paths

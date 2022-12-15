@@ -1016,3 +1016,11 @@ class WorkbenchResearcherYesNoPreferNot(messages.Enum):
     YES = 1
     NO = 2
     PREFER_NOT_TO_ANSWER = 3
+
+
+class RemoteIdVerificationComplete(messages.Enum):
+    INCOMPLETE = 0
+    UNVERIFIED = 1
+    COMPLETE = 2
+
+

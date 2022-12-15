@@ -44,7 +44,6 @@ VA_EHR_RECONSENT_QUESTION_CODE = "vaehrreconsent_agree"
 VA_PRIMARY_RECONSENT_C1_C2_QUESTION = 'vaprimaryreconsent_c1_2_agree'
 VA_PRIMARY_RECONSENT_C3_QUESTION = 'vaprimaryreconsent_c3_agree'
 NON_VA_PRIMARY_RECONSENT_QUESTION = 'nonvaprimaryreconsent_agree'
-
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
 GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
@@ -284,3 +283,10 @@ SENSITIVE_EHR_STATES = [
     MA_STATE,
     MI_STATE
 ]
+
+# Remote ID Verification Question Codes
+REMOTE_ID_VERIFICATION_CODE = 'remote_identity_verification'
+REMOTE_ID_VERIFIED_CODE = 'remote_identity_verified'
+REMOTE_ID_VERIFIED_ON_CODE = 'remote_identity_verified_on'
+REMOTE_ID_VERIFICATION_COMPLETE_CODE = 'remote_identity_verification_complete'
+
