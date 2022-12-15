@@ -26,7 +26,7 @@ class RexStudyDaoTest(BaseTestCase):
     def test_insert_study(self):
         rex_study_params = {
             "ignore_flag": 0,
-            "name": "Study 1",
+            "schema_name": "ancilliary_study_1",
             "prefix": 1E2+5E4
         }
         rex_study = Study(**rex_study_params)
@@ -38,7 +38,7 @@ class RexStudyDaoTest(BaseTestCase):
             "created": TIME,
             "modified": TIME,
             "ignore_flag": 0,
-            "name": "Study 1",
+            "schema_name": "ancilliary_study_1",
             "prefix": int(1E2+5E4)
         }
         expected_rex_study_ = Study(**expected_rex_study)
@@ -72,10 +72,10 @@ class RexParticipantMappingDaoTest(BaseTestCase):
         with FakeClock(TIME):
             return self.nph_participant_dao.insert(nph_participant)
 
-    def _create_rex_study(self, name: str) -> Study:
+    def _create_rex_study(self, schema_name: str) -> Study:
         rex_study_params = {
             "ignore_flag": 0,
-            "name": name,
+            "schema_name": schema_name,
             "prefix": 1E2+5E4
         }
         rex_study = Study(**rex_study_params)
@@ -89,8 +89,8 @@ class RexParticipantMappingDaoTest(BaseTestCase):
     def test_insert_participantmapping(self):
         _time = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
 
-        primary_rex_study: Study = self._create_rex_study(name="Primary Study")
-        ancillary_rex_study: Study = self._create_rex_study(name="Ancillary Study")
+        primary_rex_study: Study = self._create_rex_study(schema_name="primary_rex_study")
+        ancillary_rex_study: Study = self._create_rex_study(schema_name="ancillary_rex_study")
 
         primary_participant: RdrParticipant = (
             self._create_rdr_participant(participantId=123, biobankId=555)

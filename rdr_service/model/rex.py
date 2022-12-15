@@ -14,7 +14,7 @@ class Study(RexBase):
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT)
-    name = Column(String(128))
+    schema_name = Column(String(128))
     prefix = Column(Integer)
 
 
