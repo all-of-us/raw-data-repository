@@ -43,6 +43,7 @@ class RexStudyDaoTest(BaseTestCase):
         }
         expected_rex_study_ = Study(**expected_rex_study)
         self.assertEqual(expected_rex_study_.asdict(), self.rex_study_dao.get(1).asdict())
+        self.clear_table_after_test("rex.study")
 
 
 class RexParticipantMappingDaoTest(BaseTestCase):
@@ -94,7 +95,6 @@ class RexParticipantMappingDaoTest(BaseTestCase):
         )
         ancillary_participant: NphParticipant = self._create_nph_participant(participant_id=1)
 
-        # breakpoint()
         rex_participant_mapping_params = {
             "created": _time,
             "modified": _time,
@@ -104,32 +104,24 @@ class RexParticipantMappingDaoTest(BaseTestCase):
             "primary_participant_id": primary_participant.participantId,
             "ancillary_participant_id": ancillary_participant.id,
         }
+        rex_participant_mapping = ParticipantMapping(**rex_participant_mapping_params)
         with FakeClock(_time):
-            self.rex_participant_mapping_dao.insert(rex_participant_mapping_params)
+            self.rex_participant_mapping_dao.insert(rex_participant_mapping)
 
         expected_rex_participant_mapping = {
             "id": 1,
             "created": _time,
             "modified": _time,
             "ignore_flag": 0,
-            "primary_study_id": primary_rex_study,
-            "ancillary_study_id": ancillary_rex_study,
-            "primary_participant_id": primary_participant,
-            "ancillary_participant_id": ancillary_participant
+            "primary_study_id": primary_rex_study.id,
+            "ancillary_study_id": ancillary_rex_study.id,
+            "primary_participant_id": primary_participant.participantId,
+            "ancillary_participant_id": ancillary_participant.id,
         }
         expected_rex_participant_mapping_ = ParticipantMapping(**expected_rex_participant_mapping)
         self.assertEqual(expected_rex_participant_mapping_.asdict(), self.rex_participant_mapping_dao.get(1).asdict())
 
     def tearDown(self):
-        with self.rex_study_dao.session() as session:
-            session.query(Study).filter(Study.name == "Primary Study").delete()
-            session.query(Study).filter(Study.name == "Ancillary Study").delete()
-
-        with self.rdr_participant_dao.session() as session:
-            session.query(RdrParticipant).filter(
-                RdrParticipant.participantId == 123,
-                RdrParticipant.biobankId == 555
-            ).delete()
-
-        with self.nph_participant_dao.session() as session:
-            session.query(NphParticipant).filter(NphParticipant.id == 1).delete()
+        self.clear_table_after_test("rex.participant_mapping")
+        self.clear_table_after_test("rex.study")
+        self.clear_table_after_test("nph.participant")
