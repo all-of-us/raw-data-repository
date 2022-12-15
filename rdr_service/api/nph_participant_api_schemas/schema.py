@@ -1,6 +1,3 @@
-from dataclasses import dataclass, field
-from typing import Optional, Dict
-
 from graphene import (
     ObjectType,
     String,
@@ -13,99 +10,82 @@ from graphene import (
     Schema
 )
 from graphene import relay
-from sqlalchemy.orm import Query, aliased
+from sqlalchemy.orm import Query
 
 from rdr_service.api.nph_participant_api_schemas import db
 from rdr_service.model.participant import Participant as DbParticipant
 from rdr_service.model.nph_sample import NphSample
+from rdr_service.dao import database_factory
+from rdr_service.api.nph_participant_api_schemas.util import SortContext
 
 
 class SortableField(Field):
-    def __init__(self, *args, sort_modifier, **kwargs):
+    def __init__(self, *args, sort_modifier=None, **kwargs):
         super(SortableField, self).__init__(*args, **kwargs)
         self.sort_modifier = sort_modifier
 
-
-@dataclass
-class SortContext:
-    query: Query
-    order_expression: Optional = None
-    filter_expressions: List = field(default_factory=list)
-    references: Dict = field(default_factory=dict)
-    join_expressions: List = field(default_factory=list)
-    sort_table = None
-
-    def set_sort_table(self, reference):
-        self.sort_table = self.references[reference]
-
-    def add_filter(self, expr):
-        self.filter_expressions.append(expr)
-
-    def add_ref(self, table, ref_name):
-        self.references[ref_name] = aliased(table)
-        return self
-
-    def add_join(self, joined_table, join_expr):
-        self.join_expressions.append((joined_table, join_expr))
-        return self
-
-    def set_order_expression(self, expr):
-        self.order_expression = expr
-
-    def get_resulting_query(self):
-        resulting_query = self.query
-
-        for table, expr in self.join_expressions:
-            resulting_query = resulting_query.join(table, expr)
-        for expr in self.filter_expressions:
-            resulting_query = resulting_query.filter(expr)
-
-        return resulting_query.order_by(self.order_expression)
+    @staticmethod
+    def sort(current_class, field_name, context):
+        return current_class.sort(context, field_name)
 
 
 class Event(ObjectType):
     """ NPH Participant Event Status """
 
-    value = NonNull(String)
+    value = SortableField(
+        NonNull(String), sort_modifier=lambda context: context.set_order_expression(context.sort_table.status)
+    )
     time = SortableField(
         NonNull(DateTime),
         sort_modifier=lambda context: context.set_order_expression(context.sort_table.time)  # Order by time
     )
 
+    @staticmethod
+    def sort(context, value):
+        if value.upper() == "TIME":
+            return context.set_order_expression(context.sort_table.time)
+        return context.set_order_expression(context.sort_table.status)
+
 
 class EventCollection(ObjectType):
-    current = SortableField(
-        Event,
-        sort_modifier=lambda _: ...  # Restrict to current
-    )
+    current = SortableField(Event)
     # TODO: historical field need to sort by newest to oldest for a given aspect of a participant’s data
     historical = List(Event)
 
+    @staticmethod
+    def sort(context, value):
+        pass
+
 
 class Sample(ObjectType):
-    parent = SortableField(
-        EventCollection,
-        sort_modifier=lambda context: context.set_sort_table('sample')
-    )
-    child = SortableField(
-        EventCollection,
-        sort_modifier=lambda context: (
-            context.add_ref(
+    parent = SortableField(EventCollection)
+    child = SortableField(EventCollection)  # todo: join 'child' on parent ('sample') and sort_table = 'child'
+
+    @staticmethod
+    def sort(context, value):
+        if value.upper() == 'PARENT':
+            return context.set_sort_table('sample')
+        else:
+            return context.add_ref(
                 NphSample, 'child'
             ).add_join(
                 context.references['child'],
                 context.references['child'].parent_id == context.references['sample'].id
             ).set_sort_table('child')
-        )
-    )  # todo: join 'child' on parent ('sample') and sort_table = 'child'
 
 
 class SampleCollection(ObjectType):
     ordered = List(Sample)
-    stored = SortableField(
-        Sample,
-        sort_modifier=lambda _: ...  # would filter to stored samples here, but test data is only set up with stored
-    )
+    stored = SortableField(Sample)
+
+    @staticmethod
+    def sort(context, value):
+        print(value)
+        return context.add_ref(
+            NphSample, 'sample'
+        ).add_join(
+            context.references['sample'], context.references['sample'].participant_id == DbParticipant.participantId
+        ).add_filter(context.references['sample'].test == context.table)
 
 
 class Participant(ObjectType):
@@ -121,8 +101,7 @@ class Participant(ObjectType):
     retrospective_visual_analogue_scales = Field(EventCollection)
     eating_inventory = Field(EventCollection)
     food_craving_inventory = Field(EventCollection)
-    multifactorial_assessment_of_eating_disorders_symptoms = \
-        Field(EventCollection)
+    multifactorial_assessment_of_eating_disorders_symptoms = Field(EventCollection)
     intuitive_eating_scale_2 = Field(EventCollection)
     repetitive_eating_questionnaire = Field(EventCollection)
     barratt_impulsivity_scale_11 = Field(EventCollection)
@@ -186,24 +165,10 @@ class Participant(ObjectType):
     sample_4ml_edtap_1 = Field(SampleCollection)
     sample_ru_1 = Field(SampleCollection)
     sample_ru_2 = Field(SampleCollection)
-    sampleRU3 = SortableField(
-        SampleCollection,
-        sort_modifier=lambda context: context.add_ref(
-            NphSample, 'sample'
-        ).add_join(
-            context.references['sample'], context.references['sample'].participant_id == DbParticipant.participantId
-        ).add_filter(context.references['sample'].test == 'RU3')
-    )
+    sampleRU3 = SortableField(SampleCollection)
     sample_tu_1 = Field(SampleCollection)
     sample_sa_1 = Field(SampleCollection)
-    sampleSA2 = SortableField(
-        SampleCollection,
-        sort_modifier=lambda context: context.add_ref(
-            NphSample, 'sample'
-        ).add_join(
-            context.references['sample'], context.references['sample'].participant_id == DbParticipant.participantId
-        ).add_filter(context.references['sample'].test == 'SA2')
-    )
+    sampleSA2 = SortableField(SampleCollection)
     sample_ha_1 = Field(SampleCollection)
     sample_na_1 = Field(SampleCollection)
     sample_na_2 = Field(SampleCollection)
@@ -264,17 +229,24 @@ class Participant(ObjectType):
     module_started = Field(DateTime)
     module_completed = Field(DateTime)
 
+    @staticmethod
+    def sort(context, value):
+        if value.upper() == "SAMPLESA2":
+            context.set_table("SA2")
+        elif value.upper() == "SAMPLERU3":
+            context.set_table("RU3")
+
 
 class ParticipantConnection(relay.Connection):
     class Meta:
         node = Participant
 
-    total_count = Int() #1000
-    result_count = Int() #25
+    total_count = Int()
+    result_count = Int()
 
     def resolve_total_count(root, info, **kwargs):
         print(info, kwargs)
-        return len(db.datas)
+        return len(root.iterable)
 
     def resolve_result_count(root, info, **kwargs):
         print(info, kwargs)
@@ -291,26 +263,34 @@ class ParticipantQuery(ObjectType):
     )
 
     def resolve_participant(root, info, nph_id=None, sort_by=None, **kwargs):
-        print(info, kwargs)
-        query = Query(DbParticipant)
-        current_class = Participant
-        sort_context = SortContext(query)
+        with database_factory.get_database().session() as sessions:
+            print(info, kwargs)
+            query = Query(DbParticipant)
+            query.session = sessions
+            current_class = Participant
+            sort_context = SortContext(query)
 
-        # sampleSA2:ordered:child:current:time
-        if sort_by:
-            sort_parts = sort_by.split(':')
-            for sort_field_name in sort_parts:
-                sort_field: SortableField = getattr(current_class, sort_field_name)
-                sort_field.sort_modifier(sort_context)
-                current_class = sort_field.type
+            # sampleSA2:ordered:child:current:time
+            if sort_by:
+                sort_parts = sort_by.split(':')
 
-        try:
-            if nph_id:
-                return [x for x in db.datas if nph_id == x.get("participant_nph_id")]
-            else:
+                if len(sort_parts) == 1:
+                    sort_field: SortableField = getattr(current_class, sort_parts[0])
+                    sort_field.sort_modifier(sort_context)
+                else:
+                    for sort_field_name in sort_parts:
+                        sort_field: SortableField = getattr(current_class, sort_field_name)
+                        sort_field.sort(current_class, sort_field_name, sort_context)
+                        current_class = sort_field.type
+
+            try:
+                if nph_id:
+                    query = query.filter(DbParticipant.participantId == nph_id)
+                    return db.loadParticipantData(query)
+
                 return db.loadParticipantData(sort_context.get_resulting_query())
-        except Exception as ex:
-            raise ex
+            except Exception as ex:
+                raise ex
 
 
 NPHParticipantSchema = Schema(query=ParticipantQuery)

@@ -55,45 +55,45 @@ with database_factory.get_database().session() as session:
 
 
 def loadParticipantData(query):
-    with database_factory.get_database().session() as sessions:
-        query.session = sessions
 
-        results = []
-        for participants in query.all():
-            samples_data = defaultdict(lambda: {
-                'stored': {
-                    'parent': {
-                        'current': None
-                    },
-                    'child': {
-                        'current': None
-                    }
+    # query.session = sessions
+
+    results = []
+    for participants in query.all():
+        samples_data = defaultdict(lambda: {
+            'stored': {
+                'parent': {
+                    'current': None
+                },
+                'child': {
+                    'current': None
                 }
-            })
-            for parent_sample in participants.samples:
-                data_struct = samples_data[f'sample{parent_sample.test}']['stored']
-                data_struct['parent']['current'] = {
-                    'value': parent_sample.status,
-                    'time': parent_sample.time
+            }
+        })
+        for parent_sample in participants.samples:
+            data_struct = samples_data[f'sample{parent_sample.test}']['stored']
+            data_struct['parent']['current'] = {
+                'value': parent_sample.status,
+                'time': parent_sample.time
+            }
+
+            if len(parent_sample.children) == 1:
+                child = parent_sample.children[0]
+                data_struct['child']['current'] = {
+                    'value': child.status,
+                    'time': child.time
                 }
 
-                if len(parent_sample.children) == 1:
-                    child = parent_sample.children[0]
-                    data_struct['child']['current'] = {
-                        'value': child.status,
-                        'time': child.time
-                    }
+        results.append(
+            {
+                'participantNphId': participants.participantId,
+                'lastModified': participants.lastModified,
+                'biobankId': participants.biobankId,
+                **samples_data
+            }
+        )
 
-            results.append(
-                {
-                    'participantNphId': participants.participantId,
-                    'lastModified': participants.lastModified,
-                    'biobankId': participants.biobankId,
-                    **samples_data
-                }
-            )
-
-        return results
+    return results
 
 #
 # for num in range(1, 1001):
