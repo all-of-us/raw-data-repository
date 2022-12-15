@@ -42,4 +42,6 @@ class NphParticipantDaoTest(BaseTestCase):
             "research_id": int(1E7),
         }
         expected_nph_participant_ = Participant(**expected_nph_participant)
-        self.assertEqual(expected_nph_participant_.asdict(), self.nph_participant_dao.get(1).asdict())
+        participant_obj = self.nph_participant_dao.get(1)
+        self.assertEqual(self.nph_participant_dao.get_id(participant_obj), 1)
+        self.assertEqual(expected_nph_participant_.asdict(), participant_obj.asdict())
