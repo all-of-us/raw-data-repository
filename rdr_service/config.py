@@ -157,7 +157,7 @@ HEALTHPRO_CONSENTS_TRANSFER_LIMIT = 'hpro_consents_transfer_limit'
 CE_HEALTH_DATA_BUCKET_NAME = "ce_health_data_bucket_name"
 VA_WORKQUEUE_BUCKET_NAME = 'va_workqueue_bucket_name'
 VA_WORKQUEUE_SUBFOLDER = 'va_workqueue_subfolder'
-
+OPS_DATA_PAYLOAD_ROLES = 'ops_data_payload_roles'
 ENABLE_ENROLLMENT_STATUS_3 = 'enable_enrollment_status_3'
 ENABLE_HEALTH_SHARING_STATUS_3 = 'enable_health_sharing_status_3'
 ENABLE_PARTICIPANT_MEDIATED_EHR = 'enable_participant_mediated_ehr'

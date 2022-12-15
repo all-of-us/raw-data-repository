@@ -171,5 +171,18 @@
   },
   "genomic_skip_missing_file_types": {
     "aou_wgs": ["test.file"]
+  },
+  "ops_data_payload_roles": {
+    "support": {
+      "fields": [
+        "participantId",
+        "firstName",
+        "middleName",
+        "lastName",
+        "phoneNumber",
+        "email",
+        "participantOrigin"
+      ]
+    }
   }
 }

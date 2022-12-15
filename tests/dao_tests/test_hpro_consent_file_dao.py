@@ -93,24 +93,5 @@ class HealthProConsentDaoTest(BaseTestCase):
             records = self.dao.get_by_participant(pid)
             self.assertEqual(len(records), no_path_num)
 
-    def test_get_batch_records_by_pids(self):
-        num_pid_records, pids_inserted, no_path_num = 4, [], 2
-
-        for num in range(num_pid_records):
-            consent_file = self.data_generator.create_database_consent_file(
-                file_path=f'test_file_path/{num}'
-            )
-            pids_inserted.append(consent_file.participant_id)
-
-            for pid_num in range(num_pid_records):
-                self.data_generator.create_database_hpro_consent(
-                    file_path=f'test_two_file_path/{num}' if pid_num > 1 else None,
-                    participant_id=consent_file.participant_id,
-                    consent_file_id=consent_file.id
-                )
-
-        records = self.dao.batch_get_by_participant(pids_inserted)
-        self.assertEqual(len(records), num_pid_records * no_path_num)
-
 
 

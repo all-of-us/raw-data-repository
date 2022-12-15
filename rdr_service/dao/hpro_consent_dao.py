@@ -33,23 +33,9 @@ class HealthProConsentDao(UpdatableDao):
 
             return needed_consents.all()
 
-    def get_by_participant(self, participant_id):
-        with self.session() as session:
-            return session.query(
-                HealthProConsentFile.file_path.label('file_path'),
-                HealthProConsentFile.participant_id.label('participant_id'),
-                ConsentFile.type.label('consent_type')
-            ).join(
-                ConsentFile,
-                ConsentFile.id == HealthProConsentFile.consent_file_id
-            ).filter(
-                HealthProConsentFile.participant_id == participant_id,
-                HealthProConsentFile.file_path.isnot(None)
-            ).all()
-
-    def batch_get_by_participant(self, participant_ids):
+    def get_by_participant(self, participant_ids):
         if type(participant_ids) is not list:
-            return []
+            participant_ids = [participant_ids]
 
         with self.session() as session:
             return session.query(
