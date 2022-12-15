@@ -24,6 +24,7 @@ RESOURCE = 'resource'
 DEV_MAIL = "example@example.com"
 GEM = "gem"
 BIOBANK = 'biobank'
+SUPPORT = 'support'
 RDR_AND_PTC = [RDR, PTC]
 RDR_AND_HEALTHPRO = [RDR, HEALTHPRO]
 PTC_AND_GEM = [PTC, GEM]

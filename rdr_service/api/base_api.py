@@ -145,12 +145,12 @@ class BaseApi(Resource, ApiUtilMixin):
 
     def get(self, id_=None, participant_id=None):
         """Handle a GET request.
-
-    Args:
-      id: If provided this is the id of the object to fetch.  If this is not
-        present, this is assumed to be a "list" request, and the list() function
-        will be called.
-    """
+        Args:
+          id_: If provided this is the id of the object to fetch.  If this is not
+            present, this is assumed to be a "list" request, and the list() function
+            will be called.
+          participant_id:
+        """
         if id_ is None:
             return self.list(participant_id)
         obj = self.dao.get_with_children(id_) if self._get_returns_children else self.dao.get(id_)
@@ -294,9 +294,9 @@ class BaseApi(Resource, ApiUtilMixin):
         if results.pagination_token:
             query_params = request.args.copy()
             query_params["_token"] = results.pagination_token
-
             next_url = main.api.url_for(self.__class__, _external=True, **query_params.to_dict(flat=False))
             bundle_dict["link"] = [{"relation": "next", "url": next_url}]
+
         entries = []
         for item in results.items:
             response_json = self._make_response(item)
