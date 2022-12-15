@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, ForeignKey, BigInteger, String, Index, event
+    Column, ForeignKey, Integer, BigInteger, String, Index, event
 )
 from sqlalchemy.dialects.mysql import TINYINT
 
@@ -15,7 +15,7 @@ class Study(RexBase):
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT)
     name = Column(String(128))
-    prefix = Column(BigInteger)
+    prefix = Column(Integer)
 
 
 event.listen(Study, "before_insert", model_insert_listener)
