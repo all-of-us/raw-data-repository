@@ -160,16 +160,28 @@ def _initialize_database(with_data=True, with_consent_codes=False):
             engine.execute("DROP DATABASE IF EXISTS rdr")
             engine.execute("DROP DATABASE IF EXISTS metrics")
             engine.execute("DROP DATABASE IF EXISTS cdm")
+            engine.execute("DROP DATABASE IF EXISTS nph")
+            engine.execute("DROP DATABASE IF EXISTS rex")
+
             # Keep in sync with tools/setup_local_database.sh.
             engine.execute("CREATE DATABASE rdr CHARACTER SET utf8 COLLATE utf8_general_ci")
             engine.execute("CREATE DATABASE metrics CHARACTER SET utf8 COLLATE utf8_general_ci")
             engine.execute("CREATE DATABASE cdm CHARACTER SET utf8 COLLATE utf8_general_ci")
+            engine.execute("CREATE DATABASE nph CHARACTER SET utf8 COLLATE utf8_general_ci")
+            engine.execute("CREATE DATABASE rex CHARACTER SET utf8 COLLATE utf8_general_ci")
+
+            engine.execute("USE nph")
+            database.create_nph_schema()
+
+            engine.execute("USE rex")
+            database.create_rex_schema()
 
             engine.execute("USE metrics")
             database.create_metrics_schema()
 
             engine.execute("USE rdr")
             database.create_schema()
+
             # alter table charset like what db migration do
             engine.execute("ALTER TABLE `questionnaire_response_answer` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
                            "utf8mb4_unicode_ci")
@@ -451,5 +463,3 @@ def stop_mysql_instance():
             pid = int(handle.read())
         if pid_is_running(pid):
             os.kill(pid, signal.SIGTERM)
-
-
