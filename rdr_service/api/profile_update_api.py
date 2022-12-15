@@ -1,7 +1,7 @@
 
-from flask import request
 from flask_restful import Resource
 
+from rdr_service.api.base_api import ApiUtilMixin
 from rdr_service.api_util import PTC
 from rdr_service.app_util import auth_required
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -244,10 +244,10 @@ class PatientPayload:
         )
 
 
-class ProfileUpdateApi(Resource):
+class ProfileUpdateApi(Resource, ApiUtilMixin):
     @auth_required(PTC)
     def post(self):
-        json = request.json
+        json = self.get_request_json()
         self._process_request(json)
         self._record_request(json)
 

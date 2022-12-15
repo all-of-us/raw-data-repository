@@ -33,7 +33,7 @@ class QuestionnaireApi(UpdatableApi):
     @app_util.auth_required(PTC)
     def post(self):
         # Detect if this is an EtM Questionnaire
-        request_json = request.json
+        request_json = self.get_request_json()
 
         if EtmApi.is_etm_payload(request_json):
             return EtmApi.post_questionnaire(request_json)
