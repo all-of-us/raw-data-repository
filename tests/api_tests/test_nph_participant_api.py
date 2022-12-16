@@ -57,25 +57,29 @@ for num in range(1, 100):
     MOCK_DATAS.append(data)
 
 
-query_5 = '''{ participant(first: 5){ totalCount resultCount pageInfo { startCursor endCursor hasNextPage }edges
-{ node {firstName lastName streetAddress foodInsecurity{current{value time} historical{value time}}
-aouBasicsQuestionnaire{value time} sampleSa1{ordered{parent{current{value time}}} }} } } }'''
+query_5 = ''' { participant (sortBy: "sampleSA2:stored:child:current:time", limit: 5) {totalCount resultCount pageInfo
+{ startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
+{ value time  } } } } } } } }'''
 
-query_10 = '''{ participant(first: 10){ totalCount resultCount pageInfo { startCursor endCursor hasNextPage }edges
-{ node {firstName lastName streetAddress foodInsecurity{current{value time} historical{value time}}
-aouBasicsQuestionnaire{value time} sampleSa1{ordered{parent{current{value time}}} }} } } }'''
+query_10 = ''' { participant (sortBy: "sampleSA2:stored:child:current:time", limit: 10) {totalCount resultCount pageInfo
+{ startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
+{ value time  } } } } } } } }'''
 
-query_25 = '''{ participant(first: 25){ totalCount resultCount pageInfo { startCursor endCursor hasNextPage }edges
-{ node {firstName lastName streetAddress foodInsecurity{current{value time} historical{value time}}
-aouBasicsQuestionnaire{value time} sampleSa1{ordered{parent{current{value time}}} }} } } }'''
+query_25 = ''' { participant (sortBy: "sampleSA2:stored:child:current:time", limit: 25) {totalCount resultCount pageInfo
+{ startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
+{ value time  } } } } } } } }'''
 
-query_99 = '''{ participant{ totalCount resultCount pageInfo { startCursor endCursor hasNextPage }edges
-{ node {firstName lastName streetAddress foodInsecurity{current{value time} historical{value time}}
-aouBasicsQuestionnaire{value time} sampleSa1{ordered{parent{current{value time}}} }} } } }'''
+query_99 = ''' { participant (sortBy: "sampleSA2:stored:child:current:time", limit: 99) {totalCount resultCount pageInfo
+{ startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
+{ value time  } } } } } } } }'''
 
-query_with_id = '''{ participant(nphId: 25){ totalCount resultCount pageInfo { startCursor endCursor hasNextPage }edges
-{ node {participantNphId firstName lastName streetAddress foodInsecurity{current{value time} historical{value time}}
-aouBasicsQuestionnaire{value time} sampleSa1{ordered{parent{current{value time}}} }} } } }'''
+query_all = ''' { participant (sortBy: "sampleSA2:stored:child:current:time") {totalCount resultCount pageInfo
+{ startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
+{ value time  } } } } } } } }'''
+
+query_with_id = ''' { participant (nphId: 153296765) {totalCount resultCount pageInfo
+{ startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
+{ value time  } } } } } } } }'''
 
 query_with_syntax_error = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
 { startCursor endCursor hasNextPage }edges{ node {firstName lastName streetAddress
@@ -95,27 +99,32 @@ sampleSa1{ordered{parent{current{value time}}} }} } } }'''
 
 class TestQueryExecution(TestCase):
 
-    @patch('rdr_service.api.nph_participant_api_schemas.schema.db')
-    def test_client_good_result_check_length(self, mock_datas):
-        mock_datas.datas = MOCK_DATAS
+    def test_client_result_check_length(self):
         client = Client(NPHParticipantSchema)
-        queries = [query_99, query_5, query_10, query_25, query_with_id]
-        lengths = [99, 5, 10, 25, 1]
+        queries = [query_99, query_5, query_10, query_25]
+        lengths = [99, 5, 10, 25]
         for (query, length) in zip_longest(queries, lengths):
             executed = client.execute(query)
             self.assertEqual(length, len(executed.get('data').get('participant').get('edges')),
                              "{} - is not returning same amount of resultset".format(query))
+        self.assertEqual(1013, executed.get('data').get('participant').get('totalCount'))
 
-    @patch('rdr_service.api.nph_participant_api_schemas.schema.db')
-    def test_client_good_result_single_result(self, mock_datas):
-        mock_datas.datas = MOCK_DATAS
+    def test_client_single_result(self):
         client = Client(NPHParticipantSchema)
         executed = client.execute(query_with_id)
         self.assertEqual(1, len(executed.get('data').get('participant').get('edges')),
                          "{} - is not returning same amount of resultset".format(query_with_id))
-        self.assertEqual(25, executed.get('data').get('participant').get('edges')[0].get('node')
-                         .get('participantNphId'),
-                         "{} - is not returning same amount of resultset".format(query_with_id))
+        self.assertEqual(153296765, executed.get('data').get('participant').get('edges')[0].get('node')
+                         .get('participantNphId'))
+        self.assertEqual(1013, executed.get('data').get('participant').get('totalCount'))
+
+    def test_client_sorting_result(self):
+        client = Client(NPHParticipantSchema)
+        executed = client.execute(query_all)
+        time_list = []
+        for each in executed.get('data').get('participant').get('edges'):
+            time_list.append(each.get('node').get('sampleSA2').get('stored').get('child').get('current').get('time'))
+        self.assertTrue(time_list == sorted(time_list))
 
     @patch('rdr_service.api.nph_participant_api_schemas.schema.db')
     def test_client_graphql_syntax_error(self, mock_datas):
