@@ -1921,10 +1921,10 @@ class GenomicJobController:
         )
         if notification_email_address and any((array_missing_data, wgs_missing_data)):
             message = 'The following samples matched AW3 manifest criteria except for the data file count:\n\n'
-            message += 'sample_id, genome_type\n'
-            message += '\n'.join([f'{f[0]}, aou_array' for f in array_missing_data])
+            message += 'sample_id, aw2 manifest date, genome_type\n'
+            message += '\n'.join([f'{f[0]}, {f[1]}, aou_array' for f in array_missing_data])
             message += '\n'
-            message += '\n'.join([f'{f[0]}, aou_wgs' for f in wgs_missing_data])
+            message += '\n'.join([f'{f[0]}, {f[1]}, aou_wgs' for f in wgs_missing_data])
             message += '\n'
             EmailService.send_email(
                 Email(
