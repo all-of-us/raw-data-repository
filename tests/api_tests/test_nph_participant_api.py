@@ -121,10 +121,12 @@ class TestQueryExecution(TestCase):
     def test_client_sorting_result(self):
         client = Client(NPHParticipantSchema)
         executed = client.execute(query_all)
-        time_list = []
+        string_time_list = []
         for each in executed.get('data').get('participant').get('edges'):
-            time_list.append(each.get('node').get('sampleSA2').get('stored').get('child').get('current').get('time'))
-        self.assertTrue(time_list == sorted(time_list))
+            string_time_list.append(each.get('node').get('sampleSA2').get('stored').get('child').get('current').get('time'))
+        time_list = [datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S") for dt in string_time_list]
+        sorted_time_list = sorted([datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S") for dt in string_time_list])
+        self.assertTrue(time_list == sorted_time_list)
 
     @patch('rdr_service.api.nph_participant_api_schemas.schema.db')
     def test_client_graphql_syntax_error(self, mock_datas):

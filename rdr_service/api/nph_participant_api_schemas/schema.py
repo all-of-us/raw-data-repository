@@ -80,8 +80,7 @@ class SampleCollection(ObjectType):
     stored = SortableField(Sample)
 
     @staticmethod
-    def sort(context, value):
-        print(value)
+    def sort(context, _):
         return context.add_ref(
             NphSample, 'sample'
         ).add_join(
@@ -249,15 +248,13 @@ class ParticipantConnection(relay.Connection):
     total_count = Int()
     result_count = Int()
 
-    def resolve_total_count(root, info, **kwargs):
-        logging.info(f'info: {info}, kwargs: {kwargs}')
+    def resolve_total_count(root, _):
         with database_factory.get_database().session() as sessions:
             query = Query(DbParticipant)
             query.session = sessions
             return query.count()
 
-    def resolve_result_count(root, info, **kwargs):
-        logging.info(f'info: {info}, kwargs: {kwargs}')
+    def resolve_result_count(root, _):
         return len(root.edges)
 
 
