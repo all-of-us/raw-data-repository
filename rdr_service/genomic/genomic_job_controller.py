@@ -1825,16 +1825,24 @@ class GenomicJobController:
                 member_ids=self.member_ids_for_update,
                 pipeline_id=kwargs.get('pipeline_id')
             )
-            members_to_update, metrics_to_update = [], []
+            members_to_update, metrics_to_update, batch_size = [], [], 100
 
+            # member
             for member_id in self.member_ids_for_update:
                 member_dict = {
                     'id': member_id,
                     'aw3ManifestFileId': kwargs.get('manifest_id')
                 }
                 members_to_update.append(member_dict)
-            self.member_dao.bulk_update(members_to_update)
 
+                if len(members_to_update) == batch_size:
+                    self.member_dao.bulk_update(members_to_update)
+                    members_to_update.clear()
+
+            if members_to_update:
+                self.member_dao.bulk_update(members_to_update)
+
+            # metrics
             for metric in process_metrics:
                 metric_dict = {
                     'id': metric.id,
@@ -1844,7 +1852,13 @@ class GenomicJobController:
                     'processingCount': metric.processingCount + 1
                 }
                 metrics_to_update.append(metric_dict)
-            self.metrics_dao.bulk_update(metrics_to_update)
+
+                if len(metrics_to_update) == batch_size:
+                    self.metrics_dao.bulk_update(metrics_to_update)
+                    metrics_to_update.clear()
+
+            if metrics_to_update:
+                self.metrics_dao.bulk_update(metrics_to_update)
         return
 
     def check_w1il_gror_resubmit(self, since_datetime):
