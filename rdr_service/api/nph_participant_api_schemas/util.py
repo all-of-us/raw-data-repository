@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Optional, Dict
 from graphene import List
@@ -44,6 +45,48 @@ class SortContext:
             resulting_query = resulting_query.filter(expr)
 
         return resulting_query.order_by(self.order_expression)
+
+
+def loadParticipantData(query):
+
+    # query.session = sessions
+
+    results = []
+    for participants in query.all():
+        samples_data = defaultdict(lambda: {
+            'stored': {
+                'parent': {
+                    'current': None
+                },
+                'child': {
+                    'current': None
+                }
+            }
+        })
+        for parent_sample in participants.samples:
+            data_struct = samples_data[f'sample{parent_sample.test}']['stored']
+            data_struct['parent']['current'] = {
+                'value': parent_sample.status,
+                'time': parent_sample.time
+            }
+
+            if len(parent_sample.children) == 1:
+                child = parent_sample.children[0]
+                data_struct['child']['current'] = {
+                    'value': child.status,
+                    'time': child.time
+                }
+
+        results.append(
+            {
+                'participantNphId': participants.participantId,
+                'lastModified': participants.lastModified,
+                'biobankId': participants.biobankId,
+                **samples_data
+            }
+        )
+
+    return []
 
 
 def validation_error_message(errors):

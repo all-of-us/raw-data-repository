@@ -13,11 +13,10 @@ from graphene import (
 from graphene import relay
 from sqlalchemy.orm import Query
 
-from rdr_service.api.nph_participant_api_schemas import db
 from rdr_service.model.participant import Participant as DbParticipant
 from rdr_service.model.nph_sample import NphSample
 from rdr_service.dao import database_factory
-from rdr_service.api.nph_participant_api_schemas.util import SortContext
+from rdr_service.api.nph_participant_api_schemas.util import SortContext, loadParticipantData
 
 
 class SortableField(Field):
@@ -293,14 +292,14 @@ class ParticipantQuery(ObjectType):
                     logging.info(f'Fetch NPH ID: {nph_id}')
                     query = query.filter(DbParticipant.participantId == nph_id)
                     logging.info(query)
-                    return db.loadParticipantData(query)
+                    return loadParticipantData(query)
                 query = sort_context.get_resulting_query()
                 if limit:
                     query = query.limit(limit)
                 if off_set:
                     query = query.offset(off_set)
                 logging.info(query)
-                return db.loadParticipantData(query)
+                return loadParticipantData(query)
             except Exception as ex:
                 logging.error(ex)
                 raise ex

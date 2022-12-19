@@ -1,81 +1,104 @@
 from graphene.test import Client
 from unittest import TestCase
-from unittest.mock import patch
-import names
 import faker
-from datetime import datetime
-from itertools import zip_longest
+from collections import defaultdict
 from graphql import GraphQLSyntaxError
 
-from rdr_service.api.nph_participant_api_schemas.schema import NPHParticipantSchema
+from rdr_service.api.nph_participant_api_schemas.schema import NPHParticipantSchema, SortableField
+from rdr_service.api.nph_participant_api_schemas.schema import Participant as Part
+from rdr_service.dao import database_factory
+from rdr_service.model.participant import Participant
+from rdr_service.model.nph_sample import NphSample
+from sqlalchemy.orm import Query
+from rdr_service.model.participant import Participant as DbParticipant
+from rdr_service.api.nph_participant_api_schemas.util import SortContext
+
 import rdr_service.api.nph_participant_api as api
 
-fake = faker.Faker()
 
-MOCK_DATAS = []
+def mock_load_participant_data(query):
+    fake = faker.Faker()
+    with database_factory.get_database().session() as session:
+        query.session = session
 
+        num = session.query(Participant).count()
+        print(f'NPH TESTING: found {num} participants')
 
-def get_gender():
-    profile = fake.simple_profile()
-    return profile.get('sex')
+        if num < 10:
+            print('NPH TESTING: generating test data')
 
+            for _ in range(1000):
+                participant = Participant(
+                    biobankId=fake.random.randint(100000000, 999999999),
+                    participantId=fake.random.randint(100000000, 999999999),
+                    version=1,
+                    lastModified=fake.date_time_this_decade(),
+                    signUpTime=fake.date_time_this_decade(),
+                    withdrawalStatus=1,
+                    suspensionStatus=1,
+                    participantOrigin='test',
+                    hpoId=0
+                )
+                session.add(participant)
 
-def get_state():
-    states = fake.military_state()
-    return states
+                session.add(
+                    NphSample(
+                        test='SA2',
+                        status='received',
+                        time=fake.date_time_this_decade(),
+                        participant=participant,
+                        children=[NphSample(
+                            test='SA2',
+                            status='disposed',
+                            time=fake.date_time_this_decade()
+                        )]
+                    )
+                )
+                session.add(
+                    NphSample(
+                        test='RU3',
+                        status='disposed',
+                        time=fake.date_time_this_decade(),
+                        participant=participant
+                    )
+                )
+        results = []
+        for participants in query.all():
+            samples_data = defaultdict(lambda: {
+                'stored': {
+                    'parent': {
+                        'current': None
+                    },
+                    'child': {
+                        'current': None
+                    }
+                }
+            })
+            for parent_sample in participants.samples:
+                data_struct = samples_data[f'sample{parent_sample.test}']['stored']
+                data_struct['parent']['current'] = {
+                    'value': parent_sample.status,
+                    'time': parent_sample.time
+                }
 
+                if len(parent_sample.children) == 1:
+                    child = parent_sample.children[0]
+                    data_struct['child']['current'] = {
+                        'value': child.status,
+                        'time': child.time
+                    }
 
-for num in range(1, 100):
-    data = {'participant_nph_id': num}
-    gender = get_gender()
-    first_name = names.get_first_name(gender)
-    last_name = names.get_last_name()
-    data['first_name'] = first_name
-    data['last_name'] = last_name
-    data['state'] = get_state()
-    data['city'] = first_name
-    data['street_address'] = fake.address().replace("\n", " ")
-    data['gender'] = gender
-    data['food_insecurity'] = {"current": {"value": "whatever", "time": datetime.utcnow()}, "historical": [
-        {"value": "historical_value", "time": datetime.utcnow()}, {"value": names.get_first_name(gender),
-                                                                   "time": datetime.utcnow()},
-        {"value": names.get_first_name(gender), "time": datetime.utcnow()}]}
-    data['aou_basics_questionnaire'] = {'value': "HAHA", 'time': datetime.utcnow()}
-    data['sample_sa_1'] = {"ordered": [{"parent": [{"current": {"value": "parent_current_value",
-                                                                "time": datetime.utcnow()},
-                                                    "historical": [{"value": "parent_historical_value",
-                                                                    "time": datetime.utcnow()}]}],
-                                       "child": [{"current": {"value": gender, "time": datetime.utcnow()},
-                                                  "historical": [{"value": "child_historical_value",
-                                                                  "time": datetime.utcnow()}]}]}],
-                           "stored": [{"parent": [{"current": {"value": gender, "time": datetime.utcnow()},
-                                                   "historical": [{"value": gender, "time": datetime.utcnow()}]}],
-                                       "child": [{"current": {"value": gender, "time": datetime.utcnow()},
-                                                  "historical": [{"value": gender, "time": datetime.utcnow()}]}]}]
-                           }
+            results.append(
+                {
+                    'participantNphId': participants.participantId,
+                    'lastModified': participants.lastModified,
+                    'biobankId': participants.biobankId,
+                    **samples_data
+                }
+            )
 
-    MOCK_DATAS.append(data)
+        return results
 
-
-query_5 = ''' { participant (sortBy: "sampleSA2:stored:child:current:time", limit: 5) {totalCount resultCount pageInfo
-{ startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
-{ value time  } } } } } } } }'''
-
-query_10 = ''' { participant (sortBy: "sampleSA2:stored:child:current:time", limit: 10) {totalCount resultCount pageInfo
-{ startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
-{ value time  } } } } } } } }'''
-
-query_25 = ''' { participant (sortBy: "sampleSA2:stored:child:current:time", limit: 25) {totalCount resultCount pageInfo
-{ startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
-{ value time  } } } } } } } }'''
-
-query_99 = ''' { participant (sortBy: "sampleSA2:stored:child:current:time", limit: 99) {totalCount resultCount pageInfo
-{ startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
-{ value time  } } } } } } } }'''
-
-query_all = ''' { participant (sortBy: "sampleSA2:stored:child:current:time") {totalCount resultCount pageInfo
-{ startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
-{ value time  } } } } } } } }'''
 
 query_with_id = ''' { participant (nphId: 153296765) {totalCount resultCount pageInfo
 { startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
@@ -100,44 +123,45 @@ sampleSa1{ordered{parent{current{value time}}} }} } } }'''
 class TestQueryExecution(TestCase):
 
     def test_client_result_check_length(self):
-        client = Client(NPHParticipantSchema)
-        queries = [query_99, query_5, query_10, query_25]
+        query = Query(DbParticipant)
         lengths = [99, 5, 10, 25]
-        for (query, length) in zip_longest(queries, lengths):
-            executed = client.execute(query)
-            self.assertEqual(length, len(executed.get('data').get('participant').get('edges')),
-                             "{} - is not returning same amount of resultset".format(query))
-        self.assertEqual(1013, executed.get('data').get('participant').get('totalCount'))
+        executed = mock_load_participant_data(query)
+        self.assertEqual(1013, len(executed), "Should return 1013 records back")
+        for length in lengths:
+            query = query.limit(length)
+            executed = mock_load_participant_data(query)
+            self.assertEqual(length, len(executed), "Should return {} records back".format(length))
 
     def test_client_single_result(self):
-        client = Client(NPHParticipantSchema)
-        executed = client.execute(query_with_id)
-        self.assertEqual(1, len(executed.get('data').get('participant').get('edges')),
-                         "{} - is not returning same amount of resultset".format(query_with_id))
-        self.assertEqual(153296765, executed.get('data').get('participant').get('edges')[0].get('node')
-                         .get('participantNphId'))
-        self.assertEqual(1013, executed.get('data').get('participant').get('totalCount'))
+        query = Query(DbParticipant)
+        query = query.filter(DbParticipant.participantId == 153296765)
+        executed = mock_load_participant_data(query)
+        self.assertEqual(1, len(executed), "Should return 1 record back")
+        self.assertEqual(153296765, executed[0].get('participantNphId'))
 
     def test_client_sorting_result(self):
-        client = Client(NPHParticipantSchema)
-        executed = client.execute(query_all)
-        string_time_list = []
-        for each in executed.get('data').get('participant').get('edges'):
-            string_time_list.append(each.get('node').get('sampleSA2').get('stored').get('child').get('current').get('time'))
-        time_list = [datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S") for dt in string_time_list]
-        sorted_time_list = sorted([datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S") for dt in string_time_list])
-        self.assertTrue(time_list == sorted_time_list)
+        query = Query(DbParticipant)
+        current_class = Part
+        sort_context = SortContext(query)
+        sort_parts = "sampleSA2:stored:child:current:time".split(":")
+        for sort_field_name in sort_parts:
+            sort_field: SortableField = getattr(current_class, sort_field_name)
+            sort_field.sort(current_class, sort_field_name, sort_context)
+            current_class = sort_field.type
+        query = sort_context.get_resulting_query()
+        executed = mock_load_participant_data(query)
+        time_list = []
+        for each in executed:
+            time_list.append(each.get('sampleSA2').get('stored').get('child').get('current').get('time'))
+        sorted_time_list = sorted(time_list)
+        self.assertTrue(time_list == sorted_time_list, msg="Resultset is not in sorting order")
 
-    @patch('rdr_service.api.nph_participant_api_schemas.schema.db')
-    def test_client_graphql_syntax_error(self, mock_datas):
-        mock_datas.datas = MOCK_DATAS
+    def test_client_graphql_syntax_error(self):
         client = Client(NPHParticipantSchema)
         executed = client.execute(query_with_syntax_error)
         self.assertIn("Syntax Error", executed.get('errors')[0].get('message'))
 
-    @patch('rdr_service.api.nph_participant_api_schemas.schema.db')
-    def test_client_graphql_field_error(self, mock_datas):
-        mock_datas.datas = MOCK_DATAS
+    def test_client_graphql_field_error(self):
         client = Client(NPHParticipantSchema)
         queries = [query_with_field_error, query_with_multiple_fields_error]
         for query in queries:
