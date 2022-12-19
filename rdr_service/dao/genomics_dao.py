@@ -3819,6 +3819,9 @@ class GenomicQueriesDao(BaseDao):
                     GenomicSetMember.id,
                     func.count(GenomicGcDataFile.file_type).label("file_count")
                 ).join(
+                    ParticipantSummary,
+                    ParticipantSummary.participantId == GenomicSetMember.participantId
+                ).join(
                     GenomicGCValidationMetrics,
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
                 ).outerjoin(
@@ -3831,13 +3834,18 @@ class GenomicQueriesDao(BaseDao):
                     GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                     GenomicGCValidationMetrics.ignoreFlag != 1,
                     GenomicGcDataFile.ignore_flag != 1,
-                    GenomicGcDataFile.file_type.in_(required_file_types)
+                    GenomicGcDataFile.file_type.in_(required_file_types),
+                    ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                    ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ).group_by(GenomicSetMember.id).subquery()
 
             elif genome_type == config.GENOME_TYPE_WGS:
                 subquery = session.query(
                     GenomicSetMember.id,
                     func.count(GenomicGcDataFile.file_type).label("file_count")
+                ).join(
+                    ParticipantSummary,
+                    ParticipantSummary.participantId == GenomicSetMember.participantId
                 ).join(
                     GenomicGCValidationMetrics,
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
@@ -3851,7 +3859,9 @@ class GenomicQueriesDao(BaseDao):
                     GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                     GenomicGCValidationMetrics.ignoreFlag != 1,
                     GenomicGcDataFile.ignore_flag != 1,
-                    GenomicGcDataFile.file_type.in_(required_file_types)
+                    GenomicGcDataFile.file_type.in_(required_file_types),
+                    ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                    ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ).group_by(GenomicSetMember.id).subquery()
 
             records = session.query(
