@@ -126,7 +126,7 @@ class TestQueryExecution(TestCase):
         query = Query(DbParticipant)
         lengths = [99, 5, 10, 25]
         executed = mock_load_participant_data(query)
-        self.assertEqual(1013, len(executed), "Should return 1013 records back")
+        self.assertEqual(1000, len(executed), "Should return 1000 records back")
         for length in lengths:
             query = query.limit(length)
             executed = mock_load_participant_data(query)
@@ -134,10 +134,13 @@ class TestQueryExecution(TestCase):
 
     def test_client_single_result(self):
         query = Query(DbParticipant)
-        query = query.filter(DbParticipant.participantId == 153296765)
+        query = query.limit(1)
+        executed = mock_load_participant_data(query)
+        query = Query(DbParticipant)
+        query = query.filter(DbParticipant.participantId == executed[0].get('participantNphId'))
         executed = mock_load_participant_data(query)
         self.assertEqual(1, len(executed), "Should return 1 record back")
-        self.assertEqual(153296765, executed[0].get('participantNphId'))
+        self.assertEqual(100705996, executed[0].get('participantNphId'))
 
     def test_client_sorting_result(self):
         query = Query(DbParticipant)
