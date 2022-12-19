@@ -7,8 +7,9 @@ import sqlalchemy
 import sqlalchemy.orm
 
 from sqlalchemy import or_, and_
+from sqlalchemy.orm import Query
 from sqlalchemy.sql import expression
-from typing import Collection
+from typing import Collection, List
 
 # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
 # from sqlalchemy.orm import selectinload
@@ -25,8 +26,10 @@ from rdr_service.api_util import (
     parse_json_enum
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
-from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_SKIP_CODE, PPI_SYSTEM, UNSET
+from rdr_service.code_constants import BIOBANK_TESTS, COHORT_1_REVIEW_CONSENT_YES_CODE, ORIGINATING_SOURCES,\
+    PMI_SKIP_CODE, PPI_SYSTEM, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE, UNSET
 from rdr_service.dao.base_dao import UpdatableDao
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
 from rdr_service.dao.hpo_dao import HPODao
@@ -432,7 +435,8 @@ class ParticipantSummaryDao(UpdatableDao):
                     parse_json_enum(resource, key, _cls)
         return resource
 
-    def _has_withdrawn_filter(self, query):
+    @staticmethod
+    def _has_withdrawn_filter(query):
         for field_filter in query.field_filters:
             if field_filter.field_name == "withdrawalStatus" and field_filter.value == WithdrawalStatus.NO_USE:
                 return True
@@ -440,7 +444,8 @@ class ParticipantSummaryDao(UpdatableDao):
                 return True
         return False
 
-    def _get_non_withdrawn_filter_field(self, query):
+    @staticmethod
+    def _get_non_withdrawn_filter_field(query):
         """Returns the first field referenced in query filters which isn't in
     WITHDRAWN_PARTICIPANT_FIELDS."""
         for field_filter in query.field_filters:
@@ -462,7 +467,11 @@ class ParticipantSummaryDao(UpdatableDao):
             # ordered by are in WITHDRAWN_PARTICIPANT_FIELDS.
             return super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
         else:
-            query = super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
+            if query_def.attributes:
+                eval_attrs = [eval(f'{self.model_type.__name__}.{attribute}') for attribute in query_def.attributes]
+                query = Query(eval_attrs)
+            else:
+                query = super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
 
             withdrawn_visible_start = clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
             if filter_client and non_withdrawn_field:
@@ -514,8 +523,8 @@ class ParticipantSummaryDao(UpdatableDao):
         else:
             return query.order_by(Code.display.desc())
 
-    def _make_query(self, session, query_def):
-        query, order_by_field_names = super(ParticipantSummaryDao, self)._make_query(session, query_def)
+    def _make_query(self, session, query_definition):
+        query, order_by_field_names = super(ParticipantSummaryDao, self)._make_query(session, query_definition)
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
         # query.options(selectinload(ParticipantSummary.patientStatus))
         # sql = self.query_to_text(query)
@@ -669,14 +678,15 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.clinicPhysicalMeasurementsFinalizedTime,
             summary.selfReportedPhysicalMeasurementsAuthored
         ])
+
         earliest_biobank_received_dna_time = None
         if summary.samplesToIsolateDNA == SampleStatus.RECEIVED:
+            confirmed_dna_sample_list = BiobankStoredSampleDao.load_confirmed_dna_samples(
+                session=session,
+                biobank_id=summary.biobankId
+            )
             earliest_biobank_received_dna_time = min_or_none([
-                summary.sampleStatus1ED10Time,
-                summary.sampleStatus2ED10Time,
-                summary.sampleStatus1ED04Time,
-                summary.sampleStatus1SALTime,
-                summary.sampleStatus1SAL2Time
+                sample.confirmed for sample in confirmed_dna_sample_list
             ])
 
         ehr_consent_ranges = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
@@ -685,8 +695,17 @@ class ParticipantSummaryDao(UpdatableDao):
         )
 
         dna_update_time_list = [summary.questionnaireOnDnaProgramAuthored]
-        if summary.consentForStudyEnrollmentAuthored != summary.consentForStudyEnrollmentFirstYesAuthored:
-            dna_update_time_list.append(summary.consentForStudyEnrollmentAuthored)
+        response_collection = QuestionnaireResponseRepository.get_responses_to_surveys(
+            session=session,
+            survey_codes=[PRIMARY_CONSENT_UPDATE_MODULE],
+            participant_ids=[summary.participantId]
+        )
+        if summary.participantId in response_collection:
+            program_update_response_list = response_collection[summary.participantId].responses.values()
+            for response in program_update_response_list:
+                reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE).value.lower()
+                if reconsent_answer == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
+                    dna_update_time_list.append(response.authored_datetime)
         dna_update_time = min_or_none(dna_update_time_list)
 
         enrollment_info = EnrollmentCalculation.get_enrollment_info(
@@ -698,6 +717,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
                 lifestyle_authored_time=summary.questionnaireOnLifestyleAuthored,
                 earliest_ehr_file_received_time=summary.ehrReceiptTime,
+                earliest_mediated_ehr_receipt_time=summary.firstParticipantMediatedEhrReceiptTime,
                 earliest_physical_measurements_time=earliest_physical_measurements_time,
                 earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
                 ehr_consent_date_range_list=ehr_consent_ranges,
@@ -1069,28 +1089,44 @@ class ParticipantSummaryDao(UpdatableDao):
         records = [self.incentive_dao.convert_json_obj(obj) for obj in records]
         return records
 
-    def to_client_json(self, model: ParticipantSummary, strip_none_values=True):
-        result = model.asdict()
+    def to_client_json(self, obj: ParticipantSummary, payload_attributes=None) -> dict:
+        if payload_attributes:
+            return self.build_filtered_obj_response(obj, payload_attributes)
+        return self.build_default_obj_response(obj)
+
+    @classmethod
+    def build_filtered_obj_response(
+        cls,
+        obj: ParticipantSummary,
+        payload_attributes: List['str']
+    ) -> dict:
+        if hasattr(obj, '_asdict'):
+            obj = obj._asdict()
+        elif hasattr(obj, 'asdict'):
+            obj = obj.asdict()
+        return {k: v for k, v in list(obj.items()) if k in payload_attributes}
+
+    def build_default_obj_response(self, obj: ParticipantSummary):
+        result = obj.asdict()
         clinic_pm_time = result.get("clinicPhysicalMeasurementsFinalizedTime")
         self_reported_pm_time = result.get("selfReportedPhysicalMeasurementsAuthored")
         if self.hpro_consents:
             result = self.get_hpro_consent_paths(result)
-
         if self.participant_incentives:
             result['participantIncentives'] = self.get_participant_incentives(result)
 
-        is_the_basics_complete = model.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
+        is_the_basics_complete = obj.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
 
         # Participants that withdrew more than 48 hours ago should have fields other than
         # WITHDRAWN_PARTICIPANT_FIELDS cleared.
-        should_clear_fields_for_withdrawal = model.withdrawalStatus == WithdrawalStatus.NO_USE and (
-            model.withdrawalTime is None
-            or model.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
+        should_clear_fields_for_withdrawal = obj.withdrawalStatus == WithdrawalStatus.NO_USE and (
+            obj.withdrawalTime is None
+            or obj.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
         )
         if should_clear_fields_for_withdrawal:
             result = {k: result.get(k) for k in WITHDRAWN_PARTICIPANT_FIELDS}
 
-        result["participantId"] = to_client_participant_id(model.participantId)
+        result["participantId"] = to_client_participant_id(obj.participantId)
         biobank_id = result.get("biobankId")
         if biobank_id:
             result["biobankId"] = to_client_biobank_id(biobank_id)
@@ -1114,20 +1150,20 @@ class ParticipantSummaryDao(UpdatableDao):
 
         # Map demographic Enums if TheBasics was submitted and Skip wasn't in use
         if is_the_basics_complete and not should_clear_fields_for_withdrawal:
-            if model.genderIdentity is None or model.genderIdentity == GenderIdentity.UNSET:
+            if obj.genderIdentity is None or obj.genderIdentity == GenderIdentity.UNSET:
                 result['genderIdentity'] = GenderIdentity.PMI_Skip
 
-            if model.race is None or model.race == Race.UNSET:
+            if obj.race is None or obj.race == Race.UNSET:
                 result['race'] = Race.PMI_Skip
 
-        result["patientStatus"] = model.patientStatus
+        result["patientStatus"] = obj.patientStatus
 
         format_json_hpo(result, self.hpo_dao, "hpoId")
         result["awardee"] = result["hpoId"]
         _initialize_field_type_sets()
 
         for new_field_name, existing_field_name in self.get_aliased_field_map().items():
-            result[new_field_name] = getattr(model, existing_field_name)
+            result[new_field_name] = getattr(obj, existing_field_name)
 
             # register new field as date if field is date
             if type(result[new_field_name]) is datetime.datetime:
@@ -1148,9 +1184,9 @@ class ParticipantSummaryDao(UpdatableDao):
             format_json_enum(result, fieldname)
         for fieldname in _SITE_FIELDS:
             format_json_site(result, self.site_dao, fieldname)
-        if model.withdrawalStatus == WithdrawalStatus.NO_USE\
-                or model.suspensionStatus == SuspensionStatus.NO_CONTACT\
-                or model.deceasedStatus == DeceasedStatus.APPROVED:
+        if obj.withdrawalStatus == WithdrawalStatus.NO_USE\
+                or obj.suspensionStatus == SuspensionStatus.NO_CONTACT\
+                or obj.deceasedStatus == DeceasedStatus.APPROVED:
             result["recontactMethod"] = "NO_CONTACT"
 
         # fill in deprecated fields
@@ -1200,11 +1236,15 @@ class ParticipantSummaryDao(UpdatableDao):
             if 'healthDataStreamSharingStatusV3_1Time' in result:
                 del result['healthDataStreamSharingStatusV3_1Time']
 
-        # Strip None values.
-        if strip_none_values is True:
-            result = {k: v for k, v in list(result.items()) if v is not None}
+        # Check if we should hide the participant mediated EHR status fields
+        if not config.getSettingJson(config.ENABLE_PARTICIPANT_MEDIATED_EHR, default=False):
+            for field_name in ['wasParticipantMediatedEhrAvailable',
+                               'firstParticipantMediatedEhrReceiptTime',
+                               'latestParticipantMediatedEhrReceiptTime']:
+                if field_name in result:
+                    del result[field_name]
 
-        return result
+        return {k: v for k, v in list(result.items()) if v is not None}
 
     @staticmethod
     def get_aliased_field_map():
@@ -1334,6 +1374,41 @@ class ParticipantSummaryDao(UpdatableDao):
                 }
             )
             session.execute(query, {'file_upload_date': upload_date})
+
+    @classmethod
+    def update_profile_data(cls, participant_id: int, **kwargs):
+        instance = ParticipantSummaryDao()
+
+        with instance.session() as session:
+            summary: ParticipantSummary = instance.get_with_session(
+                session=session,
+                obj_id=participant_id,
+                for_update=True
+            )
+
+            field_map = {
+                'first_name': 'firstName',
+                'middle_name': 'middleName',
+                'last_name': 'lastName',
+                'phone_number': 'phoneNumber',
+                'email': 'email',
+                'birthdate': 'dateOfBirth',
+                'address_line1': 'streetAddress',
+                'address_line2': 'streetAddress2',
+                'address_city': 'city',
+                'address_zip_code': 'zipCode',
+                'preferred_language': 'primaryLanguage'
+            }
+            for param_name, model_name in field_map.items():
+                if param_name in kwargs:
+                    setattr(summary, model_name, kwargs[param_name])
+
+            if 'address_state' in kwargs:
+                state_str = kwargs['address_state']
+                state_code: Code = session.query(Code).filter(
+                    Code.value == f'PIIState_{state_str}'
+                ).one_or_none()
+                summary.stateId = state_code.codeId if state_code else None
 
 
 def _initialize_field_type_sets():

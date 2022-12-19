@@ -44,6 +44,7 @@ VA_EHR_RECONSENT_QUESTION_CODE = "vaehrreconsent_agree"
 VA_PRIMARY_RECONSENT_C1_C2_QUESTION = 'vaprimaryreconsent_c1_2_agree'
 VA_PRIMARY_RECONSENT_C3_QUESTION = 'vaprimaryreconsent_c3_agree'
 NON_VA_PRIMARY_RECONSENT_QUESTION = 'nonvaprimaryreconsent_agree'
+ETM_CONSENT_QUESTION_CODE = 'etm_consent'
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
@@ -186,6 +187,7 @@ COPE_DEC_MODULE = "cope_dec"
 COPE_FEB_MODULE = "cope_feb"
 GENETIC_ANCESTRY_MODULE = 'GeneticAncestry'
 LIFE_FUNCTIONING_SURVEY = 'lfs'
+PRIMARY_CONSENT_UPDATE_MODULE = 'PrimaryConsentUpdate'
 
 VA_EHR_RECONSENT = 'vaehrreconsent'
 

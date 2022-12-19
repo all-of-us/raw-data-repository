@@ -1,0 +1,2569 @@
+{
+    "resourceType": "QuestionnaireResponse",
+    "questionnaire": {
+        "reference": "https://research.joinallofus.org/fhir/emorecog"
+    },
+    "status": "completed",
+    "subject": {
+        "reference": "Patient/P000000000"
+    },
+    "extension": [
+        {
+            "url": "https://research.joinallofus.org/fhir/emorecog/metadata",
+            "valueString": "{\"response_device\":\"mouse\",\"user_agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36\",\"screen_height\":1117,\"screen_width\":1728,\"touch\":false,\"operating_system\":\"MacOS\",\"user_utc_offset\":-300,\"test_start_date_time\":1669667302157,\"test_end_date_time\":1669667382517,\"test_duration\":80360,\"test_restarted\":false,\"test_version\":\"EmoRecog_AoU.v1.Nov22\",\"test_name\":\"TMB Multiracial Emotion Identification\",\"test_short_name\":\"emorecog\",\"test_params\":\"{}\",\"test_language\":\"en\"}"
+        },
+        {
+            "url": "https://research.joinallofus.org/fhir/emorecog/outcomes",
+            "valueString": "{\"score\":12,\"accuracy\":0.25,\"meanRTc\":219.69,\"medianRTc\":176.65,\"sdRTc\":159.53,\"happy_accuracy\":0,\"happy_meanRTc\":null,\"happy_medianRTc\":null,\"happy_sdRTc\":null,\"angry_accuracy\":0,\"angry_meanRTc\":null,\"angry_medianRTc\":null,\"angry_sdRTc\":null,\"fearful_accuracy\":1,\"fearful_meanRTc\":219.69,\"fearful_medianRTc\":176.65,\"fearful_sdRTc\":159.53,\"sad_accuracy\":0,\"sad_meanRTc\":null,\"sad_medianRTc\":null,\"sad_sdRTc\":null,\"any_timeouts\":0,\"flag_medianRTc\":1,\"flag_sameResponse\":1,\"flag_trialFlags\":1}"
+        }
+    ],
+    "authored": "2022-11-28T20:29:42.519Z",
+    "group": {
+        "question": [
+            {
+                "linkId": "1.1",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test1"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful1.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 713.6
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667313475
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.2",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test2"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "angry1.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "a"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 209.4
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667314983
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.3",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test3"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "angry2.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "a"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 69.8
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667316350
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.4",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test4"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful2.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 175.7
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667317834
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.5",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test5"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "sad1.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "s"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 161.8
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667319300
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.6",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test6"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "sad2.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "s"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 170.9
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667320775
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.7",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test7"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "sad3.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "s"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 170.3
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667322234
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.8",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test8"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "angry3.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "a"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 117.3
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667323642
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.9",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test9"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "sad4.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "s"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 184.3
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667325125
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.10",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test10"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "sad5.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "s"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 109.1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667326525
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.11",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test11"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "happy1.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "h"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 174.5
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667328000
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.12",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test12"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "happy2.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "h"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 146
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667329434
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.13",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test13"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "sad6.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "s"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 153.2
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667330875
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.14",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test14"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "angry4.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "a"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 167.8
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667332330
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.15",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test15"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "happy3.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "h"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 197
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667333825
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.16",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test16"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "happy4.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "h"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 179.6
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667335284
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.17",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test17"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful3.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 176.3
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667336750
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.18",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test18"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "happy5.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "h"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 151.3
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667338200
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.19",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test19"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "sad7.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "s"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 146.1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667339642
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.20",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test20"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful4.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 191.4
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667341133
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.21",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test21"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful5.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 184.7
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667342617
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.22",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test22"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "sad8.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "s"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 175.6
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667344092
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.23",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test23"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "sad9.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "s"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 96.3
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667345492
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.24",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test24"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "angry5.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "a"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 170.9
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667346967
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.25",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test25"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "angry6.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "a"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 27.1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667348281
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.26",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test26"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful6.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 256.7
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667349842
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.27",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test27"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "happy6.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "h"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 184.3
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667351325
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.28",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test28"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful7.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 159.1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667352784
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.29",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test29"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "happy7.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "h"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 195.7
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667354284
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.30",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test30"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "happy8.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "h"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 193.4
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667355775
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.31",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test31"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "angry7.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "a"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 184.8
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667357250
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.32",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test32"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "happy9.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "h"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 88.3
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667358633
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.33",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test33"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful8.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 151.3
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667360075
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.34",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test34"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful9.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 195.8
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667361558
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.35",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test35"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful10.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 105
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667362967
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.36",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test36"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful11.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 149.7
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667364418
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.37",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test37"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "angry8.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "a"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 163.7
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667365884
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.38",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test38"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful12.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 177
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667367359
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.39",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test39"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "angry9.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "a"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 175.8
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667368817
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.40",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test40"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "sad10.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "s"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 202.1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667370317
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.41",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test41"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "angry10.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "a"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 184.5
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667371800
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.42",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test42"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "sad11.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "s"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 212.2
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667373309
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.43",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test43"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "sad12.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "s"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 142.3
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667374750
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.44",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test44"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "angry11.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "a"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 185.5
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667376234
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.45",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test45"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "happy10.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "h"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 201.7
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667377725
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.46",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test46"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "angry12.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "a"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 221.5
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667379242
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.47",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test47"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "happy11.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "h"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 201.7
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667380742
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            },
+            {
+                "linkId": "1.48",
+                "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test48"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "happy12.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "h"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 459.8
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1669667382517
+                            }
+                        ],
+                        "valueCoding": {
+                            "code": "f",
+                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -14,6 +14,7 @@ from rdr_service.model.obfuscation import Obfuscation
 class _KeyCollision(Exception):
     ...
 
+
 class ObfuscationRepository:
     def get(self, id_, session: Session) -> Optional[dict]:
         """Take in an id and return the associated data if it still exists"""

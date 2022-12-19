@@ -8,7 +8,7 @@ from rdr_service.participant_enums import (
     EnrollmentStatusV31,
     ParticipantCohort
 )
-from rdr_service.services.system_utils import DateRange
+from rdr_service.services.system_utils import DateRange, min_or_none
 
 
 @dataclass
@@ -59,6 +59,7 @@ class EnrollmentDependencies:
 
     earliest_biobank_received_dna_time: datetime
     earliest_ehr_file_received_time: datetime
+    earliest_mediated_ehr_receipt_time: datetime
     earliest_physical_measurements_time: datetime
 
     @property
@@ -101,6 +102,10 @@ class EnrollmentDependencies:
         return self.earliest_ehr_file_received_time is not None
 
     @property
+    def has_had_mediated_ehr_submitted(self):
+        return self.earliest_mediated_ehr_receipt_time is not None
+
+    @property
     def submitted_physical_measurements(self):
         return self.earliest_physical_measurements_time is not None
 
@@ -128,6 +133,7 @@ class EnrollmentCalculation:
 
         # Find if CORE_MINUS_PM status is met
         dates_needed_for_upgrade = [
+            participant_info.first_ehr_consent_date,
             participant_info.basics_authored_time,
             participant_info.overall_health_authored_time,
             participant_info.lifestyle_authored_time,
@@ -136,19 +142,13 @@ class EnrollmentCalculation:
         if participant_info.consent_cohort == ParticipantCohort.COHORT_3:
             dates_needed_for_upgrade.append(participant_info.gror_authored_time)
 
-        core_minus_pm_reqs_met_time = cls._get_requirements_met_date(
-            participant_info.ehr_consent_date_range_list,
-            other_required_date_list=dates_needed_for_upgrade
-        )
+        core_minus_pm_reqs_met_time = cls._get_requirements_met_date(dates_needed_for_upgrade)
         if core_minus_pm_reqs_met_time:
             enrollment.upgrade_legacy_status(EnrollmentStatus.CORE_MINUS_PM, core_minus_pm_reqs_met_time)
 
         # Find if CORE status is met
         dates_needed_for_upgrade.append(participant_info.earliest_physical_measurements_time)
-        core_reqs_met_time = cls._get_requirements_met_date(
-            participant_info.ehr_consent_date_range_list,
-            other_required_date_list=dates_needed_for_upgrade
-        )
+        core_reqs_met_time = cls._get_requirements_met_date(dates_needed_for_upgrade)
         if core_reqs_met_time:
             enrollment.upgrade_legacy_status(EnrollmentStatus.FULL_PARTICIPANT, core_reqs_met_time)
 
@@ -162,10 +162,10 @@ class EnrollmentCalculation:
             return enrollment  # stop here without TheBasics, any more upgrades to the enrollment status require it
 
         # continue upgrading since we have TheBasics
-        matching_date = cls._get_requirements_met_date(
-            participant_info.ehr_consent_date_range_list,
-            [participant_info.basics_authored_time]
-        )
+        matching_date = cls._get_requirements_met_date([
+            participant_info.first_ehr_consent_date,
+            participant_info.basics_authored_time
+        ])
         if matching_date:
             enrollment.upgrade_3_0_status(EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE, matching_date)
 
@@ -193,13 +193,11 @@ class EnrollmentCalculation:
 
         # Upgrading 3.1 to PLUS_BASICS requires TheBasics and a GROR response
         if participant_info.has_completed_gror_survey:
-            matching_date = cls._get_requirements_met_date(
-                participant_info.ehr_consent_date_range_list,
-                [
-                    participant_info.basics_authored_time,
-                    participant_info.gror_authored_time
-                ]
-            )
+            matching_date = cls._get_requirements_met_date([
+                participant_info.first_ehr_consent_date,
+                participant_info.basics_authored_time,
+                participant_info.gror_authored_time
+            ])
             if matching_date:
                 enrollment.upgrade_3_1_status(EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS, matching_date)
 
@@ -217,7 +215,7 @@ class EnrollmentCalculation:
 
             # Check to see if the participant also meets BASELINE requirements
             if (
-                participant_info.has_had_ehr_file_submitted
+                (participant_info.has_had_ehr_file_submitted or participant_info.has_had_mediated_ehr_submitted)
                 and (
                     participant_info.consent_cohort not in (ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2)
                     or participant_info.has_completed_dna_update
@@ -225,7 +223,8 @@ class EnrollmentCalculation:
             ):
                 # Track the extra dates needed
                 # (definitely need the date of an ehr file, but also possibly the dna update time)
-                extra_dates_needed = [participant_info.earliest_ehr_file_received_time]
+                extra_dates_needed = [min_or_none([participant_info.earliest_ehr_file_received_time,
+                                                  participant_info.earliest_mediated_ehr_receipt_time])]
                 if participant_info.consent_cohort in [ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2]:
                     extra_dates_needed.append(participant_info.dna_update_time)
 
@@ -275,15 +274,8 @@ class EnrollmentCalculation:
         ]
 
     @classmethod
-    def _get_requirements_met_date(
-        cls, ehr_range_list: List[DateRange], other_required_date_list: List[datetime]
-    ) -> Optional[datetime]:
-        if any([required_date is None for required_date in other_required_date_list]):
+    def _get_requirements_met_date(cls, required_date_list: List[datetime]) -> Optional[datetime]:
+        if any([required_date is None for required_date in required_date_list]):
             return None
-
-        for ehr_yes_range in ehr_range_list:
-            matching_date = ehr_yes_range.find_first_overlap_list(other_required_date_list)
-            if matching_date:
-                return matching_date
-
-        return None
+        else:
+            return max(required_date_list)

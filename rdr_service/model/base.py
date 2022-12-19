@@ -28,6 +28,10 @@ Base = declarative_base(cls=DictableModel)
 # collected separately for DB migration purposes.
 MetricsBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="metrics"))
 
+RexBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="rex"))
+
+NphBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="nph"))
+
 
 class ModelMixin(object):
     """

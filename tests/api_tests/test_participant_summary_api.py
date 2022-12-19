@@ -10,7 +10,7 @@ from mock import patch
 from urllib.parse import urlencode
 
 from rdr_service import config, main
-from rdr_service.api_util import PTC, CURATION, HEALTHPRO
+from rdr_service.api_util import PTC, CURATION, HEALTHPRO, SUPPORT
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE,
                                         DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -77,6 +77,7 @@ participant_summary_default_values = {
     "consentForElectronicHealthRecords": "UNSET",
     "consentForStudyEnrollment": "SUBMITTED",
     "consentForCABoR": "UNSET",
+    "consentForEtM": "UNSET",
     "questionnaireOnFamilyHealth": "UNSET",
     "questionnaireOnHealthcareAccess": "UNSET",
     "questionnaireOnMedicalHistory": "UNSET",
@@ -153,6 +154,7 @@ participant_summary_default_values = {
     "sample1SAL2CollectionMethod": "UNSET",
     "isEhrDataAvailable": False,
     "wasEhrDataAvailable": False,
+    "wasParticipantMediatedEhrAvailable": False,
     "questionnaireOnCopeVaccineMinute1": "UNSET",
     "questionnaireOnCopeVaccineMinute2": "UNSET",
     "questionnaireOnCopeVaccineMinute3": "UNSET",
@@ -160,6 +162,7 @@ participant_summary_default_values = {
     "onsiteIdVerificationType": "UNSET",
     "onsiteIdVerificationVisitType": "UNSET",
     "questionnaireOnLifeFunctioning": "UNSET",
+    "aian": False
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
@@ -874,6 +877,38 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         self.assertEqual(len(entries), len(current_summaries))
         self.assertTrue(all(obj.get('participantIncentives') is not None for obj in resources))
+
+    def test_get_aian_flag(self):
+        for num in range(3):
+            self.data_generator.create_database_participant_summary(
+                firstName=f"Testy_{num}",
+                lastName=f"Tester_{num}",
+                dateOfBirth=datetime.date(1978, 10, 9),
+                aian=1 if num < 2 else 0
+            )
+
+        current_summaries = self.ps_dao.get_all()
+        first_pid = current_summaries[0].participantId
+        second_pid = current_summaries[1].participantId
+        third_pid = current_summaries[2].participantId
+
+        first_summary = self.send_get(f"Participant/P{first_pid}/Summary")
+        self.assertIsNotNone(first_summary.get('aian'))
+        self.assertEqual(first_summary.get('aian'), True)
+
+        second_summary = self.send_get(f"Participant/P{second_pid}/Summary")
+        self.assertIsNotNone(second_summary.get('aian'))
+        self.assertEqual(second_summary.get('aian'), True)
+
+        third_summary = self.send_get(f"Participant/P{third_pid}/Summary")
+        self.assertIsNotNone(third_summary.get('aian'))
+        self.assertEqual(third_summary.get('aian'), False)
+
+        response = self.send_get(f"ParticipantSummary?_sort=lastModified")
+        entries = response['entry']
+        resources = [obj.get('resource') for obj in entries]
+
+        self.assertTrue(all(obj.get('aian') in (True, False) for obj in resources))
 
     def test_pairing_summary(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
@@ -3771,6 +3806,98 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertNotIn('enrollmentStatusV3_1', api_response)
         self.assertNotIn('healthDataStreamSharingStatusV3_1', api_response)
 
+    def test_mediated_ehr(self):
+        """Check that the new set of participant mediated EHR data availability fields are present on the summary"""
+        first_mediated_ehr_receipt_time = datetime.datetime(2022, 11, 1)
+        latest_mediated_ehr_receipt_time = datetime.datetime(2022, 12, 5)
+
+        sharing_mediated_ehr_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,  # PITT
+            ehrStatus=EhrStatus.NOT_PRESENT,
+            wasParticipantMediatedEhrAvailable=True,
+            firstParticipantMediatedEhrReceiptTime=first_mediated_ehr_receipt_time,
+            latestParticipantMediatedEhrReceiptTime=latest_mediated_ehr_receipt_time
+        )
+
+        not_sharing_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,  # PITT
+        )
+
+        # Check fields on participant that is sharing mediated EHR
+        response = self.send_get(f'Participant/P{sharing_mediated_ehr_summary.participantId}/Summary')
+        self.assertEqual(first_mediated_ehr_receipt_time.isoformat(),
+                         response['firstParticipantMediatedEhrReceiptTime'])
+        self.assertEqual(latest_mediated_ehr_receipt_time.isoformat(),
+                         response['latestParticipantMediatedEhrReceiptTime'])
+        self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertEqual(latest_mediated_ehr_receipt_time.isoformat(),
+                         response['healthDataStreamSharingStatusV3_1Time'])
+
+        # Check fields on participant that is NOT sharing
+        response = self.send_get(f'Participant/P{not_sharing_summary.participantId}/Summary')
+        self.assertEqual('NEVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertNotIn('healthDataStreamSharingStatusV3_1Time', response)
+
+    def test_mediated_and_hpo_ehr_shared(self):
+        first_receipt_time = datetime.datetime(2020, 3, 27)
+        intermediate_receipt_time = datetime.datetime(2021, 6, 1)
+        latest_receipt_time = datetime.datetime(2022, 12, 5)
+
+        mediated_most_recently_shared_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,
+            isEhrDataAvailable=False,
+            ehrStatus=EhrStatus.PRESENT,
+            wasParticipantMediatedEhrAvailable=True,
+            ehrReceiptTime=first_receipt_time,
+            ehrUpdateTime=intermediate_receipt_time,
+            firstParticipantMediatedEhrReceiptTime=latest_receipt_time,
+            latestParticipantMediatedEhrReceiptTime=latest_receipt_time
+        )
+
+        hpo_ehr_most_recently_shared_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,
+            isEhrDataAvailable=False,
+            ehrStatus=EhrStatus.PRESENT,
+            wasParticipantMediatedEhrAvailable=True,
+            ehrReceiptTime=intermediate_receipt_time,
+            ehrUpdateTime=latest_receipt_time,
+            firstParticipantMediatedEhrReceiptTime=first_receipt_time,
+            latestParticipantMediatedEhrReceiptTime=first_receipt_time
+        )
+
+        # Check participant where most recently shared is the mediated EHR
+        response = self.send_get(f'Participant/P{mediated_most_recently_shared_summary.participantId}/Summary')
+        self.assertEqual(latest_receipt_time.isoformat(),
+                         response['latestParticipantMediatedEhrReceiptTime'])
+        self.assertEqual(intermediate_receipt_time.isoformat(),
+                         response['ehrUpdateTime'])
+        self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertEqual(latest_receipt_time.isoformat(),
+                         response['healthDataStreamSharingStatusV3_1Time'])
+
+        # Check participant where most recently shared is the HPO-provided EHR
+        response = self.send_get(f'Participant/P{hpo_ehr_most_recently_shared_summary.participantId}/Summary')
+        self.assertEqual(latest_receipt_time.isoformat(),
+                         response['ehrUpdateTime'])
+        self.assertEqual(first_receipt_time.isoformat(),
+                         response['latestParticipantMediatedEhrReceiptTime'])
+        self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertEqual(latest_receipt_time.isoformat(),
+                         response['healthDataStreamSharingStatusV3_1Time'])
+
+    def test_disabling_mediated_ehr_fields(self):
+        """Check that the participant mediated EHR fields are disabled by default"""
+        summary = self.data_generator.create_database_participant_summary()
+
+        # Override the default config, disabling the fields on the API
+        self.temporarily_override_config_setting(config.ENABLE_PARTICIPANT_MEDIATED_EHR, False)
+
+        # Check that the new fields are hidden
+        api_response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertNotIn('wasParticipantMediatedEhrAvailable', api_response)
+        self.assertNotIn('firstParticipantMediatedEhrReceiptTime', api_response)
+        self.assertNotIn('latestParticipantMediatedEhrReceiptTime', api_response)
+
     def test_blank_demographics_data_mapped_to_skip(self):
         # Create a participant summary that doesn't use skip codes for the demographics questions that weren't answered.
         # Some early summaries show this, we should map to displaying skip to have a more consistent output.
@@ -3880,7 +4007,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             wa_participant_id
         ], response_ids)
 
-    #### begin POST to ParticipantSummary API
+    # Begin POST to ParticipantSummary API
     def test_response_for_pid_not_found_in_post(self):
         bad_pid = 'P12345'
 
@@ -4140,6 +4267,54 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(len(responses), num_summary // 2)
         self.assertTrue(all(obj['resource']['site'] == monroe.googleGroup for obj in responses))
         self.assertFalse(any(obj['resource']['site'] == phoenix.googleGroup for obj in responses))
+
+    def test_filter_payload_roles(self):
+        num_summary, first_name, first_pid = 4, 'Testy', None
+
+        for num in range(num_summary):
+            ps = self.data_generator.create_database_participant_summary(
+                firstName=first_name,
+                lastName=f'Tester_{num}',
+            )
+            if num == 0:
+                first_pid = ps.participantId
+
+        # edit role to match config entry
+        self.overwrite_test_user_roles([SUPPORT])
+
+        # only fields that should be returned
+        filtered_fields = config.getSettingJson(config.OPS_DATA_PAYLOAD_ROLES)['support']['fields']
+
+        response = self.send_get(f"ParticipantSummary?firstName={first_name}")
+        self.assertIsNotNone(response)
+        response_entries = response['entry']
+
+        for entry in response_entries:
+            resource = entry['resource']
+            # no extra keys in response resource
+            self.assertTrue(not len(resource.keys() - filtered_fields))
+
+        response = self.send_get(f"Participant/P{first_pid}/Summary")
+        self.assertIsNotNone(response)
+        # no extra keys in resource
+        self.assertTrue(not len(response.keys() - filtered_fields))
+
+        # change role to un-match config entry
+        self.overwrite_test_user_roles([HEALTHPRO])
+
+        response = self.send_get(f"ParticipantSummary?firstName={first_name}")
+        self.assertIsNotNone(response)
+        response_entries = response['entry']
+
+        for entry in response_entries:
+            resource = entry['resource']
+            # should have extra keys in response
+            self.assertTrue(len(resource.keys() - filtered_fields))
+
+        response = self.send_get(f"Participant/P{first_pid}/Summary")
+        self.assertIsNotNone(response)
+        # should have extra keys in response
+        self.assertTrue(len(response.keys() - filtered_fields))
 
     def test_synthetic_pm_fields(self):
         questionnaire_id = self.create_questionnaire("all_consents_questionnaire.json")

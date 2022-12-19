@@ -84,6 +84,9 @@ GENOMIC_AW1F_SUBFOLDER = "post_accessioning_results"
 GENOME_TYPE_ARRAY = "aou_array"
 GENOME_TYPE_WGS = "aou_wgs"
 GENOME_TYPE_CVL = "aou_cvl"
+GENOMIC_DEPRECATED_WGS_DRAGEN = 'dragen_3.4.12'
+GENOMIC_UPDATED_WGS_DRAGEN = 'dragen_3.7.8'
+GENOMIC_JOB_IDS_BYPASS_VALIDATION = "genomic_job_ids_bypass_validation"
 GENOME_TYPE_ARRAY_INVESTIGATION = "aou_array_investigation"
 GENOME_TYPE_WGS_INVESTIGATION = "aou_wgs_investigation"
 AW1F_ALERT_RECIPIENTS = "aw1f_alert_recipients"
@@ -105,6 +108,7 @@ GENOMIC_GC_ID_MAPPING = "gc_name_to_id_mapping"
 GENOMIC_PIPELINE_IDS = "genomic_pipeline_ids"
 GENOMIC_COLOR_PM_EMAIL = "genomic_color_pm_email"
 GENOMIC_METRIC_DATA_FILE_UPDATE_LIMIT = "genomic_metric_data_file_update_limit"
+GENOMIC_GCR_ESCALATION_EMAILS = "genomic_gcr_escalation_emails"
 CALCULATE_READY_FLAG_LIMIT = 'calculate_ready_flag_limit'
 DRC_BROAD_BUCKET_NAME = "drc_broad_bucket_name"
 CO_BUCKET_NAME = "co_bucket_name"
@@ -153,9 +157,10 @@ HEALTHPRO_CONSENTS_TRANSFER_LIMIT = 'hpro_consents_transfer_limit'
 CE_HEALTH_DATA_BUCKET_NAME = "ce_health_data_bucket_name"
 VA_WORKQUEUE_BUCKET_NAME = 'va_workqueue_bucket_name'
 VA_WORKQUEUE_SUBFOLDER = 'va_workqueue_subfolder'
-
+OPS_DATA_PAYLOAD_ROLES = 'ops_data_payload_roles'
 ENABLE_ENROLLMENT_STATUS_3 = 'enable_enrollment_status_3'
 ENABLE_HEALTH_SHARING_STATUS_3 = 'enable_health_sharing_status_3'
+ENABLE_PARTICIPANT_MEDIATED_EHR = 'enable_participant_mediated_ehr'
 
 # Buckets to listen for Pub/Sub notifications
 PUBSUB_NOTIFICATION_BUCKETS_PROD = [
