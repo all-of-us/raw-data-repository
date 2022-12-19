@@ -79,9 +79,12 @@ class GenomicIngestFilesFunction(FunctionPubSubHandler):
         ]
 
         file_path = self.event.attributes.bucketId + "/" + self.event.attributes.objectId.replace(" ", "")
-        ext = file_path.split('.', 1)[-1]
+        max_int = 3 if 'dragen_' in file_path else 1
+        ext = file_path.split('.', max_int)[-1]
 
         if ext and ext in allowed_files:
+
+            _logger.info(f"File type found: {ext}")
             _logger.info("Pushing cloud tasks...")
 
             data = {
