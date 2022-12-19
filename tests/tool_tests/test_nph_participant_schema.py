@@ -22,49 +22,47 @@ MOCK_DATA = {
     "event_collection": {"current": {"value": "ec_current_value", "time": mock_time_value},
                          "historical": [{"value": "ec_historical_value1", "time": mock_time_value},
                                         {"value": "ec_historical_value2", "time": mock_time_value}]},
-    "sample": {"parent": [{"current": {"value": "s_parent_current_value", "time": mock_time_value},
+    "sample": {"parent": {"current": {"value": "s_parent_current_value", "time": mock_time_value},
                           "historical": [{"value": "s_parent_historical_value1", "time": mock_time_value},
-                                         {"value": "sample_parent_historical_value2", "time": mock_time_value}]}
-                          ],
-               "child": [{"current": {"value": "s_child_current_value", "time": mock_time_value},
-                          "historical": [{"value": "s_child_historical_value1", "time": mock_time_value},
-                                         {"value": "s_child_historical_value2", "time": mock_time_value}]}
-                         ]
+                                         {"value": "sample_parent_historical_value2", "time": mock_time_value}]},
+               "child": {"current": {"value": "s_child_current_value", "time": mock_time_value},
+                         "historical": [{"value": "s_child_historical_value1", "time": mock_time_value},
+                                        {"value": "s_child_historical_value2", "time": mock_time_value}]}
+
                },
-    "sample_collection": {"ordered": [{"parent": [{"current": {"value": "sc_ordered_parent_current_value",
-                                                               "time": mock_time_value},
-                                                   "historical": [{"value": "sc_ordered_parent_historical_value1",
-                                                                   "time": mock_time_value},
-                                                                  {"value": "sc_ordered_parent_historical_value2",
-                                                                   "time": mock_time_value}]}
-                                                  ],
-                                       "child": [{"current": {"value": "sc_ordered_child_current_value",
+    "sample_collection": {"ordered": [{"parent": {"current": {"value": "sc_ordered_parent_current_value",
                                                               "time": mock_time_value},
-                                                  "historical": [{"value": "sc_ordered_child_historical_value1",
+                                                  "historical": [{"value": "sc_ordered_parent_historical_value1",
                                                                   "time": mock_time_value},
-                                                                 {"value": "sc_ordered_child_historical_value2",
-                                                                  "time": mock_time_value}]
-                                                  }
-                                                 ]
-                                       }
-                                      ],
-                          "stored": [{"parent": [{"current": {"value": "sc_stored_parent_current_value",
+                                                                 {"value": "sc_ordered_parent_historical_value2",
+                                                                  "time": mock_time_value}]}
+                                                 ,
+                                      "child": {"current": {"value": "sc_ordered_child_current_value",
+                                                             "time": mock_time_value},
+                                                 "historical": [{"value": "sc_ordered_child_historical_value1",
+                                                                 "time": mock_time_value},
+                                                                {"value": "sc_ordered_child_historical_value2",
+                                                                 "time": mock_time_value}]
+                                                 }
+
+                                      }],
+                          "stored": {"parent": {"current": {"value": "sc_stored_parent_current_value",
                                                               "time": mock_time_value},
                                                   "historical": [{"value": "sc_stored_parent_historical_value1",
                                                                   "time": mock_time_value},
                                                                  {"value": "sc_stored_parent_historical_value2",
                                                                   "time": mock_time_value}]}
-                                                 ],
-                                      "child": [{"current": {"value": "sc_stored_child_current_value",
+                                                 ,
+                                      "child": {"current": {"value": "sc_stored_child_current_value",
                                                              "time": mock_time_value},
                                                  "historical": [{"value": "sc_stored_child_historical_value1",
                                                                  "time": mock_time_value},
                                                                 {"value": "sc_stored_child_historical_value2",
                                                                  "time": mock_time_value}]
                                                  }
-                                                ]
+
                                       }
-                                     ]
+
                           }
 }
 
@@ -135,29 +133,29 @@ class TestSchema(TestCase):
                            'child{current{value time} historical{value time}}}}}'
         result = MOCK_SCHEMA.execute(mock_event_query)
         self.assertEqual('s_parent_current_value',
-                         result.data.get('data').get('sample').get('parent')[0].get('current').get('value'))
+                         result.data.get('data').get('sample').get('parent').get('current').get('value'))
         self.assertEqual('2022-12-02T00:00:00',
-                         result.data.get('data').get('sample').get('parent')[0].get('current').get('time'))
+                         result.data.get('data').get('sample').get('parent').get('current').get('time'))
         self.assertEqual('s_parent_historical_value1',
-                         result.data.get('data').get('sample').get('parent')[0].get('historical')[0].get('value'))
+                         result.data.get('data').get('sample').get('parent').get('historical')[0].get('value'))
         self.assertEqual('2022-12-02T00:00:00',
-                         result.data.get('data').get('sample').get('parent')[0].get('historical')[0].get('time'))
+                         result.data.get('data').get('sample').get('parent').get('historical')[0].get('time'))
         self.assertEqual('sample_parent_historical_value2',
-                         result.data.get('data').get('sample').get('parent')[0].get('historical')[1].get('value'))
+                         result.data.get('data').get('sample').get('parent').get('historical')[1].get('value'))
         self.assertEqual('2022-12-02T00:00:00',
-                         result.data.get('data').get('sample').get('parent')[0].get('historical')[1].get('time'))
+                         result.data.get('data').get('sample').get('parent').get('historical')[1].get('time'))
         self.assertEqual('s_child_current_value',
-                         result.data.get('data').get('sample').get('child')[0].get('current').get('value'))
+                         result.data.get('data').get('sample').get('child').get('current').get('value'))
         self.assertEqual('2022-12-02T00:00:00',
-                         result.data.get('data').get('sample').get('child')[0].get('current').get('time'))
+                         result.data.get('data').get('sample').get('child').get('current').get('time'))
         self.assertEqual('s_child_historical_value1',
-                         result.data.get('data').get('sample').get('child')[0].get('historical')[0].get('value'))
+                         result.data.get('data').get('sample').get('child').get('historical')[0].get('value'))
         self.assertEqual('2022-12-02T00:00:00',
-                         result.data.get('data').get('sample').get('child')[0].get('historical')[0].get('time'))
+                         result.data.get('data').get('sample').get('child').get('historical')[0].get('time'))
         self.assertEqual('s_child_historical_value2',
-                         result.data.get('data').get('sample').get('child')[0].get('historical')[1].get('value'))
+                         result.data.get('data').get('sample').get('child').get('historical')[1].get('value'))
         self.assertEqual('2022-12-02T00:00:00',
-                         result.data.get('data').get('sample').get('child')[0].get('historical')[1].get('time'))
+                         result.data.get('data').get('sample').get('child').get('historical')[1].get('time'))
 
     def test_sample_collection_schema(self):
         mock_event_query = '''{data {sampleCollection{	ordered{parent{current{value time}historical{value time}}child
@@ -165,26 +163,26 @@ class TestSchema(TestCase):
         child	{current{value time} historical{value time}} }}}}'''
         result = MOCK_SCHEMA.execute(mock_event_query)
         self.assertEqual('sc_ordered_parent_current_value', result.data.get('data').get('sampleCollection')
-                         .get('ordered')[0].get('parent')[0].get('current').get('value'))
+                         .get('ordered')[0].get('parent').get('current').get('value'))
         self.assertEqual('2022-12-02T00:00:00', result.data.get('data').get('sampleCollection')
-                         .get('ordered')[0].get('parent')[0].get('current').get('time'))
+                         .get('ordered')[0].get('parent').get('current').get('time'))
         self.assertEqual('sc_ordered_child_historical_value1', result.data.get('data').get('sampleCollection')
-                         .get('ordered')[0].get('child')[0].get('historical')[0].get('value'))
+                         .get('ordered')[0].get('child').get('historical')[0].get('value'))
         self.assertEqual('2022-12-02T00:00:00', result.data.get('data').get('sampleCollection')
-                         .get('ordered')[0].get('child')[0].get('historical')[0].get('time'))
+                         .get('ordered')[0].get('child').get('historical')[0].get('time'))
         self.assertEqual('sc_ordered_child_historical_value2', result.data.get('data').get('sampleCollection')
-                         .get('ordered')[0].get('child')[0].get('historical')[1].get('value'))
+                         .get('ordered')[0].get('child').get('historical')[1].get('value'))
         self.assertEqual('2022-12-02T00:00:00', result.data.get('data').get('sampleCollection')
-                         .get('ordered')[0].get('child')[0].get('historical')[1].get('time'))
+                         .get('ordered')[0].get('child').get('historical')[1].get('time'))
         self.assertEqual('sc_stored_parent_current_value', result.data.get('data').get('sampleCollection')
-                         .get('stored')[0].get('parent')[0].get('current').get('value'))
+                         .get('stored').get('parent').get('current').get('value'))
         self.assertEqual('2022-12-02T00:00:00', result.data.get('data').get('sampleCollection')
-                         .get('stored')[0].get('parent')[0].get('current').get('time'))
+                         .get('stored').get('parent').get('current').get('time'))
         self.assertEqual('sc_stored_child_historical_value1', result.data.get('data').get('sampleCollection')
-                         .get('stored')[0].get('child')[0].get('historical')[0].get('value'))
+                         .get('stored').get('child').get('historical')[0].get('value'))
         self.assertEqual('2022-12-02T00:00:00', result.data.get('data').get('sampleCollection')
-                         .get('stored')[0].get('child')[0].get('historical')[0].get('time'))
+                         .get('stored').get('child').get('historical')[0].get('time'))
         self.assertEqual('sc_stored_child_historical_value2', result.data.get('data').get('sampleCollection')
-                         .get('stored')[0].get('child')[0].get('historical')[1].get('value'))
+                         .get('stored').get('child').get('historical')[1].get('value'))
         self.assertEqual('2022-12-02T00:00:00', result.data.get('data').get('sampleCollection')
-                         .get('stored')[0].get('child')[0].get('historical')[1].get('time'))
+                         .get('stored').get('child').get('historical')[1].get('time'))
