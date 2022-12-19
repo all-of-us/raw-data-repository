@@ -1018,9 +1018,9 @@ class WorkbenchResearcherYesNoPreferNot(messages.Enum):
     PREFER_NOT_TO_ANSWER = 3
 
 
-class RemoteIdVerificationComplete(messages.Enum):
-    INCOMPLETE = 0
-    UNVERIFIED = 1
-    COMPLETE = 2
+class RemoteIdVerificationStatus(messages.Enum):
+    FALSE = 0
+    TRUE = 1
+
 
 

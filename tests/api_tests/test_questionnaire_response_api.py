@@ -1683,9 +1683,28 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(summary['questionnaireOnLifeFunctioningTime'], '2022-09-07T01:02:03')
 
     def test_remote_identity_verified(self):
-        with FakeClock(TIME_1):
-            # participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
-            pass
+
+        user_info = config.getSettingJson(config.USER_INFO)
+        user_info['example@example.com']['clientId'] = 'vibrent'
+        config.override_setting(config.USER_INFO, user_info)
+
+        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        print(participant)
+        participant_id = 'P'+ str(participant.participantId)
+        authored = datetime.datetime.now()
+        self.send_consent(participant.participantId, authored=authored)
+        # Set up a questionnaire that usually changes participant summary
+        questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
+        resource = self._load_response_json("remote_id_verification_questionnaire_response.json", questionnaire_id,\
+                                            participant_id)
+        print(resource)
+        self._save_codes(resource)
+        self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['remoteIdVerificationOrigin'], 'vibrent')
+        self.assertEqual(summary['remoteIdVerificationStatus'], 'TRUE')
+        self.assertEqual(summary['remoteIdVerifiedOn'], '2022-11-30')
 
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):

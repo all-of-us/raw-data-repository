@@ -81,8 +81,7 @@ from rdr_service.code_constants import (
     VA_EHR_RECONSENT_QUESTION_CODE,
     AGREE_YES,
     AGREE_NO,
-    REMOTE_ID_VERIFICATION_CODE,
-
+    REMOTE_ID_VERIFIED_CODE
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -114,7 +113,8 @@ from rdr_service.participant_enums import (
     ParticipantCohort,
     ConsentExpireStatus,
     OriginMeasurementUnit,
-    PhysicalMeasurementsCollectType
+    PhysicalMeasurementsCollectType,
+    RemoteIdVerificationStatus
 )
 
 _QUESTIONNAIRE_PREFIX = "Questionnaire/"
@@ -895,8 +895,19 @@ class QuestionnaireResponseDao(BaseDao):
                                 QuestionnaireStatus.SUBMITTED_NO_CONSENT
                             participant_summary.consentForElectronicHealthRecordsAuthored = authored
                             participant_summary.consentForElectronicHealthRecordsTime = questionnaire_response.created
-                    elif code.value.lower() == REMOTE_ID_VERIFICATION_CODE:
-                        answer_value = code_dao.get(answer.valueCodeId).value
+                    elif code.value.lower() == REMOTE_ID_VERIFIED_CODE:
+                        remote_id_verified_answer = answer.valueDecimal
+                        remote_id_verified_on_answer = answer.valueDate
+                        if remote_id_verified_answer == 1:
+                            # is the participant origin always going to be the same? if not, where can I pull this from
+                            participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
+                            participant_summary.remoteIdVerificationStatus = RemoteIdVerificationStatus.TRUE
+                            participant_summary.remoteIdVerifiedOn = remote_id_verified_on_answer
+                        elif remote_id_verified_answer == 0:
+                            participant_summary.remoteIdVerificationOrigin = ''
+                            participant_summary.remoteIdVerificationStatus = RemoteIdVerificationStatus.FALSE
+                            participant_summary.remoteIdVerifiedOn = None
+
 
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.

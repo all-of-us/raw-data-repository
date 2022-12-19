@@ -66,7 +66,6 @@ def main(client):
 
             try:
                 participant = client.request_json("Participant/%s" % participant_id)
-                print(participant)
             except HttpException as e:
                 logging.error("Skipping %s: %s", participant_id, e)
                 num_errors += 1
