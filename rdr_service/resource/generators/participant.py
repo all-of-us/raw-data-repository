@@ -422,7 +422,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         pairing_history = None
         query = ro_session.query(ParticipantHistory.lastModified, ParticipantHistory.hpoId, HPO.name.label('hpo'),
                                    ParticipantHistory.organizationId, Organization.externalId.label('organization'),
-                                   ParticipantHistory.siteId, Site.googleGroup.label('site')). \
+                                   ParticipantHistory.siteId, Site.googleGroup.label('site'),
+                                   ParticipantHistory.version). \
                 outerjoin(HPO, HPO.hpoId == ParticipantHistory.hpoId).\
                 outerjoin(Organization, Organization.organizationId == ParticipantHistory.organizationId).\
                 outerjoin(Site, Site.siteId == ParticipantHistory.siteId).\
@@ -439,7 +440,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'organization': item.organization,
                     'organization_id': item.organizationId,
                     'site': item.site,
-                    'site_id': item.siteId
+                    'site_id': item.siteId,
+                    'version': item.version
                 })
 
         data['pairing_history'] = pairing_history
