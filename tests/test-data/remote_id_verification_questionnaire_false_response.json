@@ -10,11 +10,11 @@
         "value": "71146"
     },
     "questionnaire": {
-        "reference": "Questionnaire/2735209"
+        "reference": "Questionnaire/{questionnaire_id}"
     },
     "status": "completed",
     "subject": {
-        "reference": "Patient/P526815025"
+        "reference": "Patient/{participant_id}"
     },
     "authored": "2022-12-13T19:25:14+00:00",
     "group": {
@@ -26,7 +26,7 @@
                 "text": "Pick your answers from the following choices",
                 "answer": [
                     {
-                        "valueDecimal": 1
+                        "valueDecimal": 0
                     }
                 ]
             },

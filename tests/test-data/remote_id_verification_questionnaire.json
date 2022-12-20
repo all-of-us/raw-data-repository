@@ -14,7 +14,7 @@
             {
                 "text": "Was this a REMOTE Id Verification? ",
                 "type": "boolean",
-                "linkId": "123",
+                "linkId": "remote_id_123",
                 "concept": [
                     {
                         "code": "remote_identity_verified",
@@ -26,10 +26,10 @@
             {
                 "text": "Latest Date Updated",
                 "type": "date",
-                "linkId": "456",
+                "linkId": "remote_id_456",
                 "concept": [
                     {
-                        "code": "remote_id_verified_on",
+                        "code": "remote_identity_verified_on",
                         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
                     }
                 ],

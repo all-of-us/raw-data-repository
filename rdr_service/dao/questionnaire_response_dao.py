@@ -81,7 +81,9 @@ from rdr_service.code_constants import (
     VA_EHR_RECONSENT_QUESTION_CODE,
     AGREE_YES,
     AGREE_NO,
-    REMOTE_ID_VERIFIED_CODE
+    REMOTE_ID_VERIFIED_CODE,
+    REMOTE_ID_VERIFIED_ON_CODE
+
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -738,6 +740,7 @@ class QuestionnaireResponseDao(BaseDao):
         street_address2_submitted = False
 
         rejected_reconsent = False
+        remote_id_info = {}
 
         # Skip updating the summary if the response being stored has an authored
         # date earlier than one that's already been recorded
@@ -895,18 +898,10 @@ class QuestionnaireResponseDao(BaseDao):
                                 QuestionnaireStatus.SUBMITTED_NO_CONSENT
                             participant_summary.consentForElectronicHealthRecordsAuthored = authored
                             participant_summary.consentForElectronicHealthRecordsTime = questionnaire_response.created
+                    elif code.value.lower() == REMOTE_ID_VERIFIED_ON_CODE:
+                        remote_id_info['verified_on'] = answer.valueDate
                     elif code.value.lower() == REMOTE_ID_VERIFIED_CODE:
-                        remote_id_verified_answer = answer.valueDecimal
-                        remote_id_verified_on_answer = answer.valueDate
-                        if remote_id_verified_answer == 1:
-                            # is the participant origin always going to be the same? if not, where can I pull this from
-                            participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
-                            participant_summary.remoteIdVerificationStatus = RemoteIdVerificationStatus.TRUE
-                            participant_summary.remoteIdVerifiedOn = remote_id_verified_on_answer
-                        elif remote_id_verified_answer == 0:
-                            participant_summary.remoteIdVerificationOrigin = ''
-                            participant_summary.remoteIdVerificationStatus = RemoteIdVerificationStatus.FALSE
-                            participant_summary.remoteIdVerifiedOn = None
+                        remote_id_info['verified'] = answer.valueDecimal
 
 
 
@@ -934,6 +929,18 @@ class QuestionnaireResponseDao(BaseDao):
                 something_changed = True
 
         dna_program_consent_update_code = config.getSettingJson(config.DNA_PROGRAM_CONSENT_UPDATE_CODE, None)
+
+        if 'verified' in remote_id_info.keys() and 'verified_on' in remote_id_info.keys():
+            if remote_id_info['verified'] == 1:
+                # is the participant origin always going to be the same? if not, where can I pull this from
+                participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
+                participant_summary.remoteIdVerificationStatus = RemoteIdVerificationStatus.TRUE
+                participant_summary.remoteIdVerifiedOn = remote_id_info['verified_on']
+        elif 'verified' in remote_id_info.keys():
+            if remote_id_info['verified'] == 0:
+                participant_summary.remoteIdVerificationOrigin = ''
+                participant_summary.remoteIdVerificationStatus = RemoteIdVerificationStatus.FALSE
+                participant_summary.remoteIdVerifiedOn = None
 
         # Set summary fields to SUBMITTED for questionnaire concepts that are found in
         # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
