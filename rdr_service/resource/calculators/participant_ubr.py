@@ -7,10 +7,11 @@
 #
 import re
 
-from dateutil.relativedelta import relativedelta
-from dateutil.parser import parse
 from enum import IntEnum
 from typing import Dict, List
+from dateutil.relativedelta import relativedelta
+from dateutil.parser import parse
+
 from rdr_service.resource.helpers import RURAL_ZIPCODES, RURAL_2020_CUTOFF
 
 
