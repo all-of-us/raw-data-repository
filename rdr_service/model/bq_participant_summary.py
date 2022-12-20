@@ -248,6 +248,7 @@ class BQPairingHistorySchema(BQSchema):
     organization_id = BQField('organization_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     site = BQField('site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     site_id = BQField('site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    version = BQField('version', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummarySchema(BQSchema):
