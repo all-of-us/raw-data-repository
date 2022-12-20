@@ -1766,8 +1766,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             lfs_qnan = self.get_module_answers(self.ro_dao, 'lfs', p_id=p_id, qr_id=lfs_qr_id)
 
         # Add the response to the list for the ubr_disability calculator if it has content.    TODO: Confirm if RDR has
-        # any pids with valid answers (not all None/PMI_Skip) to disability questions in both surveys.  Not expected,
-        # but this ensures lfs answers take precedence by being last in the list to be processed in ubr_disability()
+        # any pids with valid answers (not all None/PMI_Skip) to disability questions in TheBasics but also have an
+        # lfs survey response (not an expected use case).
         for qnan in [basics_qnan, lfs_qnan]:
             if qnan:
                 ubr_disability_responses.append(qnan)

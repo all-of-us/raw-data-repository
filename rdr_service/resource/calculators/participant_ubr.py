@@ -213,7 +213,7 @@ class ParticipantUBRCalculator:
                         'Disability_WalkingClimbing', 'Disability_DressingBathing', 'Disability_ErrandsAlone',
                         'Disability_Deaf' and 'Disability_DifficultyConcentrating' from "TheBasics" and/or "lfs"
                         (Life Functioning Survey) surveys.  If list has both TheBasics and lfs responses, lfs answers
-                        be last in the ordered list
+                        should be last in the ordered list
         # List of "Prefer Not To Answer" answer values for each question:
          'Blind_PreferNotToAnswer', 'WalkingClimbing_PreferNotToAnswer', 'DressingBathing_PreferNotToAnswer',
          'ErrandsAlone_PreferNotToAnswer', 'Deaf_PreferNotToAnswer', 'DifficultyConcentrating_PreferNotToAnswer'
@@ -229,7 +229,7 @@ class ParticipantUBRCalculator:
                     answers.get('Disability_ErrandsAlone', None) == 'ErrandsAlone_Yes' or \
                     answers.get('Disability_Deaf', None) == 'Deaf_Yes' or \
                     answers.get('Disability_DifficultyConcentrating', None) == 'DifficultyConcentrating_Yes':
-                # Can return immediately as soon as a qualifying UBR response is detected
+                # Affirmative UBR answers from TheBasics are always honored, do not need to continue processing
                 return UBRValueEnum.UBR
 
             # Check and see if all question answers are either Null, 'Prefer Not To Answer' or PMI_Skip.
@@ -243,6 +243,7 @@ class ParticipantUBRCalculator:
                     null_skip = False
                     break
             if null_skip is True:
+                # This may be updated on subsequent pass, when/if processing additional lfs response data
                 ret = UBRValueEnum.NotAnswer_Skip
             else:
                 ret = UBRValueEnum.RBR
