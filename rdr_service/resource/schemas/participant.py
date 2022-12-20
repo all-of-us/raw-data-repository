@@ -318,6 +318,7 @@ class PairingHistorySchema(Schema):
     organization_id = fields.Int32()
     site = fields.String(validate=validate.Length(max=255))
     site_id = fields.Int32()
+    version = fields.Int32()
 
     class Meta:
         schema_id = SchemaID.participant_pairing_history
