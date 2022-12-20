@@ -48,7 +48,6 @@ class AlembicManagerClass(object):
             return 1
 
         clr = self.gcp_env.terminal_colors
-
         _logger.info('\nAlembic Process Information:')
         _logger.info('=' * 90)
         _logger.info('  Target Project : {0}'.format(
