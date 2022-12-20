@@ -10,7 +10,7 @@ import re
 from dateutil.relativedelta import relativedelta
 from dateutil.parser import parse
 from enum import IntEnum
-
+from typing import Dict, List
 from rdr_service.resource.helpers import RURAL_ZIPCODES, RURAL_2020_CUTOFF
 
 
@@ -205,41 +205,49 @@ class ParticipantUBRCalculator:
         return UBRValueEnum.RBR
 
     @staticmethod
-    def ubr_disability(answers: dict):
+    def ubr_disability(survey_responses: List[Dict]):
         """
         Diversity Category #9 - Disability
         Calculate the disability UBR value.
-        :param answers: Dict with keys and answer codes for 'Disability_Blind',
+        :param survey_responses: Ordered list of Dicts with keys and answer codes for 'Disability_Blind',
                         'Disability_WalkingClimbing', 'Disability_DressingBathing', 'Disability_ErrandsAlone',
-                        'Disability_Deaf' and 'Disability_DifficultyConcentrating' from "TheBasics" survey.
+                        'Disability_Deaf' and 'Disability_DifficultyConcentrating' from "TheBasics" and/or "lfs"
+                        (Life Functioning Survey) surveys.  If list has both TheBasics and lfs responses, lfs answers
+                        be last in the ordered list
         # List of "Prefer Not To Answer" answer values for each question:
          'Blind_PreferNotToAnswer', 'WalkingClimbing_PreferNotToAnswer', 'DressingBathing_PreferNotToAnswer',
          'ErrandsAlone_PreferNotToAnswer', 'Deaf_PreferNotToAnswer', 'DifficultyConcentrating_PreferNotToAnswer'
         :return: UBRValueEnum
         """
-        if answers:
-            # PDR-658:  The Employment_EmploymentStatus/EmploymentStatus_UnableToWork answer check was removed from the
-            # UBR Disability calculations per program decision
+        ret = UBRValueEnum.RBR   # Default return value
+        for answers in survey_responses:
+            # PDR-658:  The Employment_EmploymentStatus/EmploymentStatus_UnableToWork answer check was removed from
+            # the UBR Disability calculations per program decision
             if answers.get('Disability_Blind', None) == 'Blind_Yes' or \
                     answers.get('Disability_WalkingClimbing', None) == 'WalkingClimbing_Yes' or \
                     answers.get('Disability_DressingBathing', None) == 'DressingBathing_Yes' or \
                     answers.get('Disability_ErrandsAlone', None) == 'ErrandsAlone_Yes' or \
                     answers.get('Disability_Deaf', None) == 'Deaf_Yes' or \
                     answers.get('Disability_DifficultyConcentrating', None) == 'DifficultyConcentrating_Yes':
+                # Can return immediately as soon as a qualifying UBR response is detected
                 return UBRValueEnum.UBR
-        # Check and see if all question answers are either Null, 'Prefer Not To Answer' or PMI_Skip.
-        null_skip = True
-        for k in ['Disability_Blind', 'Disability_WalkingClimbing', 'Disability_DressingBathing',
-                   'Disability_ErrandsAlone', 'Disability_Deaf' and 'Disability_DifficultyConcentrating']:
-            if answers.get(k, None) not in \
-                    [None, 'PMI_Skip', 'Blind_PreferNotToAnswer', 'WalkingClimbing_PreferNotToAnswer',
-                     'DressingBathing_PreferNotToAnswer', 'ErrandsAlone_PreferNotToAnswer',
-                     'Deaf_PreferNotToAnswer', 'DifficultyConcentrating_PreferNotToAnswer']:
-                null_skip = False
-                break
-        if null_skip is True:
-            return UBRValueEnum.NotAnswer_Skip
-        return UBRValueEnum.RBR
+
+            # Check and see if all question answers are either Null, 'Prefer Not To Answer' or PMI_Skip.
+            null_skip = True
+            for k in ['Disability_Blind', 'Disability_WalkingClimbing', 'Disability_DressingBathing',
+                       'Disability_ErrandsAlone', 'Disability_Deaf' and 'Disability_DifficultyConcentrating']:
+                if answers.get(k, None) not in \
+                        [None, 'PMI_Skip', 'Blind_PreferNotToAnswer', 'WalkingClimbing_PreferNotToAnswer',
+                         'DressingBathing_PreferNotToAnswer', 'ErrandsAlone_PreferNotToAnswer',
+                         'Deaf_PreferNotToAnswer', 'DifficultyConcentrating_PreferNotToAnswer']:
+                    null_skip = False
+                    break
+            if null_skip is True:
+                ret = UBRValueEnum.NotAnswer_Skip
+            else:
+                ret = UBRValueEnum.RBR
+
+        return ret
 
     @staticmethod
     def ubr_age_at_consent(consent_time, answer: (str, None)):
