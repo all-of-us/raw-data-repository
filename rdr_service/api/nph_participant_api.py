@@ -1,7 +1,7 @@
+import logging
 from graphene.validation import depth_limit_validator
 from graphql import validate, parse, GraphQLError, GraphQLSyntaxError
 from flask import request
-import logging
 
 from rdr_service.api_util import RTI_AND_HEALTHPRO
 from rdr_service import app_util

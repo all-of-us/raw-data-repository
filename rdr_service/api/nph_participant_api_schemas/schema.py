@@ -6,7 +6,7 @@ from sqlalchemy.orm import Query
 from rdr_service.model.participant import Participant as DbParticipant
 from rdr_service.model.nph_sample import NphSample
 from rdr_service.dao import database_factory
-from rdr_service.api.nph_participant_api_schemas.util import SortContext, loadParticipantData
+from rdr_service.api.nph_participant_api_schemas.util import SortContext, load_participant_data
 
 
 class SortableField(Field):
@@ -34,10 +34,9 @@ class Event(ObjectType):
     def sort(context, value):
         if value.upper() == "TIME":
             return context.set_order_expression(context.sort_table.time)
-        elif value.upper() == 'VALUE':
+        if value.upper() == 'VALUE':
             return context.set_order_expression(context.sort_table.status)
-        else:
-            raise ValueError("{} : Invalid Key -- Event Object Type".format(value))
+        raise ValueError(f"{value} : Invalid Key -- Event Object Type")
 
 
 class EventCollection(ObjectType):
@@ -59,15 +58,14 @@ class Sample(ObjectType):
     def sort(context, value):
         if value.upper() == 'PARENT':
             return context.set_sort_table('sample')
-        elif value.upper() == 'CHILD':
+        if value.upper() == 'CHILD':
             return context.add_ref(
                 NphSample, 'child'
             ).add_join(
                 context.references['child'],
                 context.references['child'].parent_id == context.references['sample'].id
             ).set_sort_table('child')
-        else:
-            raise ValueError("{} : Invalid Key -- Sample Object Type".format(value))
+        raise ValueError(f"{value} : Invalid Key -- Sample Object Type")
 
 
 class SampleCollection(ObjectType):
@@ -246,7 +244,7 @@ class ParticipantConnection(relay.Connection):
     @staticmethod
     def resolve_total_count(root, _):
         with database_factory.get_database().session() as sessions:
-            logging.info(root)
+            logging.debug(root)
             query = Query(DbParticipant)
             query.session = sessions
             return query.count()
@@ -268,7 +266,7 @@ class ParticipantQuery(ObjectType):
     @staticmethod
     def resolve_participant(root, info, nph_id=None, sort_by=None, limit=None, off_set=None, **kwargs):
         with database_factory.get_database().session() as sessions:
-            logging.info('root: {}, info: {}, kwargs: {}'.format(root, info, kwargs))
+            logging.info('root: %s, info: %s, kwargs: %s', root, info, kwargs)
             query = Query(DbParticipant)
             query.session = sessions
             current_class = Participant
@@ -278,7 +276,7 @@ class ParticipantQuery(ObjectType):
             try:
                 if sort_by:
                     sort_parts = sort_by.split(':')
-                    logging.info('sort by: {}'.format(sort_parts))
+                    logging.info('sort by: %s', sort_parts)
                     if len(sort_parts) == 1:
                         sort_field: SortableField = getattr(current_class, sort_parts[0])
                         sort_field.sort_modifier(sort_context)
@@ -289,17 +287,17 @@ class ParticipantQuery(ObjectType):
                             current_class = sort_field.type
 
                 if nph_id:
-                    logging.info('Fetch NPH ID: {}'.format(nph_id))
+                    logging.info('Fetch NPH ID: %d', nph_id)
                     query = query.filter(DbParticipant.participantId == nph_id)
                     logging.info(query)
-                    return loadParticipantData(query)
+                    return load_participant_data(query)
                 query = sort_context.get_resulting_query()
                 if limit:
                     query = query.limit(limit)
                 if off_set:
                     query = query.offset(off_set)
                 logging.info(query)
-                return loadParticipantData(query)
+                return load_participant_data(query)
             except Exception as ex:
                 logging.error(ex)
                 raise ex

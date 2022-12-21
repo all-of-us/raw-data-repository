@@ -47,7 +47,7 @@ class SortContext:
         return resulting_query.order_by(self.order_expression)
 
 
-def loadParticipantData(query):
+def load_participant_data(query):
 
     # query.session = sessions
 
