@@ -1,10 +1,10 @@
-from graphene.test import Client
 from unittest import TestCase
 import faker
 from collections import defaultdict
 from graphql import GraphQLSyntaxError
+import json
 
-from rdr_service.api.nph_participant_api_schemas.schema import NPHParticipantSchema, SortableField
+from rdr_service.api.nph_participant_api_schemas.schema import SortableField
 from rdr_service.api.nph_participant_api_schemas.schema import Participant as Part
 from rdr_service.dao import database_factory
 from rdr_service.model.participant import Participant
@@ -12,6 +12,8 @@ from rdr_service.model.nph_sample import NphSample
 from sqlalchemy.orm import Query
 from rdr_service.model.participant import Participant as DbParticipant
 from rdr_service.api.nph_participant_api_schemas.util import SortContext
+from rdr_service.main import app
+
 
 import rdr_service.api.nph_participant_api as api
 
@@ -160,16 +162,16 @@ class TestQueryExecution(TestCase):
         self.assertTrue(time_list == sorted_time_list, msg="Resultset is not in sorting order")
 
     def test_graphql_syntax_error(self):
-        client = Client(NPHParticipantSchema)
-        executed = client.execute(QUERY_WITH_SYNTAX_ERROR)
-        self.assertIn("Syntax Error", executed.get('errors')[0].get('message'))
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SYNTAX_ERROR)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertIn("Syntax Error", result.get('errors').get('message'))
 
     def test_graphql_field_error(self):
-        client = Client(NPHParticipantSchema)
         queries = [QUERY_WITH_FIELD_ERROR, QUERY_WITH_MULTI_FIELD_ERROR]
         for query in queries:
-            executed = client.execute(query)
-            for error in executed.get('errors'):
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+            result = json.loads(executed.data.decode('utf-8'))
+            for error in result.get('errors'):
                 self.assertIn('message', error)
                 self.assertIn('locations', error)
                 self.assertIn('path', error)

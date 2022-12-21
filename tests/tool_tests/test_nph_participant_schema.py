@@ -44,7 +44,7 @@ MOCK_DATA = {
                                                                 "time": mock_time_value},
                                                                {"value": "sc_stored_parent_historical_value2",
                                                                 "time": mock_time_value}]}
-                                        ,
+                                     ,
                                      "child": {"current": {"value": "sc_stored_child_current_value",
                                                            "time": mock_time_value},
                                                "historical": [{"value": "sc_stored_child_historical_value1",

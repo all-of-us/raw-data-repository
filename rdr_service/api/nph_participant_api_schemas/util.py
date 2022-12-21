@@ -91,7 +91,7 @@ def loadParticipantData(query):
 
 def validation_error_message(errors):
 
-    return {"error": [error.formatted for error in errors]}
+    return {"errors": [error.formatted for error in errors]}
 
 
 def error_message(message):
