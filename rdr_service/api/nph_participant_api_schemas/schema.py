@@ -37,22 +37,23 @@ class Event(ObjectType):
         elif value.upper() == 'VALUE':
             return context.set_order_expression(context.sort_table.status)
         else:
-            raise "{} : Invalid Key -- Event Object Type".format(value)
+            raise ValueError("{} : Invalid Key -- Event Object Type".format(value))
 
 
 class EventCollection(ObjectType):
     current = SortableField(Event)
     # TODO: historical field need to sort by newest to oldest for a given aspect of a participant’s data
-    historical = List(Event)
+    historical = SortableField(Event)
 
     @staticmethod
-    def sort(context, value):
-        pass
+    def sort(_, value):
+        if value.upper() == "HISTORICAL":
+            raise ValueError("Sorting Historical is not available.")
 
 
 class Sample(ObjectType):
     parent = SortableField(EventCollection)
-    child = SortableField(EventCollection)  # todo: join 'child' on parent ('sample') and sort_table = 'child'
+    child = SortableField(EventCollection)
 
     @staticmethod
     def sort(context, value):
@@ -66,7 +67,7 @@ class Sample(ObjectType):
                 context.references['child'].parent_id == context.references['sample'].id
             ).set_sort_table('child')
         else:
-            raise "{} : Invalid Key -- Sample Object Type".format(value)
+            raise ValueError("{} : Invalid Key -- Sample Object Type".format(value))
 
 
 class SampleCollection(ObjectType):
@@ -274,19 +275,19 @@ class ParticipantQuery(ObjectType):
             sort_context = SortContext(query)
 
             # sampleSA2:ordered:child:current:time
-            if sort_by:
-                sort_parts = sort_by.split(':')
-                logging.info('sort by: {}'.format(sort_parts))
-                if len(sort_parts) == 1:
-                    sort_field: SortableField = getattr(current_class, sort_parts[0])
-                    sort_field.sort_modifier(sort_context)
-                else:
-                    for sort_field_name in sort_parts:
-                        sort_field: SortableField = getattr(current_class, sort_field_name)
-                        sort_field.sort(current_class, sort_field_name, sort_context)
-                        current_class = sort_field.type
-
             try:
+                if sort_by:
+                    sort_parts = sort_by.split(':')
+                    logging.info('sort by: {}'.format(sort_parts))
+                    if len(sort_parts) == 1:
+                        sort_field: SortableField = getattr(current_class, sort_parts[0])
+                        sort_field.sort_modifier(sort_context)
+                    else:
+                        for sort_field_name in sort_parts:
+                            sort_field: SortableField = getattr(current_class, sort_field_name)
+                            sort_field.sort(current_class, sort_field_name, sort_context)
+                            current_class = sort_field.type
+
                 if nph_id:
                     logging.info('Fetch NPH ID: {}'.format(nph_id))
                     query = query.filter(DbParticipant.participantId == nph_id)
