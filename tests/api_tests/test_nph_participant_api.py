@@ -174,7 +174,6 @@ class TestQueryExecution(TestCase):
             for error in result.get('errors'):
                 self.assertIn('message', error)
                 self.assertIn('locations', error)
-                self.assertIn('path', error)
 
 
 class TestQueryValidator(TestCase):
