@@ -7,8 +7,6 @@ import pytz
 
 from datetime import datetime, timedelta
 
-from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
@@ -370,17 +368,14 @@ class GenomicJobController:
             else:
                 bid = member.biobankId
             # Get Raw AW1 Records for biobank IDs and genome_type
-            try:
-                raw_rec = raw_dao.get_raw_record_from_identifier_genome_type(
-                    identifier=bid if id_field == 'biobankId' else getattr(member, id_field),
-                    genome_type=member.genomeType
-                )
-            except MultipleResultsFound:
-                multiples.append(member.id)
-            except NoResultFound:
-                missing.append(member.id)
-            else:
+            raw_rec = raw_dao.get_raw_record_from_identifier_genome_type(
+                identifier=bid if id_field == 'biobankId' else getattr(member, id_field),
+                genome_type=member.genomeType
+            )
+            if raw_rec:
                 update_recs.append((member, raw_rec))
+            else:
+                missing.append(member.id)
 
         if update_recs:
             # Get unique file_paths
