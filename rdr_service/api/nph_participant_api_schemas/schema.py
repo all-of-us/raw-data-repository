@@ -43,7 +43,7 @@ class Event(ObjectType):
 class EventCollection(ObjectType):
     current = SortableField(Event)
     # TODO: historical field need to sort by newest to oldest for a given aspect of a participant’s data
-    historical = SortableField(Event)
+    historical = List(Event)
 
     @staticmethod
     def sort(_, value):
