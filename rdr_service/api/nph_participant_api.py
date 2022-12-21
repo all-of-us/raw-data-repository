@@ -8,6 +8,7 @@ from rdr_service.api.nph_participant_api_schemas.schema import NPHParticipantSch
 from rdr_service.api.nph_participant_api_schemas.util import validation_error_message, error_message
 from rdr_service.api.base_api import log_api_request
 
+
 @app_util.auth_required(RTI_AND_HEALTHPRO)
 def nph_participant():
     """
@@ -48,5 +49,5 @@ def validate_query(request_query_string):
         )
 
         return validation_errors
-    except GraphQLSyntaxError:
-        raise
+    except GraphQLSyntaxError as ex:
+        raise ex

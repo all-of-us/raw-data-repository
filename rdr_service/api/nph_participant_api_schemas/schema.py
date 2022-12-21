@@ -1,15 +1,5 @@
 import logging
-from graphene import (
-    ObjectType,
-    String,
-    Int,
-    Date,
-    DateTime,
-    NonNull,
-    Field,
-    List,
-    Schema
-)
+from graphene import ObjectType, String, Int, Date, DateTime, NonNull, Field, List, Schema
 from graphene import relay
 from sqlalchemy.orm import Query
 
@@ -44,7 +34,10 @@ class Event(ObjectType):
     def sort(context, value):
         if value.upper() == "TIME":
             return context.set_order_expression(context.sort_table.time)
-        return context.set_order_expression(context.sort_table.status)
+        elif value.upper() == 'VALUE':
+            return context.set_order_expression(context.sort_table.status)
+        else:
+            raise "{} : Invalid Key -- Event Object Type".format(value)
 
 
 class EventCollection(ObjectType):
@@ -65,13 +58,15 @@ class Sample(ObjectType):
     def sort(context, value):
         if value.upper() == 'PARENT':
             return context.set_sort_table('sample')
-        else:
+        elif value.upper() == 'CHILD':
             return context.add_ref(
                 NphSample, 'child'
             ).add_join(
                 context.references['child'],
                 context.references['child'].parent_id == context.references['sample'].id
             ).set_sort_table('child')
+        else:
+            raise "{} : Invalid Key -- Sample Object Type".format(value)
 
 
 class SampleCollection(ObjectType):
@@ -247,12 +242,15 @@ class ParticipantConnection(relay.Connection):
     total_count = Int()
     result_count = Int()
 
+    @staticmethod
     def resolve_total_count(root, _):
         with database_factory.get_database().session() as sessions:
+            logging.info(root)
             query = Query(DbParticipant)
             query.session = sessions
             return query.count()
 
+    @staticmethod
     def resolve_result_count(root, _):
         return len(root.edges)
 
@@ -266,9 +264,10 @@ class ParticipantQuery(ObjectType):
         ParticipantConnection, nph_id=Int(required=False), sort_by=String(required=False), limit=Int(required=False),
         off_set=Int(required=False))
 
+    @staticmethod
     def resolve_participant(root, info, nph_id=None, sort_by=None, limit=None, off_set=None, **kwargs):
         with database_factory.get_database().session() as sessions:
-            logging.info(f'info: {info}, kwargs: {kwargs}')
+            logging.info('root: {}, info: {}, kwargs: {}'.format(root, info, kwargs))
             query = Query(DbParticipant)
             query.session = sessions
             current_class = Participant
@@ -277,7 +276,7 @@ class ParticipantQuery(ObjectType):
             # sampleSA2:ordered:child:current:time
             if sort_by:
                 sort_parts = sort_by.split(':')
-                logging.info(f'sort by: {sort_parts}')
+                logging.info('sort by: {}'.format(sort_parts))
                 if len(sort_parts) == 1:
                     sort_field: SortableField = getattr(current_class, sort_parts[0])
                     sort_field.sort_modifier(sort_context)
@@ -289,7 +288,7 @@ class ParticipantQuery(ObjectType):
 
             try:
                 if nph_id:
-                    logging.info(f'Fetch NPH ID: {nph_id}')
+                    logging.info('Fetch NPH ID: {}'.format(nph_id))
                     query = query.filter(DbParticipant.participantId == nph_id)
                     logging.info(query)
                     return loadParticipantData(query)

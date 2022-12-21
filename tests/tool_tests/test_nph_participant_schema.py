@@ -1,12 +1,4 @@
-from graphene import (
-    ObjectType,
-    String,
-    Int,
-    Date,
-    Schema,
-    Field
-)
-
+from graphene import ObjectType, String, Int, Date, Schema, Field
 from rdr_service.api.nph_participant_api_schemas.schema import Event, EventCollection, SampleCollection, Sample
 from datetime import datetime
 from unittest import TestCase
@@ -36,32 +28,32 @@ MOCK_DATA = {
                                                                   "time": mock_time_value},
                                                                  {"value": "sc_ordered_parent_historical_value2",
                                                                   "time": mock_time_value}]}
-                                                 ,
+                                      ,
                                       "child": {"current": {"value": "sc_ordered_child_current_value",
-                                                             "time": mock_time_value},
-                                                 "historical": [{"value": "sc_ordered_child_historical_value1",
-                                                                 "time": mock_time_value},
-                                                                {"value": "sc_ordered_child_historical_value2",
-                                                                 "time": mock_time_value}]
-                                                 }
+                                                            "time": mock_time_value},
+                                                "historical": [{"value": "sc_ordered_child_historical_value1",
+                                                                "time": mock_time_value},
+                                                               {"value": "sc_ordered_child_historical_value2",
+                                                                "time": mock_time_value}]
+                                                }
 
-                                      }],
+                                       }],
                           "stored": {"parent": {"current": {"value": "sc_stored_parent_current_value",
-                                                              "time": mock_time_value},
-                                                  "historical": [{"value": "sc_stored_parent_historical_value1",
-                                                                  "time": mock_time_value},
-                                                                 {"value": "sc_stored_parent_historical_value2",
-                                                                  "time": mock_time_value}]}
-                                                 ,
-                                      "child": {"current": {"value": "sc_stored_child_current_value",
-                                                             "time": mock_time_value},
-                                                 "historical": [{"value": "sc_stored_child_historical_value1",
-                                                                 "time": mock_time_value},
-                                                                {"value": "sc_stored_child_historical_value2",
-                                                                 "time": mock_time_value}]
-                                                 }
+                                                            "time": mock_time_value},
+                                                "historical": [{"value": "sc_stored_parent_historical_value1",
+                                                                "time": mock_time_value},
+                                                               {"value": "sc_stored_parent_historical_value2",
+                                                                "time": mock_time_value}]}
+                                        ,
+                                     "child": {"current": {"value": "sc_stored_child_current_value",
+                                                           "time": mock_time_value},
+                                               "historical": [{"value": "sc_stored_child_historical_value1",
+                                                               "time": mock_time_value},
+                                                              {"value": "sc_stored_child_historical_value2",
+                                                               "time": mock_time_value}]
+                                               }
 
-                                      }
+                                     }
 
                           }
 }
@@ -82,8 +74,9 @@ class MockQuery(ObjectType):
 
     data = Field(MockObjectType)
 
+    @staticmethod
     def resolve_data(root, info, **kwargs):
-        print(info, kwargs)
+        print(root, info, kwargs)
         return MOCK_DATA
 
 

@@ -100,21 +100,21 @@ def mock_load_participant_data(query):
         return results
 
 
-query_with_id = ''' { participant (nphId: 153296765) {totalCount resultCount pageInfo
+QUERY_WITH_ID = ''' { participant (nphId: 153296765) {totalCount resultCount pageInfo
 { startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
 { value time  } } } } } } } }'''
 
-query_with_syntax_error = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
+QUERY_WITH_SYNTAX_ERROR = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
 { startCursor endCursor hasNextPage }edges{ node {firstName lastName streetAddress
 foodInsecurity{current{value time} historical{value time}}aouBasicsQuestionnaire{value time}
 sampleSa1{ordered{parent{current{value time}}} }} } } '''
 
-query_with_field_error = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
+QUERY_WITH_FIELD_ERROR = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
 { startCursor endCursor hasNextPage }edges{ node {firstName lastName streetAddres
 foodInsecurity{current{value time} historical{value time}}aouBasicsQuestionnaire{value time}
 sampleSa1{ordered{parent{current{value time}}} }} } } }'''
 
-query_with_multiple_fields_error = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
+QUERY_WITH_MULTI_FIELD_ERROR = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
 { startCursor endCursor hasNextPage }edges{ node {firstNam lastNam streetAddres
 foodIsecurity{current{value time} historical{value time}} aouBasicsQuestionnaire{value time}
 sampleSa1{ordered{parent{current{value time}}} }} } } }'''
@@ -159,14 +159,14 @@ class TestQueryExecution(TestCase):
         sorted_time_list = sorted(time_list)
         self.assertTrue(time_list == sorted_time_list, msg="Resultset is not in sorting order")
 
-    def test_client_graphql_syntax_error(self):
+    def test_graphql_syntax_error(self):
         client = Client(NPHParticipantSchema)
-        executed = client.execute(query_with_syntax_error)
+        executed = client.execute(QUERY_WITH_SYNTAX_ERROR)
         self.assertIn("Syntax Error", executed.get('errors')[0].get('message'))
 
-    def test_client_graphql_field_error(self):
+    def test_graphql_field_error(self):
         client = Client(NPHParticipantSchema)
-        queries = [query_with_field_error, query_with_multiple_fields_error]
+        queries = [QUERY_WITH_FIELD_ERROR, QUERY_WITH_MULTI_FIELD_ERROR]
         for query in queries:
             executed = client.execute(query)
             for error in executed.get('errors'):
@@ -178,9 +178,8 @@ class TestQueryExecution(TestCase):
 class TestQueryValidator(TestCase):
 
     def test_validation_error(self):
-        self.assertRaises(GraphQLSyntaxError, api.validate_query, query_with_syntax_error)
+        self.assertRaises(GraphQLSyntaxError, api.validate_query, QUERY_WITH_SYNTAX_ERROR)
 
     def test_validation_no_error(self):
-        result = api.validate_query(query_with_id)
+        result = api.validate_query(QUERY_WITH_ID)
         self.assertEqual([], result)
-
