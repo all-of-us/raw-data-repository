@@ -1908,18 +1908,24 @@ class GenomicJobController:
         result_withdrawal_dao.insert_bulk(batch)
 
         notification_emails = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
-        if notification_emails:
-            message = 'The following participants have withdrawn from the program and are currently'
-            message += ' in the genomics result pipelines:\n\n'
-            message += '\n'.join([f'P{participant.participant_id}' for participant in result_withdrawals])
 
-            EmailService.send_email(
-                Email(
-                    recipients=notification_emails,
-                    subject='Participants that have withdrawn and are currently in results pipeline(s)',
-                    plain_text_content=message
+        if notification_emails:
+            for email_type in ['GEM', 'HEALTH']:
+                current_list = list(
+                    filter(lambda x: x.array_results is True if 'GEM' in email_type else x.cvl_results is True,
+                           result_withdrawals))
+                message = 'The following participants have withdrawn from the program and are currently '
+                message += f'in the genomics {email_type} result pipeline\n\n'
+                message += '\n'.join([f'P{participant.participant_id}' for participant in current_list])
+                message += '\n'
+
+                EmailService.send_email(
+                    Email(
+                        recipients=notification_emails,
+                        subject=f'Withdrawn participants in genomic results pipeline(s): {email_type}',
+                        plain_text_content=message
+                    )
                 )
-            )
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 
