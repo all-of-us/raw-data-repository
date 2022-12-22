@@ -75,7 +75,7 @@ class VibrentConsentFactoryTest(BaseConsentFactoryTest):
         self.another_ehr = self._mock_pdf(name='EHRConsentPII_2.pdf')
         self.signature_image = self._mock_pdf(name='EHRConsentPII.png')
         self.gror_file = self._mock_pdf(name='GROR_234.pdf')
-        self.etm_file = self._mock_pdf(name='EtMConsent.pdf')
+        self.etm_file = self._mock_pdf(name='English_exploring_the_mind_consent_form__1245.pdf')
         self.primary_update_file = self._mock_pdf(
             name='PrimaryConsentUpdate_7890.pdf',
             text_in_file='Do you agree to this updated consent?'
