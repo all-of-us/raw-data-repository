@@ -446,6 +446,9 @@ class ConsentValidationController:
             max_authored=max_authored_date
         ):
             output_strategy.add_all(self._process_validation_results(validator.get_primary_update_validation_results()))
+        if self._check_consent_type(ConsentType.ETM, types_to_validate):
+            output_strategy.add_all(self._process_validation_results(validator.get_etm_validation_results()))
+
 
     def validate_consent_uploads(self, output_strategy: ValidationOutputStrategy):
         """
