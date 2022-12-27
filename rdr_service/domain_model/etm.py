@@ -40,6 +40,7 @@ class EtmResponse:
     outcome_list: List['EtmResponseExtension'] = field(default_factory=list)
     answer_list: List['EtmResponseAnswer'] = None
     version: int = None
+    questionnaire_id: int = None
 
 
 @dataclass
