@@ -1686,6 +1686,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         """ Test to see if a remote ID verification True Response saves successfully """
         # Set up user config to have client set to vibrent
         user_info = config.getSettingJson(config.USER_INFO)
+        original_user_client_id = user_info['example@example.com']['clientId']
         user_info['example@example.com']['clientId'] = 'vibrent'
         config.override_setting(config.USER_INFO, user_info)
         # Set up participant, questionnaire, questionnaire response & send POST request to API
@@ -1703,11 +1704,15 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'vibrent')
         self.assertEqual(summary['remoteIdVerificationStatus'], 'TRUE')
         self.assertEqual(summary['remoteIdVerifiedOn'], '2022-11-30')
+        # Reset Config back to original user client ID
+        user_info['example@example.com']['clientId'] = original_user_client_id
+        config.override_setting(config.USER_INFO, user_info)
 
     def test_remote_identity_verified_false_response(self):
         """ Test to see if a remote ID verification False Response saves successfully """
         # Set up user config to have client set to vibrent
         user_info = config.getSettingJson(config.USER_INFO)
+        original_user_client_id = user_info['example@example.com']['clientId']
         user_info['example@example.com']['clientId'] = 'vibrent'
         config.override_setting(config.USER_INFO, user_info)
         # Set up participant, questionnaire, questionnaire response & send POST request to API
@@ -1723,9 +1728,12 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.send_post(_questionnaire_response_url(participant_id), resource)
         # Get request from API to assert information is accurate
         summary = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertEqual('remoteIdVerificationOrigin' in summary.keys(), False)
+        self.assertNotIn('remoteIdVerificationOrigin', summary.keys())
+        self.assertNotIn('remoteIdVerifiedOn', summary.keys())
         self.assertEqual(summary['remoteIdVerificationStatus'], 'UNSET')
-        self.assertEqual('remoteIdVerifiedOn' in summary.keys(), False)
+        # Reset Config back to original user client ID
+        user_info['example@example.com']['clientId'] = original_user_client_id
+        config.override_setting(config.USER_INFO, user_info)
 
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):

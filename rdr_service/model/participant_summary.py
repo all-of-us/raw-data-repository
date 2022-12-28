@@ -1517,7 +1517,6 @@ class ParticipantSummary(Base):
     remoteIdVerificationStatus = Column(
         "remote_id_verification_status",
         Enum(RemoteIdVerificationStatus),
-        nullable=False,
         default=RemoteIdVerificationStatus.FALSE
     )
     """ A true or false value that indicates whether the ID Verification is Remote  """
