@@ -7,8 +7,6 @@ import pytz
 
 from datetime import datetime, timedelta
 
-from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
@@ -370,17 +368,14 @@ class GenomicJobController:
             else:
                 bid = member.biobankId
             # Get Raw AW1 Records for biobank IDs and genome_type
-            try:
-                raw_rec = raw_dao.get_raw_record_from_identifier_genome_type(
-                    identifier=bid if id_field == 'biobankId' else getattr(member, id_field),
-                    genome_type=member.genomeType
-                )
-            except MultipleResultsFound:
-                multiples.append(member.id)
-            except NoResultFound:
-                missing.append(member.id)
-            else:
+            raw_rec = raw_dao.get_raw_record_from_identifier_genome_type(
+                identifier=bid if id_field == 'biobankId' else getattr(member, id_field),
+                genome_type=member.genomeType
+            )
+            if raw_rec:
                 update_recs.append((member, raw_rec))
+            else:
+                missing.append(member.id)
 
         if update_recs:
             # Get unique file_paths
@@ -1415,7 +1410,7 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def generate_manifest(self, manifest_type, _genome_type, **kwargs):
+    def generate_manifest(self, manifest_type, genome_type, **kwargs):
         """
         Creates Genomic manifest using ManifestCompiler component
         """
@@ -1435,7 +1430,7 @@ class GenomicJobController:
                 version_num = kwargs['feedback_record'].version
                 result = self.manifest_compiler.generate_and_transfer_manifest(
                     manifest_type,
-                    _genome_type,
+                    genome_type,
                     version=version_num + 1,
                     input_manifest=input_manifest
                 )
@@ -1443,7 +1438,8 @@ class GenomicJobController:
             else:
                 result = self.manifest_compiler.generate_and_transfer_manifest(
                     manifest_type,
-                    _genome_type
+                    genome_type,
+                    pipeline_id=kwargs.get('pipeline_id')
                 )
 
             if result.get('code') == GenomicSubProcessResult.NO_FILES:
@@ -1454,39 +1450,38 @@ class GenomicJobController:
                     and self.manifests_generated:
 
                 now_time = datetime.utcnow()
-
                 for manifest in self.manifests_generated:
                     compiled_file_name = manifest["file_path"].split(f'{self.bucket_name}/')[-1]
                     logging.info(f'Manifest created: {compiled_file_name}')
                     new_manifest_record = self.manifest_file_dao.get_manifest_file_from_filepath(manifest['file_path'])
 
                     if not new_manifest_record:
-                        # Insert manifest_file record
-                        new_manifest_obj = GenomicManifestFile(
-                            uploadDate=now_time,
-                            manifestTypeId=manifest_type,
-                            manifestTypeIdStr=manifest_type.name,
-                            filePath=manifest['file_path'],
-                            bucketName=self.bucket_name,
-                            recordCount=manifest['record_count'],
-                            rdrProcessingComplete=1,
-                            rdrProcessingCompleteDate=now_time,
-                            fileName=manifest['file_path'].split('/')[-1]
+                        # MANIFEST record created
+                        new_manifest_record = self.manifest_file_dao.insert(
+                            GenomicManifestFile(
+                                uploadDate=now_time,
+                                manifestTypeId=manifest_type,
+                                manifestTypeIdStr=manifest_type.name,
+                                filePath=manifest['file_path'],
+                                bucketName=self.bucket_name,
+                                recordCount=manifest['record_count'],
+                                rdrProcessingComplete=1,
+                                rdrProcessingCompleteDate=now_time,
+                                fileName=manifest['file_path'].split('/')[-1]
+                            )
                         )
-                        new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
 
-                    # update feedback records if manifest is a feedback manifest
+                    # MANIFEST FEEDBACK record updated
                     if "feedback_record" in kwargs.keys():
                         r = kwargs['feedback_record']
                         r.feedbackManifestFileId = new_manifest_record.id
                         r.feedbackComplete = 1
                         r.version += 1
                         r.feedbackCompleteDate = now_time
-
                         with self.manifest_feedback_dao.session() as session:
                             session.merge(r)
 
-                    # Insert the file_processed record
+                    # FILE Processed record
                     self.file_processed_dao.insert_file_record(
                         self.job_run.id,
                         f'{self.bucket_name}/{self.manifest_compiler.output_file_name}',
@@ -1498,36 +1493,35 @@ class GenomicJobController:
                         manifest_file_id=new_manifest_record.id
                     )
 
-                    file_record_attr = self.update_member_file_record(manifest_type)
-                    if self.member_ids_for_update and file_record_attr:
-                        self.execute_cloud_task({
-                            'member_ids': self.member_ids_for_update,
-                            'field': file_record_attr,
-                            'value': new_manifest_record.id,
-                        }, 'genomic_set_member_update_task')
+                    # MEMBER/METRICS AW3 Manifest file record update
+                    self.process_research_manifest_record_updates(
+                        manifest_type,
+                        manifest_id=new_manifest_record.id,
+                        pipeline_id=kwargs.get('pipeline_id')
+                    )
 
-                    self.subprocess_results.add(result["code"])
+                    self.subprocess_results.add(result.get('code'))
 
             self.job_result = result.get('code')
 
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def reconcile_report_states(self, _genome_type=None):
+    def reconcile_report_states(self, genome_type=None):
         """
         Wrapper for the Reconciler reconcile_report_states_for_consent_removal
         and reconcile_rhp_report_states
-        :param _genome_type: array or wgs
+        :param genome_type: array or wgs
         """
 
         self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, controller=self)
 
-        if _genome_type == GENOME_TYPE_ARRAY:
+        if genome_type == GENOME_TYPE_ARRAY:
             workflow_states = [GenomicWorkflowState.GEM_RPT_READY,
                                GenomicWorkflowState.A1,
                                GenomicWorkflowState.A2]
 
-        elif _genome_type == GENOME_TYPE_WGS:
+        elif genome_type == GENOME_TYPE_WGS:
             workflow_states = [GenomicWorkflowState.CVL_READY]
 
         else:
@@ -1815,18 +1809,52 @@ class GenomicJobController:
             logging.error(e)
             self.job_result = GenomicSubProcessResult.ERROR
 
-    @staticmethod
-    def update_member_file_record(manifest_type):
-        file_attr = None
+    def process_research_manifest_record_updates(self, manifest_type, **kwargs):
+        if manifest_type not in [
+            GenomicManifestTypes.AW3_ARRAY, GenomicManifestTypes.AW3_WGS
+        ]:
+            return
 
-        attributes_map = {
-            GenomicManifestTypes.AW3_ARRAY: 'aw3ManifestFileId',
-            GenomicManifestTypes.AW3_WGS: 'aw3ManifestFileId'
-        }
-        if manifest_type in attributes_map.keys():
-            file_attr = attributes_map[manifest_type]
+        if self.member_ids_for_update:
+            process_metrics = self.metrics_dao.get_bulk_metrics_for_process_update(
+                member_ids=self.member_ids_for_update,
+                pipeline_id=kwargs.get('pipeline_id')
+            )
+            members_to_update, metrics_to_update, batch_size = [], [], 100
 
-        return file_attr
+            # member
+            for member_id in self.member_ids_for_update:
+                member_dict = {
+                    'id': member_id,
+                    'aw3ManifestFileId': kwargs.get('manifest_id')
+                }
+                members_to_update.append(member_dict)
+
+                if len(members_to_update) == batch_size:
+                    self.member_dao.bulk_update(members_to_update)
+                    members_to_update.clear()
+
+            if members_to_update:
+                self.member_dao.bulk_update(members_to_update)
+
+            # metrics
+            for metric in process_metrics:
+                metric_dict = {
+                    'id': metric.id,
+                    'aw3ReadyFlag': 0,
+                    'aw3ManifestJobRunID': self.job_run.id,
+                    'aw3ManifestFileId': kwargs.get('manifest_id'),
+                    'processingCount': metric.processingCount + 1
+                }
+                metrics_to_update.append(metric_dict)
+
+                if len(metrics_to_update) == batch_size:
+                    self.metrics_dao.bulk_update(metrics_to_update)
+                    metrics_to_update.clear()
+
+            if metrics_to_update:
+                self.metrics_dao.bulk_update(metrics_to_update)
+        return
 
     def check_w1il_gror_resubmit(self, since_datetime):
         participant_list = self.query_dao.get_w1il_yes_no_yes_participants(start_datetime=since_datetime)
@@ -1875,18 +1903,26 @@ class GenomicJobController:
         result_withdrawal_dao.insert_bulk(batch)
 
         notification_emails = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
-        if notification_emails:
-            message = 'The following participants have withdrawn from the program and are currently'
-            message += ' in the genomics result pipelines:\n\n'
-            message += '\n'.join([f'P{participant.participant_id}' for participant in result_withdrawals])
 
-            EmailService.send_email(
-                Email(
-                    recipients=notification_emails,
-                    subject='Participants that have withdrawn and are currently in results pipeline(s)',
-                    plain_text_content=message
-                )
-            )
+        if notification_emails:
+            for email_type in ['GEM', 'HEALTH']:
+                current_list = list(
+                    filter(lambda x: x.array_results is True if 'GEM' in email_type else x.cvl_results is True,
+                           result_withdrawals))
+
+                if current_list:
+                    message = 'The following participants have withdrawn from the program and are currently '
+                    message += f'in the genomics {email_type} result pipeline\n\n'
+                    message += '\n'.join([f'P{participant.participant_id}' for participant in current_list])
+                    message += '\n'
+
+                    EmailService.send_email(
+                        Email(
+                            recipients=notification_emails,
+                            subject=f'Withdrawn participants in genomic results pipeline(s): {email_type}',
+                            plain_text_content=message
+                        )
+                    )
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 

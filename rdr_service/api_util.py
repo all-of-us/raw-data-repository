@@ -13,6 +13,7 @@ from rdr_service.code_constants import UNMAPPED, UNSET
 # Role constants
 PTC = "ptc"
 HEALTHPRO = "healthpro"
+RTI = "rti"
 RDR = "rdr"
 CURATION = "curation"
 AWARDEE = "awardee_sa"
@@ -24,6 +25,8 @@ RESOURCE = 'resource'
 DEV_MAIL = "example@example.com"
 GEM = "gem"
 BIOBANK = 'biobank'
+RTI_AND_HEALTHPRO = [RTI, HEALTHPRO]
+SUPPORT = 'support'
 RDR_AND_PTC = [RDR, PTC]
 RDR_AND_HEALTHPRO = [RDR, HEALTHPRO]
 PTC_AND_GEM = [PTC, GEM]
@@ -69,7 +72,7 @@ def convert_to_datetime(date):
     return datetime.datetime.combine(date, datetime.datetime.min.time())
 
 
-def format_json_bool(obj, field_name):
+def format_json_bool(obj, field_name: str):
     if field_name not in obj:
         return
     bool_map = {

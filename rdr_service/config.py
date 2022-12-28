@@ -84,6 +84,9 @@ GENOMIC_AW1F_SUBFOLDER = "post_accessioning_results"
 GENOME_TYPE_ARRAY = "aou_array"
 GENOME_TYPE_WGS = "aou_wgs"
 GENOME_TYPE_CVL = "aou_cvl"
+GENOMIC_DEPRECATED_WGS_DRAGEN = 'dragen_3.4.12'
+GENOMIC_UPDATED_WGS_DRAGEN = 'dragen_3.7.8'
+GENOMIC_JOB_IDS_BYPASS_VALIDATION = "genomic_job_ids_bypass_validation"
 GENOME_TYPE_ARRAY_INVESTIGATION = "aou_array_investigation"
 GENOME_TYPE_WGS_INVESTIGATION = "aou_wgs_investigation"
 AW1F_ALERT_RECIPIENTS = "aw1f_alert_recipients"
@@ -154,9 +157,10 @@ HEALTHPRO_CONSENTS_TRANSFER_LIMIT = 'hpro_consents_transfer_limit'
 CE_HEALTH_DATA_BUCKET_NAME = "ce_health_data_bucket_name"
 VA_WORKQUEUE_BUCKET_NAME = 'va_workqueue_bucket_name'
 VA_WORKQUEUE_SUBFOLDER = 'va_workqueue_subfolder'
-
+OPS_DATA_PAYLOAD_ROLES = 'ops_data_payload_roles'
 ENABLE_ENROLLMENT_STATUS_3 = 'enable_enrollment_status_3'
 ENABLE_HEALTH_SHARING_STATUS_3 = 'enable_health_sharing_status_3'
+ENABLE_PARTICIPANT_MEDIATED_EHR = 'enable_participant_mediated_ehr'
 
 # Buckets to listen for Pub/Sub notifications
 PUBSUB_NOTIFICATION_BUCKETS_PROD = [

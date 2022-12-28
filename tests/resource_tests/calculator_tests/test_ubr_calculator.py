@@ -17,7 +17,6 @@ class UBRCalculatorTest(BaseTestCase):
         self.ubr = ParticipantUBRCalculator()
 
         self.disability_answers = {
-            'Employment_EmploymentStatus': None,
             'Disability_Blind': None,
             'Disability_WalkingClimbing': None,
             'Disability_DressingBathing': None,
@@ -276,38 +275,60 @@ class UBRCalculatorTest(BaseTestCase):
         """
         # Test with Null and PMI_Skip values
         values = self.disability_answers
-        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_disability([values]), UBRValueEnum.NotAnswer_Skip)
         values['Disability_Deaf'] = 'PMI_Skip'
-        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_disability([values]), UBRValueEnum.NotAnswer_Skip)
         for k in self.disability_answers.keys():
             values[k] = 'PMI_Skip'
-        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_disability([values]), UBRValueEnum.NotAnswer_Skip)
 
         # Test with "Prefer Not To Answer" values.
         values = self.disability_answers
         values['Disability_Deaf'] = 'Deaf_PreferNotToAnswer'
-        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_disability([values]), UBRValueEnum.NotAnswer_Skip)
         values['Disability_ErrandsAlone'] = 'ErrandsAlone_Yes'
-        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.UBR)
+        self.assertEqual(self.ubr.ubr_disability([values]), UBRValueEnum.UBR)
 
         # Test UBR value
         values = self.disability_answers
         values['Disability_ErrandsAlone'] = 'ErrandsAlone_Yes'
-        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.UBR)
+        self.assertEqual(self.ubr.ubr_disability([values]), UBRValueEnum.UBR)
 
         # Test RBR value
         values = self.disability_answers
         for k in self.disability_answers.keys():
             values[k] = 'Other_Answer'
-        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.RBR)
+        self.assertEqual(self.ubr.ubr_disability([values]), UBRValueEnum.RBR)
 
         # Bad or unknown value will default to NullSkip
-        self.assertEqual(self.ubr.ubr_disability({'ABC': 123}), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_disability([{'ABC': 123}]), UBRValueEnum.NotAnswer_Skip)
 
         # PDR-658:  Test that EmploymentStatus_UnableToWork no longer results in a UBR result
         values = self.disability_answers
         values['Employment_EmploymentStatus'] = 'EmploymentStatus_UnableToWork'
-        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.RBR)
+        self.assertEqual(self.ubr.ubr_disability([values]), UBRValueEnum.RBR)
+
+    def test_ubr_disability_basics_and_lfs(self):
+        """
+        UBR Calculator - Disability based on both TheBasics and lfs simulated survey responses
+        """
+        # Simulate an early version TheBasics with Nulls for disability questions, followed by lfs answers
+        basics_values = self.disability_answers
+        self.assertEqual(self.ubr.ubr_disability([basics_values]), UBRValueEnum.NotAnswer_Skip)
+
+        # All "no" answers for follow-on lfs survey = RBR
+        lfs_values = {
+            'Disability_WalkingClimbing': 'WalkingClimbing_No',
+            'Disability_DressingBathing': 'DressingBathing_No',
+            'Disability_ErrandsAlone': 'ErrandsAlone_No',
+            'Disability_Deaf': 'Deaf_No',
+            'Disability_DifficultyConcentrating': 'Blind_No'
+        }
+        self.assertEqual(self.ubr.ubr_disability([basics_values, lfs_values]), UBRValueEnum.RBR)
+
+        # Setting an lfs answer to "yes" =  UBR
+        lfs_values['Disability_WalkingClimbing'] = 'WalkingClimbing_Yes'
+        self.assertEqual(self.ubr.ubr_disability([basics_values, lfs_values]), UBRValueEnum.UBR)
 
     def test_ubr_age_at_consent(self):
         """

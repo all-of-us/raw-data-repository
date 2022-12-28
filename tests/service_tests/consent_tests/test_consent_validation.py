@@ -452,6 +452,46 @@ class ConsentValidationTesting(BaseTestCase):
         # Make sure the signature got truncated if it was too large
         self.assertEqual(200, len(parsing_result.signature_str))
 
+    def test_etm_file_ready_for_sync(self):
+        etm_consent_timestamp = datetime(2020, 10, 21, 13, 9)
+        self.participant_summary.consentForEtMAuthored = etm_consent_timestamp
+        self.consent_factory_mock.get_etm_consents.return_value = [
+            self._mock_consent(
+                consent_class=files.EtmConsentFile,
+                get_date_signed=etm_consent_timestamp.date()
+            )
+        ]
+        self.assertMatchesExpectedResults(
+            [
+                {
+                    'participant_id': self.participant_summary.participantId,
+                    'type': ConsentType.ETM,
+                    'is_signing_date_valid': True,
+                    'signing_date': etm_consent_timestamp.date(),
+                    'sync_status': ConsentSyncStatus.READY_FOR_SYNC
+                }
+            ],
+            self.validator.get_etm_validation_results()
+        )
+
+    def test_etm_missing(self):
+        self.participant_summary.consentForEtMAuthored = datetime.combine(
+            self._default_signing_date,
+            datetime.now().time()
+        )
+        self.consent_factory_mock.get_etm_consents.return_value = []
+        self.assertMatchesExpectedResults(
+            [
+                {
+                    'participant_id': self.participant_summary.participantId,
+                    'type': ConsentType.ETM,
+                    'file_exists': False,
+                    'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
+                }
+            ],
+            self.validator.get_etm_validation_results()
+        )
+
     def _mock_consent(self, consent_class: Type[files.ConsentFile], **kwargs):
         consent_args = {
             'get_signature_on_file': self._default_signature,

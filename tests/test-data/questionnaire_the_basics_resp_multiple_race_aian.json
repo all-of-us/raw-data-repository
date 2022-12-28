@@ -1,0 +1,315 @@
+{
+  "status": "completed",
+  "resourceType": "QuestionnaireResponse",
+  "id": "851847069",
+  "authored": "2017-07-11T16:32:40+00:00",
+  "subject": {
+    "reference": "Patient/{participant_id}"
+  },
+  "questionnaire": {
+    "reference": "Questionnaire/{questionnaire_id}"
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+      "valueCode": "en"
+    }
+  ],
+  "group": {
+    "linkId": "root_group",
+    "title": "the basics",
+    "question": [
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "Birthplace_USA",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "USA"
+            }
+          }
+        ],
+        "linkId": "5690",
+        "text": "In what country were you born?",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "\u00bfEn qu\u00e9 pa\u00eds naci\u00f3?"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "WhiteSpecific_Polish",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "Polish"
+            }
+          }
+        ],
+        "linkId": "9823",
+        "text": "White ",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "Blanco"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "WhatRaceEthnicity_AIAN",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "American Indian or Alaska Native (For example: Aztec, Blackfeet Tribe, Mayan, Navajo Nation, Native Village of Barrow Inupiat Traditional Government, Nome Eskimo Community, etc.)*"
+            }
+          },
+          {
+            "valueCoding": {
+              "code": "WhatRaceEthnicity_Hispanic",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "Hispanic, Latino, or Spanish (For example: Columbian, Cuban, Dominican, Mexican or Mexican American, Puerto Rican, Salvadoran, etc.) "
+            }
+          }
+        ],
+        "linkId": "5696",
+        "text": "Which categories describe you? Select all that apply. Note, you may select more than one group.",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "\u00bfCu\u00e1les son las categor\u00edas que lo describen? Seleccione todas las opciones que correspondan. Tenga en cuenta que puede seleccionar m\u00e1s de un grupo."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "AvtiveDutyServeStatus_Yes",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "yes"
+            }
+          }
+        ],
+        "linkId": "5726",
+        "text": "Have you ever served on active duty in the United States Armed forces, either in the regular military or in a National Guard or military reserve unit? \n\nNote: Active duty does not include training for the Reserves or National Guard, but DOES include activation, for example, for the Persian Gulf War.",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "\u00bfAlguna vez ha estado en servicio activo en las Fuerzas Armadas de los Estados Unidos, ya sea en el servicio militar regular, en la Guardia Nacional o en una unidad de reserva militar? \n\nImportante: El servicio activo no incluye el entrenamiento para las reservas o la Guardia Nacional, pero S\u00cd incluye la incorporaci\u00f3n, por ejemplo, para la Guerra del Golfo P\u00e9rsico."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "CurrentMaritalStatus_Separated",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "separated"
+            }
+          }
+        ],
+        "linkId": "5729",
+        "text": "What is your current marital status?\n\n",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "\u00bfCu\u00e1l es su estado civil actual?"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "HealthInsurance_No",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "no"
+            }
+          }
+        ],
+        "linkId": "9762",
+        "text": "Are you covered by health insurance or some other kind of health care plan?",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "\u00bfEst\u00e1 cubierto por un seguro de salud o alg\u00fan otro tipo de plan de atenci\u00f3n m\u00e9dica?"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "EmploymentStatus_OutOfWorkOneOrMore",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "out of work for 1 year or more"
+            }
+          }
+        ],
+        "linkId": "5742",
+        "text": "What is your current employment status?  Please select 1 or more of these categories. ",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "\u00bfCu\u00e1l es su situaci\u00f3n laboral actual?  Seleccione 1 o m\u00e1s de estas categor\u00edas."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "CurrentHomeOwn_OtherArrangement",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "other arrangement"
+            }
+          }
+        ],
+        "linkId": "5758",
+        "text": "Do you own or rent the place where you live?",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "Es propietario de su casa o alquila?"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "HowManyLivingYears_1to2",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "1-2 years"
+            }
+          }
+        ],
+        "linkId": "5765",
+        "text": "How many years have you lived at your current address?",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "\u00bfCu\u00e1ntos a\u00f1os ha vivido en su direcci\u00f3n actual?"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "StableHouseConcern_Yes",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "yes"
+            }
+          }
+        ],
+        "linkId": "5769",
+        "text": "In the past 6 months, have you been worried or concerned about NOT having a place to live?"
+      }
+    ],
+    "text": "This set of items asks about your background, household, and contact information. The purpose is to gather some general information about you."
+  }
+}

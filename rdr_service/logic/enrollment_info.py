@@ -8,7 +8,7 @@ from rdr_service.participant_enums import (
     EnrollmentStatusV31,
     ParticipantCohort
 )
-from rdr_service.services.system_utils import DateRange
+from rdr_service.services.system_utils import DateRange, min_or_none
 
 
 @dataclass
@@ -59,6 +59,7 @@ class EnrollmentDependencies:
 
     earliest_biobank_received_dna_time: datetime
     earliest_ehr_file_received_time: datetime
+    earliest_mediated_ehr_receipt_time: datetime
     earliest_physical_measurements_time: datetime
 
     @property
@@ -99,6 +100,10 @@ class EnrollmentDependencies:
     @property
     def has_had_ehr_file_submitted(self):
         return self.earliest_ehr_file_received_time is not None
+
+    @property
+    def has_had_mediated_ehr_submitted(self):
+        return self.earliest_mediated_ehr_receipt_time is not None
 
     @property
     def submitted_physical_measurements(self):
@@ -210,7 +215,7 @@ class EnrollmentCalculation:
 
             # Check to see if the participant also meets BASELINE requirements
             if (
-                participant_info.has_had_ehr_file_submitted
+                (participant_info.has_had_ehr_file_submitted or participant_info.has_had_mediated_ehr_submitted)
                 and (
                     participant_info.consent_cohort not in (ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2)
                     or participant_info.has_completed_dna_update
@@ -218,7 +223,8 @@ class EnrollmentCalculation:
             ):
                 # Track the extra dates needed
                 # (definitely need the date of an ehr file, but also possibly the dna update time)
-                extra_dates_needed = [participant_info.earliest_ehr_file_received_time]
+                extra_dates_needed = [min_or_none([participant_info.earliest_ehr_file_received_time,
+                                                  participant_info.earliest_mediated_ehr_receipt_time])]
                 if participant_info.consent_cohort in [ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2]:
                     extra_dates_needed.append(participant_info.dna_update_time)
 

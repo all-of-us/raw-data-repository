@@ -1256,6 +1256,31 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         for answer in answers:
             self.assertIn(answer.codeId, [code1.codeId, code2.codeId])
 
+    def test_participant_race_answers_aian_summary(self):
+
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id)
+
+        questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_race_aian.json",
+            questionnaire_id,
+            participant_id
+        )
+
+        with FakeClock(TIME_2):
+            resource["authored"] = TIME_2.isoformat()
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary_dao = ParticipantSummaryDao()
+
+        current_participant = \
+            list(filter(lambda x: x.participantId == int(participant_id.split('P')[-1]), summary_dao.get_all()))[0]
+
+        self.assertIsNotNone(current_participant)
+        self.assertEqual(current_participant.aian, 1)
+
     def test_gender_prefer_not_answer(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
@@ -1734,6 +1759,63 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         # Reset Config back to original user client ID
         user_info['example@example.com']['clientId'] = original_user_client_id
         config.override_setting(config.USER_INFO, user_info)
+
+    def test_etm_consent(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id, language="es")
+
+        participant = self.send_get("Participant/%s" % participant_id)
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+
+        expected = dict(participant_summary_default_values_no_basics)
+        expected.update({
+            "genderIdentity": "UNSET",
+            "firstName": self.first_name,
+            "lastName": self.last_name,
+            "email": self.email,
+            "streetAddress": self.streetAddress,
+            "streetAddress2": self.streetAddress2,
+            "numCompletedPPIModules": 0,
+            "numCompletedBaselinePPIModules": 0,
+            "biobankId": participant["biobankId"],
+            "participantId": participant_id,
+            "consentForStudyEnrollmentTime": TIME_1.isoformat(),
+            "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
+            "primaryLanguage": "es",
+            "signUpTime": TIME_1.isoformat(),
+            "consentCohort": str(ParticipantCohort.COHORT_1),
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
+            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
+            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
+        })
+        self.assertJsonResponseMatches(expected, summary)
+
+        # verify if the response is not consent, the primary language will not change
+        questionnaire_id = self.create_questionnaire("consent_for_etm_question.json")
+
+        resource = self._load_response_json("consent_for_etm_resp.json", questionnaire_id, participant_id)
+        resource['authored'] = TIME_1.isoformat()
+
+        self._save_codes(resource)
+        self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['consentForEtM'], 'SUBMITTED')
+
+        resource = self._load_response_json("consent_for_etm_no.json", questionnaire_id, participant_id)
+        resource['authored'] = TIME_3.isoformat()
+
+        with FakeClock(TIME_3):
+            self._save_codes(resource)
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['semanticVersionForPrimaryConsent'], 'v1')
+        self.assertEqual(summary['consentForEtM'], 'SUBMITTED_NO_CONSENT')
+        self.assertEqual(summary['consentForEtMTime'], TIME_3.isoformat())
+        self.assertEqual(summary['consentForEtMAuthored'], TIME_3.isoformat())
 
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):

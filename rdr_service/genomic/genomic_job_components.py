@@ -92,7 +92,7 @@ from rdr_service.config import (
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes, \
-    genome_center_datafile_prefix_map
+    genome_center_datafile_prefix_map, wgs_metrics_manifest_mapping
 from sqlalchemy.orm import aliased
 
 
@@ -672,7 +672,6 @@ class GenomicFileIngester:
             # Alter field names to remove spaces and change to lower case
             row = self._clean_row_keys(row)
 
-        # Beging prep aw2 row
         if row['genometype'] in (GENOME_TYPE_WGS, GENOME_TYPE_WGS_INVESTIGATION):
             row = self._set_metrics_wgs_data_file_paths(row)
         elif row['genometype'] in (GENOME_TYPE_ARRAY, GENOME_TYPE_ARRAY_INVESTIGATION):
@@ -876,7 +875,8 @@ class GenomicFileIngester:
             for row in rows:
                 row_copy = self._clean_row_keys(row)
 
-                sample_id = row_copy['sampleid']
+                pipeline_id = row_copy.get('pipelineid')
+                sample_id = row_copy.get('sampleid')
 
                 member = self.member_dao.get_member_from_aw3_sample(sample_id)
                 if member is None:
@@ -887,10 +887,14 @@ class GenomicFileIngester:
                 member.qcStatus = self._get_qc_status_from_value(row_copy['qcstatus'])
                 member.qcStatusStr = member.qcStatus.name
 
-                metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
+                metrics = self.metrics_dao.get_metrics_by_member_id(
+                    member_id=member.id,
+                    pipeline_id=pipeline_id
+                )
 
                 if metrics:
                     metrics.drcSexConcordance = row_copy['drcsexconcordance']
+                    metrics.aw4ManifestJobRunID = self.job_run_id
 
                     if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
                         metrics.drcCallRate = row_copy['drccallrate']
@@ -1181,15 +1185,9 @@ class GenomicFileIngester:
         :param rows:
         :return result code
         """
-
         members_to_update = []
         for row in rows:
-            # change all key names to lower
             row_copy = self._clean_row_keys(row)
-            if row_copy['genometype'] in (GENOME_TYPE_ARRAY, GENOME_TYPE_ARRAY_INVESTIGATION):
-                row_copy = self._set_metrics_array_data_file_paths(row_copy)
-            elif row_copy['genometype'] in (GENOME_TYPE_WGS, GENOME_TYPE_WGS_INVESTIGATION):
-                row_copy = self._set_metrics_wgs_data_file_paths(row_copy)
             member = self.member_dao.get_member_from_sample_id(
                 int(row_copy['sampleid']),
             )
@@ -1198,10 +1196,8 @@ class GenomicFileIngester:
                 bid = row_copy['biobankid']
                 if bid[0] in [get_biobank_id_prefix(), 'T']:
                     bid = bid[1:]
-                # Couldn't find genomic set member based on either biobank ID or sample ID
                 _message = f"{self.job_id.name}: Cannot find genomic set member for bid, sample_id: " \
                            f"{row_copy['biobankid']}, {row_copy['sampleid']}"
-
                 self.controller.create_incident(source_job_run_id=self.job_run_id,
                                                 source_file_processed_id=self.file_obj.id,
                                                 code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
@@ -1215,31 +1211,46 @@ class GenomicFileIngester:
             if row_copy == GenomicSubProcessResult.ERROR:
                 continue
 
-            # check whether metrics object exists for that member
-            existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
-            metric_id = None
+            # METRICS actions
+            pipeline_id = None
+            if row_copy['genometype'] in (GENOME_TYPE_ARRAY, GENOME_TYPE_ARRAY_INVESTIGATION):
+                row_copy = self._set_metrics_array_data_file_paths(row_copy)
+                pipeline_id = row_copy.get('pipelineid')
 
-            if existing_metrics_obj:
-                if self.controller.skip_updates:
-                    # when running tool, updates can be skipped
-                    continue
-                else:
-                    metric_id = existing_metrics_obj.id
-            else:
-                if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS]:
-                    if row_copy['contamination_category'] in [GenomicContaminationCategory.EXTRACT_WGS,
-                                                              GenomicContaminationCategory.EXTRACT_BOTH]:
-                        # Insert a new member
-                        self.insert_member_for_replating(member, row_copy['contamination_category'])
+            elif row_copy['genometype'] in (GENOME_TYPE_WGS, GENOME_TYPE_WGS_INVESTIGATION):
+                row_copy = self._set_metrics_wgs_data_file_paths(row_copy)
+                pipeline_id = row_copy.get('pipelineid')
+                # default and add to row dict deprecated version if no pipeline_id in manifest row
+                if not pipeline_id:
+                    row_copy['pipelineid'] = pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
 
-            # For feedback manifest loop
-            # Get the genomic_manifest_file
+            existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(
+                member_id=member.id,
+                pipeline_id=pipeline_id
+            )
+            metric_id = None if not existing_metrics_obj else existing_metrics_obj.id
+
+            # Member Replating (conditional) based on existing metric record
+            if not metric_id:
+                if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS] and row_copy['contamination_category'] in [
+                    GenomicContaminationCategory.EXTRACT_WGS,
+                        GenomicContaminationCategory.EXTRACT_BOTH]:
+                    self.insert_member_for_replating(member, row_copy['contamination_category'])
+
+            # convert enum to int for json payload
+            row_copy['contamination_category'] = int(row_copy['contamination_category'])
+            self.controller.execute_cloud_task({
+                'metric_id': metric_id,
+                'payload_dict': row_copy,
+            }, 'genomic_gc_metrics_upsert')
+
+            # MANIFEST/FEEDBACK actions
             manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
-            if manifest_file is not None and existing_metrics_obj is None:
+            if manifest_file is not None and metric_id is None:
                 self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
 
+            # MEMBER actions
             self.update_member_for_aw2(member)
-            # set lists of members to update workflow state
             member_dict = {
                 'id': member.id
             }
@@ -1252,13 +1263,6 @@ class GenomicFileIngester:
                 member_dict['genomicWorkflowStateStr'] = str(GenomicWorkflowState.CVL_READY)
                 member_dict['genomicWorkflowStateModifiedTime'] = clock.CLOCK.now()
             members_to_update.append(member_dict)
-
-            # upsert metrics record via cloud task
-            row_copy['contamination_category'] = int(row_copy['contamination_category'])
-            self.controller.execute_cloud_task({
-                'metric_id': metric_id,
-                'payload_dict': row_copy,
-            }, 'genomic_gc_metrics_upsert')
 
         if members_to_update:
             self.member_dao.bulk_update(members_to_update)
@@ -1795,6 +1799,17 @@ class GenomicFileIngester:
         return row
 
     def _set_metrics_wgs_data_file_paths(self, row: dict) -> dict:
+        # IF file_paths in manifest ELSE move on
+        required_wgs_file_paths = list(filter(lambda x: x['required'] is True, wgs_file_types_attributes))
+
+        row_paths = {k: v for k, v in row.items() if 'path' in k and v is not None}
+        if len(required_wgs_file_paths) == len(row_paths):
+            # model attributes are different that manifest columns for certain values in map
+            for manifest_file_key, model_attribute in wgs_metrics_manifest_mapping.items():
+                path_value = row_paths.get(self._clean_row_keys(manifest_file_key))
+                row[model_attribute] = f'gs://{path_value}' if 'gs://' not in path_value else path_value
+            return row
+
         gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP, {})
         site_id = self.file_obj.fileName.split('_')[0].lower()
         gc_bucket_name = gc_site_bucket_map.get(site_id)
@@ -1802,13 +1817,12 @@ class GenomicFileIngester:
         if not gc_bucket:
             return row
 
-        for file_def in wgs_file_types_attributes:
+        for file_def in required_wgs_file_paths:
             if file_def['required']:
                 file_path = f'gs://{gc_bucket}/{genome_center_datafile_prefix_map[site_id][file_def["file_type"]]}/' + \
                             f'{site_id.upper()}_{row["biobankid"]}_{row["sampleid"]}_{row["limsid"]}_1.' + \
                             f'{file_def["file_type"]}'
                 row[file_def['file_path_attribute']] = file_path
-
         return row
 
     def _update_member_state_after_aw2(self, member: GenomicSetMember):
@@ -2050,7 +2064,9 @@ class GenomicFileValidator:
             "drccontamination",
             "drcmeancoverage",
             "drcfpconcordance",
-            "passtoresearchpipeline"
+            "passtoresearchpipeline",
+            "pipelineid",
+            "processingcount"
         )
 
         self.AW5_WGS_SCHEMA = {
@@ -2104,7 +2120,10 @@ class GenomicFileValidator:
         self.values_for_validation = {
             GenomicJob.METRICS_INGESTION: {
                 GENOME_TYPE_ARRAY: {
-                    'pipelineid': ['cidr_egt_1', 'original_egt']
+                    'pipelineid': [
+                        'cidr_egt_1',
+                        'original_egt'
+                    ]
                 },
             },
         }
@@ -2432,6 +2451,11 @@ class GenomicFileValidator:
         :param fields: the data from the CSV file; dictionary per row.
         :return: boolean; True if valid structure, False if not.
         """
+
+        # Adding temporary bypass rule for manifest ingestion validation DA-3072
+        if self.job_id in [GenomicJob.METRICS_INGESTION]:
+            return True, None, None, self.valid_schema
+
         missing_fields, extra_fields = None, None
 
         if not self.valid_schema:
@@ -3329,11 +3353,10 @@ class ManifestDefinitionProvider:
         self.job_run_id = job_run_id
         self.bucket_name = bucket_name
         self.cvl_site_id = cvl_site_id
-        self.kwargs = kwargs
         self.genome_type = genome_type
-
+        self.kwargs = kwargs.get('kwargs')
         self.query = GenomicQueryClass(
-            input_manifest=self.kwargs['kwargs'].get('input_manifest'),
+            input_manifest=self.kwargs.get('input_manifest'),
             genome_type=self.genome_type
         )
         self.query_dao = GenomicQueriesDao()
@@ -3456,7 +3479,9 @@ class ManifestDefinitionProvider:
                 "sex_ploidy",
                 "ai_an",
                 "blocklisted",
-                "blocklisted_reason"
+                "blocklisted_reason",
+                "pipeline_id",
+                "processing_count"
             ),
             GenomicManifestTypes.AW2F: (
                 "PACKAGE_ID",
@@ -3573,11 +3598,13 @@ class ManifestDefinitionProvider:
             },
             GenomicManifestTypes.AW3_WGS: {
                 'job_run_field': 'aw3ManifestJobRunID',
-                'output_filename': f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
+                'output_filename': f'{self.kwargs.get("pipeline_id")}/'
+                                   f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
                 'signal': 'bypass',
                 'query': self.query_dao.get_aw3_wgs_records,
                 'params': {
-                    'genome_type': self.genome_type
+                    'genome_type': self.genome_type,
+                    'pipeline_id': self.kwargs.get('pipeline_id')
                 }
             },
             GenomicManifestTypes.AW2F: {

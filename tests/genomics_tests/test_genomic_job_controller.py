@@ -888,8 +888,12 @@ class GenomicJobControllerTest(BaseTestCase):
         with GenomicJobController(GenomicJob.RESULTS_PIPELINE_WITHDRAWALS) as controller:
             controller.check_results_withdrawals()
 
-        # mock checks
-        self.assertEqual(email_mock.call_count, 1)
+        # mock checks should be two => 1 GEM 1 HEALTH
+        self.assertEqual(email_mock.call_count, 2)
+        call_args = email_mock.call_args_list
+
+        self.assertTrue(any('GEM' in call.args[0].subject for call in call_args))
+        self.assertTrue(any('HEALTH' in call.args[0].subject for call in call_args))
 
         job_runs = self.job_run_dao.get_all()
         current_job_run = list(filter(lambda x: x.jobId == GenomicJob.RESULTS_PIPELINE_WITHDRAWALS, job_runs))[0]
@@ -913,8 +917,8 @@ class GenomicJobControllerTest(BaseTestCase):
         with GenomicJobController(GenomicJob.RESULTS_PIPELINE_WITHDRAWALS) as controller:
             controller.check_results_withdrawals()
 
-        # mock checks should still be one on account of no records
-        self.assertEqual(email_mock.call_count, 1)
+        # mock checks should still be two on account of no records
+        self.assertEqual(email_mock.call_count, 2)
 
         job_runs = self.job_run_dao.get_all()
         current_job_run = list(filter(lambda x: x.jobId == GenomicJob.RESULTS_PIPELINE_WITHDRAWALS, job_runs))[1]

@@ -17,8 +17,8 @@ from rdr_service import singletons
 from rdr_service.api_util import dispatch_task
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
-from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
-    PARTICIPANT_COHORT_3_START_TIME
+from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME, \
+    PARTICIPANT_COHORT_3_START_TIME, Race, get_all_races_from_codes
 from rdr_service.app_util import get_account_origin_id, is_self_request
 from rdr_service import storage
 from rdr_service import clock, code_constants, config
@@ -82,8 +82,8 @@ from rdr_service.code_constants import (
     AGREE_YES,
     AGREE_NO,
     REMOTE_ID_VERIFIED_CODE,
-    REMOTE_ID_VERIFIED_ON_CODE
-
+    REMOTE_ID_VERIFIED_ON_CODE,
+    ETM_CONSENT_QUESTION_CODE
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -728,7 +728,6 @@ class QuestionnaireResponseDao(BaseDao):
 
         # Fetch the codes for all questions and concepts
         codes = code_dao.get_with_ids(code_ids)
-
         code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
         question_map = {question.questionnaireQuestionId: question for question in questions}
         race_code_ids = []
@@ -738,7 +737,6 @@ class QuestionnaireResponseDao(BaseDao):
         dvehr_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
         street_address_submitted = False
         street_address2_submitted = False
-
         rejected_reconsent = False
         remote_id_info = {}
 
@@ -793,7 +791,6 @@ class QuestionnaireResponseDao(BaseDao):
                             )
                     elif code.value == RACE_QUESTION_CODE:
                         race_code_ids.append(answer.valueCodeId)
-
                     elif code.value == DVEHR_SHARING_QUESTION_CODE:
                         code = code_dao.get(answer.valueCodeId)
                         if code and code.value == DVEHRSHARING_CONSENT_CODE_YES:
@@ -902,8 +899,16 @@ class QuestionnaireResponseDao(BaseDao):
                         remote_id_info['verified_on'] = answer.valueDate
                     elif code.value.lower() == REMOTE_ID_VERIFIED_CODE:
                         remote_id_info['verified'] = answer.valueDecimal
+                    elif code.value.lower() == ETM_CONSENT_QUESTION_CODE:
+                        answer_value = code_dao.get(answer.valueCodeId).value
+                        if answer_value.lower() == AGREE_YES:
+                            self.consents_provided.append(ConsentType.ETM)
+                            participant_summary.consentForEtM = QuestionnaireStatus.SUBMITTED
+                        elif answer_value.lower() == AGREE_NO:
+                            participant_summary.consentForEtM = QuestionnaireStatus.SUBMITTED_NO_CONSENT
 
-
+                        participant_summary.consentForEtMTime = questionnaire_response.created
+                        participant_summary.consentForEtMAuthored = authored
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
         # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.
@@ -919,6 +924,10 @@ class QuestionnaireResponseDao(BaseDao):
             race = get_race(race_codes)
             if race != participant_summary.race:
                 participant_summary.race = race
+                something_changed = True
+            if not participant_summary.aian \
+                    and Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE in get_all_races_from_codes(race_codes):
+                participant_summary.aian = True
                 something_changed = True
 
         if gender_code_ids:

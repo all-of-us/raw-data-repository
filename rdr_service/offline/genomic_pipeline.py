@@ -101,7 +101,7 @@ def aw3_array_manifest_workflow():
                               max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_ARRAY,
-            _genome_type=config.GENOME_TYPE_ARRAY,
+            genome_type=config.GENOME_TYPE_ARRAY,
         )
 
         for manifest in controller.manifests_generated:
@@ -112,7 +112,7 @@ def aw3_array_manifest_workflow():
             load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
-def aw3_wgs_manifest_workflow():
+def aw3_wgs_manifest_workflow(**kwargs):
     """
     Entrypoint for AW3 WGS Workflow
     """
@@ -121,7 +121,8 @@ def aw3_wgs_manifest_workflow():
                               max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_WGS,
-            _genome_type=config.GENOME_TYPE_WGS,
+            genome_type=config.GENOME_TYPE_WGS,
+            pipeline_id=kwargs.get('pipeline_id')
         )
 
         for manifest in controller.manifests_generated:
@@ -147,7 +148,7 @@ def cvl_w1il_manifest_workflow(cvl_site_bucket_map, module_type):
         ) as controller:
             controller.generate_manifest(
                 manifest_type=manifest_type,
-                _genome_type=config.GENOME_TYPE_WGS
+                genome_type=config.GENOME_TYPE_WGS
             )
             for manifest in controller.manifests_generated:
                 logging.info(
@@ -171,7 +172,7 @@ def cvl_w2w_manifest_workflow(cvl_site_bucket_map):
         ) as controller:
             controller.generate_manifest(
                 manifest_type=GenomicManifestTypes.CVL_W2W,
-                _genome_type=config.GENOME_TYPE_WGS
+                genome_type=config.GENOME_TYPE_WGS
             )
             for manifest in controller.manifests_generated:
                 logging.info(
@@ -197,7 +198,7 @@ def cvl_w3sr_manifest_workflow():
         ) as controller:
             controller.generate_manifest(
                 manifest_type=GenomicManifestTypes.CVL_W3SR,
-                _genome_type=config.GENOME_TYPE_WGS,
+                genome_type=config.GENOME_TYPE_WGS,
             )
             for manifest in controller.manifests_generated:
                 logging.info(
@@ -220,7 +221,7 @@ def aw3_array_investigation_workflow():
                               max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_ARRAY,
-            _genome_type="aou_array_investigation",
+            genome_type="aou_array_investigation",
         )
 
         for manifest in controller.manifests_generated:
@@ -231,7 +232,7 @@ def aw3_array_investigation_workflow():
             load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
-def aw3_wgs_investigation_workflow():
+def aw3_wgs_investigation_workflow(**kwargs):
     """
     Entrypoint for AW3 WGS Workflow
     """
@@ -240,7 +241,8 @@ def aw3_wgs_investigation_workflow():
                               max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_WGS,
-            _genome_type="aou_wgs_investigation",
+            genome_type="aou_wgs_investigation",
+            pipeline_id=kwargs.get('pipeline_id')
         )
 
         for manifest in controller.manifests_generated:
@@ -258,8 +260,11 @@ def gem_a1_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.GEM_A1_MANIFEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
-        controller.reconcile_report_states(_genome_type=config.GENOME_TYPE_ARRAY)
-        controller.generate_manifest(GenomicManifestTypes.GEM_A1, _genome_type=config.GENOME_TYPE_ARRAY)
+        controller.reconcile_report_states(genome_type=config.GENOME_TYPE_ARRAY)
+        controller.generate_manifest(
+            GenomicManifestTypes.GEM_A1,
+            genome_type=config.GENOME_TYPE_ARRAY
+        )
 
 
 def gem_a2_manifest_workflow():
@@ -269,7 +274,7 @@ def gem_a2_manifest_workflow():
     with GenomicJobController(GenomicJob.GEM_A2_MANIFEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME,
                               sub_folder_name=config.GENOMIC_GEM_A2_MANIFEST_SUBFOLDER) as controller:
-        controller.reconcile_report_states(_genome_type=config.GENOME_TYPE_ARRAY)
+        controller.reconcile_report_states(genome_type=config.GENOME_TYPE_ARRAY)
         controller.run_general_ingestion_workflow()
 
 
@@ -279,8 +284,11 @@ def gem_a3_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.GEM_A3_MANIFEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
-        controller.reconcile_report_states(_genome_type=config.GENOME_TYPE_ARRAY)
-        controller.generate_manifest(GenomicManifestTypes.GEM_A3, _genome_type=config.GENOME_TYPE_ARRAY)
+        controller.reconcile_report_states(genome_type=config.GENOME_TYPE_ARRAY)
+        controller.generate_manifest(
+            GenomicManifestTypes.GEM_A3,
+            genome_type=config.GENOME_TYPE_ARRAY
+        )
 
 
 def gem_metrics_ingest():
@@ -391,9 +399,11 @@ def create_aw2f_manifest(feedback_record):
     with GenomicJobController(GenomicJob.AW2F_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
                               ) as controller:
-        controller.generate_manifest(GenomicManifestTypes.AW2F,
-                                     _genome_type=None,
-                                     feedback_record=feedback_record)
+        controller.generate_manifest(
+            GenomicManifestTypes.AW2F,
+            genome_type=None,
+            feedback_record=feedback_record
+        )
 
 
 def reconcile_cvl_results(reconcile_job_type):

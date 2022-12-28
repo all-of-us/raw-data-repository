@@ -19,9 +19,9 @@ depends_on = None
 
 sp_get_questionnaire_answers = ReplaceableObject(
     "sp_get_questionnaire_answers",
-    """  
- (IN participant_id INT, IN id INT)  
- BEGIN  
+    """
+ (IN participant_id INT, IN id INT)
+ BEGIN
    # Dynamically pivot the questionnaire answers for the given participant and module.
    # Results are ordered by 'created' descending.
    DECLARE CONTINUE HANDLER FOR 1064 SET @sql = NULL;
@@ -60,23 +60,23 @@ sp_get_questionnaire_answers = ReplaceableObject(
      SELECT
         a.questionnaire_id,
         a.questionnaire_response_id,
-        a.created,       
-        ', @code_id, ' as code_id, 
-        a.version,        
+        a.created,
+        ', @code_id, ' as code_id,
+        a.version,
         a.authored,
         a.language,
-        a.participant_id,        
+        a.participant_id,
         ''', @module, ''' as module,
         ', @sql, '
         FROM (
            SELECT qr.questionnaire_id,
                   qr.questionnaire_response_id,
-                  qr.created,       
-                  qq.code_id,           
+                  qr.created,
+                  qq.code_id,
                   q.version,
                   qr.authored,
                   qr.language,
-                  qr.participant_id,                  
+                  qr.participant_id,
               COALESCE(qra.value_string, qra.value_integer, qra.value_decimal,
                        qra.value_boolean, qra.value_code_id, qra.value_system,
                        qra.value_uri, qra.value_date, qra.value_datetime) as answer
@@ -86,7 +86,7 @@ sp_get_questionnaire_answers = ReplaceableObject(
               INNER JOIN questionnaire_question qq
                          ON qra.question_id = qq.questionnaire_question_id
               INNER JOIN questionnaire q
-                         ON qq.questionnaire_id = q.questionnaire_id              
+                         ON qq.questionnaire_id = q.questionnaire_id
            WHERE qr.participant_id = ', participant_id, ' AND
                --
                  qr.questionnaire_id IN (
