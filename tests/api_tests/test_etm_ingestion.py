@@ -52,7 +52,7 @@ class EtmIngestionTest(BaseTestCase):
     def test_questionnaire_response_ingestion(self):
         with open(data_path('etm_questionnaire.json')) as file:
             questionnaire_json = json.load(file)
-            self.send_post('Questionnaire', questionnaire_json)
+            questionnaire = self.send_post('Questionnaire', questionnaire_json)
 
         participant_id = self.data_generator.create_database_participant().participantId
 
@@ -68,6 +68,7 @@ class EtmIngestionTest(BaseTestCase):
         self.assertEqual('emorecog', saved_response.questionnaire_type)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, saved_response.status)
         self.assertEqual(participant_id, saved_response.participant_id)
+        self.assertEqual(questionnaire['id'], saved_response.etm_questionnaire_id)
         self.assertEqual(questionnaire_response_json, saved_response.resource)
         self.assert_has_answers(
             expected_answer_list=[
