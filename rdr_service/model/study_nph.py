@@ -98,3 +98,25 @@ class OrderedSample(NphBase):
     container = Column(String(128))
     status = Column(String(128))
     supplemental_fields = Column(JSON, nullable=True)
+
+
+class SampleUpdate(NphBase):
+    __tablename__ = "sample_update"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    rdr_ordered_sample_id = Column(BigInteger, ForeignKey("ordered_sample.id"))
+
+
+event.listen(SampleUpdate, "before_insert", model_insert_listener)
+
+
+class BiobankFileExport(NphBase):
+    __tablename__ = "biobank_file_export"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    file_name = Column(String(256))
+
+
+event.listen(BiobankFileExport, "before_insert", model_insert_listener)
