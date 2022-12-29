@@ -46,6 +46,7 @@ class EtmApi:
             questionnaire=questionnaire
         )
         response_obj.version = questionnaire.version
+        response_obj.questionnaire_id = questionnaire.id
 
         if validation_result.success:
             response_repository = etm_repository.EtmResponseRepository()

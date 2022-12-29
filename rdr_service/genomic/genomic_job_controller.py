@@ -7,8 +7,6 @@ import pytz
 
 from datetime import datetime, timedelta
 
-from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
@@ -370,17 +368,14 @@ class GenomicJobController:
             else:
                 bid = member.biobankId
             # Get Raw AW1 Records for biobank IDs and genome_type
-            try:
-                raw_rec = raw_dao.get_raw_record_from_identifier_genome_type(
-                    identifier=bid if id_field == 'biobankId' else getattr(member, id_field),
-                    genome_type=member.genomeType
-                )
-            except MultipleResultsFound:
-                multiples.append(member.id)
-            except NoResultFound:
-                missing.append(member.id)
-            else:
+            raw_rec = raw_dao.get_raw_record_from_identifier_genome_type(
+                identifier=bid if id_field == 'biobankId' else getattr(member, id_field),
+                genome_type=member.genomeType
+            )
+            if raw_rec:
                 update_recs.append((member, raw_rec))
+            else:
+                missing.append(member.id)
 
         if update_recs:
             # Get unique file_paths
@@ -1825,16 +1820,24 @@ class GenomicJobController:
                 member_ids=self.member_ids_for_update,
                 pipeline_id=kwargs.get('pipeline_id')
             )
-            members_to_update, metrics_to_update = [], []
+            members_to_update, metrics_to_update, batch_size = [], [], 100
 
+            # member
             for member_id in self.member_ids_for_update:
                 member_dict = {
                     'id': member_id,
                     'aw3ManifestFileId': kwargs.get('manifest_id')
                 }
                 members_to_update.append(member_dict)
-            self.member_dao.bulk_update(members_to_update)
 
+                if len(members_to_update) == batch_size:
+                    self.member_dao.bulk_update(members_to_update)
+                    members_to_update.clear()
+
+            if members_to_update:
+                self.member_dao.bulk_update(members_to_update)
+
+            # metrics
             for metric in process_metrics:
                 metric_dict = {
                     'id': metric.id,
@@ -1844,7 +1847,13 @@ class GenomicJobController:
                     'processingCount': metric.processingCount + 1
                 }
                 metrics_to_update.append(metric_dict)
-            self.metrics_dao.bulk_update(metrics_to_update)
+
+                if len(metrics_to_update) == batch_size:
+                    self.metrics_dao.bulk_update(metrics_to_update)
+                    metrics_to_update.clear()
+
+            if metrics_to_update:
+                self.metrics_dao.bulk_update(metrics_to_update)
         return
 
     def check_w1il_gror_resubmit(self, since_datetime):
@@ -1894,18 +1903,26 @@ class GenomicJobController:
         result_withdrawal_dao.insert_bulk(batch)
 
         notification_emails = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
-        if notification_emails:
-            message = 'The following participants have withdrawn from the program and are currently'
-            message += ' in the genomics result pipelines:\n\n'
-            message += '\n'.join([f'P{participant.participant_id}' for participant in result_withdrawals])
 
-            EmailService.send_email(
-                Email(
-                    recipients=notification_emails,
-                    subject='Participants that have withdrawn and are currently in results pipeline(s)',
-                    plain_text_content=message
-                )
-            )
+        if notification_emails:
+            for email_type in ['GEM', 'HEALTH']:
+                current_list = list(
+                    filter(lambda x: x.array_results is True if 'GEM' in email_type else x.cvl_results is True,
+                           result_withdrawals))
+
+                if current_list:
+                    message = 'The following participants have withdrawn from the program and are currently '
+                    message += f'in the genomics {email_type} result pipeline\n\n'
+                    message += '\n'.join([f'P{participant.participant_id}' for participant in current_list])
+                    message += '\n'
+
+                    EmailService.send_email(
+                        Email(
+                            recipients=notification_emails,
+                            subject=f'Withdrawn participants in genomic results pipeline(s): {email_type}',
+                            plain_text_content=message
+                        )
+                    )
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 

@@ -422,7 +422,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         pairing_history = None
         query = ro_session.query(ParticipantHistory.lastModified, ParticipantHistory.hpoId, HPO.name.label('hpo'),
                                    ParticipantHistory.organizationId, Organization.externalId.label('organization'),
-                                   ParticipantHistory.siteId, Site.googleGroup.label('site')). \
+                                   ParticipantHistory.siteId, Site.googleGroup.label('site'),
+                                   ParticipantHistory.version). \
                 outerjoin(HPO, HPO.hpoId == ParticipantHistory.hpoId).\
                 outerjoin(Organization, Organization.organizationId == ParticipantHistory.organizationId).\
                 outerjoin(Site, Site.siteId == ParticipantHistory.siteId).\
@@ -439,7 +440,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'organization': item.organization,
                     'organization_id': item.organizationId,
                     'site': item.site,
-                    'site_id': item.siteId
+                    'site_id': item.siteId,
+                    'version': item.version
                 })
 
         data['pairing_history'] = pairing_history
@@ -1725,6 +1727,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :return: dict
         """
         data = dict()
+        basics_qnan, lfs_qnan = None, None
+        ubr_disability_responses = []
         # Return if participant has not yet submitted a primary consent response.
         if summary.get('enrl_status_id', 0) < PDREnrollmentStatusEnum.Participant:
             return data
@@ -1746,35 +1750,55 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # ubr_overall - This should be calculated here in case there is no TheBasics response available.
         data['ubr_overall'] = ubr.ubr_overall(data)
 
-        #### TheBasics UBR calculations.
+        #### TheBasics / lfs UBR calculations.
         # Note: Due to PDR-484 we can't rely on the summary having a record for each valid submission so we
         #       are going to do our own query to get the first TheBasics submission after consent.
         # As of RDR 1.113.1, can filter on new classification_type to filter on full (COMPLETE) TheBasics surveys
-        qr_id = self.find_questionnaire_response_id(
+        basics_qr_id = self.find_questionnaire_response_id(
             ro_session, p_id, "TheBasics", QuestionnaireResponseClassificationType.COMPLETE, ModuleLookupEnum.FIRST)
-        if not qr_id:
-            return data
+        # PDR-1438: lfs survey released in 9/2022 for participants whose early version of TheBasics may not have
+        # included physical disability questions.  lfs presents the same 6 questions (e.g., Disability_Blind) and
+        # needs to be factored into UBR disability calculation
+        lfs_qr_id = self.find_questionnaire_response_id(
+            ro_session, p_id, "lfs", QuestionnaireResponseClassificationType.COMPLETE, ModuleLookupEnum.FIRST)
 
-        qnan = self.get_module_answers(self.ro_dao, 'TheBasics', p_id=p_id, qr_id=qr_id)
+        if basics_qr_id:
+            basics_qnan = self.get_module_answers(self.ro_dao, 'TheBasics', p_id=p_id, qr_id=basics_qr_id)
+        if lfs_qr_id:
+            lfs_qnan = self.get_module_answers(self.ro_dao, 'lfs', p_id=p_id, qr_id=lfs_qr_id)
 
-        # ubr_sex
-        data['ubr_sex'] = ubr.ubr_sex(qnan.get('BiologicalSexAtBirth_SexAtBirth', None))
-        # ubr_sexual_orientation
-        data['ubr_sexual_orientation'] = ubr.ubr_sexual_orientation(qnan.get('TheBasics_SexualOrientation', None))
-        # ubr_gender_identity
-        data['ubr_gender_identity'] = ubr.ubr_gender_identity(qnan.get('BiologicalSexAtBirth_SexAtBirth', None),
-            qnan.get('Gender_GenderIdentity', None), qnan.get('Gender_CloserGenderDescription', None))
-        # ubr_sexual_gender_minority
-        data['ubr_sexual_gender_minority'] = \
-            ubr.ubr_sexual_gender_minority(data['ubr_sexual_orientation'], data['ubr_gender_identity'])
-        # ubr_ethnicity
-        data['ubr_ethnicity'] = ubr.ubr_ethnicity(qnan.get('Race_WhatRaceEthnicity', None))
-        # ubr_education
-        data['ubr_education'] = ubr.ubr_education(qnan.get('EducationLevel_HighestGrade', None))
-        # ubr_income
-        data['ubr_income'] = ubr.ubr_income(qnan.get('Income_AnnualIncome', None))
-        # ubr_disability
-        data['ubr_disability'] = ubr.ubr_disability(qnan)
+        # Add the response to the list for the ubr_disability calculator if it has content.    TODO: Confirm if RDR has
+        # any pids with valid answers (not all None/PMI_Skip) to disability questions in TheBasics but also have an
+        # lfs survey response (not an expected use case).
+        for qnan in [basics_qnan, lfs_qnan]:
+            if qnan:
+                ubr_disability_responses.append(qnan)
+
+        # Except for ubr_disability, other UBR categories determined only from TheBasics data
+        if basics_qnan:
+            # ubr_sex
+            data['ubr_sex'] = ubr.ubr_sex(basics_qnan.get('BiologicalSexAtBirth_SexAtBirth', None))
+            # ubr_sexual_orientation
+            data['ubr_sexual_orientation'] = ubr.ubr_sexual_orientation(basics_qnan.get('TheBasics_SexualOrientation',
+                                                                                        None))
+            # ubr_gender_identity
+            data['ubr_gender_identity'] = ubr.ubr_gender_identity(
+                basics_qnan.get('BiologicalSexAtBirth_SexAtBirth', None),
+                basics_qnan.get('Gender_GenderIdentity', None),
+                basics_qnan.get('Gender_CloserGenderDescription', None)
+            )
+            # ubr_sexual_gender_minority
+            data['ubr_sexual_gender_minority'] = \
+                ubr.ubr_sexual_gender_minority(data['ubr_sexual_orientation'], data['ubr_gender_identity'])
+            # ubr_ethnicity
+            data['ubr_ethnicity'] = ubr.ubr_ethnicity(basics_qnan.get('Race_WhatRaceEthnicity', None))
+            # ubr_education
+            data['ubr_education'] = ubr.ubr_education(basics_qnan.get('EducationLevel_HighestGrade', None))
+            # ubr_income
+            data['ubr_income'] = ubr.ubr_income(basics_qnan.get('Income_AnnualIncome', None))
+
+        # ubr_disability() will handle cases where neither TheBasics nor lfs response exists (param is empty list)
+        data['ubr_disability'] = ubr.ubr_disability(ubr_disability_responses)
         # ubr_overall
         data['ubr_overall'] = ubr.ubr_overall(data)
 

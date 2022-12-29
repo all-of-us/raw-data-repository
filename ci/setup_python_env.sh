@@ -10,5 +10,6 @@ source venv/bin/activate
 export PYTHONPATH=`pwd`
 echo "PYTHONPATH=${PYTHONPATH}"
 pip install --upgrade pip
+pip install Cython
 pip install "safety"
 pip install -r requirements.txt
