@@ -120,3 +120,11 @@ class BiobankFileExport(NphBase):
 
 
 event.listen(BiobankFileExport, "before_insert", model_insert_listener)
+
+
+class SampleExport(NphBase):
+    __tablename__ = "sample_export"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    export_id = Column(BigInteger, ForeignKey("biobank_file_export.id"))
+    sample_update_id = Column(BigInteger, ForeignKey("sample_update.id"))
