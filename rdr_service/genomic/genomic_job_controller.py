@@ -3,6 +3,8 @@ This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
 import logging
 import json
+from typing import List
+
 import pytz
 
 from datetime import datetime, timedelta
@@ -99,7 +101,6 @@ class GenomicJobController:
         self.job_result = GenomicSubProcessResult.UNSET
         self.last_run_time = datetime(2019, 11, 5, 0, 0, 0)
         self.max_num = max_num
-        self.member_ids_for_update = []
         self.manifests_generated = []
         self.cvl_site_id = cvl_site_id
 
@@ -1456,6 +1457,7 @@ class GenomicJobController:
 
                 now_time = datetime.utcnow()
                 for manifest in self.manifests_generated:
+
                     compiled_file_name = manifest["file_path"].split(f'{self.bucket_name}/')[-1]
                     logging.info(f'Manifest created: {compiled_file_name}')
                     new_manifest_record = self.manifest_file_dao.get_manifest_file_from_filepath(manifest['file_path'])
@@ -1502,7 +1504,8 @@ class GenomicJobController:
                     self.process_research_manifest_record_updates(
                         manifest_type,
                         manifest_id=new_manifest_record.id,
-                        pipeline_id=kwargs.get('pipeline_id')
+                        member_ids=manifest.get('member_ids'),
+                        pipeline_id=kwargs.get('pipeline_id'),
                     )
 
                     self.subprocess_results.add(result.get('code'))
@@ -1814,24 +1817,30 @@ class GenomicJobController:
             logging.error(e)
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def process_research_manifest_record_updates(self, manifest_type, **kwargs):
+    def process_research_manifest_record_updates(
+        self,
+        manifest_type: GenomicManifestTypes,
+        manifest_id: GenomicManifestFile,
+        member_ids: List[int],
+        **kwargs
+    ) -> None:
         if manifest_type not in [
             GenomicManifestTypes.AW3_ARRAY, GenomicManifestTypes.AW3_WGS
         ]:
             return
 
-        if self.member_ids_for_update:
+        if member_ids:
             process_metrics = self.metrics_dao.get_bulk_metrics_for_process_update(
-                member_ids=self.member_ids_for_update,
+                member_ids=member_ids,
                 pipeline_id=kwargs.get('pipeline_id')
             )
             members_to_update, metrics_to_update, batch_size = [], [], 100
 
             # member
-            for member_id in self.member_ids_for_update:
+            for member_id in member_ids:
                 member_dict = {
                     'id': member_id,
-                    'aw3ManifestFileId': kwargs.get('manifest_id')
+                    'aw3ManifestFileId': manifest_id
                 }
                 members_to_update.append(member_dict)
 
@@ -1848,7 +1857,7 @@ class GenomicJobController:
                     'id': metric.id,
                     'aw3ReadyFlag': 0,
                     'aw3ManifestJobRunID': self.job_run.id,
-                    'aw3ManifestFileId': kwargs.get('manifest_id'),
+                    'aw3ManifestFileId': manifest_id,
                     'processingCount': metric.processingCount + 1
                 }
                 metrics_to_update.append(metric_dict)

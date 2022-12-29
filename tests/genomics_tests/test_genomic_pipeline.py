@@ -4278,6 +4278,145 @@ class GenomicPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_job_run')
         config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [4000])
 
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_wgs_manifest_with_max_num_updates_research_metrics(self, metric_cloud_task):
+        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+
+        stored_samples = [
+            (2, 1002),
+            (3, 1003),
+            (4, 1004),
+            (5, 1005),
+            (6, 1006),
+        ]
+
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(len(stored_samples)+1,
+                                                arr_override=False,
+                                                recon_gc_man_id=1,
+                                                genome_center='rdr',
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                ai_an='N')
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+
+        create_ingestion_test_file(
+            'RDR_AoU_SEQ_TestDataManifest.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
+        )
+
+        self._update_test_sample_ids()
+        self._create_stored_samples(stored_samples)
+
+        for i in range(1, 8):
+            self.data_generator.create_database_genomic_set_member(
+                participantId=i,
+                genomicSetId=1,
+                biobankId=i,
+                gcManifestParentSampleId=1000 + i,
+                genomeType="aou_array",
+                aw3ManifestJobRunID=1,
+            )
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # metrics insert called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 5)
+        call_args = metric_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 5)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
+
+        sequencing_test_files = []
+        for sample in stored_samples:
+            sequencing_test_files.append(
+                (f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.hard-filtered.vcf.gz',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.hard-filtered.vcf.gz.tbi',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.hard-filtered.vcf.gz.md5sum',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.vcf.gz',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.vcf.gz.tbi',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.vcf.gz.md5sum',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.cram',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.cram.md5sum',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.cram.crai',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.hard-filtered.gvcf.gz',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.hard-filtered.gvcf.gz.md5sum',)
+            )
+
+        sequencing_test_files = [file for file in chain.from_iterable(sequencing_test_files)]
+
+        self.assertEqual(len(sequencing_test_files), len(stored_samples) * 11)
+
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': '.'.join(f.split('.')[1:]),
+                    'identifier_type': 'sample_id',
+                    'identifier_value': f.split('_')[4],
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+        config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [2])
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_wgs_manifest_workflow(
+                pipeline_id=pipeline_id
+            )  # run_id = 3
+
+        manifest_records = self.manifest_file_dao.get_all()
+        self.assertEqual(len(manifest_records), 3)
+
+        current_run_obj = list(filter(lambda x: x.jobId == GenomicJob.AW3_WGS_WORKFLOW, self.job_run_dao.get_all()))[0]
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, current_run_obj.runResult)
+
+        bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
+        bucket_files = [file for file in list_blobs(bucket_name) if file.name.lower().endswith(".csv")]
+        # 5 rows / 2 max_num + 1 for remainder
+        self.assertEqual(len(bucket_files), 3)
+
+        # build ids/count for checking correct metrics insertion
+        manifest_record_ids = [obj.id for obj in manifest_records]
+        current_run_id = current_run_obj.id
+        processing_count = 1
+
+        # test for correct (default) pipeline_id in metrics
+        metrics = self.metrics_dao.get_all()
+        self.assertTrue(all(obj.pipelineId == pipeline_id for obj in metrics))
+
+        self.assertTrue(all(obj.processingCount == processing_count for obj in metrics))
+        self.assertTrue(all(obj.aw3ManifestJobRunID == current_run_id for obj in metrics))
+        self.assertTrue(all(obj.aw3ManifestFileId in manifest_record_ids for obj in metrics))
+
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
+        config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [4000])
+
     def test_aw3_no_records(self):
         genomic_pipeline.aw3_wgs_manifest_workflow(
             pipeline_id=config.GENOMIC_DEPRECATED_WGS_DRAGEN
