@@ -81,3 +81,20 @@ Index("order_amended_site", Order.amended_site)
 
 event.listen(Order, "before_insert", model_insert_listener)
 event.listen(Order, "before_update", model_update_listener)
+
+
+class OrderedSample(NphBase):
+    __tablename__ = "ordered_sample"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    nph_sample_id = Column(String(64))
+    order_id = Column(BigInteger, ForeignKey("order.id"))
+    parent_sample_id = Column(BigInteger, ForeignKey("ordered_sample.id"))
+    test = Column(String(40))
+    description = Column(String(256))
+    collected = Column(UTCDateTime)
+    finalized = Column(UTCDateTime)
+    aliquot_id = Column(String(128))
+    container = Column(String(128))
+    status = Column(String(128))
+    supplemental_fields = Column(JSON, nullable=True)
