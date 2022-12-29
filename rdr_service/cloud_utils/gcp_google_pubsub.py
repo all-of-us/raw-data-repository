@@ -226,9 +226,11 @@ def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableM
         if not ident:
             # Try extracting the PK values by 'getting' the model object properties.
             ident = list()
-            keys = cls_mapper.attrs.keys()
             for pkc in pk_columns:
-                pc = next((a for a in keys if cls_mapper.c[a].name == pkc), None)
+                try:
+                    pc = next((k for k in cls_mapper.c.keys() if cls_mapper.c[k].name == pkc), None)
+                except KeyError:
+                    continue
                 if pc:
                     v_ = getattr(model, pc)
                     if v_ is None:
