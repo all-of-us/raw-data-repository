@@ -177,7 +177,7 @@ def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableM
     :param parents: A list of models we have already processed. This is used to make sure we don't enter a
                     circular recursion loop.
     """
-    if not models or GAE_PROJECT not in _ALLOWED_PROJECTS:
+    if not models:
         return parents
     if not parents:
         parents = list()
