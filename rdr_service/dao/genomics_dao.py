@@ -492,7 +492,27 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 )
             return members.all()
 
-    def get_members_from_member_ids(self, member_ids):
+    def get_member_ids_from_sample_ids(self,
+                                       sample_ids: List[int], genome_type=None):
+        """
+        :param sample_ids:
+        :param genome_type:
+        :return:
+        """
+        with self.session() as session:
+            members = session.query(
+                GenomicSetMember.id
+            ).filter(
+                GenomicSetMember.sampleId.in_(sample_ids),
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
+            )
+            if genome_type:
+                members = members.filter(
+                    GenomicSetMember.genomeType == genome_type
+                )
+            return members.all()
+
+    def get_members_from_member_ids(self, member_ids: List[int]):
         with self.session() as session:
             return session.query(GenomicSetMember).filter(
                 GenomicSetMember.id.in_(member_ids)
@@ -1690,7 +1710,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
 
     def get_bulk_metrics_for_process_update(self, *, member_ids: List[int], pipeline_id: str):
         with self.session() as session:
-            record = session.query(
+            records = session.query(
                 GenomicGCValidationMetrics.id,
                 GenomicGCValidationMetrics.processingCount
             ).filter(
@@ -1698,7 +1718,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                 GenomicGCValidationMetrics.ignoreFlag != 1,
                 GenomicGCValidationMetrics.pipelineId == pipeline_id
             )
-            return record.all()
+            return records.all()
 
     def get_metric_record_counts_from_filepath(self, filepath):
         with self.session() as session:
