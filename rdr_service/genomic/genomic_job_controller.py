@@ -7,6 +7,7 @@ import pytz
 
 from datetime import datetime, timedelta
 
+from cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
@@ -60,6 +61,7 @@ from rdr_service.dao.genomics_dao import (
 )
 from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
+from rdr_service.services.system_utils import list_chunks
 
 
 class GenomicJobController:
@@ -1043,13 +1045,21 @@ class GenomicJobController:
                 continue
 
             batch_ids = [obj.id for obj in record_ids]
-
             logging.info(f'Sending {table_name} {len(batch_ids)} records for rebuild cloud task.')
 
-            self.execute_cloud_task({
-                'table': table_name,
-                'ids': batch_ids,
-            }, 'rebuild_genomic_table_records_task')
+            # Publish PDR data-pipeline pub-sub event in chunks up to 250 records.
+            count = 0
+            for chunk in list_chunks(batch_ids, 250):
+                submit_pipeline_pubsub_msg(table=table_name, action='upsert', pk_columns=['id'], pk_values=chunk)
+                count += 1
+                # TODO: Remove this cloud task code block and the RebuildGenomicTableRecordsApi endpoint when the
+                #       new RDR to PDR pipeline is in place.
+                self.execute_cloud_task({
+                    'table': table_name,
+                    'ids': chunk,
+                }, 'rebuild_genomic_table_records_task')
+
+            logging.info(f'Sent {count} PubSub notifications.')
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 

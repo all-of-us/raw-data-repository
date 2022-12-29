@@ -8,6 +8,7 @@ from sqlalchemy.exc import NoInspectionAvailable
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import app_util
+from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
 from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.base_dao import save_raw_request_record
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
@@ -197,9 +198,14 @@ class BaseApi(Resource, ApiUtilMixin):
             result.healthDataStreamSharingStatusV3_1 = None
             result.healthDataStreamSharingStatusV3_1Time = None
 
+        # Support RDR to PDR pipeline
+        submit_pipeline_pubsub_msg_from_model(result)
+
+        # TODO: Delete this block after RDR to PDR pipeline is in production.
         if participant_id or (result and hasattr(result, 'participantId')):
             if not participant_id:
                 participant_id = getattr(result, 'participantId')
+
             # Rebuild participant for BigQuery
             if GAE_PROJECT == 'localhost':
                 bq_participant_summary_update_task(participant_id)
@@ -384,6 +390,11 @@ class UpdatableApi(BaseApi):
             expected_version = self.parse_etag(etag)
         m = self._get_model_to_update(resource, id_, expected_version, participant_id)
         self._do_update(m)
+
+        # Support RDR to PDR pipeline
+        submit_pipeline_pubsub_msg_from_model(m)
+
+        # TODO: Delete this block after RDR to PDR pipeline is in production.
         if participant_id or (m and hasattr(m, 'participantId')):
             if not participant_id:
                 participant_id = getattr(m, 'participantId')
@@ -419,6 +430,10 @@ class UpdatableApi(BaseApi):
         expected_version = _parse_etag(etag)
         obj = self.dao.update_with_patch(id_, resource, expected_version)
 
+        # Support RDR to PDR pipeline
+        submit_pipeline_pubsub_msg_from_model(obj)
+
+        # TODO: Delete this block after RDR to PDR pipeline is in production.
         # Try to determine if id_ is a participant id
         participant_id = getattr(obj, 'participantId', None)
         if participant_id:
