@@ -382,10 +382,10 @@ api.add_resource(SpecDataGenApi, API_PREFIX + "SpecDataGen", endpoint="specdatag
 api.add_resource(
     NphOrderApi,
     API_PREFIX + '/api/v1/nph/Participant/<string:nph_participant_id>/BiobankOrder',
+    API_PREFIX + '/api/v1/nph/Participant/<string:nph_participant_id>/BiobankOrder/<int:rdr_order_id>',
     endpoint='nph.participant.biobank_order',
-    methods=['POST', 'PUT', 'PATCH']
+    methods=['POST','PUT', 'PATCH']
 )
-
 
 app.add_url_rule(
     API_PREFIX + "PhysicalMeasurements/_history",

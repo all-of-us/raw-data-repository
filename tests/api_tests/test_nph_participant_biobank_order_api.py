@@ -1,3 +1,5 @@
+from types import SimpleNamespace as Namespace
+import json
 # Sample ID = NP124820391
 
 BLOOD_SAMPLE = {
@@ -212,3 +214,6 @@ STOOL_SAMPLE = {
         "finalized": "Test notes 2"
     }
 }
+
+x = json.loads(json.dumps(STOOL_SAMPLE), object_hook=lambda d: Namespace(**d))
+print (x)
