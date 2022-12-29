@@ -7,10 +7,10 @@ import pytz
 
 from datetime import datetime, timedelta
 
-from cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg
 from rdr_service.config import (
     GAE_PROJECT,
     getSetting,
