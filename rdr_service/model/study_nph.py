@@ -241,3 +241,23 @@ class ConsentEvent(NphBase):
 
 event.listen(ConsentEvent, "before_insert", model_insert_listener)
 event.listen(ConsentEvent, "before_update", model_update_listener)
+class SampleUpdate(NphBase):
+    __tablename__ = "sample_update"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    rdr_ordered_sample_id = Column(BigInteger, ForeignKey("ordered_sample.id"))
+
+
+event.listen(SampleUpdate, "before_insert", model_insert_listener)
+
+
+class BiobankFileExport(NphBase):
+    __tablename__ = "biobank_file_export"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    file_name = Column(String(256))
+
+
+event.listen(BiobankFileExport, "before_insert", model_insert_listener)
