@@ -13,8 +13,8 @@ class Participant(NphBase):
     id = Column("id", BigInteger, primary_key=True)
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
-    ignore_flag = Column(TINYINT)
-    disable_flag = Column(TINYINT)
+    ignore_flag = Column(TINYINT, default=0)
+    disable_flag = Column(TINYINT, default=0)
     disable_reason = Column(String(1024))
     biobank_id = Column(BigInteger)
     research_id = Column(BigInteger)
@@ -58,6 +58,7 @@ class Order(NphBase):
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     order_created = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
     category_id = Column(BigInteger, ForeignKey("study_category.id"))
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     created_author = Column(String(128))
@@ -106,7 +107,9 @@ class SampleUpdate(NphBase):
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
     rdr_ordered_sample_id = Column(BigInteger, ForeignKey("ordered_sample.id"))
+    ordered_sample_json = Column(JSON)
 
 
 event.listen(SampleUpdate, "before_insert", model_insert_listener)
@@ -128,5 +131,6 @@ class SampleExport(NphBase):
     __tablename__ = "sample_export"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    ignore_flag = Column(TINYINT, default=0)
     export_id = Column(BigInteger, ForeignKey("biobank_file_export.id"))
     sample_update_id = Column(BigInteger, ForeignKey("sample_update.id"))
