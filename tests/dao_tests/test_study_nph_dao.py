@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from zlib import crc32
 from uuid import uuid4
 from typing import Dict, Any, Tuple
 
@@ -20,7 +21,7 @@ from rdr_service.model.study_nph import (
     Order,
     OrderedSample,
     SampleUpdate,
-    # BiobankFileExport,
+    BiobankFileExport,
     # SampleExport
 )
 from tests.helpers.unittest_base import BaseTestCase
@@ -693,6 +694,33 @@ class NphBiobankFileExportDaoTest(BaseTestCase):
 
     def test_get_before_insert(self):
         self.assertIsNone(self.nph_biobank_file_export_dao.get(1))
+
+    def _create_biobank_file_export(self, biobank_file_export_params: Dict[str, Any]) -> BiobankFileExport:
+        biobank_file_export = BiobankFileExport(**biobank_file_export_params)
+        with FakeClock(TIME):
+            return self.nph_biobank_file_export_dao.insert(biobank_file_export)
+
+    def test_insert_biobank_file_export(self):
+        sample_file_contents = "{\"file\": \"name\"}"
+        crc32c_checksum = crc32(sample_file_contents.encode())
+        biobank_file_export_params = {
+            "file_name": "filename.json",
+            "crc32c_checksum": crc32c_checksum
+        }
+        biobank_file_export = self._create_biobank_file_export(biobank_file_export_params)
+        self.assertIsNotNone(biobank_file_export)
+        expected_biobank_file_export_params = {
+            "id": 1,
+            "created": TIME,
+            "file_name": "filename.json",
+            "crc32c_checksum": crc32c_checksum
+        }
+        self.assertEqual(
+            biobank_file_export.asdict(), expected_biobank_file_export_params
+        )
+
+    def tearDown(self):
+        self.clear_table_after_test("nph.biobank_file_export")
 
 
 class NphSampleExportDaoTest(BaseTestCase):
