@@ -1707,7 +1707,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(summary['questionnaireOnLifeFunctioningAuthored'], '2022-09-06T14:32:28')
         self.assertEqual(summary['questionnaireOnLifeFunctioningTime'], '2022-09-07T01:02:03')
 
-    def test_remote_identity_verified(self):
+    def test_remote_identity_verified_true(self):
         """ Test to see if a remote ID verification True Response saves successfully """
         # Set up user config to have client set to vibrent
         user_info = config.getSettingJson(config.USER_INFO)
@@ -1720,7 +1720,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         authored = datetime.datetime.now()
         self.send_consent(participant.participantId, authored=authored)
         questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
-        resource = self._load_response_json("remote_id_verification_questionnaire_response.json", questionnaire_id,\
+        resource = self._load_response_json("remote_id_verification_questionnaire_response.json",
+                                            questionnaire_id,
                                             participant_id)
         self._save_codes(resource)
         response = self.send_post(_questionnaire_response_url(participant_id), resource)
@@ -1739,7 +1740,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         user_info['example@example.com']['clientId'] = original_user_client_id
         config.override_setting(config.USER_INFO, user_info)
 
-    def test_remote_identity_verified_false_response(self):
+    def test_remote_identity_verified_false(self):
         """ Test to see if a remote ID verification False Response saves successfully """
         # Set up user config to have client set to vibrent
         user_info = config.getSettingJson(config.USER_INFO)
@@ -1753,7 +1754,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.send_consent(participant.participantId, authored=authored)
         # Set up a questionnaire that usually changes participant summary
         questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
-        resource = self._load_response_json("remote_id_verification_questionnaire_false_response.json", questionnaire_id,\
+        resource = self._load_response_json("remote_id_verification_questionnaire_false_response.json",
+                                            questionnaire_id,
                                             participant_id)
         self._save_codes(resource)
         response = self.send_post(_questionnaire_response_url(participant_id), resource)

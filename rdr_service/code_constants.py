@@ -288,4 +288,3 @@ SENSITIVE_EHR_STATES = [
 # Remote ID Verification Question Codes
 REMOTE_ID_VERIFIED_CODE = 'remote_identity_verified'
 REMOTE_ID_VERIFIED_ON_CODE = 'remote_identity_verified_on'
-
