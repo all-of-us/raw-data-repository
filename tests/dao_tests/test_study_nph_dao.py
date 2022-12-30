@@ -13,6 +13,9 @@ from rdr_service.dao.study_nph_dao import (
     NphSiteDao,
     NphOrderDao,
     NphOrderedSampleDao,
+    NphSampleUpdateDao,
+    NphBiobankFileExportDao,
+    NphSampleExportDao
 )
 from rdr_service.clock import FakeClock
 from rdr_service.model.study_nph import (
