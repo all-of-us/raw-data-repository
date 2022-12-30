@@ -1025,3 +1025,32 @@ class NphOrderedSampleDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.site")
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
+
+class NphSampleUpdateDaoTest(BaseTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.nph_sample_update_dao = NphSampleUpdateDao()
+
+    def test_get_before_insert(self):
+        self.assertIsNone(self.nph_sample_update_dao.get(1))
+
+
+class NphBiobankFileExportDaoTest(BaseTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.nph_biobank_file_export_dao = NphBiobankFileExportDao()
+
+    def test_get_before_insert(self):
+        self.assertIsNone(self.nph_biobank_file_export_dao.get(1))
+
+
+class NphSampleExportDaoTest(BaseTestCase):
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.nph_sample_export_dao = NphSampleExportDao()
+
+    def test_get_before_insert(self):
+        self.assertIsNone(self.nph_sample_export_dao.get(1))
