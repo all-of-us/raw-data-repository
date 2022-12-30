@@ -146,7 +146,7 @@ class GenomicQueryClass:
                         sqlalchemy.func.IF(ParticipantSummary.consentForGenomicsROR
                                            == QuestionnaireStatus.SUBMITTED,
                                            sqlalchemy.sql.expression.literal("yes"),
-                                           sqlalchemy.sql.expression.literal("no")),
+                                           sqlalchemy.sql.expression.literal("no"))
                     ]
                 ).select_from(
                     sqlalchemy.join(

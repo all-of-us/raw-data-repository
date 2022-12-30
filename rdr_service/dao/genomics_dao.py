@@ -4064,7 +4064,8 @@ class GenomicQueriesDao(BaseDao):
                     sqlalchemy.sql.expression.literal("False")),
                 GenomicSetMember.blockResearchReason,
                 GenomicGCValidationMetrics.pipelineId,
-                (GenomicGCValidationMetrics.processingCount + 1).label('processingCount')
+                (GenomicGCValidationMetrics.processingCount + 1).label('processingCount'),
+                GenomicSetMember.id.label('genomic_set_member_id')
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
