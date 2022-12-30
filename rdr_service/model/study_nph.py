@@ -246,7 +246,9 @@ class SampleUpdate(NphBase):
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
     rdr_ordered_sample_id = Column(BigInteger, ForeignKey("ordered_sample.id"))
+    ordered_sample_json = Column(JSON)
 
 
 event.listen(SampleUpdate, "before_insert", model_insert_listener)
@@ -268,5 +270,6 @@ class SampleExport(NphBase):
     __tablename__ = "sample_export"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    ignore_flag = Column(TINYINT, default=0)
     export_id = Column(BigInteger, ForeignKey("biobank_file_export.id"))
     sample_update_id = Column(BigInteger, ForeignKey("sample_update.id"))
