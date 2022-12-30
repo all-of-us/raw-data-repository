@@ -1026,6 +1026,3 @@ class WorkbenchResearcherYesNoPreferNot(messages.Enum):
 class RemoteIdVerificationStatus(messages.Enum):
     FALSE = 0
     TRUE = 1
-
-
-

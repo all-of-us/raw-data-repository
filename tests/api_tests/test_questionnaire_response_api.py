@@ -1749,7 +1749,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         config.override_setting(config.USER_INFO, user_info)
         # Set up participant, questionnaire, questionnaire response & send POST request to API
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
-        participant_id = 'P{0}'.format(str(participant.participantId))
+        participant_id = f'P{participant.participantId}'
         authored = datetime.datetime.now()
         self.send_consent(participant.participantId, authored=authored)
         # Set up a questionnaire that usually changes participant summary
