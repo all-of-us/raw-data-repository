@@ -118,6 +118,7 @@ class BiobankFileExport(NphBase):
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
     file_name = Column(String(256))
+    crc32c_checksum = Column(Integer, unique=True)
 
 
 event.listen(BiobankFileExport, "before_insert", model_insert_listener)
