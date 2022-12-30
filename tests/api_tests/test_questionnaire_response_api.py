@@ -1707,7 +1707,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(summary['questionnaireOnLifeFunctioningAuthored'], '2022-09-06T14:32:28')
         self.assertEqual(summary['questionnaireOnLifeFunctioningTime'], '2022-09-07T01:02:03')
 
-    def test_remote_identity_verified_true(self):
+    def test_remote_identity_verified(self):
         """ Test to see if a remote ID verification True Response saves successfully """
         # Set up user config to have client set to vibrent
         user_info = config.getSettingJson(config.USER_INFO)
@@ -1740,7 +1740,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         user_info['example@example.com']['clientId'] = original_user_client_id
         config.override_setting(config.USER_INFO, user_info)
 
-    def test_remote_identity_verified_false(self):
+    def test_remote_identity_not_verified(self):
         """ Test to see if a remote ID verification False Response saves successfully """
         # Set up user config to have client set to vibrent
         user_info = config.getSettingJson(config.USER_INFO)
