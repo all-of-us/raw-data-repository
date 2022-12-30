@@ -1723,7 +1723,13 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         resource = self._load_response_json("remote_id_verification_questionnaire_response.json", questionnaire_id,\
                                             participant_id)
         self._save_codes(resource)
-        self.send_post(_questionnaire_response_url(participant_id), resource)
+        response = self.send_post(_questionnaire_response_url(participant_id), resource)
+        # Check the questionnaire response table to make sure data is accurate
+        response_obj = self.session.query(QuestionnaireResponse).filter(
+            QuestionnaireResponse.questionnaireResponseId == response['id']
+        ).one()
+        self.assertEqual(response_obj.answers[0].valueDecimal, 1)
+        self.assertEqual(response_obj.answers[1].valueDate, datetime.date(2022, 11, 30))
         # Get request from API to assert information is accurate
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'vibrent')
@@ -1742,7 +1748,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         config.override_setting(config.USER_INFO, user_info)
         # Set up participant, questionnaire, questionnaire response & send POST request to API
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
-        participant_id = 'P'+ str(participant.participantId)
+        participant_id = 'P{0}'.format(str(participant.participantId))
         authored = datetime.datetime.now()
         self.send_consent(participant.participantId, authored=authored)
         # Set up a questionnaire that usually changes participant summary
@@ -1750,7 +1756,13 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         resource = self._load_response_json("remote_id_verification_questionnaire_false_response.json", questionnaire_id,\
                                             participant_id)
         self._save_codes(resource)
-        self.send_post(_questionnaire_response_url(participant_id), resource)
+        response = self.send_post(_questionnaire_response_url(participant_id), resource)
+        # Check the questionnaire response table to make sure data is accurate
+        response_obj = self.session.query(QuestionnaireResponse).filter(
+            QuestionnaireResponse.questionnaireResponseId == response['id']
+        ).one()
+        self.assertEqual(response_obj.answers[0].valueDecimal, 0)
+        self.assertEqual(response_obj.answers[1].valueDate, datetime.date(2022, 11, 30))
         # Get request from API to assert information is accurate
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertNotIn('remoteIdVerificationOrigin', summary.keys())
