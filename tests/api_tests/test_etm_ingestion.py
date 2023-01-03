@@ -26,7 +26,7 @@ class EtmIngestionTest(BaseTestCase):
         questionnaire_obj: etm.EtmQuestionnaire = self.session.query(etm.EtmQuestionnaire).filter(
             etm.EtmQuestionnaire.etm_questionnaire_id == response['id']
         ).one()
-        self.assertEqual(questionnaire_json['id'], questionnaire_obj.questionnaire_type)
+        self.assertEqual('emorecog', questionnaire_obj.questionnaire_type)
         self.assertEqual(questionnaire_json['version'], questionnaire_obj.semantic_version)
         self.assertEqual(questionnaire_json['text']['div'], questionnaire_obj.title)
 
