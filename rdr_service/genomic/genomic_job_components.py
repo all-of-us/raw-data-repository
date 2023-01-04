@@ -3887,16 +3887,21 @@ class ManifestCompiler:
         :return: result code
         """
         try:
-            # output_data = source_data
-            # filter data based on excluded columns
-            # if self.manifest_def.exclude_columns:
-            #     for row in source_data:
-            #         updated_row = tuple([x for i, x in enumerate(row) if i <= len(self.manifest_def.columns)])
             # Use SQL exporter
-            exporter = SqlExporter(self.bucket_name)
+            exporter, manifest_data = SqlExporter(self.bucket_name), []
+            # filter data based on excluded columns
+            if len(source_data[0]) > len(self.manifest_def.columns):
+                for row in source_data:
+                    manifest_data.append(
+                        tuple(x for i, x in enumerate(row, start=1) if i <= len(
+                            self.manifest_def.columns))
+                    )
+
+            manifest_data = source_data if not len(manifest_data) else manifest_data
             with exporter.open_cloud_writer(self.output_file_name) as writer:
                 writer.write_header(self.manifest_def.columns)
-                writer.write_rows(source_data)
+                writer.write_rows(manifest_data)
+
             return GenomicSubProcessResult.SUCCESS
 
         except RuntimeError:
