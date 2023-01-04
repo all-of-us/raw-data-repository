@@ -663,14 +663,20 @@ class NphSampleUpdateDaoTest(BaseTestCase):
         ordered_sample = self._create_ordered_sample(ordered_sample_params)
         self.assertIsNotNone(ordered_sample)
 
+        ordered_sample_json = ordered_sample.asdict()
+        ordered_sample_json["collected"] = ordered_sample_json["collected"].strftime(DATETIME_FORMAT)
+        ordered_sample_json["finalized"] = ordered_sample_json["finalized"].strftime(DATETIME_FORMAT)
         sample_update_params = {
-            "rdr_ordered_sample_id": ordered_sample.id
+            "ordered_sample_json": ordered_sample_json,
+            "rdr_ordered_sample_id": ordered_sample.id,
         }
         sample_update = self._create_sample_update(sample_update_params)
         self.assertIsNotNone(sample_update)
         expected_sample_update_params = {
             "id": 1,
             "created": TIME,
+            "ordered_sample_json": ordered_sample_json,
+            "ignore_flag": 0,
             "rdr_ordered_sample_id": ordered_sample.id
         }
         self.assertEqual(
