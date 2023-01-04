@@ -6795,7 +6795,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
 
-        create_ingestion_test_file(
+        test_file = create_ingestion_test_file(
             'RDR_AoU_SEQ_TestDataManifest.csv',
             bucket_name,
             folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
@@ -6804,6 +6804,22 @@ class GenomicPipelineTest(BaseTestCase):
         self._update_test_sample_ids()
         self._create_stored_samples([(3, 1003)])
         self._create_stored_samples([(2, 1002)])
+
+        self.aw2_raw_dao.insert_bulk([{
+            'id': 1,
+            'created': parse('2022-11-01T14:13:12'),
+            'modified': parse('2022-11-01T14:13:12'),
+            'sample_id': 1003,
+            'file_path': test_file
+        },
+        {
+            'id': 2,
+            'created': parse('2022-11-01T14:13:13'),
+            'modified': parse('2022-11-01T14:13:13'),
+            'sample_id': 1002,
+            'file_path': test_file
+        }
+        ])
 
         # Create corresponding array genomic_set_members
         for i in range(1, 4):
@@ -6880,6 +6896,7 @@ class GenomicPipelineTest(BaseTestCase):
         # mock checks
         self.assertEqual(email_mock.call_count, 1)
         self.assertEqual(email_mock.call_args[0][0].recipients, ['email@test.com', 'email2@test.com'])
+        self.assertIn('1003, 2022-11-01 14:13:12, aou_wgs', email_mock.call_args[0][0].plain_text_content)
 
 
 
