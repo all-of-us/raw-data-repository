@@ -26,7 +26,7 @@ class EtmIngestionTest(BaseTestCase):
         questionnaire_obj: etm.EtmQuestionnaire = self.session.query(etm.EtmQuestionnaire).filter(
             etm.EtmQuestionnaire.etm_questionnaire_id == response['id']
         ).one()
-        self.assertEqual(questionnaire_json['id'], questionnaire_obj.questionnaire_type)
+        self.assertEqual('emorecog', questionnaire_obj.questionnaire_type)
         self.assertEqual(questionnaire_json['version'], questionnaire_obj.semantic_version)
         self.assertEqual(questionnaire_json['text']['div'], questionnaire_obj.title)
 
@@ -48,6 +48,15 @@ class EtmIngestionTest(BaseTestCase):
             etm.EtmQuestionnaire.etm_questionnaire_id == second_response['id']
         ).one()
         self.assertEqual(2, second_questionnaire.version)
+
+    def test_questionnaire_api_response(self):
+        """Ensure that the full json sent is returned in the response"""
+        with open(data_path('etm_questionnaire.json')) as file:
+            questionnaire_json = json.load(file)
+        response = self.send_post('Questionnaire', questionnaire_json)
+
+        del response['id']
+        self.assertEqual(questionnaire_json, response)
 
     def test_questionnaire_response_ingestion(self):
         with open(data_path('etm_questionnaire.json')) as file:
@@ -123,6 +132,22 @@ class EtmIngestionTest(BaseTestCase):
             ],
             actual_list=saved_response.extension_list
         )
+
+    def test_questionnaire_response_api_response(self):
+        """Check that the QuestionnaireResponse data is returned by the API"""
+        with open(data_path('etm_questionnaire.json')) as file:
+            questionnaire_json = json.load(file)
+            self.send_post('Questionnaire', questionnaire_json)
+
+        participant_id = self.data_generator.create_database_participant().participantId
+
+        with open(data_path('etm_questionnaire_response.json')) as file:
+            questionnaire_response_json = json.load(file)
+        questionnaire_response_json['subject']['reference'] = f'Patient/P{participant_id}'
+        response = self.send_post(f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json)
+
+        del response['id']
+        self.assertEqual(questionnaire_response_json, response)
 
     def assert_has_extensions(
         self,

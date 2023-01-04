@@ -15,14 +15,24 @@ from rdr_service.services.response_validation.etm_validation import EtmValidatio
 
 
 class EtmApi:
+    MODULE_IDENTIFIER_SYSTEM = 'https://research.joinallofus.org/fhir/module_identifier'
+
     @classmethod
     def post_questionnaire(cls, questionnaire_json):
         fhir_questionnaire = FhirQuestionnaire(questionnaire_json)
 
+        questionnaire_type = None
+        for identifier in fhir_questionnaire.identifier:
+            if identifier.system == cls.MODULE_IDENTIFIER_SYSTEM:
+                module_name = identifier.value.split('_')[0].lower()  # Remove version suffix from module name
+                questionnaire_type = module_name
+        if questionnaire_type is None:
+            raise BadRequest('Unable to identify EtM module')
+
         questionnaire_obj = models.EtmQuestionnaire(
             created=CLOCK.now(),
             modified=CLOCK.now(),
-            questionnaire_type=fhir_questionnaire.id,
+            questionnaire_type=questionnaire_type,
             semantic_version=fhir_questionnaire.version,
             title=fhir_questionnaire.text.div,
             resource_json=questionnaire_json
@@ -32,7 +42,8 @@ class EtmApi:
         repository.store_questionnaire(questionnaire_obj)
 
         return {
-            'id': questionnaire_obj.id
+            'id': questionnaire_obj.id,
+            **questionnaire_json
         }
 
     @classmethod
@@ -53,7 +64,8 @@ class EtmApi:
             response_repository.store_response(response_obj)
 
             return {
-                'id': response_obj.id
+                'id': response_obj.id,
+                **questionnaire_response_json
             }
         else:
             validation_errors = ','.join(validation_result.errors)
