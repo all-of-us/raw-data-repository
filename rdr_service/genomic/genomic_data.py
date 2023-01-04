@@ -146,7 +146,8 @@ class GenomicQueryClass:
                         sqlalchemy.func.IF(ParticipantSummary.consentForGenomicsROR
                                            == QuestionnaireStatus.SUBMITTED,
                                            sqlalchemy.sql.expression.literal("yes"),
-                                           sqlalchemy.sql.expression.literal("no"))
+                                           sqlalchemy.sql.expression.literal("no")),
+                        # GenomicSetMember.id.label('genomic_set_member_id')
                     ]
                 ).select_from(
                     sqlalchemy.join(

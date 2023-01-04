@@ -13,7 +13,6 @@ from collections import deque, namedtuple
 from copy import deepcopy
 from dateutil.parser import parse
 import sqlalchemy
-from werkzeug.exceptions import NotFound
 
 from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
@@ -3340,8 +3339,7 @@ class ManifestDefinitionProvider:
                               "columns",
                               "signal",
                               "query",
-                              "params",
-                              "exclude_columns"])
+                              "params"])
 
     def __init__(
         self,
@@ -3624,8 +3622,7 @@ class ManifestDefinitionProvider:
             columns=self.manifest_columns_config[manifest_type],
             signal=def_config.get('signal'),
             query=def_config.get('query'),
-            params=def_config.get('params'),
-            exclude_columns=['genomic_set_member_id']
+            params=def_config.get('params')
         )
 
 
@@ -3663,7 +3660,7 @@ class ManifestCompiler:
             "record_count": integer
         """
 
-        def extract_member_ids_update(obj_list):
+        def _extract_member_ids_update(obj_list) -> list:
             update_member_ids = [obj.genomic_set_member_id for obj in
                                  obj_list if hasattr(obj, 'genomic_set_member_id')]
             if update_member_ids:
@@ -3702,6 +3699,7 @@ class ManifestCompiler:
             )
             raise RuntimeError
 
+        all_member_ids = []
         if self.max_num and len(source_data) > self.max_num:
             current_list, count = [], 0
 
@@ -3712,8 +3710,8 @@ class ManifestCompiler:
                     self.output_file_name = self.manifest_def.output_filename
                     self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
                     file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
-
-                    member_ids = extract_member_ids_update(current_list)
+                    member_ids = _extract_member_ids_update(current_list)
+                    all_member_ids.extend(member_ids)
 
                     logging.info(
                         f'Preparing manifest of type {manifest_type}...'
@@ -3733,8 +3731,8 @@ class ManifestCompiler:
                 self.output_file_name = self.manifest_def.output_filename
                 self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
                 file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
-
-                member_ids = extract_member_ids_update(current_list)
+                member_ids = _extract_member_ids_update(current_list)
+                all_member_ids.extend(member_ids)
 
                 logging.info(
                     f'Preparing manifest of type {manifest_type}...'
@@ -3763,7 +3761,8 @@ class ManifestCompiler:
                     )
 
             file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
-            member_ids = extract_member_ids_update(source_data)
+            member_ids = _extract_member_ids_update(source_data)
+            all_member_ids.extend(member_ids)
 
             logging.info(
                 f'Preparing manifest of type {manifest_type}...'
@@ -3777,15 +3776,11 @@ class ManifestCompiler:
                 'member_ids': member_ids
             })
 
-        members_run_update = []
-        for row in source_data:
-            sample_id = row.sampleId if hasattr(row, 'sampleId') else row.sample_id
-            member = self.member_dao.get_member_from_sample_id(sample_id, genome_type)
+        cvl_manifest_data = CVLManifestData(manifest_type)
+        members = self.member_dao.get_members_from_member_ids(all_member_ids)
 
-            if not member:
-                raise NotFound(f"Cannot find genomic set member with sample ID {sample_id}")
-
-            # Handle Genomic States for manifests
+        for member in members:
+            # member workflow states
             if self.manifest_def.signal != "bypass":
                 # genomic workflow state
                 new_wf_state = GenomicStateHandler.get_new_state(
@@ -3796,7 +3791,6 @@ class ManifestCompiler:
                     self.member_dao.update_member_workflow_state(member, new_wf_state)
 
             # result workflow state
-            cvl_manifest_data = CVLManifestData(manifest_type)
             if cvl_manifest_data.is_cvl_manifest:
                 self.results_workflow_dao.insert_new_result_record(
                     member_id=member.id,
@@ -3804,12 +3798,10 @@ class ManifestCompiler:
                     state=cvl_manifest_data.result_state
                 )
 
-            members_run_update.append(member.id)
-
         # Updates job run field on set member
         if self.manifest_def.job_run_field:
             self.controller.execute_cloud_task({
-                'member_ids': list(set(members_run_update)),
+                'member_ids': list(set(all_member_ids)),
                 'field': self.manifest_def.job_run_field,
                 'value': self.run_id,
                 'is_job_run': True
@@ -3895,17 +3887,16 @@ class ManifestCompiler:
         :return: result code
         """
         try:
-            output_data = source_data
+            # output_data = source_data
             # filter data based on excluded columns
-            if self.manifest_def.exclude_columns:
-                ## problem here ###
-                output_data = [{k: v for k, v in row._asdict().items() if k not in self.manifest_def.exclude_columns}
-                               for row in source_data]
+            # if self.manifest_def.exclude_columns:
+            #     for row in source_data:
+            #         updated_row = tuple([x for i, x in enumerate(row) if i <= len(self.manifest_def.columns)])
             # Use SQL exporter
             exporter = SqlExporter(self.bucket_name)
             with exporter.open_cloud_writer(self.output_file_name) as writer:
-                writer.write_header(self. manifest_def.columns)
-                writer.write_rows(output_data)
+                writer.write_header(self.manifest_def.columns)
+                writer.write_rows(source_data)
             return GenomicSubProcessResult.SUCCESS
 
         except RuntimeError:
