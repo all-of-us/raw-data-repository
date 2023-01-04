@@ -939,13 +939,13 @@ class QuestionnaireResponseDao(BaseDao):
 
         dna_program_consent_update_code = config.getSettingJson(config.DNA_PROGRAM_CONSENT_UPDATE_CODE, None)
 
-        if 'verified' in remote_id_info.keys() and 'verified_on' in remote_id_info.keys():
+        if 'verified' in remote_id_info and 'verified_on' in remote_id_info:
             if remote_id_info['verified'] == 1:
                 # is the participant origin always going to be the same? if not, where can I pull this from
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
                 participant_summary.remoteIdVerificationStatus = RemoteIdVerificationStatus.TRUE
                 participant_summary.remoteIdVerifiedOn = remote_id_info['verified_on']
-        elif 'verified' in remote_id_info.keys():
+        elif 'verified' in remote_id_info:
             if remote_id_info['verified'] == 0:
                 participant_summary.remoteIdVerificationOrigin = ''
                 participant_summary.remoteIdVerificationStatus = RemoteIdVerificationStatus.FALSE
