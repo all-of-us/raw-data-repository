@@ -514,6 +514,7 @@ def genomic_aw2f_remainder_workflow():
     genomic_pipeline.send_remainder_contamination_manifests()
     return '{"success": "true"}'
 
+
 @app_util.auth_required_cron
 @run_genomic_cron_job('a1_manifest_workflow')
 def genomic_gem_a1_workflow():
