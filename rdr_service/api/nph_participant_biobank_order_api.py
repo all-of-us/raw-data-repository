@@ -22,13 +22,11 @@ class NphOrderApi(UpdatableApi):
         super(NphOrderApi, self).__init__(NphOrderDao())
 
     def put(self, nph_participant_id, rdr_order_id):
-        if rdr_order_id and nph_participant_id:
+        with database_factory.get_database().session() as session:
+            print (nph_participant_id)
             self.dao.set_order_cls(request.get_data())
-            order = self.dao.order_cls
-            order.subject = nph_participant_id
-            return construct_response(order)
-        else:
-            return
+            self.dao.compare(rdr_order_id, session)
+
 
     def update_with_patch(self, id_, resource, expected_version):
         pass

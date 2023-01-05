@@ -2,6 +2,7 @@ from sqlalchemy import (
     Column, Integer, BigInteger, String, ForeignKey, Index, event
 )
 from sqlalchemy.dialects.mysql import TINYINT, JSON
+from sqlalchemy.orm import relation
 
 from rdr_service.model.base import NphBase, model_insert_listener, model_update_listener
 from rdr_service.model.utils import UTCDateTime
@@ -32,6 +33,9 @@ class StudyCategory(NphBase):
     name = Column(String(128))
     type_label = Column(String(128))
     parent_id = Column(BigInteger, ForeignKey("study_category.id"))
+    parent = relation("study_category", remote_side=[id])
+    children = relation("study_category", remote_side=[parent_id], uselist=True)
+
 
 event.listen(StudyCategory, "before_insert", model_insert_listener)
 
@@ -99,6 +103,8 @@ class OrderedSample(NphBase):
     volume = Column(String(128))
     status = Column(String(128))
     supplemental_fields = Column(JSON, nullable=True)
+    parent = relation("ordered_sample", remote_side=[id])
+    children = relation("ordered_sample", remote_side=[parent_sample_id], uselist=True)
 
 
 class SampleUpdate(NphBase):
