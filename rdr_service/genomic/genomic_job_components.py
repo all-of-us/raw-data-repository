@@ -7,12 +7,12 @@ import csv
 import json
 import logging
 import re
+
 import pytz
 from collections import deque, namedtuple
 from copy import deepcopy
 from dateutil.parser import parse
 import sqlalchemy
-from werkzeug.exceptions import NotFound
 
 from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
@@ -3659,6 +3659,17 @@ class ManifestCompiler:
             "feedback_file": None or feedback file record to update,
             "record_count": integer
         """
+
+        def _extract_member_ids_update(obj_list) -> list:
+            update_member_ids = [obj.genomic_set_member_id for obj in
+                                 obj_list if hasattr(obj, 'genomic_set_member_id')]
+            if update_member_ids:
+                return update_member_ids
+
+            sample_ids = [obj.sampleId if hasattr(obj, 'sampleId') else obj.sample_id for obj in obj_list]
+            update_member_ids = self.member_dao.get_member_ids_from_sample_ids(sample_ids, genome_type)
+            return [update_member_id.id for update_member_id in update_member_ids]
+
         self.def_provider = ManifestDefinitionProvider(
             job_run_id=self.run_id,
             bucket_name=self.bucket_name,
@@ -3688,6 +3699,7 @@ class ManifestCompiler:
             )
             raise RuntimeError
 
+        all_member_ids = []
         if self.max_num and len(source_data) > self.max_num:
             current_list, count = [], 0
 
@@ -3698,9 +3710,8 @@ class ManifestCompiler:
                     self.output_file_name = self.manifest_def.output_filename
                     self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
                     file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
-
-                    sample_ids = [obj.sampleId if hasattr(obj, 'sampleId') else obj.sample_id for obj in current_list]
-                    member_ids = self.member_dao.get_member_ids_from_sample_ids(sample_ids, genome_type)
+                    member_ids = _extract_member_ids_update(current_list)
+                    all_member_ids.extend(member_ids)
 
                     logging.info(
                         f'Preparing manifest of type {manifest_type}...'
@@ -3711,7 +3722,7 @@ class ManifestCompiler:
                     self.controller.manifests_generated.append({
                         'file_path': file_path,
                         'record_count': len(current_list),
-                        'member_ids': [member.id for member in member_ids]
+                        'member_ids': member_ids
                     })
                     current_list.clear()
 
@@ -3720,9 +3731,8 @@ class ManifestCompiler:
                 self.output_file_name = self.manifest_def.output_filename
                 self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
                 file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
-
-                sample_ids = [obj.sampleId if hasattr(obj, 'sampleId') else obj.sample_id for obj in current_list]
-                member_ids = self.member_dao.get_member_ids_from_sample_ids(sample_ids, genome_type)
+                member_ids = _extract_member_ids_update(current_list)
+                all_member_ids.extend(member_ids)
 
                 logging.info(
                     f'Preparing manifest of type {manifest_type}...'
@@ -3733,7 +3743,7 @@ class ManifestCompiler:
                 self.controller.manifests_generated.append({
                     'file_path': file_path,
                     'record_count': len(current_list),
-                    'member_ids': [member.id for member in member_ids]
+                    'member_ids': member_ids
                 })
 
         else:
@@ -3751,8 +3761,8 @@ class ManifestCompiler:
                     )
 
             file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
-            sample_ids = [obj.sampleId if hasattr(obj, 'sampleId') else obj.sample_id for obj in source_data]
-            member_ids = self.member_dao.get_member_ids_from_sample_ids(sample_ids, genome_type)
+            member_ids = _extract_member_ids_update(source_data)
+            all_member_ids.extend(member_ids)
 
             logging.info(
                 f'Preparing manifest of type {manifest_type}...'
@@ -3763,18 +3773,14 @@ class ManifestCompiler:
             self.controller.manifests_generated.append({
                 'file_path': file_path,
                 'record_count': len(source_data),
-                'member_ids': [member.id for member in member_ids]
+                'member_ids': member_ids
             })
 
-        members_run_update = []
-        for row in source_data:
-            sample_id = row.sampleId if hasattr(row, 'sampleId') else row.sample_id
-            member = self.member_dao.get_member_from_sample_id(sample_id, genome_type)
+        cvl_manifest_data = CVLManifestData(manifest_type)
+        members = self.member_dao.get_members_from_member_ids(all_member_ids)
 
-            if not member:
-                raise NotFound(f"Cannot find genomic set member with sample ID {sample_id}")
-
-            # Handle Genomic States for manifests
+        for member in members:
+            # member workflow states
             if self.manifest_def.signal != "bypass":
                 # genomic workflow state
                 new_wf_state = GenomicStateHandler.get_new_state(
@@ -3785,7 +3791,6 @@ class ManifestCompiler:
                     self.member_dao.update_member_workflow_state(member, new_wf_state)
 
             # result workflow state
-            cvl_manifest_data = CVLManifestData(manifest_type)
             if cvl_manifest_data.is_cvl_manifest:
                 self.results_workflow_dao.insert_new_result_record(
                     member_id=member.id,
@@ -3793,12 +3798,10 @@ class ManifestCompiler:
                     state=cvl_manifest_data.result_state
                 )
 
-            members_run_update.append(member.id)
-
         # Updates job run field on set member
         if self.manifest_def.job_run_field:
             self.controller.execute_cloud_task({
-                'member_ids': list(set(members_run_update)),
+                'member_ids': list(set(all_member_ids)),
                 'field': self.manifest_def.job_run_field,
                 'value': self.run_id,
                 'is_job_run': True
@@ -3885,11 +3888,22 @@ class ManifestCompiler:
         """
         try:
             # Use SQL exporter
-            exporter = SqlExporter(self.bucket_name)
+            exporter, manifest_data = SqlExporter(self.bucket_name), []
+            # filter data based on excluded columns
+            if len(source_data[0]) > len(self.manifest_def.columns):
+                for row in source_data:
+                    manifest_data.append(
+                        tuple(x for i, x in enumerate(row, start=1) if i <= len(
+                            self.manifest_def.columns))
+                    )
+
+            manifest_data = source_data if not len(manifest_data) else manifest_data
             with exporter.open_cloud_writer(self.output_file_name) as writer:
                 writer.write_header(self.manifest_def.columns)
-                writer.write_rows(source_data)
+                writer.write_rows(manifest_data)
+
             return GenomicSubProcessResult.SUCCESS
+
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
