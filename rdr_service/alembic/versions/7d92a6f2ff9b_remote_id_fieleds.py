@@ -8,7 +8,6 @@ Create Date: 2022-12-29 10:00:35.212417
 from alembic import op
 import sqlalchemy as sa
 import rdr_service.model.utils
-from rdr_service.participant_enums import RemoteIdVerificationStatus
 
 
 from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
@@ -40,9 +39,11 @@ def upgrade_rdr():
     op.add_column('participant_summary',
                   sa.Column('remote_id_verification_origin', sa.String(length=80), nullable=True))
     op.add_column('participant_summary', sa.Column('remote_id_verification_status',
-                                                   rdr_service.model.utils.Enum(RemoteIdVerificationStatus),
+                                                   sa.Boolean(),
                                                    nullable=True))
-    op.add_column('participant_summary', sa.Column('remote_id_verified_on', sa.Date(), nullable=True))
+    op.add_column('participant_summary', sa.Column('remote_id_verified_on',
+                                                   rdr_service.model.utils.UTCDateTime(),
+                                                   nullable=True))
     # ### end Alembic commands ###
 
 

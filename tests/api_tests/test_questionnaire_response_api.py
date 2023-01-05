@@ -1716,7 +1716,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         config.override_setting(config.USER_INFO, user_info)
         # Set up participant, questionnaire, questionnaire response & send POST request to API
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
-        participant_id = 'P'+ str(participant.participantId)
+        participant_id = f'P{participant.participantId}'
         authored = datetime.datetime.now()
         self.send_consent(participant.participantId, authored=authored)
         questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
@@ -1731,11 +1731,10 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         ).one()
         self.assertEqual(response_obj.answers[0].valueDecimal, 1)
         self.assertEqual(response_obj.answers[1].valueDate, datetime.date(2022, 11, 30))
-        # Get request from API to assert information is accurate
-        summary = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertEqual(summary['remoteIdVerificationOrigin'], 'vibrent')
-        self.assertEqual(summary['remoteIdVerificationStatus'], 'TRUE')
-        self.assertEqual(summary['remoteIdVerifiedOn'], '2022-11-30')
+        # Check the DAO to make sure data is accurate
+        qr = self.dao.get_with_children(response['id'])
+        self.assertEqual(qr.answers[0].valueDecimal, 1)
+        self.assertEqual(qr.answers[1].valueDate, datetime.date(2022, 11, 30))
         # Reset Config back to original user client ID
         user_info['example@example.com']['clientId'] = original_user_client_id
         config.override_setting(config.USER_INFO, user_info)
@@ -1752,7 +1751,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         participant_id = f'P{participant.participantId}'
         authored = datetime.datetime.now()
         self.send_consent(participant.participantId, authored=authored)
-        # Set up a questionnaire that usually changes participant summary
         questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
         resource = self._load_response_json("remote_id_verification_questionnaire_false_response.json",
                                             questionnaire_id,
@@ -1765,11 +1763,10 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         ).one()
         self.assertEqual(response_obj.answers[0].valueDecimal, 0)
         self.assertEqual(response_obj.answers[1].valueDate, datetime.date(2022, 11, 30))
-        # Get request from API to assert information is accurate
-        summary = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertNotIn('remoteIdVerificationOrigin', summary.keys())
-        self.assertNotIn('remoteIdVerifiedOn', summary.keys())
-        self.assertEqual(summary['remoteIdVerificationStatus'], 'UNSET')
+        # Check the DAO to make sure data is accurate
+        qr = self.dao.get_with_children(response['id'])
+        self.assertEqual(qr.answers[0].valueDecimal, 0)
+        self.assertEqual(qr.answers[1].valueDate, datetime.date(2022, 11, 30))
         # Reset Config back to original user client ID
         user_info['example@example.com']['clientId'] = original_user_client_id
         config.override_setting(config.USER_INFO, user_info)

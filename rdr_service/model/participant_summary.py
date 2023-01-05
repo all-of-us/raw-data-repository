@@ -46,8 +46,7 @@ from rdr_service.participant_enums import (
     RetentionType,
     SelfReportedPhysicalMeasurementsStatus,
     OnSiteVerificationType,
-    OnSiteVerificationVisitType,
-    RemoteIdVerificationStatus
+    OnSiteVerificationVisitType
 )
 
 
@@ -1563,12 +1562,12 @@ class ParticipantSummary(Base):
 
     remoteIdVerificationStatus = Column(
         "remote_id_verification_status",
-        Enum(RemoteIdVerificationStatus),
-        default=RemoteIdVerificationStatus.FALSE
+        Boolean,
+        default=0
     )
     """ A true or false value that indicates whether the ID Verification is Remote  """
 
-    remoteIdVerifiedOn = Column("remote_id_verified_on", Date)
+    remoteIdVerifiedOn = Column("remote_id_verified_on", UTCDateTime)
     """ Date of the most recent remote id verification """
 
     aian = Column(Boolean, default=0)
