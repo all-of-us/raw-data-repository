@@ -1080,7 +1080,8 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 BiobankOrder,
                 BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId
             ).filter(
-                GenomicSetMember.id == informing_loop_ready.c.id
+                GenomicSetMember.id == informing_loop_ready.c.id,
+                BiobankOrder.ignoreFlag != 1
             ).order_by(
                 BiobankOrder.finalizedTime
             )
