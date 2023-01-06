@@ -33,8 +33,8 @@ class StudyCategory(NphBase):
     name = Column(String(128))
     type_label = Column(String(128))
     parent_id = Column(BigInteger, ForeignKey("study_category.id"))
-    parent = relation("study_category", remote_side=[id])
-    children = relation("study_category", remote_side=[parent_id], uselist=True)
+    parent = relation("StudyCategory", remote_side=[id])
+    children = relation("StudyCategory", remote_side=[parent_id], uselist=True)
 
 
 event.listen(StudyCategory, "before_insert", model_insert_listener)
@@ -100,12 +100,13 @@ class OrderedSample(NphBase):
     collected = Column(UTCDateTime)
     finalized = Column(UTCDateTime)
     aliquot_id = Column(String(128))
+    identifier = Column(String(128))
     container = Column(String(128))
     volume = Column(String(128))
     status = Column(String(128))
     supplemental_fields = Column(JSON, nullable=True)
-    parent = relation("ordered_sample", remote_side=[id])
-    children = relation("ordered_sample", remote_side=[parent_sample_id], uselist=True)
+    parent = relation("OrderedSample", remote_side=[id])
+    children = relation("OrderedSample", remote_side=[parent_sample_id], uselist=True)
 
 
 class SampleUpdate(NphBase):
