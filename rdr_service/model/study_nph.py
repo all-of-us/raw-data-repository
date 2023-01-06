@@ -251,6 +251,7 @@ class SampleUpdate(NphBase):
     ordered_sample_json = Column(JSON)
 
 
+
 event.listen(SampleUpdate, "before_insert", model_insert_listener)
 
 
