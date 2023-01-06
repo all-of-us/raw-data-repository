@@ -1,14 +1,14 @@
 from protorpc import messages
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List, Any
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 import json
 from types import SimpleNamespace as Namespace
 from sqlalchemy.orm import Query, aliased
 
-from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.model.study_nph import (
-    Participant, StudyCategory, Site, Order, OrderedSample, SampleUpdate, BiobankFileExport, SampleExport
+    StudyCategory, Participant, Site, Order, OrderedSample, SampleUpdate, BiobankFileExport, SampleExport
 )
+from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 
 
 class OrderStatus(messages.Enum):
@@ -31,6 +31,26 @@ class NphParticipantDao(BaseDao):
             return result.id
         else:
             raise NotFound(f"Participant ID not found : {participant_id}")
+
+    def get_participant(self, nph_participant_id: str, session) -> Participant:
+        participant_id = self.convert_id(nph_participant_id)
+        query = Query(Participant)
+        query.session = session
+        result = query.filter(Participant.id == participant_id).first()
+        if result:
+            return result
+        else:
+            raise NotFound(f"Participant not found : {participant_id}")
+
+    def check_participant_exist(self, nph_participant_id: str, session) -> bool:
+        participant_id = self.convert_id(nph_participant_id)
+        query = Query(Participant)
+        query.session = session
+        result = query.filter(Participant.id == participant_id).first()
+        if result:
+            return True
+        else:
+            raise False
 
     @staticmethod
     def convert_id(nph_participant_id: str) -> int:
@@ -65,7 +85,7 @@ class NphStudyCategoryDao(UpdatableDao):
             return True, result.id
 
     @staticmethod
-    def _get_study_category_sample(category_id, session) -> Tuple[StudyCategory, StudyCategory, StudyCategory]:
+    def get_study_category_sample(category_id, session) -> Tuple[StudyCategory, StudyCategory, StudyCategory]:
         # Fetching study category values from the db table
         query = Query(StudyCategory)
         query.session = session
@@ -109,10 +129,21 @@ class NphSiteDao(BaseDao):
         query = Query(Site)
         query.session = session
         result = query.filter(Site.name == site_name).first()
+        if result is None:
+            raise NotFound(f"Site is not found -- {site_name}")
         return result.id
 
     def get_id(self, session, site_name: str) -> int:
         return self._fetch_site_id(session, site_name)
+
+    @staticmethod
+    def site_exist(session, site_name:str) -> bool:
+        query = Query(Site)
+        query.session = session
+        result = query.filter(Site.name == site_name).first()
+        if result is None:
+            raise False
+        return True
 
     def from_client_json(self):
         pass
@@ -130,14 +161,75 @@ class NphOrderDao(UpdatableDao):
     def get_id(self, obj: Order):
         return obj.id
 
-    def compare(self, order_id: int, session):
-        pass
+    def validate(self, order_id: int, nph_participant_id: str, session):
+        participant_exist = self.participant_dao.check_participant_exist(nph_participant_id, session)
+        order_exist, order = self.check_order_exist(order_id, session)
+        create_site_exist = self.site_dao.site_exist(session, self.order_cls.createdInfo.site.value)
+        collected_site_exist = self.site_dao.site_exist(session, self.order_cls.collectedInfo.site.value)
+        finalized_site_exist = self.site_dao.site_exist(session, self.order_cls.finalizedInfo.site.value)
+        if participant_exist is not True:
+            raise BadRequest(f"Participant ID does not exist: {nph_participant_id}")
+        if order_exist is not True:
+            raise BadRequest(f"Order ID does not exist: {order_id}")
+        if create_site_exist is not True:
+            raise BadRequest(f"Created Site does not exist: {self.order_cls.createdInfo.site.value}")
+        if collected_site_exist is not True:
+            raise BadRequest(f"Collected Site does not exist: {self.order_cls.collectedInfo.site.value}")
+        if finalized_site_exist is not True:
+            raise BadRequest(f"Finalized Site does not exist: {self.order_cls.finalizedInfo.site.value}")
+
+        time_point_record, visit_type_record, module_record = self.study_category_dao\
+            .get_study_category_sample(order.category_id, session)
+        payload = self.order_cls
+
+        if payload.module != module_record.name:
+            raise BadRequest(f"Module does not exist: {payload.module}")
+        if payload.visitType != visit_type_record.name:
+            raise BadRequest(f"VisitType does not match the corresponding module: {payload.visitType}")
+        if payload.timepoint != time_point_record.name:
+            raise BadRequest(f"TimePoint does not match the corresponding visitType: {payload.timepoint}")
+
+    def patch_update(self, order: Namespace, rdr_order_id: int, nph_participant_id: str, session):
+        if order.status.upper() == "RESTORED":
+            site_name = order.restoredInfo.site.value
+            amended_author = order.restoredInfo.author.value
+        elif order.status.upper() == "CANCELED":
+            site_name = order.cancelledInfo.site.value
+            amended_author = order.cancelledInfo.author.value
+        else:
+            raise BadRequest(f"Invalid status value: {order.status}")
+        site_id = self.site_dao.get_id(session, site_name)
+        amended_reason = order.amendedReason
+        db_order = Order(rdr_order_id)
+        if db_order.participant_id == self.participant_dao.convert_id(nph_participant_id):
+            db_order.amended_author = amended_author
+            db_order.amended_site = site_id
+            db_order.amended_reason = amended_reason
+            db_order.status = order.status
+            db_order.commit()
+        else:
+            raise BadRequest("Participant ID does not match the corresponding Order ID.")
+
 
     @staticmethod
     def _get_order(order_id: int, session) -> Order:
         query = Query(Order)
         query.session = session
-        return query.filter(Order.id == order_id).first()
+        result = query.filter(Order.id == order_id).first()
+        if result:
+            return result
+        else:
+            raise NotFound(f"Order Id does not exist -- {order_id}.")
+
+    @staticmethod
+    def check_order_exist(order_id: int, session) -> Tuple[bool, Any]:
+        query = Query(Order)
+        query.session = session
+        result = query.filter(Order.id == order_id).first()
+        if result:
+            return True, result
+        else:
+            return False, None
 
     def get_study_category_id(self, session):
         return self.study_category_dao.get_id(session, self.order_cls)
@@ -183,16 +275,17 @@ class NphOrderDao(UpdatableDao):
     def insert_study_category_with_session(self, order: Namespace, session):
         return self.study_category_dao.insert_with_session(order, session)
 
-    def insert_with_session(self, order: Namespace, time_order_id: int, nph_participant_id: int, session):
+    def insert_ordered_sample_dao_with_session(self, order: Namespace, order_id: int, session):
+        return self.order_sample_dao.insert_with_session(order, order_id, session)
+
+    def insert_with_session(self, time_order_id: int, nph_participant_id: int, session):
        # Adding record(s) to nph.order table
 
         o = self.from_client_json(session, nph_participant_id, time_order_id)
         session.add(o)
         session.commit()
         session.refresh(o)
-        order_id = o.id
-        self.order_sample_dao.insert_with_session(order, order_id, session)
-        order.id = order_id
+        return o.id
 
     def insert(self, session, order: Order):
         session.add(order)
@@ -206,19 +299,34 @@ class NphOrderedSampleDao(UpdatableDao):
     def get_id(self, obj: OrderedSample):
         return obj.id
 
+    def get_order(self, order_id: int, session) -> Tuple[OrderedSample, List[OrderedSample]]:
+        try:
+            parent_order = self._get_parent_order_sample(order_id, session)
+            child_order = self._get_child_order_sample(parent_order.id, session)
+            return parent_order, child_order
+        except Exception as ex:
+            raise ex
+
+
     @staticmethod
     def _get_parent_order_sample(order_id, session) -> OrderedSample:
         query = Query(OrderedSample)
         query.session = session
         result = query.filter(OrderedSample.id == order_id).first()
-        return result
+        if result:
+            return result
+        else:
+            raise NotFound(f"Order sample not found")
 
     @staticmethod
-    def _get_child_order_sample(order_id, session) -> OrderedSample:
+    def _get_child_order_sample(order_id, session) -> List[OrderedSample]:
         query = Query(OrderedSample)
         query.session = session
         result = query.filter(OrderedSample.parent_sample_id == order_id).all()
-        return result
+        if result:
+            return result
+        else:
+            raise NotFound(f"Order sample not found")
 
     def from_client_json(self, obj: Namespace, order_id: int, nph_sample_id: str) -> OrderedSample:
         return OrderedSample(nph_sample_id=nph_sample_id,
@@ -235,6 +343,8 @@ class NphOrderedSampleDao(UpdatableDao):
         return OrderedSample(nph_sample_id=nph_sample_id,
                              order_id=order_id,
                              aliquot_id=aliquot.id,
+                             identifier=aliquot.identifier,
+                             collected=aliquot.collected,
                              container=aliquot.container,
                              volume=aliquot.volume
                              )
@@ -301,3 +411,4 @@ def fetch_identifier_value(obj: Namespace, identifier: str) -> str:
     for each in obj.identifier:
         if each.system == f"http://www.pmi-ops.org/{identifier}":
             return each.value
+

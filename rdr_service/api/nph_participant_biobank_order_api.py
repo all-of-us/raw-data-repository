@@ -18,18 +18,20 @@ def construct_response(order):
 
 
 class NphOrderApi(UpdatableApi):
+
     def __init__(self):
         super(NphOrderApi, self).__init__(NphOrderDao())
 
-    def put(self, nph_participant_id, rdr_order_id):
-        with database_factory.get_database().session() as session:
-            print (nph_participant_id)
-            self.dao.set_order_cls(request.get_data())
-            self.dao.compare(rdr_order_id, session)
-
-
     def update_with_patch(self, id_, resource, expected_version):
         pass
+
+    def put(self, nph_participant_id, rdr_order_id):
+        with database_factory.get_database().session() as session:
+            self.dao.set_order_cls(request.get_data())
+            self.dao.validate(rdr_order_id, nph_participant_id, session)
+            db_parent_order_sample, db_child_order_sample = self.dao.order_sample_dao\
+                .get_order(rdr_order_id, session)
+            print(db_parent_order_sample, db_child_order_sample)
 
     def post(self, nph_participant_id: str):
         with database_factory.get_database().session() as session:
@@ -40,11 +42,15 @@ class NphOrderApi(UpdatableApi):
                 logging.warning(f'Inserting new order to study_category table: module = {order.module}, '
                                 f'visitType: {order.visitType}, timePoint: {order.timepoint}')
                 time_point_id = self.dao.insert_study_category_with_session(order, session)
-            self.dao.insert_with_session(order, time_point_id, nph_participant_id, session)
+            order_id = self.dao.insert_with_session(time_point_id, nph_participant_id, session)
+            self.dao.insert_ordered_sample_dao_with_session(order, order_id, session)
+            order.id = order_id
             return construct_response(order), 201
 
     def patch(self, nph_participant_id, rdr_order_id):
         if rdr_order_id and nph_participant_id:
-            self.dao.set_order_cls(request.get_data())
-            order = self.dao.order_cls
-            print(order)
+            with database_factory.get_database().session() as session:
+                self.dao.set_order_cls(request.get_data())
+                order = self.dao.order_cls
+                self.dao.patch_update(order, rdr_order_id, nph_participant_id, session)
+                return construct_response(order), 200
