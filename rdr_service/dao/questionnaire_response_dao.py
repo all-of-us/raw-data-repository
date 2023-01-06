@@ -940,7 +940,6 @@ class QuestionnaireResponseDao(BaseDao):
 
         if 'verified' in remote_id_info and 'verified_on' in remote_id_info:
             if remote_id_info['verified'] == 1:
-                # is the participant origin always going to be the same? if not, where can I pull this from
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
                 participant_summary.remoteIdVerificationStatus = 1
                 participant_summary.remoteIdVerifiedOn = remote_id_info['verified_on']

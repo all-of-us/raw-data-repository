@@ -1751,9 +1751,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(response_obj.answers[0].valueDecimal, 0)
         self.assertEqual(response_obj.answers[1].valueDate, datetime.date(2022, 11, 30))
         # Check the DAO to make sure data is accurate
-        qr = self.dao.get_with_children(response['id'])
-        self.assertEqual(qr.answers[0].valueDecimal, 0)
-        self.assertEqual(qr.answers[1].valueDate, datetime.date(2022, 11, 30))
+        qr_response = self.dao.get_with_children(response['id'])
+        self.assertEqual(qr_response.answers[0].valueDecimal, 0)
+        self.assertEqual(qr_response.answers[1].valueDate, datetime.date(2022, 11, 30))
 
     def test_etm_consent(self):
         with FakeClock(TIME_1):

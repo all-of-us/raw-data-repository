@@ -1442,7 +1442,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
             enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2),
             healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
-            aian=0
+            aian=False
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
