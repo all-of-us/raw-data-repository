@@ -4462,5 +4462,5 @@ class ParticipantSummaryApiTest(BaseTestCase):
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertNotIn('remoteIdVerificationOrigin', summary)
         self.assertNotIn('remoteIdVerifiedOn', summary)
-        self.assertEqual(summary['remoteIdVerificationStatus'], False)
+        self.assertNotIn('remoteIdVerificationStatus', summary)
 
