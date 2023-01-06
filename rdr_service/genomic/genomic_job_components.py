@@ -3699,6 +3699,9 @@ class ManifestCompiler:
                     self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
                     file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
 
+                    sample_ids = [obj.sampleId if hasattr(obj, 'sampleId') else obj.sample_id for obj in current_list]
+                    member_ids = self.member_dao.get_member_ids_from_sample_ids(sample_ids, genome_type)
+
                     logging.info(
                         f'Preparing manifest of type {manifest_type}...'
                         f'{file_path}'
@@ -3707,7 +3710,8 @@ class ManifestCompiler:
                     self._write_and_upload_manifest(current_list)
                     self.controller.manifests_generated.append({
                         'file_path': file_path,
-                        'record_count': len(current_list)
+                        'record_count': len(current_list),
+                        'member_ids': [member.id for member in member_ids]
                     })
                     current_list.clear()
 
@@ -3717,6 +3721,9 @@ class ManifestCompiler:
                 self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
                 file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
 
+                sample_ids = [obj.sampleId if hasattr(obj, 'sampleId') else obj.sample_id for obj in current_list]
+                member_ids = self.member_dao.get_member_ids_from_sample_ids(sample_ids, genome_type)
+
                 logging.info(
                     f'Preparing manifest of type {manifest_type}...'
                     f'{file_path}'
@@ -3725,7 +3732,8 @@ class ManifestCompiler:
                 self._write_and_upload_manifest(current_list)
                 self.controller.manifests_generated.append({
                     'file_path': file_path,
-                    'record_count': len(current_list)
+                    'record_count': len(current_list),
+                    'member_ids': [member.id for member in member_ids]
                 })
 
         else:
@@ -3743,6 +3751,8 @@ class ManifestCompiler:
                     )
 
             file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+            sample_ids = [obj.sampleId if hasattr(obj, 'sampleId') else obj.sample_id for obj in source_data]
+            member_ids = self.member_dao.get_member_ids_from_sample_ids(sample_ids, genome_type)
 
             logging.info(
                 f'Preparing manifest of type {manifest_type}...'
@@ -3752,18 +3762,17 @@ class ManifestCompiler:
             self._write_and_upload_manifest(source_data)
             self.controller.manifests_generated.append({
                 'file_path': file_path,
-                'record_count': len(source_data)
+                'record_count': len(source_data),
+                'member_ids': [member.id for member in member_ids]
             })
 
+        members_run_update = []
         for row in source_data:
             sample_id = row.sampleId if hasattr(row, 'sampleId') else row.sample_id
             member = self.member_dao.get_member_from_sample_id(sample_id, genome_type)
 
             if not member:
                 raise NotFound(f"Cannot find genomic set member with sample ID {sample_id}")
-
-            if self.manifest_def.job_run_field:
-                self.controller.member_ids_for_update.append(member.id)
 
             # Handle Genomic States for manifests
             if self.manifest_def.signal != "bypass":
@@ -3784,10 +3793,12 @@ class ManifestCompiler:
                     state=cvl_manifest_data.result_state
                 )
 
+            members_run_update.append(member.id)
+
         # Updates job run field on set member
-        if self.controller.member_ids_for_update:
+        if self.manifest_def.job_run_field:
             self.controller.execute_cloud_task({
-                'member_ids': list(set(self.controller.member_ids_for_update)),
+                'member_ids': list(set(members_run_update)),
                 'field': self.manifest_def.job_run_field,
                 'value': self.run_id,
                 'is_job_run': True
