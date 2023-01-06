@@ -78,7 +78,7 @@ def load_measurement_json_amendment(participant_id, amended_id, now=None):
     return measurement
 
 
-def load_questionnaire_response_json(template_file_name, questionnaire_id, participant_id_str):
+def load_qr_response_json(template_file_name, questionnaire_id, participant_id_str):
     with open(data_path(template_file_name)) as fd:
         resource = json.load(fd)
 

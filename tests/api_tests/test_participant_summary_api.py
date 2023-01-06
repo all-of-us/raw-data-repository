@@ -34,7 +34,7 @@ from rdr_service.participant_enums import (
     ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType,
     TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus)
 from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id,\
-    load_questionnaire_response_json
+    load_qr_response_json
 from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -4362,8 +4362,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(participant_summary["clinicPhysicalMeasurementsCreatedSite"],
                          participant_summary["physicalMeasurementsCreatedSite"])
 
-        resource = load_questionnaire_response_json("remote_pm_response_metric.json", remote_pm_questionnaire_id,
-                                                    participant_id)
+        resource = load_qr_response_json("remote_pm_response_metric.json", remote_pm_questionnaire_id,
+                                         participant_id)
         remote_pm_path = "Participant/%s/QuestionnaireResponse" % participant_id
         with FakeClock(TIME_2):
             self.send_post(remote_pm_path, resource)
@@ -4427,20 +4427,14 @@ class ParticipantSummaryApiTest(BaseTestCase):
             for unexpected_participant in unexpected_participant_list
         ))
 
-    def test_remote_identity_verified(self):
+    def test_remote_id_verified(self):
         """ Test to see if a remote ID verification True Response saves successfully """
-        # Set up user config to have client set to vibrent
-        user_info = config.getSettingJson(config.USER_INFO)
-        original_user_client_id = user_info['example@example.com']['clientId']
-        user_info['example@example.com']['clientId'] = 'vibrent'
-        config.override_setting(config.USER_INFO, user_info)
-        # Set up participant, questionnaire, questionnaire response & send POST request to API
-        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        participant = self.data_generator.create_database_participant()
         participant_id = f'P{participant.participantId}'
         authored = datetime.datetime.now()
         self.send_consent(participant.participantId, authored=authored)
         questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
-        resource = load_questionnaire_response_json(
+        resource = load_qr_response_json(
             'remote_id_verification_questionnaire_response.json',
             questionnaire_id,
             participant_id
@@ -4448,27 +4442,19 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
         # Get request from API to assert information is accurate
         summary = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertEqual(summary['remoteIdVerificationOrigin'], 'vibrent')
+        self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
         self.assertEqual(summary['remoteIdVerificationStatus'], True)
-        self.assertEqual(summary['remoteIdVerifiedOn'], '2022-11-30T00:00:00')
-        # Reset Config back to original user client ID
-        user_info['example@example.com']['clientId'] = original_user_client_id
-        config.override_setting(config.USER_INFO, user_info)
+        self.assertEqual(summary['remoteIdVerifiedOn'], '2022-11-30')
 
-    def test_remote_identity_not_verified(self):
+    def test_remote_id_not_verified(self):
         """ Test to see if a remote ID verification False Response saves successfully """
-        # Set up user config to have client set to vibrent
-        user_info = config.getSettingJson(config.USER_INFO)
-        original_user_client_id = user_info['example@example.com']['clientId']
-        user_info['example@example.com']['clientId'] = 'vibrent'
-        config.override_setting(config.USER_INFO, user_info)
         # Set up participant, questionnaire, questionnaire response & send POST request to API
-        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        participant = self.data_generator.create_database_participant()
         participant_id = f'P{participant.participantId}'
         authored = datetime.datetime.now()
         self.send_consent(participant.participantId, authored=authored)
         questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
-        resource = load_questionnaire_response_json(
+        resource = load_qr_response_json(
             'remote_id_verification_questionnaire_false_response.json',
             questionnaire_id,
             participant_id
@@ -4479,6 +4465,4 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertNotIn('remoteIdVerificationOrigin', summary)
         self.assertNotIn('remoteIdVerifiedOn', summary)
         self.assertEqual(summary['remoteIdVerificationStatus'], False)
-        # Reset Config back to original user client ID
-        user_info['example@example.com']['clientId'] = original_user_client_id
-        config.override_setting(config.USER_INFO, user_info)
+

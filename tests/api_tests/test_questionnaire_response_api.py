@@ -1707,15 +1707,10 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(summary['questionnaireOnLifeFunctioningAuthored'], '2022-09-06T14:32:28')
         self.assertEqual(summary['questionnaireOnLifeFunctioningTime'], '2022-09-07T01:02:03')
 
-    def test_remote_identity_verified(self):
+    def test_remote_id_verified(self):
         """ Test to see if a remote ID verification True Response saves successfully """
-        # Set up user config to have client set to vibrent
-        user_info = config.getSettingJson(config.USER_INFO)
-        original_user_client_id = user_info['example@example.com']['clientId']
-        user_info['example@example.com']['clientId'] = 'vibrent'
-        config.override_setting(config.USER_INFO, user_info)
         # Set up participant, questionnaire, questionnaire response & send POST request to API
-        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        participant = self.data_generator.create_database_participant()
         participant_id = f'P{participant.participantId}'
         authored = datetime.datetime.now()
         self.send_consent(participant.participantId, authored=authored)
@@ -1735,19 +1730,11 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         qr = self.dao.get_with_children(response['id'])
         self.assertEqual(qr.answers[0].valueDecimal, 1)
         self.assertEqual(qr.answers[1].valueDate, datetime.date(2022, 11, 30))
-        # Reset Config back to original user client ID
-        user_info['example@example.com']['clientId'] = original_user_client_id
-        config.override_setting(config.USER_INFO, user_info)
 
-    def test_remote_identity_not_verified(self):
+    def test_remote_id_not_verified(self):
         """ Test to see if a remote ID verification False Response saves successfully """
-        # Set up user config to have client set to vibrent
-        user_info = config.getSettingJson(config.USER_INFO)
-        original_user_client_id = user_info['example@example.com']['clientId']
-        user_info['example@example.com']['clientId'] = 'vibrent'
-        config.override_setting(config.USER_INFO, user_info)
         # Set up participant, questionnaire, questionnaire response & send POST request to API
-        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        participant = self.data_generator.create_database_participant()
         participant_id = f'P{participant.participantId}'
         authored = datetime.datetime.now()
         self.send_consent(participant.participantId, authored=authored)
@@ -1767,9 +1754,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         qr = self.dao.get_with_children(response['id'])
         self.assertEqual(qr.answers[0].valueDecimal, 0)
         self.assertEqual(qr.answers[1].valueDate, datetime.date(2022, 11, 30))
-        # Reset Config back to original user client ID
-        user_info['example@example.com']['clientId'] = original_user_client_id
-        config.override_setting(config.USER_INFO, user_info)
 
     def test_etm_consent(self):
         with FakeClock(TIME_1):

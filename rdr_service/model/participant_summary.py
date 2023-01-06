@@ -1567,7 +1567,7 @@ class ParticipantSummary(Base):
     )
     """ A true or false value that indicates whether the ID Verification is Remote  """
 
-    remoteIdVerifiedOn = Column("remote_id_verified_on", UTCDateTime)
+    remoteIdVerifiedOn = Column("remote_id_verified_on", Date)
     """ Date of the most recent remote id verification """
 
     aian = Column(Boolean, default=0)

@@ -895,13 +895,7 @@ class QuestionnaireResponseDao(BaseDao):
                             participant_summary.consentForElectronicHealthRecordsAuthored = authored
                             participant_summary.consentForElectronicHealthRecordsTime = questionnaire_response.created
                     elif code.value.lower() == REMOTE_ID_VERIFIED_ON_CODE:
-                        utc_datetime = datetime(
-                            answer.valueDate.year,
-                            answer.valueDate.month,
-                            answer.valueDate.day,
-                            tzinfo=pytz.timezone('UTC')
-                                            )
-                        remote_id_info['verified_on'] = utc_datetime
+                        remote_id_info['verified_on'] = answer.valueDate
                     elif code.value.lower() == REMOTE_ID_VERIFIED_CODE:
                         remote_id_info['verified'] = answer.valueDecimal
                     elif code.value.lower() == ETM_CONSENT_QUESTION_CODE:
@@ -944,7 +938,7 @@ class QuestionnaireResponseDao(BaseDao):
 
         dna_program_consent_update_code = config.getSettingJson(config.DNA_PROGRAM_CONSENT_UPDATE_CODE, None)
 
-        if 'verified' and 'verified_on' in remote_id_info:
+        if 'verified' in remote_id_info and 'verified_on' in remote_id_info:
             if remote_id_info['verified'] == 1:
                 # is the participant origin always going to be the same? if not, where can I pull this from
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin

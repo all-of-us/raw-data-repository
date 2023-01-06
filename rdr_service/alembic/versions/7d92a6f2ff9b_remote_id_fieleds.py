@@ -42,7 +42,7 @@ def upgrade_rdr():
                                                    sa.Boolean(),
                                                    nullable=True))
     op.add_column('participant_summary', sa.Column('remote_id_verified_on',
-                                                   rdr_service.model.utils.UTCDateTime(),
+                                                   sa.Date(),
                                                    nullable=True))
     # ### end Alembic commands ###
 
