@@ -1562,8 +1562,7 @@ class ParticipantSummary(Base):
 
     remoteIdVerificationStatus = Column(
         "remote_id_verification_status",
-        Boolean,
-        default=0
+        Boolean
     )
     """ A true or false value that indicates whether the ID Verification is Remote  """
 

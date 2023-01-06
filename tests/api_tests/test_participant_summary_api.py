@@ -162,7 +162,6 @@ participant_summary_default_values = {
     "onsiteIdVerificationType": "UNSET",
     "onsiteIdVerificationVisitType": "UNSET",
     "questionnaireOnLifeFunctioning": "UNSET",
-    "remoteIdVerificationStatus": False,
     "aian": False
 }
 
@@ -336,7 +335,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "patientStatus": patient_statuses or [],
                 "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
                 "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00",
-                "remoteIdVerificationStatus": False
             }
         )
 
