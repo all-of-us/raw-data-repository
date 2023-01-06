@@ -1355,7 +1355,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
             enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2),
             healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
-            aian=False
+            aian=0
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
