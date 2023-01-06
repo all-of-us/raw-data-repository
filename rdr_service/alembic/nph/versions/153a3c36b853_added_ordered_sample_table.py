@@ -51,7 +51,6 @@ def upgrade_nph():
     sa.Column('finalized', rdr_service.model.utils.UTCDateTime(), nullable=True),
     sa.Column('aliquot_id', sa.String(length=128), nullable=True),
     sa.Column('container', sa.String(length=128), nullable=True),
-    sa.Column('volume', sa.String(length=128), nullable=True),
     sa.Column('status', sa.String(length=128), nullable=True),
     sa.Column('supplemental_fields', mysql.JSON(), nullable=True),
     sa.ForeignKeyConstraint(['order_id'], ['nph.order.id'], ),
