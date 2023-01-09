@@ -46,7 +46,8 @@ from rdr_service.participant_enums import (
     RetentionType,
     SelfReportedPhysicalMeasurementsStatus,
     OnSiteVerificationType,
-    OnSiteVerificationVisitType)
+    OnSiteVerificationVisitType
+)
 
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
@@ -1555,8 +1556,22 @@ class ParticipantSummary(Base):
     """User who recorded ID verification occurrence"""
     onsiteIdVerificationSite = Column("onsite_id_verification_site_id", Integer, ForeignKey("site.site_id"))
     """The site where ID verification took place"""
+
+    remoteIdVerificationOrigin = Column("remote_id_verification_origin", String(80))
+    """ The sign up portal where ID Verification took place ( Vibrent OR Care Evolution ) """
+
+    remoteIdVerificationStatus = Column(
+        "remote_id_verification_status",
+        Boolean
+    )
+    """ A true or false value that indicates whether the ID Verification is Remote  """
+
+    remoteIdVerifiedOn = Column("remote_id_verified_on", Date)
+    """ Date of the most recent remote id verification """
+
     aian = Column(Boolean, default=0)
     """Denotes if the participants race is AI_AN (AMERICAN_INDIAN_OR_ALASKA_NATIVE)"""
+
     lastModified = Column("last_modified", UTCDateTime6)
     """UTC timestamp of the last time the participant summary was modified"""
 
