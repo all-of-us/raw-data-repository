@@ -28,10 +28,12 @@ class NphOrderApi(UpdatableApi):
     def put(self, nph_participant_id, rdr_order_id):
         with database_factory.get_database().session() as session:
             self.dao.set_order_cls(request.get_data())
+            order = self.dao.order_cls
             self.dao.validate(rdr_order_id, nph_participant_id, session)
-            db_parent_order_sample, db_child_order_sample = self.dao.order_sample_dao\
-                .get_order(rdr_order_id, session)
-            print(db_parent_order_sample, db_child_order_sample)
+            self.dao.order_sample_dao.update_order_sample(order, rdr_order_id, session)
+            self.dao.update_order(rdr_order_id, nph_participant_id, session)
+            session.commit()
+            return construct_response(order), 201
 
     def post(self, nph_participant_id: str):
         with database_factory.get_database().session() as session:

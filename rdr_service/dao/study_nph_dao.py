@@ -200,19 +200,35 @@ class NphOrderDao(UpdatableDao):
             raise BadRequest(f"Invalid status value: {order.status}")
         site_id = self.site_dao.get_id(session, site_name)
         amended_reason = order.amendedReason
-        db_order = Order(rdr_order_id)
+        db_order = self.get_order(rdr_order_id, session)
         if db_order.participant_id == self.participant_dao.convert_id(nph_participant_id):
             db_order.amended_author = amended_author
             db_order.amended_site = site_id
             db_order.amended_reason = amended_reason
             db_order.status = order.status
-            db_order.commit()
+            session.commit()
         else:
             raise BadRequest("Participant ID does not match the corresponding Order ID.")
 
+    def update_order(self, rdr_order_id: int, nph_participant_id: str, session):
+        create_site = self.site_dao.get_id(session, self.order_cls.createdInfo.site.value)
+        collected_site = self.site_dao.get_id(session, self.order_cls.collectedInfo.site.value)
+        finalized_site = self.site_dao.get_id(session, self.order_cls.finalizedInfo.site.value)
+        db_order = self.get_order(rdr_order_id, session)
+        if db_order.participant_id == self.participant_dao.convert_id(nph_participant_id):
+            db_order.nph_order_id = fetch_identifier_value(self.order_cls, "order-id")
+            db_order.created_author = self.order_cls.createdInfo.author.value
+            db_order.created_site = create_site
+            db_order.collected_author = self.order_cls.collectedInfo.author.value
+            db_order.created_site = collected_site
+            db_order.finalized_author = self.order_cls.finalizedInfo.author.value
+            db_order.finalized_site = finalized_site
+            db_order.notes = self.order_cls.notes.__dict__
+        else:
+            raise BadRequest("Participant ID does not match the corresponding Order ID.")
 
     @staticmethod
-    def _get_order(order_id: int, session) -> Order:
+    def get_order(order_id: int, session) -> Order:
         query = Query(Order)
         query.session = session
         result = query.filter(Order.id == order_id).first()
@@ -299,15 +315,6 @@ class NphOrderedSampleDao(UpdatableDao):
     def get_id(self, obj: OrderedSample):
         return obj.id
 
-    def get_order(self, order_id: int, session) -> Tuple[OrderedSample, List[OrderedSample]]:
-        try:
-            parent_order = self._get_parent_order_sample(order_id, session)
-            child_order = self._get_child_order_sample(parent_order.id, session)
-            return parent_order, child_order
-        except Exception as ex:
-            raise ex
-
-
     @staticmethod
     def _get_parent_order_sample(order_id, session) -> OrderedSample:
         query = Query(OrderedSample)
@@ -323,10 +330,7 @@ class NphOrderedSampleDao(UpdatableDao):
         query = Query(OrderedSample)
         query.session = session
         result = query.filter(OrderedSample.parent_sample_id == order_id).all()
-        if result:
-            return result
-        else:
-            raise NotFound(f"Order sample not found")
+        return result
 
     def from_client_json(self, obj: Namespace, order_id: int, nph_sample_id: str) -> OrderedSample:
         return OrderedSample(nph_sample_id=nph_sample_id,
@@ -372,6 +376,67 @@ class NphOrderedSampleDao(UpdatableDao):
     def insert(self, session, order_sample: OrderedSample):
         session.add(order_sample)
         session.commit()
+
+    def update_order_sample(self, order: Namespace, rdr_order_id: int, session):
+        db_parent_order_sample = self._get_parent_order_sample(rdr_order_id, session)
+        self._update_parent_order(order, db_parent_order_sample)
+        db_child_order_sample = self._get_child_order_sample(rdr_order_id, session)
+        if len(db_child_order_sample) > 0:
+            co_list = self._update_child_order(order, db_child_order_sample, db_parent_order_sample.nph_sample_id,
+                                               rdr_order_id)
+            for co in co_list:
+                db_parent_order_sample.children.append(co)
+
+    def _update_child_order(self, payload: Namespace, order_sample: List[OrderedSample], nph_sample_id: str,
+                            rdr_order_id: int) -> List[OrderedSample]:
+        db_child_sample_dict = {co.aliquot_id: co for co in order_sample}
+        db_child_sample_keys = [co.aliquot_id for co in order_sample]
+        os_list = []
+        if payload.__dict__.get("aliquots"):
+            payload_sample_keys = [po.id for po in payload.aliquots]
+            payload_sample_dict = {po.id: po for po in payload.aliquots}
+            os_to_cancel = set(db_child_sample_keys) - set(payload_sample_keys)
+            os_to_insert = set(payload_sample_keys) - set(db_child_sample_keys)
+            os_to_update = set(payload_sample_keys).intersection(db_child_sample_keys)
+            for os_id in os_to_cancel:
+                co = self._update_canceled_child_order(db_child_sample_dict.get(os_id))
+                os_list.append(co)
+            for os_id in os_to_insert:
+                co = self.from_aliquot_client_json(payload_sample_dict.get(os_id), rdr_order_id, nph_sample_id)
+                os_list.append(co)
+            for os_id in os_to_update:
+                db_child_sample = db_child_sample_dict.get(os_id)
+                co = self._update_restored_child_order(payload_sample_dict.get(os_id), db_child_sample, nph_sample_id)
+                os_list.append(co)
+        else:
+            for each in order_sample:
+                self._update_canceled_child_order(each)
+                os_list.append(each)
+        return os_list
+
+    def _update_parent_order(self, obj: Namespace, order_sample: OrderedSample):
+        order_sample.nph_sample_id = fetch_identifier_value(obj, "sample-id")
+        order_sample.test = obj.sample.test
+        order_sample.description = obj.sample.description
+        order_sample.collected = obj.sample.collected
+        order_sample.finalized = obj.sample.finalized
+        order_sample.supplemental_fields = self._fetch_supplemental_fields(obj)
+
+    @staticmethod
+    def _update_restored_child_order(obj: Namespace, order_sample: OrderedSample, nph_sample_id: str) -> OrderedSample:
+        order_sample.nph_sample_id = nph_sample_id
+        order_sample.identifier = obj.identifier
+        order_sample.container = obj.container
+        order_sample.volume = obj.volume
+        order_sample.description = obj.description
+        order_sample.collected = obj.collected
+        order_sample.status = "restored"
+        return order_sample
+
+    @staticmethod
+    def _update_canceled_child_order(order_sample: OrderedSample) -> OrderedSample:
+        order_sample.status = "canceled"
+        return order_sample
 
     def _validate_model(self, obj):
         if obj.order_id is None:
