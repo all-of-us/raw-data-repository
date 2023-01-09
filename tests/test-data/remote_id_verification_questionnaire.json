@@ -1,0 +1,48 @@
+{
+    "date": "2022-12-13T17:04:51+00:00",
+    "group": {
+        "title": "Remote ID Verification",
+        "linkId": "root_group",
+        "concept": [
+            {
+                "code": "remote_id_verification",
+                "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+            }
+        ],
+        "repeats": false,
+        "question": [
+            {
+                "text": "Was this a REMOTE Id Verification? ",
+                "type": "boolean",
+                "linkId": "remote_id_123",
+                "concept": [
+                    {
+                        "code": "remote_identity_verified",
+                        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+                    }
+                ],
+                "repeats": false
+            },
+            {
+                "text": "Latest Date Updated",
+                "type": "date",
+                "linkId": "remote_id_456",
+                "concept": [
+                    {
+                        "code": "remote_identity_verified_on",
+                        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+                    }
+                ],
+                "repeats": false
+            }
+        ]
+    },
+    "status": "published",
+    "version": "V2022.12.15",
+    "identifier": [
+        {
+            "value": "Vibrent_FORM_ID_123"
+        }
+    ],
+    "resourceType": "Questionnaire"
+}

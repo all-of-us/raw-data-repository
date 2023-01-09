@@ -1707,6 +1707,54 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(summary['questionnaireOnLifeFunctioningAuthored'], '2022-09-06T14:32:28')
         self.assertEqual(summary['questionnaireOnLifeFunctioningTime'], '2022-09-07T01:02:03')
 
+    def test_remote_id_verified(self):
+        """ Test to see if a remote ID verification True Response saves successfully """
+        # Set up participant, questionnaire, questionnaire response & send POST request to API
+        participant = self.data_generator.create_database_participant()
+        participant_id = f'P{participant.participantId}'
+        authored = datetime.datetime.now()
+        self.send_consent(participant.participantId, authored=authored)
+        questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
+        resource = self._load_response_json("remote_id_verification_questionnaire_response.json",
+                                            questionnaire_id,
+                                            participant_id)
+        self._save_codes(resource)
+        response = self.send_post(_questionnaire_response_url(participant_id), resource)
+        # Check the questionnaire response table to make sure data is accurate
+        response_obj = self.session.query(QuestionnaireResponse).filter(
+            QuestionnaireResponse.questionnaireResponseId == response['id']
+        ).one()
+        self.assertEqual(response_obj.answers[0].valueDecimal, 1)
+        self.assertEqual(response_obj.answers[1].valueDate, datetime.date(2022, 11, 30))
+        # Check the DAO to make sure data is accurate
+        qr_response = self.dao.get_with_children(response['id'])
+        self.assertEqual(qr_response.answers[0].valueDecimal, 1)
+        self.assertEqual(qr_response.answers[1].valueDate, datetime.date(2022, 11, 30))
+
+    def test_remote_id_not_verified(self):
+        """ Test to see if a remote ID verification False Response saves successfully """
+        # Set up participant, questionnaire, questionnaire response & send POST request to API
+        participant = self.data_generator.create_database_participant()
+        participant_id = f'P{participant.participantId}'
+        authored = datetime.datetime.now()
+        self.send_consent(participant.participantId, authored=authored)
+        questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
+        resource = self._load_response_json("remote_id_verification_questionnaire_false_response.json",
+                                            questionnaire_id,
+                                            participant_id)
+        self._save_codes(resource)
+        response = self.send_post(_questionnaire_response_url(participant_id), resource)
+        # Check the questionnaire response table to make sure data is accurate
+        response_obj = self.session.query(QuestionnaireResponse).filter(
+            QuestionnaireResponse.questionnaireResponseId == response['id']
+        ).one()
+        self.assertEqual(response_obj.answers[0].valueDecimal, 0)
+        self.assertEqual(response_obj.answers[1].valueDate, datetime.date(2022, 11, 30))
+        # Check the DAO to make sure data is accurate
+        qr_response = self.dao.get_with_children(response['id'])
+        self.assertEqual(qr_response.answers[0].valueDecimal, 0)
+        self.assertEqual(qr_response.answers[1].valueDate, datetime.date(2022, 11, 30))
+
     def test_etm_consent(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()

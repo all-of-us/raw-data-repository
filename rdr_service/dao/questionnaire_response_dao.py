@@ -81,6 +81,8 @@ from rdr_service.code_constants import (
     VA_EHR_RECONSENT_QUESTION_CODE,
     AGREE_YES,
     AGREE_NO,
+    REMOTE_ID_VERIFIED_CODE,
+    REMOTE_ID_VERIFIED_ON_CODE,
     ETM_CONSENT_QUESTION_CODE
 )
 from rdr_service.dao.base_dao import BaseDao
@@ -735,6 +737,7 @@ class QuestionnaireResponseDao(BaseDao):
         street_address_submitted = False
         street_address2_submitted = False
         rejected_reconsent = False
+        remote_id_info = {}
 
         # Skip updating the summary if the response being stored has an authored
         # date earlier than one that's already been recorded
@@ -891,6 +894,10 @@ class QuestionnaireResponseDao(BaseDao):
                                 QuestionnaireStatus.SUBMITTED_NO_CONSENT
                             participant_summary.consentForElectronicHealthRecordsAuthored = authored
                             participant_summary.consentForElectronicHealthRecordsTime = questionnaire_response.created
+                    elif code.value.lower() == REMOTE_ID_VERIFIED_ON_CODE:
+                        remote_id_info['verified_on'] = answer.valueDate
+                    elif code.value.lower() == REMOTE_ID_VERIFIED_CODE:
+                        remote_id_info['verified'] = answer.valueDecimal
                     elif code.value.lower() == ETM_CONSENT_QUESTION_CODE:
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value.lower() == AGREE_YES:
@@ -930,6 +937,17 @@ class QuestionnaireResponseDao(BaseDao):
                 something_changed = True
 
         dna_program_consent_update_code = config.getSettingJson(config.DNA_PROGRAM_CONSENT_UPDATE_CODE, None)
+
+        if 'verified' in remote_id_info and 'verified_on' in remote_id_info:
+            if remote_id_info['verified'] == 1:
+                participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
+                participant_summary.remoteIdVerificationStatus = 1
+                participant_summary.remoteIdVerifiedOn = remote_id_info['verified_on']
+        elif 'verified' in remote_id_info:
+            if remote_id_info['verified'] == 0:
+                participant_summary.remoteIdVerificationOrigin = ''
+                participant_summary.remoteIdVerificationStatus = 0
+                participant_summary.remoteIdVerifiedOn = None
 
         # Set summary fields to SUBMITTED for questionnaire concepts that are found in
         # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
