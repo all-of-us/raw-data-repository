@@ -1,7 +1,6 @@
 from typing import Tuple, Dict, List, Any
 import json
 from types import SimpleNamespace as Namespace
-import logging
 from protorpc import messages
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -202,25 +201,34 @@ class NphOrderDao(UpdatableDao):
             raise BadRequest(f"TimePoint does not match the corresponding visitType: {payload.timepoint}")
 
     def patch_update(self, order: Namespace, rdr_order_id: int, nph_participant_id: str, session) -> Order:
-        if order.status.upper() == "RESTORED":
-            site_name = order.restoredInfo.site.value
-            amended_author = order.restoredInfo.author.value
-        elif order.status.upper() == "CANCELED":
-            site_name = order.cancelledInfo.site.value
-            amended_author = order.cancelledInfo.author.value
-        else:
-            raise BadRequest(f"Invalid status value: {order.status}")
-        site_id = self.site_dao.get_id(session, site_name)
-        amended_reason = order.amendedReason
-        db_order = self.get_order(rdr_order_id, session)
-        if db_order.participant_id == self.participant_dao.convert_id(nph_participant_id):
-            db_order.amended_author = amended_author
-            db_order.amended_site = site_id
-            db_order.amended_reason = amended_reason
-            db_order.status = order.status
-        else:
-            raise BadRequest("Participant ID does not match the corresponding Order ID.")
-        return db_order
+        try:
+            if order.status.upper() == "RESTORED":
+                site_name = order.restoredInfo.site.value
+                amended_author = order.restoredInfo.author.value
+            elif order.status.upper() == "CANCELED":
+                site_name = order.cancelledInfo.site.value
+                amended_author = order.cancelledInfo.author.value
+            else:
+                raise BadRequest(f"Invalid status value: {order.status}")
+            site_id = self.site_dao.get_id(session, site_name)
+            amended_reason = order.amendedReason
+            db_order = self.get_order(rdr_order_id, session)
+            if db_order.participant_id == self.participant_dao.convert_id(nph_participant_id):
+                db_order.amended_author = amended_author
+                db_order.amended_site = site_id
+                db_order.amended_reason = amended_reason
+                db_order.status = order.status
+            else:
+                raise BadRequest("Participant ID does not match the corresponding Order ID.")
+            return db_order
+        except exc.SQLAlchemyError as ex:
+            raise ex
+        except NotFound as not_found:
+            raise not_found
+        except BadRequest as bad_request:
+            raise bad_request
+        except Exception as exp:
+            raise exp
 
     def update_order(self, rdr_order_id: int, nph_participant_id: str, session) -> Order:
         create_site = self.site_dao.get_id(session, self.order_cls.createdInfo.site.value)
@@ -276,6 +284,8 @@ class NphOrderDao(UpdatableDao):
             raise
         if not create_site and not collected_site and not finalized_site:
             raise BadRequest("Site has not been populated in Site Table")
+        if not p_id:
+            raise NotFound(f"Participant not Found: {nph_participant_id}")
         order = Order()
         for order_model_field, resource_value in [("nph_order_id", fetch_identifier_value(self.order_cls, "order-id")),
                                                   ("order_created", self.order_cls.created),
@@ -320,10 +330,11 @@ class NphOrderDao(UpdatableDao):
             session.refresh(o)
             return o.id
         except exc.SQLAlchemyError as ex:
-            logging.error(ex)
             raise ex
         except NotFound as not_found:
             raise not_found
+        except BadRequest as bad_request:
+            raise bad_request
         except Exception as exp:
             raise exp
 
@@ -347,10 +358,13 @@ class NphOrderedSampleDao(UpdatableDao):
 
     @staticmethod
     def _get_child_order_sample(order_id, session) -> List[OrderedSample]:
-        query = Query(OrderedSample)
-        query.session = session
-        result = query.filter(OrderedSample.parent_sample_id == order_id).all()
-        return result
+        try:
+            query = Query(OrderedSample)
+            query.session = session
+            result = query.filter(OrderedSample.parent_sample_id == order_id).all()
+            return result
+        except exc.SQLAlchemyError as sql:
+            raise sql
 
     def from_client_json(self, obj: Namespace, order_id: int, nph_sample_id: str) -> OrderedSample:
         return OrderedSample(nph_sample_id=nph_sample_id,
@@ -384,55 +398,81 @@ class NphOrderedSampleDao(UpdatableDao):
 
     def _insert_order_sample(self, order: Namespace, order_id: int, session):
         # Adding record(s) to nph.order_sample table
-        nph_sample_id = fetch_identifier_value(order, "sample-id")
-        os = self.from_client_json(order, order_id, nph_sample_id)
-        if order.__dict__.get("aliquots"):
-            for aliquot in order.aliquots:
-                oa = self.from_aliquot_client_json(aliquot, order_id, nph_sample_id)
-                os.children.append(oa)
-        session.add(os)
-        session.commit()
+        try:
+            nph_sample_id = fetch_identifier_value(order, "sample-id")
+            os = self.from_client_json(order, order_id, nph_sample_id)
+            if order.__dict__.get("aliquots"):
+                for aliquot in order.aliquots:
+                    oa = self.from_aliquot_client_json(aliquot, order_id, nph_sample_id)
+                    os.children.append(oa)
+            session.add(os)
+            session.commit()
+        except exc.SQLAlchemyError as sql:
+            raise sql
+        except NotFound as not_found:
+            raise not_found
+        except BadRequest as bad_request:
+            raise bad_request
 
     def insert(self, session, order_sample: OrderedSample):
         session.add(order_sample)
         session.commit()
 
     def update_order_sample(self, order: Namespace, rdr_order_id: int, session):
-        db_parent_order_sample = self._get_parent_order_sample(rdr_order_id, session)
-        self._update_parent_order(order, db_parent_order_sample)
-        db_child_order_sample = self._get_child_order_sample(rdr_order_id, session)
-        if len(db_child_order_sample) > 0:
-            co_list = self._update_child_order(order, db_child_order_sample, db_parent_order_sample.nph_sample_id,
-                                               rdr_order_id)
-            for co in co_list:
-                db_parent_order_sample.children.append(co)
+        try:
+            db_parent_order_sample = self._get_parent_order_sample(rdr_order_id, session)
+            self._update_parent_order(order, db_parent_order_sample)
+            db_child_order_sample = self._get_child_order_sample(rdr_order_id, session)
+            if len(db_child_order_sample) > 0:
+                co_list = self._update_child_order(order, db_child_order_sample, db_parent_order_sample.nph_sample_id,
+                                                   rdr_order_id)
+                for co in co_list:
+                    db_parent_order_sample.children.append(co)
+        except exc.SQLAlchemyError as ex:
+            raise ex
+        except NotFound as not_found:
+            raise not_found
+        except BadRequest as bad_request:
+            raise bad_request
+        except Exception as exp:
+            raise exp
 
     def _update_child_order(self, payload: Namespace, order_sample: List[OrderedSample], nph_sample_id: str,
                             rdr_order_id: int) -> List[OrderedSample]:
-        db_child_sample_dict = {co.aliquot_id: co for co in order_sample}
-        db_child_sample_keys = [co.aliquot_id for co in order_sample]
-        os_list = []
-        if payload.__dict__.get("aliquots"):
-            payload_sample_keys = [po.id for po in payload.aliquots]
-            payload_sample_dict = {po.id: po for po in payload.aliquots}
-            os_to_cancel = set(db_child_sample_keys) - set(payload_sample_keys)
-            os_to_insert = set(payload_sample_keys) - set(db_child_sample_keys)
-            os_to_update = set(payload_sample_keys).intersection(db_child_sample_keys)
-            for os_id in os_to_cancel:
-                co = self._update_canceled_child_order(db_child_sample_dict.get(os_id))
-                os_list.append(co)
-            for os_id in os_to_insert:
-                co = self.from_aliquot_client_json(payload_sample_dict.get(os_id), rdr_order_id, nph_sample_id)
-                os_list.append(co)
-            for os_id in os_to_update:
-                db_child_sample = db_child_sample_dict.get(os_id)
-                co = self._update_restored_child_order(payload_sample_dict.get(os_id), db_child_sample, nph_sample_id)
-                os_list.append(co)
-        else:
-            for each in order_sample:
-                self._update_canceled_child_order(each)
-                os_list.append(each)
-        return os_list
+        try:
+            db_child_sample_dict = {co.aliquot_id: co for co in order_sample}
+            db_child_sample_keys = [co.aliquot_id for co in order_sample]
+            os_list = []
+            if payload.__dict__.get("aliquots"):
+                payload_sample_keys = [po.id for po in payload.aliquots]
+                payload_sample_dict = {po.id: po for po in payload.aliquots}
+                os_to_cancel = set(db_child_sample_keys) - set(payload_sample_keys)
+                os_to_insert = set(payload_sample_keys) - set(db_child_sample_keys)
+                os_to_update = set(payload_sample_keys).intersection(db_child_sample_keys)
+                for os_id in os_to_cancel:
+                    co = self._update_canceled_child_order(db_child_sample_dict.get(os_id))
+                    os_list.append(co)
+                for os_id in os_to_insert:
+                    co = self.from_aliquot_client_json(payload_sample_dict.get(os_id), rdr_order_id, nph_sample_id)
+                    os_list.append(co)
+                for os_id in os_to_update:
+                    db_child_sample = db_child_sample_dict.get(os_id)
+                    co = self._update_restored_child_order(payload_sample_dict.get(os_id),
+                                                           db_child_sample, nph_sample_id)
+                    os_list.append(co)
+            else:
+                for each in order_sample:
+                    self._update_canceled_child_order(each)
+                    os_list.append(each)
+            return os_list
+        except exc.SQLAlchemyError as ex:
+            raise ex
+        except NotFound as not_found:
+            raise not_found
+        except BadRequest as bad_request:
+            raise bad_request
+        except Exception as exp:
+            raise exp
 
     def _update_parent_order(self, obj: Namespace, order_sample: OrderedSample) -> OrderedSample:
         order_sample.nph_sample_id = fetch_identifier_value(obj, "sample-id")
