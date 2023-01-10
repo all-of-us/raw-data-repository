@@ -1,6 +1,7 @@
 import json
 from flask import request
 import logging
+from werkzeug.exceptions import BadRequest
 
 from rdr_service.api.base_api import UpdatableApi
 from rdr_service.dao import database_factory
@@ -33,7 +34,7 @@ class NphOrderApi(UpdatableApi):
             self.dao.order_sample_dao.update_order_sample(order, rdr_order_id, session)
             self.dao.update_order(rdr_order_id, nph_participant_id, session)
             session.commit()
-            return construct_response(order), 201
+        return construct_response(order), 201
 
     def post(self, nph_participant_id: str):
         with database_factory.get_database().session() as session:
@@ -51,8 +52,16 @@ class NphOrderApi(UpdatableApi):
 
     def patch(self, nph_participant_id, rdr_order_id):
         if rdr_order_id and nph_participant_id:
-            with database_factory.get_database().session() as session:
-                self.dao.set_order_cls(request.get_data())
-                order = self.dao.order_cls
-                self.dao.patch_update(order, rdr_order_id, nph_participant_id, session)
-                return construct_response(order), 200
+            try:
+                with database_factory.get_database().session() as session:
+                    self.dao.set_order_cls(request.get_data())
+                    order = self.dao.order_cls
+                    self.dao.patch_update(order, rdr_order_id, nph_participant_id, session)
+                    session.commit()
+                    return construct_response(order), 200
+            except BadRequest as ex:
+                logging.error(ex)
+                return {}, 400
+
+
+
