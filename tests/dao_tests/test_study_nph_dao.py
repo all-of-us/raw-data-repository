@@ -23,7 +23,7 @@ from rdr_service.dao.study_nph_dao import (
 # from rdr_service.clock import FakeClock
 from rdr_service.model.study_nph import (
     # Participant,
-    # StudyCategory,
+    StudyCategory,
     # Site,
     Order,
     OrderedSample,
@@ -249,15 +249,14 @@ class NphStudyCategoryTest(BaseTestCase):
 
     TEST_DATA = {"module": "1", "visitType": "LMT", "timepoint": "15min"}
 
-    def test_insert_with_session(self):
+    @patch('rdr_service.dao.study_nph_dao.Query.filter')
+    def test_insert_with_session(self, query_filter):
+        query_filter.return_value.first.return_value = StudyCategory()
         session = MagicMock()
-        request = json.loads(json.dumps(self.TEST_DATA), object_hook=lambda d: Namespace(**d))
+        request = json.loads(json.dumps(TEST_URINE_SAMPLE), object_hook=lambda d: Namespace(**d))
         self.nph_study_category_dao.insert_with_session(request, session)
-        self.assertEqual(self.TEST_DATA.get("module"), session.method_calls[0][1][0].name)
-        self.assertEqual(self.TEST_DATA.get("visitType"), session.method_calls[0][1][0].children[0].name)
-        self.assertEqual("visitType", session.method_calls[0][1][0].children[0].type_label)
-        self.assertEqual(self.TEST_DATA.get("timepoint"), session.method_calls[0][1][0].children[0].children[0].name)
-        self.assertEqual("timepoint", session.method_calls[0][1][0].children[0].children[0].type_label)
+        self.assertEqual(TEST_URINE_SAMPLE.get("timepoint"), session.method_calls[0][1][0].children[0].name)
+        self.assertEqual("timepoint", session.method_calls[0][1][0].children[0].type_label)
 
     def test_no_module(self):
         test_data = {"visitType": "LMT", "timepoint": "15min"}

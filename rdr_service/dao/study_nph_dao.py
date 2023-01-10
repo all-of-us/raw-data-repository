@@ -56,7 +56,7 @@ class NphParticipantDao(BaseDao):
 
     @staticmethod
     def convert_id(nph_participant_id: str) -> int:
-        return int(nph_participant_id[3:])
+        return int(nph_participant_id[4:])
 
     def from_client_json(self):
         pass
@@ -103,9 +103,13 @@ class NphStudyCategoryDao(UpdatableDao):
 
     def insert_with_session(self, order: Namespace, session):
         # Insert the study category payload values to the db table
-        module = StudyCategory(name=order.module, type_label="module")
-        visit = StudyCategory(name=order.visitType, type_label="visitType")
-        module.children.append(visit)
+        module_exist, module = self.module_exist(order, session)
+        visit_exist, visit = self.visit_type_exist(order, module, session)
+        if not module_exist:
+            module = StudyCategory(name=order.module, type_label="module")
+        if not visit_exist:
+            visit = StudyCategory(name=order.visitType, type_label="visitType")
+            module.children.append(visit)
         time = StudyCategory(name=order.timepoint, type_label="timepoint")
         visit.children.append(time)
         session.add(module)
@@ -120,6 +124,29 @@ class NphStudyCategoryDao(UpdatableDao):
             raise BadRequest("Visit Type is missing")
         if obj.__dict__.get("timepoint") is None:
             raise BadRequest("Time Point ID is missing")
+
+    @staticmethod
+    def module_exist(order: Namespace, session):
+
+        query = Query(StudyCategory)
+        query.session = session
+        result = query.filter(StudyCategory.type_label == "module", StudyCategory.name == order.module).first()
+        if result:
+            return True, result
+        else:
+            return False, None
+
+    @staticmethod
+    def visit_type_exist(order: Namespace, module: StudyCategory, session):
+
+        query = Query(StudyCategory)
+        query.session = session
+        result = query.filter(StudyCategory.type_label == "visitType", StudyCategory.name == order.visitType,
+                              StudyCategory.parent_id == module.id).first()
+        if result:
+            return True, result
+        else:
+            return False, None
 
 
 class NphSiteDao(BaseDao):

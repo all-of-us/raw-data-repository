@@ -103,10 +103,12 @@ PATCH_SAMPLE = {
 
 class TestNPHParticipantOrderAPI(TestCase):
 
+    @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
     @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
-    def test_post(self, site_id, pid, database_factor):
+    def test_post(self, site_id, pid, database_factor, query_filter):
+        query_filter.return_value.first.return_value = StudyCategory()
         database_factor.return_value.session.return_value = MagicMock()
         pid.return_value = 124820391
         site_id.return_value = 1
