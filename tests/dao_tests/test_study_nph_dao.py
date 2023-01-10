@@ -19,7 +19,6 @@ from rdr_service.model.study_nph import (
     Order,
     OrderedSample,
 )
-from tests.helpers.unittest_base import BaseTestCase
 
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -230,103 +229,50 @@ class NphParticipantDaoTest(TestCase):
     #     self.clear_table_after_test("nph.participant")
 
 
-class NphStudyCategoryTest(BaseTestCase):
-
-    def setUp(self):
-        super().setUp()
-        self.nph_study_category_dao = NphStudyCategoryDao()
+class NphStudyCategoryTest(TestCase):
 
     TEST_DATA = {"module": "1", "visitType": "LMT", "timepoint": "15min"}
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     def test_insert_with_session(self, query_filter):
-        query_filter.return_value.first.return_value = StudyCategory()
+        query_filter.return_value.first.side_effect = [StudyCategory(), None]
         session = MagicMock()
         request = json.loads(json.dumps(TEST_URINE_SAMPLE), object_hook=lambda d: Namespace(**d))
-        self.nph_study_category_dao.insert_with_session(request, session)
-        self.assertEqual(TEST_URINE_SAMPLE.get("timepoint"), session.method_calls[0][1][0].children[0].name)
-        self.assertEqual("timepoint", session.method_calls[0][1][0].children[0].type_label)
+        nph_study_category_dao = NphStudyCategoryDao()
+        nph_study_category_dao.insert_with_session(request, session)
+        self.assertEqual(TEST_URINE_SAMPLE.get("visitType"), session.method_calls[0][1][0].children[0].name)
+        self.assertEqual("visitType", session.method_calls[0][1][0].children[0].type_label)
+        self.assertEqual(TEST_URINE_SAMPLE.get("timepoint"), session.method_calls[0][1][0].children[0].children[0].name)
+        self.assertEqual("timepoint", session.method_calls[0][1][0].children[0].children[0].type_label)
 
     def test_no_module(self):
         test_data = {"visitType": "LMT", "timepoint": "15min"}
         request = json.loads(json.dumps(test_data), object_hook=lambda d: Namespace(**d))
+        nph_study_category_dao = NphStudyCategoryDao()
         with self.assertRaises(BadRequest) as module_err:
-            self.nph_study_category_dao.validate_model(request)
+            nph_study_category_dao.validate_model(request)
         self.assertEqual("400 Bad Request: Module is missing", str(module_err.exception))
 
     def test_no_time_point(self):
         test_data = {"visitType": "LMT", "module": "1"}
         request = json.loads(json.dumps(test_data), object_hook=lambda d: Namespace(**d))
+        nph_study_category_dao = NphStudyCategoryDao()
         with self.assertRaises(BadRequest) as time_point_error:
-            self.nph_study_category_dao.validate_model(request)
+            nph_study_category_dao.validate_model(request)
         self.assertEqual("400 Bad Request: Time Point ID is missing", str(time_point_error.exception))
 
     def test_no_value_type(self):
         test_data = {"module": "1", "timepoint": "15min"}
         request = json.loads(json.dumps(test_data), object_hook=lambda d: Namespace(**d))
+        nph_study_category_dao = NphStudyCategoryDao()
         with self.assertRaises(BadRequest) as visit_type_error:
-            self.nph_study_category_dao.validate_model(request)
+            nph_study_category_dao.validate_model(request)
         self.assertEqual("400 Bad Request: Visit Type is missing", str(visit_type_error.exception))
 
     def test_get_before_insert(self):
         session = MagicMock()
-        self.assertIsNone(self.nph_study_category_dao.get_study_category_sample(1, session)[0])
-    #
-    # def _create_study_category(self, study_category_obj: Namespace) -> StudyCategory:
-    #     with FakeClock(TIME):
-    #         return self.nph_study_category_dao.insert(study_category_obj)
-    #
-    # def test_insert_parent_study_category(self):
-    #     parent_study_category = {
-    #         "timepoint": "Test_timePoint",
-    #         "module": "PARENT",
-    #         "visitType": "Test_visitType"
-    #     }
-    #     request = json.loads(json.dumps(parent_study_category), object_hook=lambda d: Namespace(**d))
-    #     session = MagicMock()
-    #     _parent_study_category = self.nph_study_category_dao.insert_with_session(request, session)
-    #     expected_parent_study_category = {
-    #         "id": 1,
-    #         "created": TIME,
-    #         "name": "Parent Study Category",
-    #         "type_label": "PARENT",
-    #         "parent_id": None
-    #     }
-    #     expected_parent_study_category_ = StudyCategory(**expected_parent_study_category)
-    #     self.assertEqual(
-    #         expected_parent_study_category_.asdict(),
-    #         _parent_study_category.asdict()
-    #     )
-    #
-    # def test_insert_child_study_category(self):
-    #     parent_study_category_obj = {
-    #         "name": "Parent Study Category",
-    #         "type_label": "PARENT",
-    #         "parent_id": None
-    #     }
-    #     parent_study_category = self._create_study_category(parent_study_category_obj)
-    #
-    #     child_study_category_obj = {
-    #         "name": "Child Study Category",
-    #         "type_label": "CHILD",
-    #         "parent_id": parent_study_category.id
-    #     }
-    #     child_study_category = self._create_study_category(child_study_category_obj)
-    #     expected_child_study_category = {
-    #         "id": 2,
-    #         "created": TIME,
-    #         "name": "Child Study Category",
-    #         "type_label": "CHILD",
-    #         "parent_id": parent_study_category.id
-    #     }
-    #     expected_child_study_category_ = StudyCategory(**expected_child_study_category)
-    #     self.assertEqual(
-    #         expected_child_study_category_.asdict(),
-    #         child_study_category.asdict()
-    #     )
-
-    def tearDown(self):
-        self.clear_table_after_test("nph.study_category")
+        nph_study_category_dao = NphStudyCategoryDao()
+        self.assertIsNone(nph_study_category_dao.get_study_category_sample(1, session)[0])
 
 
 class NphSiteDaoTest(TestCase):

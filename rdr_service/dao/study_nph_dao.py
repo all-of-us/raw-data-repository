@@ -8,7 +8,7 @@ from sqlalchemy.orm import Query, aliased
 from sqlalchemy import exc
 
 from rdr_service.model.study_nph import (
-    StudyCategory, Participant, Site, Order, OrderedSample, SampleUpdate, BiobankFileExport, SampleExport
+    StudyCategory, Participant, Site, Order, OrderedSample
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 
@@ -529,30 +529,6 @@ class NphOrderedSampleDao(UpdatableDao):
     def _validate_model(self, obj):
         if obj.order_id is None:
             raise BadRequest("Order ID is missing")
-
-
-class NphSampleUpdateDao(BaseDao):
-    def __init__(self):
-        super(NphSampleUpdateDao, self).__init__(SampleUpdate)
-
-    def get_id(self, obj: SampleUpdate):
-        return obj.id
-
-
-class NphBiobankFileExportDao(BaseDao):
-    def __init__(self):
-        super(NphBiobankFileExportDao, self).__init__(BiobankFileExport)
-
-    def get_id(self, obj: BiobankFileExport):
-        return obj.id
-
-
-class NphSampleExportDao(BaseDao):
-    def __init__(self):
-        super(NphSampleExportDao, self).__init__(SampleExport)
-
-    def get_id(self, obj: SampleExport):
-        return obj.id
 
 
 def fetch_identifier_value(obj: Namespace, identifier: str) -> str:
