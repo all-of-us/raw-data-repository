@@ -468,9 +468,11 @@ class NphOrderDaoTest(TestCase):
         self.assertEqual(request.amendedReason, result.amended_reason)
         self.assertEqual("CANCELED", result.status.upper())
 
+    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
-    def test_from_client_json(self, site_id):
+    def test_from_client_json(self, site_id, p_id):
         session = MagicMock()
+        p_id.return_value = 1
         site_id.return_value = 1
         order_dao = NphOrderDao()
         order_dao.set_order_cls(json.dumps(TEST_SAMPLE))
@@ -551,9 +553,11 @@ class NphOrderDaoTest(TestCase):
         order = order_dao.order_cls
         self.assertEqual(request, order)
 
+    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
-    def test_validate_model(self, site_id):
+    def test_validate_model(self, site_id, p_id):
         session = MagicMock()
+        p_id.return_value =1
         site_id.return_value = 1
         order_dao = NphOrderDao()
         order_dao.set_order_cls(json.dumps(TEST_SAMPLE))

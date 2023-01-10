@@ -4,12 +4,13 @@ from werkzeug.exceptions import BadRequest, NotFound
 import json
 from types import SimpleNamespace as Namespace
 from sqlalchemy.orm import Query, aliased
+from sqlalchemy import exc
 
 from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample, SampleUpdate, BiobankFileExport, SampleExport
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
-
+import logging
 
 class OrderStatus(messages.Enum):
     """A status reflecting the NPH order of the participant"""
@@ -268,6 +269,7 @@ class NphOrderDao(UpdatableDao):
             create_site = self.site_dao.get_id(session, self.order_cls.createdInfo.site.value)
             collected_site = self.site_dao.get_id(session, self.order_cls.collectedInfo.site.value)
             finalized_site = self.site_dao.get_id(session, self.order_cls.finalizedInfo.site.value)
+            p_id = self.participant_dao.get_participant(nph_participant_id, session)
         except NotFound:
             raise
         if not create_site and not collected_site and not finalized_site:
@@ -276,8 +278,7 @@ class NphOrderDao(UpdatableDao):
         for order_model_field, resource_value in [("nph_order_id", fetch_identifier_value(self.order_cls, "order-id")),
                                                   ("order_created", self.order_cls.created),
                                                   ("category_id", category_id),
-                                                  ("participant_id",
-                                                   self.participant_dao.convert_id(nph_participant_id)),
+                                                  ("participant_id", p_id),
                                                   ("created_author", self.order_cls.createdInfo.author.value),
                                                   ("created_site", create_site),
                                                   ("collected_author", self.order_cls.collectedInfo.author.value),
@@ -316,10 +317,13 @@ class NphOrderDao(UpdatableDao):
             session.commit()
             session.refresh(o)
             return o.id
-        except Exception:
-            raise
-        except NotFound:
-            raise
+        except exc.SQLAlchemyError as ex:
+            logging.error(ex)
+            raise ex
+        except NotFound as not_found:
+            raise not_found
+        except Exception as exp:
+            raise exp
 
 
 class NphOrderedSampleDao(UpdatableDao):
