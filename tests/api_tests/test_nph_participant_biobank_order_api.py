@@ -115,9 +115,7 @@ class TestNPHParticipantOrderAPI(TestCase):
             executed = app.test_client().post('rdr/v1/api/v1/nph/Participant/1000124820391/BiobankOrder', json=query)
             result = json.loads(executed.data.decode('utf-8'))
             for k, _ in result.items():
-                if k.upper() == "ID":
-                    continue
-                else:
+                if k.upper() != "ID":
                     self.assertEqual(query.get(k), result.get(k))
 
     @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')
@@ -134,9 +132,7 @@ class TestNPHParticipantOrderAPI(TestCase):
             executed = app.test_client().patch('rdr/v1/api/v1/nph/Participant/1000124820391/BiobankOrder/1', json=query)
             result = json.loads(executed.data.decode('utf-8'))
             for k, _ in result.items():
-                if k.upper() == "ID":
-                    continue
-                else:
+                if k.upper() != "ID":
                     self.assertEqual(query.get(k), result.get(k))
 
     @patch('rdr_service.dao.study_nph_dao.NphOrderedSampleDao._get_child_order_sample')
@@ -166,7 +162,5 @@ class TestNPHParticipantOrderAPI(TestCase):
             executed = app.test_client().put('rdr/v1/api/v1/nph/Participant/1000124820391/BiobankOrder/1', json=query)
             result = json.loads(executed.data.decode('utf-8'))
             for k, _ in result.items():
-                if k.upper() == "ID":
-                    continue
-                else:
+                if k.upper() != "ID":
                     self.assertEqual(query.get(k), result.get(k))

@@ -1,7 +1,7 @@
 import json
 from flask import request
-import logging
 from werkzeug.exceptions import BadRequest, NotFound
+import logging
 
 from rdr_service.api.base_api import UpdatableApi
 from rdr_service.dao import database_factory

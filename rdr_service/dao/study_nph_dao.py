@@ -1,8 +1,10 @@
-from protorpc import messages
 from typing import Tuple, Dict, List, Any
-from werkzeug.exceptions import BadRequest, NotFound
 import json
 from types import SimpleNamespace as Namespace
+import logging
+from protorpc import messages
+from werkzeug.exceptions import BadRequest, NotFound
+
 from sqlalchemy.orm import Query, aliased
 from sqlalchemy import exc
 
@@ -10,7 +12,7 @@ from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample, SampleUpdate, BiobankFileExport, SampleExport
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
-import logging
+
 
 class OrderStatus(messages.Enum):
     """A status reflecting the NPH order of the participant"""
@@ -185,11 +187,11 @@ class NphOrderDao(UpdatableDao):
         time_point_record, visit_type_record, module_record = self.study_category_dao\
             .get_study_category_sample(order.category_id, session)
         if time_point_record is None:
-            raise BadRequest(f"TimePoint does not match the corresponding visitType")
+            raise BadRequest("TimePoint does not match the corresponding visitType")
         if visit_type_record is None:
-            raise BadRequest(f"VisitType does not match the corresponding module")
+            raise BadRequest("VisitType does not match the corresponding module")
         if module_record is None:
-            raise BadRequest(f"Module does not exist")
+            raise BadRequest("Module does not exist")
         payload = self.order_cls
 
         if payload.module != module_record.name:
@@ -309,7 +311,7 @@ class NphOrderDao(UpdatableDao):
         return self.order_sample_dao.insert_with_session(order, order_id, session)
 
     def insert_with_session(self, time_order_id: int, nph_participant_id: int, session):
-       # Adding record(s) to nph.order table
+        # Adding record(s) to nph.order table
 
         try:
             o = self.from_client_json(session, nph_participant_id, time_order_id)
@@ -341,7 +343,7 @@ class NphOrderedSampleDao(UpdatableDao):
         if result:
             return result
         else:
-            raise NotFound(f"Order sample not found")
+            raise NotFound("Order sample not found")
 
     @staticmethod
     def _get_child_order_sample(order_id, session) -> List[OrderedSample]:
@@ -490,4 +492,3 @@ def fetch_identifier_value(obj: Namespace, identifier: str) -> str:
     for each in obj.identifier:
         if each.system == f"http://www.pmi-ops.org/{identifier}":
             return each.value
-
