@@ -1,8 +1,4 @@
 from datetime import datetime
-# from datetime import  timedelta
-# from zlib import crc32
-# from uuid import uuid4
-# from typing import Dict, Any, Tuple
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 import json
@@ -16,20 +12,12 @@ from rdr_service.dao.study_nph_dao import (
     NphSiteDao,
     NphOrderDao,
     NphOrderedSampleDao,
-    # NphSampleUpdateDao,
-    # NphBiobankFileExportDao,
-    # NphSampleExportDao
 )
-# from rdr_service.clock import FakeClock
+
 from rdr_service.model.study_nph import (
-    # Participant,
     StudyCategory,
-    # Site,
     Order,
     OrderedSample,
-    # SampleUpdate,
-    # BiobankFileExport,
-    # SampleExport
 )
 from tests.helpers.unittest_base import BaseTestCase
 
