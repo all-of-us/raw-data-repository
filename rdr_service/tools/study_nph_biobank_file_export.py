@@ -188,7 +188,7 @@ def _create_sample_export_references_for_sample_updates(
 
 def main():
     orders_file_drop: List[Dict[str, Any]] = []
-    orders: Iterable[Order] = get_orders_created_or_modified_in_last_n_hours(hours=48)
+    orders: Iterable[Order] = get_orders_created_or_modified_in_last_n_hours(hours=24)
     grouped_orders: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
     for order in orders:
         finalized_site = order.finalized_site
