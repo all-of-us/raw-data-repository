@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 from collections import defaultdict
 from typing import List, Dict, Any, Iterable, Optional
+from zlib import crc32
 from json import dump
 from re import findall
 
@@ -12,8 +13,9 @@ from rdr_service.model.study_nph import (
     StudyCategory,
     Order,
     OrderedSample,
-    # BiobankFileExport,
-    # SampleExport
+    SampleUpdate,
+    BiobankFileExport,
+    SampleExport
 )
 
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao as RdrParticipantSummaryDao
@@ -23,9 +25,13 @@ from rdr_service.dao.study_nph_dao import (
     NphStudyCategoryDao,
     NphOrderDao,
     NphOrderedSampleDao,
-    # NphBiobankFileExportDao,
-    # NphSampleExportDao
+    NphSampleUpdateDao,
+    NphBiobankFileExportDao,
+    NphSampleExportDao
 )
+
+
+FILE_BUFFER_SIZE_IN_BYTES = 1024 * 1024 # 1MB File Buffer
 
 
 def _filter_orders_by_modified_field(modified_ts: datetime):
@@ -124,6 +130,62 @@ def _convert_orders_to_collections(
     return collections
 
 
+def _get_all_ordered_samples_for_an_order(order_id: int) -> Iterable[OrderedSample]:
+    nph_ordered_sample_dao = NphOrderedSampleDao()
+    with nph_ordered_sample_dao.session() as session:
+        return session.query(OrderedSample).filter(
+            OrderedSample.order_id == order_id
+        ).all()
+
+
+def _get_all_sample_updates_related_to_orders(orders: Iterable[Order]) -> Iterable[SampleUpdate]:
+    nph_sample_update_dao = NphSampleUpdateDao()
+    sample_updates = []
+    for order in orders:
+        ordered_samples = _get_all_ordered_samples_for_an_order(order.id)
+        ordered_sample_ids = [ordered_sample.id for ordered_sample in ordered_samples]
+        with nph_sample_update_dao.session() as session:
+            sample_updates_ = session.query(SampleUpdate).filter(
+                SampleUpdate.rdr_ordered_sample_id.in_(ordered_sample_ids)
+            ).all()
+            sample_updates.extend(sample_updates_)
+    return sample_updates
+
+
+def _compute_crc32c_checksum_using_file_buffer(json_filepath: str) -> int:
+    crc32c_checksum = 0
+    with open(json_filepath, 'r') as json_fp:
+        file_buffer = json_fp.read(FILE_BUFFER_SIZE_IN_BYTES)
+        while file_buffer:
+            crc32c_checksum = crc32(file_buffer.encode(), crc32c_checksum)
+            file_buffer = json_fp.read(FILE_BUFFER_SIZE_IN_BYTES)
+        return crc32c_checksum
+
+
+def _create_biobank_file_export_reference(json_filepath: str) -> BiobankFileExport:
+    crc32c_checksum = _compute_crc32c_checksum_using_file_buffer(json_filepath)
+    biobank_file_export_dao = NphBiobankFileExportDao()
+    biobank_file_export_params = {
+        "file_name": json_filepath,
+        "crc32c_checksum": str(crc32c_checksum)
+    }
+    biobank_file_export = BiobankFileExport(**biobank_file_export_params)
+    return biobank_file_export_dao.insert(biobank_file_export)
+
+
+def _create_sample_export_references_for_sample_updates(
+    biobank_file_export_id: int, sample_updates: Iterable[SampleUpdate]
+):
+    sample_export_dao = NphSampleExportDao()
+    for sample_update in sample_updates:
+        sample_export_params = {
+            "export_id": biobank_file_export_id,
+            "sample_update_id": sample_update.id
+        }
+        sample_export = SampleExport(**sample_export_params)
+        sample_export_dao.insert(sample_export)
+
+
 def main():
     orders_file_drop: List[Dict[str, Any]] = []
     orders: Iterable[Order] = get_orders_created_or_modified_in_last_n_hours(hours=48)
@@ -152,6 +214,10 @@ def main():
     orders_filename = f"NPH_Orders_{today_dt_ts}.json"
     with open(orders_filename, "w") as json_fp:
         dump(orders_file_drop, json_fp, default=str)
+
+    sample_updates_for_orders = _get_all_sample_updates_related_to_orders(orders)
+    biobank_file_export = _create_biobank_file_export_reference(orders_filename)
+    _create_sample_export_references_for_sample_updates(biobank_file_export.id, sample_updates_for_orders)
 
 
 if __name__=="__main__":
