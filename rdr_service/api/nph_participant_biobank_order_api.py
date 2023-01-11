@@ -8,6 +8,8 @@ from sqlalchemy import exc
 from rdr_service.api.base_api import UpdatableApi
 from rdr_service.dao import database_factory
 from rdr_service.dao.study_nph_dao import NphOrderDao
+from rdr_service.api_util import RTI_AND_HEALTHPRO
+from rdr_service.app_util import auth_required
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -28,6 +30,7 @@ class NphOrderApi(UpdatableApi):
     def update_with_patch(self, id_, resource, expected_version):
         pass
 
+    @auth_required(RTI_AND_HEALTHPRO)
     def put(self, nph_participant_id, rdr_order_id):
         try:
             if len(nph_participant_id) < 4:
@@ -51,6 +54,7 @@ class NphOrderApi(UpdatableApi):
             logging.error(sql)
             return construct_response({"error": sql.__dict__['orig']}), 400
 
+    @auth_required(RTI_AND_HEALTHPRO)
     def post(self, nph_participant_id: str):
         if len(nph_participant_id) < 4:
             message = f"Invalid NPH Participant ID. Must be at least 5 characters in length. {nph_participant_id}"
@@ -80,6 +84,7 @@ class NphOrderApi(UpdatableApi):
                 logging.error(sql)
                 return construct_response({"error": sql.__dict__['orig']}), 400
 
+    @auth_required(RTI_AND_HEALTHPRO)
     def patch(self, nph_participant_id, rdr_order_id):
         if len(nph_participant_id) < 4:
             message = f"Invalid NPH Participant ID. Must be at least 5 characters in length. {nph_participant_id}"
