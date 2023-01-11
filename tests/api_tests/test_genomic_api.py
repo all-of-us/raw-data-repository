@@ -2261,6 +2261,7 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
             f"GenomicScheduling?participant_id=P{participant_data.participantId}"
         )
 
+        # note_available should have changes to True
         self.assertTrue(all(obj['status'] == 'note_available' for obj in resp['data']))
         self.assertTrue(all(obj['note_available'] is True for obj in resp['data']))
 
