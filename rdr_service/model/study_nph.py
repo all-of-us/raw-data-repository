@@ -10,6 +10,8 @@ from rdr_service.model.utils import UTCDateTime
 
 
 class Participant(NphBase):
+    # A new participant in this table can only be be added
+    # if they exist in rdr.participant table
     __tablename__ = "participant"
 
     id = Column("id", BigInteger, primary_key=True)
