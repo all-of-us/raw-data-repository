@@ -4,8 +4,10 @@ from datetime import datetime, timedelta
 from rdr_service.clock import FakeClock
 from faker import Faker
 
+from rdr_service.model.participant import Participant as RdrParticpant
+from rdr_service.model.rex import Study as RexStudy, ParticipantMapping as RexParticipantMapping
 from rdr_service.model.study_nph import (
-    Participant,
+    Participant as NphParticipant,
     StudyCategory,
     Site,
     Order,
@@ -14,6 +16,8 @@ from rdr_service.model.study_nph import (
     BiobankFileExport,
     SampleExport
 )
+from rdr_service.dao.rex_dao import RexStudyDao, RexParticipantMappingDao
+from rdr_service.dao.participant_dao import ParticipantDao as RdrParticipantDao
 from rdr_service.dao.study_nph_dao import (
     NphParticipantDao,
     NphStudyCategoryDao,
@@ -34,17 +38,23 @@ class GenFakeParticipant:
     def __init__(self):
         self.nph_participant_dao = NphParticipantDao()
 
-    def create_participant(self, ignore_flag: int = 0, disable_flag: int = 0) -> Participant:
+    def create_participant(
+        self,
+        ignore_flag: int = 0,
+        disable_flag: int = 0,
+        biobank_id: Optional[int] = None,
+        research_id: Optional[int] = 0
+    ) -> NphParticipant:
         faker_obj = Faker()
         disable_reason = ''.join(faker_obj.random_letters(length=512))
         nph_participant_params = {
             "ignore_flag": ignore_flag,
             "disable_flag": disable_flag,
             "disable_reason": disable_reason if disable_flag else "",
-            "biobank_id": int(getrandbits(32)),
-            "research_id": int(getrandbits(32))
+            "biobank_id": biobank_id or int(getrandbits(32)),
+            "research_id": research_id or int(getrandbits(32))
         }
-        nph_participant = Participant(**nph_participant_params)
+        nph_participant = NphParticipant(**nph_participant_params)
         return self.nph_participant_dao.insert(nph_participant)
 
 
@@ -60,16 +70,9 @@ class GenFakeStudyCategory:
     def create_nph_study_category(
         self,
         type_label: str,
+        study_category_name: str,
         parent_id: Optional[int] = None,
-        nph_module_number: Optional[int] = None
     ) -> StudyCategory:
-        # type_label = choice(self.study_categories)
-        if type_label == "module":
-            if not isinstance(nph_module_number, int):
-                raise ValueError(f"Need an integer value for 'nph_module_number'")
-            study_category_name = f"NPH Module {nph_module_number}"
-        else:
-            study_category_name = ''.join(self.faker.random_letters(length=128))
         nph_study_category_params = {
             "name": study_category_name,
             "type_label": type_label,
@@ -79,20 +82,14 @@ class GenFakeStudyCategory:
         return self.nph_study_category_dao.insert(nph_study_category)
 
     def create_nph_study_category_with_a_parent(
-        self, parent_type_label: str, child_type_label: str, nph_module_number: Optional[int] = None
+        self, parent_type_label: str, child_type_label: str, parent_sc_name: str, child_sc_name: str
     ) -> Tuple[StudyCategory, StudyCategory]:
-        if nph_module_number is None:
-            parent_study_category = self.create_nph_study_category(type_label=parent_type_label)
-            child_study_category = self.create_nph_study_category(
-                type_label=child_type_label, parent_id=parent_study_category.id
-            )
-        else:
-            parent_study_category = self.create_nph_study_category(
-                type_label=parent_type_label, nph_module_number=nph_module_number
-            )
-            child_study_category = self.create_nph_study_category(
-                type_label=child_type_label, parent_id=parent_study_category.id
-            )
+        parent_study_category = (
+            self.create_nph_study_category(type_label=parent_type_label, study_category_name=parent_sc_name)
+        )
+        child_study_category = self.create_nph_study_category(
+            type_label=child_type_label, parent_id=parent_study_category.id, study_category_name=child_sc_name
+        )
         return parent_study_category, child_study_category
 
 
@@ -179,6 +176,26 @@ class GenFakeOrderedSample:
         self.end_date = datetime.now()
 
     def create_nph_ordered_sample(self, order_id: int, parent_sample_id: Optional[int] = None) -> OrderedSample:
+        specimen_identifiers = [
+            "SSTS1",
+            "LHPSTP1",
+            "P800P1",
+            "EDTAP1",
+            "RU1",
+            "RU2",
+            "RU3",
+            "TU1",
+            "SA1",
+            "SA2",
+            "ST1",
+            "ST2",
+            "ST3",
+            "ST4",
+            "HA1",
+            "NA1",
+            "NA2",
+        ]
+        volume_units = ["mL", "uL"]
         nph_sample_id = ''.join(self.faker.random_letters(length=64))
         test = ''.join(self.faker.random_letters(length=40))
         description = ''.join(self.faker.random_letters(length=256))
@@ -186,10 +203,10 @@ class GenFakeOrderedSample:
         finalized_dt = self.faker.date_between_dates(collected_dt, collected_dt + timedelta(days=2))
         collected = datetime(day=collected_dt.day, month=collected_dt.month, year=collected_dt.year)
         finalized = datetime(day=finalized_dt.day, month=finalized_dt.month, year=finalized_dt.year)
-        aliquot_id = ''.join(self.faker.random_letters(length=128))
-        identifier = ''.join(self.faker.random_letters(length=128))
+        aliquot_id = str(self.faker.random_int(1, 10E5))
+        identifier = choice(specimen_identifiers)
         container = ''.join(self.faker.random_letters(length=128))
-        volume = ''.join(self.faker.random_letters(length=128))
+        volume = ''.join([str(self.faker.random_int(1, 99)), choice(volume_units)])
         status = ''.join(self.faker.random_letters(length=128))
 
         nph_ordered_sample_params = {
@@ -263,28 +280,105 @@ class GenFakeSampleExport:
         return self.nph_sample_export_dao.insert(nph_sample_export)
 
 
-def generate_fake_participants() -> Iterable[Participant]:
+def _get_rdr_participants() -> Iterable[RdrParticpant]:
+    rdr_participant_dao = RdrParticipantDao()
+    with rdr_participant_dao.session() as session:
+        return session.query(RdrParticpant).all()
+
+
+def _create_fake_rex_study(schema_name: str) -> RexStudy:
+    fake_ancillary_study_params = {
+        "ignore_flag": 0,
+        "schema_name": schema_name,
+        "prefix": 1E2+5E4
+    }
+    rex_study_dao = RexStudyDao()
+    rex_study = RexStudy(**fake_ancillary_study_params)
+    return rex_study_dao.insert(rex_study)
+
+
+def _create_participant_mapping(
+    primary_study_id: int, ancillary_study_id: int, primary_participant_id: int, ancillary_participant_id: int
+):
+    _time = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
+    rex_participant_mapping_params = {
+            "created": _time,
+            "modified": _time,
+            "ignore_flag": 0,
+            "primary_study_id": primary_study_id,
+            "ancillary_study_id": ancillary_study_id,
+            "primary_participant_id": primary_participant_id,
+            "ancillary_participant_id": ancillary_participant_id,
+        }
+    rex_participant_mapping = RexParticipantMapping(**rex_participant_mapping_params)
+    rex_participant_mapping_dao = RexParticipantMappingDao()
+    return rex_participant_mapping_dao.insert(rex_participant_mapping)
+
+
+def generate_fake_participants_and_participant_mappings() \
+    -> Tuple[Iterable[RdrParticpant], Iterable[RexParticipantMapping]]:
+    fake_primary_study = _create_fake_rex_study(schema_name="primary_rex_study")
+    fake_ancillary_study = _create_fake_rex_study(schema_name="ancillary_rex_study")
+
     gen_fake_participant = GenFakeParticipant()
-    participants: Iterable[Participant] = []
-    for _ in range(10):
+    participants: Iterable[RdrParticpant] = []
+    participant_mappings: Iterable[RexParticipantMapping] = []
+    rdr_participants = _get_rdr_participants()
+    for rdr_participant in rdr_participants:
         ignore_flag = choice([0, 1])
         disable_flag = choice([0, 1])
-        participant = gen_fake_participant.create_participant(ignore_flag, disable_flag)
-        participants.append(participant)
-    return participants
+        nph_participant = gen_fake_participant.create_participant(
+            ignore_flag,
+            disable_flag,
+            biobank_id=rdr_participant.biobankId,
+            research_id=rdr_participant.researchId
+        )
+        rex_participant_mapping = _create_participant_mapping(
+            primary_study_id=fake_primary_study.id,
+            ancillary_study_id=fake_ancillary_study.id,
+            primary_participant_id=rdr_participant.participantId,
+            ancillary_participant_id=nph_participant.id
+        )
+        participants.append(nph_participant)
+        participant_mappings.append(rex_participant_mapping)
+    return participants, participant_mappings
 
 
 def generate_fake_study_categories() -> Iterable[StudyCategory]:
     gen_fake_study_category = GenFakeStudyCategory()
     study_categories: Iterable[StudyCategory] = []
-    for nph_module_number in range(10):
-        nph_module, visit_type = (
-            gen_fake_study_category.create_nph_study_category_with_a_parent(
-                "module", "visitType", nph_module_number
+    nph_modules = [
+        "NPH Module 1",
+        "NPH Module 2",
+        "NPH Module 3"
+    ]
+    visit_ids = ["LMT"]
+    timepoint_ids = [
+        "Pre LMT",
+        "Minus 15 min",
+        "Minus 5 min",
+        "15 min",
+        "30 min",
+        "60 min",
+        "90 min",
+        "120 min",
+        "180 min",
+        "240 min",
+        "Post LMT"
+    ]
+    for nph_module_name in nph_modules:
+        for visit_id in visit_ids:
+            nph_module_sc, visit_type_sc = (
+                gen_fake_study_category.\
+                    create_nph_study_category_with_a_parent("module", "visitType", nph_module_name, visit_id)
             )
-        )
-        timepoint = gen_fake_study_category.create_nph_study_category(type_label="timepoint", parent_id=visit_type.id)
-        study_categories.extend([nph_module, visit_type, timepoint])
+            for timepoint_id in timepoint_ids:
+                timepoint_sc = (
+                    gen_fake_study_category.create_nph_study_category(
+                        type_label="timepoint", parent_id=visit_type_sc.id, study_category_name=timepoint_id
+                    )
+                )
+                study_categories.extend([nph_module_sc, visit_type_sc, timepoint_sc])
     return study_categories
 
 
@@ -298,7 +392,7 @@ def generate_fake_sites() -> Iterable[Site]:
 
 
 def generate_fake_orders(
-    fake_participants: Iterable[Participant],
+    fake_participants: Iterable[NphParticipant],
     fake_study_categories: Iterable[StudyCategory],
     fake_sites: Iterable[Site]
 ) -> Iterable[Order]:
@@ -310,7 +404,7 @@ def generate_fake_orders(
         if sc.type_label == "timepoint":
             timepoint_sc.append(sc)
     for _ in range(10):
-        fake_participant: Participant = choice(fake_participants)
+        fake_participant: NphParticipant = choice(fake_participants)
         fake_study_category: StudyCategory = choice(timepoint_sc)
         fake_created_site: Site = choice(fake_sites)
         fake_collected_site: Site = choice(fake_sites)
@@ -348,7 +442,7 @@ def generate_fake_sample_updates(
     fake_ordered_samples: Iterable[OrderedSample]
 ) -> Iterable[SampleUpdate]:
     gen_fake_sample_update = GenFakeSampleUpdate()
-    for _ in range(10):
+    for _ in range(40):
         ordered_sample = choice(fake_ordered_samples)
         ignore_flag = choice([0, 1])
         gen_fake_sample_update.create_nph_sample_update(
@@ -357,7 +451,7 @@ def generate_fake_sample_updates(
 
 
 def main():
-    participants = generate_fake_participants()
+    participants, _ = generate_fake_participants_and_participant_mappings()
     study_categories = generate_fake_study_categories()
     sites = generate_fake_sites()
     orders = generate_fake_orders(
