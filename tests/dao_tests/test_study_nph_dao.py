@@ -1,5 +1,6 @@
-from datetime import datetime
-from unittest import TestCase
+from datetime import datetime, timedelta
+from uuid import uuid4
+from typing import Dict, Any, Tuple
 from unittest.mock import MagicMock, patch
 import json
 from types import SimpleNamespace as Namespace
@@ -13,13 +14,15 @@ from rdr_service.dao.study_nph_dao import (
     NphOrderDao,
     NphOrderedSampleDao,
 )
-
+from rdr_service.clock import FakeClock
 from rdr_service.model.study_nph import (
+    Participant,
     StudyCategory,
     Order,
+    Site,
     OrderedSample,
 )
-
+from tests.helpers.unittest_base import BaseTestCase
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 TIME = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
@@ -149,8 +152,68 @@ TEST_URINE_SAMPLE = {
     }
 }
 
+TEST_DATA = {"module": "1", "visitType": "LMT", "timepoint": "15min"}
 
-class NphParticipantDaoTest(TestCase):
+RESTORED_PAYLOAD = {
+    "status": "restored",
+    "amendedReason": "ORDER_RESTORE_WRONG_PARTICIPANT",
+    "restoredInfo": {
+        "author": {"system": "https://www.pmi-ops.org/nph-username", "value": "test@pmi-ops.org"
+                   },
+        "site": {"system": "https://www.pmi-ops.org/site-id", "value": "nph-site-testa"
+                 }
+    }
+}
+
+CANCEL_PAYLOAD = {
+    "status": "canceled",
+    "amendedReason": "ORDER_RESTORE_WRONG_PARTICIPANT",
+    "cancelledInfo": {
+        "author": {"system": "https://www.pmi-ops.org/nph-username", "value": "test@pmi-ops.org"
+                   },
+        "site": {"system": "https://www.pmi-ops.org/site-id", "value": "nph-site-testa"
+                 }
+    }
+}
+
+
+class NphParticipantDaoTest(BaseTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.nph_participant_dao = NphParticipantDao()
+
+    def test_get_before_insert(self):
+        self.assertIsNone(self.nph_participant_dao.get(1))
+
+    def test_insert_participant(self):
+        nph_participant_params = {
+            "id": 1,
+            "ignore_flag": 0,
+            "disable_flag": 0,
+            "disable_reason": "N/A",
+            "biobank_id": 1E7,
+            "research_id": 1E7
+        }
+        nph_participant = Participant(**nph_participant_params)
+        with FakeClock(TIME):
+            self.nph_participant_dao.insert(nph_participant)
+
+        expected_nph_participant = {
+            "id": 1,
+            "created": TIME,
+            "modified": TIME,
+            "ignore_flag": 0,
+            "disable_flag": 0,
+            "disable_reason": "N/A",
+            "biobank_id": int(1E7),
+            "research_id": int(1E7),
+        }
+
+        expected_nph_participant_ = Participant(**expected_nph_participant)
+        participant_obj = self.nph_participant_dao.get(1)
+        self.assertEqual(self.nph_participant_dao.fetch_participant_id(participant_obj), 1)
+        self.assertEqual(expected_nph_participant_.asdict(), participant_obj.asdict())
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     def test_get_id(self, query_filter):
@@ -190,48 +253,85 @@ class NphParticipantDaoTest(TestCase):
         participant_id = test_participant_dao.convert_id("10001")
         self.assertEqual(1, participant_id)
 
-    # def setUp(self):
-    #     super().setUp()
-    #     self.nph_participant_dao = NphParticipantDao()
-
-    # def test_get_before_insert(self):
-    #     self.assertIsNone(self.nph_participant_dao.get(1))
-
-    # def test_insert_participant(self):
-    #     nph_participant_params = {
-    #         "id": 10001,
-    #         "ignore_flag": 0,
-    #         "disable_flag": 0,
-    #         "disable_reason": "N/A",
-    #         "biobank_id": 1E7,
-    #         "research_id": 1E7
-    #     }
-    #     nph_participant = Participant(**nph_participant_params)
-    #     with FakeClock(TIME):
-    #         self.nph_participant_dao.insert(nph_participant)
-    #
-    #     expected_nph_participant = {
-    #         "id": 1,
-    #         "created": TIME,
-    #         "modified": TIME,
-    #         "ignore_flag": 0,
-    #         "disable_flag": 0,
-    #         "disable_reason": "N/A",
-    #         "biobank_id": int(1E7),
-    #         "research_id": int(1E7),
-    #     }
-    #     expected_nph_participant_ = Participant(**expected_nph_participant)
-    #     participant_obj = self.nph_participant_dao.get_id(self.session, "1001")
-    #     self.assertEqual(self.nph_participant_dao.convert_id("1001"), 1)
-    #     self.assertEqual(expected_nph_participant_.__dict__, participant_obj.asdict())
-
-    # def tearDown(self):
-    #     self.clear_table_after_test("nph.participant")
+    def tearDown(self):
+        self.clear_table_after_test("nph.participant")
 
 
-class NphStudyCategoryTest(TestCase):
+class NphStudyCategoryTest(BaseTestCase):
 
-    TEST_DATA = {"module": "1", "visitType": "LMT", "timepoint": "15min"}
+    def setUp(self):
+        super().setUp()
+        self.nph_study_category_dao = NphStudyCategoryDao()
+
+    def test_get_before_insert(self):
+        session = MagicMock()
+        self.assertIsNone(self.nph_study_category_dao.get_study_category_sample(1, session)[0])
+
+    def _create_study_category(self, study_category_obj: Dict[str, Any]) -> StudyCategory:
+        nph_study_category = StudyCategory(**study_category_obj)
+        with FakeClock(TIME):
+            return self.nph_study_category_dao.insert(nph_study_category)
+
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.insert_time_point_record')
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.visit_type_exist')
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.module_exist')
+    def test_insert_parent_study_category(self, mock_module_exist, mock_visit_type_exist, mock_insert_time):
+        mock_insert_time.return_value = StudyCategory(name="Child Study Category", type_label="CHILD")
+        mock_visit_type_exist.return_value = (True, StudyCategory(name="Child Study Category", type_label="CHILD"))
+        mock_module_exist.return_value = (True, StudyCategory(name="Parent Study Category", type_label="PARENT"))
+        parent_study_category = {
+            "name": "Parent Study Category",
+            "type_label": "PARENT",
+            "parent_id": None
+        }
+        _parent_study_category = self._create_study_category(parent_study_category)[0]
+        expected_parent_study_category = {
+            "id": 1,
+            "created": TIME,
+            "name": "Parent Study Category",
+            "type_label": "PARENT",
+            "parent_id": None
+        }
+        expected_parent_study_category_ = StudyCategory(**expected_parent_study_category)
+        self.assertEqual(
+            expected_parent_study_category_.asdict(),
+            _parent_study_category.asdict()
+        )
+
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.insert_time_point_record')
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.visit_type_exist')
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.module_exist')
+    def test_insert_child_study_category(self, mock_module_exist, mock_visit_type_exist, mock_insert_time):
+        mock_insert_time.return_value = StudyCategory(name="Child Study Category", type_label="CHILD")
+        mock_visit_type_exist.return_value = (True, StudyCategory(name="Child Study Category", type_label="CHILD"))
+        mock_module_exist.side_effect = [(True, StudyCategory(name="Parent Study Category", type_label="PARENT")),
+                                         (True, StudyCategory(name="Child Study Category", type_label="CHILD", id=2,
+                                                              parent_id=1))]
+        parent_study_category_obj = {
+            "name": "Parent Study Category",
+            "type_label": "PARENT",
+            "parent_id": None
+        }
+        parent_study_category = self._create_study_category(parent_study_category_obj)[0]
+
+        child_study_category_obj = {
+            "name": "Child Study Category",
+            "type_label": "CHILD",
+            "parent_id": parent_study_category.id
+        }
+        child_study_category = self._create_study_category(child_study_category_obj)[0]
+        expected_child_study_category = {
+            "id": 2,
+            "created": TIME,
+            "name": "Child Study Category",
+            "type_label": "CHILD",
+            "parent_id": parent_study_category.id
+        }
+        expected_child_study_category_ = StudyCategory(**expected_child_study_category)
+        self.assertEqual(
+            expected_child_study_category_.asdict(),
+            child_study_category.asdict()
+        )
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     def test_insert_with_session(self, query_filter):
@@ -239,7 +339,7 @@ class NphStudyCategoryTest(TestCase):
         session = MagicMock()
         request = json.loads(json.dumps(TEST_URINE_SAMPLE), object_hook=lambda d: Namespace(**d))
         nph_study_category_dao = NphStudyCategoryDao()
-        nph_study_category_dao.insert_with_session(request, session)
+        nph_study_category_dao.insert_with_session(session, request)
         self.assertEqual(TEST_URINE_SAMPLE.get("visitType"), session.method_calls[0][1][0].children[0].name)
         self.assertEqual("visitType", session.method_calls[0][1][0].children[0].type_label)
         self.assertEqual(TEST_URINE_SAMPLE.get("timepoint"), session.method_calls[0][1][0].children[0].children[0].name)
@@ -269,13 +369,46 @@ class NphStudyCategoryTest(TestCase):
             nph_study_category_dao.validate_model(request)
         self.assertEqual("400 Bad Request: Visit Type is missing", str(visit_type_error.exception))
 
+    def tearDown(self):
+        self.clear_table_after_test("nph.study_category")
+
+
+class NphSiteDaoTest(BaseTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.nph_site_dao = NphSiteDao()
+
     def test_get_before_insert(self):
-        session = MagicMock()
-        nph_study_category_dao = NphStudyCategoryDao()
-        self.assertIsNone(nph_study_category_dao.get_study_category_sample(1, session)[0])
+        self.assertIsNone(self.nph_site_dao.get(1))
 
+    def test_insert_site(self):
+        _time = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
+        site_external_id = str(uuid4())
+        awardee_external_id = str(uuid4())
+        site_mapping_params = {
+            "created": _time,
+            "modified": _time,
+            "external_id": site_external_id,
+            "name": "Site 1",
+            "awardee_external_id": awardee_external_id
+        }
+        nph_site = Site(**site_mapping_params)
+        with FakeClock(_time):
+            self.nph_site_dao.insert(nph_site)
 
-class NphSiteDaoTest(TestCase):
+        expected_site_mapping = {
+            "id": 1,
+            "created": _time,
+            "modified": _time,
+            "external_id": site_external_id,
+            "name": "Site 1",
+            "awardee_external_id": awardee_external_id
+        }
+        expected_nph_site = Site(**expected_site_mapping)
+        self.assertEqual(
+            expected_nph_site.asdict(), self.nph_site_dao.get(1).asdict()
+        )
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     def test_get_good_id(self, query_filter):
@@ -311,74 +444,160 @@ class NphSiteDaoTest(TestCase):
         not_exist = site_dao.site_exist(session, "test_site")
         self.assertFalse(not_exist)
 
-    # def setUp(self):
-    #     super().setUp()
-    #     self.nph_site_dao = NphSiteDao()
-    #
-    # def test_get_before_insert(self):
-    #     self.assertIsNone(self.nph_site_dao.get(1))
-    #
-    # def test_insert_site(self):
-    #     _time = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
-    #     site_external_id = str(uuid4())
-    #     awardee_external_id = str(uuid4())
-    #     site_mapping_params = {
-    #         "created": _time,
-    #         "modified": _time,
-    #         "external_id": site_external_id,
-    #         "name": "Site 1",
-    #         "awardee_external_id": awardee_external_id
-    #     }
-    #     nph_site = Site(**site_mapping_params)
-    #     with FakeClock(_time):
-    #         self.nph_site_dao.insert(nph_site)
-    #
-    #     expected_site_mapping = {
-    #         "id": 1,
-    #         "created": _time,
-    #         "modified": _time,
-    #         "external_id": site_external_id,
-    #         "name": "Site 1",
-    #         "awardee_external_id": awardee_external_id
-    #     }
-    #     expected_nph_site = Site(**expected_site_mapping)
-    #     self.assertEqual(
-    #         expected_nph_site.asdict(), self.nph_site_dao.get(1).asdict()
-    #     )
-    #
-    # def tearDown(self):
-    #     self.clear_table_after_test("nph.site")
+    def tearDown(self):
+        self.clear_table_after_test("nph.site")
 
 
-class NphOrderDaoTest(TestCase):
+class NphOrderDaoTest(BaseTestCase):
 
-    RESTORED_PAYLOAD = {
-                        "status": "restored",
-                        "amendedReason": "ORDER_RESTORE_WRONG_PARTICIPANT",
-                        "restoredInfo": {
-                              "author": {"system": "https://www.pmi-ops.org/nph-username", "value": "test@pmi-ops.org"
-                                         },
-                              "site": {"system": "https://www.pmi-ops.org/site-id", "value": "nph-site-testa"
-                                       }
-                        }
-                    }
+    def setUp(self):
+        super().setUp()
+        self.nph_participant_dao = NphParticipantDao()
+        self.nph_study_category_dao = NphStudyCategoryDao()
+        self.nph_site_dao = NphSiteDao()
+        self.nph_order_dao = NphOrderDao()
 
-    CANCEL_PAYLOAD = {
-        "status": "canceled",
-        "amendedReason": "ORDER_RESTORE_WRONG_PARTICIPANT",
-        "cancelledInfo": {
-            "author": {"system": "https://www.pmi-ops.org/nph-username", "value": "test@pmi-ops.org"
-                       },
-            "site": {"system": "https://www.pmi-ops.org/site-id", "value": "nph-site-testa"
-                     }
+    def test_get_before_insert(self):
+        self.assertIsNone(self.nph_order_dao.get(1))
+
+    def _create_study_category(self, study_category_obj: Dict[str, Any]) -> StudyCategory:
+        nph_study_category = StudyCategory(**study_category_obj)
+        with FakeClock(TIME):
+            return self.nph_study_category_dao.insert(nph_study_category)
+
+    def _create_parent_and_child_study_categories(
+        self,
+        parent_sc_name: str,
+        parent_sc_type_label: str,
+        child_sc_name: str,
+        child_sc_type_label: str
+    ) -> Tuple[StudyCategory, StudyCategory]:
+        parent_study_category_params = {
+            "name": parent_sc_name,
+            "type_label": parent_sc_type_label,
+            "parent_id": None
         }
-    }
+        parent_sc = self._create_study_category(parent_study_category_params)[0]
+
+        child_study_category_params = {
+            "name": child_sc_name,
+            "type_label": child_sc_type_label,
+            "parent_id": parent_sc.id
+        }
+        child_sc = self._create_study_category(child_study_category_params)[0]
+        return parent_sc, child_sc
+
+    def _create_nph_participant(self, participant_obj: Dict[str, Any]) -> Participant:
+        nph_participant = Participant(**participant_obj)
+        with FakeClock(TIME):
+            return self.nph_participant_dao.insert(nph_participant)
+
+    def _create_site(self, name: str, site_external_id: str, awardee_external_id: str) -> Site:
+        site_mapping_params = {
+            "external_id": site_external_id,
+            "name": name,
+            "awardee_external_id": awardee_external_id
+        }
+        nph_site = Site(**site_mapping_params)
+        with FakeClock(TIME):
+            return self.nph_site_dao.insert(nph_site)
+
+    def _create_order(self, order_params: Dict[str, Any], ts: str) -> Order:
+        nph_order = Order(**order_params)
+        with FakeClock(ts):
+            return self.nph_order_dao.insert(nph_order)
+
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.insert_time_point_record')
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.visit_type_exist')
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.module_exist')
+    def test_insert_order(self, mock_module_exist, mock_visit_type_exist, mock_insert_time):
+        mock_insert_time.return_value = StudyCategory(name="Child Study Category", type_label="CHILD")
+        mock_visit_type_exist.return_value = (True, StudyCategory(name="Parent Study Category", type_label="PARENT"))
+        mock_module_exist.return_value = (True, StudyCategory(name="Child Study Category", type_label="CHILD"))
+
+        _, study_category = self._create_parent_and_child_study_categories(
+            parent_sc_name="Parent Study Category",
+            parent_sc_type_label="PARENT",
+            child_sc_name="Child Study Category",
+            child_sc_type_label="CHILD"
+        )
+
+        participant_obj_params = {
+            "ignore_flag": 0,
+            "disable_flag": 0,
+            "disable_reason": "N/A",
+            "biobank_id": 1E7,
+            "research_id": 1E7
+        }
+        nph_participant = self._create_nph_participant(participant_obj_params)
+
+        created_site_external_id = str(uuid4())
+        created_awardee_external_id = str(uuid4())
+        created_site = self._create_site(
+            name="Created Site",
+            site_external_id=created_site_external_id,
+            awardee_external_id=created_awardee_external_id
+        )
+        created_author = "created@foobar.com"
+
+        collected_site_external_id = str(uuid4())
+        collected_awardee_external_id = str(uuid4())
+        collected_site = self._create_site(
+            name="Collected Site",
+            site_external_id=collected_site_external_id,
+            awardee_external_id=collected_awardee_external_id
+        )
+        collected_author = "collected@foobar.com"
+
+        amended_site_external_id = str(uuid4())
+        amended_awardee_external_id = str(uuid4())
+        amended_site = self._create_site(
+            name="Amended Site",
+            site_external_id=amended_site_external_id,
+            awardee_external_id=amended_awardee_external_id
+        )
+        amended_author = "amended@foobar.com"
+
+        finalized_site_external_id = str(uuid4())
+        finalized_awardee_external_id = str(uuid4())
+        finalized_site = self._create_site(
+            name="Finalized Site",
+            site_external_id=finalized_site_external_id,
+            awardee_external_id=finalized_awardee_external_id
+        )
+        finalized_author = "finalized@foobar.com"
+
+        order_notes = {
+            "NOTE": "DO NOT PROCESS THIS ORDER"
+        }
+        order_created_ts = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
+        _time = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
+        nph_order_id = str(uuid4())
+        nph_order_params = {
+            "nph_order_id": nph_order_id,
+            "order_created": order_created_ts,
+            "category_id": study_category.id,
+            "participant_id": nph_participant.id,
+            "created_site": created_site.id,
+            "created_author": created_author,
+            "collected_site": collected_site.id,
+            "collected_author": collected_author,
+            "finalized_site": finalized_site.id,
+            "finalized_author": finalized_author,
+            "amended_site": amended_site.id,
+            "amended_author": amended_author,
+            "amended_reason": "",
+            "notes": order_notes,
+            "status": "PROCESSING"
+        }
+        nph_order = self._create_order(nph_order_params, ts=_time)
+        self.assertEqual(self.nph_order_dao.get(1).asdict(), nph_order.asdict())
 
     @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
     def test_patch_restored_update(self, site_id, order):
         session = MagicMock()
-        request = json.loads(json.dumps(self.RESTORED_PAYLOAD), object_hook=lambda d: Namespace(**d))
+        request = json.loads(json.dumps(RESTORED_PAYLOAD), object_hook=lambda d: Namespace(**d))
         site_id.return_value = 1
         order.return_value = Order(id=1, participant_id=1)
         order_dao = NphOrderDao()
@@ -392,7 +611,7 @@ class NphOrderDaoTest(TestCase):
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
     def test_patch_cancel_update(self, site_id, order):
         session = MagicMock()
-        request = json.loads(json.dumps(self.CANCEL_PAYLOAD), object_hook=lambda d: Namespace(**d))
+        request = json.loads(json.dumps(CANCEL_PAYLOAD), object_hook=lambda d: Namespace(**d))
         site_id.return_value = 1
         order.return_value = Order(id=1, participant_id=1)
         order_dao = NphOrderDao()
@@ -406,7 +625,7 @@ class NphOrderDaoTest(TestCase):
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
     def test_from_client_json(self, site_id, p_id):
         session = MagicMock()
-        p_id.return_value = 1
+        p_id.return_value = Participant(id=1)
         site_id.return_value = 1
         order_dao = NphOrderDao()
         order_dao.set_order_cls(json.dumps(TEST_SAMPLE))
@@ -491,15 +710,197 @@ class NphOrderDaoTest(TestCase):
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
     def test_validate_model(self, site_id, p_id):
         session = MagicMock()
-        p_id.return_value =1
+        p_id.return_value = Participant(id=1)
         site_id.return_value = 1
         order_dao = NphOrderDao()
         order_dao.set_order_cls(json.dumps(TEST_SAMPLE))
         order = order_dao.from_client_json(session, "10001", 1)
         order_dao._validate_model(order)
 
+    def tearDown(self):
+        self.clear_table_after_test("nph.order")
+        self.clear_table_after_test("nph.site")
+        self.clear_table_after_test("nph.study_category")
+        self.clear_table_after_test("nph.participant")
 
-class NphOrderedSampleDaoTest(TestCase):
+
+class NphOrderedSampleDaoTest(BaseTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.nph_participant_dao = NphParticipantDao()
+        self.nph_study_category_dao = NphStudyCategoryDao()
+        self.nph_site_dao = NphSiteDao()
+        self.nph_order_dao = NphOrderDao()
+        self.nph_ordered_sample_dao = NphOrderedSampleDao()
+
+    def test_get_before_insert(self):
+        self.assertIsNone(self.nph_ordered_sample_dao.get(1))
+
+    def _create_study_category(self, study_category_obj: Dict[str, Any]) -> StudyCategory:
+        nph_study_category = StudyCategory(**study_category_obj)
+        with FakeClock(TIME):
+            return self.nph_study_category_dao.insert(nph_study_category)
+
+    def _create_parent_and_child_study_categories(
+        self,
+        parent_sc_name: str,
+        parent_sc_type_label: str,
+        child_sc_name: str,
+        child_sc_type_label: str
+    ) -> Tuple[StudyCategory, StudyCategory]:
+        parent_study_category_params = {
+            "name": parent_sc_name,
+            "type_label": parent_sc_type_label,
+            "parent_id": None
+        }
+        parent_sc = self._create_study_category(parent_study_category_params)[0]
+
+        child_study_category_params = {
+            "name": child_sc_name,
+            "type_label": child_sc_type_label,
+            "parent_id": parent_sc.id
+        }
+        child_sc = self._create_study_category(child_study_category_params)[0]
+        return parent_sc, child_sc
+
+    def _create_nph_participant(self, participant_obj: Dict[str, Any]) -> Participant:
+        nph_participant = Participant(**participant_obj)
+        with FakeClock(TIME):
+            return self.nph_participant_dao.insert(nph_participant)
+
+    def _create_site(self, name: str, site_external_id: str, awardee_external_id: str) -> Site:
+        site_mapping_params = {
+            "external_id": site_external_id,
+            "name": name,
+            "awardee_external_id": awardee_external_id
+        }
+        nph_site = Site(**site_mapping_params)
+        with FakeClock(TIME):
+            return self.nph_site_dao.insert(nph_site)
+
+    def _create_test_order(self) -> Order:
+        _, study_category = self._create_parent_and_child_study_categories(
+            parent_sc_name="Parent Study Category",
+            parent_sc_type_label="PARENT",
+            child_sc_name="Child Study Category",
+            child_sc_type_label="CHILD"
+        )
+
+        participant_obj_params = {
+            "ignore_flag": 0,
+            "disable_flag": 0,
+            "disable_reason": "N/A",
+            "biobank_id": 1E7,
+            "research_id": 1E7
+        }
+        nph_participant = self._create_nph_participant(participant_obj_params)
+
+        created_site_external_id = str(uuid4())
+        created_awardee_external_id = str(uuid4())
+        created_site = self._create_site(
+            name="Created Site",
+            site_external_id=created_site_external_id,
+            awardee_external_id=created_awardee_external_id
+        )
+        created_author = "created@foobar.com"
+
+        collected_site_external_id = str(uuid4())
+        collected_awardee_external_id = str(uuid4())
+        collected_site = self._create_site(
+            name="Collected Site",
+            site_external_id=collected_site_external_id,
+            awardee_external_id=collected_awardee_external_id
+        )
+        collected_author = "collected@foobar.com"
+
+        amended_site_external_id = str(uuid4())
+        amended_awardee_external_id = str(uuid4())
+        amended_site = self._create_site(
+            name="Amended Site",
+            site_external_id=amended_site_external_id,
+            awardee_external_id=amended_awardee_external_id
+        )
+        amended_author = "amended@foobar.com"
+
+        finalized_site_external_id = str(uuid4())
+        finalized_awardee_external_id = str(uuid4())
+        finalized_site = self._create_site(
+            name="Finalized Site",
+            site_external_id=finalized_site_external_id,
+            awardee_external_id=finalized_awardee_external_id
+        )
+        finalized_author = "finalized@foobar.com"
+
+        order_notes = {
+            "NOTE": "DO NOT PROCESS THIS ORDER"
+        }
+        order_created_ts = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
+        _time = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
+        nph_order_id = str(uuid4())
+        nph_order_params = {
+            "nph_order_id": nph_order_id,
+            "order_created": order_created_ts,
+            "category_id": study_category.id,
+            "participant_id": nph_participant.id,
+            "created_site": created_site.id,
+            "created_author": created_author,
+            "collected_site": collected_site.id,
+            "collected_author": collected_author,
+            "finalized_site": finalized_site.id,
+            "finalized_author": finalized_author,
+            "amended_site": amended_site.id,
+            "amended_author": amended_author,
+            "amended_reason": "",
+            "notes": order_notes,
+            "status": "PROCESSING"
+        }
+        nph_order = Order(**nph_order_params)
+        with FakeClock(_time):
+            return self.nph_order_dao.insert(nph_order)
+
+    def _create_ordered_sample(self, ordered_sample_params: Dict[str, Any]) -> OrderedSample:
+        nph_ordered_sample = OrderedSample(**ordered_sample_params)
+        with FakeClock(TIME):
+            return self.nph_ordered_sample_dao.insert(nph_ordered_sample)
+
+    @patch('rdr_service.dao.study_nph_dao.NphOrderedSampleDao.from_client_json')
+    @patch('rdr_service.dao.study_nph_dao.fetch_identifier_value')
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.insert_time_point_record')
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.visit_type_exist')
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.module_exist')
+    def test_insert_ordered_sample(self, mock_module_exist, mock_visit_type_exist, mock_insert_time, mock_fetch_ident,
+                                   mock_client_json):
+        nph_sample_id = str(uuid4())
+        mock_fetch_ident.return_value = nph_sample_id
+        mock_insert_time.return_value = StudyCategory(name="Child Study Category", type_label="CHILD")
+        mock_visit_type_exist.return_value = (True, StudyCategory(name="Parent Study Category", type_label="PARENT"))
+        mock_module_exist.return_value = (True, StudyCategory(name="Child Study Category", type_label="CHILD"))
+        test_order = self._create_test_order()
+
+        collected_ts = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
+        finalized_ts = datetime.strptime((datetime.now() + timedelta(hours=3)).strftime(DATETIME_FORMAT),
+                                         DATETIME_FORMAT)
+        ordered_sample_params = {
+            "nph_sample_id": nph_sample_id,
+            "order_id": test_order.id,
+            "parent_sample_id": None,
+            "test": "test",
+            "description": "ordered sample",
+            "collected": collected_ts,
+            "finalized": finalized_ts,
+            "aliquot_id": str(uuid4()),
+            "container": "container 1",
+            "volume": "volume 2",
+            "status": "2 aliquots restored",
+            "supplemental_fields": None,
+            "identifier": None
+        }
+        mock_client_json.return_value = OrderedSample(**ordered_sample_params)
+        ordered_sample = self._create_ordered_sample(ordered_sample_params)
+        self.assertIsNotNone(ordered_sample)
+        ordered_sample_params["id"] = 1
+        self.assertEqual(ordered_sample.asdict(), ordered_sample_params)
 
     def test_from_client_json(self):
         request = json.loads(json.dumps(TEST_URINE_SAMPLE), object_hook=lambda d: Namespace(**d))
@@ -555,7 +956,7 @@ class NphOrderedSampleDaoTest(TestCase):
         session = MagicMock()
         query_filter.return_value.all.return_value = [1, 2, 3]
         os_dao = NphOrderedSampleDao()
-        result = os_dao._get_child_order_sample(1, session)
+        result = os_dao._get_child_order_sample(1, 2, session)
         self.assertEqual([1, 2, 3], result)
 
     def test_insert_os(self):
@@ -563,7 +964,8 @@ class NphOrderedSampleDaoTest(TestCase):
         order_sample_dao = NphOrderedSampleDao()
         os = order_sample_dao.from_client_json(request, 1, 'nph-sample-id-456')
         session = MagicMock()
-        order_sample_dao._insert_order_sample(request, 1, session)
+        request.id = os.order_id
+        order_sample_dao._insert_order_sample(session, request)
         parent_os = session.method_calls[0][1][0]
         self.assertEqual(os.nph_sample_id, parent_os.nph_sample_id)
         self.assertEqual(os.collected, parent_os.collected)
@@ -616,3 +1018,10 @@ class NphOrderedSampleDaoTest(TestCase):
         self.assertEqual(request.aliquots[0].container, new_os.container)
         self.assertEqual(request.aliquots[0].description, new_os.description)
         self.assertEqual(request.aliquots[0].volume, new_os.volume)
+
+    def tearDown(self):
+        self.clear_table_after_test("nph.ordered_sample")
+        self.clear_table_after_test("nph.order")
+        self.clear_table_after_test("nph.site")
+        self.clear_table_after_test("nph.study_category")
+        self.clear_table_after_test("nph.participant")

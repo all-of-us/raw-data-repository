@@ -24,6 +24,10 @@ class NphParticipantDao(BaseDao):
     def __init__(self):
         super(NphParticipantDao, self).__init__(Participant)
 
+    @staticmethod
+    def fetch_participant_id(obj) -> int:
+        return obj.id
+
     def get_id(self, session, nph_participant_id: str) -> int:
         participant_id = self.convert_id(nph_participant_id)
         query = Query(Participant)
@@ -101,7 +105,7 @@ class NphStudyCategoryDao(UpdatableDao):
                                              StudyCategory.type_label == "module").first()
         return time_point_record, visit_type_record, module_record
 
-    def insert_with_session(self, order: Namespace, session):
+    def insert_with_session(self, session, order: Namespace):
         # Insert the study category payload values to the db table
         module_exist, module = self.module_exist(order, session)
         visit_exist, visit = self.visit_type_exist(order, module, session)
@@ -110,11 +114,15 @@ class NphStudyCategoryDao(UpdatableDao):
         if not visit_exist:
             visit = StudyCategory(name=order.visitType, type_label="visitType")
             module.children.append(visit)
-        time = StudyCategory(name=order.timepoint, type_label="timepoint")
+        time = self.insert_time_point_record(order)
         visit.children.append(time)
         session.add(module)
         session.commit()
-        return time.id
+        return module, time.id
+
+    @staticmethod
+    def insert_time_point_record(order: Namespace):
+        return StudyCategory(name=order.timepoint, type_label="timepoint")
 
     @staticmethod
     def validate_model(obj):
@@ -141,12 +149,13 @@ class NphStudyCategoryDao(UpdatableDao):
 
         query = Query(StudyCategory)
         query.session = session
-        result = query.filter(StudyCategory.type_label == "visitType", StudyCategory.name == order.visitType,
-                              StudyCategory.parent_id == module.id).first()
-        if result:
-            return True, result
-        else:
-            return False, None
+        if module:
+            result = query.filter(StudyCategory.type_label == "visitType", StudyCategory.name == order.visitType,
+                                  StudyCategory.parent_id == module.id).first()
+            if result:
+                return True, result
+
+        return False, None
 
 
 class NphSiteDao(BaseDao):
@@ -306,18 +315,18 @@ class NphOrderDao(UpdatableDao):
             create_site = self.site_dao.get_id(session, self.order_cls.createdInfo.site.value)
             collected_site = self.site_dao.get_id(session, self.order_cls.collectedInfo.site.value)
             finalized_site = self.site_dao.get_id(session, self.order_cls.finalizedInfo.site.value)
-            p_id = self.participant_dao.get_participant(nph_participant_id, session)
+            participant = self.participant_dao.get_participant(nph_participant_id, session)
         except NotFound:
             raise
         if not create_site and not collected_site and not finalized_site:
             raise BadRequest("Site has not been populated in Site Table")
-        if not p_id:
+        if not participant:
             raise NotFound(f"Participant not Found: {nph_participant_id}")
         order = Order()
         for order_model_field, resource_value in [("nph_order_id", fetch_identifier_value(self.order_cls, "order-id")),
                                                   ("order_created", self.order_cls.created),
                                                   ("category_id", category_id),
-                                                  ("participant_id", p_id),
+                                                  ("participant_id", participant.id),
                                                   ("created_author", self.order_cls.createdInfo.author.value),
                                                   ("created_site", create_site),
                                                   ("collected_author", self.order_cls.collectedInfo.author.value),
@@ -344,18 +353,17 @@ class NphOrderDao(UpdatableDao):
     def insert_study_category_with_session(self, order: Namespace, session):
         return self.study_category_dao.insert_with_session(order, session)
 
-    def insert_ordered_sample_dao_with_session(self, order: Namespace, order_id: int, session):
-        return self.order_sample_dao.insert_with_session(order, order_id, session)
+    def insert_ordered_sample_dao_with_session(self, session, order: Namespace):
+        return self.order_sample_dao.insert_with_session(session, order)
 
-    def insert_with_session(self, time_order_id: int, nph_participant_id: int, session):
+    def insert_with_session(self, session, order: Order) -> Order:
         # Adding record(s) to nph.order table
 
         try:
-            o = self.from_client_json(session, nph_participant_id, time_order_id)
-            session.add(o)
+            session.add(order)
             session.commit()
-            session.refresh(o)
-            return o.id
+            session.refresh(order)
+            return order
         except exc.SQLAlchemyError as ex:
             raise ex
         except NotFound as not_found:
@@ -377,18 +385,18 @@ class NphOrderedSampleDao(UpdatableDao):
     def _get_parent_order_sample(order_id, session) -> OrderedSample:
         query = Query(OrderedSample)
         query.session = session
-        result = query.filter(OrderedSample.id == order_id).first()
+        result = query.filter(OrderedSample.order_id == order_id, OrderedSample.parent_sample_id == None).first()
         if result:
             return result
         else:
             raise NotFound("Order sample not found")
 
     @staticmethod
-    def _get_child_order_sample(order_id, session) -> List[OrderedSample]:
+    def _get_child_order_sample(parent_id, order_id, session) -> List[OrderedSample]:
         try:
             query = Query(OrderedSample)
             query.session = session
-            result = query.filter(OrderedSample.parent_sample_id == order_id).all()
+            result = query.filter(OrderedSample.order_id == order_id, OrderedSample.parent_sample_id == parent_id).all()
             return result
         except exc.SQLAlchemyError as sql:
             raise sql
@@ -408,6 +416,7 @@ class NphOrderedSampleDao(UpdatableDao):
         return OrderedSample(nph_sample_id=nph_sample_id,
                              order_id=order_id,
                              aliquot_id=aliquot.id,
+                             description=aliquot.description,
                              identifier=aliquot.identifier,
                              collected=aliquot.collected,
                              container=aliquot.container,
@@ -420,20 +429,21 @@ class NphOrderedSampleDao(UpdatableDao):
         result = {k: v for k, v in order_cls.sample.__dict__.items() if k not in keys}
         return result
 
-    def insert_with_session(self, order: Namespace, order_id: int, session):
-        self._insert_order_sample(order, order_id, session)
+    def insert_with_session(self, session, order: Namespace) -> Namespace:
+        return self._insert_order_sample(session, order)
 
-    def _insert_order_sample(self, order: Namespace, order_id: int, session):
+    def _insert_order_sample(self, session, order: Namespace):
         # Adding record(s) to nph.order_sample table
         try:
             nph_sample_id = fetch_identifier_value(order, "sample-id")
-            os = self.from_client_json(order, order_id, nph_sample_id)
+            os = self.from_client_json(order, order.id, nph_sample_id)
             if order.__dict__.get("aliquots"):
                 for aliquot in order.aliquots:
-                    oa = self.from_aliquot_client_json(aliquot, order_id, nph_sample_id)
+                    oa = self.from_aliquot_client_json(aliquot, order.id, nph_sample_id)
                     os.children.append(oa)
             session.add(os)
             session.commit()
+            return os
         except exc.SQLAlchemyError as sql:
             raise sql
         except NotFound as not_found:
@@ -441,15 +451,11 @@ class NphOrderedSampleDao(UpdatableDao):
         except BadRequest as bad_request:
             raise bad_request
 
-    def insert(self, session, order_sample: OrderedSample):
-        session.add(order_sample)
-        session.commit()
-
     def update_order_sample(self, order: Namespace, rdr_order_id: int, session):
         try:
             db_parent_order_sample = self._get_parent_order_sample(rdr_order_id, session)
             self._update_parent_order(order, db_parent_order_sample)
-            db_child_order_sample = self._get_child_order_sample(rdr_order_id, session)
+            db_child_order_sample = self._get_child_order_sample(db_parent_order_sample.id, rdr_order_id, session)
             if len(db_child_order_sample) > 0:
                 co_list = self._update_child_order(order, db_child_order_sample, db_parent_order_sample.nph_sample_id,
                                                    rdr_order_id)

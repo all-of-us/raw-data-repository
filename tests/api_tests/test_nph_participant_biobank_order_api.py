@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from rdr_service.main import app
 from rdr_service.model.study_nph import (
-    StudyCategory, Order, OrderedSample
+    StudyCategory, Order, OrderedSample, Participant
 )
 
 BLOOD_SAMPLE = {
@@ -110,7 +110,7 @@ class TestNPHParticipantOrderAPI(TestCase):
     def test_post(self, site_id, pid, database_factor, query_filter):
         query_filter.return_value.first.return_value = StudyCategory()
         database_factor.return_value.session.return_value = MagicMock()
-        pid.return_value = 124820391
+        pid.return_value = Participant(id=124820391)
         site_id.return_value = 1
         queries = [BLOOD_SAMPLE]
         for query in queries:
@@ -127,7 +127,7 @@ class TestNPHParticipantOrderAPI(TestCase):
     def test_patch(self, site_id, pid, database_factor, order_id):
         order_id.return_value = Order(id=1, participant_id=124820391)
         database_factor.return_value.session.return_value = MagicMock()
-        pid.return_value = 124820391
+        pid.return_value = Participant(id=124820391)
         site_id.return_value = 1
         queries = [PATCH_SAMPLE]
         for query in queries:
@@ -156,7 +156,7 @@ class TestNPHParticipantOrderAPI(TestCase):
         order_exist.return_value = True, Order(id=1, participant_id=124820391)
         order_id.return_value = Order(id=1, participant_id=124820391)
         database_factor.return_value.session.return_value = MagicMock()
-        pid.return_value = 124820391
+        pid.return_value = Participant(id=124820391)
         site_id.return_value = 1
         site_exist.return_value = True
         queries = [BLOOD_SAMPLE]
