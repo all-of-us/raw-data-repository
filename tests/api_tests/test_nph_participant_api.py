@@ -1,4 +1,3 @@
-from unittest import TestCase
 import faker
 from collections import defaultdict
 from graphql import GraphQLSyntaxError
@@ -13,7 +12,7 @@ from sqlalchemy.orm import Query
 from rdr_service.model.participant import Participant as DbParticipant
 from rdr_service.api.nph_participant_api_schemas.util import SortContext
 from rdr_service.main import app
-
+from tests.helpers.unittest_base import BaseTestCase
 
 import rdr_service.api.nph_participant_api as api
 
@@ -122,7 +121,7 @@ foodIsecurity{current{value time} historical{value time}} aouBasicsQuestionnaire
 sampleSa1{ordered{parent{current{value time}}} }} } } }'''
 
 
-class TestQueryExecution(TestCase):
+class TestQueryExecution(BaseTestCase):
 
     def test_client_result_check_length(self):
         query = Query(DbParticipant)
@@ -176,7 +175,7 @@ class TestQueryExecution(TestCase):
                 self.assertIn('locations', error)
 
 
-class TestQueryValidator(TestCase):
+class TestQueryValidator(BaseTestCase):
 
     def test_validation_error(self):
         self.assertRaises(GraphQLSyntaxError, api.validate_query, QUERY_WITH_SYNTAX_ERROR)
