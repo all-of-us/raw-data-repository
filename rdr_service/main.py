@@ -42,6 +42,7 @@ from rdr_service.api.research_projects_directory_api import ResearchProjectsDire
 from rdr_service.api.redcap_workbench_audit_api import RedcapResearcherAuditApi, RedcapWorkbenchAuditApi
 from rdr_service.api.message_broker_api import MessageBrokerApi
 from rdr_service.api.onsite_verification_api import OnsiteVerificationApi
+from rdr_service.api.nph_participant_biobank_order_api import NphOrderApi
 from rdr_service.api.nph_participant_api import nph_participant
 
 from rdr_service.services.flask import app, API_PREFIX, flask_warmup, flask_start, flask_stop
@@ -375,6 +376,17 @@ api.add_resource(MessageBrokerApi, API_PREFIX + "MessageBroker", endpoint="messa
 # Non-resource endpoints
 #
 api.add_resource(SpecDataGenApi, API_PREFIX + "SpecDataGen", endpoint="specdatagen", methods=["POST"])
+
+#
+# NPH Order API DA-3026 dchan
+#
+api.add_resource(
+    NphOrderApi,
+    API_PREFIX + '/api/v1/nph/Participant/<string:nph_participant_id>/BiobankOrder',
+    API_PREFIX + '/api/v1/nph/Participant/<string:nph_participant_id>/BiobankOrder/<int:rdr_order_id>',
+    endpoint='nph.participant.biobank_order',
+    methods=['POST','PUT', 'PATCH']
+)
 
 app.add_url_rule(
     API_PREFIX + "PhysicalMeasurements/_history",
