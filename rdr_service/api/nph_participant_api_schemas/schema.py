@@ -1,5 +1,5 @@
 import logging
-from graphene import ObjectType, String, Int, Date, DateTime, NonNull, Field, List, Schema
+from graphene import ObjectType, String, Int, DateTime, NonNull, Field, List, Schema
 from graphene import relay
 from sqlalchemy.orm import Query
 
@@ -83,148 +83,109 @@ class SampleCollection(ObjectType):
 
 class Participant(ObjectType):
 
-    accelerometer_hr_application_removal = Field(EventCollection, description='Accelerometer HR application removal')
-    adverse_event_evaluation = Field(EventCollection, description='Adverse event evaluation')
-    aou_basics_questionnaire = Field(Event, description='AOU basics questionnaire')
-    aou_overall_health_questionnaire = Field(Event, description='AOU overall health questionnaire')
-    aou_lifestyle_questionnaire = Field(Event, description='AOU lifestyle questionnaire')
-    informed_consent_module_1 = Field(EventCollection, description='Informed consent module 1')
-    informed_consent_module_2 = Field(EventCollection, description='Informed consent module 2')
-    informed_consent_module_3 = Field(EventCollection, description='Informed consent module 3')
-    retrospective_visual_analogue_scales = Field(EventCollection, description='Retrospective visual analogue scales')
-    eating_inventory = Field(EventCollection, description='Eating Inventory')
-    food_craving_inventory = Field(EventCollection, description='Food craving inventory')
-    multifactorial_assessment_of_eating_disorders_symptoms = Field(EventCollection,
-                                                                   description='Multifactorial assessment of eating '
-                                                                               'disorders symptoms')
-    intuitive_eating_scale_2 = Field(EventCollection, description='Intuitive eating scale 2')
-    repetitive_eating_questionnaire = Field(EventCollection, description='Repetitive eating questionnaire')
-    barratt_impulsivity_scale_11 = Field(EventCollection, description='Barratt implusivity scale 11')
-    diet_satisfaction_questionnaire = Field(EventCollection, description='Diet satisfaction questionnaire')
-    weight_history_questionnaire = Field(EventCollection, description='Weight history questionnaire')
-    nhanes_sleep_disorder_questionnaire = Field(EventCollection, description='Nhanes sleep disorder questionnaire')
-    munich_chronotype_questionnaire = Field(EventCollection, description='Munich chronotype questionnaire')
-    mac_arthur_scale_of_subjective_social_status = Field(EventCollection, description='MacArthur scale of subjective '
-                                                                                      'social status')
-    aou_quality_of_life = Field(EventCollection, description='AOU Quality of life')
-    patient_health_questionnaire = Field(EventCollection, description='Patient health questionnaire')
-    aou_mental_health_and_well_being = Field(EventCollection, description='AOU mental health and well being')
-    generalized_anxiety_disorder = Field(EventCollection, description='Generalized anxiety disorder')
-    ten_item_personality_inventory = Field(EventCollection, description='Ten item personality inventory')
-    childhood_and_adult_adversity_trauma = Field(EventCollection, description='Childhood and adult adversity trauma')
-    childhood_adverse_events_questionnaire = Field(EventCollection, description='Childhood adverse event questionnaire')
-    five_trial_adjusting_delay_discounting_task = Field(EventCollection, description='Five trial adjusting delay '
-                                                                                     'discounting task')
-    birth_and_breastfeeding_history = Field(EventCollection, description='Birth and breastfeeding history')
-    aou_social_determinants_of_health = Field(EventCollection, description='AOU soical determinants of healths')
-    food_insecurity = Field(EventCollection, description='Food insecurity')
-    information_about_the_household = Field(EventCollection, description='Information about the household')
-    social_networks_and_social_circles = Field(EventCollection, description='Social network and social circles')
-    geolocation = Field(EventCollection, description='Geolocation')
-    eating_attitudes_and_behaviors = Field(EventCollection, description='Eating attitudes and behaviors')
-    modified_food_craving_inventory = Field(EventCollection, description='Modified food craving inventory')
-    diet_acceptability_scale = Field(EventCollection, description='diet acceptability scale')
-    perceived_stress_scale = Field(EventCollection, description='perceived stress scale')
-    eligibility_evaluation = Field(EventCollection, description='Eligibility evaluation')
-    height = Field(EventCollection, description='Height')
-    weight = Field(EventCollection, description='Weight')
-    circumference = Field(EventCollection, description='Circumference')
-    vital_signs = Field(EventCollection, description='Vital signs')
-    cgm_application_removal = Field(EventCollection, description='CGM application removal')
-    bia = Field(EventCollection, description='Bia')
-    diet_history_questionnaire = Field(EventCollection, description='Diet history questionnaire')
-    randomization = Field(EventCollection, description='Randomization')
-    dietary_assessment_orientation = Field(EventCollection, description='Dietary assessment orientation')
-    dietary_assessment = Field(EventCollection, description='Dietary assessment')
-    liquid_mmtt = Field(EventCollection, description='Liquid MMTT')
-    on_diet_meal_test = Field(EventCollection, description='On diet meal test')
-    visual_analogue_scale = Field(EventCollection, description='Visual analogue scale')
-    on_diet_meals_provided = Field(EventCollection, description='On diet meals provided')
-    grip_strength = Field(EventCollection, description='Grip strength')
-    domicile = Field(EventCollection, description='Domicile')
-    long_corridor_walk_push_test = Field(EventCollection, description='Long corridor walk push test')
-    gut_transit_time = Field(EventCollection, description='Gut transit time')
-    resting_metabolic_rate = Field(EventCollection, description='Resting metabolic rate')
-    doubly_labeled_water = Field(EventCollection, description='Doubly labeled water')
-    dxa = Field(EventCollection, description='DXA')
-    pregnancy_test = Field(EventCollection, description='Pregnancy Test')
-    Awardee = Field(EventCollection, description='Awardee')
-    organization = Field(EventCollection, description='Organization')
-    site = Field(EventCollection, description='Site')
-    enrollment_status = Field(EventCollection, description='Enrollment Status')
-    sample_8_5ml_ssts_1 = Field(SampleCollection, description='Sample 8.5ml SSTS1')
-    sample_4ml_ssts_1 = Field(SampleCollection, description='Sample 4ml SSTS1')
-    sample_8_ml_lhpstp_1 = Field(SampleCollection, description='Sample 8ml LHPSTP1')
-    sample_4_5ml_lhpstp_1 = Field(SampleCollection, description='Sample 4.5ml LHPSTP1')
-    sample_2ml_p800p_1 = Field(SampleCollection, description='Sample 2ml P800P1')
-    sample_10ml_edtap_1 = Field(SampleCollection, description='Sample 10ml EDTAP1')
-    sample_6ml_edtap_1 = Field(SampleCollection, description='Sample 6ml EDTAP1')
-    sample_4ml_edtap_1 = Field(SampleCollection, description='Sample 4ml EDTAP1')
-    sample_ru_1 = Field(SampleCollection, description='Sample RU1')
-    sample_ru_2 = Field(SampleCollection, description='Sample RU2')
-    sampleRU3 = SortableField(SampleCollection, description='Sample RU3')
-    sample_tu_1 = Field(SampleCollection, description='Sample TU1')
-    sample_sa_1 = Field(SampleCollection, description='Sample SA1')
-    sampleSA2 = SortableField(SampleCollection, description='Sample SA2')
-    sample_ha_1 = Field(SampleCollection, description='Sample HA1')
-    sample_na_1 = Field(SampleCollection, description='Sample NA1')
-    sample_na_2 = Field(SampleCollection, description='Sample NA2')
-    sample_st_1 = Field(SampleCollection, description='Sample ST1')
-    sample_st_2 = Field(SampleCollection, description='Sample ST2')
-    sample_st_3 = Field(SampleCollection, description='Sample ST3')
-    sample_st_4 = Field(SampleCollection, description='Sample ST4')
-    first_name = Field(String, description='Participant first name')
-    last_name = Field(String, description='Participant last name')
-    onsite_id_verification_site = Field(String, description='Onsite ID verification site')
-    onsite_id_verification_user = Field(String, description='Onsite ID verification user')
-    onsite_id_verification_time = Field(Date, description='Onsite ID verification time')
-    state = Field(String, description='Participant state address')
-    city = Field(String, description='Participant city address')
-    street_address = Field(String, description='Participant street address')
-    enrollment_site = Field(String, description='Participant enrollment site')
     participantNphId = SortableField(
-        Int, description='NPH Participant unique identifier',
-        sort_modifier=lambda context: context.set_order_expression(DbParticipant.participantId)
+        Int, description='NPH participant id for the participant, sourced from NPH participant data table',
+        name='ParticipantNphId', sort_modifier=lambda context: context.set_order_expression(DbParticipant.participantId)
     )
     biobankId = SortableField(
-        Int, description='Participant\'s BioBank ID',
-        sort_modifier=lambda context: context.set_order_expression(DbParticipant.biobankId)
+        Int, description='NPH Biobank id value for the participant, sourced from NPH participant data table',
+        name='BiobankId', sort_modifier=lambda context: context.set_order_expression(DbParticipant.biobankId)
     )
-    middle_name = Field(String, description='Participant middle name')
-    street_address2 = Field(String, description='Participant street address2')
-    phone_number = Field(String, description='Participant phone number')
-    login_phone_number = Field(String, description='Participant login phone number')
-    email = Field(String, description='Participant email address')
-    primary_language = Field(String, description='Participant primary language')
-    recontact_method = Field(String, description='Participant preferred recontact method')
-    date_of_birth = Field(Date, description='Paricipant date of birth')
-    age_range = Field(String, description='Participant\'s age range')
-    gender_identity = Field(String, description='Participant gender')
-    race = Field(String, description='Participant race')
-    sex = Field(String, description='Participant')
-    sexual_orientation = Field(String, description='Participant sexual orientation')
-    lastModified = SortableField(
-        Date,
-        sort_modifier=lambda context: context.set_order_expression(DbParticipant.lastModified)
-    )
-    ehr_consent_expire_status = Field(String, description='Participant EHR consent expire status')
-    withdrawal_status = Field(String, description='Participant withdrawal status')
-    withdrawal_reason = Field(String, description='Participant withdrawal reason')
-    withdrawal_time = Field(Date, description='Participant time of withdrawal')
-    withdrawal_authored = Field(Date, description='Withdrawal authored')
-    withdrawal_reason_justification = Field(String, description='Participant withdrawal reason justification')
-    participant_origin = Field(String, description='Participant\'s origin')
-    biospecimen_source_site = Field(String, description='Biospecimen source site')
-    biospecimen_collected_site = Field(String, description='Biospecimen collected site')
-    biospecimen_aliquot_site = Field(String, description='Biospecimen aliquot site')
-    biospecimen_finalized_site = Field(String, description='Biospecimen finalize site')
-    nph_module = Field(String, description='Participant NPH module')
-    visit_number = Field(Int, description='Participant\'s visit number')
-    time_interval = Field(Int, description='Time interval')
-    visit_started = Field(DateTime, description='Participant visit start time')
-    visit_completed = Field(DateTime, description='Participant vist completed time')
-    module_started = Field(DateTime, description='Participant module start time')
-    module_completed = Field(DateTime, description='Participant module completed time')
+    first_name = Field(String, name='FirstName', description='Participant’s first name, sourced from AoU participant_'
+                                                             'summary table')
+    middle_name = Field(String, name='MiddleName', description='Participant’s middle name, sourced from AoU '
+                                                               'participant_summary table')
+    last_name = Field(String, name='LastName', description='Participant’s last name, sourced from AoU '
+                                                           'participant_summary table')
+    zip_code = Field(String, name='ZipCode', description='Participant’s zip code, sourced from AoU '
+                                                         'participant_summary table')
+    phone_number = Field(String, name='PhoneNumber', description='Participant’s phone number, sourced from AoU '
+                                                                 'participant_summary table. Use login_phone_number if '
+                                                                 'available, phone_number column otherwise.')
+    email = Field(String, name='Email', description='Participant’s email address, sourced from AoU '
+                                                    'participant_summary table')
+    aou_aian_status = Field(Event, name='AouAianStatus', description='Provides whether a participant self identifies as'
+                                                                     ' AIAN. Value should bea “Y” if the participant '
+                                                                     'identifies as AIAN, “N” otherwise. This can be '
+                                                                     'determined from the AoU participant_'
+                                                                     'summary table’s aian column. The time value '
+                                                                     'should be set to the same time that the '
+                                                                     'participant completed TheBasics module '
+                                                                     '(details below) since the AIAN question is '
+                                                                     'contained there.')
+    aou_basics_questionnaire = Field(Event, name='AouBasicsQuestionnaire',
+                                     description='Provides submission status and authored time for the '
+                                     'participant’s completion of TheBasics module. Value should be '
+                                     'UNSET or SUBMITTED and time should be the authored time. '
+                                     'Both should be sourced from the AoU participant_summary '
+                                     'table.')
+    aou_deceased_status = Field(Event, name='AouDeceasedStatus',
+                                description='Provides deceased information about the participant. Value should '
+                                'be UNSET, PENDING, or APPROVED, and time should be the authored '
+                                'time. Both should be sourced from the AoU participant_summary '
+                                'table.')
+    aou_withdrawal_status = Field(Event, name='AouWithdrawalStatus',
+                                  description='Provides withdrawal information about the participant. Value '
+                                  'should be UNSET, NO_USE, or EARLY_OUT, and time should be the '
+                                  'authored time. Both should be sourced from the AoU '
+                                  'participant_summary table.')
+    aou_deactivation_status = Field(Event, name='AouDeactivationStatus',
+                                    description='Provides deactivation (aka suspension) information about the '
+                                    'participant. Value should be NOT_SUSPENDED or NO_CONTACT, and '
+                                    'time should be the corresponding time. Both should be sourced '
+                                    'from the AoU participant_summary table’s suspension columns')
+    aou_site = Field(String, name='AouSite',
+                     description='Google-group name of the site that the participant is paired to. Sourced from'
+                     ' the AoU site table using the site_id column of the participant_summary '
+                     'table.')
+    aou_enrollment_status = Field(Event, name='AouEnrollmentStatus',
+                                  description='Value should provide a string giving the participant’s enrollment'
+                                  ' status (MEMBER, FULL_PARTICIPANT, CORE, …). Time should be the '
+                                  'latest non-empty timestamp from the set of legacy enrollment '
+                                  'fields. Both should be sourced from the AoU participant_summary '
+                                  'table.')
+    nph_paired_site = Field(String, name='NphPairedSite', description='Sourced from NPH Schema.')
+    nph_enrollment_site = Field(String, name='NphEnrollmentStatus', description='Sourced from NPH Schema.')
+    nph_withdrawal_site = Field(Event, name='NphWithdrawalStatus', description='Sourced from NPH Schema.')
+    nph_deactivation_status = Field(Event, name='NphDeactivationStatus', description='Sourced from NPH Schema.')
+    aou_overall_health_questionnaire = Field(Event, name='AouOverallHealthQuestionnaire',
+                                             description='Provides submission status and authored time for the '
+                                             'participant’s completion of the OverallHealth module. '
+                                             'Value should be UNSET or SUBMITTED and time should be '
+                                             'the authored time. Both should be sourced from the '
+                                             'AoU participant_summary table.')
+    aou_lifestyle_questionnaire = Field(Event, name='AouLifestyleQuestionnaire',
+                                        description='Provides submission status and authored time for the '
+                                        'participant’s completion of the Lifestyle module. Value '
+                                        'should be UNSET or SUBMITTED and time should be the '
+                                        'authored time. Both should be sourced from the AoU '
+                                        'participant_summary table.')
+    aou_sdoh_questionnaire = Field(Event, name='AouSdohQuestionnaire',
+                                   description='Provides submission status and authored time for the '
+                                   'participant’s completion of the SDOH module. Value should be '
+                                   'UNSET or SUBMITTED and time should be the authored time. Both '
+                                   'should be sourced from the AoU participant_summary table.')
+    sample_8_5ml_ssts_1 = Field(SampleCollection, name='Sample8_5mLSSTS1', description='Sample 8.5ml SSTS1')
+    sample_4ml_ssts_1 = Field(SampleCollection, name='Sample4mLSSTS1', description='Sample 4ml SSTS1')
+    sample_8ml_lhpstp_1 = Field(SampleCollection, name='Sample8mLLHPSTP1', description='Sample 8ml LHPSTP1')
+    sample_4_5ml_lhpstp_1 = Field(SampleCollection, name='Sample4_5mLLHPSTP1', description='Sample 4.5ml LHPSTP1')
+    sample_2ml_p800p_1 = Field(SampleCollection, name='Sample2mLP800P1', description='Sample 2ml P800P1')
+    sample_10ml_edtap_1 = Field(SampleCollection, name='Sample10mLEDTAP1', description='Sample 10ml EDTAP1')
+    sample_6ml_edtap_1 = Field(SampleCollection, name='Sample6mLEDTAP1', description='Sample 6ml EDTAP1')
+    sample_4ml_edtap_1 = Field(SampleCollection, name='Sample4mLEDTAP1', description='Sample 4ml EDTAP1')
+    sample_ru_1 = Field(SampleCollection, name='SampleRU1', description='Sample RU1')
+    sample_ru_2 = Field(SampleCollection, name='SampleRU2', description='Sample RU2')
+    sample_ru_3 = SortableField(SampleCollection, name='SampleRU3', description='Sample RU3')
+    sample_tu_1 = Field(SampleCollection, name='SampleTU1', description='Sample TU1')
+    sample_sa_1 = Field(SampleCollection, name='SampleSA1', description='Sample SA1')
+    sample_sa_2 = SortableField(SampleCollection, name='SampleSA2', description='Sample SA2')
+    sample_ha_1 = Field(SampleCollection, name='SampleHA1', description='Sample HA1')
+    sample_na_1 = Field(SampleCollection, name='SampleNA1', description='Sample NA1')
+    sample_na_2 = Field(SampleCollection, name='SampleNA2', description='Sample NA2')
+    sample_st_1 = Field(SampleCollection, name='SampleST1', description='Sample ST1')
+    sample_st_2 = Field(SampleCollection, name='SampleST2', description='Sample ST2')
+    sample_st_3 = Field(SampleCollection, name='SampleST3', description='Sample ST3')
+    sample_st_4 = Field(SampleCollection, name='SampleST4', description='Sample ST4')
 
     @staticmethod
     def sort(context, value):
@@ -304,3 +265,4 @@ class ParticipantQuery(ObjectType):
 
 
 NPHParticipantSchema = Schema(query=ParticipantQuery)
+print(NPHParticipantSchema)
