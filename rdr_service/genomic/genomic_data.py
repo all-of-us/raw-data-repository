@@ -147,6 +147,7 @@ class GenomicQueryClass:
                                            == QuestionnaireStatus.SUBMITTED,
                                            sqlalchemy.sql.expression.literal("yes"),
                                            sqlalchemy.sql.expression.literal("no")),
+                        GenomicSetMember.id.label('genomic_set_member_id')
                     ]
                 ).select_from(
                     sqlalchemy.join(
