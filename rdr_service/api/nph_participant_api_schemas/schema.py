@@ -1,5 +1,5 @@
 import logging
-from graphene import ObjectType, String, Int, DateTime, NonNull, Field, List, Schema
+from graphene import ObjectType, String, Int, DateTime, NonNull, Field, List, Date, Schema
 from graphene import relay
 from sqlalchemy.orm import Query
 
@@ -97,6 +97,7 @@ class Participant(ObjectType):
                                                                'participant_summary table')
     last_name = Field(String, description='Participant’s last name, sourced from AoU '
                                                            'participant_summary table')
+    date_of_birth = Field(Date, description="Participant's date of birth, sourced from Aou participant_summary_table")
     zip_code = Field(String, description='Participant’s zip code, sourced from AoU '
                                                          'participant_summary table')
     phone_number = Field(String, description='Participant’s phone number, sourced from AoU '
@@ -144,9 +145,10 @@ class Participant(ObjectType):
                                   'latest non-empty timestamp from the set of legacy enrollment '
                                   'fields. Both should be sourced from the AoU participant_summary '
                                   'table.')
+    aou_biospecimen_status = Field(Event)
     nph_paired_site = Field(String, description='Sourced from NPH Schema.')
-    nph_enrollment_site = Field(String, description='Sourced from NPH Schema.')
-    nph_withdrawal_site = Field(Event, description='Sourced from NPH Schema.')
+    nph_enrollment_status = Field(Event, description='Sourced from NPH Schema.')
+    nph_withdrawal_status = Field(Event, description='Sourced from NPH Schema.')
     nph_deactivation_status = Field(Event, description='Sourced from NPH Schema.')
     aou_overall_health_questionnaire = Field(Event,
                                              description='Provides submission status and authored time for the '
@@ -265,4 +267,3 @@ class ParticipantQuery(ObjectType):
 
 
 NPHParticipantSchema = Schema(query=ParticipantQuery)
-
