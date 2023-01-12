@@ -175,6 +175,17 @@ class GenFakeOrderedSample:
         self.start_date = datetime.now() - timedelta(days=2)
         self.end_date = datetime.now()
 
+    def _get_volume_units(self, aliquot_identifier_code: str) -> str:
+        blood_specimen_codes = {"SSTS1", "LHPSTP1", "P800P1", "EDTAP1"}
+        saliva_specimen_codes = {"SA1", "SA2"}
+        urine_specimen_codes = {"RU1", "RU2", "RU3", "TU1"}
+        if aliquot_identifier_code in blood_specimen_codes:
+            return "uL"
+        elif (aliquot_identifier_code in saliva_specimen_codes) \
+            or (aliquot_identifier_code in urine_specimen_codes):
+            return "mL"
+        return ""
+
     def create_nph_ordered_sample(self, order_id: int, parent_sample_id: Optional[int] = None) -> OrderedSample:
         specimen_identifiers = [
             "SSTS1",
@@ -195,7 +206,8 @@ class GenFakeOrderedSample:
             "NA1",
             "NA2",
         ]
-        volume_units = ["mL", "uL"]
+        specimen_identifier = choice(specimen_identifiers)
+        volume_units = self._get_volume_units(specimen_identifier)
         nph_sample_id = ''.join(self.faker.random_letters(length=64))
         test = ''.join(self.faker.random_letters(length=40))
         description = ''.join(self.faker.random_letters(length=256))
@@ -206,7 +218,7 @@ class GenFakeOrderedSample:
         aliquot_id = str(self.faker.random_int(1, 10E5))
         identifier = choice(specimen_identifiers)
         container = ''.join(self.faker.random_letters(length=128))
-        volume = ''.join([str(self.faker.random_int(1, 99)), choice(volume_units)])
+        volume = ''.join([str(self.faker.random_int(1, 99)), volume_units])
         status = ''.join(self.faker.random_letters(length=128))
 
         nph_ordered_sample_params = {

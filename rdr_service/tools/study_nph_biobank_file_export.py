@@ -204,7 +204,7 @@ def main():
             "clientID": finalized_site,
             "studyID":  nph_module_id,
             "participantID": participant_id,
-            "gender": rdr_participant_summary.sex or str(rdr_participant_summary.genderIdentity),
+            "gender": rdr_participant_summary.sexId,
             "ai_an_flag": "Y" if rdr_participant_summary.aian else "N",
             "collections": _convert_orders_to_collections(orders, rdr_participant_summary)
         }
