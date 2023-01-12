@@ -91,9 +91,6 @@ class OrderedSample(NphBase):
     __tablename__ = "ordered_sample"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime)
-    modified = Column(UTCDateTime)
-    ignore_flag = Column(TINYINT, default=0)
     nph_sample_id = Column(String(64))
     order_id = Column(BigInteger, ForeignKey("order.id"))
     parent_sample_id = Column(BigInteger, ForeignKey("ordered_sample.id"))
@@ -109,10 +106,6 @@ class OrderedSample(NphBase):
     supplemental_fields = Column(JSON, nullable=True)
     parent = relation("OrderedSample", remote_side=[id])
     children = relation("OrderedSample", remote_side=[parent_sample_id], uselist=True)
-
-
-event.listen(OrderedSample, "before_insert", model_insert_listener)
-event.listen(OrderedSample, "before_update", model_update_listener)
 
 
 class Activity(NphBase):

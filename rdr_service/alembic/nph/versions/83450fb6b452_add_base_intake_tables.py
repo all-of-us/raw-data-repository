@@ -143,9 +143,6 @@ def upgrade_nph():
                           referent_schema='nph')
     op.create_foreign_key(None, 'order', 'site', ['collected_site'], ['id'], source_schema='nph',
                           referent_schema='nph')
-    op.add_column('ordered_sample', sa.Column('created', rdr_service.model.utils.UTCDateTime(), nullable=True))
-    op.add_column('ordered_sample', sa.Column('ignore_flag', mysql.TINYINT(), nullable=True))
-    op.add_column('ordered_sample', sa.Column('modified', rdr_service.model.utils.UTCDateTime(), nullable=True))
     op.drop_constraint('ordered_sample_ibfk_1', 'ordered_sample', type_='foreignkey')
     op.drop_constraint('ordered_sample_ibfk_2', 'ordered_sample', type_='foreignkey')
     op.create_foreign_key(None, 'ordered_sample', 'order', ['order_id'], ['id'], source_schema='nph',
@@ -166,9 +163,6 @@ def downgrade_nph():
     op.drop_constraint(None, 'ordered_sample', schema='nph', type_='foreignkey')
     op.create_foreign_key('ordered_sample_ibfk_2', 'ordered_sample', 'order', ['order_id'], ['id'])
     op.create_foreign_key('ordered_sample_ibfk_1', 'ordered_sample', 'ordered_sample', ['parent_sample_id'], ['id'])
-    op.drop_column('ordered_sample', 'modified')
-    op.drop_column('ordered_sample', 'ignore_flag')
-    op.drop_column('ordered_sample', 'created')
     op.drop_constraint(None, 'order', schema='nph', type_='foreignkey')
     op.drop_constraint(None, 'order', schema='nph', type_='foreignkey')
     op.drop_constraint(None, 'order', schema='nph', type_='foreignkey')
