@@ -199,7 +199,7 @@ class BaseApi(Resource, ApiUtilMixin):
             result.healthDataStreamSharingStatusV3_1Time = None
 
         # Support RDR to PDR pipeline
-        submit_pipeline_pubsub_msg_from_model(result)
+        submit_pipeline_pubsub_msg_from_model(result, self.dao.get_connection_database_name())
 
         # TODO: Delete this block after RDR to PDR pipeline is in production.
         if participant_id or (result and hasattr(result, 'participantId')):
@@ -392,7 +392,7 @@ class UpdatableApi(BaseApi):
         self._do_update(m)
 
         # Support RDR to PDR pipeline
-        submit_pipeline_pubsub_msg_from_model(m)
+        submit_pipeline_pubsub_msg_from_model(m, self.dao.get_connection_database_name())
 
         # TODO: Delete this block after RDR to PDR pipeline is in production.
         if participant_id or (m and hasattr(m, 'participantId')):
@@ -431,7 +431,7 @@ class UpdatableApi(BaseApi):
         obj = self.dao.update_with_patch(id_, resource, expected_version)
 
         # Support RDR to PDR pipeline
-        submit_pipeline_pubsub_msg_from_model(obj)
+        submit_pipeline_pubsub_msg_from_model(obj, self.dao.get_connection_database_name())
 
         # TODO: Delete this block after RDR to PDR pipeline is in production.
         # Try to determine if id_ is a participant id

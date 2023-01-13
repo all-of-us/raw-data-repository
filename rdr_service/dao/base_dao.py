@@ -87,6 +87,13 @@ class BaseDao(object):
     """
         return self._database.raw_connection()
 
+    def get_connection_database_name(self):
+        """
+        Return the name of the database from the Engine connection information
+        :return: database name or none
+        """
+        return self._database._engine.url.database
+
     def call_proc(self, proc, args=None, filters=None, skip_null=False):
         """
     Call a Stored Procedure with parameters. Always returns last set if query

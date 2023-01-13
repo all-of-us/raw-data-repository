@@ -3,6 +3,7 @@ import json
 
 import mock
 
+from rdr_service import config
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg, submit_pipeline_pubsub_msg_from_model
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -13,8 +14,6 @@ from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import load_biobank_order_json, load_measurement_json
 
 
-# Allow 'localhost' as a valid project id.
-@mock.patch('rdr_service.cloud_utils.gcp_google_pubsub._ALLOWED_PROJECTS', ['localhost'])
 @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub._INSTANCE_MAPPING', {'localhost': 'abc'})
 
 
@@ -31,6 +30,17 @@ class PubSubTest(BaseTestCase):
 
         TIME_1 = datetime.datetime(2022, 12, 13)
         self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId, TIME_1.isoformat()))
+
+        # Override the settings, so we can fully test the pubsub code.
+        config.override_setting('pdr_pipeline', {
+            "allowed_projects": [
+                "localhost"
+            ],
+            "excluded_table_list": [
+                "log_position",
+                "questionnaire_response_answer"
+            ]
+        })
 
     @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
     def test_simple_valid_pubsub_msg(self, mock_pub_func):
@@ -127,7 +137,7 @@ class PubSubTest(BaseTestCase):
         # Save to the database so the primary key value is set and available.
         dao.insert(measurement)
 
-        parents = submit_pipeline_pubsub_msg_from_model(measurement)
+        parents = submit_pipeline_pubsub_msg_from_model(measurement, 'rdr')
 
         # Test Pub/Sub messages successfully sent.
         self.assertEqual(len(parents), 2)

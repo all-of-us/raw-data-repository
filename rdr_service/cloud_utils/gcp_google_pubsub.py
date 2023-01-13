@@ -16,6 +16,7 @@ from apiclient import errors
 from googleapiclient import discovery
 from sqlalchemy import inspect
 
+from rdr_service import config
 from rdr_service.config import GAE_PROJECT
 from rdr_service.services.system_utils import retry_func, list_chunks
 
@@ -29,14 +30,10 @@ _INSTANCE_MAPPING = {
 
 # TODO: Add production project id after testing in Stable.
 # TODO: Add Stable after more testing has been completed in Test.
-_ALLOWED_PROJECTS = ['pmi-drc-api-test']
 
-
-PUBSUB_EXCLUDED_TABLE_LIST = [
-    'log_position',
-    'questionnaire_response_answer'
-]
-
+# _PIPELINE_CONFIG = config.getSettingJson('pdr_pipeline')
+# _ALLOWED_PROJECTS = _PIPELINE_CONFIG['allowed_projects']
+# PUBSUB_EXCLUDED_TABLE_LIST = _PIPELINE_CONFIG['excluded_table_list']
 
 def publish_pubsub_message(project_id: str, topic: str, message: dict):
     """
@@ -121,7 +118,11 @@ def submit_pipeline_pubsub_msg(database: str = 'rdr', table: str = None, action:
         resp = {'error': msg}
         return resp
 
-    if project not in _ALLOWED_PROJECTS:
+    pdr_config = config.getSettingJson('pdr_pipeline')
+    allowed_projects = pdr_config['allowed_projects']
+
+    # If project is not allowed or is localhost, return error message.
+    if project not in allowed_projects:
         return log_error(f'pipeline: project {project} not allowed.', True)
 
     if not database:
@@ -169,16 +170,22 @@ def submit_pipeline_pubsub_msg(database: str = 'rdr', table: str = None, action:
     return last_response
 
 
-def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableModel]], parents: List[str] = None):
+def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableModel]], database:str,
+                                          parents: List[str] = None):
     """
     Take a SQLAlchemy model object with data and submit Pub/Sub messages for it and any
     child model objects. Recursive function.
     :param models: A DictableModel object or List of DictableModel objects with data
+    :param database: Database name used by this model. See base_dao.py:get_connection_database_name()
     :param parents: A list of models we have already processed. This is used to make sure we don't enter a
                     circular recursion loop.
     """
+    pdr_config = config.getSettingJson('pdr_pipeline')
+    allowed_projects = pdr_config['allowed_projects']
+    excluded_table_list = pdr_config['excluded_table_list']
+
     # Allow code to run in _ALLOWED_PROJECTS or if running locally for all unittests, otherwise just return.
-    if GAE_PROJECT != 'localhost' and GAE_PROJECT not in _ALLOWED_PROJECTS:
+    if GAE_PROJECT != 'localhost' and GAE_PROJECT not in allowed_projects:
         return None
     if not models:
         return parents
@@ -199,13 +206,13 @@ def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableM
             if chld:
                 # Skip excluded tables.
                 if isinstance(chld, list):
-                    if chld[0].__tablename__ in PUBSUB_EXCLUDED_TABLE_LIST or chld[0].__tablename__ in p:
+                    if chld[0].__tablename__ in excluded_table_list or chld[0].__tablename__ in p:
                         continue
                 else:
-                    if chld.__tablename__ in PUBSUB_EXCLUDED_TABLE_LIST or chld.__tablename__ in p:
+                    if chld.__tablename__ in excluded_table_list or chld.__tablename__ in p:
                         continue
 
-                submit_pipeline_pubsub_msg_from_model(chld, p)
+                submit_pipeline_pubsub_msg_from_model(chld, database=database, parents=p)
 
     if isinstance(models, DictableModel):
         models = [models]
@@ -253,7 +260,7 @@ def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableM
         iter_children(model, cls_mapper.relationships, parents)
 
     # Submit a pipeline Pub/Sub event for this model record.
-    submit_pipeline_pubsub_msg(table=tablename, action='upsert',
+    submit_pipeline_pubsub_msg(database=database, table=tablename, action='upsert',
                                pk_columns=pk_columns,
                                pk_values=pk_values)
 
