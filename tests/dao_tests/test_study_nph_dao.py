@@ -1033,6 +1033,7 @@ class NphOrderedSampleDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
 
+
 class NphSampleUpdateDaoTest(BaseTestCase):
 
     def setUp(self):
