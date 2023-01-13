@@ -8,8 +8,9 @@ from sqlalchemy.orm import Query, aliased
 from sqlalchemy import exc
 
 from rdr_service.model.study_nph import (
-    StudyCategory, Participant, Site, Order, OrderedSample
-)
+    StudyCategory, Participant, Site, Order, OrderedSample,
+    Activity, ParticipantEventActivity, EnrollmentEventType, EnrollmentEvent, PairingEventType, PairingEvent,
+    ConsentEventType, ConsentEvent)
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 
 
@@ -541,3 +542,92 @@ def fetch_identifier_value(obj: Namespace, identifier: str) -> str:
     for each in obj.identifier:
         if each.system == f"http://www.pmi-ops.org/{identifier}":
             return each.value
+
+
+class NphActivityDao(BaseDao):
+    def __init__(self):
+        super(NphActivityDao, self).__init__(Activity)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+
+class NphParticipantEventActivityDao(BaseDao):
+    def __init__(self):
+        super(NphParticipantEventActivityDao, self).__init__(ParticipantEventActivity)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+
+class NphEnrollmentEventTypeDao(BaseDao):
+    def __init__(self):
+        super(NphEnrollmentEventTypeDao, self).__init__(EnrollmentEventType)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+
+class NphEnrollmentEventDao(BaseDao):
+    def __init__(self):
+        super(NphEnrollmentEventDao, self).__init__(EnrollmentEvent)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+
+class NphPairingEventTypeDao(BaseDao):
+    def __init__(self):
+        super(NphPairingEventTypeDao, self).__init__(PairingEventType)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+
+class NphPairingEventDao(BaseDao):
+    def __init__(self):
+        super(NphPairingEventDao, self).__init__(PairingEvent)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+
+class NphConsentEventTypeDao(BaseDao):
+    def __init__(self):
+        super(NphConsentEventTypeDao, self).__init__(ConsentEventType)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+
+class NphConsentEventDao(BaseDao):
+    def __init__(self):
+        super(NphConsentEventDao, self).__init__(ConsentEvent)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
