@@ -122,7 +122,7 @@ def submit_pipeline_pubsub_msg(database: str = 'rdr', table: str = None, action:
     allowed_projects = pdr_config['allowed_projects']
 
     # If project is not allowed or is localhost, return error message.
-    if project not in allowed_projects:
+    if project not in allowed_projects or project == 'localhost':
         return log_error(f'pipeline: project {project} not allowed.', True)
 
     if not database:
