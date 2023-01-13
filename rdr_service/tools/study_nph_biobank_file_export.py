@@ -78,9 +78,7 @@ def _convert_ordered_samples_to_samples(order_id: int, ordered_samples: List[Ord
             "specimenCode": ordered_sample.identifier,
             "kitID": order_id if ordered_sample.identifier.startswith("ST") else "",
             "volume": ordered_sample.volume,
-            "volumeSpecified": True,
             "volumeUOM": volume_units,
-            "volumeUOMSpecified": True,
             "processingDateUTC": ordered_sample.finalized,
             "notes": notes,
         }
