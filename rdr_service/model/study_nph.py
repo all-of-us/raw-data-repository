@@ -1,6 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, BigInteger, String, ForeignKey, Index, event
-)
+    Column, Integer, BigInteger, String, ForeignKey, Index, event)
 from sqlalchemy.dialects.mysql import TINYINT, JSON
 from sqlalchemy.orm import relation
 
@@ -107,3 +106,132 @@ class OrderedSample(NphBase):
     supplemental_fields = Column(JSON, nullable=True)
     parent = relation("OrderedSample", remote_side=[id])
     children = relation("OrderedSample", remote_side=[parent_sample_id], uselist=True)
+
+
+class Activity(NphBase):
+    __tablename__ = "activity"
+
+    id = Column("id", Integer, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    name = Column(String(128))
+    rdr_note = Column(String(1024), nullable=True)
+    rule_codes = Column(JSON, nullable=True)
+
+
+event.listen(Activity, "before_insert", model_insert_listener)
+event.listen(Activity, "before_update", model_update_listener)
+
+
+class ParticipantEventActivity(NphBase):
+    __tablename__ = "participant_event_activity"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    activity_id = Column(Integer, ForeignKey("activity.id"))
+
+
+event.listen(ParticipantEventActivity, "before_insert", model_insert_listener)
+event.listen(ParticipantEventActivity, "before_update", model_update_listener)
+
+
+class EnrollmentEventType(NphBase):
+    __tablename__ = "enrollment_event_type"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    name = Column(String(128))
+    rule_codes = Column(JSON, nullable=True)
+    version = Column(String(128), nullable=True)
+
+
+event.listen(EnrollmentEventType, "before_insert", model_insert_listener)
+event.listen(EnrollmentEventType, "before_update", model_update_listener)
+
+
+class EnrollmentEvent(NphBase):
+    __tablename__ = "enrollment_event"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    event_authored_time = Column(UTCDateTime)
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    event_type_id = Column(BigInteger, ForeignKey("enrollment_event_type.id"))
+
+
+event.listen(EnrollmentEvent, "before_insert", model_insert_listener)
+event.listen(EnrollmentEvent, "before_update", model_update_listener)
+
+
+class PairingEventType(NphBase):
+    __tablename__ = "pairing_event_type"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    name = Column(String(1024))
+    rule_codes = Column(JSON, nullable=True)
+
+
+event.listen(PairingEventType, "before_insert", model_insert_listener)
+event.listen(PairingEventType, "before_update", model_update_listener)
+
+
+class PairingEvent(NphBase):
+    __tablename__ = "pairing_event"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    event_authored_time = Column(UTCDateTime)
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    event_type_id = Column(BigInteger, ForeignKey("pairing_event_type.id"))
+    site_id = Column(Integer, ForeignKey("site.id"))
+
+
+event.listen(PairingEvent, "before_insert", model_insert_listener)
+event.listen(PairingEvent, "before_update", model_update_listener)
+
+
+class ConsentEventType(NphBase):
+    __tablename__ = "consent_event_type"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    disable_flag = Column(TINYINT, default=0)
+    disable_reason = Column(String(1024), nullable=True)
+    name = Column(String(1024))
+    rule_codes = Column(JSON, nullable=True)
+    version = Column(String(128), nullable=True)
+
+
+event.listen(ConsentEventType, "before_insert", model_insert_listener)
+event.listen(ConsentEventType, "before_update", model_update_listener)
+
+
+class ConsentEvent(NphBase):
+    __tablename__ = "consent_event"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    event_authored_time = Column(UTCDateTime)
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    event_type_id = Column(BigInteger, ForeignKey("consent_event_type.id"))
+
+
+event.listen(ConsentEvent, "before_insert", model_insert_listener)
+event.listen(ConsentEvent, "before_update", model_update_listener)
