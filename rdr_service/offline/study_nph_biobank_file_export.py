@@ -6,6 +6,8 @@ from zlib import crc32
 from json import dump
 from re import findall
 
+from rdr_service import config
+from rdr_service.api_util import open_cloud_file
 from rdr_service.model.participant_summary import ParticipantSummary as RdrParticipantSummary
 from rdr_service.model.rex import ParticipantMapping as RexParticipantMapping
 from rdr_service.model.study_nph import (
@@ -209,9 +211,10 @@ def main():
         orders_file_drop.append(json_object)
 
     today_dt_ts = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    orders_filename = f"NPH_Orders_{today_dt_ts}.json"
-    with open(orders_filename, "w") as json_fp:
-        dump(orders_file_drop, json_fp, default=str)
+    bucket_name = config.getSetting(config.NPH_SAMPLE_DATA_BIOBANK_NIGHTLY_FILE_DROP)
+    orders_filename = f"{bucket_name}/nph-orders/NPH_Orders_{today_dt_ts}.json"
+    with open_cloud_file(orders_filename, mode='w') as dest:
+        dump(orders_file_drop, dest, default=str)
 
     sample_updates_for_orders = _get_all_sample_updates_related_to_orders(orders)
     biobank_file_export = _create_biobank_file_export_reference(orders_filename)
