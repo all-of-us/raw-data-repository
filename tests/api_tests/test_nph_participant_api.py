@@ -1,109 +1,38 @@
 import faker
-from collections import defaultdict
+from itertools import zip_longest
 from graphql import GraphQLSyntaxError
 import json
+from datetime import datetime
 
-from rdr_service.api.nph_participant_api_schemas.schema import SortableField
-from rdr_service.api.nph_participant_api_schemas.schema import Participant as Part
 from rdr_service.dao import database_factory
-from rdr_service.model.participant import Participant
-from rdr_service.model.nph_sample import NphSample
+from rdr_service.data_gen.generators.data_generator import DataGenerator
 from sqlalchemy.orm import Query
 from rdr_service.model.participant import Participant as DbParticipant
-from rdr_service.api.nph_participant_api_schemas.util import SortContext
+from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
+from rdr_service.model.rex import ParticipantMapping
+from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.main import app
 from tests.helpers.unittest_base import BaseTestCase
-
 import rdr_service.api.nph_participant_api as api
 
 
-def mock_load_participant_data(query):
-    fake = faker.Faker()
-    with database_factory.get_database().session() as session:
-        query.session = session
+QUERY_SET_TO_LIMIT_1 = ''' { participant (limit: 1) {totalCount resultCount pageInfo
+{ startCursor  endCursor hasNextPage }  edges { node { DOB } } } }'''
 
-        num = session.query(Participant).count()
-        print(f'NPH TESTING: found {num} participants')
+QUERY_SET_TO_LIMIT_5 = ''' { participant (limit: 5) {totalCount resultCount pageInfo
+{ startCursor  endCursor hasNextPage }  edges { node { DOB } } } }'''
 
-        if num < 10:
-            print('NPH TESTING: generating test data')
+QUERY_SET_TO_LIMIT_10 = ''' { participant (limit: 10) {totalCount resultCount pageInfo
+{ startCursor  endCursor hasNextPage }  edges { node { DOB } } } }'''
 
-            for _ in range(1000):
-                participant = Participant(
-                    biobankId=fake.random.randint(100000000, 999999999),
-                    participantId=fake.random.randint(100000000, 999999999),
-                    version=1,
-                    lastModified=fake.date_time_this_decade(),
-                    signUpTime=fake.date_time_this_decade(),
-                    withdrawalStatus=1,
-                    suspensionStatus=1,
-                    participantOrigin='test',
-                    hpoId=0
-                )
-                session.add(participant)
+QUERY_WITH_ID = ''' { participant (nphId: 1000000001) {totalCount resultCount pageInfo
+{ startCursor  endCursor hasNextPage }  edges { node { participantNphId DOB } } } }'''
 
-                session.add(
-                    NphSample(
-                        test='SA2',
-                        status='received',
-                        time=fake.date_time_this_decade(),
-                        participant=participant,
-                        children=[NphSample(
-                            test='SA2',
-                            status='disposed',
-                            time=fake.date_time_this_decade()
-                        )]
-                    )
-                )
-                session.add(
-                    NphSample(
-                        test='RU3',
-                        status='disposed',
-                        time=fake.date_time_this_decade(),
-                        participant=participant
-                    )
-                )
-        results = []
-        for participants in query.all():
-            samples_data = defaultdict(lambda: {
-                'stored': {
-                    'parent': {
-                        'current': None
-                    },
-                    'child': {
-                        'current': None
-                    }
-                }
-            })
-            for parent_sample in participants.samples:
-                data_struct = samples_data[f'sample{parent_sample.test}']['stored']
-                data_struct['parent']['current'] = {
-                    'value': parent_sample.status,
-                    'time': parent_sample.time
-                }
+QUERY_WITH_SORT_DOB = ''' { participant (sortBy: "DOB") {totalCount resultCount pageInfo
+{ startCursor  endCursor hasNextPage }  edges { node { participantNphId DOB } } } }'''
 
-                if len(parent_sample.children) == 1:
-                    child = parent_sample.children[0]
-                    data_struct['child']['current'] = {
-                        'value': child.status,
-                        'time': child.time
-                    }
-
-            results.append(
-                {
-                    'participantNphId': participants.participantId,
-                    'lastModified': participants.lastModified,
-                    'biobankId': participants.biobankId,
-                    **samples_data
-                }
-            )
-
-        return results
-
-
-QUERY_WITH_ID = ''' { participant (nphId: 153296765) {totalCount resultCount pageInfo
-{ startCursor  endCursor hasNextPage }  edges { node { participantNphId sampleSA2 { stored { child { current
-{ value time  } } } } } } } }'''
+QUERY_WITH_SORT_DECEASED_STATUS = ''' { participant (sortBy: "aouDeceasedStatus:time") {totalCount resultCount pageInfo
+{ startCursor  endCursor hasNextPage }  edges { node { aouDeceasedStatus {value time} } } } }'''
 
 QUERY_WITH_SYNTAX_ERROR = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
 { startCursor endCursor hasNextPage }edges{ node {firstName lastName streetAddress
@@ -121,44 +50,98 @@ foodIsecurity{current{value time} historical{value time}} aouBasicsQuestionnaire
 sampleSa1{ordered{parent{current{value time}}} }} } } }'''
 
 
+def mock_load_participant_data():
+
+    fake = faker.Faker()
+    with database_factory.get_database().session() as session:
+        ps_query = session.query(ParticipantSummaryModel)
+        ps_query.session = session
+        ps_result = ps_query.all()
+        for each in ps_result:
+            each.questionnaireOnTheBasics = QuestionnaireStatus.UNSET
+            each.questionnaireOnHealthcareAccess = QuestionnaireStatus.UNSET
+            each.questionnaireOnLifestyle = QuestionnaireStatus.UNSET
+            each.questionnaireOnSocialDeterminantsOfHealth = QuestionnaireStatus.UNSET
+            session.add(each)
+        session.commit()
+        num = len(ps_result)
+        print(f'NPH TESTING: found {num} participants')
+        if num < 10:
+            print('NPH TESTING: generating test data')
+            generator = DataGenerator(session, fake)
+            generator.create_database_hpo()
+            generator.create_database_site()
+            generator.create_database_code()
+            for _ in enumerate(range(11)):
+                generator.create_database_participant(hpoId=0)
+            participant_query = Query(DbParticipant)
+            participant_query.session = session
+            participant_result = participant_query.all()
+            for each in participant_result:
+                generator.create_database_participant_summary(hpoId=0, participant=each)
+            participant_mapping_query = Query(ParticipantMapping)
+            participant_mapping_query.session = session
+            participant_mapping_result = participant_mapping_query.all()
+            if len(participant_mapping_result) < 10:
+                ancillary_participant_id = 1000000000
+                for each in participant_result:
+                    ancillary_participant_id = ancillary_participant_id + 1
+                    pm = ParticipantMapping(primary_participant_id=each.participantId,
+                                            ancillary_participant_id=ancillary_participant_id)
+                    session.add(pm)
+                session.commit()
+
+
 class TestQueryExecution(BaseTestCase):
 
+    def test_client_result_participant_summary(self):
+        with database_factory.get_database().session() as session:
+            mock_load_participant_data()
+            query = Query(ParticipantSummaryModel)
+            query.session = session
+            result = query.all()
+            self.assertEqual(11, len(result))
+
     def test_client_result_check_length(self):
-        query = Query(DbParticipant)
-        lengths = [99, 5, 10, 25]
-        executed = mock_load_participant_data(query)
-        self.assertEqual(1000, len(executed), "Should return 1000 records back")
-        for length in lengths:
-            query = query.limit(length)
-            executed = mock_load_participant_data(query)
-            self.assertEqual(length, len(executed), "Should return {} records back".format(length))
+        mock_load_participant_data()
+        lengths = [1, 5, 10]
+        queries = [QUERY_SET_TO_LIMIT_1, QUERY_SET_TO_LIMIT_5, QUERY_SET_TO_LIMIT_10]
+        for (length, query) in zip_longest(lengths, queries):
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+            result = json.loads(executed.data.decode('utf-8'))
+            self.assertEqual(length, len(result.get('participant').get('edges')),
+                             "Should return {} records back".format(length))
 
     def test_client_single_result(self):
-        query = Query(DbParticipant)
-        query = query.limit(1)
-        test_id = mock_load_participant_data(query)[0].get('participantNphId')
-        query = Query(DbParticipant)
-        query = query.filter(DbParticipant.participantId == test_id)
-        executed = mock_load_participant_data(query)
-        self.assertEqual(1, len(executed), "Should return 1 record back")
-        self.assertEqual(test_id, executed[0].get('participantNphId'))
+        mock_load_participant_data()
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_ID)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(1, len(result.get('participant').get('edges')), "Should return 1 record back")
+        self.assertEqual(1000000001, result.get('participant').get('edges')[0].get('node').get('participantNphId'))
 
-    def test_client_sorting_result(self):
-        query = Query(DbParticipant)
-        current_class = Part
-        sort_context = SortContext(query)
-        sort_parts = "sampleSA2:stored:child:current:time".split(":")
-        for sort_field_name in sort_parts:
-            sort_field: SortableField = getattr(current_class, sort_field_name)
-            sort_field.sort(current_class, sort_field_name, sort_context)
-            current_class = sort_field.type
-        query = sort_context.get_resulting_query()
-        executed = mock_load_participant_data(query)
-        time_list = []
-        for each in executed:
-            time_list.append(each.get('sampleSA2').get('stored').get('child').get('current').get('time'))
-        sorted_time_list = sorted(time_list)
-        self.assertTrue(time_list == sorted_time_list, msg="Resultset is not in sorting order")
+    def test_client_sorting_date_of_birth(self):
+        dob_list = []
+        mock_load_participant_data()
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SORT_DOB)
+        result = json.loads(executed.data.decode('utf-8')).get('participant').get('edges')
+        for each in result:
+            dob_list.append(each.get('node').get('DOB'))
+        sorted_list = dob_list.copy()
+        sorted_list.sort()
+        self.assertTrue(dob_list == sorted_list, msg="Resultset is not in sorting order")
+
+    def test_client_sorting_deceased_status(self):
+        deceased_list = []
+        mock_load_participant_data()
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SORT_DECEASED_STATUS)
+        result = json.loads(executed.data.decode('utf-8'))
+        for each in result.get('participant').get('edges'):
+            datetime_object = datetime.strptime(each.get('node').get('aouDeceasedStatus').get('time'),
+                                                '%Y-%m-%dT%H:%M:%S')
+            deceased_list.append(datetime_object)
+        sorted_list = deceased_list.copy()
+        sorted_list.sort()
+        self.assertTrue(deceased_list == sorted_list, msg="Resultset is not in sorting order")
 
     def test_graphql_syntax_error(self):
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SYNTAX_ERROR)
