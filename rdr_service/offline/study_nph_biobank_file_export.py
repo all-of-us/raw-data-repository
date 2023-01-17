@@ -35,14 +35,6 @@ from rdr_service.dao.study_nph_dao import (
 FILE_BUFFER_SIZE_IN_BYTES = 1024 * 1024 # 1MB File Buffer
 
 
-def _filter_orders_by_modified_field(modified_ts: datetime):
-    nph_orders_dao = NphOrderDao()
-    with nph_orders_dao.session() as session:
-        return session.query(Order).filter(
-            Order.modified >= modified_ts
-        ).all()
-
-
 def _get_latest_biobank_file_export() -> BiobankFileExport:
     nph_biobank_file_export = NphBiobankFileExportDao()
     with nph_biobank_file_export.session() as session:
