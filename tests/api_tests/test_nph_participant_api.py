@@ -162,6 +162,11 @@ class TestQueryExecution(BaseTestCase):
                 self.assertIn('message', error)
                 self.assertIn('locations', error)
 
+    def tearDown(self):
+        self.clear_table_after_test("rex.participant_mapping")
+        self.clear_table_after_test("rex.study")
+        self.clear_table_after_test("nph.participant")
+
 
 class TestQueryValidator(BaseTestCase):
 
