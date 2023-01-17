@@ -3,7 +3,7 @@ from graphene import ObjectType, String, Int, DateTime, NonNull, Field, List, Da
 from graphene import relay
 from sqlalchemy.orm import Query
 
-from rdr_service.model.participant import Participant as DbParticipant
+from rdr_service.model.study_nph import Participant as DbParticipant
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
@@ -91,11 +91,11 @@ class Participant(ObjectType):
 
     participantNphId = SortableField(
         Int, description='NPH participant id for the participant, sourced from NPH participant data table',
-        sort_modifier=lambda context: context.set_order_expression(DbParticipant.participantId)
+        sort_modifier=lambda context: context.set_order_expression(DbParticipant.id)
     )
     biobankId = SortableField(
         Int, description='NPH Biobank id value for the participant, sourced from NPH participant data table',
-        sort_modifier=lambda context: context.set_order_expression(DbParticipant.biobankId)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.biobankId)
     )
     firstName = SortableField(String, name="firstName",
                               description='Participant’s first name, sourced from AoU participant_summary table',
