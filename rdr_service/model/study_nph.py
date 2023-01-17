@@ -1,5 +1,7 @@
 from sqlalchemy import (
-    Column, Integer, BigInteger, String, ForeignKey, Index, event)
+    Column, Integer, BigInteger, String, ForeignKey, Index, event
+)
+
 from sqlalchemy.dialects.mysql import TINYINT, JSON
 from sqlalchemy.orm import relation
 
