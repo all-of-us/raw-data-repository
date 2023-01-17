@@ -57,11 +57,25 @@ def _get_sample_updates_since_last_file_export() -> Iterable[SampleUpdate]:
     with sample_update_dao.session() as session:
         return session.query(SampleUpdate).filter(
             SampleUpdate.created >= last_successful_biobank_file_export.created
-        )
+        ).all()
 
 
 def _get_orders_related_to_sample_updates(sample_updates: Iterable[SampleUpdate]) -> Iterable[Order]:
-    raise NotImplementedError()
+    nph_ordered_sample_dao = NphOrderedSampleDao()
+    with nph_ordered_sample_dao.session() as session:
+        ordered_sample_ids = [sample_update.rdr_ordered_sample_id for sample_update in sample_updates]
+        ordered_samples: Iterable[OrderedSample] = session.query(OrderedSample).filter(
+            OrderedSample.id.in_(ordered_sample_ids)
+        ).distinct().all()
+
+    nph_orders_dao = NphOrderDao()
+    with nph_orders_dao.session() as session:
+        order_ids = list(ordered_sample.order_id for ordered_sample in ordered_samples)
+        orders: Iterable[Order] = session.query(Order).filter(
+            Order.id.in_(order_ids)
+        ).distinct().all()
+
+    return orders
 
 
 @lru_cache(maxsize=128, typed=False)
@@ -202,7 +216,9 @@ def _create_sample_export_references_for_sample_updates(
 def main():
     orders_file_drop: List[Dict[str, Any]] = []
     sample_updates_for_file_export = _get_sample_updates_since_last_file_export()
-    orders: Iterable[Order] = _get_orders_related_to_sample_updates(sample_updates_for_file_export)
+    orders = (
+        _get_orders_related_to_sample_updates(sample_updates_for_file_export)
+    )
     grouped_orders: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
     for order in orders:
         finalized_site = order.finalized_site
