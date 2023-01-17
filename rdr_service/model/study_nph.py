@@ -46,9 +46,10 @@ class Site(NphBase):
     id = Column("id", Integer, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
-    external_id = Column(String(256))
+    external_id = Column(String(256), index=True)
     name = Column(String(512))
-    awardee_external_id = Column(String(256))
+    awardee_external_id = Column(String(256), index=True)
+    organization_external_id = Column(String(256), index=True)
 
 
 event.listen(Site, "before_insert", model_insert_listener)
@@ -165,6 +166,7 @@ class EnrollmentEvent(NphBase):
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT, default=0)
     event_authored_time = Column(UTCDateTime)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_id = Column(BigInteger, ForeignKey("enrollment_event_type.id"))
 
@@ -196,6 +198,7 @@ class PairingEvent(NphBase):
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT, default=0)
     event_authored_time = Column(UTCDateTime)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_id = Column(BigInteger, ForeignKey("pairing_event_type.id"))
     site_id = Column(Integer, ForeignKey("site.id"))
@@ -231,6 +234,7 @@ class ConsentEvent(NphBase):
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT, default=0)
     event_authored_time = Column(UTCDateTime)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_id = Column(BigInteger, ForeignKey("consent_event_type.id"))
 
