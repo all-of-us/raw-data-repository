@@ -7,6 +7,7 @@ from zlib import crc32
 from json import dump
 from re import findall
 
+from sqlalchemy import and_
 from rdr_service import config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.model.participant_summary import ParticipantSummary as RdrParticipantSummary
@@ -87,7 +88,10 @@ def _get_ordered_samples(order_id: int) -> List[OrderedSample]:
     ordered_sample_dao = NphOrderedSampleDao()
     with ordered_sample_dao.session() as session:
         return session.query(OrderedSample).filter(
-            OrderedSample.order_id == order_id
+            and_(
+                OrderedSample.order_id == order_id,
+                OrderedSample.aliquot_id.is_not(None)
+            )
         ).all()
 
 
@@ -153,7 +157,10 @@ def _get_all_ordered_samples_for_an_order(order_id: int) -> Iterable[OrderedSamp
     nph_ordered_sample_dao = NphOrderedSampleDao()
     with nph_ordered_sample_dao.session() as session:
         return session.query(OrderedSample).filter(
-            OrderedSample.order_id == order_id
+            and_(
+                OrderedSample.order_id == order_id,
+                OrderedSample.aliquot_id.is_not(None)
+            )
         ).all()
 
 
