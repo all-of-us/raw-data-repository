@@ -1,6 +1,7 @@
 # Script to create biobank file export and store the file in GCS Bucket
 from datetime import datetime
 from collections import defaultdict
+from functools import lru_cache
 from typing import List, Dict, Any, Iterable, Optional
 from zlib import crc32
 from json import dump
@@ -59,21 +60,18 @@ def _get_sample_updates_since_last_file_export() -> Iterable[SampleUpdate]:
         )
 
 
-def _get_orders_related_to_sample_updates(sample_updates: Iterable[SampleUpdate]):
+def _get_orders_related_to_sample_updates(sample_updates: Iterable[SampleUpdate]) -> Iterable[Order]:
     raise NotImplementedError()
 
 
-# def get_orders_created_or_modified_in_last_n_hours(hours: int = 24) -> Iterable[Order]:
-#     modified_ts = datetime.utcnow() - timedelta(hours=hours)
-#     return _filter_orders_by_modified_field(modified_ts=modified_ts)
-
-
+@lru_cache(maxsize=128, typed=False)
 def _get_study_category(study_category_id: int) -> StudyCategory:
     study_category_dao = NphStudyCategoryDao()
     with study_category_dao.session() as session:
         return session.query(StudyCategory).get(study_category_id)
 
 
+@lru_cache(maxsize=128, typed=False)
 def _get_parent_study_category(study_category_id: int) -> StudyCategory:
     study_category = _get_study_category(study_category_id)
     return _get_study_category(study_category.parent_id)
