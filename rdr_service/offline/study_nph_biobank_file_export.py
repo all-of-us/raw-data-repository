@@ -1,5 +1,5 @@
 # Script to create biobank file export and store the file in GCS Bucket
-from datetime import datetime, timedelta
+from datetime import datetime
 from collections import defaultdict
 from typing import List, Dict, Any, Iterable, Optional
 from zlib import crc32
@@ -42,9 +42,30 @@ def _filter_orders_by_modified_field(modified_ts: datetime):
         ).all()
 
 
-def get_orders_created_or_modified_in_last_n_hours(hours: int = 24) -> Iterable[Order]:
-    modified_ts = datetime.now() - timedelta(hours=hours)
-    return _filter_orders_by_modified_field(modified_ts=modified_ts)
+def _get_latest_biobank_file_export() -> BiobankFileExport:
+    nph_biobank_file_export = NphBiobankFileExportDao()
+    with nph_biobank_file_export.session() as session:
+        return session.query(BiobankFileExport).order_by(
+            BiobankFileExport.created.desc()
+        ).first()
+
+
+def _get_sample_updates_since_last_file_export() -> Iterable[SampleUpdate]:
+    last_successful_biobank_file_export = _get_latest_biobank_file_export()
+    sample_update_dao = NphSampleUpdateDao()
+    with sample_update_dao.session() as session:
+        return session.query(SampleUpdate).filter(
+            SampleUpdate.created >= last_successful_biobank_file_export.created
+        )
+
+
+def _get_orders_related_to_sample_updates(sample_updates: Iterable[SampleUpdate]):
+    raise NotImplementedError()
+
+
+# def get_orders_created_or_modified_in_last_n_hours(hours: int = 24) -> Iterable[Order]:
+#     modified_ts = datetime.utcnow() - timedelta(hours=hours)
+#     return _filter_orders_by_modified_field(modified_ts=modified_ts)
 
 
 def _get_study_category(study_category_id: int) -> StudyCategory:
@@ -182,7 +203,8 @@ def _create_sample_export_references_for_sample_updates(
 
 def main():
     orders_file_drop: List[Dict[str, Any]] = []
-    orders: Iterable[Order] = get_orders_created_or_modified_in_last_n_hours(hours=24)
+    sample_updates_for_file_export = _get_sample_updates_since_last_file_export()
+    orders: Iterable[Order] = _get_orders_related_to_sample_updates(sample_updates_for_file_export)
     grouped_orders: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
     for order in orders:
         finalized_site = order.finalized_site
