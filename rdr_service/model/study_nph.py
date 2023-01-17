@@ -243,6 +243,8 @@ class ConsentEvent(NphBase):
 
 event.listen(ConsentEvent, "before_insert", model_insert_listener)
 event.listen(ConsentEvent, "before_update", model_update_listener)
+
+
 class SampleUpdate(NphBase):
     __tablename__ = "sample_update"
 
@@ -251,7 +253,6 @@ class SampleUpdate(NphBase):
     ignore_flag = Column(TINYINT, default=0)
     rdr_ordered_sample_id = Column(BigInteger, ForeignKey("ordered_sample.id"))
     ordered_sample_json = Column(JSON)
-
 
 
 event.listen(SampleUpdate, "before_insert", model_insert_listener)
