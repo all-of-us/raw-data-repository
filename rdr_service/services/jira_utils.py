@@ -19,7 +19,7 @@ class JiraTicketHandler:
     """
     def __init__(self):
         self._jira_user = os.environ.get('JIRA_API_USER_NAME', None)
-        self._jira_password = os.environ.get('JIRA_API_USER_PASSWORD', None)
+        self._jira_api_token = os.environ.get('JIRA_API_TOKEN', None)
         self._jira_watchers = os.environ.get('JIRA_WATCHER_NAMES', None)
         self._jira_connection = None
         self.required_tags = {
@@ -59,7 +59,7 @@ class JiraTicketHandler:
         """
         jira_creds = config.getSettingJson(config.JIRA_CREDS)
         self._jira_user = jira_creds.get("jira_rdr_username", None)
-        self._jira_password = jira_creds.get("jira_rdr_password", None)
+        self._jira_api_token = jira_creds.get("jira_api_token", None)
 
     def _connect_to_jira(self):
         """
@@ -70,14 +70,22 @@ class JiraTicketHandler:
 
         if not self._jira_connection:
             if config.GAE_PROJECT == "localhost":
-                if not self._jira_user or not self._jira_password:
-                    raise ValueError('Jira user name or password not set in environment.')
+                if not self._jira_user or not self._jira_api_token:
+                    raise ValueError('Jira user name or api token not set in environment.')
             else:
                 self.set_jira_credentials_from_config()
-                if not self._jira_user or not self._jira_password:
-                    raise ValueError('Jira user name or password not set in config.')
+                if not self._jira_user or not self._jira_api_token:
+                    raise ValueError('Jira user name or api token not set in config.')
+
+            # https://jira.readthedocs.io/examples.html#username-api-token
             self._jira_connection = jira.JIRA(
-                _JIRA_INSTANCE_URL, options=options, basic_auth=(self._jira_user, self._jira_password))
+                _JIRA_INSTANCE_URL,
+                options=options,
+                basic_auth=(
+                    self._jira_user,
+                    self._jira_api_token
+                )
+            )
 
     def current_user(self):
         return self._jira_connection.current_user()
