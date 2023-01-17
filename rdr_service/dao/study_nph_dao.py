@@ -609,6 +609,15 @@ class NphPairingEventDao(BaseDao):
     def from_client_json(self):
         pass
 
+    def get_participant_paired_site(self, participant_id):
+        with self.session() as session:
+            return session.query(PairingEvent).join(
+                Site,
+                Site.id == PairingEvent.site_id
+            ).filter(
+                PairingEvent.participant_id == participant_id
+            ).order_by(PairingEvent.event_authored_time.desc()).first()
+
 
 class NphConsentEventTypeDao(BaseDao):
     def __init__(self):
