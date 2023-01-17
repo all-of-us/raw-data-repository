@@ -11,7 +11,6 @@ from rdr_service.api_util import open_cloud_file
 from rdr_service.model.participant_summary import ParticipantSummary as RdrParticipantSummary
 from rdr_service.model.rex import ParticipantMapping as RexParticipantMapping
 from rdr_service.model.study_nph import (
-    Participant as NphParticipant,
     StudyCategory,
     Order,
     OrderedSample,
@@ -23,7 +22,6 @@ from rdr_service.model.study_nph import (
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao as RdrParticipantSummaryDao
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.study_nph_dao import (
-    NphParticipantDao,
     NphStudyCategoryDao,
     NphOrderDao,
     NphOrderedSampleDao,
@@ -89,15 +87,11 @@ def _convert_ordered_samples_to_samples(order_id: int, ordered_samples: List[Ord
 
 
 def _get_rdr_participant_summary_for_nph_partipant(nph_participant_id: int) -> Optional[RdrParticipantSummary]:
-    nph_participant_dao = NphParticipantDao()
-    with nph_participant_dao.session() as nph_participant_session:
-        nph_participant: NphParticipant = nph_participant_session.query(NphParticipant).get(nph_participant_id)
-
     rex_participant_mapping_dao = RexParticipantMappingDao()
     with rex_participant_mapping_dao.session() as rex_sm_session:
         rex_participant_mapping: RexParticipantMapping = (
             rex_sm_session.query(RexParticipantMapping).filter(
-                RexParticipantMapping.ancillary_participant_id == nph_participant.id
+                RexParticipantMapping.ancillary_participant_id == nph_participant_id
             ).first()
         )
 
