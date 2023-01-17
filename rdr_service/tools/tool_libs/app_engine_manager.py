@@ -507,7 +507,7 @@ class DeployAppClass(ToolBase):
                 return 1
 
             self.deploy_version = self.args.deploy_as if self.args.deploy_as else \
-                                    self.args.git_target.replace('.', '-')
+                self.args.git_target.replace('.', '-')
 
             running_services = gcp_get_app_versions(running_only=True)
             if not running_services:
@@ -521,7 +521,7 @@ class DeployAppClass(ToolBase):
             _logger.info('  App Source Path       : {0}'.format(clr.fmt(self.deploy_root)))
             _logger.info('  Promote               : {0}'.format(clr.fmt('No' if self.args.no_promote else 'Yes')))
 
-            if 'JIRA_API_USER_NAME' in os.environ and 'JIRA_API_USER_PASSWORD' in os.environ:
+            if 'JIRA_API_USER_NAME' in os.environ and 'JIRA_API_TOKEN' in os.environ:
                 self.jira_ready = True
                 self._jira_handler = JiraTicketHandler()
 
