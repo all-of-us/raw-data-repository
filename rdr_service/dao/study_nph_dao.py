@@ -630,4 +630,3 @@ class NphConsentEventDao(BaseDao):
 
     def from_client_json(self):
         pass
-

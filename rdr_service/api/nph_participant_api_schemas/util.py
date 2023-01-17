@@ -4,6 +4,7 @@ from typing import Optional, Dict
 from graphene import List
 
 from sqlalchemy.orm import Query, aliased
+from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 
 
 @dataclass
@@ -45,6 +46,79 @@ class SortContext:
             resulting_query = resulting_query.filter(expr)
 
         return resulting_query.order_by(self.order_expression)
+
+
+def load_participant_summary_data(query):
+
+    results = []
+    for summary, site, mapping in query.all():
+        results.append({
+            'participantNphId': mapping.ancillary_participant_id,
+            'lastModified': summary.lastModified,
+            'biobankId': summary.biobankId,
+            'firstName': summary.firstName,
+            'middleName': summary.middleName,
+            'lastName': summary.lastName,
+            'dateOfBirth': summary.dateOfBirth,
+            'zipCode': summary.zipCode,
+            'phoneNumber': summary.phoneNumber,
+            'email': summary.email,
+            'deceasedStatus': {"value": summary.deceasedStatus, "time": summary.deceasedAuthored},
+            'withdrawalStatus': {"value": summary.withdrawalStatus, "time": summary.withdrawalAuthored},
+            'aianStatus': summary.aian,
+            'suspensionStatus': {"value": summary.suspensionStatus, "time": summary.suspensionTime},
+            'enrollmentStatus': {"value": summary.enrollmentStatus, "time": summary.dateOfBirth},
+            'questionnaireOnTheBasics': {"value": summary.questionnaireOnTheBasics,
+                                         "time": summary.questionnaireOnTheBasicsAuthored},
+            'questionnaireOnHealthcareAccess': {"value": summary.questionnaireOnHealthcareAccess,
+                                                "time": summary.questionnaireOnHealthcareAccessAuthored},
+            'questionnaireOnLifestyle': {"value": summary.questionnaireOnLifestyle,
+                                         "time": summary.questionnaireOnLifestyleAuthored},
+            'siteId': site.siteName,
+            'questionnaireOnSocialDeterminantsOfHealth':
+                {"value": summary.questionnaireOnSocialDeterminantsOfHealth,
+                 "time": summary.questionnaireOnSocialDeterminantsOfHealthAuthored}
+        })
+    return results
+
+
+def schema_field_lookup(value):
+    try:
+        field_lookup = {
+            "DOB": {"field": "dateOfBirth", "table": ParticipantSummaryModel,
+                    "value": ParticipantSummaryModel.dateOfBirth},
+            "aouAianStatus": {"field": "aian", "table": ParticipantSummaryModel,
+                              "value": ParticipantSummaryModel.aian},
+            "aouBasicStatus": {"field": "questionnaireOnTheBasics", "table": ParticipantSummaryModel,
+                               "value": ParticipantSummaryModel.questionnaireOnTheBasics},
+            "aouDeceasedStatus": {"field": "deceasedStatus", "table": ParticipantSummaryModel,
+                                  "value": ParticipantSummaryModel.deceasedStatus,
+                                  "time": ParticipantSummaryModel.deceasedAuthored},
+            "aouWithdrawalStatus": {"field": "withdrawalStatus", "table": ParticipantSummaryModel,
+                                    "value": ParticipantSummaryModel.withdrawalStatus,
+                                    "time": ParticipantSummaryModel.withdrawalAuthored},
+            "aouDeactivationStatus": {"field": "suspensionStatus", "table": ParticipantSummaryModel,
+                                      "value": ParticipantSummaryModel.suspensionStatus,
+                                      "time": ParticipantSummaryModel.suspensionTime},
+            "aouEnrollmentStatus": {"field": "enrollmentStatus", "table": ParticipantSummaryModel,
+                                    "value": ParticipantSummaryModel.enrollmentStatus,
+                                    "time": ParticipantSummaryModel.enrollmentStatusParticipantV3_1Time},
+            "aouOverallHealthStatus": {"field": "questionnaireOnHealthcareAccess", "table": ParticipantSummaryModel,
+                                       "value": ParticipantSummaryModel.questionnaireOnHealthcareAccess,
+                                       "time": ParticipantSummaryModel.questionnaireOnHealthcareAccessAuthored},
+            "aouLifestyleStatus": {"field": "questionnaireOnLifestyle", "table": ParticipantSummaryModel,
+                                   "value": ParticipantSummaryModel.questionnaireOnLifestyle,
+                                   "time": ParticipantSummaryModel.questionnaireOnLifestyleAuthored},
+            "aouSDOHStatus": {"field": "questionnaireOnSocialDeterminantsOfHealth", "table": ParticipantSummaryModel,
+                              "value": ParticipantSummaryModel.questionnaireOnSocialDeterminantsOfHealth,
+                              "time": ParticipantSummaryModel.questionnaireOnSocialDeterminantsOfHealthAuthored}
+        }
+        result = field_lookup.get(value)
+        if result:
+            return field_lookup.get(value)
+        raise f"Invalid value : {value}"
+    except KeyError as err:
+        raise err
 
 
 def load_participant_data(query):
