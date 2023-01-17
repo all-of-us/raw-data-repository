@@ -117,7 +117,7 @@ def _convert_orders_to_collections(
         collections.append({
             "visitID": parent_study_category.name if parent_study_category else "",
             "timepointID": _get_study_category(order.category_id).name,
-            "orderID": order.id,
+            "orderID": order.nph_order_id,
             "nyFlag": "Y" if rdr_participant_summary.state == "NY" else "N",
             "samples": samples
         })
