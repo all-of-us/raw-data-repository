@@ -187,6 +187,10 @@ class NphSiteDao(BaseDao):
             return False
         return True
 
+    def get_site_from_external_id(self, external_id):
+        with self.session() as session:
+            return session.query(Site).filter(Site.external_id == external_id).one_or_none()
+
     def from_client_json(self):
         pass
 
