@@ -196,7 +196,7 @@ class Participant(ObjectType):
     organization_external_id = SortableField(String, name="nphPairedOrg", description='Sourced from NPH Schema.',
                                              sort_modifier=lambda context: context.set_order_expression(
                                                  nphSite.organization_external_id))
-    awardee_external_id = SortableField(String, name="nphPairedOrg", description='Sourced from NPH Schema.',
+    awardee_external_id = SortableField(String, name="nphPairedAwardee", description='Sourced from NPH Schema.',
                                         sort_modifier=lambda context: context.set_order_expression(
                                             nphSite.awardee_external_id))
     nph_enrollment_status = Field(Event, description='Sourced from NPH Schema.')
@@ -279,7 +279,8 @@ class ParticipantQuery(ObjectType):
                                                                               PairingEvent.event_authored_time
                                                                               < pm2.event_authored_time)
                                                                     ).join(nphSite, nphSite.id == PairingEvent.site_id
-                                                                           ).filter(pm2.id.is_(None))
+                                                                           ).filter(
+                pm2.id.is_(None), ParticipantMapping.ancillary_study_id == 2)
             current_class = Participant
             sort_context = SortContext(query)
             # sampleSA2:ordered:child:current:time
