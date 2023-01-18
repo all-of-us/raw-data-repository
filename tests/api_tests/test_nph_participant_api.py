@@ -7,32 +7,15 @@ from datetime import datetime
 from rdr_service.dao import database_factory
 from rdr_service.data_gen.generators.data_generator import DataGenerator
 from sqlalchemy.orm import Query
-from rdr_service.model.participant import Participant as DbParticipant
+from rdr_service.model.participant import Participant as aouParticipant
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
-from rdr_service.model.rex import ParticipantMapping
+from rdr_service.model.rex import ParticipantMapping, Study
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.main import app
 from tests.helpers.unittest_base import BaseTestCase
+from rdr_service.data_gen.generators.nph import NphDataGenerator
 import rdr_service.api.nph_participant_api as api
 
-
-QUERY_SET_TO_LIMIT_1 = ''' { participant  (limit: 1) {totalCount resultCount pageInfo
-{ startCursor  endCursor hasNextPage }  edges { node { DOB } } } }'''
-
-QUERY_SET_TO_LIMIT_5 = ''' { participant (limit: 5) {totalCount resultCount pageInfo
-{ startCursor  endCursor hasNextPage }  edges { node { DOB } } } }'''
-
-QUERY_SET_TO_LIMIT_10 = ''' { participant (limit: 10) {totalCount resultCount pageInfo
-{ startCursor  endCursor hasNextPage }  edges { node { DOB } } } }'''
-
-QUERY_WITH_ID = ''' { participant (nphId: 1000000001) {totalCount resultCount pageInfo
-{ startCursor  endCursor hasNextPage }  edges { node { participantNphId } } } }'''
-
-QUERY_WITH_SORT_DOB = ''' { participant (sortBy: "DOB") {totalCount resultCount pageInfo
-{ startCursor  endCursor hasNextPage }  edges { node { participantNphId DOB } } } }'''
-
-QUERY_WITH_SORT_DECEASED_STATUS = ''' { participant (sortBy: "aouDeceasedStatus:time") {totalCount resultCount pageInfo
-{ startCursor  endCursor hasNextPage }  edges { node { aouDeceasedStatus {value time} } } } }'''
 
 QUERY_WITH_SYNTAX_ERROR = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
 { startCursor endCursor hasNextPage }edges{ node {firstName lastName streetAddress
@@ -50,8 +33,17 @@ foodIsecurity{current{value time} historical{value time}} aouBasicsQuestionnaire
 sampleSa1{ordered{parent{current{value time}}} }} } } }'''
 
 
-def mock_load_participant_data(session):
+def simple_query(value):
+    return ''' { participant  {totalCount resultCount pageInfo
+           { startCursor  endCursor hasNextPage }  edges { node { participantNphId %s } } } }''' % value
 
+
+def condition_query(condition, sort_value, sort_field):
+    return ''' { participant (%s: %s) {totalCount resultCount pageInfo
+           { startCursor  endCursor hasNextPage }  edges { node { %s } } } }''' % (condition, sort_value, sort_field)
+
+
+def mock_load_participant_data(session):
     fake = faker.Faker()
     ps_query = session.query(ParticipantSummaryModel)
     ps_query.session = session
@@ -67,30 +59,64 @@ def mock_load_participant_data(session):
     print(f'NPH TESTING: found {num} participants')
     if num < 10:
         print('NPH TESTING: generating test data')
-        generator = DataGenerator(session, fake)
-        generator.create_database_hpo()
-        generator.create_database_site()
-        generator.create_database_code()
+        aou_generator = DataGenerator(session, fake)
+        aou_generator.create_database_hpo()
+        aou_generator.create_database_site()
+        aou_generator.create_database_code()
         for _ in enumerate(range(11)):
-            generator.create_database_participant(hpoId=0)
-        participant_query = Query(DbParticipant)
+            aou_generator.create_database_participant(hpoId=0)
+        participant_query = Query(aouParticipant)
         participant_query.session = session
         participant_result = participant_query.all()
         for each in participant_result:
-            generator.create_database_participant_summary(hpoId=0, participant=each, siteId=1,
-                                                          dateOfBirth=fake.date_of_birth(),
-                                                          deceasedAuthored=fake.date_time())
+            aou_generator.create_database_participant_summary(hpoId=0, participant=each, siteId=1,
+                                                              dateOfBirth=fake.date_of_birth(),
+                                                              deceasedAuthored=fake.date_time())
+        rdr_study_record = Study(ignore_flag=0, schema_name="rdr")
+        nph_study_record = Study(ignore_flag=0, schema_name='nph', prefix=1000)
+        for each in [rdr_study_record, nph_study_record]:
+            session.add(each)
         participant_mapping_query = Query(ParticipantMapping)
         participant_mapping_query.session = session
         participant_mapping_result = participant_mapping_query.all()
         if len(participant_mapping_result) < 10:
-            ancillary_participant_id = 1000000000
+            ancillary_participant_id = 100000000
             for each in participant_result:
-                ancillary_participant_id = ancillary_participant_id + 1
                 pm = ParticipantMapping(primary_participant_id=each.participantId,
-                                        ancillary_participant_id=ancillary_participant_id)
+                                        ancillary_participant_id=ancillary_participant_id,
+                                        ancillary_study_id=2
+                                        )
                 session.add(pm)
+                ancillary_participant_id = ancillary_participant_id + 1
             session.commit()
+    nph_data_gen = NphDataGenerator()
+    for activity_name in ['ENROLLMENT', 'PAIRING', 'CONSENT']:
+        nph_data_gen.create_database_activity(
+            name=activity_name
+        )
+
+    nph_data_gen.create_database_pairing_event_type(name="INITIAL")
+
+    for i in range(1, 3):
+        nph_data_gen.create_database_site(
+            external_id=f"nph-test-site-{i}",
+            name=f"nph-test-site-{i}",
+            awardee_external_id="nph-test-hpo",
+            organization_external_id="nph-test-org"
+        )
+    for _ in range(2):
+        participant = nph_data_gen.create_database_participant()
+        nph_data_gen.create_database_pairing_event(
+            participant_id=participant.id,
+            event_authored_time=datetime(2023, 1, 1, 12, 0),
+            site_id=1
+        )
+
+    nph_data_gen.create_database_pairing_event(
+        participant_id=100000000,
+        event_authored_time=datetime(2023, 1, 1, 12, 1),
+        site_id=2
+    )
 
 
 class TestQueryExecution(BaseTestCase):
@@ -104,10 +130,12 @@ class TestQueryExecution(BaseTestCase):
             self.assertEqual(11, len(result))
 
     def test_client_result_check_length(self):
+        query_return_one = condition_query("limit", "1", "DOB")
+        query_return_two = simple_query("DOB")
         with database_factory.get_database().session() as session:
             mock_load_participant_data(session)
-            lengths = [1, 5, 10]
-            queries = [QUERY_SET_TO_LIMIT_1, QUERY_SET_TO_LIMIT_5, QUERY_SET_TO_LIMIT_10]
+            lengths = [1, 2]
+            queries = [query_return_one, query_return_two]
             for (length, query) in zip_longest(lengths, queries):
                 executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
                 result = json.loads(executed.data.decode('utf-8'))
@@ -115,18 +143,65 @@ class TestQueryExecution(BaseTestCase):
                                  "Should return {} records back".format(length))
 
     def test_client_single_result(self):
+        query = condition_query("nphId", "100000001", "participantNphId")
         with database_factory.get_database().session() as session:
             mock_load_participant_data(session)
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_ID)
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
             result = json.loads(executed.data.decode('utf-8'))
             self.assertEqual(1, len(result.get('participant').get('edges')), "Should return 1 record back")
-            self.assertEqual(1000000001, result.get('participant').get('edges')[0].get('node').get('participantNphId'))
+            self.assertEqual(100000001, result.get('participant').get('edges')[0].get('node').get('participantNphId'))
+
+    def test_client_nph_pair_site(self):
+        field_to_test = "nphPairedSite"
+        query = simple_query(field_to_test)
+        with database_factory.get_database().session() as session:
+            mock_load_participant_data(session)
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+            result = json.loads(executed.data.decode('utf-8'))
+            self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
+            expected_site_name = ["nph-test-site-1", "nph-test-site-2"]
+            for index, each in enumerate(result.get('participant').get('edges')):
+                self.assertEqual(expected_site_name[index], each.get('node').get(field_to_test))
+
+    def test_client_nph_awardee_external_id(self):
+        field_to_test = "nphPairedAwardee"
+        query = simple_query(field_to_test)
+        with database_factory.get_database().session() as session:
+            mock_load_participant_data(session)
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+            result = json.loads(executed.data.decode('utf-8'))
+            self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
+            for each in result.get('participant').get('edges'):
+                self.assertEqual('nph-test-hpo', each.get('node').get('nphPairedAwardee'))
+
+    def test_client_nph_organization_external_id(self):
+        field_to_test = "nphPairedOrg"
+        query = simple_query(field_to_test)
+        with database_factory.get_database().session() as session:
+            mock_load_participant_data(session)
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+            result = json.loads(executed.data.decode('utf-8'))
+            self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
+            for each in result.get('participant').get('edges'):
+                self.assertEqual('nph-test-org', each.get('node').get(field_to_test))
+
+    def test_client_nph_pair_site_with_id(self):
+        query = condition_query("nphId", "100000001", "nphPairedSite")
+        with database_factory.get_database().session() as session:
+            mock_load_participant_data(session)
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+            result = json.loads(executed.data.decode('utf-8'))
+            self.assertEqual(1, len(result.get('participant').get('edges')), "Should return 1 record back")
+            self.assertEqual("nph-test-site-1", result.get('participant').get('edges')[0].get('node'
+                                                                                              ).get('nphPairedSite'))
 
     def test_client_sorting_date_of_birth(self):
+        sort_field = '"{}"'.format("DOB")
+        query = condition_query("sortBy", sort_field, "DOB")
         dob_list = []
         with database_factory.get_database().session() as session:
             mock_load_participant_data(session)
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SORT_DOB)
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
             result = json.loads(executed.data.decode('utf-8')).get('participant').get('edges')
             for each in result:
                 dob_list.append(each.get('node').get('DOB'))
@@ -135,10 +210,12 @@ class TestQueryExecution(BaseTestCase):
             self.assertTrue(dob_list == sorted_list, msg="Resultset is not in sorting order")
 
     def test_client_sorting_deceased_status(self):
+        sort_field = '"{}"'.format("aouDeceasedStatus:time")
+        query = condition_query("sortBy", sort_field, "aouDeceasedStatus {value time}")
         deceased_list = []
         with database_factory.get_database().session() as session:
             mock_load_participant_data(session)
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SORT_DECEASED_STATUS)
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
             result = json.loads(executed.data.decode('utf-8'))
             for each in result.get('participant').get('edges'):
                 datetime_object = datetime.strptime(each.get('node').get('aouDeceasedStatus').get('time'),
@@ -166,6 +243,12 @@ class TestQueryExecution(BaseTestCase):
         self.clear_table_after_test("rex.participant_mapping")
         self.clear_table_after_test("rex.study")
         self.clear_table_after_test("nph.participant")
+        self.clear_table_after_test("nph.activity")
+        self.clear_table_after_test("nph.pairing_event_type")
+        self.clear_table_after_test("nph.site")
+        self.clear_table_after_test("nph.participant")
+        self.clear_table_after_test("nph.participant_event_activity")
+        self.clear_table_after_test("nph.pairing_event")
 
 
 class TestQueryValidator(BaseTestCase):
@@ -174,5 +257,6 @@ class TestQueryValidator(BaseTestCase):
         self.assertRaises(GraphQLSyntaxError, api.validate_query, QUERY_WITH_SYNTAX_ERROR)
 
     def test_validation_no_error(self):
-        result = api.validate_query(QUERY_WITH_ID)
+        query = condition_query("nphId", "100000001", "participantNphId")
+        result = api.validate_query(query)
         self.assertEqual([], result)
