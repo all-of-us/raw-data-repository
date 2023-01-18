@@ -51,7 +51,7 @@ class SortContext:
 def load_participant_summary_data(query):
 
     results = []
-    for summary, site, mapping in query.all():
+    for summary, site, nph_site, mapping in query.all():
         results.append({
             'participantNphId': mapping.ancillary_participant_id,
             'lastModified': summary.lastModified,
@@ -75,6 +75,7 @@ def load_participant_summary_data(query):
             'questionnaireOnLifestyle': {"value": summary.questionnaireOnLifestyle,
                                          "time": summary.questionnaireOnLifestyleAuthored},
             'siteId': site.siteName,
+            'external_id': nph_site.name,
             'questionnaireOnSocialDeterminantsOfHealth':
                 {"value": summary.questionnaireOnSocialDeterminantsOfHealth,
                  "time": summary.questionnaireOnSocialDeterminantsOfHealthAuthored}

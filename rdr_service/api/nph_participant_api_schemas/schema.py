@@ -1,9 +1,10 @@
 import logging
 from graphene import ObjectType, String, Int, DateTime, NonNull, Field, List, Date, Schema
 from graphene import relay
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import Query, aliased
+from sqlalchemy import and_
 
-from rdr_service.model.study_nph import Participant as DbParticipant
+from rdr_service.model.study_nph import Participant as DbParticipant, Site as nphSite, PairingEvent
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
@@ -89,6 +90,7 @@ class SampleCollection(ObjectType):
 
 class Participant(ObjectType):
 
+    # AOU
     participantNphId = SortableField(
         Int, description='NPH participant id for the participant, sourced from NPH participant data table',
         sort_modifier=lambda context: context.set_order_expression(DbParticipant.id)
@@ -188,6 +190,19 @@ class Participant(ObjectType):
                                                  'completion of the SDOH module. Value should be UNSET or SUBMITTED '
                                                  'and time should be the authored time. Both should be sourced from '
                                                  'the AoU participant_summary table.')
+    # NPH
+    external_id = SortableField(String, name="nphPairedSite", description='Sourced from NPH Schema.',
+                                sort_modifier=lambda context: context.set_order_expression(nphSite.external_id))
+    organization_external_id = SortableField(String, name="nphPairedOrg", description='Sourced from NPH Schema.',
+                                             sort_modifier=lambda context: context.set_order_expression(
+                                                 nphSite.organization_external_id))
+    awardee_external_id = SortableField(String, name="nphPairedOrg", description='Sourced from NPH Schema.',
+                                        sort_modifier=lambda context: context.set_order_expression(
+                                            nphSite.awardee_external_id))
+    nph_enrollment_status = Field(Event, description='Sourced from NPH Schema.')
+    nph_withdrawal_status = Field(Event, description='Sourced from NPH Schema.')
+    nph_deactivation_status = Field(Event, description='Sourced from NPH Schema.')
+    # Bio-specimen
     sample_8_5ml_ssts_1 = Field(SampleCollection, description='Sample 8.5ml SSTS1')
     sample_4ml_ssts_1 = Field(SampleCollection, description='Sample 4ml SSTS1')
     sample_8ml_lhpstp_1 = Field(SampleCollection, description='Sample 8ml LHPSTP1')
@@ -209,10 +224,7 @@ class Participant(ObjectType):
     sample_st_2 = Field(SampleCollection, description='Sample ST2')
     sample_st_3 = Field(SampleCollection, description='Sample ST3')
     sample_st_4 = Field(SampleCollection, description='Sample ST4')
-    nph_paired_site = Field(String, description='Sourced from NPH Schema.')
-    nph_enrollment_status = Field(Event, description='Sourced from NPH Schema.')
-    nph_withdrawal_status = Field(Event, description='Sourced from NPH Schema.')
-    nph_deactivation_status = Field(Event, description='Sourced from NPH Schema.')
+
 
     @staticmethod
     def sort(context, sort_info, _):
@@ -252,10 +264,22 @@ class ParticipantQuery(ObjectType):
     def resolve_participant(root, info, nph_id=None, sort_by=None, limit=None, off_set=None, **kwargs):
         with database_factory.get_database().session() as sessions:
             logging.info('root: %s, info: %s, kwargs: %s', root, info, kwargs)
-            query = sessions.query(ParticipantSummaryModel, Site, ParticipantMapping) \
-                .join(Site, ParticipantSummaryModel.siteId == Site.siteId) \
-                .join(ParticipantMapping,
-                      ParticipantSummaryModel.participantId == ParticipantMapping.primary_participant_id)
+            pm2 = aliased(PairingEvent)
+            query = sessions.query(ParticipantSummaryModel, Site, nphSite, ParticipantMapping
+                                   ).join(Site, ParticipantSummaryModel.siteId == Site.siteId
+                                          ).join(ParticipantMapping,
+                                                 ParticipantSummaryModel.participantId
+                                                 == ParticipantMapping.primary_participant_id
+                                                 ).join(PairingEvent, PairingEvent.participant_id
+                                                        == ParticipantMapping.ancillary_participant_id
+                                                        ).outerjoin(pm2, and_(PairingEvent.participant_id
+                                                                              == pm2.participant_id,
+                                                                              PairingEvent.event_type_id
+                                                                              == pm2.event_type_id,
+                                                                              PairingEvent.event_authored_time
+                                                                              < pm2.event_authored_time)
+                                                                    ).join(nphSite, nphSite.id == PairingEvent.site_id
+                                                                           ).filter(pm2.id.is_(None))
             current_class = Participant
             sort_context = SortContext(query)
             # sampleSA2:ordered:child:current:time
