@@ -98,7 +98,8 @@ class ParticipantGeneratorTool(ToolBase):
             participant=aou_participant,
             stateId=state_code.codeId,
             sexId=sex_code.codeId,
-            siteId=aou_site.siteId
+            siteId=aou_site.siteId,
+            aian=int(row['aian_flag'])
         )
 
         # Insert NPH Data
