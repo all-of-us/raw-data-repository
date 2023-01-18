@@ -3,32 +3,27 @@
 Also updates ParticipantSummary data related to samples.
 """
 
-import csv
 import datetime
 from dateutil.parser import parse
 import logging
 import math
-import os
 import pytz
 from sqlalchemy import case
 from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import func, or_
 from typing import Dict
 
-from rdr_service import clock, config
-from rdr_service.api_util import list_blobs, open_cloud_file
+from rdr_service import config
+from rdr_service.api_util import list_blobs
 from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES,\
     WITHDRAWAL_CEREMONY_NO, WITHDRAWAL_CEREMONY_QUESTION_CODE
 from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
     BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN
-from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import MYSQL_ISO_DATE_FORMAT, parse_datetime, replace_isodate
-from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
-from rdr_service.model.config_utils import from_client_biobank_id, get_biobank_id_prefix
+from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
@@ -38,14 +33,12 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.model.site import Site
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from rdr_service.offline.sql_exporter import SqlExporter
-from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, get_sample_status_enum_value,\
-    WithdrawalStatus
+from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, WithdrawalStatus
 
 # Format for dates in output filenames for the reconciliation report.
 _FILENAME_DATE_FORMAT = "%Y-%m-%d"
 # The output of the reconciliation report goes into this subdirectory within the upload bucket.
 _REPORT_SUBDIR = "reconciliation"
-_GENOMIC_SUBDIR_PREFIX = "genomic_water_line_test"
 _BATCH_SIZE = 1000
 
 # Biobank provides timestamps without time zone info, which should be in central time (see DA-235).
@@ -78,27 +71,6 @@ class DataError(RuntimeError):
         self.external = external
 
 
-def upsert_from_latest_csv():
-    csv_file_path, csv_filename, timestamp = get_last_biobank_sample_file_info()
-
-    now = clock.CLOCK.now()
-    if now - timestamp > _MAX_INPUT_AGE:
-        raise DataError(
-            "Input %r (timestamp %s UTC) is > 24h old (relative to %s UTC), not importing."
-            % (csv_filename, timestamp, now),
-            external=True,
-        )
-    with open_cloud_file(csv_file_path) as csv_file:
-        csv_reader = csv.DictReader(csv_file, delimiter="\t")
-        written, biobank_ids = _upsert_samples_from_csv(csv_reader)
-
-    since_ts = clock.CLOCK.now()
-    dao = ParticipantSummaryDao()
-    dao.update_from_biobank_stored_samples(biobank_ids=biobank_ids)
-    update_bigquery_sync_participants(since_ts, dao)
-
-    return written, timestamp
-
 def update_bigquery_sync_participants(ts, dao):
     """
     Update all participants modified by the biobank reconciliation process.
@@ -117,45 +89,6 @@ def update_bigquery_sync_participants(ts, dao):
 
         pids = [participant.participantId for participant in participants]
         dispatch_participant_rebuild_tasks(pids, batch_size=batch_size)
-
-
-
-def get_last_biobank_sample_file_info(monthly=False):
-    """Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
-    bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
-    if monthly:
-        bucket_name = bucket_name + "/60_day_manifests"
-
-    csv_file_path, csv_filename = _open_latest_samples_file(bucket_name, monthly=monthly)
-    timestamp = _timestamp_from_filename(csv_filename)
-
-    return csv_file_path, csv_filename, timestamp
-
-
-def _timestamp_from_filename(csv_filename):
-    if len(csv_filename) < _INPUT_CSV_TIME_FORMAT_LENGTH + _CSV_SUFFIX_LENGTH:
-        raise DataError("Can't parse time from CSV filename: %s" % csv_filename)
-    time_suffix = csv_filename[
-        len(csv_filename)
-        - (_INPUT_CSV_TIME_FORMAT_LENGTH + _CSV_SUFFIX_LENGTH)
-        - 1 : len(csv_filename)
-        - _CSV_SUFFIX_LENGTH
-    ]
-    try:
-        timestamp = datetime.datetime.strptime(time_suffix, INPUT_CSV_TIME_FORMAT)
-    except ValueError:
-        raise DataError("Can't parse time from CSV filename: %s" % csv_filename)
-    # Assume file times are in Central time (CST or CDT); convert to UTC.
-    return _US_CENTRAL.localize(timestamp).astimezone(pytz.utc).replace(tzinfo=None)
-
-
-def _open_latest_samples_file(cloud_bucket_name, monthly=False):
-    """Returns an open stream for the most recently created CSV in the given bucket."""
-    blob_name = _find_latest_samples_csv(cloud_bucket_name, monthly)
-    file_name = os.path.basename(blob_name)
-    path = os.path.normpath(cloud_bucket_name + '/' + blob_name)
-    logging.info(f'Using CSV from {cloud_bucket_name} as latest samples file: {file_name}')
-    return path, file_name
 
 
 def _find_latest_samples_csv(cloud_bucket_name, monthly=False):
@@ -212,45 +145,6 @@ class CsvColumns(object):
     )
 
 
-def _upsert_samples_from_csv(csv_reader):
-    """Inserts/updates BiobankStoredSamples from a csv.DictReader."""
-    missing_cols = set(CsvColumns.ALL) - set(csv_reader.fieldnames)
-    if missing_cols:
-        raise DataError("CSV is missing columns %s, had columns %s." % (missing_cols, csv_reader.fieldnames))
-    samples_dao = BiobankStoredSampleDao()
-    biobank_id_prefix = get_biobank_id_prefix()
-
-    biobank_ids = set()
-    written = 0
-    try:
-        samples = []
-        with ParticipantDao().session() as session:
-
-            for row in csv_reader:
-                sample = _create_sample_from_row(row, biobank_id_prefix)
-                if sample:
-                    # DA-601 - Ensure biobank_id exists before accepting a sample record.
-                    if session.query(Participant).filter(Participant.biobankId == sample.biobankId).count() < 1:
-                        logging.error(
-                            "Bio bank Id ({0}) does not exist in the Participant table.".format(sample.biobankId)
-                        )
-                        continue
-
-                    samples.append(sample)
-                    if len(samples) >= _BATCH_SIZE:
-                        written += samples_dao.upsert_all(samples)
-                        samples = []
-
-                    biobank_ids.add(sample.biobankId)
-
-            if samples:
-                written += samples_dao.upsert_all(samples)
-
-        return written, biobank_ids
-    except ValueError:
-        raise DataError("Error upserting samples from CSV")
-
-
 def _parse_timestamp(row, key, sample):
     str_val = row[key]
     if str_val:
@@ -265,40 +159,6 @@ def _parse_timestamp(row, key, sample):
         # tzinfo since storage is naive anyway (to make stored/fetched values consistent).
         return _US_CENTRAL.localize(naive).astimezone(pytz.utc).replace(tzinfo=None)
     return None
-
-
-def _create_sample_from_row(row, biobank_id_prefix):
-    """Creates a new BiobankStoredSample object from a CSV row.
-
-  Raises:
-    DataError if the row is invalid.
-  Returns:
-    A new BiobankStoredSample, or None if the row should be skipped.
-  """
-    biobank_id_str = row[CsvColumns.EXTERNAL_PARTICIPANT_ID]
-    if not biobank_id_str.startswith(biobank_id_prefix):
-        # This is a biobank sample for another environment. Ignore it.
-        return None
-    if CsvColumns.BIOBANK_ORDER_IDENTIFIER not in row:
-        return None
-    biobank_id = from_client_biobank_id(biobank_id_str)
-    sample = BiobankStoredSample(
-        biobankStoredSampleId=row[CsvColumns.SAMPLE_ID],
-        biobankId=biobank_id,
-        biobankOrderIdentifier=row[CsvColumns.BIOBANK_ORDER_IDENTIFIER],
-        test=row[CsvColumns.TEST_CODE],
-    )
-    if row[CsvColumns.PARENT_ID]:
-        # Skip child samples.
-        return None
-
-    sample.confirmed = _parse_timestamp(row, CsvColumns.CONFIRMED_DATE, sample)
-    sample.created = _parse_timestamp(row, CsvColumns.CREATE_DATE, sample)
-    sample.status = get_sample_status_enum_value(row[CsvColumns.STATUS])
-    sample.disposed = _parse_timestamp(row, CsvColumns.DISPOSAL_DATE, sample)
-    sample.family_id = row[CsvColumns.SAMPLE_FAMILY]
-
-    return sample
 
 
 def write_reconciliation_report(now, report_type="daily"):
