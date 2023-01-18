@@ -9,8 +9,10 @@ from sqlalchemy import exc
 
 from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample,
-    Activity, ParticipantEventActivity, EnrollmentEventType, EnrollmentEvent, PairingEventType, PairingEvent,
-    ConsentEventType, ConsentEvent)
+    Activity, ParticipantEventActivity, EnrollmentEventType,
+    EnrollmentEvent, PairingEventType, PairingEvent, ConsentEventType,
+    ConsentEvent, SampleUpdate, BiobankFileExport, SampleExport
+)
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 
 
@@ -639,3 +641,27 @@ class NphConsentEventDao(BaseDao):
 
     def from_client_json(self):
         pass
+
+
+class NphSampleUpdateDao(BaseDao):
+    def __init__(self):
+        super(NphSampleUpdateDao, self).__init__(SampleUpdate)
+
+    def get_id(self, obj: SampleUpdate):
+        return obj.id
+
+
+class NphBiobankFileExportDao(BaseDao):
+    def __init__(self):
+        super(NphBiobankFileExportDao, self).__init__(BiobankFileExport)
+
+    def get_id(self, obj: BiobankFileExport):
+        return obj.id
+
+
+class NphSampleExportDao(BaseDao):
+    def __init__(self):
+        super(NphSampleExportDao, self).__init__(SampleExport)
+
+    def get_id(self, obj: SampleExport):
+        return obj.id

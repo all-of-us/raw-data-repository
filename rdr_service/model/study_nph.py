@@ -10,6 +10,8 @@ from rdr_service.model.utils import UTCDateTime
 
 
 class Participant(NphBase):
+    # A new participant in this table can only be be added
+    # if they exist in rdr.participant table
     __tablename__ = "participant"
 
     id = Column("id", BigInteger, primary_key=True)
@@ -241,3 +243,37 @@ class ConsentEvent(NphBase):
 
 event.listen(ConsentEvent, "before_insert", model_insert_listener)
 event.listen(ConsentEvent, "before_update", model_update_listener)
+
+
+class SampleUpdate(NphBase):
+    __tablename__ = "sample_update"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    rdr_ordered_sample_id = Column(BigInteger, ForeignKey("ordered_sample.id"))
+    ordered_sample_json = Column(JSON)
+
+
+event.listen(SampleUpdate, "before_insert", model_insert_listener)
+
+
+class BiobankFileExport(NphBase):
+    __tablename__ = "biobank_file_export"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    file_name = Column(String(256))
+    crc32c_checksum = Column(BigInteger, unique=True, nullable=False)
+
+
+event.listen(BiobankFileExport, "before_insert", model_insert_listener)
+
+
+class SampleExport(NphBase):
+    __tablename__ = "sample_export"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    ignore_flag = Column(TINYINT, default=0)
+    export_id = Column(BigInteger, ForeignKey("biobank_file_export.id"))
+    sample_update_id = Column(BigInteger, ForeignKey("sample_update.id"))
