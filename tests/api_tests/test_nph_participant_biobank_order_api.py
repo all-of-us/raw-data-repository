@@ -1,8 +1,13 @@
 # Sample ID = NP124820391
 import json
-from unittest import TestCase
+from sqlalchemy.orm import Query
 from unittest.mock import MagicMock, patch
 
+from tests.helpers.unittest_base import BaseTestCase
+from rdr_service.dao import database_factory
+from rdr_service.model.study_nph import (
+    SampleUpdate
+)
 from rdr_service.main import app
 from rdr_service.model.study_nph import (
     StudyCategory, Order, OrderedSample, Participant
@@ -101,7 +106,7 @@ PATCH_SAMPLE = {
 }
 
 
-class TestNPHParticipantOrderAPI(TestCase):
+class TestNPHParticipantOrderAPI(BaseTestCase):
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
@@ -119,6 +124,12 @@ class TestNPHParticipantOrderAPI(TestCase):
             for k, _ in result.items():
                 if k.upper() != "ID":
                     self.assertEqual(query.get(k), result.get(k))
+        with database_factory.get_database().session() as session:
+            query = Query(SampleUpdate)
+            query.session = session
+            result = query.all()
+            for each in result:
+                self.assertIsNotNone(each.ordered_sample_json)
 
     @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')
     @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
@@ -166,3 +177,17 @@ class TestNPHParticipantOrderAPI(TestCase):
             for k, _ in result.items():
                 if k.upper() != "ID":
                     self.assertEqual(query.get(k), result.get(k))
+        with database_factory.get_database().session() as session:
+            query = Query(SampleUpdate)
+            query.session = session
+            result = query.all()
+            for each in result:
+                self.assertIsNotNone(each.ordered_sample_json)
+
+    def tearDown(self):
+        self.clear_table_after_test("nph.ordered_sample")
+        self.clear_table_after_test("nph.order")
+        self.clear_table_after_test("nph.site")
+        self.clear_table_after_test("nph.study_category")
+        self.clear_table_after_test("nph.participant")
+        self.clear_table_after_test("nph.sample_update")
