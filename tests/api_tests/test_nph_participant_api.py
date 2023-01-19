@@ -7,6 +7,7 @@ from datetime import datetime
 from rdr_service.dao import database_factory
 from rdr_service.data_gen.generators.data_generator import DataGenerator
 from sqlalchemy.orm import Query
+from rdr_service.model import study_nph
 from rdr_service.model.participant import Participant as aouParticipant
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.model.rex import ParticipantMapping, Study
@@ -224,6 +225,32 @@ class TestQueryExecution(BaseTestCase):
             sorted_list = deceased_list.copy()
             sorted_list.sort()
             self.assertTrue(deceased_list == sorted_list, msg="Resultset is not in sorting order")
+
+    def test_client_filter_parameter(self):
+        mock_load_participant_data(self.session)
+        participant_nph_id, first_name = (
+            self.session.query(study_nph.Participant.id, ParticipantSummaryModel.firstName)
+            .join(
+                ParticipantMapping,
+                ParticipantMapping.primary_participant_id == ParticipantSummaryModel.participantId
+            ).join(
+                study_nph.Participant,
+                study_nph.Participant.id == ParticipantMapping.ancillary_participant_id
+            ).first()
+        )
+
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (firstName: "%s") { edges { node { participantNphId firstName } } } }' % first_name
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+
+        result_participant_list = result.get('participant').get('edges')
+        self.assertEqual(1, len(result_participant_list))
+
+        resulting_participant_data = result_participant_list[0].get('node')
+        self.assertEqual(first_name, resulting_participant_data.get('firstName'))
+        self.assertEqual(participant_nph_id, resulting_participant_data.get('participantNphId'))
 
     def test_graphql_syntax_error(self):
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SYNTAX_ERROR)

@@ -8,7 +8,7 @@ from rdr_service.model.participant_summary import ParticipantSummary as Particip
 
 
 @dataclass
-class SortContext:
+class QueryBuilder:
     query: Query
     order_expression: Optional = None
     filter_expressions: List = field(default_factory=list)
