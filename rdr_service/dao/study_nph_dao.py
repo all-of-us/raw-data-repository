@@ -474,7 +474,6 @@ class NphOrderedSampleDao(UpdatableDao):
             db_parent_order_sample = self._get_parent_order_sample(rdr_order_id, session)
             self._update_parent_order(order, db_parent_order_sample)
             ordered_sample_list.append(db_parent_order_sample)
-            ## TODO: insert a sample update to the SampleUpdate Table
             db_child_order_sample = self._get_child_order_sample(db_parent_order_sample.id, rdr_order_id, session)
             if len(db_child_order_sample) > 0:
                 co_list = self._update_child_order(order, db_child_order_sample, db_parent_order_sample.nph_sample_id,
@@ -482,7 +481,6 @@ class NphOrderedSampleDao(UpdatableDao):
                 for co in co_list:
                     db_parent_order_sample.children.append(co)
                     ordered_sample_list.append(co)
-                    ## TODO: insert a sample update to the SampleUpdate Table
             session.add(db_parent_order_sample)
             session.commit()
             sample_update_dao = NphSampleUpdateDao()
