@@ -3,7 +3,6 @@ import json
 
 import mock
 
-from rdr_service import config
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg, submit_pipeline_pubsub_msg_from_model
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -32,15 +31,17 @@ class PubSubTest(BaseTestCase):
         self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId, TIME_1.isoformat()))
 
         # Override the settings, so we can fully test the pubsub code.
-        config.override_setting('pdr_pipeline', {
-            "allowed_projects": [
-                "localhost"
-            ],
-            "excluded_table_list": [
-                "log_position",
-                "questionnaire_response_answer"
-            ]
-        })
+        self.temporarily_override_config_setting(
+            'pdr_pipeline', {
+                "allowed_projects": [
+                       "localhost"
+                ],
+                "excluded_table_list": [
+                    "log_position",
+                    "questionnaire_response_answer"
+                ]
+            }
+        )
 
     @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
     def test_simple_valid_pubsub_msg(self, mock_pub_func):
