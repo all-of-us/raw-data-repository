@@ -20,6 +20,7 @@ from rdr_service.dao.study_nph_dao import NphSiteDao
 from rdr_service.data_gen.generators.data_generator import DataGenerator
 from rdr_service.data_gen.generators.nph import NphDataGenerator
 from rdr_service.model.rex import ParticipantMapping
+from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -99,7 +100,21 @@ class ParticipantGeneratorTool(ToolBase):
             stateId=state_code.codeId,
             sexId=sex_code.codeId,
             siteId=aou_site.siteId,
-            aian=int(row['aian_flag'])
+            aian=int(row['aian_flag']),
+            email=f'nph.{aou_participant.participantId}@test.com',
+            phoneNumber=f"5{aou_participant.participantId}",
+            questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
+            questionnaireOnTheBasicsTime=clock.CLOCK.now(),
+            questionnaireOnTheBasicsAuthored=clock.CLOCK.now(),
+            questionnaireOnOverallHealth=QuestionnaireStatus.SUBMITTED,
+            questionnaireOnOverallHealthTime=clock.CLOCK.now(),
+            questionnaireOnOverallHealthAuthored=clock.CLOCK.now(),
+            questionnaireOnLifestyle=QuestionnaireStatus.SUBMITTED,
+            questionnaireOnLifestyleTime=clock.CLOCK.now(),
+            questionnaireOnLifestyleAuthored=clock.CLOCK.now(),
+            questionnaireOnSocialDeterminantsOfHealth=QuestionnaireStatus.SUBMITTED,
+            questionnaireOnSocialDeterminantsOfHealthTime=clock.CLOCK.now(),
+            questionnaireOnSocialDeterminantsOfHealthAuthored=clock.CLOCK.now(),
         )
 
         # Insert NPH Data
@@ -134,6 +149,7 @@ class ParticipantGeneratorTool(ToolBase):
         )
 
         self.rex_mapping_dao.insert(rex_mapping_obj)
+        _logger.info(f'Participant Created (aou, nph): {aou_participant.participantId}, {nph_participant.id}')
 
 
 def get_datagen_process_for_run(args, gcp_env):
