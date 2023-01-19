@@ -8,6 +8,9 @@ import json
 from types import SimpleNamespace as Namespace
 from itertools import zip_longest
 from werkzeug.exceptions import BadRequest, NotFound
+from rdr_service.dao import database_factory
+from sqlalchemy.orm import Query
+
 
 from rdr_service.dao.study_nph_dao import (
     NphParticipantDao,
@@ -741,6 +744,7 @@ class NphOrderedSampleDaoTest(BaseTestCase):
         self.nph_site_dao = NphSiteDao()
         self.nph_order_dao = NphOrderDao()
         self.nph_ordered_sample_dao = NphOrderedSampleDao()
+        self.nph_sample_update_dao = NphSampleUpdateDao()
 
     def test_get_before_insert(self):
         self.assertIsNone(self.nph_ordered_sample_dao.get(1))
@@ -895,8 +899,8 @@ class NphOrderedSampleDaoTest(BaseTestCase):
             "parent_sample_id": None,
             "test": "test",
             "description": "ordered sample",
-            "collected": collected_ts,
-            "finalized": finalized_ts,
+            "collected": collected_ts.strftime("%Y-%m-%d %H:%M:%S"),
+            "finalized": finalized_ts.strftime("%Y-%m-%d %H:%M:%S"),
             "aliquot_id": str(uuid4()),
             "container": "container 1",
             "volume": "volume 2",
@@ -909,6 +913,12 @@ class NphOrderedSampleDaoTest(BaseTestCase):
         self.assertIsNotNone(ordered_sample)
         ordered_sample_params["id"] = 1
         self.assertEqual(ordered_sample.asdict(), ordered_sample_params)
+        with database_factory.get_database().session() as session:
+            query = Query(SampleUpdate)
+            query.session = session
+            result = query.first()
+            self.assertEqual(result.ordered_sample_json, ordered_sample_params)
+            self.assertEqual(ordered_sample_params["id"], result.rdr_ordered_sample_id)
 
     def test_from_client_json(self):
         request = json.loads(json.dumps(TEST_URINE_SAMPLE), object_hook=lambda d: Namespace(**d))
@@ -1033,6 +1043,7 @@ class NphOrderedSampleDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.site")
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
+        self.clear_table_after_test("nph.sample_update")
 
 
 class NphSampleUpdateDaoTest(BaseTestCase):

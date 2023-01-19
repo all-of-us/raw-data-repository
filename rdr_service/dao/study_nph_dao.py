@@ -442,14 +442,24 @@ class NphOrderedSampleDao(UpdatableDao):
     def _insert_order_sample(self, session, order: Namespace):
         # Adding record(s) to nph.order_sample table
         try:
+            ordered_sample_list = []
             nph_sample_id = fetch_identifier_value(order, "sample-id")
             os = self.from_client_json(order, order.id, nph_sample_id)
+            ordered_sample_list.append(os)
             if order.__dict__.get("aliquots"):
                 for aliquot in order.aliquots:
                     oa = self.from_aliquot_client_json(aliquot, order.id, nph_sample_id)
                     os.children.append(oa)
+                    ordered_sample_list.append(oa)
             session.add(os)
             session.commit()
+            sample_update_dao = NphSampleUpdateDao()
+            for ordered_sample in ordered_sample_list:
+                sample_update_dict = {
+                    "rdr_ordered_sample_id": ordered_sample.id,
+                    "ordered_sample_json": ordered_sample.asdict()
+                }
+                sample_update_dao.insert(SampleUpdate(**sample_update_dict))
             return os
         except exc.SQLAlchemyError as sql:
             raise sql
@@ -460,14 +470,26 @@ class NphOrderedSampleDao(UpdatableDao):
 
     def update_order_sample(self, order: Namespace, rdr_order_id: int, session):
         try:
+            ordered_sample_list = []
             db_parent_order_sample = self._get_parent_order_sample(rdr_order_id, session)
             self._update_parent_order(order, db_parent_order_sample)
+            ordered_sample_list.append(db_parent_order_sample)
             db_child_order_sample = self._get_child_order_sample(db_parent_order_sample.id, rdr_order_id, session)
             if len(db_child_order_sample) > 0:
                 co_list = self._update_child_order(order, db_child_order_sample, db_parent_order_sample.nph_sample_id,
                                                    rdr_order_id)
                 for co in co_list:
                     db_parent_order_sample.children.append(co)
+                    ordered_sample_list.append(co)
+            session.add(db_parent_order_sample)
+            session.commit()
+            sample_update_dao = NphSampleUpdateDao()
+            for ordered_sample in ordered_sample_list:
+                sample_update_dict = {
+                    "rdr_ordered_sample_id": ordered_sample.id,
+                    "ordered_sample_json": ordered_sample.asdict()
+                }
+                sample_update_dao.insert(SampleUpdate(**sample_update_dict))
         except exc.SQLAlchemyError as ex:
             raise ex
         except NotFound as not_found:
