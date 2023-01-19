@@ -1,7 +1,7 @@
 {
-    "date": "2022-12-13T17:04:51+00:00",
+    "date": "2023-01-17T20:52:27+00:00",
     "group": {
-        "title": "Remote ID Verification",
+        "title": "Verify Your Identity",
         "linkId": "root_group",
         "concept": [
             {
@@ -12,8 +12,8 @@
         "repeats": false,
         "question": [
             {
-                "text": "Was this a REMOTE Id Verification? ",
-                "type": "boolean",
+                "text": "remote_identity_verified",
+                "type": "text",
                 "linkId": "remote_id_123",
                 "concept": [
                     {
@@ -24,8 +24,8 @@
                 "repeats": false
             },
             {
-                "text": "Latest Date Updated",
-                "type": "date",
+                "text": "remote_identity_verified_on",
+                "type": "text",
                 "linkId": "remote_id_456",
                 "concept": [
                     {
@@ -35,13 +35,14 @@
                 ],
                 "repeats": false
             }
-        ]
+        ],
+        "required": true
     },
     "status": "published",
-    "version": "V2022.12.15",
+    "version": "v2022.12.15",
     "identifier": [
         {
-            "value": "Vibrent_FORM_ID_123"
+            "value": "Vibrent_FORM_ID_1628"
         }
     ],
     "resourceType": "Questionnaire"
