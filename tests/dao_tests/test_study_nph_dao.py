@@ -11,6 +11,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from rdr_service.dao import database_factory
 from sqlalchemy.orm import Query
 
+
 from rdr_service.dao.study_nph_dao import (
     NphParticipantDao,
     NphStudyCategoryDao,
@@ -918,47 +919,6 @@ class NphOrderedSampleDaoTest(BaseTestCase):
             result = query.first()
             self.assertEqual(result.ordered_sample_json, ordered_sample_params)
             self.assertEqual(ordered_sample_params["id"], result.rdr_ordered_sample_id)
-
-    @patch('rdr_service.dao.study_nph_dao.NphOrderedSampleDao.from_client_json')
-    @patch('rdr_service.dao.study_nph_dao.fetch_identifier_value')
-    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.insert_time_point_record')
-    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.visit_type_exist')
-    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.module_exist')
-    def test_insert_sample_update(self, mock_module_exist, mock_visit_type_exist, mock_insert_time, mock_fetch_ident,
-                                   mock_client_json):
-        nph_sample_id = str(uuid4())
-        mock_fetch_ident.return_value = nph_sample_id
-        mock_insert_time.return_value = StudyCategory(name="Child Study Category", type_label="CHILD")
-        mock_visit_type_exist.return_value = (True, StudyCategory(name="Parent Study Category", type_label="PARENT"))
-        mock_module_exist.return_value = (True, StudyCategory(name="Child Study Category", type_label="CHILD"))
-        test_order = self._create_test_order()
-        collected_ts = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
-        finalized_ts = datetime.strptime((datetime.now() + timedelta(hours=3)).strftime(DATETIME_FORMAT),
-                                         DATETIME_FORMAT)
-        ordered_sample_params = {
-            "nph_sample_id": nph_sample_id,
-            "order_id": test_order.id,
-            "parent_sample_id": None,
-            "test": "test",
-            "description": "ordered sample",
-            "collected": collected_ts.strftime("%Y-%m-%d %H:%M:%S"),
-            "finalized": finalized_ts.strftime("%Y-%m-%d %H:%M:%S"),
-            "aliquot_id": str(uuid4()),
-            "container": "container 1",
-            "volume": "volume 2",
-            "status": "2 aliquots restored",
-            "supplemental_fields": None,
-            "identifier": None
-        }
-
-        mock_client_json.return_value = OrderedSample(**ordered_sample_params)
-        os = OrderedSample(**ordered_sample_params)
-        os = self.nph_sample_update_dao.insert(os)
-        with database_factory.get_database().session() as session:
-            query = Query(SampleUpdate)
-            query.session = session
-            for each in query.all():
-                print(each)
 
     def test_from_client_json(self):
         request = json.loads(json.dumps(TEST_URINE_SAMPLE), object_hook=lambda d: Namespace(**d))
