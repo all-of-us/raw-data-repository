@@ -101,7 +101,7 @@ def mock_load_participant_data(session):
     for i in range(1, 3):
         nph_data_gen.create_database_site(
             external_id=f"nph-test-site-{i}",
-            name=f"nph-test-site-{i}",
+            name=f"nph-test-site-name-{i}",
             awardee_external_id="nph-test-hpo",
             organization_external_id="nph-test-org"
         )
