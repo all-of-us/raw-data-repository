@@ -144,7 +144,8 @@ class TestQueryExecution(BaseTestCase):
                                  "Should return {} records back".format(length))
 
     def test_client_single_result(self):
-        query = condition_query("nphId", "100000001", "participantNphId")
+        fetch_value = '"{}"'.format("1000100000001")
+        query = condition_query("nphId", fetch_value, "participantNphId")
         with database_factory.get_database().session() as session:
             mock_load_participant_data(session)
             executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
@@ -187,7 +188,8 @@ class TestQueryExecution(BaseTestCase):
                 self.assertEqual('nph-test-org', each.get('node').get(field_to_test))
 
     def test_client_nph_pair_site_with_id(self):
-        query = condition_query("nphId", "100000001", "nphPairedSite")
+        fetch_value = '"{}"'.format("1000100000001")
+        query = condition_query("nphId", fetch_value, "nphPairedSite")
         with database_factory.get_database().session() as session:
             mock_load_participant_data(session)
             executed = app.test_client().post('/rdr/v1/nph_participant', data=query)

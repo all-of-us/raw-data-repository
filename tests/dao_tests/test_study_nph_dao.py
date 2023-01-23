@@ -248,12 +248,12 @@ class NphParticipantDaoTest(BaseTestCase):
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     def test_check_participant_exist(self, query_filter):
-        test_data = {"id": 1, "name": "test_participant"}
+        test_data = {"id": 1000000011, "name": "test_participant"}
         response = json.loads(json.dumps(test_data), object_hook=lambda d: Namespace(**d))
         session = MagicMock()
         query_filter.return_value.first.return_value = response
         test_participant_dao = NphParticipantDao()
-        exist = test_participant_dao.check_participant_exist("10001", session)
+        exist = test_participant_dao.check_participant_exist("10001000000011", session)
         self.assertTrue(exist)
         query_filter.return_value.first.return_value = None
         not_exist = test_participant_dao.check_participant_exist("10001", session)
@@ -261,8 +261,8 @@ class NphParticipantDaoTest(BaseTestCase):
 
     def test_convert_id(self):
         test_participant_dao = NphParticipantDao()
-        participant_id = test_participant_dao.convert_id("10001")
-        self.assertEqual(1, participant_id)
+        participant_id = test_participant_dao.convert_id("10001000000011")
+        self.assertEqual("1000000011", participant_id)
 
     def tearDown(self):
         self.clear_table_after_test("nph.participant")
@@ -423,10 +423,10 @@ class NphSiteDaoTest(BaseTestCase):
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     def test_get_good_id(self, query_filter):
-        response = json.loads(json.dumps({"id": 1}), object_hook=lambda d: Namespace(**d))
         session = MagicMock()
         site_dao = NphSiteDao()
-        query_filter.return_value.first.return_value = response
+        site_response = Site(id=1, external_id="test_site")
+        query_filter.return_value.first.return_value = site_response
         response = site_dao._fetch_site_id(session, "test_site")
         self.assertEqual(1, response)
 
@@ -444,7 +444,7 @@ class NphSiteDaoTest(BaseTestCase):
         session = MagicMock()
         site_dao = NphSiteDao()
         query_filter.return_value.first.return_value = 1
-        exist = site_dao.site_exist(session, "test_site")
+        exist = site_dao.site_exist(session, "1")
         self.assertTrue(exist)
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
@@ -604,13 +604,15 @@ class NphOrderDaoTest(BaseTestCase):
         nph_order = self._create_order(nph_order_params, ts=_time)
         self.assertEqual(self.nph_order_dao.get(1).asdict(), nph_order.asdict())
 
+    @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
-    def test_patch_restored_update(self, site_id, order):
+    def test_patch_restored_update(self, site_id, order, query_filter):
         session = MagicMock()
         request = json.loads(json.dumps(RESTORED_PAYLOAD), object_hook=lambda d: Namespace(**d))
         site_id.return_value = 1
         order.return_value = Order(id=1, participant_id=1)
+        query_filter.return_value.first.return_value = Participant(id=1)
         order_dao = NphOrderDao()
         result = order_dao.patch_update(request, 1, "10001", session)
         self.assertEqual(1, result.amended_site)
@@ -618,13 +620,15 @@ class NphOrderDaoTest(BaseTestCase):
         self.assertEqual(request.amendedReason, result.amended_reason)
         self.assertEqual("RESTORED", result.status.upper())
 
+    @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
-    def test_patch_cancel_update(self, site_id, order):
+    def test_patch_cancel_update(self, site_id, order, query_filter):
         session = MagicMock()
         request = json.loads(json.dumps(CANCEL_PAYLOAD), object_hook=lambda d: Namespace(**d))
         site_id.return_value = 1
         order.return_value = Order(id=1, participant_id=1)
+        query_filter.return_value.first.return_value = Participant(id=1)
         order_dao = NphOrderDao()
         result = order_dao.patch_update(request, 1, "10001", session)
         self.assertEqual(1, result.amended_site)
@@ -653,14 +657,16 @@ class NphOrderDaoTest(BaseTestCase):
         self.assertEqual(TEST_SAMPLE.get("finalizedInfo").get("author").get("value"), result.finalized_author)
         self.assertEqual(TEST_SAMPLE.get("notes"), result.notes)
 
+    @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
-    def test_update(self, site_id, order):
+    def test_update(self, site_id, order, query_filter):
         session = MagicMock()
         site_id.return_value = 1
         order_dao = NphOrderDao()
         order.return_value = Order(id=1, participant_id=1)
         order_dao.set_order_cls(json.dumps(TEST_SAMPLE))
+        query_filter.return_value.first.return_value = Participant(id=1)
         result = order_dao.update_order(1, "10001", session)
         self.assertEqual("nph-order-id-123", result.nph_order_id)
         self.assertEqual(1, result.created_site)
