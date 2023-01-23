@@ -32,6 +32,12 @@ QUERY_WITH_MULTI_FIELD_ERROR = '''{ participant(nphId: 25){ totalCount resultCou
 foodIsecurity{current{value time} historical{value time}} aouBasicsQuestionnaire{value time}
 sampleSa1{ordered{parent{current{value time}}} }} } } }'''
 
+QUERY_WITH_NONE_VALUE = '''
+{ participant  { edges { node { aouLifestyleStatus{ value time } aouBasicStatus{ value time }
+aouWithdrawalStatus{ value time } aouDeactivationStatus{ value time }
+aouOverallHealthStatus{ value time } aouLifestyleStatus{ value time } aouSDOHStatus{ value time }}}}}
+'''
+
 
 def simple_query(value):
     return ''' { participant  {totalCount resultCount pageInfo
@@ -150,6 +156,17 @@ class TestQueryExecution(BaseTestCase):
             result = json.loads(executed.data.decode('utf-8'))
             self.assertEqual(1, len(result.get('participant').get('edges')), "Should return 1 record back")
             self.assertEqual(100000001, result.get('participant').get('edges')[0].get('node').get('participantNphId'))
+
+    def test_client_none_value_field(self):
+        with database_factory.get_database().session() as session:
+            mock_load_participant_data(session)
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_NONE_VALUE)
+            result = json.loads(executed.data.decode('utf-8'))
+            self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 1 record back")
+            for each in result.get('participant').get('edges'):
+                for _, v in each.get('node').items():
+                    self.assertEqual(str(QuestionnaireStatus.UNSET), v.get('value'))
+                    self.assertIsNone(v.get('time'))
 
     def test_client_nph_pair_site(self):
         field_to_test = "nphPairedSite"

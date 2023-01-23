@@ -5,7 +5,7 @@ from graphene import List
 
 from sqlalchemy.orm import Query, aliased
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
-
+from rdr_service.participant_enums import QuestionnaireStatus
 
 @dataclass
 class SortContext:
@@ -63,23 +63,30 @@ def load_participant_summary_data(query):
             'zipCode': summary.zipCode,
             'phoneNumber': summary.phoneNumber,
             'email': summary.email,
-            'deceasedStatus': {"value": summary.deceasedStatus, "time": summary.deceasedAuthored},
-            'withdrawalStatus': {"value": summary.withdrawalStatus, "time": summary.withdrawalAuthored},
+            'deceasedStatus': {"value": summary.deceasedStatus if None else QuestionnaireStatus.UNSET,
+                               "time": summary.deceasedAuthored},
+            'withdrawalStatus': {"value": summary.withdrawalStatus if None else QuestionnaireStatus.UNSET,
+                                 "time": summary.withdrawalAuthored},
             'aianStatus': summary.aian,
-            'suspensionStatus': {"value": summary.suspensionStatus, "time": summary.suspensionTime},
-            'enrollmentStatus': {"value": summary.enrollmentStatus, "time": summary.dateOfBirth},
-            'questionnaireOnTheBasics': {"value": summary.questionnaireOnTheBasics,
-                                         "time": summary.questionnaireOnTheBasicsAuthored},
-            'questionnaireOnHealthcareAccess': {"value": summary.questionnaireOnHealthcareAccess,
-                                                "time": summary.questionnaireOnHealthcareAccessAuthored},
-            'questionnaireOnLifestyle': {"value": summary.questionnaireOnLifestyle,
-                                         "time": summary.questionnaireOnLifestyleAuthored},
+            'suspensionStatus': {"value": summary.suspensionStatus if None else QuestionnaireStatus.UNSET,
+                                 "time": summary.suspensionTime},
+            'enrollmentStatus': {"value": summary.enrollmentStatus if None else QuestionnaireStatus.UNSET,
+                                 "time": summary.dateOfBirth},
+            'questionnaireOnTheBasics': {
+                "value": summary.questionnaireOnTheBasics if None else QuestionnaireStatus.UNSET,
+                "time": summary.questionnaireOnTheBasicsAuthored},
+            'questionnaireOnHealthcareAccess': {
+                "value": summary.questionnaireOnHealthcareAccess if None else QuestionnaireStatus.UNSET,
+                "time": summary.questionnaireOnHealthcareAccessAuthored},
+            'questionnaireOnLifestyle': {
+                "value": summary.questionnaireOnLifestyle if None else QuestionnaireStatus.UNSET,
+                "time": summary.questionnaireOnLifestyleAuthored},
             'siteId': site.siteName,
             'external_id': nph_site.name,
             'organization_external_id': nph_site.organization_external_id,
             'awardee_external_id': nph_site.awardee_external_id,
             'questionnaireOnSocialDeterminantsOfHealth':
-                {"value": summary.questionnaireOnSocialDeterminantsOfHealth,
+                {"value": summary.questionnaireOnSocialDeterminantsOfHealth if None else QuestionnaireStatus.UNSET,
                  "time": summary.questionnaireOnSocialDeterminantsOfHealthAuthored}
         })
     return results

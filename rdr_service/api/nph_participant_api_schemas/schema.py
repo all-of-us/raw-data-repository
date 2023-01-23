@@ -1,5 +1,5 @@
 import logging
-from graphene import ObjectType, String, Int, DateTime, NonNull, Field, List, Date, Schema
+from graphene import ObjectType, String, Int, DateTime, Field, List, Date, Schema, NonNull
 from graphene import relay
 from sqlalchemy.orm import Query, aliased
 from sqlalchemy import and_
@@ -30,7 +30,7 @@ class Event(ObjectType):
         NonNull(String), sort_modifier=lambda context: context.set_order_expression(context.sort_table.status)
     )
     time = SortableField(
-        NonNull(DateTime),
+        DateTime,
         sort_modifier=lambda context: context.set_order_expression(context.sort_table.time)  # Order by time
     )
 
