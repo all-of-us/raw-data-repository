@@ -7,8 +7,9 @@ from sqlalchemy.orm import Query, aliased
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.participant_enums import QuestionnaireStatus
 
+
 @dataclass
-class SortContext:
+class QueryBuilder:
     query: Query
     order_expression: Optional = None
     filter_expressions: List = field(default_factory=list)
@@ -81,8 +82,8 @@ def load_participant_summary_data(query):
             'questionnaireOnLifestyle': {
                 "value": summary.questionnaireOnLifestyle if None else QuestionnaireStatus.UNSET,
                 "time": summary.questionnaireOnLifestyleAuthored},
-            'siteId': site.siteName,
-            'external_id': nph_site.name,
+            'siteId': site.googleGroup,
+            'external_id': nph_site.external_id,
             'organization_external_id': nph_site.organization_external_id,
             'awardee_external_id': nph_site.awardee_external_id,
             'questionnaireOnSocialDeterminantsOfHealth':

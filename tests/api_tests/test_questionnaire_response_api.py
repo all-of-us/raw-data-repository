@@ -1724,12 +1724,14 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         response_obj = self.session.query(QuestionnaireResponse).filter(
             QuestionnaireResponse.questionnaireResponseId == response['id']
         ).one()
-        self.assertEqual(response_obj.answers[0].valueDecimal, 1)
-        self.assertEqual(response_obj.answers[1].valueDate, datetime.date(2022, 11, 30))
+        self.assertEqual(response_obj.answers[0].valueString, "true")
+        self.assertEqual(datetime.datetime.utcfromtimestamp(
+            int(response_obj.answers[1].valueString)/1000),
+            datetime.datetime.utcfromtimestamp(1673985783245/1000))
         # Check the DAO to make sure data is accurate
         qr_response = self.dao.get_with_children(response['id'])
-        self.assertEqual(qr_response.answers[0].valueDecimal, 1)
-        self.assertEqual(qr_response.answers[1].valueDate, datetime.date(2022, 11, 30))
+        self.assertEqual(qr_response.answers[0].valueString, "true")
+        self.assertEqual(qr_response.answers[1].valueString, "1673985783245")
 
     def test_remote_id_not_verified(self):
         """ Test to see if a remote ID verification False Response saves successfully """
@@ -1748,12 +1750,14 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         response_obj = self.session.query(QuestionnaireResponse).filter(
             QuestionnaireResponse.questionnaireResponseId == response['id']
         ).one()
-        self.assertEqual(response_obj.answers[0].valueDecimal, 0)
-        self.assertEqual(response_obj.answers[1].valueDate, datetime.date(2022, 11, 30))
+        self.assertEqual(response_obj.answers[0].valueString, "false")
+        self.assertEqual(datetime.datetime.utcfromtimestamp(
+            int(response_obj.answers[1].valueString)/1000),
+            datetime.datetime.utcfromtimestamp(1673985783245/1000))
         # Check the DAO to make sure data is accurate
         qr_response = self.dao.get_with_children(response['id'])
-        self.assertEqual(qr_response.answers[0].valueDecimal, 0)
-        self.assertEqual(qr_response.answers[1].valueDate, datetime.date(2022, 11, 30))
+        self.assertEqual(qr_response.answers[0].valueString, "false")
+        self.assertEqual(qr_response.answers[1].valueString, "1673985783245")
 
     def test_etm_consent(self):
         with FakeClock(TIME_1):
