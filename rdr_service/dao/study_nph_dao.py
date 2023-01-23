@@ -32,38 +32,39 @@ class NphParticipantDao(BaseDao):
         return obj.id
 
     def get_id(self, session, nph_participant_id: str) -> int:
-        participant_id = self.convert_id(nph_participant_id)
+        nph_participant_id = self.convert_id(nph_participant_id)
         query = Query(Participant)
         query.session = session
-        result = query.filter(Participant.id == participant_id).first()
+        result = query.filter(Participant.id == int(nph_participant_id)).first()
         if result:
             return result.id
         else:
-            raise NotFound(f"Participant ID not found : {participant_id}")
+            raise NotFound(f"Participant ID not found : {nph_participant_id}")
 
     def get_participant(self, nph_participant_id: str, session) -> Participant:
-        participant_id = self.convert_id(nph_participant_id)
+        nph_participant_id = self.convert_id(nph_participant_id)
         query = Query(Participant)
         query.session = session
-        result = query.filter(Participant.id == participant_id).first()
+        result = query.filter(Participant.id == int(nph_participant_id)).first()
         if result:
             return result
         else:
-            raise NotFound(f"Participant not found : {participant_id}")
+            raise NotFound(f"Participant not found : {nph_participant_id}")
 
     def check_participant_exist(self, nph_participant_id: str, session) -> bool:
-        participant_id = self.convert_id(nph_participant_id)
+        # expect the participant ID comes in with the prefix 1000.
+        nph_participant_id = self.convert_id(nph_participant_id)
         query = Query(Participant)
         query.session = session
-        result = query.filter(Participant.id == participant_id).first()
+        result = query.filter(Participant.id == int(nph_participant_id)).first()
         if result:
             return True
         else:
             return False
 
     @staticmethod
-    def convert_id(nph_participant_id: str) -> int:
-        return int(nph_participant_id[4:])
+    def convert_id(nph_participant_id: str) -> str:
+        return nph_participant_id[4:]
 
     def from_client_json(self):
         pass
@@ -166,12 +167,12 @@ class NphSiteDao(BaseDao):
         super(NphSiteDao, self).__init__(Site)
 
     @staticmethod
-    def _fetch_site_id(session, site_name) -> int:
+    def _fetch_site_id(session, external_id) -> int:
         query = Query(Site)
         query.session = session
-        result = query.filter(Site.name == site_name).first()
+        result = query.filter(Site.external_id == external_id).first()
         if result is None:
-            raise NotFound(f"Site is not found -- {site_name}")
+            raise NotFound(f"Site is not found -- {external_id}")
         return result.id
 
     def get_id(self, session, site_name: str) -> int:
@@ -181,10 +182,10 @@ class NphSiteDao(BaseDao):
             raise
 
     @staticmethod
-    def site_exist(session, site_name: str) -> bool:
+    def site_exist(session, external_id: str) -> bool:
         query = Query(Site)
         query.session = session
-        result = query.filter(Site.name == site_name).first()
+        result = query.filter(Site.external_id == external_id).first()
         if result is None:
             return False
         return True
@@ -256,7 +257,8 @@ class NphOrderDao(UpdatableDao):
             site_id = self.site_dao.get_id(session, site_name)
             amended_reason = order.amendedReason
             db_order = self.get_order(rdr_order_id, session)
-            if db_order.participant_id == self.participant_dao.convert_id(nph_participant_id):
+            p_id = self.participant_dao.get_id(session, nph_participant_id)
+            if db_order.participant_id == p_id:
                 db_order.amended_author = amended_author
                 db_order.amended_site = site_id
                 db_order.amended_reason = amended_reason
@@ -278,7 +280,7 @@ class NphOrderDao(UpdatableDao):
         collected_site = self.site_dao.get_id(session, self.order_cls.collectedInfo.site.value)
         finalized_site = self.site_dao.get_id(session, self.order_cls.finalizedInfo.site.value)
         db_order = self.get_order(rdr_order_id, session)
-        if db_order.participant_id == self.participant_dao.convert_id(nph_participant_id):
+        if db_order.participant_id == self.participant_dao.get_id(session, nph_participant_id):
             db_order.nph_order_id = fetch_identifier_value(self.order_cls, "order-id")
             db_order.created_author = self.order_cls.createdInfo.author.value
             db_order.created_site = create_site

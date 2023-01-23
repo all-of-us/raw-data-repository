@@ -133,12 +133,12 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
 
     @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')
     @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
-    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant')
+    @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
-    def test_patch(self, site_id, pid, database_factor, order_id):
+    def test_patch(self, site_id, query_filter, database_factor, order_id):
         order_id.return_value = Order(id=1, participant_id=124820391)
         database_factor.return_value.session.return_value = MagicMock()
-        pid.return_value = Participant(id=124820391)
+        query_filter.return_value.first.return_value = Participant(id=124820391)
         site_id.return_value = 1
         queries = [PATCH_SAMPLE]
         for query in queries:
@@ -155,10 +155,10 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
     @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')
     @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
     @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.check_participant_exist')
-    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant')
+    @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.site_exist')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
-    def test_put(self, site_id, site_exist, pid, p_exist, database_factor, order_id, order_exist,
+    def test_put(self, site_id, site_exist, query_filter, p_exist, database_factor, order_id, order_exist,
                  sc_exist, parent_os, child_os):
         child_os.return_value = []
         parent_os.return_value = OrderedSample()
@@ -167,7 +167,7 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         order_exist.return_value = True, Order(id=1, participant_id=124820391)
         order_id.return_value = Order(id=1, participant_id=124820391)
         database_factor.return_value.session.return_value = MagicMock()
-        pid.return_value = Participant(id=124820391)
+        query_filter.return_value.first.return_value = Participant(id=124820391)
         site_id.return_value = 1
         site_exist.return_value = True
         queries = [BLOOD_SAMPLE]
