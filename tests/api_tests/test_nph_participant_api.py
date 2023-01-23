@@ -35,7 +35,6 @@ sampleSa1{ordered{parent{current{value time}}} }} } } }'''
 
 QUERY_WITH_NONE_VALUE = '''
 { participant  { edges { node { aouLifestyleStatus{ value time } aouBasicStatus{ value time }
-aouWithdrawalStatus{ value time } aouDeactivationStatus{ value time }
 aouOverallHealthStatus{ value time } aouLifestyleStatus{ value time } aouSDOHStatus{ value time }}}}}
 '''
 
