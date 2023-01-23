@@ -11,6 +11,7 @@ from typing import List
 import base64
 import json
 import logging
+import os
 
 from apiclient import errors
 from googleapiclient import discovery
@@ -96,6 +97,12 @@ def _validate_pk_values(values_list: List, expected_len=1) -> List[List[str]] or
 
     return converted_list
 
+def log_pipeline_error(msg: str, response_only=False):
+    """ Log message and setup return dict """
+    if response_only is False:
+        logging.error(msg)
+    resp = {'error': msg}
+    return resp
 
 def submit_pipeline_pubsub_msg(database: str = 'rdr', table: str = None, action: str = 'None',
                                pk_columns : List[str] = None, pk_values: List = None, project=GAE_PROJECT):
@@ -111,38 +118,33 @@ def submit_pipeline_pubsub_msg(database: str = 'rdr', table: str = None, action:
                       the pk_values data into its expected format for the pubsub data schema
     :param project:  The project name.  Default is the GAE_PROJECT from the local app config
     """
-    def log_error(msg: str, response_only=False):
-        """ Log message and setup return dict """
-        if response_only is False:
-            logging.error(msg)
-        resp = {'error': msg}
-        return resp
 
     pdr_config = config.getSettingJson('pdr_pipeline')
     allowed_projects = pdr_config['allowed_projects']
 
-    # If project is not allowed or is localhost, return error message.
+    # Allow this result to be calculated first for potential logging in unittest mode
+    validated_pk_values = _validate_pk_values(pk_values, expected_len=len(pk_columns)) or []
+    if not len(validated_pk_values):
+        log_pipeline_error(f'pipeline: {table} pk_values {pk_values} for pk_columns {pk_columns} failed validation',
+                           response_only=os.environ["UNITTEST_FLAG"] != "1")
+    # If project is not allowed or is localhost, return error message
     if project not in allowed_projects:
-        return log_error(f'pipeline: project {project} not allowed.', True)
+        return log_pipeline_error(f'pipeline: project {project} not allowed.', True)
 
     if not database:
         database = 'rdr'
     if not table:
-        return log_error('pipeline: invalid database table name')
+        return log_pipeline_error('pipeline: invalid database table name')
     if action not in ['insert', 'update', 'delete', 'upsert']:
-        return log_error('pipeline: invalid database action value')
+        return log_pipeline_error('pipeline: invalid database action value')
     if not pk_columns or not all(isinstance(col, str) for col in pk_columns):
-        return log_error(f'pipeline: primary key column list {pk_columns} is invalid or empty')
+        return log_pipeline_error(f'pipeline: primary key column list {pk_columns} is invalid or empty')
     if not pk_values or not isinstance(pk_values, (list, tuple)):
-        return log_error(f'pipeline: primary key values argument is invalid or empty')
+        return log_pipeline_error(f'pipeline: primary key values argument is invalid or empty')
 
-    # validate and prep the PK values list.
-    validated_pk_values = _validate_pk_values(pk_values, expected_len=len(pk_columns)) or []
-    if not validated_pk_values or len(validated_pk_values) == 0:
-        log_error(f'pipeline: after validation {pk_values} is empty or contains invalid data')
     # Make sure that the length of the first value list is the same length as the PK columns list.
     if len(pk_columns) != len(validated_pk_values[0]):
-        return log_error(f'pipeline: primary key columns and values are mismatched.')
+        return log_pipeline_error(f'pipeline: primary key columns and values are mismatched.')
 
     # Limit the number of pk_values passed in any pubsub event to 500 at a time
     count = 0
@@ -164,7 +166,7 @@ def submit_pipeline_pubsub_msg(database: str = 'rdr', table: str = None, action:
                                        topic='data-pipeline', message=data)
             count += 1
         except errors.HttpError as e:
-            return log_error(str(e))
+            return log_pipeline_error(str(e))
 
     logging.info(f'pipeline: submitted {count} pubsub messages.')
     return last_response
@@ -222,6 +224,9 @@ def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableM
     tablename = None
     pk_columns = None
     pk_values = list()
+    # Temporary/forced logging during unittest to profile pipeline activity (logging level must be ERROR)
+    # if len(models):
+    #    log_pipeline_error(f'pipeline: Inspection starting for {[m.__tablename__ for m in models][0]}')
 
     # The models in the list will all be of the same model class. Pub/Sub messages for children
     # will be sent before the parent.
@@ -259,9 +264,18 @@ def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableM
         # See if we have any child model records [ONE-TO-ONE or ONE-MANY] and submit pub/sub messages if we do.
         iter_children(model, cls_mapper.relationships, parents)
 
-    # Submit a pipeline Pub/Sub event for this model record.
-    submit_pipeline_pubsub_msg(database=database, table=tablename, action='upsert',
-                               pk_columns=pk_columns,
-                               pk_values=pk_values)
-
+    # Submit a pipeline Pub/Sub event for this model record, if the primary key data looks valid
+    if not pk_columns:
+        log_pipeline_error(f'Empty pk_columns list after inspection of {database}.{tablename}',
+                           response_only=os.environ["UNITTEST_FLAG"] != "1")
+    elif not pk_values:
+        log_pipeline_error(f'Empty pk_values list for pubsub upsert message for {database}.{tablename}',
+                           response_only=os.environ["UNITTEST_FLAG"] != "1")
+    else:
+        # Temporary/forced logging to profile pipeline activity during unittests (logging level must be ERROR)
+        # log_pipeline_error(f'pipeline: pubsub {database}.{tablename}, pk_cols {pk_columns}, pk_values {pk_values}',
+        #                    response_only=os.environ["UNITTEST_FLAG"] != "1")
+        submit_pipeline_pubsub_msg(database=database, table=tablename, action='upsert',
+                                   pk_columns=pk_columns,
+                                   pk_values=pk_values)
     return parents
