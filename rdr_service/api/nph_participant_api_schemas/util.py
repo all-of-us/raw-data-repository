@@ -74,7 +74,7 @@ def load_participant_summary_data(query):
                                                 "time": summary.questionnaireOnHealthcareAccessAuthored},
             'questionnaireOnLifestyle': {"value": summary.questionnaireOnLifestyle,
                                          "time": summary.questionnaireOnLifestyleAuthored},
-            'siteId': site.siteName,
+            'siteId': site.googleGroup,
             'external_id': nph_site.external_id,
             'organization_external_id': nph_site.organization_external_id,
             'awardee_external_id': nph_site.awardee_external_id,
