@@ -105,6 +105,21 @@ PATCH_SAMPLE = {
                 }
 }
 
+PATCH_CANCEL_SAMPLE = {
+                "status": "cancelled",
+                "amendedReason": "CANCEL_ERROR",
+                "cancelledInfo": {
+                      "author": {
+                                    "system": "https://www.pmi-ops.org/nph-username",
+                                    "value": "test@pmi-ops.org"
+                      },
+                      "site": {
+                                "system": "https://www.pmi-ops.org/site-id",
+                                "value": "nph-site-testa"
+                       }
+                }
+}
+
 
 class TestNPHParticipantOrderAPI(BaseTestCase):
 
@@ -135,12 +150,29 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
     @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
-    def test_patch(self, site_id, query_filter, database_factor, order_id):
+    def test_patch_update(self, site_id, query_filter, database_factor, order_id):
         order_id.return_value = Order(id=1, participant_id=124820391)
         database_factor.return_value.session.return_value = MagicMock()
         query_filter.return_value.first.return_value = Participant(id=124820391)
         site_id.return_value = 1
         queries = [PATCH_SAMPLE]
+        for query in queries:
+            executed = app.test_client().patch('rdr/v1/api/v1/nph/Participant/1000124820391/BiobankOrder/1', json=query)
+            result = json.loads(executed.data.decode('utf-8'))
+            for k, _ in result.items():
+                if k.upper() != "ID":
+                    self.assertEqual(query.get(k), result.get(k))
+
+    @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')
+    @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
+    @patch('rdr_service.dao.study_nph_dao.Query.filter')
+    @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
+    def test_patch_cancel(self, site_id, query_filter, database_factor, order_id):
+        order_id.return_value = Order(id=1, participant_id=124820391)
+        database_factor.return_value.session.return_value = MagicMock()
+        query_filter.return_value.first.return_value = Participant(id=124820391)
+        site_id.return_value = 1
+        queries = [PATCH_CANCEL_SAMPLE]
         for query in queries:
             executed = app.test_client().patch('rdr/v1/api/v1/nph/Participant/1000124820391/BiobankOrder/1', json=query)
             result = json.loads(executed.data.decode('utf-8'))
