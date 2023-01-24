@@ -249,7 +249,7 @@ class NphOrderDao(UpdatableDao):
             if order.status.upper() == "RESTORED":
                 site_name = order.restoredInfo.site.value
                 amended_author = order.restoredInfo.author.value
-            elif order.status.upper() == "CANCELED":
+            elif order.status.upper() == "CANCELLED":
                 site_name = order.cancelledInfo.site.value
                 amended_author = order.cancelledInfo.author.value
             else:
@@ -422,6 +422,12 @@ class NphOrderedSampleDao(UpdatableDao):
 
     @staticmethod
     def from_aliquot_client_json(aliquot, order_id: int, nph_sample_id: str) -> OrderedSample:
+        field_name = ["id", "description", "identifier", "collected", "container", "volume"]
+        aliquot_dict = json.loads(aliquot)
+        error = []
+        for each in field_name:
+            if aliquot_dict.get(each) is None:
+                error.append(each)
         return OrderedSample(nph_sample_id=nph_sample_id,
                              order_id=order_id,
                              aliquot_id=aliquot.id,
@@ -560,7 +566,7 @@ class NphOrderedSampleDao(UpdatableDao):
 
     @staticmethod
     def _update_canceled_child_order(order_sample: OrderedSample) -> OrderedSample:
-        order_sample.status = "canceled"
+        order_sample.status = "cancelled"
         return order_sample
 
     def _validate_model(self, obj):

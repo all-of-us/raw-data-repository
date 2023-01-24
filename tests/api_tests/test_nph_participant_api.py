@@ -151,7 +151,8 @@ class TestQueryExecution(BaseTestCase):
             executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
             result = json.loads(executed.data.decode('utf-8'))
             self.assertEqual(1, len(result.get('participant').get('edges')), "Should return 1 record back")
-            self.assertEqual(100000001, result.get('participant').get('edges')[0].get('node').get('participantNphId'))
+            self.assertEqual("1000100000001",
+                             result.get('participant').get('edges')[0].get('node').get('participantNphId'))
 
     def test_client_nph_pair_site(self):
         field_to_test = "nphPairedSite"
@@ -252,7 +253,9 @@ class TestQueryExecution(BaseTestCase):
 
         resulting_participant_data = result_participant_list[0].get('node')
         self.assertEqual(first_name, resulting_participant_data.get('firstName'))
-        self.assertEqual(participant_nph_id, resulting_participant_data.get('participantNphId'))
+        prefix = 1000
+        nph_id = str(prefix) + str(participant_nph_id)
+        self.assertEqual(nph_id, resulting_participant_data.get('participantNphId'))
 
     def test_graphql_syntax_error(self):
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SYNTAX_ERROR)
