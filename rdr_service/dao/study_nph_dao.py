@@ -32,38 +32,39 @@ class NphParticipantDao(BaseDao):
         return obj.id
 
     def get_id(self, session, nph_participant_id: str) -> int:
-        participant_id = self.convert_id(nph_participant_id)
+        nph_participant_id = self.convert_id(nph_participant_id)
         query = Query(Participant)
         query.session = session
-        result = query.filter(Participant.id == participant_id).first()
+        result = query.filter(Participant.id == int(nph_participant_id)).first()
         if result:
             return result.id
         else:
-            raise NotFound(f"Participant ID not found : {participant_id}")
+            raise NotFound(f"Participant ID not found : {nph_participant_id}")
 
     def get_participant(self, nph_participant_id: str, session) -> Participant:
-        participant_id = self.convert_id(nph_participant_id)
+        nph_participant_id = self.convert_id(nph_participant_id)
         query = Query(Participant)
         query.session = session
-        result = query.filter(Participant.id == participant_id).first()
+        result = query.filter(Participant.id == int(nph_participant_id)).first()
         if result:
             return result
         else:
-            raise NotFound(f"Participant not found : {participant_id}")
+            raise NotFound(f"Participant not found : {nph_participant_id}")
 
     def check_participant_exist(self, nph_participant_id: str, session) -> bool:
-        participant_id = self.convert_id(nph_participant_id)
+        # expect the participant ID comes in with the prefix 1000.
+        nph_participant_id = self.convert_id(nph_participant_id)
         query = Query(Participant)
         query.session = session
-        result = query.filter(Participant.id == participant_id).first()
+        result = query.filter(Participant.id == int(nph_participant_id)).first()
         if result:
             return True
         else:
             return False
 
     @staticmethod
-    def convert_id(nph_participant_id: str) -> int:
-        return int(nph_participant_id[4:])
+    def convert_id(nph_participant_id: str) -> str:
+        return nph_participant_id[4:]
 
     def from_client_json(self):
         pass
@@ -166,12 +167,12 @@ class NphSiteDao(BaseDao):
         super(NphSiteDao, self).__init__(Site)
 
     @staticmethod
-    def _fetch_site_id(session, site_name) -> int:
+    def _fetch_site_id(session, external_id) -> int:
         query = Query(Site)
         query.session = session
-        result = query.filter(Site.name == site_name).first()
+        result = query.filter(Site.external_id == external_id).first()
         if result is None:
-            raise NotFound(f"Site is not found -- {site_name}")
+            raise NotFound(f"Site is not found -- {external_id}")
         return result.id
 
     def get_id(self, session, site_name: str) -> int:
@@ -181,10 +182,10 @@ class NphSiteDao(BaseDao):
             raise
 
     @staticmethod
-    def site_exist(session, site_name: str) -> bool:
+    def site_exist(session, external_id: str) -> bool:
         query = Query(Site)
         query.session = session
-        result = query.filter(Site.name == site_name).first()
+        result = query.filter(Site.external_id == external_id).first()
         if result is None:
             return False
         return True
@@ -248,7 +249,7 @@ class NphOrderDao(UpdatableDao):
             if order.status.upper() == "RESTORED":
                 site_name = order.restoredInfo.site.value
                 amended_author = order.restoredInfo.author.value
-            elif order.status.upper() == "CANCELED":
+            elif order.status.upper() == "CANCELLED":
                 site_name = order.cancelledInfo.site.value
                 amended_author = order.cancelledInfo.author.value
             else:
@@ -256,7 +257,8 @@ class NphOrderDao(UpdatableDao):
             site_id = self.site_dao.get_id(session, site_name)
             amended_reason = order.amendedReason
             db_order = self.get_order(rdr_order_id, session)
-            if db_order.participant_id == self.participant_dao.convert_id(nph_participant_id):
+            p_id = self.participant_dao.get_id(session, nph_participant_id)
+            if db_order.participant_id == p_id:
                 db_order.amended_author = amended_author
                 db_order.amended_site = site_id
                 db_order.amended_reason = amended_reason
@@ -278,7 +280,7 @@ class NphOrderDao(UpdatableDao):
         collected_site = self.site_dao.get_id(session, self.order_cls.collectedInfo.site.value)
         finalized_site = self.site_dao.get_id(session, self.order_cls.finalizedInfo.site.value)
         db_order = self.get_order(rdr_order_id, session)
-        if db_order.participant_id == self.participant_dao.convert_id(nph_participant_id):
+        if db_order.participant_id == self.participant_dao.get_id(session, nph_participant_id):
             db_order.nph_order_id = fetch_identifier_value(self.order_cls, "order-id")
             db_order.created_author = self.order_cls.createdInfo.author.value
             db_order.created_site = create_site
@@ -442,14 +444,24 @@ class NphOrderedSampleDao(UpdatableDao):
     def _insert_order_sample(self, session, order: Namespace):
         # Adding record(s) to nph.order_sample table
         try:
+            ordered_sample_list = []
             nph_sample_id = fetch_identifier_value(order, "sample-id")
             os = self.from_client_json(order, order.id, nph_sample_id)
+            ordered_sample_list.append(os)
             if order.__dict__.get("aliquots"):
                 for aliquot in order.aliquots:
                     oa = self.from_aliquot_client_json(aliquot, order.id, nph_sample_id)
                     os.children.append(oa)
+                    ordered_sample_list.append(oa)
             session.add(os)
             session.commit()
+            sample_update_dao = NphSampleUpdateDao()
+            for ordered_sample in ordered_sample_list:
+                sample_update_dict = {
+                    "rdr_ordered_sample_id": ordered_sample.id,
+                    "ordered_sample_json": ordered_sample.asdict()
+                }
+                sample_update_dao.insert(SampleUpdate(**sample_update_dict))
             return os
         except exc.SQLAlchemyError as sql:
             raise sql
@@ -460,14 +472,26 @@ class NphOrderedSampleDao(UpdatableDao):
 
     def update_order_sample(self, order: Namespace, rdr_order_id: int, session):
         try:
+            ordered_sample_list = []
             db_parent_order_sample = self._get_parent_order_sample(rdr_order_id, session)
             self._update_parent_order(order, db_parent_order_sample)
+            ordered_sample_list.append(db_parent_order_sample)
             db_child_order_sample = self._get_child_order_sample(db_parent_order_sample.id, rdr_order_id, session)
             if len(db_child_order_sample) > 0:
                 co_list = self._update_child_order(order, db_child_order_sample, db_parent_order_sample.nph_sample_id,
                                                    rdr_order_id)
                 for co in co_list:
                     db_parent_order_sample.children.append(co)
+                    ordered_sample_list.append(co)
+            session.add(db_parent_order_sample)
+            session.commit()
+            sample_update_dao = NphSampleUpdateDao()
+            for ordered_sample in ordered_sample_list:
+                sample_update_dict = {
+                    "rdr_ordered_sample_id": ordered_sample.id,
+                    "ordered_sample_json": ordered_sample.asdict()
+                }
+                sample_update_dao.insert(SampleUpdate(**sample_update_dict))
         except exc.SQLAlchemyError as ex:
             raise ex
         except NotFound as not_found:
@@ -536,7 +560,7 @@ class NphOrderedSampleDao(UpdatableDao):
 
     @staticmethod
     def _update_canceled_child_order(order_sample: OrderedSample) -> OrderedSample:
-        order_sample.status = "canceled"
+        order_sample.status = "cancelled"
         return order_sample
 
     def _validate_model(self, obj):

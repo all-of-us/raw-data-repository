@@ -8,7 +8,7 @@ from rdr_service.model.participant_summary import ParticipantSummary as Particip
 
 
 @dataclass
-class SortContext:
+class QueryBuilder:
     query: Query
     order_expression: Optional = None
     filter_expressions: List = field(default_factory=list)
@@ -48,12 +48,13 @@ class SortContext:
         return resulting_query.order_by(self.order_expression)
 
 
-def load_participant_summary_data(query):
+def load_participant_summary_data(query, prefix):
 
     results = []
     for summary, site, nph_site, mapping in query.all():
+        nph_id = "{}{}".format(prefix, mapping.ancillary_participant_id)
         results.append({
-            'participantNphId': mapping.ancillary_participant_id,
+            'participantNphId': nph_id,
             'lastModified': summary.lastModified,
             'biobankId': summary.biobankId,
             'firstName': summary.firstName,
@@ -74,8 +75,8 @@ def load_participant_summary_data(query):
                                                 "time": summary.questionnaireOnHealthcareAccessAuthored},
             'questionnaireOnLifestyle': {"value": summary.questionnaireOnLifestyle,
                                          "time": summary.questionnaireOnLifestyleAuthored},
-            'siteId': site.siteName,
-            'external_id': nph_site.name,
+            'siteId': site.googleGroup,
+            'external_id': nph_site.external_id,
             'organization_external_id': nph_site.organization_external_id,
             'awardee_external_id': nph_site.awardee_external_id,
             'questionnaireOnSocialDeterminantsOfHealth':

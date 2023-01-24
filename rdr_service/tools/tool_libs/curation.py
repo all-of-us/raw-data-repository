@@ -369,7 +369,8 @@ class CurationExportClass(ToolBase):
             QuestionnaireQuestion
         ).filter(
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE
+            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
+            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.PROFILE_UPDATE
         )
         if cutoff_date:
             answers_by_module_select = answers_by_module_select.filter(
@@ -513,6 +514,7 @@ class CurationExportClass(ToolBase):
             ),
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
+            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.PROFILE_UPDATE,
             and_(
                 ParticipantSummary.dateOfBirth.isnot(None),
                 ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored.isnot(None),

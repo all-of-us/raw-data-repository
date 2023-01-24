@@ -6,17 +6,19 @@ from sqlalchemy import and_
 
 from rdr_service.model.study_nph import Participant as DbParticipant, Site as nphSite, PairingEvent
 from rdr_service.model.site import Site
-from rdr_service.model.rex import ParticipantMapping
+from rdr_service.model.rex import ParticipantMapping, Study
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.dao import database_factory
-from rdr_service.api.nph_participant_api_schemas.util import SortContext, load_participant_summary_data, \
+from rdr_service.dao.study_nph_dao import NphParticipantDao
+from rdr_service.api.nph_participant_api_schemas.util import QueryBuilder, load_participant_summary_data, \
     schema_field_lookup
 
 
 class SortableField(Field):
-    def __init__(self, *args, sort_modifier=None, **kwargs):
+    def __init__(self, *args, sort_modifier=None, filter_modifier=None, **kwargs):
         super(SortableField, self).__init__(*args, **kwargs)
         self.sort_modifier = sort_modifier
+        self.filter_modifier = filter_modifier
 
     @staticmethod
     def sort(current_class, sort_info, field_name, context):
@@ -88,108 +90,167 @@ class SampleCollection(ObjectType):
         # ).add_filter(context.references['sample'].test == context.table)
 
 
+def _build_filter_parameters(cls):
+    result = {}
+    for name, field_def in cls.__dict__.items():
+        if isinstance(field_def, SortableField) and getattr(field_def, 'filter_modifier', None):
+            result[name] = field_def.type(required=False)
+    return result
+
+
 class Participant(ObjectType):
 
     # AOU
     participantNphId = SortableField(
-        Int, description='NPH participant id for the participant, sourced from NPH participant data table',
-        sort_modifier=lambda context: context.set_order_expression(DbParticipant.id)
+        String,
+        description='NPH participant id for the participant, sourced from NPH participant data table',
+        sort_modifier=lambda context: context.set_order_expression(DbParticipant.id),
+        filter_modifier=lambda context, value: context.add_filter(DbParticipant.id == value)
     )
     biobankId = SortableField(
-        Int, description='NPH Biobank id value for the participant, sourced from NPH participant data table',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.biobankId)
+        Int,
+        description='NPH Biobank id value for the participant, sourced from NPH participant data table',
+        sort_modifier=lambda context: context.set_order_expression(DbParticipant.biobankId),
+        filter_modifier=lambda context, value: context.add_filter(DbParticipant.biobank_id == value)
     )
-    firstName = SortableField(String, name="firstName",
-                              description='Participant’s first name, sourced from AoU participant_summary table',
-                              sort_modifier=lambda context: context.set_order_expression
-                              (ParticipantSummaryModel.firstName))
-    middleName = SortableField(String, description='Participant’s middle name, sourced from AoU '
-                                                   'participant_summary table',
-                               sort_modifier=lambda context: context.set_order_expression
-                               (ParticipantSummaryModel.middleName))
-    lastName = SortableField(String, description='Participant’s last name, sourced from AoU '
-                                                 'participant_summary table',
-                             sort_modifier=lambda context: context.set_order_expression
-                             (ParticipantSummaryModel.lastName))
-    dateOfBirth = SortableField(Date, name='DOB', description="Participant's date of birth, sourced from Aou "
-                                                              "participant_summary_table",
-                                sort_modifier=lambda context: context.set_order_expression
-                                (ParticipantSummaryModel.dateOfBirth))
-    zipCode = SortableField(String, description='Participant’s zip code, sourced from AoU '
-                                                'participant_summary table',
-                            sort_modifier=lambda context: context.set_order_expression
-                            (ParticipantSummaryModel.zipCode))
-    phoneNumber = SortableField(String, description='Participant’s phone number, sourced from AoU '
-                                                    'participant_summary table. Use login_phone_number if '
-                                                    'available, phone_number column otherwise.',
-                                sort_modifier=lambda context: context.set_order_expression
-                                (ParticipantSummaryModel.phoneNumber))
-    email = SortableField(String, description='Participant’s email address, sourced from AoU '
-                                              'participant_summary table',
-                          sort_modifier=lambda context: context.set_order_expression
-                          (ParticipantSummaryModel.email))
-    aianStatus = SortableField(String, name="aouAianStatus",
-                               description='Provides whether a participant self identifies as'
-                                           ' AIAN. Value should bea “Y” if the participant '
-                                           'identifies as AIAN, “N” otherwise. This can be '
-                                           'determined from the AoU participant_summary table’s aian column. '
-                                           'The time value should be set to the same time that the '
-                                           'participant completed TheBasics module '
-                                           '(details below) since the AIAN question is '
-                                           'contained there.',
-                               sort_modifier=lambda context: context.set_order_expression
-                               (ParticipantSummaryModel.aian))
-    siteId = SortableField(String,
-                           description='Google-group name of the site that the participant is paired to. Sourced from'
-                                       ' the AoU site table using the site_id column of the participant_summary '
-                                       'table.',
-                           sort_modifier=lambda context: context.set_order_expression(Site.siteName))
+    firstName = SortableField(
+        String,
+        name="firstName",
+        description='Participant’s first name, sourced from AoU participant_summary table',
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.firstName),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.firstName == value)
+    )
+    middleName = SortableField(
+        String,
+        description='Participant’s middle name, sourced from AoU participant_summary table',
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.middleName),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.middleName == value)
+    )
+    lastName = SortableField(
+        String,
+        description='Participant’s last name, sourced from AoU participant_summary table',
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.lastName),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.lastName == value)
+    )
+    dateOfBirth = SortableField(
+        Date,
+        name='DOB',
+        description="Participant's date of birth, sourced from Aou participant_summary_table",
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.dateOfBirth),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.dateOfBirth == value)
+    )
+    zipCode = SortableField(
+        String,
+        description='Participant’s zip code, sourced from AoU participant_summary table',
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.zipCode),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.zipCode == value)
+    )
+    phoneNumber = SortableField(
+        String,
+        description='''
+            Participant’s phone number, sourced from AoU participant_summary table.
+            Use login_phone_number if available, phone_number column otherwise.
+        ''',
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.phoneNumber),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.phoneNumber == value)
+    )
+    email = SortableField(
+        String,
+        description='Participant’s email address, sourced from AoU participant_summary table',
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.email),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.email == value)
+    )
+    aianStatus = SortableField(
+        String,
+        name="aouAianStatus",
+        description='''
+            Provides whether a participant self identifies as AIAN. Value should be a “Y” if the participant
+            identifies as AIAN, “N” otherwise. This can be determined from the AoU participant_summary table’s
+            aian column.
+        ''',
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.aian),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.aian == value)
+    )
+    siteId = SortableField(
+        String,
+        description='''
+            Google-group name of the site that the participant is paired to. Sourced from the AoU site table using
+            the site_id column of the participant_summary table.
+        ''',
+        sort_modifier=lambda context: context.set_order_expression(Site.siteName)
+    )
     questionnaireOnTheBasics = SortableField(
-        Event, name="aouBasicStatus", description='Provides submission status and authored time for the '
-                                                  'participant’s completion of TheBasics module. Value should be '
-                                                  'UNSET or SUBMITTED and time should be the authored time. '
-                                                  'Both should be sourced from the AoU participant_summary '
-                                                  'table.')
-    deceasedStatus = SortableField(Event, name="aouDeceasedStatus",
-                                   description='Provides deceased information about the participant. Value should '
-                                   'be UNSET, PENDING, or APPROVED, and time should be the authored '
-                                   'time. Both should be sourced from the AoU participant_summary '
-                                   'table.')
+        Event,
+        name="aouBasicStatus",
+        description='''
+            Provides submission status and authored time for the participant’s completion of TheBasics module.
+            Value should be UNSET or SUBMITTED and time should be the authored time. Both should be sourced from
+            the AoU participant_summary table.
+        '''
+    )
+    deceasedStatus = SortableField(
+        Event,
+        name="aouDeceasedStatus",
+        description='''
+            Provides deceased information about the participant. Value should be UNSET, PENDING, or APPROVED,
+            and time should be the authored time. Both should be sourced from the AoU participant_summary table.
+        '''
+    )
 
-    withdrawalStatus = SortableField(Event, name="aouWithdrawalStatus",
-                                     description='Provides withdrawal information about the participant. Value '
-                                     'should be UNSET, NO_USE, or EARLY_OUT, and time should be the '
-                                     'authored time. Both should be sourced from the AoU '
-                                     'participant_summary table.')
-    suspensionStatus = SortableField(Event, name="aouDeactivationStatus",
-                                     description='Provides deactivation (aka suspension) information about the '
-                                     'participant. Value should be NOT_SUSPENDED or NO_CONTACT, and '
-                                     'time should be the corresponding time. Both should be sourced '
-                                     'from the AoU participant_summary table’s suspension columns')
-    enrollmentStatus = SortableField(Event, name="aouEnrollmentStatus",
-                                     description='Value should provide a string giving the participant’s enrollment'
-                                     ' status (MEMBER, FULL_PARTICIPANT, CORE, …). Time should be the '
-                                     'latest non-empty timestamp from the set of legacy enrollment '
-                                     'fields. Both should be sourced from the AoU participant_summary '
-                                     'table.')
+    withdrawalStatus = SortableField(
+        Event,
+        name="aouWithdrawalStatus",
+        description='''
+            Provides withdrawal information about the participant. Value should be UNSET, NO_USE, or EARLY_OUT, and
+            time should be the authored time. Both should be sourced from the AoU participant_summary table.
+        '''
+    )
+    suspensionStatus = SortableField(
+        Event,
+        name="aouDeactivationStatus",
+        description='''
+            Provides deactivation (aka suspension) information about the participant. Value should be
+            NOT_SUSPENDED or NO_CONTACT, and time should be the corresponding time. Both should be sourced
+            from the AoU participant_summary table’s suspension columns
+        '''
+    )
+    enrollmentStatus = SortableField(
+        Event,
+        name="aouEnrollmentStatus",
+        description='''
+            Value should provide a string giving the participant’s enrollment status (MEMBER,
+            FULL_PARTICIPANT, CORE, …). Time should be the latest non-empty timestamp from the set of legacy enrollment
+            fields. Both should be sourced from the AoU participant_summary table.
+        '''
+    )
 
-    questionnaireOnHealthcareAccess = SortableField(Event, name="aouOverallHealthStatus",
-                                                    description='Provides submission status and authored time for the '
-                                                    'participant’s completion of the OverallHealth module. '
-                                                    'Value should be UNSET or SUBMITTED and time should be '
-                                                    'the authored time. Both should be sourced from the '
-                                                    'AoU participant_summary table.')
-    questionnaireOnLifestyle = SortableField(Event, name="aouLifestyleStatus",
-                                             description='Provides submission status and authored time for the '
-                                             'participant’s completion of the Lifestyle module. Value '
-                                             'should be UNSET or SUBMITTED and time should be the '
-                                             'authored time. Both should be sourced from the AoU '
-                                             'participant_summary table.')
+    questionnaireOnHealthcareAccess = SortableField(
+        Event,
+        name="aouOverallHealthStatus",
+        description='''
+            Provides submission status and authored time for the participant’s completion of the OverallHealth module.
+            Value should be UNSET or SUBMITTED and time should be the authored time. Both should be sourced from the
+            AoU participant_summary table.
+        '''
+    )
+    questionnaireOnLifestyle = SortableField(
+        Event,
+        name="aouLifestyleStatus",
+        description='''
+            Provides submission status and authored time for the participant’s completion of the Lifestyle module.
+            Value should be UNSET or SUBMITTED and time should be the authored time. Both should be sourced from the
+            AoU participant_summary table.
+        '''
+    )
     questionnaireOnSocialDeterminantsOfHealth = SortableField(
-        Event, name="aouSDOHStatus", description='Provides submission status and authored time for the participant’s '
-                                                 'completion of the SDOH module. Value should be UNSET or SUBMITTED '
-                                                 'and time should be the authored time. Both should be sourced from '
-                                                 'the AoU participant_summary table.')
+        Event,
+        name="aouSDOHStatus",
+        description='''
+            Provides submission status and authored time for the participant’s completion of the SDOH module.
+            Value should be UNSET or SUBMITTED and time should be the authored time. Both should be sourced from
+            the AoU participant_summary table.
+        '''
+    )
     # NPH
     external_id = SortableField(String, name="nphPairedSite", description='Sourced from NPH Schema.',
                                 sort_modifier=lambda context: context.set_order_expression(nphSite.external_id))
@@ -225,7 +286,6 @@ class Participant(ObjectType):
     sample_st_3 = Field(SampleCollection, description='Sample ST3')
     sample_st_4 = Field(SampleCollection, description='Sample ST4')
 
-
     @staticmethod
     def sort(context, sort_info, _):
         context.set_table(sort_info.get("table"))
@@ -257,13 +317,15 @@ class ParticipantQuery(ObjectType):
         connection_class = ParticipantConnection
 
     participant = relay.ConnectionField(
-        ParticipantConnection, nph_id=Int(required=False), sort_by=String(required=False), limit=Int(required=False),
-        off_set=Int(required=False))
+        ParticipantConnection, nph_id=String(required=False), sort_by=String(required=False), limit=Int(required=False),
+        off_set=Int(required=False),
+        **_build_filter_parameters(Participant)
+    )
 
     @staticmethod
-    def resolve_participant(root, info, nph_id=None, sort_by=None, limit=None, off_set=None, **kwargs):
+    def resolve_participant(root, info, nph_id=None, sort_by=None, limit=None, off_set=None, **filter_kwargs):
         with database_factory.get_database().session() as sessions:
-            logging.info('root: %s, info: %s, kwargs: %s', root, info, kwargs)
+            logging.info('root: %s, info: %s, kwargs: %s', root, info, filter_kwargs)
             pm2 = aliased(PairingEvent)
             query = sessions.query(ParticipantSummaryModel, Site, nphSite, ParticipantMapping
                                    ).join(Site, ParticipantSummaryModel.siteId == Site.siteId
@@ -281,8 +343,10 @@ class ParticipantQuery(ObjectType):
                                                                     ).join(nphSite, nphSite.id == PairingEvent.site_id
                                                                            ).filter(
                 pm2.id.is_(None), ParticipantMapping.ancillary_study_id == 2)
+            study_query = sessions.query(Study).filter(Study.schema_name == "nph")
+            study = study_query.first()
             current_class = Participant
-            sort_context = SortContext(query)
+            query_builder = QueryBuilder(query)
             # sampleSA2:ordered:child:current:time
             try:
                 if sort_by:
@@ -291,26 +355,37 @@ class ParticipantQuery(ObjectType):
                     logging.info('sort by: %s', sort_parts)
                     if len(sort_parts) == 1:
                         sort_field: SortableField = getattr(current_class, sort_info.get("field"))
-                        sort_field.sort_modifier(sort_context)
+                        sort_field.sort_modifier(query_builder)
                     else:
                         sort_parts[0] = sort_info.get("field")
                         for sort_field_name in sort_parts:
                             sort_field: SortableField = getattr(current_class, sort_field_name)
-                            sort_field.sort(current_class, sort_info, sort_field_name, sort_context)
+                            sort_field.sort(current_class, sort_info, sort_field_name, query_builder)
                             current_class = sort_field.type
+
+                for field_name, value in filter_kwargs.items():
+                    field_def = getattr(Participant, field_name, None)
+                    if not field_def:
+                        raise NotImplementedError(f'Unable to filter by {field_name}.')
+                    if not field_def.filter_modifier:
+                        raise NotImplementedError(f'Filtering by {field_name} is not yet implemented.')
+                    field_def.filter_modifier(query_builder, value)
 
                 if nph_id:
                     logging.info('Fetch NPH ID: %d', nph_id)
-                    query = query.filter(ParticipantMapping.ancillary_participant_id == nph_id)
+                    nph_participant_dao = NphParticipantDao()
+                    nph_participant_id = nph_participant_dao.convert_id(nph_id)
+                    query = query.filter(ParticipantMapping.ancillary_participant_id == int(nph_participant_id))
                     logging.info(query)
-                    return load_participant_summary_data(query)
-                query = sort_context.get_resulting_query()
+                    return load_participant_summary_data(query, study.prefix)
+
+                query = query_builder.get_resulting_query()
                 if limit:
                     query = query.limit(limit)
                 if off_set:
                     query = query.offset(off_set)
                 logging.info(query)
-                return load_participant_summary_data(query)
+                return load_participant_summary_data(query, study.prefix)
             except Exception as ex:
                 logging.error(ex)
                 raise ex
