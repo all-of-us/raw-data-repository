@@ -249,7 +249,7 @@ class NphOrderDao(UpdatableDao):
             if order.status.upper() == "RESTORED":
                 site_name = order.restoredInfo.site.value
                 amended_author = order.restoredInfo.author.value
-            elif order.status.upper() == "CANCELED":
+            elif order.status.upper() == "CANCELLED":
                 site_name = order.cancelledInfo.site.value
                 amended_author = order.cancelledInfo.author.value
             else:
@@ -560,7 +560,7 @@ class NphOrderedSampleDao(UpdatableDao):
 
     @staticmethod
     def _update_canceled_child_order(order_sample: OrderedSample) -> OrderedSample:
-        order_sample.status = "canceled"
+        order_sample.status = "cancelled"
         return order_sample
 
     def _validate_model(self, obj):

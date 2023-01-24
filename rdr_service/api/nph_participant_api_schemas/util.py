@@ -48,12 +48,13 @@ class QueryBuilder:
         return resulting_query.order_by(self.order_expression)
 
 
-def load_participant_summary_data(query):
+def load_participant_summary_data(query, prefix):
 
     results = []
     for summary, site, nph_site, mapping in query.all():
+        nph_id = "{}{}".format(prefix, mapping.ancillary_participant_id)
         results.append({
-            'participantNphId': mapping.ancillary_participant_id,
+            'participantNphId': nph_id,
             'lastModified': summary.lastModified,
             'biobankId': summary.biobankId,
             'firstName': summary.firstName,
