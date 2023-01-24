@@ -177,7 +177,7 @@ RESTORED_PAYLOAD = {
 }
 
 CANCEL_PAYLOAD = {
-    "status": "canceled",
+    "status": "cancelled",
     "amendedReason": "ORDER_RESTORE_WRONG_PARTICIPANT",
     "cancelledInfo": {
         "author": {"system": "https://www.pmi-ops.org/nph-username", "value": "test@pmi-ops.org"
@@ -634,7 +634,7 @@ class NphOrderDaoTest(BaseTestCase):
         self.assertEqual(1, result.amended_site)
         self.assertEqual(request.cancelledInfo.author.value, result.amended_author)
         self.assertEqual(request.amendedReason, result.amended_reason)
-        self.assertEqual("CANCELED", result.status.upper())
+        self.assertEqual("CANCELLED", result.status.upper())
 
     @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
@@ -1029,7 +1029,7 @@ class NphOrderedSampleDaoTest(BaseTestCase):
         order_sample_dao = NphOrderedSampleDao()
         os = order_sample_dao.from_client_json(request, 1, 'nph-sample-id-456')
         os = order_sample_dao._update_canceled_child_order(os)
-        self.assertEqual("canceled", os.status)
+        self.assertEqual("cancelled", os.status)
 
     def test_restored_co(self):
         request = json.loads(json.dumps(TEST_URINE_SAMPLE), object_hook=lambda d: Namespace(**d))

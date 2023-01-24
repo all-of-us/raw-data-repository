@@ -422,12 +422,6 @@ class NphOrderedSampleDao(UpdatableDao):
 
     @staticmethod
     def from_aliquot_client_json(aliquot, order_id: int, nph_sample_id: str) -> OrderedSample:
-        field_name = ["id", "description", "identifier", "collected", "container", "volume"]
-        aliquot_dict = json.loads(aliquot)
-        error = []
-        for each in field_name:
-            if aliquot_dict.get(each) is None:
-                error.append(each)
         return OrderedSample(nph_sample_id=nph_sample_id,
                              order_id=order_id,
                              aliquot_id=aliquot.id,
