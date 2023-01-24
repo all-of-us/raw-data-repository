@@ -292,6 +292,14 @@ class BiobankOrderStatus(messages.Enum):
     CANCELLED = 2
 
 
+class NPHBiosampleOrderStatus(messages.Enum):
+    """ The status of a biobank order: amended/cancelled """
+
+    UNSET = 0
+    CREATED = 1
+    AMENDED = 2
+
+
 class MetricSetType(messages.Enum):
     """Type determining the schema for a metric set."""
 

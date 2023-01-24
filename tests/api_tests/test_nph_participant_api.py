@@ -4,6 +4,7 @@ from graphql import GraphQLSyntaxError
 import json
 from datetime import datetime
 
+from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
 from rdr_service.dao import database_factory
 from rdr_service.data_gen.generators.data_generator import DataGenerator
 from sqlalchemy.orm import Query
@@ -16,7 +17,9 @@ from rdr_service.main import app
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.data_gen.generators.nph import NphDataGenerator
 import rdr_service.api.nph_participant_api as api
+from rdr_service import config
 
+NPH_BIOBANK_PREFIX = NPH_PROD_BIOBANK_PREFIX if config.GAE_PROJECT == "all-of-us-rdr-prod" else NPH_TEST_BIOBANK_PREFIX
 
 QUERY_WITH_SYNTAX_ERROR = '''{ participant(nphId: 25){ totalCount resultCount pageInfo
 { startCursor endCursor hasNextPage }edges{ node {firstName lastName streetAddress
@@ -187,6 +190,19 @@ class TestQueryExecution(BaseTestCase):
             self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
             for each in result.get('participant').get('edges'):
                 self.assertEqual('nph-test-org', each.get('node').get(field_to_test))
+
+    def test_client_biobank_id_prefix(self):
+        field_to_test = "biobankId"
+        query = simple_query(field_to_test)
+        with database_factory.get_database().session() as session:
+            mock_load_participant_data(session)
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+            result = json.loads(executed.data.decode('utf-8'))
+            self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
+            expected_biobank_id = ["500000001", "500000000"]
+            for index, each in enumerate(result.get('participant').get('edges')):
+                self.assertEqual(f"{NPH_BIOBANK_PREFIX}{expected_biobank_id[index]}",
+                                 each.get('node').get(field_to_test))
 
     def test_client_nph_pair_site_with_id(self):
         fetch_value = '"{}"'.format("1000100000001")
