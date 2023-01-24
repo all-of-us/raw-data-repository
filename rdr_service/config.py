@@ -161,6 +161,7 @@ OPS_DATA_PAYLOAD_ROLES = 'ops_data_payload_roles'
 ENABLE_ENROLLMENT_STATUS_3 = 'enable_enrollment_status_3'
 ENABLE_HEALTH_SHARING_STATUS_3 = 'enable_health_sharing_status_3'
 ENABLE_PARTICIPANT_MEDIATED_EHR = 'enable_participant_mediated_ehr'
+NPH_SAMPLE_DATA_BIOBANK_NIGHTLY_FILE_DROP = 'nph_sample_data_biobank_bucket_name'
 
 # Buckets to listen for Pub/Sub notifications
 PUBSUB_NOTIFICATION_BUCKETS_PROD = [

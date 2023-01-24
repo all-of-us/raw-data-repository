@@ -361,3 +361,14 @@ class BiobankOrderDaoTest(BaseTestCase):
             BiobankOrderIdentifier.value == recycled_tracking_number
         )
         self.assertEqual(2, identifier_query.count())
+
+    def test_ignored_order(self):
+        ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+        self.dao.insert(self._make_biobank_order(ignoreFlag=1))
+        order_2 = self.dao.insert(self._make_biobank_order(
+            biobankOrderId="2",
+            identifiers=[BiobankOrderIdentifier(system="a", value="b")]
+        ))
+        results = self.dao.get_biobank_orders_for_participant(self.participant.participantId)
+        self.assertEqual(1, len(results))
+        self.assertEqual(order_2.biobankOrderId, results[0].biobankOrderId)

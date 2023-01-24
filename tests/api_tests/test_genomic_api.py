@@ -2261,7 +2261,7 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
             f"GenomicScheduling?participant_id=P{participant_data.participantId}"
         )
 
-        # should still be scheduled as the status, note event should be filtered out
+        # note_available should have changes to True
         self.assertTrue(all(obj['status'] == 'scheduled' for obj in resp['data']))
         self.assertTrue(all(obj['note_available'] is True for obj in resp['data']))
 

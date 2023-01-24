@@ -92,6 +92,13 @@ class BiobankOrderApiTest(BaseTestCase):
         order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")
         self.send_post(self.path, order_json)
 
+        # Adding and ignoring order shouldn't change output
+        order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_5.json")
+        order_id_to_ignore = self.send_post(self.path, order_json)["id"]
+        order_to_ignore = self.bio_dao.get_with_children(order_id_to_ignore)
+        order_to_ignore.ignoreFlag = 1
+        self.bio_dao.update(order_to_ignore)
+
         get_path = "Participant/%s/BiobankOrder" % to_client_participant_id(self.participant.participantId)
         result = self.send_get(get_path)
         self.assertEqual(result['total'], 2)

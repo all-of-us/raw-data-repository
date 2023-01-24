@@ -28,6 +28,9 @@ class EtmQuestionnaire(Base):
 class EtmQuestionnaireResponse(Base):
     __tablename__ = 'etm_questionnaire_response'
     etm_questionnaire_response_id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
+    etm_questionnaire_id = sa.Column(
+        sa.Integer, sa.ForeignKey(EtmQuestionnaire.etm_questionnaire_id)
+    )
     created = sa.Column(UTCDateTime)
     modified = sa.Column(UTCDateTime)
     authored = sa.Column(UTCDateTime)

@@ -1,7 +1,6 @@
 {
     "resourceType": "Questionnaire",
     "version": "EmoRecog_AoU.v1.Nov22",
-    "id": "emorecog",
     "text": {
         "div": "TestMyBrain Multiracial Emotion Identification",
         "status": "additional"
@@ -2496,5 +2495,11 @@
                 ]
             }
         ]
-    }
+    },
+    "identifier": [
+        {
+            "system": "https://research.joinallofus.org/fhir/module_identifier",
+            "value": "EmoRecog_AoU.v1.Nov22"
+        }
+    ]
 }

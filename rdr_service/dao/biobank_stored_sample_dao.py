@@ -56,7 +56,8 @@ class BiobankStoredSampleDao(BaseDao):
                 Site.siteId == BiobankOrder.collectedSiteId
             ).filter(
                 Site.siteType == "Diversion Pouch",
-                BiobankStoredSample.biobankStoredSampleId == biobank_stored_sample_id
+                BiobankStoredSample.biobankStoredSampleId == biobank_stored_sample_id,
+                BiobankOrder.ignoreFlag != 1
             ).distinct().one_or_none()
 
             if results:

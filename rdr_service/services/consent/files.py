@@ -234,7 +234,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         raise NotImplementedError('Wear consent validation not implemented for Vibrent')
 
     def _is_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        return basename(blob_wrapper.blob.name).startswith('EtM')
+        return 'exploring_the_mind_consent_form' in basename(blob_wrapper.blob.name)
 
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return VibrentPrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)

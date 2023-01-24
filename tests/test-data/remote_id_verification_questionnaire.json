@@ -1,0 +1,49 @@
+{
+    "date": "2023-01-17T20:52:27+00:00",
+    "group": {
+        "title": "Verify Your Identity",
+        "linkId": "root_group",
+        "concept": [
+            {
+                "code": "remote_id_verification",
+                "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+            }
+        ],
+        "repeats": false,
+        "question": [
+            {
+                "text": "remote_identity_verified",
+                "type": "text",
+                "linkId": "remote_id_123",
+                "concept": [
+                    {
+                        "code": "remote_identity_verified",
+                        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+                    }
+                ],
+                "repeats": false
+            },
+            {
+                "text": "remote_identity_verified_on",
+                "type": "text",
+                "linkId": "remote_id_456",
+                "concept": [
+                    {
+                        "code": "remote_identity_verified_on",
+                        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+                    }
+                ],
+                "repeats": false
+            }
+        ],
+        "required": true
+    },
+    "status": "published",
+    "version": "v2022.12.15",
+    "identifier": [
+        {
+            "value": "Vibrent_FORM_ID_1628"
+        }
+    ],
+    "resourceType": "Questionnaire"
+}

@@ -176,9 +176,11 @@
   "va_workqueue_subfolder": [
     "DailyParticipants"
   ],
+  "nph_sample_data_biobank_bucket_name": [
+    "stable-nph-sample-data-biobank"
+  ],
   "sensitive_ehr_release_date": "2100-01-01",
   "enable_enrollment_status_3": true,
   "enable_health_sharing_status_3": true,
   "enable_participant_mediated_ehr": true
 }
-

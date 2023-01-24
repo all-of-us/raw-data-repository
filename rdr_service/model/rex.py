@@ -13,7 +13,7 @@ class Study(RexBase):
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
-    ignore_flag = Column(TINYINT)
+    ignore_flag = Column(TINYINT, default=0)
     schema_name = Column(String(128))
     prefix = Column(Integer)
 
@@ -28,7 +28,7 @@ class ParticipantMapping(RexBase):
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
-    ignore_flag = Column(TINYINT)
+    ignore_flag = Column(TINYINT, default=0)
     primary_study_id = Column(BigInteger, ForeignKey("study.id"))
     ancillary_study_id = Column(BigInteger, ForeignKey("study.id"))
     primary_participant_id = Column(BigInteger)

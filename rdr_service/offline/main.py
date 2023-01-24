@@ -54,6 +54,7 @@ from rdr_service.services.gcp_logging import begin_request_logging, end_request_
 from rdr_service.services.ghost_check_service import GhostCheckService
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
 from rdr_service.storage import GoogleCloudStorageProvider
+from rdr_service.offline.study_nph_biobank_file_export import main as study_nph_biobank_file_export_job
 
 
 def _alert_on_exceptions(func):
@@ -514,6 +515,7 @@ def genomic_aw2f_remainder_workflow():
     genomic_pipeline.send_remainder_contamination_manifests()
     return '{"success": "true"}'
 
+
 @app_util.auth_required_cron
 @run_genomic_cron_job('a1_manifest_workflow')
 def genomic_gem_a1_workflow():
@@ -847,6 +849,11 @@ def genomic_update_wgs_storage_class():
 @run_genomic_cron_job('notify_gcr_outreach_escalation')
 def genomic_notify_gcr_outreach_escalation():
     genomic_pipeline.check_gcr_appointment_escalation()
+    return '{"success": "true"}'
+
+@app_util.auth_required_cron
+def nph_biobank_nightly_file_drop():
+    study_nph_biobank_file_export_job()
     return '{"success": "true"}'
 
 def _build_pipeline_app():
@@ -1378,6 +1385,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'GenomicNotifyGCROutreachEscalation',
         endpoint='genomic_notify_outreach_escalation',
         view_func=genomic_notify_gcr_outreach_escalation,
+        methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'NphBiobankNightlyFileDrop',
+        endpoint='nph_biobank_nightly_file_drop',
+        view_func=nph_biobank_nightly_file_drop,
         methods=['GET']
     )
 

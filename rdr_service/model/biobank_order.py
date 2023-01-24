@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UnicodeText, event
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UnicodeText, event, SmallInteger
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
@@ -173,6 +173,8 @@ class BiobankOrder(BiobankOrderBase, Base):
     mailKitOrders = relationship(BiobankMailKitOrder, cascade="all, delete-orphan")
     questSiteAddress = relationship("BiobankQuestOrderSiteAddress", uselist=False, cascade="all, delete-orphan",
                                     backref="biobank_order")
+    ignoreFlag = Column("ignore_flag", SmallInteger, default=0)
+    ignoreReason = Column("ignore_reason", String(100))
 
 
 class BiobankQuestOrderSiteAddress(Base):
