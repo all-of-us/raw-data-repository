@@ -12,7 +12,4 @@ SF171129-000043	17334106621	Disposed	Whole Blood	4 mL	3 mL	Vacutainer Tube, 4mL	
 SF171129-000047	17334109627	Disposed	Whole Blood	8.5 mL	7.71 mL	Vacutainer Tube, 8.5	2017/11/29 12:16:00	Consumed	2017/11/29 18:56:41		2017/11/29 16:13:09	{biobank_id}	{test}	SST	2017/11/29 13:30:15	KIT-10
 SF171129-000048	17334109632	Disposed	Whole Blood	8 mL	7.41 mL	Vacutainer Tube, 8mL	2017/11/29 12:16:00	Quality Issue	2017/11/29 18:56:41		2017/11/29 16:13:09	{biobank_id}	{test}	Lithium heparin -PST	2017/11/29 13:30:33	KIT-11
 SF181018-000240	18234103830	Disposed	Whole Blood	8.5 mL	8.5 mL	Vacutainer Tube, 8.5	2018/10/18 16:25:00	Consumed	2018/10/18 22:19:44		2018/10/18 16:12:06	{biobank_id}	{test}	SST	2018/10/18 13:35:00	KIT-12
-SF181018-000245	18234103846	In Prep	Whole Blood	11.5 mL	11.5 mL	Vacutainer Tube, 10m	2018/10/18 11:11:00					{biobank_id}	{test}	PaxGene ccfDNA	2018/10/18 13:35:16	9900000001
-SF181018-000251	18234104854	In Prep	Whole Blood	8 mL	8 mL	Vacutainer Tube, 8mL	2018/10/18 10:19:00					{biobank_id}	{test}	Lithium heparin -PST	2018/10/18 13:35:17	9900000002
-SF181018-000249	18234104850	In Prep	Whole Blood	8 mL	8 mL	Vacutainer Tube, 8mL	2018/10/18 11:11:00					{biobank_id}	{test}	Lithium heparin -PST	2018/10/18 13:35:16	9900000003
 SF181018-000253	18234104860	Disposed	Whole Blood	8 mL	8 mL	Vacutainer Tube, 8mL	2018/10/18 16:25:00	Consumed	2018/10/18 22:19:44		2018/10/18 16:12:06	{biobank_id}	{test}	Lithium heparin -PST	2018/10/18 13:35:17	KIT-13

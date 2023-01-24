@@ -1,12 +1,9 @@
 from collections import namedtuple
-import csv
 from decimal import Decimal
-import io
 from datetime import datetime, timedelta
 import mock
 import random
 import os
-import pytz
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
@@ -20,7 +17,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
-from rdr_service.model.config_utils import get_biobank_id_prefix, to_client_biobank_id
+from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline import biobank_samples_pipeline
@@ -143,31 +140,26 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, ps.enrollmentStatus)
 
     @mock.patch('rdr_service.dao.participant_summary_dao.QuestionnaireResponseRepository')
-    @mock.patch('rdr_service.offline.biobank_samples_pipeline.dispatch_participant_rebuild_tasks')
-    def test_end_to_end(self, mock_dispatch_rebuild, response_repository):
+    def test_end_to_end(self, response_repository):
         response_repository.get_interest_in_sharing_ehr_ranges.return_value = [
             DateRange(start=datetime(2016, 11, 29, 12, 16))
         ]
 
-        config.override_setting(BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, 'cloud')
-
-        self.clear_default_storage()
-        self.create_mock_buckets(self.mock_bucket_paths)
         dao = BiobankStoredSampleDao()
-        self.assertEqual(dao.count(), 0)
-
         # Create 3 participants and pass their (random) IDs into sample rows.
         summary_dao = ParticipantSummaryDao()
         biobank_ids = []
         participant_ids = []
-        nids = 16  # equal to the number of parent rows in 'biobank_samples_1.csv'
+        nids = 14  # equal to the number of parent rows in 'biobank_samples_1.csv'
         cids = 1  # equal to the number of child rows in 'biobank_samples_1.csv'
+        biobank_pid_map = {}
 
         for _ in range(nids):
             participant = self.participant_dao.insert(Participant())
             summary_dao.insert(self.participant_summary(participant))
             participant_ids.append(participant.participantId)
             biobank_ids.append(participant.biobankId)
+            biobank_pid_map[participant.biobankId] = participant.participantId
             self.assertEqual(summary_dao.get(participant.participantId).numBaselineSamplesArrived, 0)
 
         test_codes = random.sample(_BASELINE_TESTS, nids)
@@ -175,10 +167,10 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         # Arbitrarily pick samples to be used for testing 1SAL2 collection method checking
         mail_kit_1sal2_participant_id = participant_ids[6]
         on_site_1sal2_participant_id = participant_ids[11]
-        no_order_1sal2_participant_id = participant_ids[14]
+        no_order_1sal2_participant_id = participant_ids[13]
         core_minus_pm_participant_id = participant_ids[5]
         core_participant_id = participant_ids[1]
-        test_codes[6] = test_codes[11] = test_codes[14] = test_codes[5] = test_codes[1] = '1SAL2'
+        test_codes[6] = test_codes[11] = test_codes[13] = test_codes[5] = test_codes[1] = '1SAL2'
 
         mailed_biobank_order = self.data_generator.create_database_biobank_order(
             participantId=mail_kit_1sal2_participant_id
@@ -224,38 +216,29 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         core_summary.clinicPhysicalMeasurementsFinalizedTime = '2016-11-29 12:16:00'
         participant_summary_dao.update(core_summary)
 
-        samples_file = test_data.open_biobank_samples(biobank_ids=biobank_ids, tests=test_codes)
-        lines = samples_file.split("\n")[1:]  # remove field name line
-
-        input_filename = "cloud%s.csv" % self._naive_utc_to_naive_central(clock.CLOCK.now()).strftime(
-            biobank_samples_pipeline.INPUT_CSV_TIME_FORMAT
-        )
-        self._write_cloud_csv(input_filename, samples_file)
-        biobank_samples_pipeline.upsert_from_latest_csv()
+        samples_json = test_data.open_biobank_samples(biobank_ids=biobank_ids, tests=test_codes)
+        self.send_put('Biobank/specimens', request_data=samples_json)
 
         self.assertEqual(dao.count(), nids - cids)
 
-        for x in range(0, nids):
-            cols = lines[x].split("\t")
+        for sample_json in samples_json:
+            status = SampleStatus.RECEIVED
+            status_date_str = sample_json['confirmationDate']
+            # DA-814 - Participant Summary test status should be: Unset, Received or Disposed only.
+            # If sample is disposed, then check disposed timestamp, otherwise check confirmed timestamp.
+            # DA-871 - Only check status is disposed when reason code is a bad disposal.
+            if sample_json['status']['status'] == "Disposed" \
+                    and get_sample_status_enum_value(sample_json['disposalStatus']['reason']) > SampleStatus.UNKNOWN:
+                status = SampleStatus.DISPOSED
+                status_date_str = sample_json['disposalStatus']['disposalDate']
 
-            if cols[10].strip():  # skip child sample
-                continue
-
-            # If status is 'In Prep', then sample confirmed timestamp should be empty
-            if cols[2] == "In Prep":
-                self.assertEqual(len(cols[11]), 0)
-            else:
-                status = SampleStatus.RECEIVED
-                ts_str = cols[11]
-                # DA-814 - Participant Summary test status should be: Unset, Received or Disposed only.
-                # If sample is disposed, then check disposed timestamp, otherwise check confirmed timestamp.
-                # DA-871 - Only check status is disposed when reason code is a bad disposal.
-                if cols[2] == "Disposed" and get_sample_status_enum_value(cols[8]) > SampleStatus.UNKNOWN:
-                    status = SampleStatus.DISPOSED
-                    ts_str = cols[9]
-
-                ts = datetime.strptime(ts_str, "%Y/%m/%d %H:%M:%S")
-                self._check_summary(participant_ids[x], test_codes[x], ts, status)
+            ts = datetime.strptime(status_date_str, "%Y/%m/%d %H:%M:%S")
+            self._check_summary(
+                biobank_pid_map[from_client_biobank_id(sample_json['participantID'])],
+                sample_json['testcode'],
+                ts,
+                status
+            )
 
         # Check that the 1SAL2 collection methods were set correctly
         on_site_summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
@@ -272,41 +255,18 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             ParticipantSummary.participantId == core_minus_pm_participant_id
         ).one()
         self.assertEqual(core_minus_pm_summary.enrollmentStatus, EnrollmentStatus.CORE_MINUS_PM)
-        self.assertEqual(core_minus_pm_summary.enrollmentStatusCoreMinusPMTime, datetime(2017, 11, 29, 22, 10, 17))
+        self.assertEqual(core_minus_pm_summary.enrollmentStatusCoreMinusPMTime, datetime(2017, 11, 29, 16, 10, 17))
 
         core_summary = self.session.query(ParticipantSummary).filter(
             ParticipantSummary.participantId == core_participant_id
         ).one()
         self.assertEqual(core_summary.enrollmentStatus, EnrollmentStatus.FULL_PARTICIPANT)
-        self.assertEqual(core_summary.enrollmentStatusCoreStoredSampleTime, datetime(2016, 11, 29, 18, 38, 58))
+        self.assertEqual(core_summary.enrollmentStatusCoreStoredSampleTime, datetime(2016, 11, 29, 12, 38, 58))
 
         no_order_summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
             ParticipantSummary.participantId == no_order_1sal2_participant_id
         ).one()
         self.assertIsNone(no_order_summary.sample1SAL2CollectionMethod)
-
-        # Check for bigquery_sync record updates.  Only expect updates for the pids with orders
-        rebuilt_participant_list = mock_dispatch_rebuild.call_args[0][0]
-        self.assertIn(on_site_1sal2_participant_id, rebuilt_participant_list)
-        self.assertIn(mail_kit_1sal2_participant_id, rebuilt_participant_list)
-        self.assertNotIn(no_order_1sal2_participant_id, rebuilt_participant_list)
-
-    def test_old_csv_not_imported(self):
-        self.clear_default_storage()
-        self.create_mock_buckets(self.mock_bucket_paths)
-        now = clock.CLOCK.now()
-        too_old_time = now - timedelta(hours=25)
-        input_filename = "cloud%s.csv" % self._naive_utc_to_naive_central(too_old_time).strftime(
-            biobank_samples_pipeline.INPUT_CSV_TIME_FORMAT
-        )
-        self._write_cloud_csv(input_filename, "")
-        with self.assertRaises(biobank_samples_pipeline.DataError):
-            biobank_samples_pipeline.upsert_from_latest_csv()
-
-    def _naive_utc_to_naive_central(self, naive_utc_date):
-        utc_date = pytz.utc.localize(naive_utc_date)
-        central_date = utc_date.astimezone(pytz.timezone("US/Central"))
-        return central_date.replace(tzinfo=None)
 
     def _check_summary(self, participant_id, test, date_formatted, status):
         summary = ParticipantSummaryDao().get(participant_id)
@@ -314,7 +274,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         # DA-614 - All specific disposal statuses in biobank_stored_samples are changed to DISPOSED
         # in the participant summary.
         self.assertEqual(status, getattr(summary, "sampleStatus" + test))
-        sample_time = self._naive_utc_to_naive_central(getattr(summary, "sampleStatus" + test + "Time"))
+        sample_time = getattr(summary, "sampleStatus" + test + "Time")
         self.assertEqual(date_formatted, sample_time)
 
     @mock.patch('rdr_service.offline.biobank_samples_pipeline.list_blobs')
@@ -356,77 +316,6 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
 
         latest_filename = biobank_samples_pipeline._find_latest_samples_csv(_FAKE_BUCKET, monthly=True)
         self.assertEqual('60_day_manifests/Sample Inventory Report 60d2020-07-14-04-00-21.csv', latest_filename)
-
-    def test_sample_from_row(self):
-        self.clear_default_storage()
-        self.create_mock_buckets(self.mock_bucket_paths)
-        samples_file = test_data.open_biobank_samples([112, 222, 333], [])
-        reader = csv.DictReader(io.StringIO(samples_file), delimiter="\t")
-        row = next(reader)
-        sample = biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
-        self.assertIsNotNone(sample)
-
-        cols = biobank_samples_pipeline.CsvColumns
-        self.assertEqual(sample.biobankStoredSampleId, row[cols.SAMPLE_ID])
-        self.assertEqual(to_client_biobank_id(sample.biobankId), row[cols.EXTERNAL_PARTICIPANT_ID])
-        self.assertEqual(sample.test, row[cols.TEST_CODE])
-        confirmed_date = self._naive_utc_to_naive_central(sample.confirmed)
-        self.assertEqual(
-            confirmed_date.strftime(biobank_samples_pipeline._INPUT_TIMESTAMP_FORMAT), row[cols.CONFIRMED_DATE]
-        )
-        received_date = self._naive_utc_to_naive_central(sample.created)
-        self.assertEqual(
-            received_date.strftime(biobank_samples_pipeline._INPUT_TIMESTAMP_FORMAT), row[cols.CREATE_DATE]
-        )
-
-    def test_sample_from_row_wrong_prefix(self):
-        self.clear_default_storage()
-        self.create_mock_buckets(self.mock_bucket_paths)
-        samples_file = test_data.open_biobank_samples([111, 222, 333], [])
-        reader = csv.DictReader(io.StringIO(samples_file), delimiter="\t")
-        row = next(reader)
-        row[biobank_samples_pipeline.CsvColumns.CONFIRMED_DATE] = "2016 11 19"
-        self.assertIsNone(biobank_samples_pipeline._create_sample_from_row(row, "Q"))
-
-    def test_sample_from_row_invalid(self):
-        self.clear_default_storage()
-        self.create_mock_buckets(self.mock_bucket_paths)
-        samples_file = test_data.open_biobank_samples([111, 222, 333], [])
-        reader = csv.DictReader(io.StringIO(samples_file), delimiter="\t")
-        row = next(reader)
-        row[biobank_samples_pipeline.CsvColumns.CONFIRMED_DATE] = "2016 11 19"
-        with self.assertRaises(biobank_samples_pipeline.DataError):
-            biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
-
-    def test_sample_from_row_old_test(self):
-        self.clear_default_storage()
-        self.create_mock_buckets(self.mock_bucket_paths)
-        samples_file = test_data.open_biobank_samples([111, 222, 333], [])
-        reader = csv.DictReader(io.StringIO(samples_file), delimiter="\t")
-        row = next(reader)
-        row[biobank_samples_pipeline.CsvColumns.TEST_CODE] = "2PST8"
-        sample = biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
-        self.assertIsNotNone(sample)
-        cols = biobank_samples_pipeline.CsvColumns
-        self.assertEqual(sample.biobankStoredSampleId, row[cols.SAMPLE_ID])
-        self.assertEqual(sample.test, row[cols.TEST_CODE])
-
-    def test_column_missing(self):
-        self.clear_default_storage()
-        self.create_mock_buckets(self.mock_bucket_paths)
-        with open(test_data.data_path("biobank_samples_missing_field.csv")) as samples_file:
-            reader = csv.DictReader(samples_file, delimiter="\t")
-            with self.assertRaises(biobank_samples_pipeline.DataError):
-                biobank_samples_pipeline._upsert_samples_from_csv(reader)
-
-    def test_wrong_csv_delimiter(self):
-        self.clear_default_storage()
-        self.create_mock_buckets(self.mock_bucket_paths)
-        # Use a valid file containing commas as separators
-        with open(test_data.data_path("biobank_samples_wrong_delimiter.csv")) as samples_file:
-            reader = csv.DictReader(samples_file, delimiter="\t")
-            with self.assertRaises(biobank_samples_pipeline.DataError):
-                biobank_samples_pipeline._upsert_samples_from_csv(reader)
 
     def test_get_reconciliation_report_paths(self):
         self.clear_default_storage()

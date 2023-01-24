@@ -1,12 +1,11 @@
 """Utilities for loading test data."""
-
+import csv
 import datetime
+from itertools import cycle
 import json
 import os
-import random
 
 from rdr_service.code_constants import (
-    BIOBANK_TESTS,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
     EMAIL_QUESTION_CODE,
     FIRST_NAME_QUESTION_CODE,
@@ -98,28 +97,38 @@ def load_biobank_order_json(participant_id, filename="biobank_order_1.json"):
 
 def open_biobank_samples(biobank_ids, tests):
     """
-  Returns a string representing the biobank samples CSV file. The number of records returned
-  is equal to the number of biobank_ids passed.
-  :param biobank_ids: list of biobank ids.
-  :param tests: list of tests
-  :return: StringIO object
-  """
-    nids = len(biobank_ids)
-    # get the same number of sample lines as biobank_ids, plus header line.
+    Returns a dictionary representing the biobank samples based on the test CSV file: biobank_samples_1.csv.
+    The number of records returned is equal to the number of biobank_ids passed.
+    :param biobank_ids: list of biobank ids.
+    :param tests: list of tests
+    :return: Dict object to be sent to the Biobank/specimens endpoint.
+    """
+    result = []
     with open(data_path("biobank_samples_1.csv")) as f:
-        lines = f.readlines()[: nids + 1]
-        csv_str = lines[0]  # include header line every time.
+        test_data_collection = csv.DictReader(f, delimiter='\t')
 
-    for x in range(0, nids):
-        # if we don't have a test code for this index, use a random one.
-        try:
-            test_code = tests[x]
-        except IndexError:
-            test_code = random.choice(BIOBANK_TESTS)
+        for biobank_id, test_code, template_record in zip(biobank_ids, cycle(tests), test_data_collection):
+            if template_record['Parent Sample Id']:
+                continue  # Skip child records from test data
 
-        csv_str += lines[x + 1].format(biobank_id=to_client_biobank_id(biobank_ids[x]), test=test_code)
+            resulting_record = {
+                'rlimsID': template_record['Sample Id'],
+                'orderID': template_record['Sent Order Id'],
+                'participantID': to_client_biobank_id(biobank_id),
+                'testcode': test_code,
+                'status': {
+                    'status': template_record['Sample Storage Status']
+                },
+                'confirmationDate': template_record['Sample Confirmed Date']
+            }
+            if template_record['Sample Disposal Status']:
+                resulting_record['disposalStatus'] = {
+                    'reason': template_record['Sample Disposal Status'],
+                    'disposalDate': template_record['Sample Disposed Date']
+                }
+            result.append(resulting_record)
 
-    return csv_str
+    return result
 
 
 def load_questionnaire_response_with_consents(
