@@ -235,3 +235,5 @@ def create_{{ANCILLARY_STUDY_NAME}}_schema(self):
         engine.execute("USE {{ANCILLARY_STUDY_NAME}}")
         database.create_{{ANCILLARY_STUDY_NAME}}_schema()
         ```
+
+11. Add `["-c", "alembic_{{ANCILLARY_STUDY_NAME}}.ini", "upgrade", "heads"]` to `apply_migrations_for_all_databases` list in `rdr_service/tools/tool_libs/app_engine_manager.py:396` file to apply the migrations for the new ancillary database to `sandbox`, `staging` & `prod` databases in GCP
