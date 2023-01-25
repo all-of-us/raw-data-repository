@@ -4460,7 +4460,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
         # Get request from API to assert information is accurate
         summary = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertNotIn('remoteIdVerificationOrigin', summary)
+        self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
         self.assertNotIn('remoteIdVerifiedOn', summary)
         self.assertNotIn('remoteIdVerificationStatus', summary)
 

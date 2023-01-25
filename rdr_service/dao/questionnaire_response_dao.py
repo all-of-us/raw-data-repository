@@ -941,12 +941,12 @@ class QuestionnaireResponseDao(BaseDao):
         if 'verified' in remote_id_info and 'verified_on' in remote_id_info:
             if remote_id_info['verified'] == "true":
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
-                participant_summary.remoteIdVerificationStatus = 1
+                participant_summary.remoteIdVerificationStatus = True
                 participant_summary.remoteIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
         elif 'verified' in remote_id_info:
             if remote_id_info['verified'] == "false":
-                participant_summary.remoteIdVerificationOrigin = ''
-                participant_summary.remoteIdVerificationStatus = 0
+                participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
+                participant_summary.remoteIdVerificationStatus = False
                 participant_summary.remoteIdVerifiedOn = None
 
         # Set summary fields to SUBMITTED for questionnaire concepts that are found in
