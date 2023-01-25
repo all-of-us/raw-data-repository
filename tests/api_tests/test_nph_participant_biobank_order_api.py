@@ -12,7 +12,7 @@ from rdr_service.main import app
 from rdr_service.model.study_nph import (
     StudyCategory, Order, OrderedSample, Participant
 )
-from rdr_service.participant_enums import NPHBiosampleOrderStatus
+
 
 BLOOD_SAMPLE = {
     "subject": "Patient/P124820391",
@@ -137,12 +137,9 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         for query in queries:
             executed = app.test_client().post('rdr/v1/api/v1/nph/Participant/1000124820391/BiobankOrder', json=query)
             result = json.loads(executed.data.decode('utf-8'))
-            data = result.get('data')
-            for k, _ in data.items():
+            for k, _ in result.items():
                 if k.upper() != "ID":
-                    self.assertEqual(query.get(k), data.get(k))
-            self.assertEqual(str(NPHBiosampleOrderStatus.CREATED), result.get("status"))
-            self.assertIsNone(result.get("error"))
+                    self.assertEqual(query.get(k), result.get(k))
         with database_factory.get_database().session() as session:
             query = Query(SampleUpdate)
             query.session = session
@@ -163,12 +160,9 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         for query in queries:
             executed = app.test_client().patch('rdr/v1/api/v1/nph/Participant/1000124820391/BiobankOrder/1', json=query)
             result = json.loads(executed.data.decode('utf-8'))
-            data = result.get('data')
-            for k, _ in data.items():
+            for k, _ in result.items():
                 if k.upper() != "ID":
-                    self.assertEqual(query.get(k), data.get(k))
-            self.assertEqual(str(NPHBiosampleOrderStatus.AMENDED), result.get("status"))
-            self.assertIsNone(result.get("error"))
+                    self.assertEqual(query.get(k), result.get(k))
 
     @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')
     @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
@@ -183,12 +177,9 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         for query in queries:
             executed = app.test_client().patch('rdr/v1/api/v1/nph/Participant/1000124820391/BiobankOrder/1', json=query)
             result = json.loads(executed.data.decode('utf-8'))
-            data = result.get('data')
-            for k, _ in data.items():
+            for k, _ in result.items():
                 if k.upper() != "ID":
-                    self.assertEqual(query.get(k), data.get(k))
-            self.assertEqual(str(NPHBiosampleOrderStatus.AMENDED), result.get("status"))
-            self.assertIsNone(result.get("error"))
+                    self.assertEqual(query.get(k), result.get(k))
 
     @patch('rdr_service.dao.study_nph_dao.NphOrderedSampleDao._get_child_order_sample')
     @patch('rdr_service.dao.study_nph_dao.NphOrderedSampleDao._get_parent_order_sample')
@@ -216,12 +207,9 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         for query in queries:
             executed = app.test_client().put('rdr/v1/api/v1/nph/Participant/1000124820391/BiobankOrder/1', json=query)
             result = json.loads(executed.data.decode('utf-8'))
-            data = result.get('data')
-            for k, _ in data.items():
+            for k, _ in result.items():
                 if k.upper() != "ID":
-                    self.assertEqual(query.get(k), data.get(k))
-            self.assertEqual(str(NPHBiosampleOrderStatus.AMENDED), result.get("status"))
-            self.assertIsNone(result.get("error"))
+                    self.assertEqual(query.get(k), result.get(k))
         with database_factory.get_database().session() as session:
             query = Query(SampleUpdate)
             query.session = session

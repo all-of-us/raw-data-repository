@@ -10,16 +10,16 @@ from rdr_service.dao import database_factory
 from rdr_service.dao.study_nph_dao import NphOrderDao
 from rdr_service.api_util import RTI_AND_HEALTHPRO
 from rdr_service.app_util import auth_required
-from rdr_service.participant_enums import NPHBiosampleOrderStatus
+
 
 class CustomEncoder(json.JSONEncoder):
     def default(self, o):
         return o.__dict__
 
 
-def construct_response(order, status, error=None):
+def construct_response(order):
     # Construct Response payload
-    return {'status': str(status), 'error': error, "data": json.loads(json.dumps(order, indent=4, cls=CustomEncoder))}
+    return json.loads(json.dumps(order, indent=4, cls=CustomEncoder))
 
 
 class NphOrderApi(UpdatableApi):
@@ -44,16 +44,16 @@ class NphOrderApi(UpdatableApi):
                 self.dao.order_sample_dao.update_order_sample(order, rdr_order_id, session)
                 self.dao.update_order(rdr_order_id, nph_participant_id, session)
                 order.id = rdr_order_id
-            return construct_response(order, NPHBiosampleOrderStatus.AMENDED), 201
+            return construct_response(order), 201
         except NotFound as not_found:
             logging.error(not_found.description)
-            return construct_response(order, NPHBiosampleOrderStatus.UNSET, not_found.description), 404
+            return construct_response(order), 404
         except BadRequest as bad_request:
             logging.error(bad_request.description)
-            return construct_response(order, NPHBiosampleOrderStatus.UNSET, bad_request.description), 404
+            return construct_response(order), 404
         except exc.SQLAlchemyError as sql:
             logging.error(sql)
-            return construct_response(order, NPHBiosampleOrderStatus.UNSET, sql.__dict__['orig']), 400
+            return construct_response(order), 400
 
     @auth_required(RTI_AND_HEALTHPRO)
     def post(self, nph_participant_id: str):
@@ -74,16 +74,16 @@ class NphOrderApi(UpdatableApi):
                 new_order = self.dao.insert_with_session(session, new_order)
                 order.id = new_order.id
                 self.dao.insert_ordered_sample_dao_with_session(session, order)
-                return construct_response(order, NPHBiosampleOrderStatus.CREATED), 201
+                return construct_response(order), 201
             except NotFound as not_found:
                 logging.error(not_found)
-                return construct_response(order, NPHBiosampleOrderStatus.UNSET, not_found.description), 404
+                return construct_response(order), 404
             except BadRequest as bad_request:
                 logging.error(bad_request)
-                return construct_response(order, NPHBiosampleOrderStatus.UNSET, bad_request.description), 400
+                return construct_response(order), 400
             except exc.SQLAlchemyError as sql:
                 logging.error(sql)
-                return construct_response(order, NPHBiosampleOrderStatus.UNSET, sql.__dict__['orig']), 400
+                return construct_response(order), 400
 
     @auth_required(RTI_AND_HEALTHPRO)
     def patch(self, nph_participant_id, rdr_order_id):
@@ -99,13 +99,13 @@ class NphOrderApi(UpdatableApi):
                     self.dao.patch_update(order, rdr_order_id, nph_participant_id, session)
                     session.commit()
                     order.id = rdr_order_id
-                    return construct_response(order, NPHBiosampleOrderStatus.AMENDED), 200
+                    return construct_response(order), 200
             except NotFound as not_found:
                 logging.error(not_found.description)
-                return construct_response(order, NPHBiosampleOrderStatus.UNSET, not_found.description), 404
+                return construct_response(order), 404
             except BadRequest as bad_request:
                 logging.error(bad_request.description)
-                return construct_response(order, NPHBiosampleOrderStatus.UNSET, bad_request.description), 400
+                return construct_response(order), 400
             except exc.SQLAlchemyError as sql:
                 logging.error(sql)
-                return construct_response(order, NPHBiosampleOrderStatus.UNSET, sql.__dict__['orig']), 400
+                return construct_response(order), 400
