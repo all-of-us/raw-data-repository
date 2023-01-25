@@ -4,6 +4,7 @@ from graphene import relay
 from sqlalchemy.orm import Query, aliased
 from sqlalchemy import and_
 
+from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
 from rdr_service.model.study_nph import Participant as DbParticipant, Site as nphSite, PairingEvent
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping, Study
@@ -12,7 +13,9 @@ from rdr_service.dao import database_factory
 from rdr_service.dao.study_nph_dao import NphParticipantDao
 from rdr_service.api.nph_participant_api_schemas.util import QueryBuilder, load_participant_summary_data, \
     schema_field_lookup
+from rdr_service import config
 
+NPH_BIOBANK_PREFIX = NPH_PROD_BIOBANK_PREFIX if config.GAE_PROJECT == "all-of-us-rdr-prod" else NPH_TEST_BIOBANK_PREFIX
 
 class SortableField(Field):
     def __init__(self, *args, sort_modifier=None, filter_modifier=None, **kwargs):
@@ -108,7 +111,7 @@ class Participant(ObjectType):
         filter_modifier=lambda context, value: context.add_filter(DbParticipant.id == value)
     )
     biobankId = SortableField(
-        Int,
+        String,
         description='NPH Biobank id value for the participant, sourced from NPH participant data table',
         sort_modifier=lambda context: context.set_order_expression(DbParticipant.biobankId),
         filter_modifier=lambda context, value: context.add_filter(DbParticipant.biobank_id == value)
@@ -377,7 +380,7 @@ class ParticipantQuery(ObjectType):
                     nph_participant_id = nph_participant_dao.convert_id(nph_id)
                     query = query.filter(ParticipantMapping.ancillary_participant_id == int(nph_participant_id))
                     logging.info(query)
-                    return load_participant_summary_data(query, study.prefix)
+                    return load_participant_summary_data(query, study.prefix, NPH_BIOBANK_PREFIX)
 
                 query = query_builder.get_resulting_query()
                 if limit:
@@ -385,7 +388,7 @@ class ParticipantQuery(ObjectType):
                 if off_set:
                     query = query.offset(off_set)
                 logging.info(query)
-                return load_participant_summary_data(query, study.prefix)
+                return load_participant_summary_data(query, study.prefix, NPH_BIOBANK_PREFIX)
             except Exception as ex:
                 logging.error(ex)
                 raise ex

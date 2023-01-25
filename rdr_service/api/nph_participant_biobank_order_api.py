@@ -43,16 +43,17 @@ class NphOrderApi(UpdatableApi):
                 self.dao.validate(rdr_order_id, nph_participant_id, session)
                 self.dao.order_sample_dao.update_order_sample(order, rdr_order_id, session)
                 self.dao.update_order(rdr_order_id, nph_participant_id, session)
+                order.id = rdr_order_id
             return construct_response(order), 201
         except NotFound as not_found:
             logging.error(not_found.description)
-            return construct_response({"error": not_found.description}), 404
+            return construct_response(order), 404
         except BadRequest as bad_request:
             logging.error(bad_request.description)
-            return construct_response({"error": bad_request.description}), 404
+            return construct_response(order), 404
         except exc.SQLAlchemyError as sql:
             logging.error(sql)
-            return construct_response({"error": sql.__dict__['orig']}), 400
+            return construct_response(order), 400
 
     @auth_required(RTI_AND_HEALTHPRO)
     def post(self, nph_participant_id: str):
@@ -76,13 +77,13 @@ class NphOrderApi(UpdatableApi):
                 return construct_response(order), 201
             except NotFound as not_found:
                 logging.error(not_found)
-                return construct_response({"error": not_found.description}), 404
+                return construct_response(order), 404
             except BadRequest as bad_request:
                 logging.error(bad_request)
-                return construct_response({"error": bad_request.description}), 400
+                return construct_response(order), 400
             except exc.SQLAlchemyError as sql:
                 logging.error(sql)
-                return construct_response({"error": sql.__dict__['orig']}), 400
+                return construct_response(order), 400
 
     @auth_required(RTI_AND_HEALTHPRO)
     def patch(self, nph_participant_id, rdr_order_id):
@@ -97,13 +98,14 @@ class NphOrderApi(UpdatableApi):
                     order = self.dao.order_cls
                     self.dao.patch_update(order, rdr_order_id, nph_participant_id, session)
                     session.commit()
+                    order.id = rdr_order_id
                     return construct_response(order), 200
             except NotFound as not_found:
                 logging.error(not_found.description)
-                return construct_response({"error": not_found.description}), 404
+                return construct_response(order), 404
             except BadRequest as bad_request:
                 logging.error(bad_request.description)
-                return construct_response({"error": bad_request.description}), 400
+                return construct_response(order), 400
             except exc.SQLAlchemyError as sql:
                 logging.error(sql)
-                return construct_response({"error": sql.__dict__['orig']}), 400
+                return construct_response(order), 400
