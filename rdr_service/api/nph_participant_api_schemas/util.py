@@ -55,14 +55,14 @@ def check_field_value(value):
     return QuestionnaireStatus.UNSET
 
 
-def load_participant_summary_data(query):
+def load_participant_summary_data(query, prefix, biobank_prefix):
 
     results = []
     for summary, site, nph_site, mapping in query.all():
         results.append({
-            'participantNphId': mapping.ancillary_participant_id,
+            'participantNphId': f"{prefix}{mapping.ancillary_participant_id}",
             'lastModified': summary.lastModified,
-            'biobankId': summary.biobankId,
+            'biobankId': f"{biobank_prefix}{summary.biobankId}",
             'firstName': summary.firstName,
             'middleName': summary.middleName,
             'lastName': summary.lastName,
