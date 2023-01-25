@@ -943,7 +943,7 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
                 participant_summary.remoteIdVerificationStatus = True
                 participant_summary.remoteIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
-        elif 'verified' in remote_id_info:
+        if 'verified' in remote_id_info:
             if remote_id_info['verified'] == "false":
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
                 participant_summary.remoteIdVerificationStatus = False
