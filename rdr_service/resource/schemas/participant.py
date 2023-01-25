@@ -397,6 +397,7 @@ class ParticipantSchema(Schema):
     enrollment_status_v3_1_participant_plus_baseline_time = fields.DateTime()
     health_datastream_sharing_status_v3_1 = fields.EnumString(enum=DigitalHealthSharingStatusV31)
     health_datastream_sharing_status_v3_1_id = fields.EnumInteger(enum=DigitalHealthSharingStatusV31)
+    health_datastream_sharing_status_v3_1_time = fields.DateTime()
     # These EHR fields are populated from Curation data.
     ehr_status = fields.EnumString(enum=EhrStatus)
     ehr_status_id = fields.EnumInteger(enum=EhrStatus)
