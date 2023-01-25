@@ -19,7 +19,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_first_name_update(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'name': [{
@@ -36,7 +36,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_middle_name_update(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'name': [{
@@ -55,7 +55,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_last_name_update(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'name': [{
@@ -70,7 +70,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_clearing_middle_name(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'name': [{
@@ -89,7 +89,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_clearing_family_name(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'name': [{
@@ -104,7 +104,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_clearing_full_name(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'name': []
@@ -119,7 +119,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_update_phone_number(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'telecom': [
@@ -137,7 +137,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_clear_phone_number(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'telecom': [
@@ -155,7 +155,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_update_email(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'telecom': [
@@ -173,7 +173,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_clear_email(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'telecom': [
@@ -191,7 +191,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_update_birthdate(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'birthDate': '2017-01-01'
@@ -204,7 +204,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_clear_birthdate(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'birthDate': ''
@@ -217,7 +217,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_update_address_line1(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'address': [
@@ -237,7 +237,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_clear_address_line1(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'address': [
@@ -257,7 +257,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_update_address_line2(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'address': [
@@ -278,7 +278,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_clear_address_line2(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'address': [
@@ -298,7 +298,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_update_address_city(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'address': [
@@ -315,7 +315,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_clear_address_city(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'address': [
@@ -332,7 +332,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_update_address_state(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'address': [
@@ -349,7 +349,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_clear_address_state(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'address': [
@@ -366,7 +366,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_update_address_zip_code(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'address': [
@@ -383,7 +383,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_clear_address_zip_code(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'address': [
@@ -400,7 +400,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_update_language(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'communication': [
@@ -424,7 +424,7 @@ class ProfileUpdateApiTest(BaseTestCase):
 
     def test_clear_language(self):
         self.send_post(
-            'Participant/ProfileUpdate',
+            'Patient',
             request_data={
                 'id': 'P123123123',
                 'communication': []
