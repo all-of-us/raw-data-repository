@@ -10,7 +10,7 @@ from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException
 
-from rdr_service import app_util, config_api, version_api
+from rdr_service import api_util, app_util, config_api, version_api
 from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi
 from rdr_service.api.bigquery_participant_summary_api import BQParticipantSummaryApi
@@ -334,7 +334,8 @@ api.add_resource(
 
 api.add_resource(
     ProfileUpdateApi,
-    API_PREFIX + 'Participant/ProfileUpdate',
+    api_util.get_versioned_url_prefix(version=1) + 'Participant/ProfileUpdate',
+    api_util.get_versioned_url_prefix(version=1) + 'Patient',
     endpoint='profile_update',
     methods=['POST']
 )
