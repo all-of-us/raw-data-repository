@@ -5,22 +5,22 @@
 # Manage google PubSub services
 # https://cloud.google.com/pubsub/docs/reference/rest
 #
-from datetime import datetime
-from dictalchemy import DictableModel
-from typing import List
 import base64
 import json
 import logging
 import os
+from datetime import datetime
+from typing import List
 
 from apiclient import errors
+from dictalchemy import DictableModel
 from googleapiclient import discovery
 from sqlalchemy import inspect
+from sqlalchemy.exc import SQLAlchemyError
 
 from rdr_service import config
 from rdr_service.config import GAE_PROJECT
 from rdr_service.services.system_utils import retry_func, list_chunks
-
 
 _INSTANCE_MAPPING = {
     'all-of-us-rdr-prod': 'all-of-us-rdr-prod:us-central1:rdrbackupdb-b',
@@ -140,11 +140,11 @@ def submit_pipeline_pubsub_msg(database: str = 'rdr', table: str = None, action:
     if not pk_columns or not all(isinstance(col, str) for col in pk_columns):
         return log_pipeline_error(f'pipeline: primary key column list {pk_columns} is invalid or empty')
     if not pk_values or not isinstance(pk_values, (list, tuple)):
-        return log_pipeline_error(f'pipeline: primary key values argument is invalid or empty')
+        return log_pipeline_error('pipeline: primary key values argument is invalid or empty')
 
     # Make sure that the length of the first value list is the same length as the PK columns list.
     if len(pk_columns) != len(validated_pk_values[0]):
-        return log_pipeline_error(f'pipeline: primary key columns and values are mismatched.')
+        return log_pipeline_error('pipeline: primary key columns and values are mismatched.')
 
     # Limit the number of pk_values passed in any pubsub event to 500 at a time
     count = 0
@@ -202,7 +202,7 @@ def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableM
         for relation in r:
             try:
                 chld = getattr(m, relation.key, None)
-            except Exception:  # pylint: disable=broad-except
+            except SQLAlchemyError:
                 continue
             # 'chld' can be a list of model objects or a single model object.
             if chld:
