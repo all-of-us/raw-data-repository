@@ -5,6 +5,7 @@ from graphene import List
 
 from sqlalchemy.orm import Query, aliased
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
+from rdr_service.participant_enums import QuestionnaireStatus
 
 
 @dataclass
@@ -48,6 +49,12 @@ class QueryBuilder:
         return resulting_query.order_by(self.order_expression)
 
 
+def check_field_value(value):
+    if value is not None:
+        return value
+    return QuestionnaireStatus.UNSET
+
+
 def load_participant_summary_data(query, prefix, biobank_prefix):
 
     results = []
@@ -63,23 +70,30 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
             'zipCode': summary.zipCode,
             'phoneNumber': summary.phoneNumber,
             'email': summary.email,
-            'deceasedStatus': {"value": summary.deceasedStatus, "time": summary.deceasedAuthored},
-            'withdrawalStatus': {"value": summary.withdrawalStatus, "time": summary.withdrawalAuthored},
+            'deceasedStatus': {"value": check_field_value(summary.deceasedStatus),
+                               "time": summary.deceasedAuthored},
+            'withdrawalStatus': {"value": check_field_value(summary.withdrawalStatus),
+                                 "time": summary.withdrawalAuthored},
             'aianStatus': summary.aian,
-            'suspensionStatus': {"value": summary.suspensionStatus, "time": summary.suspensionTime},
-            'enrollmentStatus': {"value": summary.enrollmentStatus, "time": summary.dateOfBirth},
-            'questionnaireOnTheBasics': {"value": summary.questionnaireOnTheBasics,
-                                         "time": summary.questionnaireOnTheBasicsAuthored},
-            'questionnaireOnHealthcareAccess': {"value": summary.questionnaireOnHealthcareAccess,
-                                                "time": summary.questionnaireOnHealthcareAccessAuthored},
-            'questionnaireOnLifestyle': {"value": summary.questionnaireOnLifestyle,
-                                         "time": summary.questionnaireOnLifestyleAuthored},
+            'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
+                                 "time": summary.suspensionTime},
+            'enrollmentStatus': {"value": check_field_value(summary.enrollmentStatus),
+                                 "time": summary.dateOfBirth},
+            'questionnaireOnTheBasics': {
+                "value": check_field_value(summary.questionnaireOnTheBasics),
+                "time": summary.questionnaireOnTheBasicsAuthored},
+            'questionnaireOnHealthcareAccess': {
+                "value": check_field_value(summary.questionnaireOnHealthcareAccess),
+                "time": summary.questionnaireOnHealthcareAccessAuthored},
+            'questionnaireOnLifestyle': {
+                "value": check_field_value(summary.questionnaireOnLifestyle),
+                "time": summary.questionnaireOnLifestyleAuthored},
             'siteId': site.googleGroup,
             'external_id': nph_site.external_id,
             'organization_external_id': nph_site.organization_external_id,
             'awardee_external_id': nph_site.awardee_external_id,
             'questionnaireOnSocialDeterminantsOfHealth':
-                {"value": summary.questionnaireOnSocialDeterminantsOfHealth,
+                {"value": check_field_value(summary.questionnaireOnSocialDeterminantsOfHealth),
                  "time": summary.questionnaireOnSocialDeterminantsOfHealthAuthored}
         })
     return results
