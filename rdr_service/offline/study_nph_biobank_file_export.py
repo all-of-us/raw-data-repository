@@ -99,7 +99,7 @@ def _get_ordered_samples(order_id: int) -> List[OrderedSample]:
         return session.query(OrderedSample).filter(
             and_(
                 OrderedSample.order_id == order_id,
-                OrderedSample.aliquot_id.is_not(None)
+                OrderedSample.aliquot_id.isnot(None)
             )
         ).all()
 
@@ -169,7 +169,7 @@ def _get_all_ordered_samples_for_an_order(order_id: int) -> Iterable[OrderedSamp
         return session.query(OrderedSample).filter(
             and_(
                 OrderedSample.order_id == order_id,
-                OrderedSample.aliquot_id.is_not(None)
+                OrderedSample.aliquot_id.isnot(None)
             )
         ).all()
 
