@@ -170,13 +170,14 @@ def _convert_orders_to_collections(
             ordered_samples=_get_ordered_samples(order_id=order.id)
         )
         parent_study_category = _get_parent_study_category(order.category_id)
-        collections.append({
-            "visitID": parent_study_category.name if parent_study_category else "",
-            "timepointID": _get_study_category(order.category_id).name,
-            "orderID": order.nph_order_id,
-            "nyFlag": "Y" if rdr_participant_summary.state == "NY" else "N",
-            "samples": samples
-        })
+        if len(samples) > 0:
+            collections.append({
+                "visitID": parent_study_category.name if parent_study_category else "",
+                "timepointID": _get_study_category(order.category_id).name,
+                "orderID": order.nph_order_id,
+                "nyFlag": "Y" if rdr_participant_summary.state == "NY" else "N",
+                "samples": samples
+            })
     return collections
 
 
