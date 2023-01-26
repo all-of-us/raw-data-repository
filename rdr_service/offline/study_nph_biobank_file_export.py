@@ -293,7 +293,7 @@ def main():
 
         json_object = {
             "clientID": client_id,
-            "studyID":  nph_module_id,
+            "studyID":  f"NPH Module {nph_module_id}",
             "participantID": f"{nph_biobank_prefix}{participant_biobank_id}",
             "gender": sex_at_birth,
             "ai_an_flag": "Y" if rdr_participant_summary.aian else "N",
