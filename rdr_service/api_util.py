@@ -270,3 +270,7 @@ def dispatch_task(endpoint: str, payload: dict, in_seconds=30, quiet=True, proje
             quiet=quiet,
             project_id=project_id
         )
+
+
+def get_versioned_url_prefix(version):
+    return f'/rdr/v{version}/'
