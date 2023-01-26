@@ -229,15 +229,6 @@ def update_report_state_for_consent_removal():
         controller.reconcile_report_states()
 
 
-def create_cvl_reconciliation_report():
-    """
-    Entrypoint for CVL reconciliation workflow
-    Sources from genomic_set_member and produces CVL reconciliation report CSV
-    """
-    with GenomicJobController(GenomicJob.CVL_RECONCILIATION_REPORT) as controller:
-        controller.run_cvl_reconciliation_report()
-
-
 def scan_and_complete_feedback_records():
     """
     Entrypoint for AW2F Manifest workflow
