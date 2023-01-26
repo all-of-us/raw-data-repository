@@ -10,11 +10,13 @@ from sqlalchemy import and_
 from google.cloud import storage
 from rdr_service import config
 from rdr_service.api_util import open_cloud_file
+from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantSummary as RdrParticipantSummary
 from rdr_service.model.rex import ParticipantMapping as RexParticipantMapping
 from rdr_service.model.study_nph import (
     Participant as NphParticipant,
     StudyCategory,
+    Site,
     Order,
     OrderedSample,
     SampleUpdate,
@@ -22,11 +24,13 @@ from rdr_service.model.study_nph import (
     SampleExport
 )
 
+from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao as RdrParticipantSummaryDao
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.study_nph_dao import (
     NphParticipantDao,
     NphStudyCategoryDao,
+    NphSiteDao,
     NphOrderDao,
     NphOrderedSampleDao,
     NphSampleUpdateDao,
@@ -55,10 +59,14 @@ def _get_latest_biobank_file_export() -> BiobankFileExport:
 
 def _get_sample_updates_since_last_file_export() -> Iterable[SampleUpdate]:
     last_successful_biobank_file_export = _get_latest_biobank_file_export()
+    if last_successful_biobank_file_export is not None:
+        last_successful_biobank_file_export_date = last_successful_biobank_file_export.created
+    else:
+        last_successful_biobank_file_export_date = datetime(year=2023, month=1, day=1)
     sample_update_dao = NphSampleUpdateDao()
     with sample_update_dao.session() as session:
         return session.query(SampleUpdate).filter(
-            SampleUpdate.created >= last_successful_biobank_file_export.created
+            SampleUpdate.created >= last_successful_biobank_file_export_date
         ).all()
 
 
@@ -93,6 +101,15 @@ def _get_parent_study_category(study_category_id: int) -> StudyCategory:
     return _get_study_category(study_category.parent_id)
 
 
+@lru_cache(maxsize=128, typed=False)
+def _get_code_obj_from_sex_id(sex_id: int) -> Code:
+    rdr_code_dao = CodeDao()
+    with rdr_code_dao.session() as rdr_code_session:
+        return rdr_code_session.query(Code).filter(
+            Code.codeId == sex_id
+        ).first()
+
+
 def _get_ordered_samples(order_id: int) -> List[OrderedSample]:
     ordered_sample_dao = NphOrderedSampleDao()
     with ordered_sample_dao.session() as session:
@@ -109,7 +126,7 @@ def _convert_ordered_samples_to_samples(order_id: int, ordered_samples: List[Ord
     for ordered_sample in ordered_samples:
         supplemental_fields = ordered_sample.supplemental_fields if ordered_sample.supplemental_fields else {}
         notes = ", ".join([f"{key}: {value}" for key, value in supplemental_fields.items()])
-        extract_volume_units = findall("[a-zA-Z]+", ordered_sample.volume)
+        extract_volume_units = findall("[a-zA-Z]+", ordered_sample.volume or "")
         volume_units = extract_volume_units[-1] if extract_volume_units else ""
         sample = {
             "sampleID": ordered_sample.aliquot_id,
@@ -230,6 +247,15 @@ def _create_sample_export_references_for_sample_updates(
         sample_export_dao.insert(sample_export)
 
 
+@lru_cache(maxsize=128, typed=False)
+def _get_nph_site(site_id: int) -> Site:
+    nph_site_dao = NphSiteDao()
+    with nph_site_dao.session() as session:
+        return session.query(Site).filter(
+            Site.id == site_id
+        ).first()
+
+
 def main():
     orders_file_drop: List[Dict[str, Any]] = []
     sample_updates_for_file_export = _get_sample_updates_since_last_file_export()
@@ -243,16 +269,32 @@ def main():
         participant_id = order.participant_id
         grouped_orders[(finalized_site, nph_module_id.name, participant_id)].append(order)
 
+    nph_biobank_prefix = (
+        config.NPH_PROD_BIOBANK_PREFIX if config.GAE_PROJECT == "all-of-us-rdr-prod" \
+            else config.NPH_TEST_BIOBANK_PREFIX
+    )
     for (finalized_site, nph_module_id, participant_id), orders in grouped_orders.items():
         rdr_participant_summary: RdrParticipantSummary = (
             _get_rdr_participant_summary_for_nph_partipant(order.participant_id)
         )
         participant_biobank_id = _get_nph_participant(participant_id).biobank_id
+
+        sex_at_birth = ""
+        if rdr_participant_summary.sexId is not None:
+            code_obj = _get_code_obj_from_sex_id(rdr_participant_summary.sexId)
+            if code_obj is not None:
+                sex_at_birth = code_obj.value.rsplit("_", 1)[1]
+
+        finalized_site_obj = _get_nph_site(finalized_site)
+        client_id = ""
+        if finalized_site_obj:
+            client_id = finalized_site_obj.external_id
+
         json_object = {
-            "clientID": finalized_site,
+            "clientID": client_id,
             "studyID":  nph_module_id,
-            "participantID": participant_biobank_id,
-            "gender": rdr_participant_summary.sexId,
+            "participantID": f"{nph_biobank_prefix}{participant_biobank_id}",
+            "gender": sex_at_birth,
             "ai_an_flag": "Y" if rdr_participant_summary.aian else "N",
             "collections": _convert_orders_to_collections(orders, rdr_participant_summary)
         }
@@ -268,7 +310,3 @@ def main():
     sample_updates_for_orders = _get_all_sample_updates_related_to_orders(orders)
     biobank_file_export = _create_biobank_file_export_reference(bucket_name, json_filepath)
     _create_sample_export_references_for_sample_updates(biobank_file_export.id, sample_updates_for_orders)
-
-
-if __name__=="__main__":
-    main()
