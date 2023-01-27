@@ -121,7 +121,11 @@ def _get_ordered_samples(order_id: int) -> List[OrderedSample]:
         ).all()
 
 
-def _convert_ordered_samples_to_samples(order_id: int, ordered_samples: List[OrderedSample]) -> List[Dict[str, Any]]:
+def _convert_ordered_samples_to_samples(
+    order_id: int,
+    ordered_samples: List[OrderedSample],
+    ordered_cancelled: bool = False
+) -> List[Dict[str, Any]]:
     samples = []
     for ordered_sample in ordered_samples:
         supplemental_fields = ordered_sample.supplemental_fields if ordered_sample.supplemental_fields else {}
@@ -134,7 +138,9 @@ def _convert_ordered_samples_to_samples(order_id: int, ordered_samples: List[Ord
             "kitID": order_id if ordered_sample.identifier.startswith("ST") else "",
             "volume": ordered_sample.volume,
             "volumeUOM": volume_units,
+            "collectionDateUTC": ordered_sample.collected,
             "processingDateUTC": ordered_sample.finalized,
+            "cancelledFlag": "Y" if ordered_cancelled else "N",
             "notes": notes,
         }
         samples.append(sample)
@@ -167,7 +173,8 @@ def _convert_orders_to_collections(
     for order in orders:
         samples = _convert_ordered_samples_to_samples(
             order_id=order.id,
-            ordered_samples=_get_ordered_samples(order_id=order.id)
+            ordered_samples=_get_ordered_samples(order_id=order.id),
+            ordered_cancelled=order.status == "cancelled"
         )
         parent_study_category = _get_parent_study_category(order.category_id)
         code_obj = _get_code_obj_from_sex_id(rdr_participant_summary.stateId)
