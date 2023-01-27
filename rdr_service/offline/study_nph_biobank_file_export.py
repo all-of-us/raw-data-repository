@@ -16,7 +16,6 @@ from rdr_service.model.rex import ParticipantMapping as RexParticipantMapping
 from rdr_service.model.study_nph import (
     Participant as NphParticipant,
     StudyCategory,
-    Site,
     Order,
     OrderedSample,
     SampleUpdate,
@@ -30,7 +29,6 @@ from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.study_nph_dao import (
     NphParticipantDao,
     NphStudyCategoryDao,
-    NphSiteDao,
     NphOrderDao,
     NphOrderedSampleDao,
     NphSampleUpdateDao,
@@ -82,7 +80,8 @@ def _get_orders_related_to_sample_updates(sample_updates: Iterable[SampleUpdate]
     with nph_orders_dao.session() as session:
         order_ids = list(ordered_sample.order_id for ordered_sample in ordered_samples)
         orders: Iterable[Order] = session.query(Order).filter(
-            Order.id.in_(order_ids)
+            Order.id.in_(order_ids),
+            Order.ignore_flag == 0
         ).distinct().all()
 
     return orders
@@ -257,15 +256,6 @@ def _create_sample_export_references_for_sample_updates(
         }
         sample_export = SampleExport(**sample_export_params)
         sample_export_dao.insert(sample_export)
-
-
-@lru_cache(maxsize=128, typed=False)
-def _get_nph_site(site_id: int) -> Site:
-    nph_site_dao = NphSiteDao()
-    with nph_site_dao.session() as session:
-        return session.query(Site).filter(
-            Site.id == site_id
-        ).first()
 
 
 def main():
