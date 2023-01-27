@@ -22,6 +22,9 @@ BLOOD_SAMPLE = {
     }, {
         "system": "http://www.pmi-ops.org/sample-id",
         "value": "nph-sample-id-456"
+    },  {
+            "system": "https://www.pmi-ops.org/client-id",
+            "value": "7042688"
     }],
     "createdInfo": {
         "author": {
@@ -143,8 +146,8 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         with database_factory.get_database().session() as session:
             query = Query(SampleUpdate)
             query.session = session
-            result = query.all()
-            for each in result:
+            sample_update_result = query.all()
+            for each in sample_update_result:
                 self.assertIsNotNone(each.ordered_sample_json)
 
     @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')

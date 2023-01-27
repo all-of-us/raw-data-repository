@@ -46,6 +46,9 @@ TEST_SAMPLE = {
     }, {
         "system": "http://www.pmi-ops.org/sample-id",
         "value": "nph-sample-id-456"
+    }, {
+        "system": "https://www.pmi-ops.org/client-id",
+        "value": "7042688"
     }],
     "createdInfo": {
         "author": {
@@ -92,34 +95,37 @@ TEST_URINE_SAMPLE = {
     }, {
         "system": "http://www.pmi-ops.org/sample-id",
         "value": "nph-sample-id-456"
+    }, {
+        "system": "https://www.pmi-ops.org/client-id",
+        "value": "7042688"
     }],
     "createdInfo": {
         "author": {
-            "system": "https://www.pmi-ops.org\/nph-username",
+            "system": "https://www.pmi-ops.org/nph-username",
             "value": "test@example.com"
         },
         "site": {
-            "system": "https://www.pmi-ops.org\/site-id",
+            "system": "https://www.pmi-ops.org/site-id",
             "value": "nph-site-testa"
         }
     },
     "collectedInfo": {
         "author": {
-            "system": "https://www.pmi-ops.org\/nph-username",
+            "system": "https://www.pmi-ops.org/nph-username",
             "value": "test@example.com"
         },
         "site": {
-            "system": "https://www.pmi-ops.org\/site-id",
+            "system": "https://www.pmi-ops.org/site-id",
             "value": "nph-site-testa"
         }
     },
     "finalizedInfo": {
         "author": {
-            "system": "https://www.pmi-ops.org\/nph-username",
+            "system": "https://www.pmi-ops.org/nph-username",
             "value": "test@example.com"
         },
         "site": {
-            "system": "https://www.pmi-ops.org\/site-id",
+            "system": "https://www.pmi-ops.org/site-id",
             "value": "hnphpo-site-testa"
         }
     },
@@ -652,6 +658,7 @@ class NphOrderDaoTest(BaseTestCase):
         self.assertEqual(1, result.created_site)
         self.assertEqual(1, result.collected_site)
         self.assertEqual(1, result.finalized_site)
+        self.assertEqual("7042688", result.client_id)
         self.assertEqual(TEST_SAMPLE.get("createdInfo").get("author").get("value"), result.created_author)
         self.assertEqual(TEST_SAMPLE.get("collectedInfo").get("author").get("value"), result.collected_author)
         self.assertEqual(TEST_SAMPLE.get("finalizedInfo").get("author").get("value"), result.finalized_author)
@@ -672,6 +679,7 @@ class NphOrderDaoTest(BaseTestCase):
         self.assertEqual(1, result.created_site)
         self.assertEqual(1, result.collected_site)
         self.assertEqual(1, result.finalized_site)
+        self.assertEqual("7042688", result.client_id)
         self.assertEqual(TEST_SAMPLE.get("createdInfo").get("author").get("value"), result.created_author)
         self.assertEqual(TEST_SAMPLE.get("collectedInfo").get("author").get("value"), result.collected_author)
         self.assertEqual(TEST_SAMPLE.get("finalizedInfo").get("author").get("value"), result.finalized_author)
@@ -697,7 +705,7 @@ class NphOrderDaoTest(BaseTestCase):
         self.assertEqual("404 Not Found: Order Id does not exist -- 1.", str(bad_id_error.exception))
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
-    def test_get_good_order_exit(self, query_filter):
+    def test_get_good_order_exist(self, query_filter):
         test_data = {"id": 1}
         response = json.loads(json.dumps(test_data), object_hook=lambda d: Namespace(**d))
         session = MagicMock()
@@ -708,7 +716,7 @@ class NphOrderDaoTest(BaseTestCase):
         self.assertEqual(test_data, result.__dict__)
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
-    def test_get_bad_order_exit(self, query_filter):
+    def test_get_bad_order_exist(self, query_filter):
         session = MagicMock()
         query_filter.return_value.first.return_value = None
         order_dao = NphOrderDao()
