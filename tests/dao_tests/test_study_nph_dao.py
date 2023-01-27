@@ -96,36 +96,36 @@ TEST_URINE_SAMPLE = {
         "system": "http://www.pmi-ops.org/sample-id",
         "value": "nph-sample-id-456"
     }, {
-        "system": "https:\/\/www.pmi-ops.org\/client-id",
+        "system": "https://www.pmi-ops.org/client-id",
         "value": "7042688"
     }],
     "createdInfo": {
         "author": {
-            "system": "https://www.pmi-ops.org\/nph-username",
+            "system": "https://www.pmi-ops.org/nph-username",
             "value": "test@example.com"
         },
         "site": {
-            "system": "https://www.pmi-ops.org\/site-id",
+            "system": "https://www.pmi-ops.org/site-id",
             "value": "nph-site-testa"
         }
     },
     "collectedInfo": {
         "author": {
-            "system": "https://www.pmi-ops.org\/nph-username",
+            "system": "https://www.pmi-ops.org/nph-username",
             "value": "test@example.com"
         },
         "site": {
-            "system": "https://www.pmi-ops.org\/site-id",
+            "system": "https://www.pmi-ops.org/site-id",
             "value": "nph-site-testa"
         }
     },
     "finalizedInfo": {
         "author": {
-            "system": "https://www.pmi-ops.org\/nph-username",
+            "system": "https://www.pmi-ops.org/nph-username",
             "value": "test@example.com"
         },
         "site": {
-            "system": "https://www.pmi-ops.org\/site-id",
+            "system": "https://www.pmi-ops.org/site-id",
             "value": "hnphpo-site-testa"
         }
     },
