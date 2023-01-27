@@ -269,16 +269,16 @@ def main():
     )
     grouped_orders: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
     for order in orders:
-        finalized_site = order.finalized_site
+        client_id = order.client_id
         nph_module_id = _get_parent_study_category(_get_parent_study_category(order.category_id).id)
         participant_id = order.participant_id
-        grouped_orders[(finalized_site, nph_module_id.name, participant_id)].append(order)
+        grouped_orders[(client_id, nph_module_id.name, participant_id)].append(order)
 
     nph_biobank_prefix = (
         config.NPH_PROD_BIOBANK_PREFIX if config.GAE_PROJECT == "all-of-us-rdr-prod" \
             else config.NPH_TEST_BIOBANK_PREFIX
     )
-    for (finalized_site, nph_module_id, participant_id), orders in grouped_orders.items():
+    for (client_id, nph_module_id, participant_id), orders in grouped_orders.items():
         rdr_participant_summary: RdrParticipantSummary = (
             _get_rdr_participant_summary_for_nph_partipant(order.participant_id)
         )
@@ -289,11 +289,6 @@ def main():
             code_obj = _get_code_obj_from_sex_id(rdr_participant_summary.sexId)
             if code_obj is not None:
                 sex_at_birth = code_obj.value.rsplit("_", 1)[1]
-
-        finalized_site_obj = _get_nph_site(finalized_site)
-        client_id = ""
-        if finalized_site_obj:
-            client_id = finalized_site_obj.external_id
 
         json_object = {
             "clientID": client_id,
