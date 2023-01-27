@@ -216,14 +216,10 @@ class NphOrderDao(UpdatableDao):
         create_site_exist = self.site_dao.site_exist(session, self.order_cls.createdInfo.site.value)
         collected_site_exist = self.site_dao.site_exist(session, self.order_cls.collectedInfo.site.value)
         finalized_site_exist = self.site_dao.site_exist(session, self.order_cls.finalizedInfo.site.value)
-        client_id = fetch_identifier_value(self.order_cls, "client-id")
-        client_id_exist = self.check_client_id_exist(client_id, session)
         if participant_exist is not True:
             raise BadRequest(f"Participant ID does not exist: {nph_participant_id}")
         if order_exist is not True:
             raise BadRequest(f"Order ID does not exist: {order_id}")
-        if client_id_exist is not True:
-            raise BadRequest(f"Client ID does not exist: {client_id}")
         if create_site_exist is not True:
             raise BadRequest(f"Created Site does not exist: {self.order_cls.createdInfo.site.value}")
         if collected_site_exist is not True:
@@ -317,15 +313,6 @@ class NphOrderDao(UpdatableDao):
             return True, result
         else:
             return False, None
-
-    @staticmethod
-    def check_client_id_exist(client_id: str, session):
-        query = Query(Order)
-        query.session = session
-        result = query.filter(Order.client_id == client_id).first()
-        if result:
-            return True
-        return False
 
     def get_study_category_id(self, session):
         return self.study_category_dao.get_id(session, self.order_cls)
