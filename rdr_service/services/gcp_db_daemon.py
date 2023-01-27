@@ -47,7 +47,7 @@ def run():
             self.environment_proxy_port_map = {
                 RdrEnvironment.PROD: ProxyData(
                     primary=DatabaseProxy(name='rdrmaindb', port=9900),
-                    replica=DatabaseProxy(name='rdrbackupdb-a', port=9905)
+                    replica=DatabaseProxy(name='rdrbackupdb-d', port=9905)
                 ),
                 RdrEnvironment.STABLE: ProxyData(
                     primary=DatabaseProxy(name='rdrmaindb', port=9910),
