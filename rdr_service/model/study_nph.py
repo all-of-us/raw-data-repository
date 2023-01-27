@@ -62,6 +62,7 @@ class Order(NphBase):
     __tablename__ = "order"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    client_id = Column(String(64), nullable=True)
     nph_order_id = Column(String(64))
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
