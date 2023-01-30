@@ -249,6 +249,8 @@ class BQPDRParticipantSummarySchema(BQSchema):
                                                     BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     health_datastream_sharing_status_v3_1_id = BQField('health_datastream_sharing_status_v3_1_id',
                                                        BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    health_datastream_sharing_status_v3_1_time = BQField('health_datastream_sharing_status_v3_1_time',
+                                                         BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
 
 class BQPDRParticipantSummary(BQTable):
