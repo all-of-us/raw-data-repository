@@ -2125,6 +2125,12 @@ class GenomicFileValidator:
                         'original_egt'
                     ]
                 },
+                GENOME_TYPE_WGS: {
+                    'pipelineid': [
+                        config.GENOMIC_DEPRECATED_WGS_DRAGEN,
+                        config.GENOMIC_UPDATED_WGS_DRAGEN
+                    ]
+                },
             },
         }
 
