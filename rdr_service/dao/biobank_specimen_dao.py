@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import or_, and_
 
 from rdr_service.api_util import format_json_date
@@ -7,8 +9,11 @@ from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.database_utils import NamedLock
 from rdr_service.dao.object_preloader import LoadingStrategy, ObjectPreloader
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot,\
     BiobankAliquotDataset, BiobankAliquotDatasetItem
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample, SampleStatus
+from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable
 
 
@@ -296,13 +301,81 @@ class BiobankSpecimenDao(BiobankDaoBase):
         if not session.query(participant_query.exists()).scalar():
             raise BadRequest(f'Biobank id {to_client_biobank_id(biobank_id)} does not exist')
 
+    @classmethod
+    def _get_stored_status(cls, status_str, disposal_reason_str):
+        if not status_str:
+            return SampleStatus.UNKNOWN
+
+        if status_str.lower() == 'in circulation':
+            return SampleStatus.RECEIVED
+
+        disposal_status_map = {
+            'accessioning error': SampleStatus.ACCESSINGING_ERROR,
+            'consumed': SampleStatus.CONSUMED,
+            'disposed': SampleStatus.DISPOSED,
+            'lab accident': SampleStatus.LAB_ACCIDENT,
+            'qns for processing': SampleStatus.QNS_FOR_PROCESSING,
+            'quality issue': SampleStatus.QUALITY_ISSUE,
+            'sample not processed': SampleStatus.SAMPLE_NOT_PROCESSED,
+            'sample not received': SampleStatus.SAMPLE_NOT_RECEIVED
+        }
+        if disposal_reason_str.lower() in disposal_status_map:
+            return disposal_status_map[disposal_reason_str.lower()]
+
+        return SampleStatus.UNKNOWN
+
     def insert_with_session(self, session, obj: BiobankSpecimen):
         self._check_participant_exists(session, obj.biobankId)
-        return super(BiobankSpecimenDao, self).insert_with_session(session, obj)
+        insert_result = super(BiobankSpecimenDao, self).insert_with_session(session, obj)
+
+        session.add(
+            BiobankStoredSample(
+                biobankStoredSampleId=obj.rlimsId,
+                biobankId=obj.biobankId,
+                biobankOrderIdentifier=obj.orderId,
+                test=obj.testCode,
+                confirmed=obj.confirmedDate,
+                created=obj.confirmedDate,
+                status=self._get_stored_status(
+                    status_str=insert_result.status,
+                    disposal_reason_str=insert_result.disposalReason
+                ),
+                disposed=obj.disposalDate
+            )
+        )
+        self._update_participant_sample_metadata(obj.biobankId, session)
+
+        return insert_result
 
     def update_with_session(self, session, obj: BiobankSpecimen):
         self._check_participant_exists(session, obj.biobankId)
-        return super(BiobankSpecimenDao, self).update_with_session(session, obj)
+        super(BiobankSpecimenDao, self).update_with_session(session, obj)
+
+        stored_sample: BiobankStoredSample = session.query(BiobankStoredSample).filter(
+            BiobankStoredSample.biobankStoredSampleId == obj.rlimsId
+        ).one_or_none()
+        if stored_sample is None:
+            logging.error(f'Update received for {obj.rlimsId}, but corresponding stored sample was not found')
+        else:
+            if obj.biobankId is not None:
+                stored_sample.biobankId = obj.biobankId
+            if obj.orderId is not None:
+                stored_sample.biobankOrderIdentifier = obj.orderId
+            if obj.testCode is not None:
+                stored_sample.test = obj.testCode
+            if obj.confirmedDate is not None:
+                stored_sample.confirmed = obj.confirmedDate
+            if obj.confirmedDate is not None:
+                stored_sample.created = obj.confirmedDate
+            if obj.disposalDate is not None:
+                stored_sample.disposed = obj.disposalDate
+            if obj.status is not None:
+                stored_sample.status = self._get_stored_status(
+                    status_str=obj.status,
+                    disposal_reason_str=obj.disposalReason
+                )
+
+        self._update_participant_sample_metadata(obj.biobankId, session)
 
     def get_mutually_exclusive_lock(self, rlims_id):
         with self.session() as session:
@@ -311,6 +384,15 @@ class BiobankSpecimenDao(BiobankDaoBase):
                 session=session,
                 lock_failure_exception=ServiceUnavailable(f'unable to update specimen {rlims_id}')
             )
+
+    @classmethod
+    def _update_participant_sample_metadata(cls, biobank_id: int, session):
+        participant_id = session.query(Participant.participantId).filter(Participant.biobankId == biobank_id).scalar()
+
+        dao = ParticipantSummaryDao()
+        dao.update_from_biobank_stored_samples(participant_id=participant_id, biobank_ids=[biobank_id], session=session)
+
+        dispatch_participant_rebuild_tasks([participant_id])
 
 
 class BiobankSpecimenAttributeDao(BiobankDaoBase):
