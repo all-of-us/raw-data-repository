@@ -1387,31 +1387,6 @@ class GenomicJobController:
             except RuntimeError:
                 self.job_result = GenomicSubProcessResult.ERROR
 
-    def run_cvl_reconciliation_report(self):
-        """
-        Creates the CVL reconciliation report using the reconciler object
-        """
-        self.reconciler = GenomicReconciler(
-            self.job_run.id, self.job_id, bucket_name=self.bucket_name, controller=self
-        )
-        try:
-            cvl_result = self.reconciler.generate_cvl_reconciliation_report()
-            if cvl_result == GenomicSubProcessResult.SUCCESS:
-                logging.info(f'CVL reconciliation report created: {self.reconciler.cvl_file_name}')
-                # Insert the file record
-                self.file_processed_dao.insert_file_record(
-                    self.job_run.id,
-                    f'{self.bucket_name}/{self.reconciler.cvl_file_name}',
-                    self.bucket_name,
-                    self.reconciler.cvl_file_name,
-                    end_time=clock.CLOCK.now(),
-                    file_result=cvl_result
-                )
-                self.subprocess_results.add(cvl_result)
-            self.job_result = self._aggregate_run_results()
-        except RuntimeError:
-            self.job_result = GenomicSubProcessResult.ERROR
-
     def generate_manifest(self, manifest_type, genome_type, **kwargs):
         """
         Creates Genomic manifest using ManifestCompiler component
@@ -2013,6 +1988,7 @@ class GenomicJobController:
                     'created': clock.CLOCK.now(),
                     'modified': clock.CLOCK.now()
                 })
+
             notified_dao.insert_bulk(notified_participants)
             self.job_result = GenomicSubProcessResult.SUCCESS
         else:

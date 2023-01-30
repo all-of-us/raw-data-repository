@@ -17,9 +17,9 @@ from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWo
     GenomicSubProcessStatus, GenomicManifestTypes, GenomicQcStatus, GenomicReportState
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
-from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics, \
+from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics,\
     GenomicGCROutreachEscalationNotified
-from rdr_service.offline import genomic_pipeline
+from rdr_service.offline import genomic_pipeline, genomic_cvl_pipeline
 from rdr_service.participant_enums import WithdrawalStatus
 from tests import test_data
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
@@ -1172,7 +1172,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 )
 
         # Run job
-        genomic_pipeline.reconcile_message_broker_results_ready()
+        genomic_cvl_pipeline.reconcile_message_broker_results_ready()
 
         # Test correct data inserted
         report_state_dao = GenomicMemberReportStateDao()
@@ -1253,7 +1253,7 @@ class GenomicJobControllerTest(BaseTestCase):
                     run_id=1,
                 )
 
-        genomic_pipeline.reconcile_message_broker_results_viewed()
+        genomic_cvl_pipeline.reconcile_message_broker_results_viewed()
 
         # Test correct data inserted
         result_viewed_dao = GenomicResultViewedDao()
@@ -1429,7 +1429,7 @@ class GenomicJobControllerTest(BaseTestCase):
 
         changed_ppts = self.appointment_event_dao.get_appointments_gror_changed()
         self.assertEqual(2, len(changed_ppts))
-        with genomic_pipeline.GenomicJobController(GenomicJob.CHECK_APPOINTMENT_GROR_CHANGED) as controller:
+        with GenomicJobController(GenomicJob.CHECK_APPOINTMENT_GROR_CHANGED) as controller:
             controller.check_appointments_gror_changed()
 
         self.assertEqual(email_mock.call_count, 1)
@@ -1571,7 +1571,7 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertNotIn(pids[1], results)
         self.assertNotIn(pids[4], results)
 
-        with genomic_pipeline.GenomicJobController(GenomicJob.CHECK_GCR_OUTREACH_ESCALATION) as controller:
+        with GenomicJobController(GenomicJob.CHECK_GCR_OUTREACH_ESCALATION) as controller:
             controller.check_gcr_14day_escalation()
 
         self.assertEqual(email_mock.call_count, 2)

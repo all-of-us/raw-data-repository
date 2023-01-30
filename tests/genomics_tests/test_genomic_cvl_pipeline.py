@@ -18,7 +18,7 @@ from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvide
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.genomics import GenomicGCValidationMetrics, GenomicSetMember
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.offline import genomic_pipeline
+from rdr_service.offline import genomic_pipeline, genomic_cvl_pipeline
 from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
@@ -188,7 +188,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
 
         # main workflow
         with clock.FakeClock(fake_date):
-            genomic_pipeline.cvl_w3sr_manifest_workflow()
+            genomic_cvl_pipeline.cvl_w3sr_manifest_workflow()
 
         current_members = self.member_dao.get_all()
 
@@ -817,7 +817,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
         # Check for PGX manifests
         with clock.FakeClock(manifest_generation_datetime):
-            genomic_pipeline.cvl_w1il_manifest_workflow(
+            genomic_cvl_pipeline.cvl_w1il_manifest_workflow(
                 cvl_site_bucket_map=self._get_cvl_bucket_map(),
                 module_type='pgx'
             )
@@ -893,7 +893,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
         # check for hdr manifest
         with clock.FakeClock(manifest_generation_datetime):
-            genomic_pipeline.cvl_w1il_manifest_workflow(
+            genomic_cvl_pipeline.cvl_w1il_manifest_workflow(
                 cvl_site_bucket_map=self._get_cvl_bucket_map(),
                 module_type='hdr'
             )
@@ -957,7 +957,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         w1il_raw_dao = GenomicW1ILRawDao()
         # PGX manifest
         with clock.FakeClock(clock.CLOCK.now()):
-            genomic_pipeline.cvl_w1il_manifest_workflow(
+            genomic_cvl_pipeline.cvl_w1il_manifest_workflow(
                 cvl_site_bucket_map=self._get_cvl_bucket_map(),
                 module_type='pgx'
             )
@@ -991,7 +991,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
         # HDR manifest
         with clock.FakeClock(clock.CLOCK.now()):
-            genomic_pipeline.cvl_w1il_manifest_workflow(
+            genomic_cvl_pipeline.cvl_w1il_manifest_workflow(
                 cvl_site_bucket_map=self._get_cvl_bucket_map(),
                 module_type='hdr'
             )
@@ -1204,7 +1204,7 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         )
 
         with clock.FakeClock(manifest_generation_datetime):
-            genomic_pipeline.cvl_w2w_manifest_workflow(cvl_site_bucket_map=self._get_cvl_bucket_map())
+            genomic_cvl_pipeline.cvl_w2w_manifest_workflow(cvl_site_bucket_map=self._get_cvl_bucket_map())
 
         # Check that the expected headers are written
         self.assertTupleEqual(
@@ -1267,7 +1267,7 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         w2w_raw_dao = GenomicW2WRawDao()
 
         with clock.FakeClock(clock.CLOCK.now()):
-            genomic_pipeline.cvl_w2w_manifest_workflow(
+            genomic_cvl_pipeline.cvl_w2w_manifest_workflow(
                 cvl_site_bucket_map=self._get_cvl_bucket_map()
             )
 
@@ -1456,7 +1456,7 @@ class GenomicCVLReconcileTest(BaseTestCase):
 
         # config item => 3 => should not find samples
         with clock.FakeClock(fake_plus_one):
-            genomic_pipeline.reconcile_cvl_results(
+            genomic_cvl_pipeline.reconcile_cvl_results(
                 reconcile_job_type=GenomicJob.RECONCILE_CVL_PGX_RESULTS
             )
 
@@ -1465,7 +1465,7 @@ class GenomicCVLReconcileTest(BaseTestCase):
 
         # config item => 3 => should find samples
         with clock.FakeClock(fake_plus_four):
-            genomic_pipeline.reconcile_cvl_results(
+            genomic_cvl_pipeline.reconcile_cvl_results(
                 reconcile_job_type=GenomicJob.RECONCILE_CVL_PGX_RESULTS
             )
 
@@ -1509,7 +1509,7 @@ class GenomicCVLReconcileTest(BaseTestCase):
 
         # config item => 3 => should not find samples
         with clock.FakeClock(fake_plus_one):
-            genomic_pipeline.reconcile_cvl_results(
+            genomic_cvl_pipeline.reconcile_cvl_results(
                 reconcile_job_type=GenomicJob.RECONCILE_CVL_HDR_RESULTS
             )
 
@@ -1518,7 +1518,7 @@ class GenomicCVLReconcileTest(BaseTestCase):
 
         # config item => 3 => should find samples => criteria 1
         with clock.FakeClock(fake_plus_four):
-            genomic_pipeline.reconcile_cvl_results(
+            genomic_cvl_pipeline.reconcile_cvl_results(
                 reconcile_job_type=GenomicJob.RECONCILE_CVL_HDR_RESULTS
             )
 
@@ -1555,7 +1555,7 @@ class GenomicCVLReconcileTest(BaseTestCase):
 
         # config item => 3 + 2 => should find samples => criteria 2
         with clock.FakeClock(fake_plus_six):
-            genomic_pipeline.reconcile_cvl_results(
+            genomic_cvl_pipeline.reconcile_cvl_results(
                 reconcile_job_type=GenomicJob.RECONCILE_CVL_HDR_RESULTS
             )
 
@@ -1599,7 +1599,7 @@ class GenomicCVLReconcileTest(BaseTestCase):
                 cvl_site_id='rdr'
             )
 
-        genomic_pipeline.reconcile_cvl_results(
+        genomic_cvl_pipeline.reconcile_cvl_results(
             reconcile_job_type=GenomicJob.RECONCILE_CVL_RESOLVE
         )
 
@@ -1613,7 +1613,7 @@ class GenomicCVLReconcileTest(BaseTestCase):
                 clinical_analysis_type=result_type
             )
 
-        genomic_pipeline.reconcile_cvl_results(
+        genomic_cvl_pipeline.reconcile_cvl_results(
             reconcile_job_type=GenomicJob.RECONCILE_CVL_RESOLVE
         )
 
@@ -1652,7 +1652,7 @@ class GenomicCVLReconcileTest(BaseTestCase):
                 cvl_site_id=cvl_site_id
             )
 
-        genomic_pipeline.reconcile_cvl_results(
+        genomic_cvl_pipeline.reconcile_cvl_results(
             reconcile_job_type=GenomicJob.RECONCILE_CVL_ALERTS
         )
 
