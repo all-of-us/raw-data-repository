@@ -1221,16 +1221,16 @@ class ParticipantSummaryDao(UpdatableDao):
             del result['enrollmentStatusV3_0']
             del result['enrollmentStatusV3_1']
             for field_name in [
-                'enrollmentStatusParticipantV3_0Time'
-                'enrollmentStatusParticipantPlusEhrV3_0Time'
-                'enrollmentStatusPmbEligibleV3_0Time'
-                'enrollmentStatusCoreMinusPmV3_0Time'
-                'enrollmentStatusCoreV3_0Time'
-                'enrollmentStatusParticipantV3_1Time'
-                'enrollmentStatusParticipantPlusEhrV3_1Time'
-                'enrollmentStatusParticipantPlusBasicsV3_1Time'
-                'enrollmentStatusCoreMinusPmV3_1Time'
-                'enrollmentStatusCoreV3_1Time'
+                'enrollmentStatusParticipantV3_0Time',
+                'enrollmentStatusParticipantPlusEhrV3_0Time',
+                'enrollmentStatusPmbEligibleV3_0Time',
+                'enrollmentStatusCoreMinusPmV3_0Time',
+                'enrollmentStatusCoreV3_0Time',
+                'enrollmentStatusParticipantV3_1Time',
+                'enrollmentStatusParticipantPlusEhrV3_1Time',
+                'enrollmentStatusParticipantPlusBasicsV3_1Time',
+                'enrollmentStatusCoreMinusPmV3_1Time',
+                'enrollmentStatusCoreV3_1Time',
                 'enrollmentStatusParticipantPlusBaselineV3_1Time'
             ]:
                 if field_name in result:
