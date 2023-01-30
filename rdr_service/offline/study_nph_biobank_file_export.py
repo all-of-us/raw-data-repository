@@ -16,7 +16,6 @@ from rdr_service.model.rex import ParticipantMapping as RexParticipantMapping
 from rdr_service.model.study_nph import (
     Participant as NphParticipant,
     StudyCategory,
-    Site,
     Order,
     OrderedSample,
     SampleUpdate,
@@ -30,7 +29,6 @@ from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.study_nph_dao import (
     NphParticipantDao,
     NphStudyCategoryDao,
-    NphSiteDao,
     NphOrderDao,
     NphOrderedSampleDao,
     NphSampleUpdateDao,
@@ -82,7 +80,8 @@ def _get_orders_related_to_sample_updates(sample_updates: Iterable[SampleUpdate]
     with nph_orders_dao.session() as session:
         order_ids = list(ordered_sample.order_id for ordered_sample in ordered_samples)
         orders: Iterable[Order] = session.query(Order).filter(
-            Order.id.in_(order_ids)
+            Order.id.in_(order_ids),
+            Order.ignore_flag == 0
         ).distinct().all()
 
     return orders
@@ -121,7 +120,11 @@ def _get_ordered_samples(order_id: int) -> List[OrderedSample]:
         ).all()
 
 
-def _convert_ordered_samples_to_samples(order_id: int, ordered_samples: List[OrderedSample]) -> List[Dict[str, Any]]:
+def _convert_ordered_samples_to_samples(
+    order_id: int,
+    ordered_samples: List[OrderedSample],
+    ordered_cancelled: bool = False
+) -> List[Dict[str, Any]]:
     samples = []
     for ordered_sample in ordered_samples:
         supplemental_fields = ordered_sample.supplemental_fields if ordered_sample.supplemental_fields else {}
@@ -134,7 +137,9 @@ def _convert_ordered_samples_to_samples(order_id: int, ordered_samples: List[Ord
             "kitID": order_id if ordered_sample.identifier.startswith("ST") else "",
             "volume": ordered_sample.volume,
             "volumeUOM": volume_units,
+            "collectionDateUTC": ordered_sample.collected,
             "processingDateUTC": ordered_sample.finalized,
+            "cancelledFlag": "Y" if ordered_cancelled else "N",
             "notes": notes,
         }
         samples.append(sample)
@@ -167,7 +172,8 @@ def _convert_orders_to_collections(
     for order in orders:
         samples = _convert_ordered_samples_to_samples(
             order_id=order.id,
-            ordered_samples=_get_ordered_samples(order_id=order.id)
+            ordered_samples=_get_ordered_samples(order_id=order.id),
+            ordered_cancelled=order.status == "cancelled"
         )
         parent_study_category = _get_parent_study_category(order.category_id)
         code_obj = _get_code_obj_from_sex_id(rdr_participant_summary.stateId)
@@ -252,15 +258,6 @@ def _create_sample_export_references_for_sample_updates(
         sample_export_dao.insert(sample_export)
 
 
-@lru_cache(maxsize=128, typed=False)
-def _get_nph_site(site_id: int) -> Site:
-    nph_site_dao = NphSiteDao()
-    with nph_site_dao.session() as session:
-        return session.query(Site).filter(
-            Site.id == site_id
-        ).first()
-
-
 def main():
     orders_file_drop: List[Dict[str, Any]] = []
     sample_updates_for_file_export = _get_sample_updates_since_last_file_export()
@@ -269,16 +266,16 @@ def main():
     )
     grouped_orders: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
     for order in orders:
-        finalized_site = order.finalized_site
+        client_id = order.client_id
         nph_module_id = _get_parent_study_category(_get_parent_study_category(order.category_id).id)
         participant_id = order.participant_id
-        grouped_orders[(finalized_site, nph_module_id.name, participant_id)].append(order)
+        grouped_orders[(client_id, nph_module_id.name, participant_id)].append(order)
 
     nph_biobank_prefix = (
         config.NPH_PROD_BIOBANK_PREFIX if config.GAE_PROJECT == "all-of-us-rdr-prod" \
             else config.NPH_TEST_BIOBANK_PREFIX
     )
-    for (finalized_site, nph_module_id, participant_id), orders in grouped_orders.items():
+    for (client_id, nph_module_id, participant_id), orders in grouped_orders.items():
         rdr_participant_summary: RdrParticipantSummary = (
             _get_rdr_participant_summary_for_nph_partipant(order.participant_id)
         )
@@ -289,11 +286,6 @@ def main():
             code_obj = _get_code_obj_from_sex_id(rdr_participant_summary.sexId)
             if code_obj is not None:
                 sex_at_birth = code_obj.value.rsplit("_", 1)[1]
-
-        finalized_site_obj = _get_nph_site(finalized_site)
-        client_id = ""
-        if finalized_site_obj:
-            client_id = finalized_site_obj.external_id
 
         json_object = {
             "clientID": client_id,
