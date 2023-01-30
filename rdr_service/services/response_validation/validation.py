@@ -414,7 +414,10 @@ class _ConstraintParser(_BaseParser):
             self._read_comparison(char)
         elif self._state == _ConstraintParserState.READING_ANSWER:
             if char in ["'", " "]:
-                self.finish_constraint()
+                if self._answer_chars:
+                    # Number comparisons can have quotes in the answer, only finalize answer if we're not starting
+                    # a quoted answer
+                    self.finish_constraint()
             else:
                 self._answer_chars.append(char)
         else:
