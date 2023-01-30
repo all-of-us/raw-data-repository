@@ -128,15 +128,10 @@ def run_ce_health_data_reconciliation():
 
 @app_util.auth_required_cron
 def run_biobank_samples_pipeline():
-    # Note that crons always have a 10 minute deadline instead of the normal 60s; additionally our
-    # offline service uses basic scaling with has no deadline.
-    logging.info("Starting samples import.")
-    written, timestamp = biobank_samples_pipeline.upsert_from_latest_csv()
-    logging.info("Import complete %(written)d, generating report.", written)
-
-    # iterate new list and write reports
-    biobank_samples_pipeline.write_reconciliation_report(timestamp)
-    logging.info("Generated reconciliation report.")
+    job_runtime = CLOCK.now()
+    logging.info("Generating reconciliation reports...")
+    biobank_samples_pipeline.write_reconciliation_report(job_runtime)
+    logging.info("Generated reconciliation reports.")
     return '{"success": "true"}'
 
 

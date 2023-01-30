@@ -10,6 +10,8 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model import config_utils
 from rdr_service.model.participant import Participant
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrderedSample, BiobankOrder, BiobankAliquot
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.config_utils import from_client_biobank_id
 from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2020, 4, 1)
@@ -236,6 +238,12 @@ class BiobankOrderApiTest(BaseTestCase):
 
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
+        stored_sample = self.session.query(BiobankStoredSample).filter(
+            BiobankStoredSample.biobankStoredSampleId == result['rlimsID']
+        ).one()
+        self.assertEqual(from_client_biobank_id(payload['participantID']), stored_sample.biobankId)
+        self.assertEqual(payload['rlimsID'], stored_sample.biobankStoredSampleId)
 
     def test_allow_for_null_collections(self):
         payload = self.get_minimal_specimen_json()
@@ -916,6 +924,22 @@ class BiobankOrderApiTest(BaseTestCase):
         specimen = self.get_specimen_from_dao(rlims_id='sabrina')
         self.assertEqual('mistake', specimen.disposalReason)
         self.assertEqual(TIME_2, specimen.disposalDate)
+
+    def test_updating_biobank_id(self):
+        # Initialize specimen
+        payload = self.get_minimal_specimen_json()
+        payload['status'] = {'status': 'In Circulation'}
+        self.put_specimen(payload)
+
+        # Send an update for the biobank id
+        payload['testcode'] = 'another_code'
+        self.put_specimen(payload)
+
+        # Check that the update is reflected in the stored sample
+        stored_sample = self.session.query(BiobankStoredSample).filter(
+            BiobankStoredSample.biobankStoredSampleId == payload['rlimsID']
+        ).one()
+        self.assertEqual('another_code', stored_sample.test)
 
     def test_parent_disposed_not_found(self):
         self.send_put(f"Biobank/specimens/sabrina/status", {
