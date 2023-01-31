@@ -11,7 +11,8 @@ from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample,
     Activity, ParticipantEventActivity, EnrollmentEventType,
     EnrollmentEvent, PairingEventType, PairingEvent, ConsentEventType,
-    ConsentEvent, SampleUpdate, BiobankFileExport, SampleExport
+    ConsentEvent, SampleUpdate, BiobankFileExport, SampleExport,
+    StoredSample
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 
@@ -695,4 +696,12 @@ class NphSampleExportDao(BaseDao):
         super(NphSampleExportDao, self).__init__(SampleExport)
 
     def get_id(self, obj: SampleExport):
+        return obj.id
+
+
+class NphStoredSampleDao(BaseDao):
+    def __init__(self):
+        super(NphStoredSampleDao, self).__init__(StoredSample)
+
+    def get_id(self, obj: StoredSample):
         return obj.id
