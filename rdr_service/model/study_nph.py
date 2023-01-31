@@ -108,6 +108,7 @@ class OrderedSample(NphBase):
     identifier = Column(String(128))
     container = Column(String(128))
     volume = Column(String(128))
+    volumeUnits = Column(String(128))
     status = Column(String(128))
     supplemental_fields = Column(JSON, nullable=True)
     parent = relation("OrderedSample", remote_side=[id])
