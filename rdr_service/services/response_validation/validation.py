@@ -468,7 +468,7 @@ class _ConstraintParser(_BaseParser):
         answer_code = ''.join(self._answer_chars)
 
         if self._comparison_operation == '>':
-            condition = Question(question_code).answer_greater_than(int(answer_code))
+            condition = Question(question_code).answer_greater_than(answer_code)
         else:
             condition = Question(question_code).is_answered_with(answer_code)
 
