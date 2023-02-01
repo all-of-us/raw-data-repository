@@ -42,6 +42,7 @@ CONFIG_CACHE_TTL_SECONDS = 60
 BIOBANK_ID_PREFIX = "biobank_id_prefix"
 NPH_PROD_BIOBANK_PREFIX = "N"
 NPH_TEST_BIOBANK_PREFIX = "T"
+NPH_STUDY_ID = 2
 METRICS_SHARDS = "metrics_shards"
 PARTICIPANT_SUMMARY_SHARDS = "participant_summary_shards"
 AGE_RANGE_SHARDS = "age_range_shards"

@@ -434,3 +434,28 @@ class ProfileUpdateApiTest(BaseTestCase):
             participant_id=123123123,
             preferred_language=None
         )
+
+    def test_nph_participant_id(self):
+        self.send_post(
+            'Patient',
+            request_data={
+                'id': 'P123123123',
+                "identifier": [
+                    {
+                        "use": "official",
+                        "type": {
+                            "coding": [
+                                {
+                                    "system": "https://pmi-fhir-ig.github.io/pmi-fhir-ig/CodeSystem/PMIIdentifierTypeCS",
+                                    "code": "NPH-1000"
+                                }
+                            ]
+                        },
+                        "value": "1000578448930"
+                    }
+                ]
+            }
+        )
+        self.update_mock.assert_called_with(
+            participant_id=123123123,
+        )
