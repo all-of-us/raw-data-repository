@@ -307,7 +307,7 @@ def main():
         orders_file_drop.append(json_object)
 
     today_dt_ts = datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
-    bucket_name = 'stable-nph-sample-data-biobank'
+    bucket_name = config.getSetting(config.NPH_SAMPLE_DATA_BIOBANK_NIGHTLY_FILE_DROP)
     json_filepath = f"nph-orders/NPH_Orders_{today_dt_ts}.json"
     orders_filename = f"{bucket_name}/{json_filepath}"
     with open_cloud_file(orders_filename, mode='w') as dest:

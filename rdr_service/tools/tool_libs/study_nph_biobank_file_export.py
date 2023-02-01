@@ -67,8 +67,8 @@ def run():
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
         try:
-            # nph_biobank_file_export_job = nph_study_biobank_file_export_for_run(args, gcp_env)
-            exit_code = StudyNphBioBankFileExport(args, gcp_env).run()
+            nph_biobank_file_export_job = nph_study_biobank_file_export_for_run(args, gcp_env)
+            exit_code = nph_biobank_file_export_job.run()
         # pylint: disable=broad-except
         except Exception as e:
             print_exc()
