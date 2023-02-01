@@ -1,13 +1,15 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import StringIO
-from typing import Dict, Union, Any, Iterator
+from typing import Dict, Union, Any, Iterator, Iterable
 from csv import DictReader
 from re import findall, search
 
-from rdr_service.api_util import open_cloud_file
+from rdr_service import config
+from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.model.study_nph_enums import StoredSampleStatus
 from rdr_service.model.study_nph import StoredSample
 from rdr_service.dao.study_nph_dao import NphStoredSampleDao
+from rdr_service.offline.biobank_samples_pipeline import DataError
 
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -21,13 +23,35 @@ def read_nph_biobank_inventory_file(csv_filepath: str) -> Iterator[Dict[str, Any
         content = content.decode("utf-8-sig")
         return StringIO(content)
 
-    # bucket_name = config.getSetting(config.NPH_SAMPLE_DATA_BIOBANK_NIGHTLY_FILE_DROP)
-    bucket_name = "stable-nph-sample-data-biobank"
-    with open_cloud_file(f"{bucket_name}/{csv_filepath}", mode="rb") as csv_fp:
+    with open_cloud_file(csv_filepath, mode="rb") as csv_fp:
         csv_file_content = _decode_utf8_sig_content(csv_fp)
         csv_dict_reader = DictReader(csv_file_content)
         for row in csv_dict_reader:
             yield row
+
+
+def _get_nph_inventory_samples_csv_dropped_in_last_24_hrs(
+    cloud_bucket_name: str, filename_pattern: str
+) -> Iterable[Any]:
+    """Returns the full path (including bucket name) of the most recently created CSV in the bucket.
+
+  Raises:
+    RuntimeError: if no CSVs are found in the cloud storage bucket.
+  """
+
+    bucket_stat_list = list_blobs(cloud_bucket_name)
+    if not bucket_stat_list:
+        raise DataError("No files in cloud bucket %r." % cloud_bucket_name)
+    # GCS does not really have the concept of directories (it's just a filename convention), so all
+    # directory listings are recursive and we must filter out subdirectory contents.
+    bucket_stat_list = [s for s in bucket_stat_list
+                        if s.name.lower().endswith(".csv")
+                        and filename_pattern in s.name]
+    if not bucket_stat_list:
+        raise DataError("No CSVs in cloud bucket %r (all files: %s)." % (cloud_bucket_name, bucket_stat_list))
+    # bucket_stat_list.sort(key=lambda s: s.updated)
+    _day_before_ts = datetime.utcnow() - timedelta(days=1)
+    return list(filter(lambda file: file.updated > _day_before_ts, bucket_stat_list))
 
 
 def _convert_csv_row_to_stored_sample_object(csv_obj: Dict[str, Union[str, int]]) -> StoredSample:
@@ -64,8 +88,12 @@ def import_biobank_inventory_into_stored_samples(csv_filepath: str):
 
 
 def main():
-    csv_filepath = "nph_inventory_process/sample_nph_biobank_inventory_file.csv"
-    import_biobank_inventory_into_stored_samples(csv_filepath)
+    bucket_name = config.getSetting(config.NPH_SAMPLE_DATA_BIOBANK_NIGHTLY_FILE_DROP)
+    latest_csv_files = _get_nph_inventory_samples_csv_dropped_in_last_24_hrs(
+        cloud_bucket_name=bucket_name, filename_pattern="nph_inventory_process"
+    )
+    for csv_filepath in latest_csv_files:
+        import_biobank_inventory_into_stored_samples(csv_filepath)
 
 
 if __name__=="__main__":
