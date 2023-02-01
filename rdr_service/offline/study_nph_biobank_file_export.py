@@ -306,13 +306,13 @@ def main():
         }
         orders_file_drop.append(json_object)
 
-    # today_dt_ts = datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
-    # bucket_name = config.getSetting(config.NPH_SAMPLE_DATA_BIOBANK_NIGHTLY_FILE_DROP)
-    # json_filepath = f"nph-orders/NPH_Orders_{today_dt_ts}.json"
-    # orders_filename = f"{bucket_name}/{json_filepath}"
-    with open_cloud_file('test_output_file.json', mode='w') as dest:
+    today_dt_ts = datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
+    bucket_name = 'stable-nph-sample-data-biobank'
+    json_filepath = f"nph-orders/NPH_Orders_{today_dt_ts}.json"
+    orders_filename = f"{bucket_name}/{json_filepath}"
+    with open_cloud_file(orders_filename, mode='w') as dest:
         dump(orders_file_drop, dest, default=str)
 
-    # sample_updates_for_orders = _get_all_sample_updates_related_to_orders(orders)
-    # biobank_file_export = _create_biobank_file_export_reference(bucket_name, json_filepath)
-    # _create_sample_export_references_for_sample_updates(biobank_file_export.id, sample_updates_for_orders)
+    sample_updates_for_orders = _get_all_sample_updates_related_to_orders(orders)
+    biobank_file_export = _create_biobank_file_export_reference(bucket_name, json_filepath)
+    _create_sample_export_references_for_sample_updates(biobank_file_export.id, sample_updates_for_orders)
