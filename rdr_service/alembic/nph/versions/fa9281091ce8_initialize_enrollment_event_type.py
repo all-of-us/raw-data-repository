@@ -51,4 +51,23 @@ def upgrade_nph():
 
 
 def downgrade_nph():
-    op.execute("""DELETE FROM nph.enrollent_event_type WHERE name IN ()""")
+    op.execute("""DELETE FROM nph.enrollent_event_type WHERE name IN (
+                "Module 1 Consented",
+                "Module 1 Eligibility Confirmed",
+                "Module 1 Eligibility Failed",
+                "Module 1 Started",
+                "Module 1 Complete",
+                "Module 2 Consented",
+                "Module 2 Eligibility Confirmed",
+                "Module 2 Eligibility Failed",
+                "Module 2 Started",
+                "Module 2 Diet Assigned",
+                "Module 2 Complete",
+                "Module 3 Consented",
+                "Module 3 Eligibility Confirmed",
+                "Module 3 Eligibility Failed",
+                "Module 3 Started",
+                "Module 3 Diet Assigned",
+                "Module 3 Complete",
+                "Withdrawn",
+                "Deactivated")""")
