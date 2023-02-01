@@ -307,9 +307,11 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
 
         # Handle Ancillary Study Enrollment
         if update_payload.has_ancillary_identifier:
-            enrollment_interface = EnrollmentInterface(update_payload.ancillary_study_code)
-            study_participant = enrollment_interface.create_study_participant(update_payload.ancillary_study_pid)
-            print(study_participant)
+            study_interface = EnrollmentInterface(update_payload.ancillary_study_code)
+            study_interface.create_study_participant(
+                aou_pid=update_field_list['participant_id'],
+                ancillary_pid=update_payload.ancillary_study_pid
+            )
 
     def _record_request(self, json):
         repository = ProfileUpdateRepository()

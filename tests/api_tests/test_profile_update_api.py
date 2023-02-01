@@ -435,7 +435,10 @@ class ProfileUpdateApiTest(BaseTestCase):
             preferred_language=None
         )
 
-    def test_nph_participant_id(self):
+    @mock.patch(
+        'rdr_service.services.ancillary_studies.study_enrollment.EnrollmentInterface.create_study_participant'
+    )
+    def test_nph_participant_id(self, study_mock):
         self.send_post(
             'Patient',
             request_data={
@@ -458,4 +461,9 @@ class ProfileUpdateApiTest(BaseTestCase):
         )
         self.update_mock.assert_called_with(
             participant_id=123123123,
+        )
+
+        study_mock.assert_called_with(
+            aou_pid=123123123,
+            ancillary_pid='1000578448930'
         )
