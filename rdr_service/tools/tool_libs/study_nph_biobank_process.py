@@ -19,8 +19,8 @@ _logger = logging.getLogger("rdr_logger")
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
-tool_cmd = "study_nph_biobank_file_export"
-tool_desc = "NPH Study BioBank File Export"
+tool_cmd = "study_nph_biobank_process"
+tool_desc = "NPH Study BioBank File Process"
 
 
 class StudyNphBioBankFileExport(ToolBase):
