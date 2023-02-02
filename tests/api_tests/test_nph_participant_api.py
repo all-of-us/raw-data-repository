@@ -289,6 +289,18 @@ class TestQueryExecution(BaseTestCase):
         nph_id = str(prefix) + str(participant_nph_id)
         self.assertEqual(nph_id, resulting_participant_data.get('participantNphId'))
 
+    def test_nph_fields(self):
+        field_to_test = "biobankId"
+        query = simple_query(field_to_test)
+        with database_factory.get_database().session() as session:
+            mock_load_participant_data(session)
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+            result = json.loads(executed.data.decode('utf-8'))
+            for each in result:
+                self.assertEqual(1, len(each.get('participant').get('edges')), "Should return 1 record back")
+
+
+
     def test_graphql_syntax_error(self):
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SYNTAX_ERROR)
         result = json.loads(executed.data.decode('utf-8'))
