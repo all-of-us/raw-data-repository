@@ -55,6 +55,7 @@ from rdr_service.services.ghost_check_service import GhostCheckService
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.offline.study_nph_biobank_file_export import main as study_nph_biobank_file_export_job
+from rdr_service.offline.study_nph_biobank_import_inventory_file import main as study_nph_biobank_inventory_import_job
 
 
 def _alert_on_exceptions(func):
@@ -851,6 +852,12 @@ def genomic_notify_gcr_outreach_escalation():
 @app_util.auth_required_cron
 def nph_biobank_nightly_file_drop():
     study_nph_biobank_file_export_job()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+def nph_biobank_inventory_file_import():
+    study_nph_biobank_inventory_import_job()
     return '{"success": "true"}'
 
 
