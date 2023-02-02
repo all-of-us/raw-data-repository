@@ -194,10 +194,10 @@ class PatientPayload:
     @property
     def has_ancillary_identifier(self):
         if hasattr(self._fhir_patient, "identifier"):
-            for item in self._fhir_patient.identifier:
-                if "PMIIdentifierTypeCS" in item.type.coding[0].system:
-                    return True
-            return False
+            if self._fhir_patient.identifier:
+                for item in self._fhir_patient.identifier:
+                    if "PMIIdentifierTypeCS" in item.type.coding[0].system:
+                        return True
 
     @property
     def ancillary_study_code(self):
