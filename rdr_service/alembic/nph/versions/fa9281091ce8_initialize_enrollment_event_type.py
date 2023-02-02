@@ -6,6 +6,7 @@ Create Date: 2023-02-01 15:35:38.743254
 
 """
 from alembic import op
+import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'fa9281091ce8'
@@ -23,34 +24,40 @@ def downgrade(engine_name):
 
 
 def upgrade_nph():
+    op.add_column('consent_event_type', sa.Column('source_name', sa.String(length=128), nullable=True))
+    op.add_column('enrollment_event_type', sa.Column('source_name', sa.String(length=128), nullable=True))
+    op.add_column('pairing_event_type', sa.Column('source_name', sa.String(length=128), nullable=True))
     # Enrollment Event Types
     op.execute("""
                 INSERT INTO nph.enrollment_event_type
-                (created, modified, ignore_flag, name)
+                (created, modified, ignore_flag, name, source_name)
                 VALUES
-                (now(), now(), 0, "Module 1 Consented"),
-                (now(), now(), 0, "Module 1 Eligibility Confirmed"),
-                (now(), now(), 0, "Module 1 Eligibility Failed"),
-                (now(), now(), 0, "Module 1 Started"),
-                (now(), now(), 0, "Module 1 Complete"),
-                (now(), now(), 0, "Module 2 Consented"),
-                (now(), now(), 0, "Module 2 Eligibility Confirmed"),
-                (now(), now(), 0, "Module 2 Eligibility Failed"),
-                (now(), now(), 0, "Module 2 Started"),
-                (now(), now(), 0, "Module 2 Diet Assigned"),
-                (now(), now(), 0, "Module 2 Complete"),
-                (now(), now(), 0, "Module 3 Consented"),
-                (now(), now(), 0, "Module 3 Eligibility Confirmed"),
-                (now(), now(), 0, "Module 3 Eligibility Failed"),
-                (now(), now(), 0, "Module 3 Started"),
-                (now(), now(), 0, "Module 3 Diet Assigned"),
-                (now(), now(), 0, "Module 3 Complete"),
-                (now(), now(), 0, "Withdrawn"),
-                (now(), now(), 0, "Deactivated")
+                (now(), now(), 0, "Module 1 Consented", null),
+                (now(), now(), 0, "Module 1 Eligibility Confirmed", "eligibilityConfirmed"),
+                (now(), now(), 0, "Module 1 Eligibility Failed", null),
+                (now(), now(), 0, "Module 1 Started", null),
+                (now(), now(), 0, "Module 1 Complete", null),
+                (now(), now(), 0, "Module 2 Consented", null),
+                (now(), now(), 0, "Module 2 Eligibility Confirmed", null),
+                (now(), now(), 0, "Module 2 Eligibility Failed", null),
+                (now(), now(), 0, "Module 2 Started", null),
+                (now(), now(), 0, "Module 2 Diet Assigned", null),
+                (now(), now(), 0, "Module 2 Complete", null),
+                (now(), now(), 0, "Module 3 Consented", null),
+                (now(), now(), 0, "Module 3 Eligibility Confirmed", null),
+                (now(), now(), 0, "Module 3 Eligibility Failed", null),
+                (now(), now(), 0, "Module 3 Started", null),
+                (now(), now(), 0, "Module 3 Diet Assigned", null),
+                (now(), now(), 0, "Module 3 Complete", null),
+                (now(), now(), 0, "Withdrawn", null),
+                (now(), now(), 0, "Deactivated", null)
             """)
 
 
 def downgrade_nph():
+    op.drop_column('pairing_event_type', 'source_name')
+    op.drop_column('enrollment_event_type', 'source_name')
+    op.drop_column('consent_event_type', 'source_name')
     op.execute("""DELETE FROM nph.enrollent_event_type WHERE name IN (
                 "Module 1 Consented",
                 "Module 1 Eligibility Confirmed",
