@@ -30,7 +30,7 @@ class StudyNphBioBankFileExport(ToolBase):
 
     def run(self):
         if self.args.project == 'all-of-us-rdr-prod':
-            _logger.error(f'Participant generator cannot be used on project: {self.args.project}')
+            _logger.error(f'Nph Biobank Process cannot be used on project: {self.args.project}')
             return 1
         self.gcp_env.activate_sql_proxy()
         study_nph_biobank_file_export_job()
@@ -44,7 +44,7 @@ class StudyNphBioBankInventoryFileImport(ToolBase):
 
     def run(self):
         if self.args.project == 'all-of-us-rdr-prod':
-            _logger.error(f'Participant generator cannot be used on project: {self.args.project}')
+            _logger.error(f'Nph Biobank Process cannot be used on project: {self.args.project}')
             return 1
         self.gcp_env.activate_sql_proxy()
         study_nph_biobank_import_inventory_job()
