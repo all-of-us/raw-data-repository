@@ -598,6 +598,10 @@ class NphParticipantEventActivityDao(BaseDao):
     def from_client_json(self):
         pass
 
+    def insert_bulk(self, batch: List[Dict]) -> None:
+        with self.session() as session:
+            session.bulk_insert_mappings(self.model_type, batch)
+
 
 class NphEnrollmentEventTypeDao(BaseDao):
     def __init__(self):
@@ -671,6 +675,20 @@ class NphConsentEventDao(BaseDao):
         return obj.id
 
     def from_client_json(self):
+        pass
+
+
+class NphIntakeDao(BaseDao):
+    def __init__(self):
+        super().__init__(BaseDao)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+    def to_client_json(self, model):
         pass
 
 

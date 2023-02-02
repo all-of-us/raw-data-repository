@@ -1,0 +1,338 @@
+[
+  {
+    "resourceType": "Bundle",
+    "type": "collection",
+	"timestamp": "2023-01-17T17:41:26-05:00",
+    "entry": [
+        {
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/consent/100012101011102",
+            "resource": {
+                "resourceType": "Consent",
+				"identifier": [
+                    {
+                        "system": "https://nphdx.rti.org/api/fhir/module1/",
+                        "value": "consent/100000000"
+                    }
+                ],
+                "status": "active",
+				"patient": {
+					"reference": "patient/100000000"
+				},
+				"sourceAttachment": {
+					"title": "100012101011102_v1.pdf"
+				},
+				"policy": [
+					{
+						"authority": "NPH",
+						"uri": "Module1_Consent_v1.00"
+					}
+				],
+				"dateTime": "2023-01-17T17:41:26-05:00",
+                "scope": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/consentscope",
+                            "code": "research"
+                        }
+                    ]
+                },
+                "category": [
+                    {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/consentcategorycodes",
+                                "code": "research"
+                            }
+                        ]
+                    }
+                ],
+                "verification": [
+                    {
+                        "verificationDate": "2023-01-18",
+                        "verified": true,
+                        "verifiedWith": {
+                            "display": "StaffFirst StaffLast"
+                        }
+                    }
+                ],
+                "provision": {
+                    "type": "permit",
+					"dataPeriod": {
+						"start": "2023-01-17"
+					},
+					"action": [
+                        {
+                            "coding": [
+                                {
+                                    "system": "http://terminology.hl7.org/CodeSystem/consentaction",
+                                    "code": "collect",
+                                    "display": "I know and agree that:  My data will be stored in the Nutrition for Precision Health (NPH) databases. After my data are collected for the NPH study, they will be moved to the All of Us database to be used for future research, which could be on any topic, My blood, urine, saliva, stool, hair, and/or nail samples will be stored at the NPH BioBank located at the Mayo clinic and be used for future research. I may be asked to give more samples in the future. I can say yes or no. My contact information may be used to tell me about other studies. I can withdraw (quit) at any time. There is no penalty or loss of benefits if I withdraw."
+                                }
+                            ]
+                        }
+                    ],
+					"provision": [
+						{
+							"type": "permit",
+							"action": [
+								{
+									"coding": [
+										{
+											"system": "http://terminology.hl7.org/CodeSystem/consentaction",
+											"code": "collect",
+											"display": "Option 1: Geolocation (GPS) access during the 10 day study period"
+										}
+									]
+								}
+							]
+						},
+						{
+							"type": "deny",
+							"action": [
+								{
+									"coding": [
+										{
+											"system": "http://terminology.hl7.org/CodeSystem/consentaction",
+											"code": "use",
+											"display": "Option 2: Recontact for Future Studies"
+										}
+									]
+								}
+							]
+						},
+						{
+							"type": "permit",
+							"action": [
+								{
+									"coding": [
+										{
+											"system": "http://terminology.hl7.org/CodeSystem/consentaction",
+											"code": "use",
+											"display": "Option 3: Hair and Nail Tissue Collection"
+										}
+									]
+								}
+							]
+						}
+					]
+                }
+            }
+        },
+        {
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/patient/100012101011102",
+            "resource": {
+                "resourceType": "Patient",
+                "identifier": [
+                    {
+                        "system": "https://nphdx.rti.org/api/fhir/module1/",
+                        "value": "patient/100000000"
+                    }
+                ],
+                "name": [
+                    {
+                        "given": [
+                            "PatientFirst"
+                        ],
+                        "family": "PatientLast"
+                    }
+                ]
+            }
+        },
+		{
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/pairing/100012101011102",
+			"resource": {
+                "resourceType": "Encounter",
+                "status": "finished",
+                "class": {
+                    "system": "https://nphdx.rti.org/api/fhir/codesystem/study-stage",
+                    "code": "pairing"
+                },
+                "type": [
+                    {
+                        "coding": [
+                            {
+                                "system": "https://nphdx.rti.org/api/fhir/codesystem/paired-site",
+                                "code": "CAPPN_-_UCLA"
+                            }
+                        ]
+                    }
+                ],
+                "subject": {
+                    "reference": "patient/100000000"
+                },
+                "period": {
+                    "start": "2022-01-25T09:44:05-05:00"
+                }
+            }
+        }
+    ]
+},
+{
+    "resourceType": "Bundle",
+    "type": "collection",
+	"timestamp": "2023-01-17T17:55:26-05:00",
+    "entry": [
+        {
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/consent/100000001",
+            "resource": {
+                "resourceType": "Consent",
+				"identifier": [
+                    {
+                        "system": "https://nphdx.rti.org/api/fhir/module1/",
+                        "value": "consent/100000001"
+                    }
+                ],
+                "status": "active",
+				"patient": {
+					"reference": "patient/100000001"
+				},
+				"sourceAttachment": {
+					"title": "100000001_v1.pdf"
+				},
+				"policy": [
+					{
+						"authority": "NPH",
+						"uri": "Module1_Consent_v1.00"
+					}
+				],
+				"dateTime": "2023-01-17T17:55:26-05:00",
+                "scope": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/consentscope",
+                            "code": "research"
+                        }
+                    ]
+                },
+                "category": [
+                    {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/consentcategorycodes",
+                                "code": "research"
+                            }
+                        ]
+                    }
+                ],
+                "verification": [
+                    {
+                        "verificationDate": "2023-01-19",
+                        "verified": true,
+                        "verifiedWith": {
+                            "display": "StaffFirst StaffLast"
+                        }
+                    }
+                ],
+                "provision": {
+                    "type": "permit",
+					"dataPeriod": {
+						"start": "2023-01-17"
+					},
+					"action": [
+                        {
+                            "coding": [
+                                {
+                                    "system": "http://terminology.hl7.org/CodeSystem/consentaction",
+                                    "code": "collect",
+                                    "display": "I know and agree that:  My data will be stored in the Nutrition for Precision Health (NPH) databases. After my data are collected for the NPH study, they will be moved to the All of Us database to be used for future research, which could be on any topic, My blood, urine, saliva, stool, hair, and/or nail samples will be stored at the NPH BioBank located at the Mayo clinic and be used for future research. I may be asked to give more samples in the future. I can say yes or no. My contact information may be used to tell me about other studies. I can withdraw (quit) at any time. There is no penalty or loss of benefits if I withdraw."
+                                }
+                            ]
+                        }
+                    ],
+					"provision": [
+						{
+							"type": "permit",
+							"action": [
+								{
+									"coding": [
+										{
+											"system": "http://terminology.hl7.org/CodeSystem/consentaction",
+											"code": "collect",
+											"display": "Option 1: Geolocation (GPS) access during the 10 day study period"
+										}
+									]
+								}
+							]
+						},
+						{
+							"type": "deny",
+							"action": [
+								{
+									"coding": [
+										{
+											"system": "http://terminology.hl7.org/CodeSystem/consentaction",
+											"code": "use",
+											"display": "Option 2: Recontact for Future Studies"
+										}
+									]
+								}
+							]
+						},
+						{
+							"type": "permit",
+							"action": [
+								{
+									"coding": [
+										{
+											"system": "http://terminology.hl7.org/CodeSystem/consentaction",
+											"code": "use",
+											"display": "Option 3: Hair and Nail Tissue Collection"
+										}
+									]
+								}
+							]
+						}
+					]
+                }
+            }
+        },
+        {
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/patient/100000001",
+            "resource": {
+                "resourceType": "Patient",
+                "identifier": [
+                    {
+                        "system": "https://nphdx.rti.org/api/fhir/module1/",
+                        "value": "patient/100000001"
+                    }
+                ],
+                "name": [
+                    {
+                        "given": [
+                            "PatientFirst2"
+                        ],
+                        "family": "PatientLast2"
+                    }
+                ]
+            }
+        },
+		{
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/pairing/100000001",
+			"resource": {
+                "resourceType": "Encounter",
+                "status": "finished",
+                "class": {
+                    "system": "https://nphdx.rti.org/api/fhir/codesystem/study-stage",
+                    "code": "pairing"
+                },
+                "type": [
+                    {
+                        "coding": [
+                            {
+                                "system": "https://nphdx.rti.org/api/fhir/codesystem/paired-site",
+                                "code": "CAPPN_-_UCLA"
+                            }
+                        ]
+                    }
+                ],
+                "subject": {
+                    "reference": "patient/100000001"
+                },
+                "period": {
+                    "start": "2022-01-25T09:55:05-05:00"
+                }
+            }
+        }
+    ]
+}
+]
