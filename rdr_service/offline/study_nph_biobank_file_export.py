@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Iterable, Optional
 from json import dump
 
 from sqlalchemy import and_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, aliased
 from google.cloud import storage
 from rdr_service import config
 from rdr_service.api_util import open_cloud_file
@@ -115,14 +115,18 @@ def _get_code_obj_from_sex_id(sex_id: int) -> Code:
 
 def _get_ordered_samples(order_id: int) -> List[OrderedSample]:
     ordered_sample_dao = NphOrderedSampleDao()
+    child_sample = aliased(OrderedSample)
     with ordered_sample_dao.session() as session:
-        query = session.query(OrderedSample).filter(
-            and_(
+        query = (
+            session.query(OrderedSample).outerjoin(
+                child_sample,
+                child_sample.parent_sample_id == OrderedSample.id
+            ).filter(
                 OrderedSample.order_id == order_id,
-                OrderedSample.aliquot_id.isnot(None)
+                child_sample.id.is_(None)
+            ).options(
+                joinedload(OrderedSample.parent)
             )
-        ).options(
-            joinedload(OrderedSample.parent)
         )
         return query.all()
 
@@ -137,13 +141,13 @@ def _convert_ordered_samples_to_samples(
         supplemental_fields = ordered_sample.supplemental_fields if ordered_sample.supplemental_fields else {}
         notes = ", ".join([f"{key}: {value}" for key, value in supplemental_fields.items()])
         sample = {
-            "sampleID": ordered_sample.aliquot_id,
-            "specimenCode": ordered_sample.identifier,
-            "kitID": order_id if ordered_sample.identifier.startswith("ST") else "",
+            "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
+            "specimenCode": (ordered_sample.identifier or ordered_sample.test),
+            "kitID": order_id if (ordered_sample.identifier or ordered_sample.test).startswith("ST") else "",
             "volume": ordered_sample.volume,
             "volumeUOM": ordered_sample.volumeUnits,
             "collectionDateUTC": _format_timestamp(ordered_sample.collected),
-            "processingDateUTC": _format_timestamp(ordered_sample.parent.finalized),
+            "processingDateUTC": _format_timestamp((ordered_sample.parent or ordered_sample).finalized),
             "cancelledFlag": "Y" if ordered_cancelled else "N",
             "notes": notes,
         }
@@ -176,7 +180,7 @@ def _convert_orders_to_collections(
     collections = []
     for order in orders:
         samples = _convert_ordered_samples_to_samples(
-            order_id=order.id,
+            order_id=order.nph_order_id,
             ordered_samples=_get_ordered_samples(order_id=order.id),
             ordered_cancelled=order.status == "cancelled"
         )
