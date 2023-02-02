@@ -21,7 +21,8 @@ class EnrollmentInterface:
             'research_id': aou_participant.researchId,
         }
 
-        self.participant_dao.insert(self.participant_dao.model_type(**insert_params))
+        self.participant_dao.insert_participant_with_random_biobank_id(
+            self.participant_dao.model_type(**insert_params))
         self.create_rex_participant_mapping(aou_pid, cln_study_pid)
 
     def create_rex_participant_mapping(self, aou_pid, study_pid):

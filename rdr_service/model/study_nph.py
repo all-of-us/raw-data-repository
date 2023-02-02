@@ -1,6 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, BigInteger, String, ForeignKey, Index, event
-)
+    Column, Integer, BigInteger, String, ForeignKey, Index, event)
 
 from sqlalchemy.dialects.mysql import TINYINT, JSON
 from sqlalchemy.orm import relation
@@ -20,8 +19,8 @@ class Participant(NphBase):
     ignore_flag = Column(TINYINT, default=0)
     disable_flag = Column(TINYINT, default=0)
     disable_reason = Column(String(1024))
-    biobank_id = Column(BigInteger)
-    research_id = Column(BigInteger)
+    biobank_id = Column(BigInteger, nullable=False, unique=True)
+    research_id = Column(BigInteger, unique=True)
 
 
 event.listen(Participant, "before_insert", model_insert_listener)
