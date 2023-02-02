@@ -1,3 +1,4 @@
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.study_nph_dao import NphParticipantDao
 from rdr_service.config import NPH_STUDY_ID, AOU_STUDY_ID
@@ -10,12 +11,16 @@ class EnrollmentInterface:
 
     def create_study_participant(self, aou_pid, ancillary_pid):
         cln_study_pid = int(ancillary_pid[4:])
-        # TODO: Implement random biobank/research IDs.
+
+        # We have to use the AoU research ID
+        aou_participant_dao = ParticipantDao()
+        aou_participant = aou_participant_dao.get(aou_pid)
         insert_params = {
             'id': cln_study_pid,
             'biobank_id': int(f"1{cln_study_pid}"),
-            'research_id': int(f"2{cln_study_pid}"),
+            'research_id': aou_participant.researchId,
         }
+
         self.participant_dao.insert(self.participant_dao.model_type(**insert_params))
         self.create_rex_participant_mapping(aou_pid, cln_study_pid)
 
