@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from io import StringIO
 from typing import Dict, Union, Any, Iterator, Iterable
@@ -10,6 +11,9 @@ from rdr_service.model.study_nph_enums import StoredSampleStatus
 from rdr_service.model.study_nph import StoredSample
 from rdr_service.dao.study_nph_dao import NphStoredSampleDao
 from rdr_service.offline.biobank_samples_pipeline import DataError
+
+
+_logger = logging.getLogger("rdr_logger")
 
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -94,6 +98,7 @@ def main():
     )
     for csv_filepath in latest_csv_files:
         import_biobank_inventory_into_stored_samples(csv_filepath)
+        _logger.info(f"Successfully imported biobank samples from '{csv_filepath}'")
 
 
 if __name__=="__main__":
