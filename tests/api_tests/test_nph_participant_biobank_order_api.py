@@ -70,21 +70,24 @@ BLOOD_SAMPLE = {
         "id": "123",
         "identifier": "LHPSTP1",
         "container": "1.4mL Matrix Tube (500 uL)",
-        "volume": "450uL",
+        "volume": "450",
+        "units": "uL",
         "description": "1.4 mL matrix tubes",
         "collected": "2022-11-03T09:45:49Z"
     }, {
         "id": "456",
         "identifier": "LHPSTP1",
         "container": "1.4mL Matrix Tube (1000 uL)",
-        "volume": "970uL",
+        "volume": "970",
+        "units": "uL",
         "description": "1.4 mL matrix tubes",
         "collected": "2022-11-03T09:45:49Z"
     }, {
         "id": "789",
         "identifier": "LHPSTP1",
         "container": "1.4mL Matrix Tube (1000 uL)",
-        "volume": "970uL",
+        "volume": "970",
+        "units": "uL",
         "description": "1.4 mL matrix tubes",
         "collected": "2022-11-03T09:45:49Z"
     }, ],

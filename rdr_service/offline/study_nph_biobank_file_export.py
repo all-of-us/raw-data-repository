@@ -4,9 +4,9 @@ from collections import defaultdict
 from functools import lru_cache
 from typing import List, Dict, Any, Iterable, Optional
 from json import dump
-from re import findall
 
 from sqlalchemy import and_
+from sqlalchemy.orm import joinedload, aliased
 from google.cloud import storage
 from rdr_service import config
 from rdr_service.api_util import open_cloud_file
@@ -39,6 +39,10 @@ from rdr_service.dao.study_nph_dao import (
 
 # FILE_BUFFER_SIZE_IN_BYTES = 1024 * 1024 # 1MB File Buffer
 NPH_ANCILLARY_STUDY_ID = 2
+
+
+def _format_timestamp(timestamp: datetime) -> str:
+    return timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') if timestamp else ''
 
 
 def _get_nph_participant(participant_id: int) -> NphParticipant:
@@ -111,13 +115,20 @@ def _get_code_obj_from_sex_id(sex_id: int) -> Code:
 
 def _get_ordered_samples(order_id: int) -> List[OrderedSample]:
     ordered_sample_dao = NphOrderedSampleDao()
+    child_sample = aliased(OrderedSample)
     with ordered_sample_dao.session() as session:
-        return session.query(OrderedSample).filter(
-            and_(
+        query = (
+            session.query(OrderedSample).outerjoin(
+                child_sample,
+                child_sample.parent_sample_id == OrderedSample.id
+            ).filter(
                 OrderedSample.order_id == order_id,
-                OrderedSample.aliquot_id.isnot(None)
+                child_sample.id.is_(None)
+            ).options(
+                joinedload(OrderedSample.parent)
             )
-        ).all()
+        )
+        return query.all()
 
 
 def _convert_ordered_samples_to_samples(
@@ -129,16 +140,14 @@ def _convert_ordered_samples_to_samples(
     for ordered_sample in ordered_samples:
         supplemental_fields = ordered_sample.supplemental_fields if ordered_sample.supplemental_fields else {}
         notes = ", ".join([f"{key}: {value}" for key, value in supplemental_fields.items()])
-        extract_volume_units = findall("[a-zA-Z]+", ordered_sample.volume or "")
-        volume_units = extract_volume_units[-1] if extract_volume_units else ""
         sample = {
-            "sampleID": ordered_sample.aliquot_id,
-            "specimenCode": ordered_sample.identifier,
-            "kitID": order_id if ordered_sample.identifier.startswith("ST") else "",
+            "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
+            "specimenCode": (ordered_sample.identifier or ordered_sample.test),
+            "kitID": order_id if (ordered_sample.identifier or ordered_sample.test).startswith("ST") else "",
             "volume": ordered_sample.volume,
-            "volumeUOM": volume_units,
-            "collectionDateUTC": ordered_sample.collected,
-            "processingDateUTC": ordered_sample.finalized,
+            "volumeUOM": ordered_sample.volumeUnits,
+            "collectionDateUTC": _format_timestamp(ordered_sample.collected),
+            "processingDateUTC": _format_timestamp((ordered_sample.parent or ordered_sample).finalized),
             "cancelledFlag": "Y" if ordered_cancelled else "N",
             "notes": notes,
         }
@@ -171,7 +180,7 @@ def _convert_orders_to_collections(
     collections = []
     for order in orders:
         samples = _convert_ordered_samples_to_samples(
-            order_id=order.id,
+            order_id=order.nph_order_id,
             ordered_samples=_get_ordered_samples(order_id=order.id),
             ordered_cancelled=order.status == "cancelled"
         )

@@ -440,7 +440,8 @@ class NphOrderedSampleDao(UpdatableDao):
                              identifier=aliquot.identifier,
                              collected=aliquot.collected,
                              container=aliquot.container,
-                             volume=aliquot.volume
+                             volume=aliquot.volume,
+                             volumeUnits=aliquot.units
                              )
 
     @staticmethod
