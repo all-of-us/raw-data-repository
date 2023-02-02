@@ -37,6 +37,8 @@ class StudyEnrollmentTest(BaseTestCase):
         pid_mapping = rex_dao.get(1)
         self.assertEqual(pid_mapping.primary_participant_id, 123123123)
         self.assertEqual(pid_mapping.ancillary_participant_id, 578448930)
+        self.assertEqual(pid_mapping.primary_study_id, 1)
+        self.assertEqual(pid_mapping.ancillary_study_id, 2)
 
         # Test NPH Inserted Correctly
         nph_dao = NphParticipantDao()
