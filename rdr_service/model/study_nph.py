@@ -154,6 +154,7 @@ class EnrollmentEventType(NphBase):
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT, default=0)
     name = Column(String(128))
+    source_name = Column(String(128))
     rule_codes = Column(JSON, nullable=True)
     version = Column(String(128), nullable=True)
 
@@ -187,6 +188,7 @@ class PairingEventType(NphBase):
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT, default=0)
     name = Column(String(1024))
+    source_name = Column(String(128))
     rule_codes = Column(JSON, nullable=True)
 
 
@@ -222,6 +224,7 @@ class ConsentEventType(NphBase):
     disable_flag = Column(TINYINT, default=0)
     disable_reason = Column(String(1024), nullable=True)
     name = Column(String(1024))
+    source_name = Column(String(128))
     rule_codes = Column(JSON, nullable=True)
     version = Column(String(128), nullable=True)
 
