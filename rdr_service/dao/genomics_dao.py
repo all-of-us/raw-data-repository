@@ -4321,7 +4321,7 @@ class GenomicQueriesDao(BaseDao):
                     GenomicSetMember.sampleId.in_(sample_ids)
                 )
 
-            return query.all()
+            return query.distinct().all()
 
     def get_data_ready_for_w2w_manifest(self, cvl_id: str, sample_ids=None):
         gc_site_id = self.transform_cvl_site_id(cvl_id)
