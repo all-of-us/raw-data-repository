@@ -6,7 +6,6 @@ from rdr_service.config import NPH_STUDY_ID, AOU_STUDY_ID
 
 class EnrollmentInterface:
     def __init__(self, study_code):
-        # Maps PTSC study IDs to ancillary study ID and study participant dao
         self.study_code = study_code
 
     def create_study_participant(self, aou_pid, ancillary_pid):
