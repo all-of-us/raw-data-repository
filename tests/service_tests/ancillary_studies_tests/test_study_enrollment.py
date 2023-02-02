@@ -27,20 +27,22 @@ class StudyEnrollmentTest(BaseTestCase):
             researchId=12345
         )
 
-        study_interface = EnrollmentInterface('NPH-1000')
-        study_interface.create_study_participant(
+        interface = EnrollmentInterface('NPH-1000')
+        interface.create_study_participant(
             aou_pid=aou_pid,
             ancillary_pid='1000578448930'
         )
+        # Test Rex inserted correctly
         rex_dao = RexParticipantMappingDao()
         pid_mapping = rex_dao.get(1)
         self.assertEqual(pid_mapping.primary_participant_id, 123123123)
         self.assertEqual(pid_mapping.ancillary_participant_id, 578448930)
 
+        # Test NPH Inserted Correctly
         nph_dao = NphParticipantDao()
         nph_participant = nph_dao.get(578448930)
-        pid_mapping = rex_dao.get(1)
-        self.assertEqual(pid_mapping.primary_participant_id, 123123123)
-        self.assertEqual(pid_mapping.ancillary_participant_id, 578448930)
         self.assertIsNotNone(nph_participant)
         self.assertEqual(nph_participant.research_id, 12345)
+        self.assertIsNotNone(nph_participant.biobank_id)
+        self.assertGreater(nph_participant.biobank_id, 10000000000)
+        self.assertLess(nph_participant.biobank_id, 99999999999)
