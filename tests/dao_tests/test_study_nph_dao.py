@@ -145,21 +145,24 @@ TEST_URINE_SAMPLE = {
         "id": "123",
         "identifier": "RU1",
         "container": "1.4mL Matrix Tube (1000 uL)",
-        "volume": "970uL",
+        "volume": "970",
+        "units": "uL",
         "description": "1.4 mL matrix tubes",
         "collected": "2022-11-03T09:45:49Z"
     }, {
         "id": "456",
         "identifier": "RU2",
         "container": "6mL Matrix Tube (5 mL)",
-        "volume": "3mL",
+        "volume": "3",
+        "units": "mL",
         "description": "1.4 mL matrix tubes",
         "collected": "2022-11-03T09:45:49Z"
     }, {
         "id": "789",
         "identifier": "RU2",
         "container": "6mL Matrix Tube (5 mL)",
-        "volume": "3mL",
+        "volume": "3",
+        "units": "mL",
         "description": "1.4 mL matrix tubes",
         "collected": "2022-11-03T09:45:49Z"
     }, ],
@@ -917,7 +920,8 @@ class NphOrderedSampleDaoTest(BaseTestCase):
             "finalized": finalized_ts.strftime("%Y-%m-%d %H:%M:%S"),
             "aliquot_id": str(uuid4()),
             "container": "container 1",
-            "volume": "volume 2",
+            "volume": "25",
+            "volumeUnits": "mL",
             "status": "2 aliquots restored",
             "supplemental_fields": None,
             "identifier": None
@@ -958,6 +962,7 @@ class NphOrderedSampleDaoTest(BaseTestCase):
         self.assertEqual(aos.collected, aliquot.collected)
         self.assertEqual(aos.container, aliquot.container)
         self.assertEqual(aos.volume, aliquot.volume)
+        self.assertEqual(aos.volumeUnits, aliquot.units)
 
     def test_fetch_supplemental_fields(self):
         request = json.loads(json.dumps(TEST_URINE_SAMPLE), object_hook=lambda d: Namespace(**d))
