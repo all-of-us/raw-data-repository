@@ -5639,6 +5639,52 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(related_incident.slack_notification, 1)
         self.assertIsNotNone(related_incident.slack_notification_date)
 
+    def test_aw2_wgs_pipeline_id_validation(self):
+        # Create the fake ingested data
+        self._create_fake_datasets_for_gc_tests(
+            2,
+            genomic_workflow_state=GenomicWorkflowState.AW1
+        )
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        subfolder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
+
+        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        pytz.timezone('US/Central').localize(test_date)
+
+        with clock.FakeClock(test_date):
+            test_file_name = create_ingestion_test_file(
+                'RDR_AoU_SEQ_TestDataManifestFailedPipelineID.csv',
+                bucket_name,
+                folder=subfolder
+            )
+
+        self._update_test_sample_ids()
+
+        # run the GC Metrics Ingestion workflow via cloud task
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.METRICS_INGESTION,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": test_date.isoformat(),
+                "manifest_type": GenomicManifestTypes.AW1,
+                "file_path": f"{bucket_name}/{subfolder}/{test_file_name}"
+            }
+        }
+
+        self._create_stored_samples([(2, 1002)])
+
+        # Execute from cloud task
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # run_id = 1 & 2
+        current_run = list(filter(lambda x: x.jobId == GenomicJob.METRICS_INGESTION, self.job_run_dao.get_all()))[0]
+        self.assertEqual(current_run.runResult, GenomicSubProcessResult.ERROR)
+
+        related_incident = list(filter(lambda x: 'FILE_VALIDATION_FAILED_VALUES' in x.code, self.incident_dao.get_all()))[0]
+        self.assertEqual(related_incident.message, 'METRICS_INGESTION: Value for Pipeline ID is invalid: just_dragen')
+        self.assertEqual(related_incident.slack_notification, 1)
+        self.assertIsNotNone(related_incident.slack_notification_date)
+
     def test_aw1_genomic_missing_header_cleaned_inserted(self):
         # Setup Test file
         gc_manifest_file = open_genomic_set_file("Genomic-GC-Manifest-Workflow-Missing-Header.csv")

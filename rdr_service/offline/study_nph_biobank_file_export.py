@@ -1,4 +1,5 @@
 # Script to create biobank file export and store the file in GCS Bucket
+import logging
 from datetime import datetime
 from collections import defaultdict
 from functools import lru_cache
@@ -35,6 +36,9 @@ from rdr_service.dao.study_nph_dao import (
     NphBiobankFileExportDao,
     NphSampleExportDao
 )
+
+
+_logger = logging.getLogger("rdr_logger")
 
 
 # FILE_BUFFER_SIZE_IN_BYTES = 1024 * 1024 # 1MB File Buffer
@@ -313,6 +317,7 @@ def main():
     with open_cloud_file(orders_filename, mode='w') as dest:
         dump(orders_file_drop, dest, default=str)
 
+    _logger.info(f"Created Biobank export file: '{orders_filename}'")
     sample_updates_for_orders = _get_all_sample_updates_related_to_orders(orders)
     biobank_file_export = _create_biobank_file_export_reference(bucket_name, json_filepath)
     _create_sample_export_references_for_sample_updates(biobank_file_export.id, sample_updates_for_orders)

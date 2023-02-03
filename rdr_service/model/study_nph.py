@@ -5,7 +5,8 @@ from sqlalchemy.dialects.mysql import TINYINT, JSON
 from sqlalchemy.orm import relation
 
 from rdr_service.model.base import NphBase, model_insert_listener, model_update_listener
-from rdr_service.model.utils import UTCDateTime
+from rdr_service.model.study_nph_enums import StoredSampleStatus
+from rdr_service.model.utils import UTCDateTime, Enum
 
 
 class Participant(NphBase):
@@ -22,6 +23,8 @@ class Participant(NphBase):
     biobank_id = Column(BigInteger, nullable=False, unique=True)
     research_id = Column(BigInteger, unique=True)
 
+
+Index("participant_biobank_id", Participant.biobank_id)
 
 event.listen(Participant, "before_insert", model_insert_listener)
 event.listen(Participant, "before_update", model_update_listener)
@@ -281,3 +284,22 @@ class SampleExport(NphBase):
     ignore_flag = Column(TINYINT, default=0)
     export_id = Column(BigInteger, ForeignKey("biobank_file_export.id"))
     sample_update_id = Column(BigInteger, ForeignKey("sample_update.id"))
+
+
+class StoredSample(NphBase):
+    __tablename__ = "stored_sample"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    biobank_modified = Column(UTCDateTime)
+    biobank_id = Column(BigInteger, ForeignKey("participant.biobank_id"))
+    ignore_flag = Column(TINYINT, default=0)
+    sample_id = Column(BigInteger, index=True)
+    lims_id = Column(String(64))
+    status = Column(Enum(StoredSampleStatus), default=StoredSampleStatus.SHIPPED)
+    disposition = Column(String(256))
+
+
+event.listen(StoredSample, "before_insert", model_insert_listener)
+event.listen(StoredSample, "before_update", model_update_listener)

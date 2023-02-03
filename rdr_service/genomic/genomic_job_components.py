@@ -241,7 +241,16 @@ class GenomicFileIngester:
 
                 # pylint: disable=broad-except
                 except Exception as e:
-                    logging.error(f'Exception occured when ingesting manifest {current_file.filePath}: {e}')
+                    logging.error(f'Exception occurred when ingesting manifest {current_file.filePath}: {e}')
+                    self.controller.create_incident(
+                        source_job_run_id=self.controller.job_run.id,
+                        source_file_processed_id=current_file.id,
+                        code=GenomicIncidentCode.MANIFEST_INGESTION_EXCEPTION.name,
+                        message=f"{self.job_id.name}: Exception occurred when ingesting manifest "
+                                f"{current_file.filePath}: {e}",
+                        slack=True,
+                        manifest_file_name=current_file.fileName
+                    )
                     self.file_queue.popleft()
                 except IndexError:
                     logging.info('No files left in file queue.')
@@ -2123,6 +2132,12 @@ class GenomicFileValidator:
                     'pipelineid': [
                         'cidr_egt_1',
                         'original_egt'
+                    ]
+                },
+                GENOME_TYPE_WGS: {
+                    'pipelineid': [
+                        config.GENOMIC_DEPRECATED_WGS_DRAGEN,
+                        config.GENOMIC_UPDATED_WGS_DRAGEN
                     ]
                 },
             },

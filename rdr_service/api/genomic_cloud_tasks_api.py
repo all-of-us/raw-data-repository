@@ -4,7 +4,6 @@ from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import NotFound
 
-from rdr_service.cloud_utils.gcp_google_pubsub import publish_pdr_pubsub
 from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
 from rdr_service.config import getSetting, getSettingJson, DRC_BROAD_AW4_SUBFOLDERS, GENOMIC_AW5_WGS_SUBFOLDERS, \
@@ -652,10 +651,6 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
             for method in rebuild_map[table]:
                 method(batch)
             logging.info('Rebuild complete.')
-
-            # Publish PDR data-pipeline pub-sub event.
-            publish_pdr_pubsub(table, action='upsert', pk_columns=['id'], pk_values=batch)
-            logging.info('PubSub notification sent.')
 
             self.create_cloud_record()
             logging.info('Complete.')
