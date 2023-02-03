@@ -17,7 +17,8 @@ class NphIntakeAPITest(BaseTestCase):
             )
 
         self.nph_data_gen.create_database_consent_event_type(
-            name='Module 1'
+            name='Module 1',
+            source_name='module1'
         )
         self.nph_data_gen.create_database_pairing_event_type(
             name="INITIAL"
@@ -45,4 +46,3 @@ class NphIntakeAPITest(BaseTestCase):
 
         self.send_post('nph/Intake', request_data=consent_json)
 
-        print('Darryl')

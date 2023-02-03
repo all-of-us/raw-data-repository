@@ -152,7 +152,7 @@
                         "coding": [
                             {
                                 "system": "https://nphdx.rti.org/api/fhir/codesystem/paired-site",
-                                "code": "CAPPN_-_UCLA"
+                                "code": "nph-test-site-1"
                             }
                         ]
                     }
@@ -320,7 +320,7 @@
                         "coding": [
                             {
                                 "system": "https://nphdx.rti.org/api/fhir/codesystem/paired-site",
-                                "code": "CAPPN_-_UCLA"
+                                "code": "nph-test-site-1"
                             }
                         ]
                     }
