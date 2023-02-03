@@ -271,6 +271,7 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
         json = self.get_request_json()
         self._process_request(json)
         self._record_request(json)
+        return json
 
     def _process_request(self, json):
         update_payload = PatientPayload(json)
