@@ -5,18 +5,22 @@
 # Manage google PubSub services
 # https://cloud.google.com/pubsub/docs/reference/rest
 #
-from datetime import datetime
-from typing import List
 import base64
 import json
 import logging
+import os
+from datetime import datetime
+from typing import List
 
 from apiclient import errors
+from dictalchemy import DictableModel
 from googleapiclient import discovery
+from sqlalchemy import inspect
+from sqlalchemy.exc import SQLAlchemyError
 
+from rdr_service import config
 from rdr_service.config import GAE_PROJECT
 from rdr_service.services.system_utils import retry_func, list_chunks
-
 
 _INSTANCE_MAPPING = {
     'all-of-us-rdr-prod': 'all-of-us-rdr-prod:us-central1:rdrbackupdb-b',
@@ -25,44 +29,32 @@ _INSTANCE_MAPPING = {
     'all-of-us-rdr-sandbox': 'all-of-us-rdr-sandbox:us-central1:rdrmaindb'
 }
 
-_ALLOWED_PROJECTS = ['pmi-drc-api-test', 'all-of-us-rdr-stable', 'all-of-us-rdr-sandbox']
+# TODO: Add production project id after testing in Stable.
+# TODO: Add Stable after more testing has been completed in Test.
 
+# _PIPELINE_CONFIG = config.getSettingJson('pdr_pipeline')
+# _ALLOWED_PROJECTS = _PIPELINE_CONFIG['allowed_projects']
+# PUBSUB_EXCLUDED_TABLE_LIST = _PIPELINE_CONFIG['excluded_table_list']
 
-class GCPGooglePubSubTopic:
-    """ Represents a Google PubSub topic """
+def publish_pubsub_message(project_id: str, topic: str, message: dict):
+    """
+    Publish a pub-sub topic message. Should only be called by submit_pipeline_pubsub_msg().
+    https://cloud.google.com/pubsub/docs/reference/rest/v1/projects.topics/publish
+    :param message: Data to publish to pub-sub topic.
+    :return: operation result
+    """
+    service = discovery.build('pubsub', 'v1', cache_discovery=True)
+    topic_path = f'projects/{project_id}/topics/{topic}'
+    payload = json.dumps(message).encode('utf-8')
+    body = {
+        "messages": [
+            {'data': base64.b64encode(payload).decode('utf-8')}
+        ]
+    }
+    req = service.projects().topics().publish(topic=topic_path, body=body)
+    resp = req.execute()
+    return resp
 
-    service = None
-    project = None
-    topic = None
-    topic_path = None
-
-    def __init__(self, project_id: str, topic: str):
-        """
-        :param project_id: Google project id to use
-        :param topic: Pub-sub topic id
-        """
-        self.service = discovery.build('pubsub', 'v1', cache_discovery=False)
-        self.project = project_id
-        self.topic = topic
-        self.topic_path = f'projects/{self.project}/topics/{self.topic}'
-
-    def publish(self, message: dict):
-        """
-        Publish a pub-sub message to an existing topic.
-        https://cloud.google.com/pubsub/docs/reference/rest/v1/projects.topics/publish
-        :param message: Data to publish to pub-sub topic.
-        :return: operation result
-        """
-        payload = json.dumps(message).encode('utf-8')
-        body = {
-            "messages": [
-                {'data': base64.b64encode(payload).decode('utf-8')}
-            ]
-        }
-
-        req = self.service.projects().topics().publish(topic=self.topic_path, body=body)
-        resp = req.execute()
-        return resp
 
 def _validate_pk_values(values_list: List, expected_len=1) -> List[List[str]] or None:
     """
@@ -83,10 +75,10 @@ def _validate_pk_values(values_list: List, expected_len=1) -> List[List[str]] or
     #   pk_values = [['012345678', '1'], ['012345678', '2'] , ['456789012', '1']]
 
     converted_list = []
-    # Convert a single-dimensional list of ints or strings to make it a nested list, per the required pubsub data schema
+    # Convert single-dimensional list of ints or strings to make it a nested list, per the required pubsub data schema
     if all(isinstance(v, (int, str)) for v in values_list):
         converted_list = [[str(val)] for val in values_list]
-    # Received a list of lists/tuples, but confirm all elements of the sublists are ints or strings; convert to all str
+    # Received a list of lists/tuples, but confirm all elements of the sublists are ints or strings; convert all to str
     elif all(isinstance(v, (list, tuple)) for v in values_list):
         for sub_list in values_list:
             if all(isinstance(v, (int, str)) for v in sub_list):
@@ -105,11 +97,19 @@ def _validate_pk_values(values_list: List, expected_len=1) -> List[List[str]] or
 
     return converted_list
 
+def log_pipeline_error(msg: str, response_only=False):
+    """ Log message and setup return dict """
+    if response_only is False:
+        logging.error(msg)
+    resp = {'error': msg}
+    return resp
 
-def publish_pdr_pubsub(table: str, action: str, pk_columns : List[str] = [],
-                       pk_values: List = [], project=GAE_PROJECT):
+def submit_pipeline_pubsub_msg(database: str = 'rdr', table: str = None, action: str = 'None',
+                               pk_columns : List[str] = None, pk_values: List = None, project=GAE_PROJECT):
     """
-    Publish database table updates to the 'data-pipeline' pub-sub topic.
+    Publish database table updates to the 'data-pipeline' pub-sub topic by submitting a pub/sub message.
+    # Note: We want this function to succeed/fail without raising any exceptions.
+    :param database: Database name, default = 'rdr'.
     :param table: Table name
     :param action: must be one of 'insert', 'update', 'delete' or 'upsert'.
     :param pk_columns: List of names of primary key columns in table
@@ -118,30 +118,42 @@ def publish_pdr_pubsub(table: str, action: str, pk_columns : List[str] = [],
                       the pk_values data into its expected format for the pubsub data schema
     :param project:  The project name.  Default is the GAE_PROJECT from the local app config
     """
-    last_response = None
-    if project not in _ALLOWED_PROJECTS:
-        return None
 
-    if action not in ['insert', 'update', 'delete', 'upsert']:
-        logging.error('Invalid database action value')
-        return None
+    pdr_config = config.getSettingJson('pdr_pipeline')
+    allowed_projects = pdr_config['allowed_projects']
 
-    if not len(pk_columns) or not all(isinstance(col, str) for col in pk_columns):
-        logging.error(f'pk_columns list {pk_columns} is invalid or empty, only string values of column names expected')
-        return None
-
+    # Allow this result to be calculated first for potential logging in unittest mode
     validated_pk_values = _validate_pk_values(pk_values, expected_len=len(pk_columns)) or []
     if not len(validated_pk_values):
-        logging.error(f'pk_values argument {pk_values} contains invalid data types or is empty')
-        return None
+        log_pipeline_error(f'pipeline: {table} pk_values {pk_values} for pk_columns {pk_columns} failed validation',
+                           response_only=os.environ["UNITTEST_FLAG"] != "1")
+    # If project is not allowed or is localhost, return error message
+    if project not in allowed_projects:
+        return log_pipeline_error(f'pipeline: project {project} not allowed.', True)
 
-    # Publish PubSub event for new RDR to PDR pipeline. Payload data will be validated by the pub-sub topic schema.
-    topic = GCPGooglePubSubTopic(project, 'data-pipeline')
+    if not database:
+        database = 'rdr'
+    if not table:
+        return log_pipeline_error('pipeline: invalid database table name')
+    if action not in ['insert', 'update', 'delete', 'upsert']:
+        return log_pipeline_error('pipeline: invalid database action value')
+    if not pk_columns or not all(isinstance(col, str) for col in pk_columns):
+        return log_pipeline_error(f'pipeline: primary key column list {pk_columns} is invalid or empty')
+    if not pk_values or not isinstance(pk_values, (list, tuple)):
+        return log_pipeline_error('pipeline: primary key values argument is invalid or empty')
+
+    # Make sure that the length of the first value list is the same length as the PK columns list.
+    if len(pk_columns) != len(validated_pk_values[0]):
+        return log_pipeline_error('pipeline: primary key columns and values are mismatched.')
+
     # Limit the number of pk_values passed in any pubsub event to 500 at a time
+    count = 0
+    last_response = {'error': 'pipeline: should not ever see this message'}
     for pk_values_batch in list_chunks(validated_pk_values, 500):
+        # Warning: Do not change this structure without changing the defined schema in the pub/sub topic in GCP.
         data = {
             "instance": _INSTANCE_MAPPING[project],
-            "database": "rdr",
+            "database": database,
             "table": table,
             "timestamp": datetime.utcnow().isoformat(),
             "action": action,
@@ -149,9 +161,121 @@ def publish_pdr_pubsub(table: str, action: str, pk_columns : List[str] = [],
             "pk_values": pk_values_batch
         }
         try:
-            last_response = retry_func(topic.publish, backoff_amount=0.1, message=data)
-            logging.info(f'Published pubsub event.  Response: {last_response}')
+            # sample response: {'messageIds': ['6516999682321403']}
+            last_response = retry_func(publish_pubsub_message, backoff_amount=0.1, project_id=project,
+                                       topic='data-pipeline', message=data)
+            count += 1
         except errors.HttpError as e:
-            logging.error(e)
+            return log_pipeline_error(str(e))
 
+    logging.info(f'pipeline: submitted {count} pubsub messages.')
     return last_response
+
+
+def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableModel]], database:str,
+                                          parents: List[str] = None):
+    """
+    Take a SQLAlchemy model object with data and submit Pub/Sub messages for it and any
+    child model objects. Recursive function.
+    :param models: A DictableModel object or List of DictableModel objects with data
+    :param database: Database name used by this model. See base_dao.py:get_connection_database_name()
+    :param parents: A list of models we have already processed. This is used to make sure we don't enter a
+                    circular recursion loop.
+    """
+    pdr_config = config.getSettingJson('pdr_pipeline')
+    allowed_projects = pdr_config['allowed_projects']
+    excluded_table_list = pdr_config['excluded_table_list']
+
+    # Allow code to run in _ALLOWED_PROJECTS or if running locally for all unittests, otherwise just return.
+    if GAE_PROJECT != 'localhost' and GAE_PROJECT not in allowed_projects:
+        return None
+    if not models:
+        return parents
+    if not parents:
+        parents = list()
+
+    def iter_children(m, r, p):
+        # Recursively handle any child tables if present.  This is for API calls like BioBank orders
+        # where the order sample records are saved to the database at the same time as the order record.
+        if not r:
+            return
+        for relation in r:
+            try:
+                chld = getattr(m, relation.key, None)
+            except SQLAlchemyError:
+                continue
+            # 'chld' can be a list of model objects or a single model object.
+            if chld:
+                # Skip excluded tables.
+                if isinstance(chld, list):
+                    if chld[0].__tablename__ in excluded_table_list or chld[0].__tablename__ in p:
+                        continue
+                else:
+                    if chld.__tablename__ in excluded_table_list or chld.__tablename__ in p:
+                        continue
+
+                submit_pipeline_pubsub_msg_from_model(chld, database=database, parents=p)
+
+    if isinstance(models, DictableModel):
+        models = [models]
+    if not isinstance(models, List):
+        return parents
+
+    tablename = None
+    pk_columns = None
+    pk_values = list()
+    # Temporary/forced logging during unittest to profile pipeline activity (logging level must be ERROR)
+    # if len(models):
+    #    log_pipeline_error(f'pipeline: Inspection starting for {[m.__tablename__ for m in models][0]}')
+
+    # The models in the list will all be of the same model class. Pub/Sub messages for children
+    # will be sent before the parent.
+    for model in models:
+        cls_mapper = inspect(model.__class__)
+        tablename = model.__tablename__
+        # Setup PK column names and PK values for this record.
+        if not pk_columns:
+            pk_columns = [c.name for c in cls_mapper.primary_key]
+        # Get the primary key column values. Sometimes it's easy, sometimes we need to look at the object properties.
+        ident = inspect(model).identity
+        if not ident:
+            # Try extracting the PK values by 'getting' the model object properties.
+            ident = list()
+            for pkc in pk_columns:
+                try:
+                    pc = next((k for k in cls_mapper.c.keys() if cls_mapper.c[k].name == pkc), None)
+                except KeyError:
+                    continue
+                if pc:
+                    v_ = getattr(model, pc)
+                    if v_ is None:
+                        # If one of the primary key values is null, then we don't want to add it to the pub/sub message.
+                        break
+                    ident.append(v_)
+        if len(ident) != len(pk_columns):
+            # If we reach this point, it's most likely that is an update to the parent record only and not the
+            # child records. During testing, this is reached only during PUT API calls.
+            continue
+        pk_values.append(list(ident))
+        # # It's Ok we are overwriting the PK values here, we want the child PK values to be correct.
+        # parents[model.__tablename__] = dict(zip(pk_columns, pk_values))
+        if model.__tablename__ not in parents:
+            parents.append(model.__tablename__)
+        # See if we have any child model records [ONE-TO-ONE or ONE-MANY] and submit pub/sub messages if we do.
+        iter_children(model, cls_mapper.relationships, parents)
+
+    # Submit a pipeline Pub/Sub event for this model record, if the primary key data looks valid
+    if not pk_columns:
+        log_pipeline_error(f'Empty pk_columns list after inspection of {database}.{tablename}',
+                           response_only=os.environ["UNITTEST_FLAG"] != "1")
+    elif not pk_values:
+        log_pipeline_error(f'Empty pk_values list for pubsub upsert message for {database}.{tablename}',
+                           response_only=os.environ["UNITTEST_FLAG"] != "1")
+    else:
+        # Temporary/forced logging to profile pipeline activity during unittests (logging level must be ERROR)
+        # log_pipeline_error(f'pipeline: pubsub {database}.{tablename}, pk_cols {pk_columns}, pk_values {pk_values}',
+        #                    response_only=os.environ["UNITTEST_FLAG"] != "1")
+        submit_pipeline_pubsub_msg(database=database, table=tablename, action='upsert',
+                                   pk_columns=pk_columns,
+                                   pk_values=pk_values)
+    return parents
