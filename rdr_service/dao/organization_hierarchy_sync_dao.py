@@ -12,7 +12,8 @@ from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
-from rdr_service.model.site_enums import ObsoleteStatus, SiteStatus, EnrollingStatus, DigitalSchedulingStatus
+from rdr_service.model.site_enums import ObsoleteStatus, SiteStatus, EnrollingStatus, DigitalSchedulingStatus, \
+     InPersonOperationsStatus
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.participant_enums import OrganizationType
 from rdr_service.dao.organization_dao import OrganizationDao
@@ -29,6 +30,19 @@ from rdr_service.data_gen.in_process_client import InProcessClient
 
 
 class OrganizationHierarchySyncDao(BaseDao):
+
+    # DA-3300:  Mapping potential valueStrings (from PMT drop-down) for status-for-in-person-operations extension
+    IN_PERSON_STATUS_OPTIONS = {
+        'onboarding': InPersonOperationsStatus.ONBOARDING,
+        'approved to open': InPersonOperationsStatus.APPROVED_TO_OPEN,
+        'open - engagement, recruitment, & enrollment': InPersonOperationsStatus.OPEN_ENGAGEMENT_RECRUITMENT_ENROLLMENT,
+        'open - engagement only': InPersonOperationsStatus.OPEN_ENGAGEMENT_ONLY,
+        'paused': InPersonOperationsStatus.PAUSED,
+        'closed temporarily': InPersonOperationsStatus.CLOSED_TEMPORARILY,
+        'closed permanently': InPersonOperationsStatus.CLOSED_PERMANENTLY,
+        'error/never activated': InPersonOperationsStatus.ERROR_NEVER_ACTIVATED,
+        'not applicable/virtual site type': InPersonOperationsStatus.NOT_APPLICABLE_VIRTUAL_SITE
+    }
     def __init__(self):
         super(OrganizationHierarchySyncDao, self).__init__(HPO)
         self.hpo_dao = HPODao()
@@ -164,6 +178,7 @@ class OrganizationHierarchySyncDao(BaseDao):
         bq_organization_update_by_id(org_id)
 
     def _update_site(self, hierarchy_org_obj):
+
         if hierarchy_org_obj.id is None:
             raise BadRequest('No id found in payload data.')
         google_group = self._get_value_from_identifier(hierarchy_org_obj,
@@ -244,6 +259,16 @@ class OrganizationHierarchySyncDao(BaseDao):
             raise BadRequest('Invalid digital scheduling status {} for site {}'
                              .format(digital_scheduling_bool, google_group))
 
+        in_person_value_str = self._get_value_from_extention(hierarchy_org_obj,
+                                                             HIERARCHY_CONTENT_SYSTEM_PREFIX +
+                                                             'status-for-in-person-operations',
+                                                             'valueString')
+
+        in_person_status = self._map_in_person_operations_status(in_person_value_str)
+        if in_person_status == InPersonOperationsStatus.UNSET:
+            logging.warning(
+                f'Missing or invalid in person operations status {in_person_value_str} for site {google_group}')
+
         directions = self._get_value_from_extention(hierarchy_org_obj,
                                                     HIERARCHY_CONTENT_SYSTEM_PREFIX + 'directions')
         physical_location_name = self._get_value_from_extention(hierarchy_org_obj,
@@ -270,6 +295,7 @@ class OrganizationHierarchySyncDao(BaseDao):
                       siteType=site_type,
                       siteStatus=site_status,
                       enrollingStatus=enrolling_status,
+                      inPersonOperationsStatus=in_person_status,
                       digitalSchedulingStatus=digital_scheduling_status,
                       scheduleInstructions=schedule_instructions,
                       scheduleInstructions_ES='',
@@ -331,6 +357,14 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         site_id = self.site_dao.get_by_google_group(google_group).siteId
         bq_site_update_by_id(site_id)
+
+    @staticmethod
+    def _map_in_person_operations_status(value_str):
+        if value_str is None or not isinstance(value_str, str) \
+                or value_str.lower() not in OrganizationHierarchySyncDao.IN_PERSON_STATUS_OPTIONS:
+            return InPersonOperationsStatus.UNSET
+        else:
+            return OrganizationHierarchySyncDao.IN_PERSON_STATUS_OPTIONS[value_str.lower()]
 
     @staticmethod
     def _generate_fake_participants_for_site(new_site):
@@ -438,8 +472,8 @@ class OrganizationHierarchySyncDao(BaseDao):
         if site.address1 and site.city and site.state:
             if existing_site:
                 if (existing_site.address1 == site.address1 and existing_site.city == site.city and
-                    existing_site.state == site.state and existing_site.latitude is not None and
-                    existing_site.longitude is not None and existing_site.timeZoneId is not None):
+                     existing_site.state == site.state and existing_site.latitude is not None and
+                     existing_site.longitude is not None and existing_site.timeZoneId is not None):
                     # Address didn't change, use the existing lat/lng and time zone.
                     site.latitude = existing_site.latitude
                     site.longitude = existing_site.longitude
