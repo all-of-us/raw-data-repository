@@ -144,14 +144,15 @@ def _convert_ordered_samples_to_samples(
     for ordered_sample in ordered_samples:
         supplemental_fields = ordered_sample.supplemental_fields if ordered_sample.supplemental_fields else {}
         notes = ", ".join([f"{key}: {value}" for key, value in supplemental_fields.items()])
+        processing_timestamp = ordered_sample.collected if not ordered_sample.parent is None else None
         sample = {
             "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
             "specimenCode": (ordered_sample.identifier or ordered_sample.test),
             "kitID": order_id if (ordered_sample.identifier or ordered_sample.test).startswith("ST") else "",
             "volume": ordered_sample.volume,
             "volumeUOM": ordered_sample.volumeUnits,
-            "collectionDateUTC": _format_timestamp(ordered_sample.collected),
-            "processingDateUTC": _format_timestamp((ordered_sample.parent or ordered_sample).finalized),
+            "collectionDateUTC": _format_timestamp((ordered_sample.parent or ordered_sample).collected),
+            "processingDateUTC": _format_timestamp(processing_timestamp),
             "cancelledFlag": "Y" if ordered_cancelled else "N",
             "notes": notes,
         }
