@@ -48,3 +48,6 @@ class StudyEnrollmentTest(BaseTestCase):
         self.assertIsNotNone(nph_participant.biobank_id)
         self.assertGreater(nph_participant.biobank_id, 10000000000)
         self.assertLess(nph_participant.biobank_id, 99999999999)
+
+    def test_call_to_enrollment_cloud_task(self):
+        pass
