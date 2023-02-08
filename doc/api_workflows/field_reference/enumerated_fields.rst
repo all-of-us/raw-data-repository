@@ -155,6 +155,15 @@ Below are the available options for sampleOrderStatus[1SST8, 1PST8, 1HEP4, 1ED04
   * PROCESSED
   * FINALIZED
 
+.. _sample_collection_method:
+
+sampleCollectionMethod
+------------------------------------------------------------
+
+  * UNSET
+  * MAIL_KIT
+  * ON_SITE
+
 .. _withdrawal_status:
 
 withdrawalStatus
