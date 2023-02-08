@@ -12,7 +12,7 @@ chardet==3.0.4            # via requests
 click==8.0.0              # via flask, pip-tools
 configargparse==1.2.3     # via locust
 coverage==6.0b1             # via -r requirements.in
-cryptography==36.0.2       # via oauthlib, pyopenssl, requests
+cryptography==39.0.1       # via oauthlib, pyopenssl, requests
 defusedxml==0.6.0         # via jira
 dictalchemy3==1.0.0       # via -r requirements.in
 dnspython==1.16.0         # via -r requirements.in
