@@ -20,4 +20,4 @@ then
 fi
 
 (source tools/set_path.sh; cd ${APP_DIR};
- alembic -c alembic_nph.ini revision --autogenerate -m "$1")
+ alembic -c alembic_nph.ini revision --autogenerate -m "$1" --head heads)
