@@ -12,7 +12,7 @@ chardet==3.0.4            # via requests
 click==8.0.0              # via flask, pip-tools
 configargparse==1.2.3     # via locust
 coverage==6.0b1             # via -r requirements.in
-cryptography==36.0.2       # via oauthlib, pyopenssl, requests
+cryptography==39.0.1       # via oauthlib, pyopenssl, requests
 defusedxml==0.6.0         # via jira
 dictalchemy3==1.0.0       # via -r requirements.in
 dnspython==1.16.0         # via -r requirements.in
@@ -80,7 +80,7 @@ pycparser==2.20           # via cffi
 pygments==2.7.4           # via sphinx
 pyjwt==2.4.0              # via oauthlib
 pylint==2.13.0            # via -r requirements.in
-pyopenssl==19.1.0         # via requests
+pyopenssl==23.0.0         # via requests
 pyparsing==2.4.7          # via packaging
 python-dateutil==2.8.1    # via alembic, faker
 python-editor==1.0.4      # via alembic
