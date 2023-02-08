@@ -39,7 +39,7 @@ class EnrollmentInterface:
                 pass
             else:
                 _task = GCPCloudTask()
-                _task.execute('/resource/task/InsertStudyEventTaskApi', payload=data, queue='nph')
+                _task.execute(endpoint='insert_study_event_task', payload=data, queue='nph')
 
     def create_rex_participant_mapping(self, aou_pid, study_pid):
         rex_dao = RexParticipantMappingDao()
