@@ -671,15 +671,20 @@ class ParticipantSummaryDao(UpdatableDao):
         return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
 
     @classmethod
-    def _set_if_empty(cls, summary, field_name, new_value):
-        if getattr(summary, field_name) is None and new_value is not None:
+    def _update_timestamp_value(cls, summary, field_name, new_value):
+        if new_value and getattr(summary, field_name) != new_value:
             setattr(summary, field_name, new_value)
 
-    def update_enrollment_status(self, summary: ParticipantSummary, session):
+    def _clear_timestamp_if_set(cls, summary, field_name):
+        if getattr(summary, field_name) is not None:
+            setattr(summary, field_name, None)
+
+    def update_enrollment_status(self, summary: ParticipantSummary, session, allow_downgrade=False):
         """
         Updates the enrollment status field on the provided participant summary to the correct value.
+        If allow_downgrade flag is set (e.g., when called by backfill tool), V3.* statuses will be recalculated
+        from scratch and may revert from a higher enrollment status (such as BASELINE_PARTICIPANT) to a lower status
         """
-
         earliest_physical_measurements_time = min_or_none([
             summary.clinicPhysicalMeasurementsFinalizedTime,
             summary.selfReportedPhysicalMeasurementsAuthored
@@ -741,6 +746,7 @@ class ParticipantSummaryDao(UpdatableDao):
             EnrollmentStatus.CORE_MINUS_PM: 2,
             EnrollmentStatus.FULL_PARTICIPANT: 3
         }
+        # TODO: for now, assume allow_downgrade should not be honored for legacy status fields (allow for V3.* only)
         if status_rank_map[summary.enrollmentStatus] < status_rank_map[enrollment_info.version_legacy_status]:
             summary.enrollmentStatus = enrollment_info.version_legacy_status
             summary.lastModified = clock.CLOCK.now()
@@ -754,7 +760,8 @@ class ParticipantSummaryDao(UpdatableDao):
                     timestamp=legacy_dates[summary.enrollmentStatus]
                 )
             )
-        if summary.enrollmentStatusV3_0 < enrollment_info.version_3_0_status:
+
+        if allow_downgrade or summary.enrollmentStatusV3_0 < enrollment_info.version_3_0_status:
             summary.enrollmentStatusV3_0 = enrollment_info.version_3_0_status
             summary.lastModified = clock.CLOCK.now()
             session.add(
@@ -765,7 +772,8 @@ class ParticipantSummaryDao(UpdatableDao):
                     timestamp=version_3_0_dates[summary.enrollmentStatusV3_0]
                 )
             )
-        if summary.enrollmentStatusV3_1 < enrollment_info.version_3_1_status:
+
+        if allow_downgrade or summary.enrollmentStatusV3_1 < enrollment_info.version_3_1_status:
             summary.enrollmentStatusV3_1 = enrollment_info.version_3_1_status
             summary.lastModified = clock.CLOCK.now()
             session.add(
@@ -779,83 +787,116 @@ class ParticipantSummaryDao(UpdatableDao):
 
         # Set enrollment status date fields
         if EnrollmentStatus.MEMBER in legacy_dates:
-            self._set_if_empty(summary, 'enrollmentStatusMemberTime', legacy_dates[EnrollmentStatus.MEMBER])
+            self._update_timestamp_value(summary, 'enrollmentStatusMemberTime', legacy_dates[EnrollmentStatus.MEMBER])
         if EnrollmentStatus.CORE_MINUS_PM in legacy_dates:
-            self._set_if_empty(summary, 'enrollmentStatusCoreMinusPMTime', legacy_dates[EnrollmentStatus.CORE_MINUS_PM])
+            self._update_timestamp_value(summary, 'enrollmentStatusCoreMinusPMTime',
+                                         legacy_dates[EnrollmentStatus.CORE_MINUS_PM])
         if EnrollmentStatus.FULL_PARTICIPANT in legacy_dates:
-            self._set_if_empty(
+            self._update_timestamp_value(
                 summary,
                 'enrollmentStatusCoreStoredSampleTime',
                 legacy_dates[EnrollmentStatus.FULL_PARTICIPANT]
             )
 
+        # For V3.* status timestamps, they can be cleared if a status has reverted (on allow_downgrade operation)
         if EnrollmentStatusV30.PARTICIPANT in version_3_0_dates:
-            self._set_if_empty(
+            self._update_timestamp_value(
                 summary,
                 'enrollmentStatusParticipantV3_0Time',
                 version_3_0_dates[EnrollmentStatusV30.PARTICIPANT]
             )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusParticipantV3_0Time')
+
         if EnrollmentStatusV30.PARTICIPANT_PLUS_EHR in version_3_0_dates:
-            self._set_if_empty(
+            self._update_timestamp_value(
                 summary,
                 'enrollmentStatusParticipantPlusEhrV3_0Time',
                 version_3_0_dates[EnrollmentStatusV30.PARTICIPANT_PLUS_EHR]
             )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusParticipantPlusEhrV3_0Time')
+
         if EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE in version_3_0_dates:
-            self._set_if_empty(
+            self._update_timestamp_value(
                 summary,
                 'enrollmentStatusPmbEligibleV3_0Time',
                 version_3_0_dates[EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE]
             )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusPmbEligibleV3_0Time')
+
         if EnrollmentStatusV30.CORE_MINUS_PM in version_3_0_dates:
-            self._set_if_empty(
+            self._update_timestamp_value(
                 summary,
                 'enrollmentStatusCoreMinusPmV3_0Time',
                 version_3_0_dates[EnrollmentStatusV30.CORE_MINUS_PM]
             )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusCoreMinusPmV3_0Time')
+
         if EnrollmentStatusV30.CORE_PARTICIPANT in version_3_0_dates:
-            self._set_if_empty(
+            self._update_timestamp_value(
                 summary,
                 'enrollmentStatusCoreV3_0Time',
                 version_3_0_dates[EnrollmentStatusV30.CORE_PARTICIPANT]
             )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusCoreV3_0Time')
 
         if EnrollmentStatusV31.PARTICIPANT in version_3_1_dates:
-            self._set_if_empty(
+            self._update_timestamp_value(
                 summary,
                 'enrollmentStatusParticipantV3_1Time',
                 version_3_1_dates[EnrollmentStatusV31.PARTICIPANT]
             )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusParticipantV3_1Time')
+
         if EnrollmentStatusV31.PARTICIPANT_PLUS_EHR in version_3_1_dates:
-            self._set_if_empty(
+            self._update_timestamp_value(
                 summary,
                 'enrollmentStatusParticipantPlusEhrV3_1Time',
                 version_3_1_dates[EnrollmentStatusV31.PARTICIPANT_PLUS_EHR]
             )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusParticipantPlusEhrV3_1Time')
+
         if EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS in version_3_1_dates:
-            self._set_if_empty(
+            self._update_timestamp_value(
                 summary,
                 'enrollmentStatusParticipantPlusBasicsV3_1Time',
                 version_3_1_dates[EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS]
             )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusParticipantPlusBasicsV3_1Time')
+
         if EnrollmentStatusV31.CORE_MINUS_PM in version_3_1_dates:
-            self._set_if_empty(
+            self._update_timestamp_value(
                 summary,
                 'enrollmentStatusCoreMinusPmV3_1Time',
                 version_3_1_dates[EnrollmentStatusV31.CORE_MINUS_PM]
             )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusCoreMinusPmV3_1Time')
+
         if EnrollmentStatusV31.CORE_PARTICIPANT in version_3_1_dates:
-            self._set_if_empty(
+            self._update_timestamp_value(
                 summary,
                 'enrollmentStatusCoreV3_1Time',
                 version_3_1_dates[EnrollmentStatusV31.CORE_PARTICIPANT]
             )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusCoreV3_1Time')
+
         if EnrollmentStatusV31.BASELINE_PARTICIPANT in version_3_1_dates:
-            self._set_if_empty(
+            self._update_timestamp_value(
                 summary,
                 'enrollmentStatusParticipantPlusBaselineV3_1Time',
                 version_3_1_dates[EnrollmentStatusV31.BASELINE_PARTICIPANT]
             )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusParticipantPlusBaselineV3_1Time')
 
         # Legacy code for setting CoreOrdered date field
         consent = (
