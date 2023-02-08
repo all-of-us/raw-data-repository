@@ -56,9 +56,8 @@ def check_field_value(value):
 
 
 def load_participant_summary_data(query, prefix, biobank_prefix):
-
     results = []
-    for summary, site, nph_site, mapping in query.all():
+    for summary, site, nph_site, mapping, enrollment_time, enrollment_name, deactivated, withdrawn in query.all():
         results.append({
             'participantNphId': f"{prefix}{mapping.ancillary_participant_id}",
             'lastModified': summary.lastModified,
@@ -74,12 +73,14 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                                "time": summary.deceasedAuthored},
             'withdrawalStatus': {"value": check_field_value(summary.withdrawalStatus),
                                  "time": summary.withdrawalAuthored},
-            'nph_deactivation_status': {"value": check_field_value(summary.deceasedStatus),
-                                        "time": summary.deceasedAuthored},
-            'nph_withdrawal_status': {"value": check_field_value(summary.withdrawalStatus),
-                                      "time": summary.withdrawalAuthored},
-            'nph_enrollment_status': {"value": check_field_value(summary.withdrawalStatus),
-                                      "time": summary.withdrawalAuthored},
+            'nph_deactivation_status': {
+                "value": "Deactivate" if deactivated.event_authored_time else QuestionnaireStatus.UNSET,
+                "time": deactivated.event_authored_time if deactivated.event_authored_time else None},
+            'nph_withdrawal_status': {
+                "value": "Withdrawn" if withdrawn.event_authored_time else QuestionnaireStatus.UNSET,
+                "time": withdrawn.event_authored_time if withdrawn.event_authored_time else None},
+            'nph_enrollment_status': {"value": check_field_value(enrollment_name.name),
+                                      "time": enrollment_time.event_authored_time},
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
                                  "time": summary.suspensionTime},
@@ -102,6 +103,7 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                 {"value": check_field_value(summary.questionnaireOnSocialDeterminantsOfHealth),
                  "time": summary.questionnaireOnSocialDeterminantsOfHealthAuthored}
         })
+
     return results
 
 
@@ -145,7 +147,6 @@ def schema_field_lookup(value):
 
 
 def load_participant_data(query):
-
     # query.session = sessions
 
     results = []
@@ -187,10 +188,8 @@ def load_participant_data(query):
 
 
 def validation_error_message(errors):
-
     return {"errors": [error.formatted for error in errors]}
 
 
 def error_message(message):
-
     return {"errors": message}

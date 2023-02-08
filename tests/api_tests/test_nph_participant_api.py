@@ -106,6 +106,15 @@ def mock_load_participant_data(session):
 
     nph_data_gen.create_database_pairing_event_type(name="INITIAL")
 
+    status = ['Module 1 Consented', 'Module 1 Eligibility Confirmed', 'Module 1 Eligibility Failed',
+              'Module 1 Started', 'Module 1 Complete', 'Module 2 Consented', 'Module 2 Eligibility Confirmed',
+              'Module 2 Eligibility Failed', 'Module 2 Started', 'Module 2 Diet Assigned', 'Module 2 Complete',
+              'Module 3 Consented', 'Module 3 Eligibility Confirmed', 'Module 3 Eligibility Failed',
+              'Module 3 Started', 'Module 3 Diet Assigned', 'Module 3 Complete', 'Withdrawn', 'Deactivated']
+
+    for name in status:
+        nph_data_gen.create_database_enrollment_event_type(name=name)
+
     for i in range(1, 3):
         nph_data_gen.create_database_site(
             external_id=f"nph-test-site-{i}",
@@ -121,8 +130,22 @@ def mock_load_participant_data(session):
             site_id=1
         )
 
+        for counter, _ in enumerate(status):
+            nph_data_gen.create_database_enrollment_event(
+                participant_id=participant.id,
+                event_authored_time=fake.date_time_this_century(),
+                event_id=1,
+                event_type_id=counter + 1
+            )
+
     nph_data_gen.create_database_pairing_event(
         participant_id=100000000,
+        event_authored_time=datetime(2023, 1, 1, 12, 1),
+        site_id=1
+    )
+
+    nph_data_gen.create_database_pairing_event(
+        participant_id=100000001,
         event_authored_time=datetime(2023, 1, 1, 12, 1),
         site_id=2
     )
@@ -215,13 +238,13 @@ class TestQueryExecution(BaseTestCase):
             executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
             result = json.loads(executed.data.decode('utf-8'))
             self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
-            expected_biobank_id = ["500000001", "500000000"]
+            expected_biobank_id = ["500000000", "500000001"]
             for index, each in enumerate(result.get('participant').get('edges')):
                 self.assertEqual(f"{NPH_BIOBANK_PREFIX}{expected_biobank_id[index]}",
                                  each.get('node').get(field_to_test))
 
     def test_client_nph_pair_site_with_id(self):
-        fetch_value = '"{}"'.format("1000100000001")
+        fetch_value = '"{}"'.format("1000100000000")
         query = condition_query("nphId", fetch_value, "nphPairedSite")
         with database_factory.get_database().session() as session:
             mock_load_participant_data(session)
@@ -289,17 +312,41 @@ class TestQueryExecution(BaseTestCase):
         nph_id = str(prefix) + str(participant_nph_id)
         self.assertEqual(nph_id, resulting_participant_data.get('participantNphId'))
 
-    def test_nph_fields(self):
-        field_to_test = "biobankId"
+    def test_enrollmentStatus_fields(self):
+        field_to_test = "enrollmentStatus {value time} "
         query = simple_query(field_to_test)
         with database_factory.get_database().session() as session:
             mock_load_participant_data(session)
             executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
             result = json.loads(executed.data.decode('utf-8'))
-            for each in result:
-                self.assertEqual(1, len(each.get('participant').get('edges')), "Should return 1 record back")
+            self.assertEqual(2, len(result.get('participant').get('edges')))
+            actual_result = result.get('participant').get('edges')[0].get('node').get('enrollmentStatus')
+            self.assertIn("time", actual_result)
+            self.assertIn("value", actual_result)
 
+    def test_nphWithdrawalStatus_fields(self):
+        field_to_test = "nphWithdrawalStatus {value time} "
+        query = simple_query(field_to_test)
+        with database_factory.get_database().session() as session:
+            mock_load_participant_data(session)
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+            result = json.loads(executed.data.decode('utf-8'))
+            self.assertEqual(2, len(result.get('participant').get('edges')))
+            actual_result = result.get('participant').get('edges')[0].get('node').get('nphWithdrawalStatus')
+            self.assertIn("time", actual_result)
+            self.assertIn("value", actual_result)
 
+    def test_nphDeactivationStatus_fields(self):
+        field_to_test = "nphDeactivationStatus {value time} "
+        query = simple_query(field_to_test)
+        with database_factory.get_database().session() as session:
+            mock_load_participant_data(session)
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+            result = json.loads(executed.data.decode('utf-8'))
+            self.assertEqual(2, len(result.get('participant').get('edges')))
+            actual_result = result.get('participant').get('edges')[0].get('node').get('nphDeactivationStatus')
+            self.assertIn("time", actual_result)
+            self.assertIn("value", actual_result)
 
     def test_graphql_syntax_error(self):
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SYNTAX_ERROR)
@@ -326,6 +373,8 @@ class TestQueryExecution(BaseTestCase):
         self.clear_table_after_test("nph.participant")
         self.clear_table_after_test("nph.participant_event_activity")
         self.clear_table_after_test("nph.pairing_event")
+        self.clear_table_after_test("nph.enrollment_event")
+        self.clear_table_after_test("nph.enrollment_event_type")
 
 
 class TestQueryValidator(BaseTestCase):
