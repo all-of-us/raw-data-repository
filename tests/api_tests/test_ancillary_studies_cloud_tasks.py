@@ -34,3 +34,11 @@ class AncillaryStudiesEnrollmentCloudTaskTest(BaseTestCase):
         event = enrollment_event_dao.get(1)
         self.assertEqual(event.event_type_id, 1)
         self.assertEqual(event.participant_id, 123123123)
+
+    def tearDown(self):
+        super().tearDown()
+        self.clear_table_after_test("rex.participant_mapping")
+        self.clear_table_after_test("rex.study")
+        self.clear_table_after_test("nph.participant")
+        self.clear_table_after_test("nph.activity")
+        self.clear_table_after_test("nph.enrollment_event_type")

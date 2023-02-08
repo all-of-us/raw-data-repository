@@ -10,7 +10,7 @@ class EnrollmentInterface:
     def __init__(self, study_code):
         self.study_code = study_code
 
-    def create_study_participant(self, aou_pid, ancillary_pid, event_authored_time, enrollment_event=True):
+    def create_study_participant(self, aou_pid, ancillary_pid, event_authored_time=None, enrollment_event=True):
         cln_study_pid = int(ancillary_pid[4:])
 
         # We have to use the AoU research ID

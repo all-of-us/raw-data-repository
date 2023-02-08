@@ -49,5 +49,10 @@ class StudyEnrollmentTest(BaseTestCase):
         self.assertGreater(nph_participant.biobank_id, 10000000000)
         self.assertLess(nph_participant.biobank_id, 99999999999)
 
-    def test_call_to_enrollment_cloud_task(self):
-        pass
+    def tearDown(self):
+        super().tearDown()
+        self.clear_table_after_test("rex.participant_mapping")
+        self.clear_table_after_test("rex.study")
+        self.clear_table_after_test("nph.participant")
+        self.clear_table_after_test("nph.activity")
+        self.clear_table_after_test("nph.enrollment_event_type")
