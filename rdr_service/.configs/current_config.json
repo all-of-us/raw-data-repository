@@ -255,5 +255,14 @@
       "bcm": ["testone.testy@bcm.edu", "testtwo.testy@bcm.edu"],
       "jh": ["testone.testy@jhmi.edu", "testtwo.testy@jhmi.edu"]
     }
+  },
+  "pdr_pipeline": {
+    "allowed_projects": [
+      "pmi-drc-api-test"
+    ],
+    "excluded_table_list" : [
+      "log_position",
+      "questionnaire_response_answer"
+    ]
   }
 }

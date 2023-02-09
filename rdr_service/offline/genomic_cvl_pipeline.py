@@ -14,7 +14,6 @@ def cvl_w1il_manifest_workflow(cvl_site_bucket_map, module_type):
             'pgx': GenomicManifestTypes.CVL_W1IL_PGX,
             'hdr': GenomicManifestTypes.CVL_W1IL_HDR
         }[module_type]
-
         with GenomicJobController(
             GenomicJob.CVL_W1IL_WORKFLOW,
             bucket_name=cvl_bucket_name_key,

@@ -11,9 +11,11 @@ from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample,
     Activity, ParticipantEventActivity, EnrollmentEventType,
     EnrollmentEvent, PairingEventType, PairingEvent, ConsentEventType,
-    ConsentEvent, SampleUpdate, BiobankFileExport, SampleExport
+    ConsentEvent, SampleUpdate, BiobankFileExport, SampleExport,
+    StoredSample
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
+from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
 
 
 class OrderStatus(messages.Enum):
@@ -65,6 +67,14 @@ class NphParticipantDao(BaseDao):
     @staticmethod
     def convert_id(nph_participant_id: str) -> str:
         return nph_participant_id[4:]
+
+    def insert_participant_with_random_biobank_id(self, obj):
+        return self._insert_with_random_id(
+            obj,
+            ['biobank_id'],
+            min_id=NPH_MIN_BIOBANK_ID,
+            max_id=NPH_MAX_BIOBANK_ID
+        )
 
     def from_client_json(self):
         pass
@@ -747,4 +757,12 @@ class NphSampleExportDao(BaseDao):
         super(NphSampleExportDao, self).__init__(SampleExport)
 
     def get_id(self, obj: SampleExport):
+        return obj.id
+
+
+class NphStoredSampleDao(BaseDao):
+    def __init__(self):
+        super(NphStoredSampleDao, self).__init__(StoredSample)
+
+    def get_id(self, obj: StoredSample):
         return obj.id

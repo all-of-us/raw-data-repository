@@ -344,6 +344,7 @@ class GenomicIncidentCode(messages.Enum):
     FILE_VALIDATION_INVALID_FILE_NAME = 10
     INFORMING_LOOP_TO_EVENTS_MISMATCH = 11
     UNABLE_TO_RESOLVE_MESSAGE_BROKER_RECORD = 12
+    MANIFEST_INGESTION_EXCEPTION = 13
 
 
 class GenomicIncidentStatus(messages.Enum):

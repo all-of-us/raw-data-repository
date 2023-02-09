@@ -87,6 +87,13 @@ class BaseDao(object):
     """
         return self._database.raw_connection()
 
+    def get_connection_database_name(self):
+        """
+        Return the name of the database from the Engine connection information
+        :return: database name or none
+        """
+        return self._database._engine.url.database
+
     def call_proc(self, proc, args=None, filters=None, skip_null=False):
         """
     Call a Stored Procedure with parameters. Always returns last set if query
@@ -499,14 +506,14 @@ class BaseDao(object):
         return query
 
     @staticmethod
-    def get_random_id():
-        return random.randint(_MIN_ID, _MAX_ID)
+    def get_random_id(min_id=_MIN_ID, max_id=_MAX_ID):
+        return random.randint(min_id, max_id)
 
     @staticmethod
     def _get_random_research_id():
         return random.randint(_MIN_RESEARCH_ID, _MAX_RESEARCH_ID)
 
-    def _insert_with_random_id(self, obj, fields, insert_fun=None):
+    def _insert_with_random_id(self, obj, fields, insert_fun=None, min_id=_MIN_ID, max_id=_MAX_ID):
         """Attempts to insert an entity with randomly assigned ID(s) repeatedly until success
     or a maximum number of attempts are performed."""
         all_tried_ids = []
@@ -516,7 +523,7 @@ class BaseDao(object):
                 if field == 'researchId':
                     rand_id = self._get_random_research_id()
                 else:
-                    rand_id = self.get_random_id()
+                    rand_id = self.get_random_id(min_id, max_id)
                 tried_ids[field] = rand_id
                 setattr(obj, field, rand_id)
             all_tried_ids.append(tried_ids)
