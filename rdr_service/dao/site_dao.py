@@ -24,6 +24,7 @@ class _FhirSite(FhirMixin, BackboneElement):
         FhirProperty("display_name", str, required=True),
         FhirProperty("mayolink_client_number", int),
         FhirProperty("site_status", str, required=True),
+        FhirProperty("in_person_operations_status", str),
         FhirProperty("digital_scheduling_status", str),
         FhirProperty("scheduling_instructions", str),
         FhirProperty("scheduling_instructions_es", str),
@@ -68,6 +69,10 @@ class SiteDao(CacheAllDao):
         resource.id = model.googleGroup
         resource.display_name = model.siteName
         resource.digital_scheduling_status = str(model.digitalSchedulingStatus)
+        # TODO: DA-3300 If confirmed we can include new field in production response, enable this and unittest for
+        # test_in_person_status_settings (test_awardee_api.py)
+        # if model.inPersonOperationsStatus:
+        #    resource.in_person_operations_status = str(model.inPersonOperationsStatus)
         if model.scheduleInstructions:
             resource.scheduling_instructions = model.scheduleInstructions
         if model.scheduleInstructions_ES:

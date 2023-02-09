@@ -13,7 +13,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
 from rdr_service.model.site_enums import ObsoleteStatus, SiteStatus, EnrollingStatus, DigitalSchedulingStatus, \
-     InPersonOperationsStatus
+     InPersonOperationsStatus, IN_PERSON_STATUS_OPTIONS
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.participant_enums import OrganizationType
 from rdr_service.dao.organization_dao import OrganizationDao
@@ -31,18 +31,6 @@ from rdr_service.data_gen.in_process_client import InProcessClient
 
 class OrganizationHierarchySyncDao(BaseDao):
 
-    # DA-3300:  Mapping potential valueStrings (from PMT drop-down) for status-for-in-person-operations extension
-    IN_PERSON_STATUS_OPTIONS = {
-        'onboarding': InPersonOperationsStatus.ONBOARDING,
-        'approved to open': InPersonOperationsStatus.APPROVED_TO_OPEN,
-        'open - engagement, recruitment, & enrollment': InPersonOperationsStatus.OPEN_ENGAGEMENT_RECRUITMENT_ENROLLMENT,
-        'open - engagement only': InPersonOperationsStatus.OPEN_ENGAGEMENT_ONLY,
-        'paused': InPersonOperationsStatus.PAUSED,
-        'closed temporarily': InPersonOperationsStatus.CLOSED_TEMPORARILY,
-        'closed permanently': InPersonOperationsStatus.CLOSED_PERMANENTLY,
-        'error/never activated': InPersonOperationsStatus.ERROR_NEVER_ACTIVATED,
-        'not applicable/virtual site type': InPersonOperationsStatus.NOT_APPLICABLE_VIRTUAL_SITE
-    }
     def __init__(self):
         super(OrganizationHierarchySyncDao, self).__init__(HPO)
         self.hpo_dao = HPODao()
@@ -361,10 +349,10 @@ class OrganizationHierarchySyncDao(BaseDao):
     @staticmethod
     def _map_in_person_operations_status(value_str):
         if value_str is None or not isinstance(value_str, str) \
-                or value_str.lower() not in OrganizationHierarchySyncDao.IN_PERSON_STATUS_OPTIONS:
+                or value_str.lower() not in IN_PERSON_STATUS_OPTIONS:
             return InPersonOperationsStatus.UNSET
         else:
-            return OrganizationHierarchySyncDao.IN_PERSON_STATUS_OPTIONS[value_str.lower()]
+            return IN_PERSON_STATUS_OPTIONS[value_str.lower()]
 
     @staticmethod
     def _generate_fake_participants_for_site(new_site):

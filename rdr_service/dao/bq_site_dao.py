@@ -4,10 +4,10 @@ from sqlalchemy.sql import text
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_site import (
-    BQSiteSchema, BQSite, BQSiteStatus, BQDigitalSchedulingStatus, BQEnrollingStatus, BQObsoleteStatusEnum
+    BQSiteSchema, BQSite, BQSiteStatus, BQDigitalSchedulingStatus, BQEnrollingStatus, BQObsoleteStatusEnum,
+    BQInPersonOperationsStatus
 )
 from rdr_service.model.site import Site
-
 
 class BQSiteGenerator(BigQueryGenerator):
     """
@@ -32,6 +32,7 @@ class BQSiteGenerator(BigQueryGenerator):
             ds_status = data['digital_scheduling_status']
             enrolling_status = data['enrolling_status']
             is_obsolete = data['is_obsolete']
+            in_person_operations_status = data['in_person_operations_status']
             if site_status is not None:
                 site_status_enum = BQSiteStatus(site_status)
                 data['site_status'] = site_status_enum.name
@@ -48,6 +49,10 @@ class BQSiteGenerator(BigQueryGenerator):
                 obsolete_enum = BQObsoleteStatusEnum(is_obsolete)
                 data['is_obsolete'] = obsolete_enum.name
                 data['is_obsolete_id'] = obsolete_enum.value
+            if in_person_operations_status is not None:
+                in_person_enum = BQInPersonOperationsStatus(in_person_operations_status)
+                data['in_person_operations_status'] = in_person_enum.name
+                data['in_person_operations_status_id'] = in_person_enum.value
 
             return BQRecord(schema=BQSiteSchema, data=data, convert_to_enum=convert_to_enum)
 

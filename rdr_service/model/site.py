@@ -22,6 +22,7 @@ class Site(Base):
     siteStatus = Column("site_status", Enum(SiteStatus))
     enrollingStatus = Column("enrolling_status", Enum(EnrollingStatus))
     inPersonOperationsStatus = Column("in_person_operations_status", Enum(InPersonOperationsStatus))
+    """ The in-person operations status of a site """
     digitalSchedulingStatus = Column("digital_scheduling_status", Enum(DigitalSchedulingStatus))
     """Can participant schedule appointments online"""
     scheduleInstructions = Column("schedule_instructions", String(4096))
