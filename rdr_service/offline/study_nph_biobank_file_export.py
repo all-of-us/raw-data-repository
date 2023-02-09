@@ -46,7 +46,7 @@ NPH_ANCILLARY_STUDY_ID = 2
 
 
 def _format_timestamp(timestamp: datetime) -> str:
-    return timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') if timestamp else ''
+    return timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') if timestamp else None
 
 
 def _get_nph_participant(participant_id: int) -> NphParticipant:
