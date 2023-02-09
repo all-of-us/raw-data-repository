@@ -5,7 +5,8 @@ from sqlalchemy.orm import Query, aliased
 from sqlalchemy import and_
 
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
-from rdr_service.model.study_nph import Participant as DbParticipant, Site as nphSite, PairingEvent
+from rdr_service.model.study_nph import Participant as DbParticipant, Site as nphSite, PairingEvent, EnrollmentEvent, \
+    EnrollmentEventType
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping, Study
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
@@ -16,6 +17,7 @@ from rdr_service.api.nph_participant_api_schemas.util import QueryBuilder, load_
 from rdr_service import config
 
 NPH_BIOBANK_PREFIX = NPH_PROD_BIOBANK_PREFIX if config.GAE_PROJECT == "all-of-us-rdr-prod" else NPH_TEST_BIOBANK_PREFIX
+
 
 class SortableField(Field):
     def __init__(self, *args, sort_modifier=None, filter_modifier=None, **kwargs):
@@ -102,7 +104,6 @@ def _build_filter_parameters(cls):
 
 
 class Participant(ObjectType):
-
     # AOU
     participantNphId = SortableField(
         String,
@@ -263,9 +264,9 @@ class Participant(ObjectType):
     awardee_external_id = SortableField(String, name="nphPairedAwardee", description='Sourced from NPH Schema.',
                                         sort_modifier=lambda context: context.set_order_expression(
                                             nphSite.awardee_external_id))
-    nph_enrollment_status = Field(Event, description='Sourced from NPH Schema.')
-    nph_withdrawal_status = Field(Event, description='Sourced from NPH Schema.')
-    nph_deactivation_status = Field(Event, description='Sourced from NPH Schema.')
+    nph_enrollment_status = SortableField(Event, name="enrollmentStatus", description='Sourced from NPH Schema.')
+    nph_withdrawal_status = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
+    nph_deactivation_status = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
     # Bio-specimen
     sample_8_5ml_ssts_1 = Field(SampleCollection, description='Sample 8.5ml SSTS1')
     sample_4ml_ssts_1 = Field(SampleCollection, description='Sample 4ml SSTS1')
@@ -330,22 +331,49 @@ class ParticipantQuery(ObjectType):
         with database_factory.get_database().session() as sessions:
             logging.info('root: %s, info: %s, kwargs: %s', root, info, filter_kwargs)
             pm2 = aliased(PairingEvent)
-            query = sessions.query(ParticipantSummaryModel, Site, nphSite, ParticipantMapping
+            ee2 = aliased(EnrollmentEvent)
+            deactivated = aliased(EnrollmentEvent)
+            deactivated_type = aliased(EnrollmentEventType)
+            withdrawn = aliased(EnrollmentEvent)
+            withdrawn_type = aliased(EnrollmentEventType)
+            et2 = aliased(EnrollmentEventType)
+            query = sessions.query(ParticipantSummaryModel, Site, nphSite, ParticipantMapping, EnrollmentEvent,
+                                   EnrollmentEventType, deactivated, withdrawn
                                    ).join(Site, ParticipantSummaryModel.siteId == Site.siteId
                                           ).join(ParticipantMapping,
                                                  ParticipantSummaryModel.participantId
                                                  == ParticipantMapping.primary_participant_id
-                                                 ).join(PairingEvent, PairingEvent.participant_id
-                                                        == ParticipantMapping.ancillary_participant_id
-                                                        ).outerjoin(pm2, and_(PairingEvent.participant_id
-                                                                              == pm2.participant_id,
-                                                                              PairingEvent.event_type_id
-                                                                              == pm2.event_type_id,
-                                                                              PairingEvent.event_authored_time
-                                                                              < pm2.event_authored_time)
-                                                                    ).join(nphSite, nphSite.id == PairingEvent.site_id
-                                                                           ).filter(
-                pm2.id.is_(None), ParticipantMapping.ancillary_study_id == 2)
+                                                 ).join(EnrollmentEvent,
+                                                        EnrollmentEvent.participant_id
+                                                        == ParticipantMapping.
+                                                        ancillary_participant_id
+                                                        ).join(et2, EnrollmentEvent.event_type_id
+                                                               == et2.id
+                                                               ).join(PairingEvent, PairingEvent.participant_id
+                                                                      == ParticipantMapping.ancillary_participant_id
+                                                                      ).outerjoin(pm2, and_(PairingEvent.participant_id
+                                                                                            == pm2.participant_id,
+                                                                                            PairingEvent.event_type_id
+                                                                                            == pm2.event_type_id,
+                                                                                            PairingEvent.
+                                                                                            event_authored_time
+                                                                                            < pm2.event_authored_time)
+                                                                                  ).join(nphSite,
+                                                                                         nphSite.id == PairingEvent
+                                                                                         .site_id).outerjoin(
+                ee2, and_(EnrollmentEvent.participant_id == ee2.participant_id,
+                          EnrollmentEvent.event_authored_time < ee2.event_authored_time)).outerjoin(
+                deactivated, ParticipantMapping.ancillary_participant_id == deactivated.participant_id
+            ).outerjoin(deactivated_type, deactivated.event_type_id == deactivated_type.id).outerjoin(
+                withdrawn, ParticipantMapping.ancillary_participant_id == withdrawn.participant_id
+            ).outerjoin(withdrawn_type, withdrawn.event_type_id == withdrawn_type.id).join(
+                EnrollmentEventType, EnrollmentEventType.id
+                                     == EnrollmentEvent
+                                     .event_type_id).filter(
+                pm2.id.is_(None), ParticipantMapping.ancillary_study_id == 2).filter(ee2.id.is_(None)
+                                                                                     ).filter(
+                deactivated_type.name == "Deactivated").filter(withdrawn_type.name == "Withdrawn").filter(
+                EnrollmentEventType.name != "Deactivated", EnrollmentEventType.name != "Withdrawn")
             study_query = sessions.query(Study).filter(Study.schema_name == "nph")
             study = study_query.first()
             current_class = Participant
@@ -395,4 +423,3 @@ class ParticipantQuery(ObjectType):
 
 
 NPHParticipantSchema = Schema(query=ParticipantQuery)
-
