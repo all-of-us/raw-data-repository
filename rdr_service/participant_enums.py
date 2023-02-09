@@ -563,6 +563,7 @@ class OnSiteVerificationVisitType(messages.Enum):
 
 
 class IdVerificationOriginType(messages.Enum):
+    """Types of Id Verification for the Origin"""
     ON_SITE = 1
     REMOTE = 2
 
