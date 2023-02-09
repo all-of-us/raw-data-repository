@@ -4444,6 +4444,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
         self.assertEqual(summary['remoteIdVerificationStatus'], True)
         self.assertEqual(summary['remoteIdVerifiedOn'], '2023-01-17')
+        # DA-3307 ID VERIFICATION
+        self.assertEqual(summary['everIdVerified'], True)
+        self.assertEqual(summary['firstIdVerificationOn'], '2023-01-17')
+        self.assertEqual(summary['idVerificationOrigin'], "REMOTE")
 
     def test_remote_id_not_verified(self):
         """ Test to see if a remote ID verification False Response saves successfully """

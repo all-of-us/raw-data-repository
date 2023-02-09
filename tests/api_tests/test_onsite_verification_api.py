@@ -146,8 +146,9 @@ class OnsiteVerificationApiTest(BaseTestCase):
                          OnSiteVerificationVisitType.PHYSICAL_MEASUREMENTS_ONLY)
         self.assertEqual(participant_summary.onsiteIdVerificationUser, 'test@mail.com')
         self.assertEqual(participant_summary.onsiteIdVerificationSite, self.site.siteId)
+        # DA-3307 ID VERIFICATION
         self.assertEqual(participant_summary.everIdVerified, True)
-        self.assertEqual(participant_summary.onsiteIdVerificationTime, datetime(2022, 2, 22, 6, 7, 8))
+        self.assertEqual(participant_summary.firstIdVerificationOn, datetime(2022, 2, 22, 6, 7, 8))
         self.assertEqual(participant_summary.idVerificationOrigin, "IN PERSON")
 
 
