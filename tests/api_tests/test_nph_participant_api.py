@@ -2,7 +2,7 @@ import faker
 from itertools import zip_longest
 from graphql import GraphQLSyntaxError
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
 from rdr_service.data_gen.generators.data_generator import DataGenerator
@@ -56,13 +56,6 @@ def mock_load_participant_data(session):
     ps_query = session.query(ParticipantSummaryModel)
     ps_query.session = session
     ps_result = ps_query.all()
-    for each in ps_result:
-        each.questionnaireOnTheBasics = QuestionnaireStatus.UNSET
-        each.questionnaireOnHealthcareAccess = QuestionnaireStatus.UNSET
-        each.questionnaireOnLifestyle = QuestionnaireStatus.UNSET
-        each.questionnaireOnSocialDeterminantsOfHealth = QuestionnaireStatus.UNSET
-        session.add(each)
-    session.commit()
     num = len(ps_result)
     print(f'NPH TESTING: found {num} participants')
     if num < 10:
@@ -96,7 +89,7 @@ def mock_load_participant_data(session):
                                         )
                 session.add(pm)
                 ancillary_participant_id = ancillary_participant_id + 1
-            session.commit()
+        session.commit()
     nph_data_gen = NphDataGenerator()
     for activity_name in ['ENROLLMENT', 'PAIRING', 'CONSENT']:
         nph_data_gen.create_database_activity(
@@ -105,11 +98,7 @@ def mock_load_participant_data(session):
 
     nph_data_gen.create_database_pairing_event_type(name="INITIAL")
 
-    status = ['Module 1 Consented', 'Module 1 Eligibility Confirmed', 'Module 1 Eligibility Failed',
-              'Module 1 Started', 'Module 1 Complete', 'Module 2 Consented', 'Module 2 Eligibility Confirmed',
-              'Module 2 Eligibility Failed', 'Module 2 Started', 'Module 2 Diet Assigned', 'Module 2 Complete',
-              'Module 3 Consented', 'Module 3 Eligibility Confirmed', 'Module 3 Eligibility Failed',
-              'Module 3 Started', 'Module 3 Diet Assigned', 'Module 3 Complete', 'Withdrawn', 'Deactivated']
+    status = ['Module 3 Complete', 'Withdrawn', 'Deactivated']
 
     for name in status:
         nph_data_gen.create_database_enrollment_event_type(name=name)
@@ -132,7 +121,7 @@ def mock_load_participant_data(session):
         for counter, _ in enumerate(status):
             nph_data_gen.create_database_enrollment_event(
                 participant_id=participant.id,
-                event_authored_time=fake.date_time_this_century(),
+                event_authored_time=datetime(2023, 1, 1, 12, 0) - timedelta(days=counter + 1),
                 event_id=1,
                 event_type_id=counter + 1
             )
@@ -347,8 +336,14 @@ class TestQueryExecution(BaseTestCase):
                 self.assertIn('message', error)
                 self.assertIn('locations', error)
 
+
     def tearDown(self):
         super().tearDown()
+        self.clear_table_after_test("rdr.code")
+        self.clear_table_after_test("rdr.hpo")
+        self.clear_table_after_test("rdr.site")
+        self.clear_table_after_test("rdr.participant")
+        self.clear_table_after_test("rdr.participant_summary")
         self.clear_table_after_test("rex.participant_mapping")
         self.clear_table_after_test("rex.study")
         self.clear_table_after_test("nph.participant")
