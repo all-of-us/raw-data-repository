@@ -10,8 +10,8 @@ from sqlalchemy import exc
 from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample,
     Activity, ParticipantEventActivity, EnrollmentEventType,
-    EnrollmentEvent, PairingEventType, PairingEvent, ConsentEventType,
-    ConsentEvent, SampleUpdate, BiobankFileExport, SampleExport,
+    PairingEventType, PairingEvent, ConsentEventType,
+    SampleUpdate, BiobankFileExport, SampleExport,
     StoredSample
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
@@ -53,7 +53,7 @@ class NphParticipantDao(BaseDao):
         else:
             raise NotFound(f"Participant not found : {nph_participant_id}")
 
-    def check_participant_exist(self, nph_participant_id: str, session) -> bool:
+    def check_participant_exist(self, nph_participant_id: str, session=None) -> bool:
         # expect the participant ID comes in with the prefix 1000.
         nph_participant_id = self.convert_id(nph_participant_id)
         query = Query(Participant)
@@ -632,7 +632,7 @@ class NphParticipantEventActivityDao(BaseDao, NphDaoMixin):
             ).first()
 
 
-class NphEventMixin(NphDaoMixin):
+class NphEventTypeMixin(NphDaoMixin):
 
     def get_event_by_source_name(self, source_name):
         if not hasattr(self.model_type, 'source_name'):
@@ -647,9 +647,20 @@ class NphEventMixin(NphDaoMixin):
             return records.first()
 
 
-class NphEnrollmentEventTypeDao(BaseDao):
+class NphDefaultBaseDao(BaseDao, NphDaoMixin):
+    def __init__(self, model_type):
+        super().__init__(model_type)
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        return obj.id
+
+
+class NphEnrollmentEventTypeDao(BaseDao, NphEventTypeMixin):
     def __init__(self):
-        super(NphEnrollmentEventTypeDao, self).__init__(EnrollmentEventType)
+        super().__init__(EnrollmentEventType)
 
     def get_id(self, obj):
         return obj.id
@@ -658,9 +669,9 @@ class NphEnrollmentEventTypeDao(BaseDao):
         pass
 
 
-class NphEnrollmentEventDao(BaseDao, NphEventMixin):
+class NphPairingEventTypeDao(BaseDao, NphEventTypeMixin):
     def __init__(self):
-        super(NphEnrollmentEventDao, self).__init__(EnrollmentEvent)
+        super().__init__(PairingEventType)
 
     def get_id(self, obj):
         return obj.id
@@ -669,20 +680,9 @@ class NphEnrollmentEventDao(BaseDao, NphEventMixin):
         pass
 
 
-class NphPairingEventTypeDao(BaseDao):
+class NphPairingEventDao(BaseDao):
     def __init__(self):
-        super(NphPairingEventTypeDao, self).__init__(PairingEventType)
-
-    def get_id(self, obj):
-        return obj.id
-
-    def from_client_json(self):
-        pass
-
-
-class NphPairingEventDao(BaseDao, NphEventMixin):
-    def __init__(self):
-        super(NphPairingEventDao, self).__init__(PairingEvent)
+        super().__init__(PairingEvent)
 
     def get_id(self, obj):
         return obj.id
@@ -700,20 +700,9 @@ class NphPairingEventDao(BaseDao, NphEventMixin):
             ).order_by(PairingEvent.event_authored_time.desc()).first()
 
 
-class NphConsentEventTypeDao(BaseDao):
+class NphConsentEventTypeDao(BaseDao, NphEventTypeMixin):
     def __init__(self):
-        super(NphConsentEventTypeDao, self).__init__(ConsentEventType)
-
-    def get_id(self, obj):
-        return obj.id
-
-    def from_client_json(self):
-        pass
-
-
-class NphConsentEventDao(BaseDao, NphEventMixin):
-    def __init__(self):
-        super(NphConsentEventDao, self).__init__(ConsentEvent)
+        super().__init__(ConsentEventType)
 
     def get_id(self, obj):
         return obj.id

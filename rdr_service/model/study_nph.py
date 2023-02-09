@@ -252,7 +252,7 @@ class ConsentEvent(NphBase):
 event.listen(ConsentEvent, "before_insert", model_insert_listener)
 event.listen(ConsentEvent, "before_update", model_update_listener)
 
-
+### REMOVE before PR
 class WithdrawalEvent(NphBase):
     __tablename__ = "withdrawal_event"
 
@@ -283,7 +283,7 @@ class DeactivatedEvent(NphBase):
 
 event.listen(DeactivatedEvent, "before_insert", model_insert_listener)
 event.listen(DeactivatedEvent, "before_update", model_update_listener)
-
+### REMOVE before PR
 
 class SampleUpdate(NphBase):
     __tablename__ = "sample_update"

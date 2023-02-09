@@ -1,6 +1,7 @@
 from rdr_service.dao import database_factory
 from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
-    PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent
+    PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
+    DeactivatedEvent
 
 
 class NphDataGenerator:
@@ -158,3 +159,22 @@ class NphDataGenerator:
         enrollment_event = self._enrollment_event(**kwargs)
         self._commit_to_database(enrollment_event)
         return enrollment_event
+
+    @staticmethod
+    def _withdrawal_event(**kwargs):
+        return WithdrawalEvent(**kwargs)
+
+    def create_database_withdrawal_event(self, **kwargs):
+        withdrawal_event = self._withdrawal_event(**kwargs)
+        self._commit_to_database(withdrawal_event)
+        return withdrawal_event
+
+    @staticmethod
+    def _deactivated_event(**kwargs):
+        return DeactivatedEvent(**kwargs)
+
+    def create_database_deactivated_event(self, **kwargs):
+        deactivated_event = self._deactivated_event(**kwargs)
+        self._commit_to_database(deactivated_event)
+        return deactivated_event
+

@@ -221,6 +221,9 @@
           ],
           "subject": {
             "reference": "patient/100000001"
+          },
+          "period": {
+            "start": "2022-02-15T12:11:05-05:00"
           }
         }
       },

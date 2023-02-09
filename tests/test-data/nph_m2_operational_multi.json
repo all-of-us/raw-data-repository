@@ -3,26 +3,26 @@
     "type": "collection",
 	"timestamp": "2023-01-17T17:41:26-05:00",
 	"identifier": {
-        "value": "1234"
+        "value": "1235"
     },
     "entry": [
         {
-            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/patient/100000000",
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/patient/100000001",
             "resource": {
                 "resourceType": "Patient",
                 "identifier": [
                     {
                         "system": "https://nphdx.rti.org/api/fhir/module1/",
-                        "value": "patient/100000000"
+                        "value": "patient/100000001"
                     }
                 ]
             }
         },
         {
-            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/module1/visit/eligibilityConfirmed/100000000",
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/module1/consent/100000001",
 			"resource": {
-				"resourceType": "Encounter",
-                "status": "in-progress",
+                "resourceType": "Encounter",
+                "status": "arrived",
                 "class": {
                     "system": "https://nphdx.rti.org/api/fhir/codesystem/study-stage",
                     "code": "module1"
@@ -32,29 +32,29 @@
                         "coding": [
                             {
                                 "system": "https://nphdx.rti.org/api/fhir/codesystem/study-encounter-type",
-                                "code": "visit"
+                                "code": "consent"
                             }
                         ]
                     }
                 ],
-                "serviceType": {
+				"serviceType": {
                     "coding": [
                         {
                             "system": "https://nphdx.rti.org/api/fhir/codesystem/study-encounter-type-detail",
-                            "code": "eligibilityConfirmed"
+                            "code": "consented"
                         }
                     ]
                 },
                 "subject": {
-                    "reference": "patient/100000000"
+                    "reference": "patient/100000001"
                 },
                 "period": {
-                    "start": "2022-02-15T12:11:05-05:00"
+                    "start": "2022-02-10T13:55:51-05:00"
                 }
             }
         },
         {
-            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/pairing/100000000",
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/pairing/100000001",
 			"resource": {
                 "resourceType": "Encounter",
                 "status": "finished",
@@ -73,7 +73,7 @@
                     }
                 ],
                 "subject": {
-                    "reference": "patient/100000000"
+                    "reference": "patient/100000001"
                 },
                 "period": {
                     "start": "2022-01-25T09:44:05-05:00"
@@ -81,19 +81,19 @@
             }
         },
         {
-            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/module1/withdrawal/100000000",
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/module1/deactivation/100000001",
 			"resource": {
                 "resourceType": "Encounter",
                 "status": "finished",
                 "class": {
                     "system": "https://nphdx.rti.org/api/fhir/codesystem/study-stage",
-                    "code": "withdrawal"
+                    "code": "deactivation"
                 },
                 "subject": {
-                    "reference": "patient/100000000"
+                    "reference": "patient/100000001"
                 },
                 "period": {
-                    "start": "2022-02-15T12:11:05-05:00"
+                    "start": "2022-02-10T13:55:50-05:00"
                 }
             }
         }
