@@ -8,6 +8,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.patient import Patient as FhirPatient
 from rdr_service.repository.profile_update_repository import ProfileUpdateRepository
+from rdr_service.services.ancillary_studies.study_enrollment import EnrollmentInterface
 
 
 class PatientPayload:
@@ -191,6 +192,26 @@ class PatientPayload:
         return 'communication' in self._json
 
     @property
+    def has_ancillary_identifier(self):
+        if hasattr(self._fhir_patient, "identifier"):
+            if self._fhir_patient.identifier:
+                for item in self._fhir_patient.identifier:
+                    if "PMIIdentifierTypeCS" in item.type.coding[0].system:
+                        return True
+
+    @property
+    def ancillary_study_code(self):
+        for item in self._fhir_patient.identifier:
+            if "PMIIdentifierTypeCS" in item.type.coding[0].system:
+                return item.type.coding[0].code
+
+    @property
+    def ancillary_study_pid(self):
+        for item in self._fhir_patient.identifier:
+            if "PMIIdentifierTypeCS" in item.type.coding[0].system:
+                return item.value
+
+    @property
     def preferred_language(self):
         communication_list = self._fhir_patient.communication
 
@@ -250,6 +271,7 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
         json = self.get_request_json()
         self._process_request(json)
         self._record_request(json)
+        return json
 
     def _process_request(self, json):
         update_payload = PatientPayload(json)
@@ -283,6 +305,14 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
             update_field_list['preferred_language'] = update_payload.preferred_language
 
         ParticipantSummaryDao.update_profile_data(**update_field_list)
+
+        # Handle Ancillary Study Enrollment
+        if update_payload.has_ancillary_identifier:
+            study_interface = EnrollmentInterface(update_payload.ancillary_study_code)
+            study_interface.create_study_participant(
+                aou_pid=update_field_list['participant_id'],
+                ancillary_pid=update_payload.ancillary_study_pid
+            )
 
     def _record_request(self, json):
         repository = ProfileUpdateRepository()

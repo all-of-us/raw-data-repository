@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import sys
 from typing import Type
 
@@ -57,6 +58,13 @@ class ToolBase:
             **kwargs
         ).session()
 
+    @staticmethod
+    def get_int_ids_from_file(file_path):
+        """ Ingest a file of integer ids, such as participant_id or table record ids """
+        with open(os.path.expanduser(file_path)) as id_list:
+            ids = id_list.readlines()
+            # convert ids from a list of strings to a list of integers.
+            return [int(i) for i in ids if i.strip()]
 
 def cli_run(tool_cmd, tool_desc, tool_class: Type[ToolBase], parser_hook=None, defaults={}):
     # Set global debug value and setup application logging.
