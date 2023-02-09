@@ -2,10 +2,9 @@ import faker
 from itertools import zip_longest
 from graphql import GraphQLSyntaxError
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
-from rdr_service.dao import database_factory
 from rdr_service.data_gen.generators.data_generator import DataGenerator
 from sqlalchemy.orm import Query
 from rdr_service.model import study_nph
@@ -57,13 +56,6 @@ def mock_load_participant_data(session):
     ps_query = session.query(ParticipantSummaryModel)
     ps_query.session = session
     ps_result = ps_query.all()
-    for each in ps_result:
-        each.questionnaireOnTheBasics = QuestionnaireStatus.UNSET
-        each.questionnaireOnHealthcareAccess = QuestionnaireStatus.UNSET
-        each.questionnaireOnLifestyle = QuestionnaireStatus.UNSET
-        each.questionnaireOnSocialDeterminantsOfHealth = QuestionnaireStatus.UNSET
-        session.add(each)
-    session.commit()
     num = len(ps_result)
     print(f'NPH TESTING: found {num} participants')
     if num < 10:
@@ -97,7 +89,7 @@ def mock_load_participant_data(session):
                                         )
                 session.add(pm)
                 ancillary_participant_id = ancillary_participant_id + 1
-            session.commit()
+        session.commit()
     nph_data_gen = NphDataGenerator()
     for activity_name in ['ENROLLMENT', 'PAIRING', 'CONSENT']:
         nph_data_gen.create_database_activity(
@@ -105,6 +97,11 @@ def mock_load_participant_data(session):
         )
 
     nph_data_gen.create_database_pairing_event_type(name="INITIAL")
+
+    status = ['Module 3 Complete', 'Withdrawn', 'Deactivated']
+
+    for name in status:
+        nph_data_gen.create_database_enrollment_event_type(name=name)
 
     for i in range(1, 3):
         nph_data_gen.create_database_site(
@@ -121,8 +118,22 @@ def mock_load_participant_data(session):
             site_id=1
         )
 
+        for counter, _ in enumerate(status):
+            nph_data_gen.create_database_enrollment_event(
+                participant_id=participant.id,
+                event_authored_time=datetime(2023, 1, 1, 12, 0) - timedelta(days=counter + 1),
+                event_id=1,
+                event_type_id=counter + 1
+            )
+
     nph_data_gen.create_database_pairing_event(
         participant_id=100000000,
+        event_authored_time=datetime(2023, 1, 1, 12, 1),
+        site_id=1
+    )
+
+    nph_data_gen.create_database_pairing_event(
+        participant_id=100000001,
         event_authored_time=datetime(2023, 1, 1, 12, 1),
         site_id=2
     )
@@ -131,135 +142,124 @@ def mock_load_participant_data(session):
 class TestQueryExecution(BaseTestCase):
 
     def test_client_result_participant_summary(self):
-        with database_factory.get_database().session() as session:
-            mock_load_participant_data(session)
-            query = Query(ParticipantSummaryModel)
-            query.session = session
-            result = query.all()
-            self.assertEqual(11, len(result))
+        mock_load_participant_data(self.session)
+        query = Query(ParticipantSummaryModel)
+        query.session = self.session
+        result = query.all()
+        self.assertEqual(11, len(result))
 
     def test_client_result_check_length(self):
         query_return_one = condition_query("limit", "1", "DOB")
         query_return_two = simple_query("DOB")
-        with database_factory.get_database().session() as session:
-            mock_load_participant_data(session)
-            lengths = [1, 2]
-            queries = [query_return_one, query_return_two]
-            for (length, query) in zip_longest(lengths, queries):
-                executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-                result = json.loads(executed.data.decode('utf-8'))
-                self.assertEqual(length, len(result.get('participant').get('edges')),
-                                 "Should return {} records back".format(length))
+        mock_load_participant_data(self.session)
+        lengths = [1, 2]
+        queries = [query_return_one, query_return_two]
+        for (length, query) in zip_longest(lengths, queries):
+            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+            result = json.loads(executed.data.decode('utf-8'))
+            self.assertEqual(length, len(result.get('participant').get('edges')),
+                             "Should return {} records back".format(length))
 
     def test_client_single_result(self):
         fetch_value = '"{}"'.format("1000100000001")
         query = condition_query("nphId", fetch_value, "participantNphId")
-        with database_factory.get_database().session() as session:
-            mock_load_participant_data(session)
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-            result = json.loads(executed.data.decode('utf-8'))
-            self.assertEqual(1, len(result.get('participant').get('edges')), "Should return 1 record back")
-            self.assertEqual("1000100000001",
-                             result.get('participant').get('edges')[0].get('node').get('participantNphId'))
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(1, len(result.get('participant').get('edges')), "Should return 1 record back")
+        self.assertEqual("1000100000001",
+                         result.get('participant').get('edges')[0].get('node').get('participantNphId'))
 
     def test_client_none_value_field(self):
-        with database_factory.get_database().session() as session:
-            mock_load_participant_data(session)
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_NONE_VALUE)
-            result = json.loads(executed.data.decode('utf-8'))
-            self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 record back")
-            for each in result.get('participant').get('edges'):
-                for _, v in each.get('node').items():
-                    self.assertEqual(str(QuestionnaireStatus.UNSET), v.get('value'))
-                    self.assertIsNone(v.get('time'))
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_NONE_VALUE)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 record back")
+        for each in result.get('participant').get('edges'):
+            for _, v in each.get('node').items():
+                self.assertEqual(str(QuestionnaireStatus.UNSET), v.get('value'))
+                self.assertIsNone(v.get('time'))
 
     def test_client_nph_pair_site(self):
         field_to_test = "nphPairedSite"
         query = simple_query(field_to_test)
-        with database_factory.get_database().session() as session:
-            mock_load_participant_data(session)
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-            result = json.loads(executed.data.decode('utf-8'))
-            self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
-            expected_site_name = ["nph-test-site-1", "nph-test-site-2"]
-            for index, each in enumerate(result.get('participant').get('edges')):
-                self.assertEqual(expected_site_name[index], each.get('node').get(field_to_test))
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
+        expected_site_name = ["nph-test-site-1", "nph-test-site-2"]
+        for index, each in enumerate(result.get('participant').get('edges')):
+            self.assertEqual(expected_site_name[index], each.get('node').get(field_to_test))
 
     def test_client_nph_awardee_external_id(self):
         field_to_test = "nphPairedAwardee"
         query = simple_query(field_to_test)
-        with database_factory.get_database().session() as session:
-            mock_load_participant_data(session)
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-            result = json.loads(executed.data.decode('utf-8'))
-            self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
-            for each in result.get('participant').get('edges'):
-                self.assertEqual('nph-test-hpo', each.get('node').get('nphPairedAwardee'))
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
+        for each in result.get('participant').get('edges'):
+            self.assertEqual('nph-test-hpo', each.get('node').get('nphPairedAwardee'))
 
     def test_client_nph_organization_external_id(self):
         field_to_test = "nphPairedOrg"
         query = simple_query(field_to_test)
-        with database_factory.get_database().session() as session:
-            mock_load_participant_data(session)
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-            result = json.loads(executed.data.decode('utf-8'))
-            self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
-            for each in result.get('participant').get('edges'):
-                self.assertEqual('nph-test-org', each.get('node').get(field_to_test))
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
+        for each in result.get('participant').get('edges'):
+            self.assertEqual('nph-test-org', each.get('node').get(field_to_test))
 
     def test_client_biobank_id_prefix(self):
         field_to_test = "biobankId"
         query = simple_query(field_to_test)
-        with database_factory.get_database().session() as session:
-            mock_load_participant_data(session)
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-            result = json.loads(executed.data.decode('utf-8'))
-            self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
-            expected_biobank_id = ["500000001", "500000000"]
-            for index, each in enumerate(result.get('participant').get('edges')):
-                self.assertEqual(f"{NPH_BIOBANK_PREFIX}{expected_biobank_id[index]}",
-                                 each.get('node').get(field_to_test))
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
+        expected_biobank_id = ["500000000", "500000001"]
+        for index, each in enumerate(result.get('participant').get('edges')):
+            self.assertEqual(f"{NPH_BIOBANK_PREFIX}{expected_biobank_id[index]}",
+                             each.get('node').get(field_to_test))
 
     def test_client_nph_pair_site_with_id(self):
-        fetch_value = '"{}"'.format("1000100000001")
+        fetch_value = '"{}"'.format("1000100000000")
         query = condition_query("nphId", fetch_value, "nphPairedSite")
-        with database_factory.get_database().session() as session:
-            mock_load_participant_data(session)
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-            result = json.loads(executed.data.decode('utf-8'))
-            self.assertEqual(1, len(result.get('participant').get('edges')), "Should return 1 record back")
-            self.assertEqual("nph-test-site-1", result.get('participant').get('edges')[0].get('node'
-                                                                                              ).get('nphPairedSite'))
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(1, len(result.get('participant').get('edges')), "Should return 1 record back")
+        self.assertEqual("nph-test-site-1", result.get('participant').get('edges')[0].get('node'
+                                                                                          ).get('nphPairedSite'))
 
     def test_client_sorting_date_of_birth(self):
         sort_field = '"{}"'.format("DOB")
         query = condition_query("sortBy", sort_field, "DOB")
         dob_list = []
-        with database_factory.get_database().session() as session:
-            mock_load_participant_data(session)
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-            result = json.loads(executed.data.decode('utf-8')).get('participant').get('edges')
-            for each in result:
-                dob_list.append(each.get('node').get('DOB'))
-            sorted_list = dob_list.copy()
-            sorted_list.sort()
-            self.assertTrue(dob_list == sorted_list, msg="Resultset is not in sorting order")
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8')).get('participant').get('edges')
+        for each in result:
+            dob_list.append(each.get('node').get('DOB'))
+        sorted_list = dob_list.copy()
+        sorted_list.sort()
+        self.assertTrue(dob_list == sorted_list, msg="Resultset is not in sorting order")
 
     def test_client_sorting_deceased_status(self):
         sort_field = '"{}"'.format("aouDeceasedStatus:time")
         query = condition_query("sortBy", sort_field, "aouDeceasedStatus {value time}")
         deceased_list = []
-        with database_factory.get_database().session() as session:
-            mock_load_participant_data(session)
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-            result = json.loads(executed.data.decode('utf-8'))
-            for each in result.get('participant').get('edges'):
-                datetime_object = datetime.strptime(each.get('node').get('aouDeceasedStatus').get('time'),
-                                                    '%Y-%m-%dT%H:%M:%S')
-                deceased_list.append(datetime_object)
-            sorted_list = deceased_list.copy()
-            sorted_list.sort()
-            self.assertTrue(deceased_list == sorted_list, msg="Resultset is not in sorting order")
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        for each in result.get('participant').get('edges'):
+            datetime_object = datetime.strptime(each.get('node').get('aouDeceasedStatus').get('time'),
+                                                '%Y-%m-%dT%H:%M:%S')
+            deceased_list.append(datetime_object)
+        sorted_list = deceased_list.copy()
+        sorted_list.sort()
+        self.assertTrue(deceased_list == sorted_list, msg="Resultset is not in sorting order")
 
     def test_client_filter_parameter(self):
         mock_load_participant_data(self.session)
@@ -289,6 +289,39 @@ class TestQueryExecution(BaseTestCase):
         nph_id = str(prefix) + str(participant_nph_id)
         self.assertEqual(nph_id, resulting_participant_data.get('participantNphId'))
 
+    def test_enrollmentStatus_fields(self):
+        field_to_test = "enrollmentStatus {value time} "
+        query = simple_query(field_to_test)
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, len(result.get('participant').get('edges')))
+        actual_result = result.get('participant').get('edges')[0].get('node').get('enrollmentStatus')
+        self.assertIn("time", actual_result)
+        self.assertIn("value", actual_result)
+
+    def test_nphWithdrawalStatus_fields(self):
+        field_to_test = "nphWithdrawalStatus {value time} "
+        query = simple_query(field_to_test)
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, len(result.get('participant').get('edges')))
+        actual_result = result.get('participant').get('edges')[0].get('node').get('nphWithdrawalStatus')
+        self.assertIn("time", actual_result)
+        self.assertIn("value", actual_result)
+
+    def test_nphDeactivationStatus_fields(self):
+        field_to_test = "nphDeactivationStatus {value time} "
+        query = simple_query(field_to_test)
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, len(result.get('participant').get('edges')))
+        actual_result = result.get('participant').get('edges')[0].get('node').get('nphDeactivationStatus')
+        self.assertIn("time", actual_result)
+        self.assertIn("value", actual_result)
+
     def test_graphql_syntax_error(self):
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SYNTAX_ERROR)
         result = json.loads(executed.data.decode('utf-8'))
@@ -303,8 +336,14 @@ class TestQueryExecution(BaseTestCase):
                 self.assertIn('message', error)
                 self.assertIn('locations', error)
 
+
     def tearDown(self):
         super().tearDown()
+        self.clear_table_after_test("rdr.code")
+        self.clear_table_after_test("rdr.hpo")
+        self.clear_table_after_test("rdr.site")
+        self.clear_table_after_test("rdr.participant")
+        self.clear_table_after_test("rdr.participant_summary")
         self.clear_table_after_test("rex.participant_mapping")
         self.clear_table_after_test("rex.study")
         self.clear_table_after_test("nph.participant")
@@ -314,6 +353,8 @@ class TestQueryExecution(BaseTestCase):
         self.clear_table_after_test("nph.participant")
         self.clear_table_after_test("nph.participant_event_activity")
         self.clear_table_after_test("nph.pairing_event")
+        self.clear_table_after_test("nph.enrollment_event")
+        self.clear_table_after_test("nph.enrollment_event_type")
 
 
 class TestQueryValidator(BaseTestCase):

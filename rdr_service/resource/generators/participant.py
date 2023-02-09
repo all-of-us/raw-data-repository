@@ -83,7 +83,10 @@ _consent_module_question_map = {
     'vaprimaryreconsent_c1_2': 'vaprimaryreconsent_c1_2_agree',
     'vaprimaryreconsent_c3': 'vaprimaryreconsent_c3_agree',
     'vaehrreconsent': 'vaehrreconsent_agree',
-    'nonvaprimaryreconsent': 'nonvaprimaryreconsent_agree'
+    'nonvaprimaryreconsent': 'nonvaprimaryreconsent_agree',
+    # TODO: Getting clarification on which is correct module code string for EtM consent.  Recognize either for now
+    'english_exploring_the_mind_consent_form': 'etm_consent',  # Key/concept code value seen in PTSC payloads
+    'welcome_to_etm': 'etm_consent'  # Key/module code value from REDCap
 }
 
 # _consent_expired_question_map, for expired consents. { module: question code string }
@@ -119,10 +122,10 @@ _consent_answer_status_map = {
     'Decision_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     'WEAR_Yes': BQModuleStatusEnum.SUBMITTED,
     'WEAR_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
-    # VA/Non-VA reconsent modules consent answer options (note:  agree_no is defined but may not be transmitted to RDR,
-    # participants who decline reconsent may be updated to withdrawn status by PTSC instead)
+    # Generic yes/no answer codes that apply to multiple consents (e.g., VA/non-VA reconsents and EtM consents)
     'agree_yes': BQModuleStatusEnum.SUBMITTED,
-    'agree_no': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
+    'agree_no': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+
 }
 
 # PDR-252:  When RDR starts accepting QuestionnaireResponse payloads for withdrawal screens, AIAN participants
