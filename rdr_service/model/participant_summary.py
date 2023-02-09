@@ -1573,7 +1573,7 @@ class ParticipantSummary(Base):
     everIdVerified = Column('ever_id_verified', Boolean)
     """ Has the participant's ID been verified """
 
-    firstIdVerifiedOn = Column("remote_id_verified_on", Date)
+    firstIdVerifiedOn = Column("first_id_verified_on", Date)
     """ Date of the first time the participant has their id verified """
 
     idVerificationOrigin = Column("id_verification_origin", Enum(IdVerificationOriginType))
