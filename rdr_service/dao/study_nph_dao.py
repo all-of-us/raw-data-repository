@@ -580,6 +580,16 @@ def fetch_identifier_value(obj: Namespace, identifier: str) -> str:
             return each.value
 
 
+class NphDaoMixin:
+
+    def insert_bulk(self, batch: List[Dict]) -> None:
+        with self.session() as session:
+            session.bulk_insert_mappings(
+                self.model_type,
+                batch
+            )
+
+
 class NphActivityDao(BaseDao):
     def __init__(self):
         super(NphActivityDao, self).__init__(Activity)
@@ -591,7 +601,7 @@ class NphActivityDao(BaseDao):
         pass
 
 
-class NphParticipantEventActivityDao(BaseDao):
+class NphParticipantEventActivityDao(BaseDao, NphDaoMixin):
     def __init__(self):
         super(NphParticipantEventActivityDao, self).__init__(ParticipantEventActivity)
 
@@ -600,6 +610,31 @@ class NphParticipantEventActivityDao(BaseDao):
 
     def from_client_json(self):
         pass
+
+    def get_activity_event_intake(self, *, participant_id, resource_identifier, activity_id):
+        with self.session() as session:
+            return session.query(
+                ParticipantEventActivity
+            ).filter(
+                ParticipantEventActivity.participant_id == participant_id,
+                ParticipantEventActivity.resource["bundle_identifier"] == resource_identifier,
+                ParticipantEventActivity.activity_id == activity_id
+            ).first()
+
+
+class NphEventMixin(NphDaoMixin):
+
+    def get_event_by_source_name(self, source_name):
+        if not hasattr(self.model_type, 'source_name'):
+            return []
+
+        with self.session() as session:
+            records = session.query(
+                self.model_type
+            ).filter(
+                self.model_type.source_name == source_name
+            )
+            return records.first()
 
 
 class NphEnrollmentEventTypeDao(BaseDao):
@@ -613,7 +648,7 @@ class NphEnrollmentEventTypeDao(BaseDao):
         pass
 
 
-class NphEnrollmentEventDao(BaseDao):
+class NphEnrollmentEventDao(BaseDao, NphEventMixin):
     def __init__(self):
         super(NphEnrollmentEventDao, self).__init__(EnrollmentEvent)
 
@@ -635,7 +670,7 @@ class NphPairingEventTypeDao(BaseDao):
         pass
 
 
-class NphPairingEventDao(BaseDao):
+class NphPairingEventDao(BaseDao, NphEventMixin):
     def __init__(self):
         super(NphPairingEventDao, self).__init__(PairingEvent)
 
@@ -666,7 +701,7 @@ class NphConsentEventTypeDao(BaseDao):
         pass
 
 
-class NphConsentEventDao(BaseDao):
+class NphConsentEventDao(BaseDao, NphEventMixin):
     def __init__(self):
         super(NphConsentEventDao, self).__init__(ConsentEvent)
 

@@ -1,0 +1,101 @@
+{
+    "resourceType": "Bundle",
+    "type": "collection",
+	"timestamp": "2023-01-17T17:41:26-05:00",
+	"identifier": {
+        "value": "1234"
+    },
+    "entry": [
+        {
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/patient/1000100200202",
+            "resource": {
+                "resourceType": "Patient",
+                "identifier": [
+                    {
+                        "system": "https://nphdx.rti.org/api/fhir/module1/",
+                        "value": "patient/1000100200202"
+                    }
+                ]
+            }
+        },
+        {
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/module1/visit/eligibilityConfirmed/1000100200202",
+			"resource": {
+				"resourceType": "Encounter",
+                "status": "in-progress",
+                "class": {
+                    "system": "https://nphdx.rti.org/api/fhir/codesystem/study-stage",
+                    "code": "module1"
+                },
+                "type": [
+                    {
+                        "coding": [
+                            {
+                                "system": "https://nphdx.rti.org/api/fhir/codesystem/study-encounter-type",
+                                "code": "visit"
+                            }
+                        ]
+                    }
+                ],
+                "serviceType": {
+                    "coding": [
+                        {
+                            "system": "https://nphdx.rti.org/api/fhir/codesystem/study-encounter-type-detail",
+                            "code": "eligibilityConfirmed"
+                        }
+                    ]
+                },
+                "subject": {
+                    "reference": "patient/1000100200202"
+                },
+                "period": {
+                    "start": "2022-02-15T12:11:05-05:00"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/pairing/1000100200202",
+			"resource": {
+                "resourceType": "Encounter",
+                "status": "finished",
+                "class": {
+                    "system": "https://nphdx.rti.org/api/fhir/codesystem/study-stage",
+                    "code": "pairing"
+                },
+                "type": [
+                    {
+                        "coding": [
+                            {
+                                "system": "https://nphdx.rti.org/api/fhir/codesystem/paired-site",
+                                "code": "nph-site-nphuclachn"
+                            }
+                        ]
+                    }
+                ],
+                "subject": {
+                    "reference": "patient/1000100200202"
+                },
+                "period": {
+                    "start": "2022-01-25T09:44:05-05:00"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/module1/withdrawal/1000100200202",
+			"resource": {
+                "resourceType": "Encounter",
+                "status": "finished",
+                "class": {
+                    "system": "https://nphdx.rti.org/api/fhir/codesystem/study-stage",
+                    "code": "withdrawal"
+                },
+                "subject": {
+                    "reference": "patient/1000100200202"
+                },
+                "period": {
+                    "start": "2022-02-15T12:11:05-05:00"
+                }
+            }
+        }
+    ]
+}

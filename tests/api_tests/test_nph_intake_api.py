@@ -27,6 +27,14 @@ class NphIntakeAPITest(BaseTestCase):
             name="Module 1 Eligibility Confirmed",
             source_name='eligibilityConfirmed'
         )
+        self.nph_data_gen.create_database_enrollment_event_type(
+            name="Withdrawn",
+            source_name='withdrawn'
+        )
+        self.nph_data_gen.create_database_enrollment_event_type(
+            name="Deactivated",
+            source_name='deactivated'
+        )
 
         for _ in range(2):
             self.nph_data_gen.create_database_participant()
@@ -39,10 +47,16 @@ class NphIntakeAPITest(BaseTestCase):
                 organization_external_id="nph-test-org"
             )
 
-    def test_consent_payload(self):
+    def test_detailed_consent_payload(self):
 
         with open(data_path('nph_m1_detailed_consent_multi.json')) as f:
             consent_json = json.load(f)
 
         self.send_post('nph/Intake', request_data=consent_json)
 
+    def test_operational_payload(self):
+
+        with open(data_path('nph_m1_detailed_consent_multi.json')) as f:
+            consent_json = json.load(f)
+
+        self.send_post('nph/Intake', request_data=consent_json)

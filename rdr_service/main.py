@@ -26,7 +26,7 @@ from rdr_service.api.mail_kit_order_api import MailKitOrderApi
 from rdr_service.api.genomic_api import GenomicPiiApi, GenomicOutreachApi, GenomicOutreachApiV2, GenomicSchedulingApi
 from rdr_service.api.import_codebook_api import import_codebook
 from rdr_service.api.metrics_fields_api import MetricsFieldsApi
-from rdr_service.api.nph_api import NphIntakeAPI
+from rdr_service.api.nph_intake_api import NphIntakeAPI
 from rdr_service.api.participant_api import ParticipantApi, ParticipantResearchIdApi
 from rdr_service.api.participant_incentives import ParticipantIncentivesApi
 from rdr_service.api.participant_summary_api import ParticipantSummaryApi, \
