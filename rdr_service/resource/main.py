@@ -5,7 +5,8 @@ from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
-from rdr_service.api import cloud_tasks_api, genomic_cloud_tasks_api, message_broker_cloud_tasks_api
+from rdr_service.api import cloud_tasks_api, genomic_cloud_tasks_api, message_broker_cloud_tasks_api, \
+    ancillary_study_cloud_tasks_api
 from rdr_service.api.resource_api import ResourceRequestApi
 
 from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop
@@ -166,6 +167,19 @@ def _build_resource_app():
 
     #
     # End Genomic Cloud Task API endpoints
+    #
+
+    #
+    # Begin Ancillary Studies Cloud Task API endpoings
+    #
+
+    # Insert Study Events
+    _api.add_resource(ancillary_study_cloud_tasks_api.InsertStudyEventTaskApi,
+                      TASK_PREFIX + "InsertStudyEventTaskApi",
+                      endpoint="insert_study_event_task", methods=["POST"])
+
+    #
+    # End Ancillary Studies Cloud Task API endpoings
     #
 
     #

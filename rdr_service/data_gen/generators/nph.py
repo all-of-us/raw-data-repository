@@ -153,3 +153,13 @@ class NphDataGenerator:
         activity = self._activity(**kwargs)
         self._commit_to_database(activity)
         return activity
+
+    @staticmethod
+    def _enrollment_event_type(**kwargs):
+        return EnrollmentEventType(**kwargs)
+
+    def create_database_enrollment_event_type(self, **kwargs):
+        enrollment_type = self._enrollment_event_type(**kwargs)
+        self._commit_to_database(enrollment_type)
+        return enrollment_type
+

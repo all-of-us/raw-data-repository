@@ -212,6 +212,13 @@ class PatientPayload:
                 return item.value
 
     @property
+    def ancillary_event_authored_time(self):
+        if hasattr(self._fhir_patient, "contained"):
+            for item in self._fhir_patient.contained:
+                if hasattr(item, "recorded"):
+                    return item.recorded.date.isoformat(timespec='milliseconds')
+
+    @property
     def preferred_language(self):
         communication_list = self._fhir_patient.communication
 
@@ -311,7 +318,8 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
             study_interface = EnrollmentInterface(update_payload.ancillary_study_code)
             study_interface.create_study_participant(
                 aou_pid=update_field_list['participant_id'],
-                ancillary_pid=update_payload.ancillary_study_pid
+                ancillary_pid=update_payload.ancillary_study_pid,
+                event_authored_time=update_payload.ancillary_event_authored_time
             )
 
     def _record_request(self, json):

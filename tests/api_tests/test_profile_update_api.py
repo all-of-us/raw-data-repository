@@ -440,22 +440,41 @@ class ProfileUpdateApiTest(BaseTestCase):
     )
     def test_nph_participant_id(self, study_mock):
         payload = {
-                'id': 'P123123123',
-                "identifier": [
-                    {
-                        "use": "official",
-                        "type": {
-                            "coding": [
-                                {
-                                    "system": "https://pmi-fhir-ig.github.io/pmi-fhir-ig/CodeSystem/PMIIdentifierTypeCS",
-                                    "code": "NPH-1000"
-                                }
-                            ]
-                        },
-                        "value": "1000578448930"
-                    }
-                ]
-            }
+            "id": "P123123123",
+            "contained": [
+                {
+                    "resourceType" : "Provenance",
+                    "id": "PMIParticipantProvenanceExample",
+                    "target": [
+                        {
+                            "reference": "Patient/P123123123"
+                        }
+                    ],
+                    "recorded": "2015-02-07T13:28:17.239+02:00",
+                    "agent": [
+                        {
+                            "who": {
+                                "reference": "Patient/P123123123"
+                            }
+                        }
+                    ]
+                }
+              ],
+            "identifier": [
+                {
+                    "use": "official",
+                    "type": {
+                        "coding": [
+                            {
+                                "system": "https://pmi-fhir-ig.github.io/pmi-fhir-ig/CodeSystem/PMIIdentifierTypeCS",
+                                "code": "NPH-1000"
+                            }
+                        ]
+                    },
+                    "value": "1000578448930"
+                }
+            ]
+        }
         response = self.send_post(
             'Patient',
             request_data=payload
@@ -467,5 +486,6 @@ class ProfileUpdateApiTest(BaseTestCase):
 
         study_mock.assert_called_with(
             aou_pid=123123123,
-            ancillary_pid='1000578448930'
+            ancillary_pid='1000578448930',
+            event_authored_time="2015-02-07T13:28:17.239+02:00"
         )
