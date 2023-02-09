@@ -162,7 +162,8 @@ participant_summary_default_values = {
     "onsiteIdVerificationType": "UNSET",
     "onsiteIdVerificationVisitType": "UNSET",
     "questionnaireOnLifeFunctioning": "UNSET",
-    "aian": False
+    "aian": False,
+    "everIdVerified": False,
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
@@ -4464,3 +4465,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertNotIn('remoteIdVerifiedOn', summary)
         self.assertEqual(summary['remoteIdVerificationStatus'], False)
 
+    def test_ever_id_verified(self):
+        pass
+
+    def test_first_id_verified_on(self):
+        pass
+
+    def test_id_verification_origin(self):
+        pass
