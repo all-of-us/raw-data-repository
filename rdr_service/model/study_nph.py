@@ -251,6 +251,38 @@ event.listen(ConsentEvent, "before_insert", model_insert_listener)
 event.listen(ConsentEvent, "before_update", model_update_listener)
 
 
+class WithdrawalEvent(NphBase):
+    __tablename__ = "withdrawal_event"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    event_authored_time = Column(UTCDateTime)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+
+
+event.listen(WithdrawalEvent, "before_insert", model_insert_listener)
+event.listen(WithdrawalEvent, "before_update", model_update_listener)
+
+
+class DeactivatedEvent(NphBase):
+    __tablename__ = "deactivated_event"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    event_authored_time = Column(UTCDateTime)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+
+
+event.listen(DeactivatedEvent, "before_insert", model_insert_listener)
+event.listen(DeactivatedEvent, "before_update", model_update_listener)
+
+
 class SampleUpdate(NphBase):
     __tablename__ = "sample_update"
 
