@@ -1,6 +1,6 @@
 from rdr_service.dao import database_factory
 from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
-    PairingEventType, ConsentEvent
+    PairingEventType, ConsentEvent, EnrollmentEvent, EnrollmentEventType
 
 
 class NphDataGenerator:
@@ -93,6 +93,36 @@ class NphDataGenerator:
         pairing_event = self._pairing_event(**fields)
         self._commit_to_database(pairing_event)
         return pairing_event
+
+    @staticmethod
+    def _enrollment_event_type(**kwargs):
+        return EnrollmentEventType(**kwargs)
+
+    def create_database_enrollment_event_type(self, **kwargs):
+        event_type = self._enrollment_event_type(**kwargs)
+        self._commit_to_database(event_type)
+        return event_type
+
+    @staticmethod
+    def _enrollment_event(**kwargs):
+        return EnrollmentEvent(**kwargs)
+
+    def create_database_enrollment_event(self, participant_id, **kwargs):
+        event_id = kwargs.get('event_id')
+        if event_id is None:
+            ee = self.create_database_enrollment_event_type()
+            event_id = ee.id
+
+        fields = {
+            "participant_id": participant_id,
+            "event_id": event_id,
+            "event_type_id": 1,
+        }
+
+        fields.update(kwargs)
+        enrollment_event = self._enrollment_event(**fields)
+        self._commit_to_database(enrollment_event)
+        return enrollment_event
 
     @staticmethod
     def _consent_event(**kwargs):
