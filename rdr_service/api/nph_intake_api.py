@@ -78,7 +78,7 @@ class NphIntakeAPI(BaseApi):
             site = self.nph_site_dao.get_site_id_from_external(external_id=pairing_site_code)
 
             if not site:
-                raise BadRequest(f'Cannot find site pairing code: bundle_id: {self.bundle_identifier}')
+                raise BadRequest(f'Cannot find site: bundle_id: {self.bundle_identifier}')
 
             return site.id
 
