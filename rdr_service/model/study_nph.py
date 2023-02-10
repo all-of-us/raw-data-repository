@@ -142,7 +142,7 @@ class ParticipantEventActivity(NphBase):
     ignore_flag = Column(TINYINT, default=0)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     activity_id = Column(Integer, ForeignKey("activity.id"))
-    resource = Column(JSON, nullable=False)
+    resource = Column(JSON, nullable=True)
 
 
 event.listen(ParticipantEventActivity, "before_insert", model_insert_listener)
