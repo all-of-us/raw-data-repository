@@ -108,6 +108,7 @@ class NphDataGenerator:
         self._commit_to_database(consent_event_type)
         return consent_event_type
 
+    @staticmethod
     def _enrollment_event_type(**kwargs):
         return EnrollmentEventType(**kwargs)
 
