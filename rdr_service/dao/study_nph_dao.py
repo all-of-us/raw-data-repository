@@ -176,17 +176,22 @@ class NphSiteDao(BaseDao):
     def __init__(self):
         super(NphSiteDao, self).__init__(Site)
 
-    def get_site_id_from_external(self, external_id) -> int:
+    def get_site_id_from_external(self, external_id):
         with self.session() as session:
-            result = session.query(
+            return session.query(
                 Site
             ).filter(
                 Site.external_id == external_id
             ).first()
-            if not result:
-                raise NotFound(f"Site is not found -- {external_id}")
 
-            return result.id
+    @staticmethod
+    def _fetch_site_id(session, external_id) -> int:
+        query = Query(Site)
+        query.session = session
+        result = query.filter(Site.external_id == external_id).first()
+        if result is None:
+            raise NotFound(f"Site is not found -- {external_id}")
+        return result.id
 
     def get_id(self, session, site_name: str) -> int:
         try:
