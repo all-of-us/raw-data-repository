@@ -140,6 +140,7 @@ class NphIntakeAPI(BaseApi):
         event_dao_map = self.build_event_dao_map()
         participant_event_objs, event_objs = [], []
 
+        participant_response = []
         for resource in intake_payload:
             self.bundle_identifier = resource['identifier']['value']
 
@@ -147,6 +148,10 @@ class NphIntakeAPI(BaseApi):
                                           resource['entry']))[0]
 
             participant_id = self.extract_participant_id(participant_obj=participant_obj)
+
+            participant_response.append({
+                'nph_participant_id': participant_id
+            })
 
             applicable_entries = [obj for obj in resource['entry'] if obj['resource']['resourceType'].lower() in [
                 'consent', 'encounter']]
@@ -208,4 +213,4 @@ class NphIntakeAPI(BaseApi):
             if dao_event_objs:
                 dao.insert_bulk(dao_event_objs)
 
-        return self._make_response([])
+        return self._make_response(participant_response)

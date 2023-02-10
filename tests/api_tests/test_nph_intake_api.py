@@ -25,11 +25,7 @@ class NphIntakeAPITest(BaseTestCase):
         )
         self.nph_data_gen.create_database_enrollment_event_type(
             name="Module 1 Eligibility Confirmed",
-            source_name='eligibilityConfirmed'
-        )
-        self.nph_data_gen.create_database_enrollment_event_type(
-            name="Module 1 Consented",
-            source_name='consented'
+            source_name='module1_eligibilityConfirmed'
         )
         for _ in range(2):
             self.nph_data_gen.create_database_participant()
