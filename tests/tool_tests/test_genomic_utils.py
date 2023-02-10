@@ -5,7 +5,7 @@ from tests import test_data
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicGCValidationMetricsDao
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicContaminationCategory
 from rdr_service.tools.tool_libs.backfill_gvcf_paths import GVcfBackfillTool
-from rdr_service.tools.tool_libs.backfill_replated_samples import ResetMembersBackfillTool
+from rdr_service.tools.tool_libs.backfill_reset_replated_samples import ResetMembersBackfillTool
 from rdr_service.tools.tool_libs.genomic_utils import GenomicProcessRunner, LoadRawManifest, IngestionClass, \
     UnblockSamples, UpdateMissingFiles
 from tests.helpers.tool_test_mixin import ToolTestMixin
@@ -581,6 +581,7 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         })
 
         member_dao = GenomicSetMemberDao()
-        member = member_dao.get_members_from_member_ids([1])
+        member = member_dao.get_members_from_member_ids([1])[0]
         self.assertIsNone(member.sampleId)
+        self.assertEqual(GenomicWorkflowState.EXTRACT_REQUESTED, member.genomicWorkflowState)
 
