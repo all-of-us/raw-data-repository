@@ -5,6 +5,7 @@ from tests import test_data
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicGCValidationMetricsDao
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicContaminationCategory
 from rdr_service.tools.tool_libs.backfill_gvcf_paths import GVcfBackfillTool
+from rdr_service.tools.tool_libs.backfill_replated_samples import ResetMembersBackfillTool
 from rdr_service.tools.tool_libs.genomic_utils import GenomicProcessRunner, LoadRawManifest, IngestionClass, \
     UnblockSamples, UpdateMissingFiles
 from tests.helpers.tool_test_mixin import ToolTestMixin
@@ -556,3 +557,30 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
 
         wgs_filepath_metrics = metrics_dao.get_metrics_by_member_id(filepath_wgs_member.id)
         self.assertEqual('gs://test-bucket/Wgs_sample_raw_data/test.cram', wgs_filepath_metrics.cramPath)
+
+    def test_reset_replated(self):
+        test_file = test_data.data_path('test_reset_replated.txt')
+
+        genomic_set = self.data_generator.create_database_genomic_set(
+            genomicSetName = ".",
+            genomicSetCriteria = ".",
+            genomicSetVersion = 1
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=genomic_set.id,
+            biobankId="1",
+            sampleId="10001",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW0
+        )
+
+        GenomicUtilsGeneralTest.run_tool(ResetMembersBackfillTool, tool_args={
+            'command': 'backfill-reset-members',
+            'input_file': test_file
+        })
+
+        member_dao = GenomicSetMemberDao()
+        member = member_dao.get_members_from_member_ids([1])
+        self.assertIsNone(member.sampleId)
+
