@@ -8,7 +8,7 @@ from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RTI, RDR
 from rdr_service.app_util import auth_required
 from rdr_service.dao.study_nph_dao import NphIntakeDao, NphParticipantEventActivityDao, NphActivityDao, \
-    NphPairingEventDao, NphSiteDao, NphDefaultBaseDao
+    NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao
 from rdr_service.model.study_nph import WithdrawalEvent, DeactivatedEvent, ConsentEvent, EnrollmentEvent
 
 
@@ -28,8 +28,9 @@ class NphIntakeAPI(BaseApi):
         self.nph_participant_activity_dao = NphParticipantEventActivityDao()
         self.nph_site_dao = NphSiteDao()
 
-        self.nph_pairing_event_dao = NphPairingEventDao()
+        self.nph_enrollment_type_dao = NphEnrollmentEventTypeDao()
 
+        self.nph_pairing_event_dao = NphPairingEventDao()
         self.nph_consent_event_dao = NphDefaultBaseDao(model_type=ConsentEvent)
         self.nph_enrollment_event_dao = NphDefaultBaseDao(model_type=EnrollmentEvent)
         self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
@@ -80,14 +81,26 @@ class NphIntakeAPI(BaseApi):
         except KeyError as e:
             raise BadRequest(f'Key error on site lookup: {e} bundle_id: {self.bundle_identifier}')
 
-    def get_event_type_id(self):
-        return 1
+    def get_event_type_id(self, *, activity_name, activity_source):
+        event_type_dao_instance_items = {k: v for k, v in self.__dict__.items() if 'type_dao' in k}
 
-    def build_dao_map(self):
+        if activity_name not in event_type_dao_instance_items.keys():
+            return 1
+
+        event_type_dao = event_type_dao_instance_items[f'nph_{activity_name}_type_dao']
+        event_activity = event_type_dao.get_event_by_source_name(source_name=activity_source)
+
+        if not event_activity:
+            raise BadRequest(f'Cannot find event type: bundle_id: {self.bundle_identifier}')
+
+        return event_activity.id
+
+    def build_event_dao_map(self):
         event_dao_map = {}
-        dao_instance_items = {k: v for k, v in self.__dict__.items() if 'event_dao' in k}
+        event_dao_instance_items = {k: v for k, v in self.__dict__.items() if 'event_dao' in k}
         for activity in self.current_activities:
-            event_dao_map[f'{activity.name.lower()}'] = dao_instance_items[f'nph_{activity.name.lower()}_event_dao']
+            event_dao_map[f'{activity.name.lower()}'] = event_dao_instance_items[
+                f'nph_{activity.name.lower()}_event_dao']
         return event_dao_map
 
     @classmethod
@@ -120,7 +133,7 @@ class NphIntakeAPI(BaseApi):
         # per validation fail the payload is stored
         log_api_request(log=request.log_record)
 
-        event_dao_map = self.build_dao_map()
+        event_dao_map = self.build_event_dao_map()
         participant_event_objs, event_objs = [], []
 
         for resource in intake_payload:
@@ -147,7 +160,7 @@ class NphIntakeAPI(BaseApi):
                     'resource': entry
                 })
 
-                nph_dao = event_dao_map[activity_data.name]
+                nph_event_dao = event_dao_map[activity_data.name]
 
                 event_obj = {
                     'created': clock.CLOCK.now(),
@@ -155,7 +168,7 @@ class NphIntakeAPI(BaseApi):
                     'event_authored_time': self.extract_authored_time(entry),
                     'participant_id': participant_id,
                     'additional': {
-                        'nph_dao': nph_dao,
+                        'nph_event_dao': nph_event_dao,
                         'activity_id': activity_data.id,
                         'bundle_identifier': self.bundle_identifier
                     }
@@ -164,8 +177,11 @@ class NphIntakeAPI(BaseApi):
                 if activity_data.name == 'pairing':
                     event_obj['site_id'] = self.get_site_id(entry)
 
-                if hasattr(nph_dao.model_type.__table__.columns, 'event_type_id'):
-                    event_obj['event_type_id'] = self.get_event_type_id()
+                if hasattr(nph_event_dao.model_type.__table__.columns, 'event_type_id'):
+                    event_obj['event_type_id'] = self.get_event_type_id(
+                        activity_name=activity_data.name,
+                        activity_source=activity_data.source
+                    )
 
                 event_objs.append(event_obj)
 
@@ -174,7 +190,7 @@ class NphIntakeAPI(BaseApi):
         for dao_key, dao in event_dao_map.items():
             dao_event_objs = list(filter(
                 lambda x: hasattr(x, 'additional') and dao_key in x['additional'][
-                    'nph_dao'].__class__.__name__.lower(), event_objs
+                    'nph_event_dao'].__class__.__name__.lower(), event_objs
             ))
             for dao_obj in dao_event_objs:
                 participant_event_obj = self.nph_participant_activity_dao.get_activity_event_intake(
