@@ -229,7 +229,7 @@ class BiobankOrderDao(UpdatableDao):
             total_query = session.query(BiobankOrder)\
                 .outerjoin(BiobankQuestOrderSiteAddress,
                            BiobankQuestOrderSiteAddress.biobankOrderId == BiobankOrder.biobankOrderId
-                ).filter(BiobankOrder.ignoreFlag != 1)
+                ).filter(BiobankOrder.is_not_ignored())
             total_query = self._add_filter_for_biobank_order_search(total_query, states, cities, zip_codes, origin,
                                                                     start_date, end_date)
             total = total_query.count()
@@ -240,7 +240,7 @@ class BiobankOrderDao(UpdatableDao):
                     .join(Participant, Participant.participantId == BiobankOrder.participantId) \
                     .outerjoin(BiobankQuestOrderSiteAddress,
                                BiobankQuestOrderSiteAddress.biobankOrderId == BiobankOrder.biobankOrderId
-                    ).filter(BiobankOrder.ignoreFlag != 1)
+                    ).filter(BiobankOrder.is_not_ignored())
             query = self._add_filter_for_biobank_order_search(query, states, cities, zip_codes, origin, start_date,
                                                               end_date)
 
@@ -309,7 +309,7 @@ class BiobankOrderDao(UpdatableDao):
         query = session.query(BiobankOrder).options(
             subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples),
             subqueryload(BiobankOrder.questSiteAddress)
-        ).filter(BiobankOrder.ignoreFlag != 1)
+        ).filter(BiobankOrder.is_not_ignored())
 
         if for_update:
             query = query.with_for_update()
@@ -326,7 +326,7 @@ class BiobankOrderDao(UpdatableDao):
         with self.session() as session:
             return session.query(BiobankOrder).filter(
                 BiobankOrder.participantId == pid,
-                BiobankOrder.ignoreFlag != 1
+                BiobankOrder.is_not_ignored()
             ).all()
 
     def get_biobank_orders_with_children_for_participant(self, pid):
@@ -339,7 +339,7 @@ class BiobankOrderDao(UpdatableDao):
                         subqueryload(BiobankOrder.questSiteAddress)).\
                 filter(
                 BiobankOrder.participantId == pid,
-                BiobankOrder.ignoreFlag != 1
+                BiobankOrder.is_not_ignored()
             ).all()
 
     def get_biobank_order_by_kit_id(self, kit_id):
@@ -353,7 +353,7 @@ class BiobankOrderDao(UpdatableDao):
                     filter(BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId,
                            BiobankOrderIdentifier.system == KIT_ID_SYSTEM,
                            BiobankOrderIdentifier.value == kit_id,
-                           BiobankOrder.ignoreFlag != 1)
+                           BiobankOrder.is_not_ignored())
                     .all()
                     )
     def get_ordered_samples_for_participant(self, participant_id):
@@ -364,7 +364,7 @@ class BiobankOrderDao(UpdatableDao):
                 .join(BiobankOrder)
                 .filter(
                     BiobankOrder.participantId == participant_id,
-                    BiobankOrder.ignoreFlag != 1
+                    BiobankOrder.is_not_ignored()
                 )
                 .all()
             )
@@ -445,7 +445,7 @@ class BiobankOrderDao(UpdatableDao):
             session.query(BiobankOrder)
             .filter(BiobankOrder.participantId == participantId)
             .filter(or_(BiobankOrder.orderStatus != BiobankOrderStatus.CANCELLED, BiobankOrder.orderStatus == None),
-                    BiobankOrder.ignoreFlag != 1)
+                    BiobankOrder.is_not_ignored())
             .order_by(BiobankOrder.created)
             .all()
         )

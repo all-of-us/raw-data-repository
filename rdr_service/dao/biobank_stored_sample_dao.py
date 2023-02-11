@@ -34,7 +34,7 @@ class BiobankStoredSampleDao(BaseDao):
             ).filter(
                 Site.siteType == "Diversion Pouch",
                 BiobankStoredSample.biobankStoredSampleId == biobank_stored_sample_id,
-                BiobankOrder.ignoreFlag != 1
+                BiobankOrder.is_not_ignored()
             ).distinct().one_or_none()
 
             if results:
