@@ -132,7 +132,6 @@ class GenomicJobController:
     def __enter__(self):
         logging.info(f'Beginning {self.job_id.name} workflow')
         self.job_run = self._create_run(self.job_id)
-        self.last_run_time = self._get_last_successful_run_time()
         slack_config = config.getSettingJson(RDR_SLACK_WEBHOOKS, {})
         webbook_url = None
 
@@ -1017,7 +1016,7 @@ class GenomicJobController:
         self.job_result = GenomicSubProcessResult.SUCCESS
 
     def reconcile_pdr_data(self):
-        last_job_run = self.last_run_time
+        last_job_run = self._get_last_successful_run_time()
 
         reconcile_daos = [
             self.set_dao,
@@ -1335,7 +1334,7 @@ class GenomicJobController:
 
         # Setup date
         timezone = pytz.timezone('Etc/Greenwich')
-        date_limit = timezone.localize(self.last_run_time)
+        date_limit = timezone.localize(self._get_last_successful_run_time())
 
         new_failure_files = dict()
 
