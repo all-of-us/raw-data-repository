@@ -336,7 +336,6 @@ class TestQueryExecution(BaseTestCase):
                 self.assertIn('message', error)
                 self.assertIn('locations', error)
 
-
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("rdr.code")

@@ -264,3 +264,5 @@ class NphIntakeAPITest(BaseTestCase):
         self.clear_table_after_test("nph.enrollment_event")
         self.clear_table_after_test("nph.consent_event")
         self.clear_table_after_test("nph.withdrawal_event")
+        self.clear_table_after_test("nph.pairing_event_type")
+        self.clear_table_after_test("nph.consent_event_type")
