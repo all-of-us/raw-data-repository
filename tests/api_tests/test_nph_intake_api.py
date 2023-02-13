@@ -1,7 +1,9 @@
 import json
-# from datetime import datetime
 
+from rdr_service.dao.study_nph_dao import NphParticipantDao, NphSiteDao, NphParticipantEventActivityDao, \
+    NphEnrollmentEventTypeDao, NphPairingEventDao, NphDefaultBaseDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
+from rdr_service.model.study_nph import ConsentEvent, EnrollmentEvent, WithdrawalEvent, DeactivatedEvent
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
 
@@ -11,6 +13,16 @@ class NphIntakeAPITest(BaseTestCase):
         super().setUp()
         self.nph_data_gen = NphDataGenerator()
         activities = ['ENROLLMENT', 'PAIRING', 'CONSENT', 'WITHDRAWAL', 'DEACTIVATION']
+
+        self.nph_participant = NphParticipantDao()
+        self.nph_participant_activity_dao = NphParticipantEventActivityDao()
+        self.nph_site_dao = NphSiteDao()
+        self.nph_enrollment_type_dao = NphEnrollmentEventTypeDao()
+        self.nph_pairing_event_dao = NphPairingEventDao()
+        self.nph_consent_event_dao = NphDefaultBaseDao(model_type=ConsentEvent)
+        self.nph_enrollment_event_dao = NphDefaultBaseDao(model_type=EnrollmentEvent)
+        self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
+        self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivatedEvent)
 
         for activity in activities:
             self.nph_data_gen.create_database_activity(
@@ -44,6 +56,8 @@ class NphIntakeAPITest(BaseTestCase):
             consent_json = json.load(f)
 
         self.send_post('nph/Intake', request_data=consent_json)
+
+        print('Darryl')
 
     def test_m1_operational_payload(self):
 
