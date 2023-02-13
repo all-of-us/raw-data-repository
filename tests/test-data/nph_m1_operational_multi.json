@@ -73,7 +73,7 @@
                     }
                 ],
                 "subject": {
-                    "reference": "patient/1000100200201"
+                    "reference": "patient/100000000"
                 },
                 "period": {
                     "start": "2022-02-15T16:51:02-05:00"

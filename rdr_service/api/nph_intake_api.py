@@ -183,7 +183,7 @@ class NphIntakeAPI(BaseApi):
                     }
                 }
 
-                if activity_data.name == 'pairing':
+                if hasattr(nph_event_dao.model_type.__table__.columns, 'site_id'):
                     event_obj['site_id'] = self.get_site_id(entry)
 
                 if hasattr(nph_event_dao.model_type.__table__.columns, 'event_type_id'):
