@@ -12,7 +12,7 @@ from rdr_service.model.study_nph import (
     Activity, ParticipantEventActivity, EnrollmentEventType,
     PairingEventType, PairingEvent, ConsentEventType,
     SampleUpdate, BiobankFileExport, SampleExport,
-    StoredSample
+    StoredSample, EnrollmentEvent
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
@@ -674,6 +674,17 @@ class NphEnrollmentEventTypeDao(BaseDao, NphEventTypeMixin):
         pass
 
 
+class NphEnrollmentEventDao(BaseDao):
+    def __init__(self):
+        super().__init__(EnrollmentEvent)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+
 class NphPairingEventTypeDao(BaseDao, NphEventTypeMixin):
     def __init__(self):
         super().__init__(PairingEventType)
@@ -706,6 +717,17 @@ class NphPairingEventDao(BaseDao):
 
 
 class NphConsentEventTypeDao(BaseDao, NphEventTypeMixin):
+    def __init__(self):
+        super().__init__(ConsentEventType)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+
+class NphConsentEventDao(BaseDao):
     def __init__(self):
         super().__init__(ConsentEventType)
 
