@@ -299,7 +299,9 @@ def main():
         if rdr_participant_summary.sexId is not None:
             code_obj = _get_code_obj_from_sex_id(rdr_participant_summary.sexId)
             if code_obj is not None:
-                sex_at_birth = code_obj.value.rsplit("_", 1)[1]
+                sex_at_birth: str = code_obj.value.rsplit("_", 1)[1]
+                if sex_at_birth not in {"Male", "Female"}:
+                    sex_at_birth = "Unknown"
 
         json_object = {
             "clientID": client_id,
