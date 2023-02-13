@@ -198,8 +198,8 @@ class NphIntakeAPI(BaseApi):
 
         for dao_key, dao in event_dao_map.items():
             dao_event_objs = list(filter(
-                lambda x: hasattr(x, 'additional') and dao_key in x['additional'][
-                    'nph_event_dao'].__class__.__name__.lower(), event_objs
+                lambda x: x.get('additional') and dao_key in x['additional'][
+                    'nph_event_dao'].model_type.__name__.lower(), event_objs
             ))
             for dao_obj in dao_event_objs:
                 participant_event_obj = self.nph_participant_activity_dao.get_activity_event_intake(

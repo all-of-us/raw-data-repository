@@ -696,7 +696,7 @@ class NphPairingEventTypeDao(BaseDao, NphEventTypeMixin):
         pass
 
 
-class NphPairingEventDao(BaseDao):
+class NphPairingEventDao(BaseDao, NphDaoMixin):
     def __init__(self):
         super().__init__(PairingEvent)
 
@@ -727,7 +727,7 @@ class NphConsentEventTypeDao(BaseDao, NphEventTypeMixin):
         pass
 
 
-class NphConsentEventDao(BaseDao):
+class NphConsentEventDao(BaseDao, NphDaoMixin):
     def __init__(self):
         super().__init__(ConsentEventType)
 
