@@ -1266,7 +1266,7 @@ class ParticipantSummary(Base):
     """
     Gives how the 1SAL2 sample was collected (ie on site or using a mail kit)
 
-    :ref:`Enumerated values <Sample_collection_method>`
+    :ref:`Enumerated values <sample_collection_method>`
     """
 
     sampleStatus1ED02 = Column("sample_status_1ed02", Enum(SampleStatus), default=SampleStatus.UNSET)
