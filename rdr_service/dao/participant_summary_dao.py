@@ -284,7 +284,7 @@ def _get_sample_sql_and_params(now):
             where_sql += " or "
         where_sql += _WHERE_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref}
 
-    sql += " WHERE " + where_sql
+    sql += f" WHERE ({where_sql})"
 
     return sql, params
 
@@ -626,8 +626,10 @@ class ParticipantSummaryDao(UpdatableDao):
       samples_to_isolate_dna = {dna_tests_sql},
       last_modified = :now
     WHERE
-      num_baseline_samples_arrived != {baseline_tests_sql} OR
-      samples_to_isolate_dna != {dna_tests_sql}
+      (
+        num_baseline_samples_arrived != {baseline_tests_sql}
+        OR samples_to_isolate_dna != {dna_tests_sql}
+      )
     """.format(
             baseline_tests_sql=baseline_tests_sql, dna_tests_sql=dna_tests_sql
         )
