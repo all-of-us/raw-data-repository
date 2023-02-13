@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UnicodeText, event, SmallInteger
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UnicodeText, event, SmallInteger, or_
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
@@ -175,6 +175,13 @@ class BiobankOrder(BiobankOrderBase, Base):
                                     backref="biobank_order")
     ignoreFlag = Column("ignore_flag", SmallInteger, default=0)
     ignoreReason = Column("ignore_reason", String(100))
+
+    @classmethod
+    def is_not_ignored(cls):
+        return or_(
+            BiobankOrder.ignoreFlag.is_(None),
+            BiobankOrder.ignoreFlag != 1
+        )
 
 
 class BiobankQuestOrderSiteAddress(Base):
