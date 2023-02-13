@@ -7,6 +7,7 @@ import csv
 import logging
 import os
 import sys
+from typing import Dict, Any, Union
 
 import faker
 
@@ -72,15 +73,15 @@ class ParticipantGeneratorTool(ToolBase):
 
             return 0
 
-    def run_participant_creation(self, row):
+    def run_participant_creation(self, row: Dict[str, Union[str, Any]]):
         # Insert AOU Data
         # Get data from spec
-        if int(row['ny_flag']):
+        if row['ny_flag'].upper() == "Y":
             state_code = self.code_dao.get_code(self.rdr_code_sys, "PIIState_NY")
         else:
             state_code = self.code_dao.get_code(self.rdr_code_sys, "PIIState_AZ")
 
-        if row['sex'] == "m":
+        if row['sex'].upper() == "M":
             sex_code = self.code_dao.get_code(self.rdr_code_sys, "SexAtBirth_Male")
         else:
             sex_code = self.code_dao.get_code(self.rdr_code_sys, "SexAtBirth_Female")
@@ -100,7 +101,7 @@ class ParticipantGeneratorTool(ToolBase):
             stateId=state_code.codeId,
             sexId=sex_code.codeId,
             siteId=aou_site.siteId,
-            aian=int(row['aian_flag']),
+            aian=1 if row['aian_flag'].upper() == "Y" else 0,
             email=f'nph.{aou_participant.participantId}@test.com',
             phoneNumber=f"5{aou_participant.participantId}",
             questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
