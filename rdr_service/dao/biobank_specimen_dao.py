@@ -1,4 +1,3 @@
-import logging
 
 from sqlalchemy import or_, and_
 
@@ -324,25 +323,52 @@ class BiobankSpecimenDao(BiobankDaoBase):
 
         return SampleStatus.UNKNOWN
 
+    def _upsert_stored_sample(self, session, specimen: BiobankSpecimen):
+        # update
+        stored_sample: BiobankStoredSample = session.query(BiobankStoredSample).filter(
+            BiobankStoredSample.biobankStoredSampleId == specimen.rlimsId
+        ).one_or_none()
+
+        if stored_sample is None:
+            session.add(
+                BiobankStoredSample(
+                    biobankStoredSampleId=specimen.rlimsId,
+                    biobankId=specimen.biobankId,
+                    biobankOrderIdentifier=specimen.orderId,
+                    test=specimen.testCode,
+                    confirmed=specimen.confirmedDate,
+                    created=specimen.confirmedDate,
+                    status=self._get_stored_status(
+                        status_str=specimen.status,
+                        disposal_reason_str=specimen.disposalReason
+                    ),
+                    disposed=specimen.disposalDate
+                )
+            )
+        else:
+            if specimen.biobankId is not None:
+                stored_sample.biobankId = specimen.biobankId
+            if specimen.orderId is not None:
+                stored_sample.biobankOrderIdentifier = specimen.orderId
+            if specimen.testCode is not None:
+                stored_sample.test = specimen.testCode
+            if specimen.confirmedDate is not None:
+                stored_sample.confirmed = specimen.confirmedDate
+            if specimen.confirmedDate is not None:
+                stored_sample.created = specimen.confirmedDate
+            if specimen.disposalDate is not None:
+                stored_sample.disposed = specimen.disposalDate
+            if specimen.status is not None:
+                stored_sample.status = self._get_stored_status(
+                    status_str=specimen.status,
+                    disposal_reason_str=specimen.disposalReason
+                )
+
     def insert_with_session(self, session, obj: BiobankSpecimen):
         self._check_participant_exists(session, obj.biobankId)
         insert_result = super(BiobankSpecimenDao, self).insert_with_session(session, obj)
 
-        session.add(
-            BiobankStoredSample(
-                biobankStoredSampleId=obj.rlimsId,
-                biobankId=obj.biobankId,
-                biobankOrderIdentifier=obj.orderId,
-                test=obj.testCode,
-                confirmed=obj.confirmedDate,
-                created=obj.confirmedDate,
-                status=self._get_stored_status(
-                    status_str=insert_result.status,
-                    disposal_reason_str=insert_result.disposalReason
-                ),
-                disposed=obj.disposalDate
-            )
-        )
+        self._upsert_stored_sample(session=session, specimen=insert_result)
         self._update_participant_sample_metadata(obj.biobankId, session)
 
         return insert_result
@@ -351,30 +377,7 @@ class BiobankSpecimenDao(BiobankDaoBase):
         self._check_participant_exists(session, obj.biobankId)
         super(BiobankSpecimenDao, self).update_with_session(session, obj)
 
-        stored_sample: BiobankStoredSample = session.query(BiobankStoredSample).filter(
-            BiobankStoredSample.biobankStoredSampleId == obj.rlimsId
-        ).one_or_none()
-        if stored_sample is None:
-            logging.error(f'Update received for {obj.rlimsId}, but corresponding stored sample was not found')
-        else:
-            if obj.biobankId is not None:
-                stored_sample.biobankId = obj.biobankId
-            if obj.orderId is not None:
-                stored_sample.biobankOrderIdentifier = obj.orderId
-            if obj.testCode is not None:
-                stored_sample.test = obj.testCode
-            if obj.confirmedDate is not None:
-                stored_sample.confirmed = obj.confirmedDate
-            if obj.confirmedDate is not None:
-                stored_sample.created = obj.confirmedDate
-            if obj.disposalDate is not None:
-                stored_sample.disposed = obj.disposalDate
-            if obj.status is not None:
-                stored_sample.status = self._get_stored_status(
-                    status_str=obj.status,
-                    disposal_reason_str=obj.disposalReason
-                )
-
+        self._upsert_stored_sample(session=session, specimen=obj)
         self._update_participant_sample_metadata(obj.biobankId, session)
 
     def get_mutually_exclusive_lock(self, rlims_id):
