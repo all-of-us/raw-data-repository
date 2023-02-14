@@ -2,7 +2,7 @@ from sqlalchemy import Column, Date, Float, ForeignKey, Integer, String, Unicode
 
 from rdr_service.model.base import Base
 from rdr_service.model.utils import Enum
-from .site_enums import DigitalSchedulingStatus, EnrollingStatus, ObsoleteStatus, SiteStatus
+from .site_enums import DigitalSchedulingStatus, EnrollingStatus, ObsoleteStatus, SiteStatus, InPersonOperationsStatus
 
 
 class Site(Base):
@@ -21,6 +21,8 @@ class Site(Base):
     siteType = Column("site_type", String(255))
     siteStatus = Column("site_status", Enum(SiteStatus))
     enrollingStatus = Column("enrolling_status", Enum(EnrollingStatus))
+    inPersonOperationsStatus = Column("in_person_operations_status", Enum(InPersonOperationsStatus))
+    """ The in-person operations status of a site """
     digitalSchedulingStatus = Column("digital_scheduling_status", Enum(DigitalSchedulingStatus))
     """Can participant schedule appointments online"""
     scheduleInstructions = Column("schedule_instructions", String(4096))
