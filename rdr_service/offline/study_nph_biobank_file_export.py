@@ -139,7 +139,7 @@ def _convert_ordered_samples_to_samples(
     order_id: str,
     ordered_samples: List[OrderedSample],
     notes,
-    ordered_cancelled: bool = False,
+    ordered_cancelled: bool = False
 ) -> List[Dict[str, Any]]:
     samples = []
     for ordered_sample in ordered_samples:
