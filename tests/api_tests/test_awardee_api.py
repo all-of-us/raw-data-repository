@@ -1,5 +1,6 @@
 import datetime
 import mock
+import unittest
 
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
@@ -7,7 +8,7 @@ from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
-from rdr_service.model.site_enums import EnrollingStatus, SiteStatus, ObsoleteStatus
+from rdr_service.model.site_enums import EnrollingStatus, SiteStatus, ObsoleteStatus, IN_PERSON_STATUS_OPTIONS
 from rdr_service.participant_enums import OrganizationType, UNSET_HPO_ID
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.mysql_helper_data import AZ_HPO_ID, PITT_HPO_ID, OBSOLETE_ID
@@ -109,9 +110,9 @@ class AwardeeApiTest(BaseTestCase):
 
     def test_get_awardee_no_obsolete(self):
         self._setup_data()
-        self._update_heirarchy_item_obsolete('org')
+        self._update_hierarchy_item('org', obsolete=True)
         self._setup_active_sitefor_obsolete_test()
-        self._update_heirarchy_item_obsolete('site')
+        self._update_hierarchy_item('site', obsolete=True)
         result_pitt = self.send_get("Awardee/PITT?_obsolete=false")
 
         self.assertEqual(1, len(result_pitt['organizations']))
@@ -139,6 +140,34 @@ class AwardeeApiTest(BaseTestCase):
         # Test updated to obsolete
         result_1_obsolete = self.send_get("Awardee/OBSOLETE_HPO?_obsolete=false")
         self.assertEqual('OBSOLETE_HPO', result_1_obsolete['id'])
+
+    @unittest.skip("Manual only (requires enabling code in SiteDao._to_json() )")
+    def test_in_person_status_settings(self):
+        self._setup_data()
+        self._update_hierarchy_item('org', obsolete=False)
+        self._setup_active_sitefor_obsolete_test()
+        test_value_strings = [
+            # status-for-in-person-operations valueStrings extracted from production requests_log payloads
+            'Approved to Open',
+            'Open - Engagement, Recruitment, & Enrollment',
+            'Closed Temporarily',
+            'Paused',
+            'Closed Permanently',
+            'Error/Never Activated',
+            'Not Applicable/Virtual Site Type',
+            # Strings not confirmed in RDR logs, but on the PMT drop-down list as potential options
+            'Onboarding',
+            'Open - Engagement Only'
+        ]
+        # Send PUT request with the status-for-in-person-operations extension for each potential valueString
+        # Test setup for _update_hierarchy_item() cases uses org-1-site-3 for the PUT calls
+        for value_str in test_value_strings:
+            self._update_hierarchy_item('site', obsolete=False, in_person=value_str)
+            result_pitt = self.send_get("Awardee/PITT")
+            site_dict = self._get_site_dict_from_response(result_pitt, 'org-1-site-3')
+            self.assertIsNotNone(site_dict)
+            expected_str = str(IN_PERSON_STATUS_OPTIONS[value_str.lower()])
+            self.assertEqual(site_dict.get('inPersonOperationsStatus'), expected_str)
 
     def _make_expected_pitt_awardee_resource(self, inactive=False):
         sites = [
@@ -319,7 +348,8 @@ class AwardeeApiTest(BaseTestCase):
                 '_get_lat_long_for_site')
     @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
                 '_get_time_zone')
-    def _update_heirarchy_item_obsolete(self, item, time_zone, lat_long):
+    def _update_hierarchy_item(self, item, time_zone, lat_long, obsolete=True, in_person=None):
+        active_status = not obsolete
         if item == 'org':
             request_json = {
                     "resourceType": "Organization",
@@ -334,7 +364,7 @@ class AwardeeApiTest(BaseTestCase):
                             "value": "AARDVARK_ORG"
                         }
                     ],
-                    "active": False,
+                    "active": active_status,
                     "type": [
                         {
                             "coding": [
@@ -351,6 +381,29 @@ class AwardeeApiTest(BaseTestCase):
                     }
                 }
         else:
+            extensions_arr = [
+                {
+                    "url": "http://all-of-us.org/fhir/sites/enrolling-status",
+                    "valueString": "true"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/digital-scheduling-status",
+                    "valueString": "true"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/ptsc-scheduling-status",
+                    "valueString": "true"
+                }
+            ]
+            # DA-3300:  Set up for testing processing of status-for-in-person-operations assignments
+            if in_person:
+                extensions_arr.append(
+                    {
+                        "url": "http://all-of-us.org/fhir/sites/status-for-in-person-operations",
+                        "valueString": in_person
+                    }
+                )
+
             lat_long.return_value = 100, 110
             time_zone.return_value = 'America/Los_Angeles'
             request_json = {
@@ -359,20 +412,7 @@ class AwardeeApiTest(BaseTestCase):
                 "meta": {
                     "versionId": "27"
                 },
-                "extension": [
-                    {
-                        "url": "http://all-of-us.org/fhir/sites/enrolling-status",
-                        "valueString": "true"
-                    },
-                    {
-                        "url": "http://all-of-us.org/fhir/sites/digital-scheduling-status",
-                        "valueString": "true"
-                    },
-                    {
-                        "url": "http://all-of-us.org/fhir/sites/ptsc-scheduling-status",
-                        "valueString": "true"
-                    }
-                ],
+                "extension": extensions_arr,
                 "identifier": [
                     {
                         "system": "http://all-of-us.org/fhir/sites/site-id",
@@ -383,7 +423,7 @@ class AwardeeApiTest(BaseTestCase):
                         "value": "Good Site 3"
                     }
                 ],
-                "active": False,
+                "active": active_status,
                 "type": [
                     {
                         "coding": [
@@ -411,3 +451,13 @@ class AwardeeApiTest(BaseTestCase):
             }
 
         self.send_put('organization/hierarchy', request_data=request_json)
+
+    def _get_site_dict_from_response(self, result_dict, site_id):
+        organizations = result_dict.get('organizations', [])
+        for org in organizations:
+            sites = org.get('sites', [])
+            for site in sites:
+                if site.get('id', None) == site_id:
+                    return site
+        return None
+

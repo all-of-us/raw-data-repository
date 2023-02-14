@@ -31,7 +31,8 @@ from rdr_service.main_util import configure_logging, get_parser
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
-from rdr_service.model.site_enums import DigitalSchedulingStatus, EnrollingStatus, ObsoleteStatus, SiteStatus
+from rdr_service.model.site_enums import DigitalSchedulingStatus, EnrollingStatus, ObsoleteStatus, SiteStatus, \
+     InPersonOperationsStatus
 from rdr_service.participant_enums import OrganizationType
 from rdr_service.rdr_client.client import Client, client_log
 from rdr_service.tools.csv_importer import CsvImporter
@@ -520,6 +521,8 @@ class SiteImporter(CsvImporter):
         )
         schedule_instructions = row.get(SCHEDULING_INSTRUCTIONS)
         schedule_instructions_es = row.get(SCHEDULING_INSTRUCTIONS_ES)
+        # DA-3300:  Existing site CSV file will not have data for this newly added field;  assign default
+        in_person_status = InPersonOperationsStatus('UNSET')
         return Site(
             siteName=name,
             googleGroup=google_group,
@@ -529,6 +532,7 @@ class SiteImporter(CsvImporter):
             siteStatus=site_status,
             enrollingStatus=enrolling_status,
             digitalSchedulingStatus=digital_scheduling_status,
+            inPersonOperationsStatus=in_person_status,
             scheduleInstructions=schedule_instructions,
             scheduleInstructions_ES=schedule_instructions_es,
             launchDate=launch_date,
