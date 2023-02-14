@@ -9,7 +9,7 @@ class AncillaryStudiesEnrollmentCloudTaskTest(BaseTestCase):
         self.nph_datagen = NphDataGenerator()
 
     def test_insert_study_event_task(self):
-        self.nph_datagen.create_database_participant(id=123123123,)
+        self.nph_datagen.create_database_participant(id=123123123)
         self.nph_datagen.create_database_activity(id=1, name="ENROLLMENT")
         self.nph_datagen.create_database_enrollment_event_type(name="REFERRED")
 
@@ -42,3 +42,5 @@ class AncillaryStudiesEnrollmentCloudTaskTest(BaseTestCase):
         self.clear_table_after_test("nph.participant")
         self.clear_table_after_test("nph.activity")
         self.clear_table_after_test("nph.enrollment_event_type")
+        self.clear_table_after_test("nph.participant_event_activity")
+        self.clear_table_after_test("nph.enrollment_event")
