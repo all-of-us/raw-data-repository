@@ -1205,3 +1205,13 @@ class BiobankOrderApiTest(BaseTestCase):
         dataset = specimen['aliquots'][0]['datasets'][1]
         self.assertEqual('updated', dataset['status'])
         self.assertEqual('foobar', dataset['datasetItems'][0]['displayValue'])
+
+    def test_new_specimen_with_existing_stored_sample(self):
+        """
+        When the API started creating stored samples, some requests would crash when trying to create
+        stored samples that already existed. This ensures that issue was fixed.
+        """
+        payload = self.get_minimal_specimen_json()
+        rlims_id = payload['rlimsID']
+        self.data_generator.create_database_biobank_stored_sample(biobankStoredSampleId=rlims_id)
+        self.send_put(f'Biobank/specimens/{rlims_id}', request_data=payload)
