@@ -36,6 +36,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline import sql_exporter
 from rdr_service.resource.generators.code import CodeGenerator
 from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
@@ -913,6 +914,13 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         self.addCleanup(patcher.stop)
 
         return mock_instance
+
+    def _mark_ehr_valid_in_summary(self, participant_id):
+        summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant_id
+        ).one()
+        summary.consentForElectronicHealthRecords = participant_enums.QuestionnaireStatus.SUBMITTED
+        self.session.commit()
 
 
 class InMemorySqlExporter(sql_exporter.SqlExporter):

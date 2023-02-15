@@ -1888,7 +1888,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             participant_id_1, questionnaire_id, CONSENT_PERMISSION_YES_CODE, time=TIME_2
         )
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
-        self.assertEqual("SUBMITTED", ps_1["consentForElectronicHealthRecords"])
+        self.assertEqual("SUBMITTED_NOT_VALIDATED", ps_1["consentForElectronicHealthRecords"])
         self.assertEqual(TIME_2.isoformat(), ps_1.get("enrollmentStatusParticipantPlusEhrV3_1Time"))
 
     def _submit_dvehr_consent_questionnaire_response(
@@ -2160,6 +2160,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._submit_consent_questionnaire_response(
             participant_id_1, questionnaire_id_1, CONSENT_PERMISSION_YES_CODE, time=TIME_6
         )
+        self._mark_ehr_valid_in_summary(participant_id=from_client_participant_id(participant_id_1))
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2230,6 +2231,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._submit_consent_questionnaire_response(
             participant_id_1, questionnaire_id_1, CONSENT_PERMISSION_YES_CODE, time=TIME_6
         )
+        self._mark_ehr_valid_in_summary(participant_id=from_client_participant_id(participant_id_1))
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2326,6 +2328,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._submit_consent_questionnaire_response(
             participant_id_1, questionnaire_id_1, CONSENT_PERMISSION_YES_CODE, time=TIME_6
         )
+        self._mark_ehr_valid_in_summary(participant_id=from_client_participant_id(participant_id_1))
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2417,6 +2420,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._submit_consent_questionnaire_response(
             participant_id_1, questionnaire_id_1, CONSENT_PERMISSION_YES_CODE, time=TIME_6
         )
+        self._mark_ehr_valid_in_summary(participant_id=from_client_participant_id(participant_id_1))
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -3002,7 +3006,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", new_ps_2["clinicPhysicalMeasurementsStatus"])
         self.assertEqual("SUBMITTED", new_ps_2["consentForStudyEnrollment"])
         self.assertIsNotNone(new_ps_2["consentForStudyEnrollmentAuthored"])
-        self.assertEqual("SUBMITTED", new_ps_2["consentForElectronicHealthRecords"])
+        self.assertEqual("SUBMITTED_NOT_VALIDATED", new_ps_2["consentForElectronicHealthRecords"])
         self.assertIsNotNone(new_ps_2["consentForElectronicHealthRecordsAuthored"])
         self.assertIsNone(new_ps_2.get("clinicPhysicalMeasurementsTime"))
         self.assertEqual("UNSET", new_ps_2["genderIdentity"])
