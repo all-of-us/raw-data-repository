@@ -136,14 +136,13 @@ def _get_ordered_samples(order_id: int) -> List[OrderedSample]:
 
 
 def _convert_ordered_samples_to_samples(
-    order_id: int,
+    order_id: str,
     ordered_samples: List[OrderedSample],
+    notes,
     ordered_cancelled: bool = False
 ) -> List[Dict[str, Any]]:
     samples = []
     for ordered_sample in ordered_samples:
-        supplemental_fields = ordered_sample.supplemental_fields if ordered_sample.supplemental_fields else {}
-        notes = ", ".join([f"{key}: {value}" for key, value in supplemental_fields.items()])
         processing_timestamp = ordered_sample.collected if not ordered_sample.parent is None else None
         sample = {
             "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
@@ -187,7 +186,8 @@ def _convert_orders_to_collections(
         samples = _convert_ordered_samples_to_samples(
             order_id=order.nph_order_id,
             ordered_samples=_get_ordered_samples(order_id=order.id),
-            ordered_cancelled=order.status == "cancelled"
+            ordered_cancelled=order.status == "cancelled",
+            notes=", ".join([f"{key}: {value if value is not None else 'null'}" for key, value in order.notes.items()])
         )
         parent_study_category = _get_parent_study_category(order.category_id)
         code_obj = _get_code_obj_from_sex_id(rdr_participant_summary.stateId)
