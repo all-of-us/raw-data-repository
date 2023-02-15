@@ -3753,6 +3753,12 @@ class GenomicCVLAnalysisDao(UpdatableDao):
         return obj.id
 
     def get_passed_analysis_member_module(self, member_id, module):
+        max_analysis_subquery = sqlalchemy.orm.Query(
+            [functions.max(GenomicCVLAnalysis.id).label(
+                'max_analysis_id'
+            )]
+        ).subquery()
+
         with self.session() as session:
             return session.query(
                 GenomicCVLAnalysis
@@ -3761,7 +3767,8 @@ class GenomicCVLAnalysisDao(UpdatableDao):
                 GenomicCVLAnalysis.clinical_analysis_type == module,
                 GenomicCVLAnalysis.ignore_flag != 1,
                 GenomicCVLAnalysis.failed == 0,
-            ).one_or_none()
+                GenomicCVLAnalysis.id == max_analysis_subquery.c.max_analysis_id,
+            ).first()
 
 
 class GenomicResultWorkflowStateDao(BaseDao):
