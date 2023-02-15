@@ -199,6 +199,9 @@
   "aw1f_alert_recipients": [
     "test-genomic@vumc.org"
   ],
+  "nph_sample_data_biobank_bucket_name": [
+    "stable-nph-sample-data-biobank"
+  ],
   "metrics_shards": [
     "10"
   ],
