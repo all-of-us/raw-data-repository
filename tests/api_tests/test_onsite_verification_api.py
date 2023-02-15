@@ -147,7 +147,7 @@ class OnsiteVerificationApiTest(BaseTestCase):
         self.assertEqual(participant_summary.onsiteIdVerificationUser, 'test@mail.com')
         self.assertEqual(participant_summary.onsiteIdVerificationSite, self.site.siteId)
         self.assertEqual(participant_summary.everIdVerified, True)
-        self.assertEqual(participant_summary.firstIdVerifiedOn, date(2022, 2, 22))
+        self.assertEqual(participant_summary.firstIdVerifiedOn, date(2022, 3, 22))
         self.assertEqual(participant_summary.idVerificationOrigin, IdVerificationOriginType.ON_SITE)
 
 
