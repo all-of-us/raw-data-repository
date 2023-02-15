@@ -46,7 +46,7 @@ NPH_ANCILLARY_STUDY_ID = 2
 
 
 def _format_timestamp(timestamp: datetime) -> str:
-    return timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') if timestamp else ''
+    return timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') if timestamp else None
 
 
 def _get_nph_participant(participant_id: int) -> NphParticipant:
@@ -251,12 +251,12 @@ def _get_crc32c_checksum_from_gcs_blob(bucket_name: str, blob_name: str):
 def _create_biobank_file_export_reference(bucket_name: str, blob_name: str) -> BiobankFileExport:
     crc32c_checksum = _get_crc32c_checksum_from_gcs_blob(bucket_name, blob_name)
     biobank_file_export_dao = NphBiobankFileExportDao()
-    biobank_file_export_params = {
-        "file_name": f"{bucket_name}/{blob_name}",
-        "crc32c_checksum": str(crc32c_checksum)
-    }
-    biobank_file_export = BiobankFileExport(**biobank_file_export_params)
-    return biobank_file_export_dao.insert(biobank_file_export)
+    return biobank_file_export_dao.insert(
+        BiobankFileExport(
+            file_name=f"{bucket_name}/{blob_name}",
+            crc32c_checksum=crc32c_checksum
+        )
+    )
 
 
 def _create_sample_export_references_for_sample_updates(
