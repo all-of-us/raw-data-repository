@@ -44,7 +44,7 @@ from rdr_service.model.genomics import (
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
-    GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
+    GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified)
@@ -3736,32 +3736,6 @@ class GenomicCVLSecondSampleDao(BaseDao):
 
     def get_id(self, obj):
         pass
-
-
-class GenomicCVLAnalysisDao(UpdatableDao):
-
-    validate_version_match = False
-
-    def __init__(self):
-        super(GenomicCVLAnalysisDao, self).__init__(
-            GenomicCVLAnalysis, order_by_ending=['id'])
-
-    def from_client_json(self):
-        pass
-
-    def get_id(self, obj):
-        return obj.id
-
-    def get_passed_analysis_member_module(self, member_id, module):
-        with self.session() as session:
-            return session.query(
-                GenomicCVLAnalysis
-            ).filter(
-                GenomicCVLAnalysis.genomic_set_member_id == member_id,
-                GenomicCVLAnalysis.clinical_analysis_type == module,
-                GenomicCVLAnalysis.ignore_flag != 1,
-                GenomicCVLAnalysis.failed == 0,
-            ).one_or_none()
 
 
 class GenomicResultWorkflowStateDao(BaseDao):
