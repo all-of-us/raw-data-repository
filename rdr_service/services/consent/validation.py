@@ -10,6 +10,7 @@ from dateutil.parser import parse
 from sqlalchemy.orm import Session
 
 from rdr_service import code_constants, config
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -44,9 +45,11 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
     a EHR PDF is encountered.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, project_name, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._summary_dao = ParticipantSummaryDao()
+        self._task = GCPCloudTask()
+        self._project_name = project_name
 
     def process_results(self, result_list: List[ParsingResult]):
         # Filter down to just the EHR results and organize them by participant
@@ -88,6 +91,14 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
                 summary=participant_summary,
                 session=self._session
             )
+            # Rebuild for PDR
+            self._task.execute(
+                'rebuild_one_participant_task',
+                payload={'p_id': participant_id},
+                in_seconds=30,
+                project_id=self._project_name
+            )
+
         self._session.commit()  # release the for_update lock obtained on the participant_summary
 
 
@@ -160,7 +171,7 @@ class StoreResultStrategy(ValidationOutputStrategy):
             updated_ids.extend([file.id for file in self._reconsented_files])
             dispatch_rebuild_consent_metrics_tasks(updated_ids, project_id=self.project_id)
 
-        EhrStatusUpdater(session=self._session).process_results(new_results_to_store)
+        EhrStatusUpdater(session=self._session, project_name=self.project_id).process_results(new_results_to_store)
 
     def set_reconsented_file_as_ready(self, file: ParsingResult):
         file.sync_status = ConsentSyncStatus.READY_FOR_SYNC
@@ -228,7 +239,7 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
             updated_ids.extend([file.id for file in self._reconsented_files])
             dispatch_rebuild_consent_metrics_tasks(updated_ids, project_id=self.project_id)
 
-        EhrStatusUpdater(session=self.session).process_results(results_to_update)
+        EhrStatusUpdater(session=self.session, project_name=self.project_id).process_results(results_to_update)
 
     def set_reconsented_file_as_ready(self, file: ParsingResult):
         file.sync_status = ConsentSyncStatus.READY_FOR_SYNC
@@ -284,7 +295,7 @@ class UpdateResultStrategy(ReplacementStoringStrategy):
         if results_to_build:
             dispatch_rebuild_consent_metrics_tasks([r.id for r in results_to_build], project_id=self.project_id)
 
-        EhrStatusUpdater(session=self.session).process_results(results_to_build)
+        EhrStatusUpdater(session=self.session, project_name=self.project_id).process_results(results_to_build)
 
     @classmethod
     def _update_record(cls, new_result: ParsingResult, existing_result: ParsingResult):
