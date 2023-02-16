@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List, Any
+from typing import Tuple, Dict, List, Any, Optional
 import json
 from types import SimpleNamespace as Namespace
 from protorpc import messages
@@ -119,24 +119,29 @@ class NphStudyCategoryDao(UpdatableDao):
                                              StudyCategory.type_label == "module").first()
         return time_point_record, visit_type_record, module_record
 
-    def insert_with_session(self, session, order: Namespace):
-        # Insert the study category payload values to the db table
-        module_exist, module = self.module_exist(order, session)
-        visit_exist, visit = self.visit_type_exist(order, module, session)
-        if not module_exist:
-            module = StudyCategory(name=order.module, type_label="module")
-        if not visit_exist:
-            visit = StudyCategory(name=order.visitType, type_label="visitType")
-            module.children.append(visit)
-        time = self.insert_time_point_record(order)
-        visit.children.append(time)
-        session.add(module)
-        session.commit()
-        return module, time.id
+    # def insert_with_session(self, session, order: Namespace):
+    #     # Insert the study category payload values to the db table
+    #     module_exist, module = self.module_exist(order, session)
+    #     visit_exist, visit = self.visit_type_exist(order, module, session)
+    #     if not module_exist:
+    #         module = StudyCategory(name=order.module, type_label="module")
+    #     if not visit_exist:
+    #         visit = StudyCategory(name=order.visitType, type_label="visitType")
+    #         module.children.append(visit)
 
-    @staticmethod
-    def insert_time_point_record(order: Namespace):
-        return StudyCategory(name=order.timepoint, type_label="timepoint")
+    #     timepoint_exist, timepoint = self.timepoint_exist(order, module, session)
+    #     if not timepoint_exist:
+    #         timepoint = self.insert_time_point_record(order)
+    #     visit.children.append(timepoint)
+    #     session.add(module)
+    #     session.commit()
+    #     return module, timepoint.id
+
+    # @staticmethod
+    # def insert_time_point_record(order: Namespace):
+    #     timepoint_sc = StudyCategory(name=order.timepoint, type_label="timepoint")
+    #     return super(NphStudyCategoryDao).insert(timepoint_sc)
+        # return StudyCategory(name=order.timepoint, type_label="timepoint")
 
     @staticmethod
     def validate_model(obj):
@@ -148,7 +153,7 @@ class NphStudyCategoryDao(UpdatableDao):
             raise BadRequest("Time Point ID is missing")
 
     @staticmethod
-    def module_exist(order: Namespace, session):
+    def module_exist(order: Namespace, session) -> Tuple[bool, Optional[StudyCategory]]:
 
         query = Query(StudyCategory)
         query.session = session
@@ -159,7 +164,7 @@ class NphStudyCategoryDao(UpdatableDao):
             return False, None
 
     @staticmethod
-    def visit_type_exist(order: Namespace, module: StudyCategory, session):
+    def visit_type_exist(order: Namespace, module: StudyCategory, session) -> Tuple[bool, Optional[StudyCategory]]:
 
         query = Query(StudyCategory)
         query.session = session
@@ -169,6 +174,20 @@ class NphStudyCategoryDao(UpdatableDao):
             if result:
                 return True, result
 
+        return False, None
+
+    @staticmethod
+    def timepoint_exist(order: Namespace, visit_type: StudyCategory, session) -> Tuple[bool, Optional[StudyCategory]]:
+        query = Query(StudyCategory)
+        query.session = session
+        if visit_type:
+            result = query.filter(
+                StudyCategory.type_label == "timepoint",
+                StudyCategory.name == order.timepoint,
+                StudyCategory.parent_id == visit_type.id
+            ).first()
+            if result:
+                return True, result
         return False, None
 
 
@@ -371,8 +390,27 @@ class NphOrderDao(UpdatableDao):
         if obj.finalized_site is None:
             raise BadRequest("Finalized Site ID is missing")
 
+    def _get_or_insert_module_visit_type_and_timepoint_study_categories(self, order: Namespace, session):
+        module_exist, module = self.study_category_dao.module_exist(order, session)
+        visit_exist, visit = self.study_category_dao.visit_type_exist(order, module, session)
+        if not module_exist:
+            _module = StudyCategory(name=order.module, type_label="module")
+            module: StudyCategory = self.study_category_dao.insert(_module)
+        if not visit_exist:
+            _visit_type: StudyCategory = StudyCategory(name=order.visitType, type_label="visitType")
+            visit_type: StudyCategory = self.study_category_dao.insert(_visit_type)
+            module.children.append(visit_type)
+
+        timepoint_exist, timepoint = self.study_category_dao.timepoint_exist(order, module, session)
+        if not timepoint_exist:
+            timepoint_sc = StudyCategory(name=order.timepoint, type_label="timepoint")
+            timepoint: StudyCategory = self.study_category_dao.insert(timepoint_sc)
+        visit.children.append(timepoint)
+        return module, timepoint
+
     def insert_study_category_with_session(self, order: Namespace, session):
-        return self.study_category_dao.insert_with_session(order, session)
+        module, timepoint = self._get_or_insert_module_visit_type_and_timepoint_study_categories(order, session)
+        return module, timepoint.id
 
     def insert_ordered_sample_dao_with_session(self, session, order: Namespace):
         return self.order_sample_dao.insert_with_session(session, order)
