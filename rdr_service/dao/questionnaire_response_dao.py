@@ -1136,7 +1136,6 @@ class QuestionnaireResponseDao(BaseDao):
                     expected_date = extension.valueDateTime
                     break
 
-
             is_new_consent = True
             previous_authored_times = previous_consent_dates.get(consent_type)
             for previous_consent_authored_time in (previous_authored_times or []):
