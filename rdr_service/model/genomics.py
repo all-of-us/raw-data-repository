@@ -1164,29 +1164,6 @@ event.listen(GenomicCVLSecondSample, 'before_insert', model_insert_listener)
 event.listen(GenomicCVLSecondSample, 'before_update', model_update_listener)
 
 
-class GenomicCVLAnalysis(Base):
-    """
-    Used for storage in GHR3 of health related analysis
-    """
-
-    __tablename__ = 'genomic_cvl_analysis'
-
-    id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
-    created = Column(DateTime, nullable=True)
-    modified = Column(DateTime, nullable=True)
-    genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False, index=True)
-    clinical_analysis_type = Column(String(128), nullable=False)
-    health_related_data_file_name = Column(String(512), nullable=False)
-    failed = Column(Integer, nullable=False, default=0)
-    failed_request_reason = Column(String(255), nullable=True)
-    failed_request_reason_free = Column(String(512), nullable=True)
-    ignore_flag = Column(SmallInteger, nullable=False, default=0)
-
-
-event.listen(GenomicCVLAnalysis, 'before_insert', model_insert_listener)
-event.listen(GenomicCVLAnalysis, 'before_update', model_update_listener)
-
-
 class GenomicSampleContamination(Base):
     """A list of samples that have been found to be contaminated with
     information on what stage of the process they have been added to the table."""

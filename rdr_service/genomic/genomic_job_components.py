@@ -61,7 +61,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     UserEventMetricsDao,
     GenomicQueriesDao,
-    GenomicCVLAnalysisDao, GenomicResultWorkflowStateDao, GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao)
+    GenomicResultWorkflowStateDao, GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -136,9 +136,7 @@ class GenomicFileIngester:
         self.manifest_dao = GenomicManifestFileDao()
         self.incident_dao = GenomicIncidentDao()
         self.user_metrics_dao = UserEventMetricsDao()
-        self.cvl_analysis_dao = GenomicCVLAnalysisDao()
         self.results_workflow_dao = GenomicResultWorkflowStateDao()
-        self.analysis_cols = self.cvl_analysis_dao.model_type.__table__.columns.keys()
         self.set_dao = None
         self.cvl_second_sample_dao = None
 
@@ -1391,21 +1389,6 @@ class GenomicFileIngester:
 
         return row_copy, member
 
-    def _base_cvl_analysis_ingestion(self, row_copy, member):
-        # cvl analysis
-        analysis_cols_mapping = {}
-        for column in self.analysis_cols:
-            col_matched = row_copy.get(self._clean_row_keys(column))
-            if col_matched:
-                analysis_cols_mapping[column] = self._clean_row_keys(column)
-
-        analysis_obj = self.cvl_analysis_dao.model_type()
-        setattr(analysis_obj, 'genomic_set_member_id', member.id)
-
-        for key, val in analysis_cols_mapping.items():
-            setattr(analysis_obj, key, row_copy[val])
-        self.cvl_analysis_dao.insert(analysis_obj)
-
     def _ingest_cvl_w2sc_manifest(self, rows):
         """
         Processes the CVL W2SC manifest file data
@@ -1539,8 +1522,6 @@ class GenomicFileIngester:
                 if not (row_copy and member):
                     continue
 
-                self._base_cvl_analysis_ingestion(row_copy, member)
-
             return GenomicSubProcessResult.SUCCESS
 
         except (RuntimeError, KeyError):
@@ -1567,17 +1548,6 @@ class GenomicFileIngester:
                                     )
                 if not (row_copy and member):
                     continue
-
-                current_analysis = self.cvl_analysis_dao.get_passed_analysis_member_module(
-                    member.id,
-                    module
-                )
-                # should have initial record (get max)
-                if current_analysis:
-                    current_analysis.failed = 1
-                    current_analysis.failed_request_reason = row_copy['requestreason']
-                    current_analysis.failed_request_reason_free = row_copy['requestreasonfree'][0:512]
-                    self.cvl_analysis_dao.update(current_analysis)
 
             return GenomicSubProcessResult.SUCCESS
 
