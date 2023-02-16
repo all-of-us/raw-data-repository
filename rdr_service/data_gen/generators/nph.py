@@ -1,6 +1,7 @@
 from rdr_service.dao import database_factory
 from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
-    PairingEventType, ConsentEvent, EnrollmentEvent, EnrollmentEventType
+    PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
+    DeactivatedEvent
 
 
 class NphDataGenerator:
@@ -79,8 +80,12 @@ class NphDataGenerator:
 
     def create_database_pairing_event(self, participant_id, **kwargs):
         event_id = kwargs.get('event_id')
-        if event_id is None:
-            pea = self.create_database_participant_event_activity(activity_id=2, participant_id=participant_id)
+        if not event_id:
+            pea = self.create_database_participant_event_activity(
+                activity_id=2,
+                participant_id=participant_id,
+                resource={}
+            )
             event_id = pea.id
 
         # Todo: Add more default fields as needed
@@ -93,6 +98,15 @@ class NphDataGenerator:
         pairing_event = self._pairing_event(**fields)
         self._commit_to_database(pairing_event)
         return pairing_event
+
+    @staticmethod
+    def _consent_event_type(**kwargs):
+        return ConsentEventType(**kwargs)
+
+    def create_database_consent_event_type(self, **kwargs):
+        consent_event_type = self._consent_event_type(**kwargs)
+        self._commit_to_database(consent_event_type)
+        return consent_event_type
 
     @staticmethod
     def _enrollment_event_type(**kwargs):
@@ -130,8 +144,12 @@ class NphDataGenerator:
 
     def create_database_consent_event(self, participant_id, **kwargs):
         event_id = kwargs.get('event_id')
-        if event_id is None:
-            pea = self.create_database_participant_event_activity(activity_id=3, participant_id=participant_id)
+        if not event_id:
+            pea = self.create_database_participant_event_activity(
+                activity_id=3,
+                participant_id=participant_id,
+                resource={}
+            )
             event_id = pea.id
 
         # Todo: Add more default fields as needed
@@ -155,11 +173,21 @@ class NphDataGenerator:
         return activity
 
     @staticmethod
-    def _enrollment_event_type(**kwargs):
-        return EnrollmentEventType(**kwargs)
+    def _withdrawal_event(**kwargs):
+        return WithdrawalEvent(**kwargs)
 
-    def create_database_enrollment_event_type(self, **kwargs):
-        enrollment_type = self._enrollment_event_type(**kwargs)
-        self._commit_to_database(enrollment_type)
-        return enrollment_type
+    def create_database_withdrawal_event(self, **kwargs):
+        withdrawal_event = self._withdrawal_event(**kwargs)
+        self._commit_to_database(withdrawal_event)
+        return withdrawal_event
+
+    @staticmethod
+    def _deactivated_event(**kwargs):
+        return DeactivatedEvent(**kwargs)
+
+    def create_database_deactivated_event(self, **kwargs):
+        deactivated_event = self._deactivated_event(**kwargs)
+        self._commit_to_database(deactivated_event)
+        return deactivated_event
+
 

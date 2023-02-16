@@ -26,6 +26,7 @@ from rdr_service.api.mail_kit_order_api import MailKitOrderApi
 from rdr_service.api.genomic_api import GenomicPiiApi, GenomicOutreachApi, GenomicOutreachApiV2, GenomicSchedulingApi
 from rdr_service.api.import_codebook_api import import_codebook
 from rdr_service.api.metrics_fields_api import MetricsFieldsApi
+from rdr_service.api.nph_intake_api import NphIntakeAPI
 from rdr_service.api.participant_api import ParticipantApi, ParticipantResearchIdApi
 from rdr_service.api.participant_incentives import ParticipantIncentivesApi
 from rdr_service.api.participant_summary_api import ParticipantSummaryApi, \
@@ -378,15 +379,20 @@ api.add_resource(MessageBrokerApi, API_PREFIX + "MessageBroker", endpoint="messa
 #
 api.add_resource(SpecDataGenApi, API_PREFIX + "SpecDataGen", endpoint="specdatagen", methods=["POST"])
 
-#
-# NPH Order API DA-3026 dchan
-#
+
 api.add_resource(
     NphOrderApi,
     API_PREFIX + '/api/v1/nph/Participant/<string:nph_participant_id>/BiobankOrder',
     API_PREFIX + '/api/v1/nph/Participant/<string:nph_participant_id>/BiobankOrder/<int:rdr_order_id>',
     endpoint='nph.participant.biobank_order',
-    methods=['POST','PUT', 'PATCH']
+    methods=['POST', 'PUT', 'PATCH']
+)
+
+api.add_resource(
+    NphIntakeAPI,
+    API_PREFIX + 'nph/Intake',
+    endpoint='nph.intake',
+    methods=['POST']
 )
 
 app.add_url_rule(

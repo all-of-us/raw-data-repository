@@ -91,7 +91,7 @@ def mock_load_participant_data(session):
                 ancillary_participant_id = ancillary_participant_id + 1
         session.commit()
     nph_data_gen = NphDataGenerator()
-    for activity_name in ['ENROLLMENT', 'PAIRING', 'CONSENT']:
+    for activity_name in ['ENROLLMENT', 'PAIRING', 'CONSENT', 'WITHDRAWAL', 'DEACTIVATION']:
         nph_data_gen.create_database_activity(
             name=activity_name
         )
@@ -336,7 +336,6 @@ class TestQueryExecution(BaseTestCase):
                 self.assertIn('message', error)
                 self.assertIn('locations', error)
 
-
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("rdr.code")
@@ -350,7 +349,6 @@ class TestQueryExecution(BaseTestCase):
         self.clear_table_after_test("nph.activity")
         self.clear_table_after_test("nph.pairing_event_type")
         self.clear_table_after_test("nph.site")
-        self.clear_table_after_test("nph.participant")
         self.clear_table_after_test("nph.participant_event_activity")
         self.clear_table_after_test("nph.pairing_event")
         self.clear_table_after_test("nph.enrollment_event")
