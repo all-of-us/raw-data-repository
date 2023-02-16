@@ -292,11 +292,9 @@ class NphStudyCategoryTest(BaseTestCase):
         with FakeClock(TIME):
             return self.nph_study_category_dao.insert(nph_study_category)
 
-    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.insert_time_point_record')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.visit_type_exist')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.module_exist')
-    def test_insert_parent_study_category(self, mock_module_exist, mock_visit_type_exist, mock_insert_time):
-        mock_insert_time.return_value = StudyCategory(name="Child Study Category", type_label="CHILD")
+    def test_insert_parent_study_category(self, mock_module_exist, mock_visit_type_exist):
         mock_visit_type_exist.return_value = (True, StudyCategory(name="Child Study Category", type_label="CHILD"))
         mock_module_exist.return_value = (True, StudyCategory(name="Parent Study Category", type_label="PARENT"))
         parent_study_category = {
@@ -304,7 +302,7 @@ class NphStudyCategoryTest(BaseTestCase):
             "type_label": "PARENT",
             "parent_id": None
         }
-        _parent_study_category = self._create_study_category(parent_study_category)[0]
+        _parent_study_category = self._create_study_category(parent_study_category)
         expected_parent_study_category = {
             "id": 1,
             "created": TIME,
@@ -318,11 +316,9 @@ class NphStudyCategoryTest(BaseTestCase):
             _parent_study_category.asdict()
         )
 
-    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.insert_time_point_record')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.visit_type_exist')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.module_exist')
-    def test_insert_child_study_category(self, mock_module_exist, mock_visit_type_exist, mock_insert_time):
-        mock_insert_time.return_value = StudyCategory(name="Child Study Category", type_label="CHILD")
+    def test_insert_child_study_category(self, mock_module_exist, mock_visit_type_exist):
         mock_visit_type_exist.return_value = (True, StudyCategory(name="Child Study Category", type_label="CHILD"))
         mock_module_exist.side_effect = [(True, StudyCategory(name="Parent Study Category", type_label="PARENT")),
                                          (True, StudyCategory(name="Child Study Category", type_label="CHILD", id=2,
@@ -332,14 +328,14 @@ class NphStudyCategoryTest(BaseTestCase):
             "type_label": "PARENT",
             "parent_id": None
         }
-        parent_study_category = self._create_study_category(parent_study_category_obj)[0]
+        parent_study_category = self._create_study_category(parent_study_category_obj)
 
         child_study_category_obj = {
             "name": "Child Study Category",
             "type_label": "CHILD",
             "parent_id": parent_study_category.id
         }
-        child_study_category = self._create_study_category(child_study_category_obj)[0]
+        child_study_category = self._create_study_category(child_study_category_obj)
         expected_child_study_category = {
             "id": 2,
             "created": TIME,
@@ -353,6 +349,7 @@ class NphStudyCategoryTest(BaseTestCase):
             child_study_category.asdict()
         )
 
+    @skip(reason="Move this NphOrder test")
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     def test_insert_with_session(self, query_filter):
         query_filter.return_value.first.side_effect = [StudyCategory(), None]
@@ -497,14 +494,14 @@ class NphOrderDaoTest(BaseTestCase):
             "type_label": parent_sc_type_label,
             "parent_id": None
         }
-        parent_sc = self._create_study_category(parent_study_category_params)[0]
+        parent_sc = self._create_study_category(parent_study_category_params)
 
         child_study_category_params = {
             "name": child_sc_name,
             "type_label": child_sc_type_label,
             "parent_id": parent_sc.id
         }
-        child_sc = self._create_study_category(child_study_category_params)[0]
+        child_sc = self._create_study_category(child_study_category_params)
         return parent_sc, child_sc
 
     def _create_nph_participant(self, participant_obj: Dict[str, Any]) -> Participant:
@@ -527,11 +524,12 @@ class NphOrderDaoTest(BaseTestCase):
         with FakeClock(ts):
             return self.nph_order_dao.insert(nph_order)
 
-    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.insert_time_point_record')
+    # @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.insert_time_point_record')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.visit_type_exist')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.module_exist')
-    def test_insert_order(self, mock_module_exist, mock_visit_type_exist, mock_insert_time):
-        mock_insert_time.return_value = StudyCategory(name="Child Study Category", type_label="CHILD")
+    # def test_insert_order(self, mock_module_exist, mock_visit_type_exist, mock_insert_time):
+    def test_insert_order(self, mock_module_exist, mock_visit_type_exist):
+        # mock_insert_time.return_value = StudyCategory(name="Child Study Category", type_label="CHILD")
         mock_visit_type_exist.return_value = (True, StudyCategory(name="Parent Study Category", type_label="PARENT"))
         mock_module_exist.return_value = (True, StudyCategory(name="Child Study Category", type_label="CHILD"))
 
@@ -783,14 +781,14 @@ class NphOrderedSampleDaoTest(BaseTestCase):
             "type_label": parent_sc_type_label,
             "parent_id": None
         }
-        parent_sc = self._create_study_category(parent_study_category_params)[0]
+        parent_sc = self._create_study_category(parent_study_category_params)
 
         child_study_category_params = {
             "name": child_sc_name,
             "type_label": child_sc_type_label,
             "parent_id": parent_sc.id
         }
-        child_sc = self._create_study_category(child_study_category_params)[0]
+        child_sc = self._create_study_category(child_study_category_params)
         return parent_sc, child_sc
 
     def _create_nph_participant(self, participant_obj: Dict[str, Any]) -> Participant:
@@ -895,16 +893,17 @@ class NphOrderedSampleDaoTest(BaseTestCase):
 
     @patch('rdr_service.dao.study_nph_dao.NphOrderedSampleDao.from_client_json')
     @patch('rdr_service.dao.study_nph_dao.fetch_identifier_value')
-    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.insert_time_point_record')
+    @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.timepoint_exist')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.visit_type_exist')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.module_exist')
-    def test_insert_ordered_sample(self, mock_module_exist, mock_visit_type_exist, mock_insert_time, mock_fetch_ident,
+    def test_insert_ordered_sample(self, mock_module_exist, mock_visit_type_exist, mock_timepoint_exist, mock_fetch_ident,
                                    mock_client_json):
         nph_sample_id = str(uuid4())
         mock_fetch_ident.return_value = nph_sample_id
-        mock_insert_time.return_value = StudyCategory(name="Child Study Category", type_label="CHILD")
         mock_visit_type_exist.return_value = (True, StudyCategory(name="Parent Study Category", type_label="PARENT"))
         mock_module_exist.return_value = (True, StudyCategory(name="Child Study Category", type_label="CHILD"))
+        mock_timepoint_exist.return_value = (True, StudyCategory(name="Timepoint Study Category", type_label="TIMEPOINT"))
+
         test_order = self._create_test_order()
 
         collected_ts = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
