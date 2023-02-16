@@ -4,6 +4,7 @@ from io import StringIO
 from typing import Dict, Union, Any, Iterator, Iterable
 from csv import DictReader
 from re import findall, search
+from google.cloud._helpers import UTC
 
 from rdr_service import config
 from rdr_service.api_util import open_cloud_file, list_blobs
@@ -55,7 +56,14 @@ def _get_nph_inventory_samples_csv_dropped_in_last_24_hrs(
         raise DataError("No CSVs in cloud bucket %r (all files: %s)." % (cloud_bucket_name, bucket_stat_list))
     # bucket_stat_list.sort(key=lambda s: s.updated)
     _day_before_ts = datetime.utcnow() - timedelta(days=1)
-    return list(filter(lambda file: file.updated > _day_before_ts, bucket_stat_list))
+    _day_before_ts = _day_before_ts.replace(tzinfo=UTC)
+    csv_files = list(
+        map(
+            lambda blob: blob.name,
+            filter(lambda file: file.updated > _day_before_ts, bucket_stat_list)
+        )
+    )
+    return csv_files
 
 
 def _convert_csv_row_to_stored_sample_object(csv_obj: Dict[str, Union[str, int]]) -> StoredSample:
@@ -97,7 +105,8 @@ def main():
         cloud_bucket_name=bucket_name, filename_pattern="nph_inventory_process"
     )
     for csv_filepath in latest_csv_files:
-        import_biobank_inventory_into_stored_samples(csv_filepath)
+        _logger.info(f"Importing {csv_filepath} file")
+        import_biobank_inventory_into_stored_samples(f"{bucket_name}/{csv_filepath}")
         _logger.info(f"Successfully imported biobank samples from '{csv_filepath}'")
 
 
