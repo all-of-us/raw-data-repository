@@ -24,6 +24,73 @@ from rdr_service.services.consent import files
 from rdr_service.storage import GoogleCloudStorageProvider
 
 
+class ConsentMetadataUpdater(ABC):
+    """
+    Defines interface for classes responsible for updating other parts of the system (such as ParticipantSummary)
+    based on the results of validation.
+    """
+
+    def __init__(self, session):
+        self._session = session
+
+    @abstractmethod
+    def process_results(self, validation_results: List[ParsingResult]):
+        ...
+
+
+class EhrStatusUpdater(ConsentMetadataUpdater):
+    """
+    Looks over the validation results to be stored and updates ParticipantSummary EHR consent statuses when
+    a EHR PDF is encountered.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._summary_dao = ParticipantSummaryDao()
+
+    def process_results(self, result_list: List[ParsingResult]):
+        # Filter down to just the EHR results and organize them by participant
+        ehr_consents_by_participant = defaultdict(lambda: [])
+        for result in result_list:
+            ehr_consents_by_participant[result.participant_id].append(result)
+
+        for participant_id, result_list in ehr_consents_by_participant.items():
+            self._update_status(
+                participant_id=participant_id,
+                has_valid_file=self._list_has_valid_consent(result_list)
+            )
+
+    @classmethod
+    def _list_has_valid_consent(cls, result_list: List[ParsingResult]):
+        return any([result.sync_status == ConsentSyncStatus.READY_FOR_SYNC for result in result_list])
+
+    def _update_status(self, participant_id, has_valid_file):
+        participant_summary: ParticipantSummary = self._session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant_id
+        ).with_for_update().one()
+        did_modify_status = False
+
+        if participant_summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED_NOT_VALIDATED:
+            # If the summary is marked as awaiting validation, set the status with the validation results we have
+            new_status = QuestionnaireStatus.SUBMITTED if has_valid_file else QuestionnaireStatus.SUBMITTED_INVALID
+            participant_summary.consentForElectronicHealthRecords = new_status
+            did_modify_status = True
+        elif (
+            participant_summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED_INVALID
+            and has_valid_file
+        ):
+            # If we have a valid file and the summary previously had an invalid file, then update the summary
+            participant_summary.consentForElectronicHealthRecords = QuestionnaireStatus.SUBMITTED
+            did_modify_status = True
+
+        if did_modify_status:
+            self._summary_dao.update_enrollment_status(
+                summary=participant_summary,
+                session=self._session
+            )
+        self._session.commit()  # release the for_update lock obtained on the participant_summary
+
+
 class ValidationOutputStrategy(ABC):
     def __enter__(self):
         return self
@@ -93,6 +160,8 @@ class StoreResultStrategy(ValidationOutputStrategy):
             updated_ids.extend([file.id for file in self._reconsented_files])
             dispatch_rebuild_consent_metrics_tasks(updated_ids, project_id=self.project_id)
 
+        EhrStatusUpdater(session=self._session).process_results(new_results_to_store)
+
     def set_reconsented_file_as_ready(self, file: ParsingResult):
         file.sync_status = ConsentSyncStatus.READY_FOR_SYNC
         self._reconsented_files.append(file)
@@ -159,6 +228,8 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
             updated_ids.extend([file.id for file in self._reconsented_files])
             dispatch_rebuild_consent_metrics_tasks(updated_ids, project_id=self.project_id)
 
+        EhrStatusUpdater(session=self.session).process_results(results_to_update)
+
     def set_reconsented_file_as_ready(self, file: ParsingResult):
         file.sync_status = ConsentSyncStatus.READY_FOR_SYNC
         self._reconsented_files.append(file)
@@ -212,6 +283,8 @@ class UpdateResultStrategy(ReplacementStoringStrategy):
 
         if results_to_build:
             dispatch_rebuild_consent_metrics_tasks([r.id for r in results_to_build], project_id=self.project_id)
+
+        EhrStatusUpdater(session=self.session).process_results(results_to_build)
 
     @classmethod
     def _update_record(cls, new_result: ParsingResult, existing_result: ParsingResult):

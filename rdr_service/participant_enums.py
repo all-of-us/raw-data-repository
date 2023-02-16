@@ -105,6 +105,7 @@ class QuestionnaireStatus(messages.Enum):
     SUBMITTED_NO_CONSENT = 2
     SUBMITTED_NOT_SURE = 3
     SUBMITTED_INVALID = 4
+    SUBMITTED_NOT_VALIDATED = 5
 
 
 class QuestionnaireDefinitionStatus(messages.Enum):
