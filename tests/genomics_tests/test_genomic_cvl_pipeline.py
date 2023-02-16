@@ -9,7 +9,7 @@ from typing import Tuple
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
-    GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicCVLAnalysisDao, \
+    GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, \
     GenomicW3SCRawDao, GenomicResultWorkflowStateDao, GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, \
     GenomicCVLSecondSampleDao, GenomicW1ILRawDao, GenomicW2WRawDao, GenomicCVLResultPastDueDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicQcStatus, GenomicSubProcessStatus, \
@@ -46,20 +46,13 @@ class GenomicCVLPipelineTest(BaseTestCase):
 
         # wgs members which should be updated
         for num in range(1, 4):
-            member = self.data_generator.create_database_genomic_set_member(
+            self.data_generator.create_database_genomic_set_member(
                 genomicSetId=self.gen_set.id,
                 biobankId=f"{num}",
                 sampleId=f"100{num}",
                 genomeType="aou_wgs",
                 cvlW3srManifestJobRunID=kwargs.get('cvl_w3sr_manifest_job_run_id')
             )
-
-            if kwargs.get('set_cvl_analysis_records'):
-                self.data_generator.create_database_genomic_cvl_analysis(
-                    genomic_set_member_id=member.id,
-                    clinical_analysis_type=kwargs.get('results_module'),
-                    health_related_data_file_name=f'HDR_{num}_test_data_file'
-                )
 
         test_file_name = create_ingestion_test_file(
             kwargs.get('test_file'),
@@ -557,18 +550,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W4WR.name for obj in
                             current_workflow_states))
 
-        # check cvl analysis records
-        cvl_analysis_dao = GenomicCVLAnalysisDao()
-        current_analysis_results = cvl_analysis_dao.get_all()
-        member_ids = [obj.id for obj in current_members]
-
-        self.assertEqual(len(current_analysis_results), len(current_members))
-        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in current_analysis_results))
-        self.assertTrue(all(obj.clinical_analysis_type is not None for obj in current_analysis_results))
-        self.assertTrue(all(obj.health_related_data_file_name is not None for obj in current_analysis_results))
-
-        self.assertTrue(all(obj.clinical_analysis_type == 'HDRV1' for obj in current_analysis_results))
-        self.assertTrue(all('HDRV1' in obj.health_related_data_file_name for obj in current_analysis_results))
 
     def test_w4wr_manifest_to_raw_ingestion(self):
 
@@ -605,7 +586,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
             job_id=GenomicJob.CVL_W5NF_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W5NF,
             results_module=ResultsModuleType.HDRV1,
-            set_cvl_analysis_records=True,  # need to set initial cvl analysis records from W4WR
             include_sub_num=True
         )
 
@@ -635,21 +615,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W5NF.name for obj in
                             current_workflow_states))
 
-        # check cvl analysis records
-        cvl_analysis_dao = GenomicCVLAnalysisDao()
-        current_analysis_results = cvl_analysis_dao.get_all()
-
-        failed_analysis_records = list(filter(lambda x: x.failed == 1, current_analysis_results))
-        member_ids = [obj.id for obj in current_members]
-
-        self.assertEqual(len(current_analysis_results), len(current_members))
-        self.assertTrue(all(obj.clinical_analysis_type is not None for obj in current_analysis_results))
-        self.assertTrue(all(obj.health_related_data_file_name is not None for obj in current_analysis_results))
-        self.assertTrue(all(obj.clinical_analysis_type == 'HDRV1' for obj in current_analysis_results))
-
-        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in failed_analysis_records))
-        self.assertTrue(all(obj.failed_request_reason is not None for obj in failed_analysis_records))
-        self.assertTrue(all(obj.failed_request_reason_free is not None for obj in failed_analysis_records))
 
     def test_w5nf_manifest_to_raw_ingestion(self):
 

@@ -7,7 +7,7 @@ from sqlalchemy.sql import functions
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.genomics_dao import GenomicQueriesDao
 from rdr_service.model.genomics import GenomicInformingLoop, GenomicSetMember, GenomicCVLSecondSample, \
-    GenomicGCValidationMetrics, GenomicCVLAnalysis
+    GenomicGCValidationMetrics
 from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate, GenomicDataGenRun, \
     GenomicDatagenMemberRun, GenomicDataGenOutputTemplate, GenomicDataGenManifestSchema
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -211,9 +211,6 @@ class GenomicDataGenManifestSchemaDao(BaseDao):
             ).outerjoin(
                 GenomicCVLSecondSample,
                 GenomicCVLSecondSample.genomic_set_member_id == GenomicSetMember.id
-            ).outerjoin(
-                GenomicCVLAnalysis,
-                GenomicCVLAnalysis.genomic_set_member_id == GenomicSetMember.id
             ).filter(GenomicSetMember.sampleId.in_(sample_ids))
 
             if cvl_id:
