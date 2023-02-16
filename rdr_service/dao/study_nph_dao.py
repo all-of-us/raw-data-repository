@@ -119,30 +119,6 @@ class NphStudyCategoryDao(UpdatableDao):
                                              StudyCategory.type_label == "module").first()
         return time_point_record, visit_type_record, module_record
 
-    # def insert_with_session(self, session, order: Namespace):
-    #     # Insert the study category payload values to the db table
-    #     module_exist, module = self.module_exist(order, session)
-    #     visit_exist, visit = self.visit_type_exist(order, module, session)
-    #     if not module_exist:
-    #         module = StudyCategory(name=order.module, type_label="module")
-    #     if not visit_exist:
-    #         visit = StudyCategory(name=order.visitType, type_label="visitType")
-    #         module.children.append(visit)
-
-    #     timepoint_exist, timepoint = self.timepoint_exist(order, module, session)
-    #     if not timepoint_exist:
-    #         timepoint = self.insert_time_point_record(order)
-    #     visit.children.append(timepoint)
-    #     session.add(module)
-    #     session.commit()
-    #     return module, timepoint.id
-
-    # @staticmethod
-    # def insert_time_point_record(order: Namespace):
-    #     timepoint_sc = StudyCategory(name=order.timepoint, type_label="timepoint")
-    #     return super(NphStudyCategoryDao).insert(timepoint_sc)
-        # return StudyCategory(name=order.timepoint, type_label="timepoint")
-
     @staticmethod
     def validate_model(obj):
         if obj.__dict__.get("module") is None:
