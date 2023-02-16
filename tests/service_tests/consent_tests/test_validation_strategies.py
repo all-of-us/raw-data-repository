@@ -9,15 +9,15 @@ from tests.helpers.unittest_base import BaseTestCase
 class ValidationOutputStrategyIntegrationTest(BaseTestCase):
     def test_store_strategy_updates_pdr(self):
         # Initialize the data
-        participant = self.data_generator.create_database_participant()
+        participant_id = self.data_generator.create_database_participant_summary().participantId
         existing_result = self.data_generator.create_database_consent_file(
-            participant_id=participant.participantId,
+            participant_id=participant_id,
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
             file_exists=False
         )
         new_result = ConsentFile(
-            participant_id=participant.participantId,
+            participant_id=participant_id,
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
             file_exists=True,
