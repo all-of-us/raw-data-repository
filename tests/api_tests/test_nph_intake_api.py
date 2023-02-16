@@ -1,5 +1,6 @@
 import json
 
+from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphParticipantDao, NphSiteDao, NphParticipantEventActivityDao, \
     NphEnrollmentEventTypeDao, NphPairingEventDao, NphDefaultBaseDao, NphActivityDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
@@ -14,6 +15,7 @@ class NphIntakeAPITest(BaseTestCase):
         self.nph_data_gen = NphDataGenerator()
         activities = ['ENROLLMENT', 'PAIRING', 'CONSENT', 'WITHDRAWAL', 'DEACTIVATION']
 
+        self.rex_study_dao = RexStudyDao()
         self.nph_activity = NphActivityDao()
         self.nph_participant = NphParticipantDao()
         self.nph_participant_activity_dao = NphParticipantEventActivityDao()
@@ -24,6 +26,12 @@ class NphIntakeAPITest(BaseTestCase):
         self.nph_enrollment_event_dao = NphDefaultBaseDao(model_type=EnrollmentEvent)
         self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
         self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivatedEvent)
+
+        self.rex_study_dao.insert(
+            self.rex_study_dao.model_type(**{
+                'schema_name': 'nph',
+                'prefix': 1000
+            }))
 
         for activity in activities:
             self.nph_data_gen.create_database_activity(
@@ -257,6 +265,7 @@ class NphIntakeAPITest(BaseTestCase):
 
     def tearDown(self):
         super().tearDown()
+        self.clear_table_after_test("rex.study")
         self.clear_table_after_test("nph.participant")
         self.clear_table_after_test("nph.activity")
         self.clear_table_after_test("nph.pairing_event")

@@ -7,6 +7,7 @@ from rdr_service import clock
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RTI, RDR
 from rdr_service.app_util import auth_required
+from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphIntakeDao, NphParticipantEventActivityDao, NphActivityDao, \
     NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao
 from rdr_service.model.study_nph import WithdrawalEvent, DeactivatedEvent, ConsentEvent, EnrollmentEvent
@@ -22,6 +23,9 @@ class ActivityData:
 class NphIntakeAPI(BaseApi):
     def __init__(self):
         super().__init__(NphIntakeDao())
+
+        self.nph_prefix = RexStudyDao().get_prefix_by_schema('nph')
+        self.nph_prefix = self.nph_prefix[0]
 
         self.current_activities = NphActivityDao().get_all()
 
@@ -107,10 +111,9 @@ class NphIntakeAPI(BaseApi):
                 f'nph_{activity.name.lower()}_event_dao']
         return event_dao_map
 
-    @classmethod
-    def extract_participant_id(cls, participant_obj: dict) -> str:
+    def extract_participant_id(self, participant_obj: dict) -> str:
         participant_id = participant_obj['resource']['identifier'][0]['value']
-        participant_id = participant_id.split('/')[-1]
+        participant_id = participant_id.split(f'/{self.nph_prefix}')[-1]
         return participant_id
 
     def extract_authored_time(self, entry: dict):
