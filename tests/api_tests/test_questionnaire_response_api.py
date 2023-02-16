@@ -351,6 +351,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         with FakeClock(datetime.datetime(2020, 3, 12)):
             self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE, None,
                                           datetime.datetime(2020, 2, 12))
+            self._mark_ehr_valid_in_summary(from_client_participant_id(participant_id))
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-02-12T00:00:00')
         self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-02-12T00:00:00')
@@ -437,6 +438,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         with FakeClock(datetime.datetime(2020, 4, 12)):
             self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE, None,
                                           datetime.datetime(2020, 4, 11))
+            self._mark_ehr_valid_in_summary(from_client_participant_id(participant_id))
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-04-11T00:00:00')
         self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-02-12T00:00:00')
