@@ -235,6 +235,7 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
                 self.assertIsNotNone(each.ordered_sample_json)
 
     def tearDown(self):
+        super().tearDown()
         self.clear_table_after_test("nph.ordered_sample")
         self.clear_table_after_test("nph.order")
         self.clear_table_after_test("nph.site")
