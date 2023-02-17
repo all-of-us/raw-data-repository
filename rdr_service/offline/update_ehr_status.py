@@ -143,11 +143,19 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
 
 def create_rebuild_tasks_for_participants(participant_id_list, batch_size, project_id, dao):
     with dao.session() as session:
+        # TOD0:  Handle mediated EHR fields if they become part of the UpdateEhrStatus job.  Those fields not
+        # currently part of the BQPDRParticipantSummarySchema pending official implementation in RDR
         records = session.query(
             ParticipantSummary.participantId,
             ParticipantSummary.ehrReceiptTime,
             ParticipantSummary.ehrUpdateTime,
-            ParticipantSummary.isEhrDataAvailable
+            ParticipantSummary.isEhrDataAvailable,
+            ParticipantSummary.wasEhrDataAvailable,
+            # These may also be updated/recalculated in the course of processing the EHR status update ingestion
+            ParticipantSummary.enrollmentStatusV3_1,
+            ParticipantSummary.enrollmentStatusParticipantPlusBaselineV3_1Time,
+            ParticipantSummary.healthDataStreamSharingStatusV3_1,
+            ParticipantSummary.healthDataStreamSharingStatusV3_1Time
         ).filter(
             ParticipantSummary.participantId.in_(participant_id_list)
         ).all()
@@ -166,7 +174,15 @@ def create_rebuild_tasks_for_participants(participant_id_list, batch_size, proje
             'ehr_status_id': int(EhrStatus.PRESENT),
             'ehr_receipt': summary.ehrReceiptTime,
             'ehr_update': summary.ehrUpdateTime,
-            'is_ehr_data_available': int(summary.isEhrDataAvailable)
+            'is_ehr_data_available': int(summary.isEhrDataAvailable),
+            'was_ehr_data_available': int(summary.wasEhrDataAvailable),
+            'enrollment_status_v3_1': str(summary.enrollmentStatusV3_1),
+            'enrollment_status_v3_1_id': int(summary.enrollmentStatusV3_1),
+            'enrollment_status_v3_1_participant_plus_baseline_time': \
+                summary.enrollmentStatusParticipantPlusBaselineV3_1Time,
+            'health_datastream_sharing_status_v3_1': str(summary.healthDataStreamSharingStatusV3_1),
+            'health_datastream_sharing_status_v3_1_id': int(summary.healthDataStreamSharingStatusV3_1),
+            'health_datastream_sharing_status_v3_1_time': summary.healthDataStreamSharingStatusV3_1Time
         }
     } for summary in records]
 

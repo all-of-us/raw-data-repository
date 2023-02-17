@@ -15,7 +15,7 @@ from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.offline import update_ehr_status
-from rdr_service.participant_enums import EhrStatus
+from rdr_service.participant_enums import EhrStatus, EnrollmentStatusV31, DigitalHealthSharingStatusV31
 from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
 
@@ -176,8 +176,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
 
         # The first_seen and last_seen fields are set with mysql's NOW function,
         #   so check that the time is close to what is expected
-        self.assertAlmostEquals(first_seen, record.firstSeen, delta=datetime.timedelta(seconds=1))
-        self.assertAlmostEquals(last_seen, record.lastSeen, delta=datetime.timedelta(seconds=1))
+        self.assertAlmostEqual(first_seen, record.firstSeen, delta=datetime.timedelta(seconds=1))
+        self.assertAlmostEqual(last_seen, record.lastSeen, delta=datetime.timedelta(seconds=1))
 
         # Check generated data.
         ps_data = self.make_participant_resource(participant_id)
@@ -266,15 +266,37 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
 
     @staticmethod
     def build_expected_patch_data(participant_id, ehr_status: EhrStatus, is_ehr_available,
-                                  first_ehr_time, latest_ehr_time):
+                                  first_ehr_time, latest_ehr_time,
+                                  enrollment_status_v_3_1=EnrollmentStatusV31.PARTICIPANT,
+                                  enrollment_status_v_3_1_time=None):
+
+        # Additional Goal 1 data elements that will be part of the patch update upon receipt of EHR
+        # enrollment_status_baseline_time = None
+        was_ehr_available = (is_ehr_available or first_ehr_time is not None)
+        health_datastream_status = DigitalHealthSharingStatusV31.NEVER_SHARED
+        health_datastream_status_time = None
+        if is_ehr_available:
+            health_datastream_status = DigitalHealthSharingStatusV31.CURRENTLY_SHARING
+            health_datastream_status_time = latest_ehr_time
+        elif was_ehr_available:
+            health_datastream_status = DigitalHealthSharingStatusV31.EVER_SHARED
+            health_datastream_status_time = first_ehr_time
+
         return {
             'pid': participant_id,
             'patch': {
                 'ehr_status': str(ehr_status),
                 'is_ehr_data_available': int(is_ehr_available),
+                'was_ehr_data_available': int(was_ehr_available),
                 'ehr_status_id': int(ehr_status),
                 'ehr_receipt': first_ehr_time,
-                'ehr_update': latest_ehr_time
+                'ehr_update': latest_ehr_time,
+                'enrollment_status_v3_1': str(enrollment_status_v_3_1),
+                'enrollment_status_v3_1_id': int(enrollment_status_v_3_1),
+                'enrollment_status_v3_1_participant_plus_baseline_time': enrollment_status_v_3_1_time,
+                'health_datastream_sharing_status_v3_1': str(health_datastream_status),
+                'health_datastream_sharing_status_v3_1_id': int(health_datastream_status),
+                'health_datastream_sharing_status_v3_1_time': health_datastream_status_time
             }
         }
 
@@ -320,7 +342,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             ehrStatus=EhrStatus.PRESENT,
             isEhrDataAvailable=True,
             ehrReceiptTime=first_upload_datetime,
-            ehrUpdateTime=first_upload_datetime
+            ehrUpdateTime=first_upload_datetime,
+            enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT_PLUS_EHR,
         ).participantId
         first_view_data = self.EhrUpdatePidRow(first_pid, first_upload_datetime)
         self.data_generator.create_database_participant_ehr_receipt(
@@ -335,7 +358,10 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             ehrStatus=EhrStatus.PRESENT,
             isEhrDataAvailable=True,
             ehrReceiptTime=seconds_first_upload_time,
-            ehrUpdateTime=seconds_first_upload_time
+            ehrUpdateTime=seconds_first_upload_time,
+            # set up to validate patch data / population of the timestamp for reaching BASELINE
+            enrollmentStatusV3_1=EnrollmentStatusV31.BASELINE_PARTICIPANT,
+            enrollmentStatusParticipantPlusBaselineV3_1Time=seconds_first_upload_time
         ).participantId
         second_view_data = self.EhrUpdatePidRow(second_pid, datetime.datetime(2020, 3, 12, 10))
         self.data_generator.create_database_participant_ehr_receipt(
@@ -345,7 +371,9 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         )
 
         # initialize data for the third scenario (new participant appears in the view)
-        third_pid = self.data_generator.create_database_participant_summary().participantId
+        third_pid = self.data_generator.create_database_participant_summary(
+            enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
+        ).participantId
         third_view_data = self.EhrUpdatePidRow(third_pid, datetime.datetime(2020, 3, 14, 10))
 
         # set up data for the fourth scenario (participant is no longer in the view)
@@ -354,7 +382,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             ehrStatus=EhrStatus.PRESENT,
             isEhrDataAvailable=True,
             ehrReceiptTime=fourth_upload_time,
-            ehrUpdateTime=fourth_upload_time
+            ehrUpdateTime=fourth_upload_time,
+            enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
         ).participantId
 
         mock_summary_job.return_value.__iter__.return_value = [[first_view_data, second_view_data, third_view_data]]
@@ -366,21 +395,25 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
                 EhrStatus.PRESENT,
                 True,
                 seconds_first_upload_time,
-                second_view_data.latest_upload_time
+                second_view_data.latest_upload_time,
+                enrollment_status_v_3_1=EnrollmentStatusV31.BASELINE_PARTICIPANT,
+                enrollment_status_v_3_1_time=seconds_first_upload_time
             ),
             self.build_expected_patch_data(
                 third_pid,
                 EhrStatus.PRESENT,
                 True,
                 third_view_data.latest_upload_time,
-                third_view_data.latest_upload_time
+                third_view_data.latest_upload_time,
+                enrollment_status_v_3_1=EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
             ),
             self.build_expected_patch_data(
                 fourth_pid,
                 EhrStatus.PRESENT,
                 False,
                 fourth_upload_time,
-                fourth_upload_time
+                fourth_upload_time,
+                enrollment_status_v_3_1=EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
             )
         ], mock_rebuild_tasks)
 
