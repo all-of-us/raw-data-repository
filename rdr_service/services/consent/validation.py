@@ -92,11 +92,14 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
                 session=self._session
             )
             # Rebuild for PDR
+            additional_args = {}
+            if self._project_name is not None:
+                additional_args['project_id'] = self._project_name
             self._task.execute(
                 'rebuild_one_participant_task',
                 payload={'p_id': participant_id},
                 in_seconds=30,
-                project_id=self._project_name
+                **additional_args
             )
 
         self._session.commit()  # release the for_update lock obtained on the participant_summary
