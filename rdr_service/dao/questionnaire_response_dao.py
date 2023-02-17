@@ -115,7 +115,8 @@ from rdr_service.participant_enums import (
     ParticipantCohort,
     ConsentExpireStatus,
     OriginMeasurementUnit,
-    PhysicalMeasurementsCollectType
+    PhysicalMeasurementsCollectType,
+    IdVerificationOriginType
 )
 
 _QUESTIONNAIRE_PREFIX = "Questionnaire/"
@@ -944,7 +945,7 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_summary.remoteIdVerificationStatus = True
                 participant_summary.remoteIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
                 participant_summary.everIdVerified = True
-                participant_summary.idVerificationOrigin = 2
+                participant_summary.idVerificationOrigin = IdVerificationOriginType.REMOTE
                 if not participant_summary.firstIdVerifiedOn:
                     participant_summary.firstIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
         if 'verified' in remote_id_info:
