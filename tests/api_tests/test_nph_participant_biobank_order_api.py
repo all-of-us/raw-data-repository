@@ -5,12 +5,9 @@ from unittest.mock import MagicMock, patch
 
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao import database_factory
-from rdr_service.model.study_nph import (
-    SampleUpdate
-)
 from rdr_service.main import app
 from rdr_service.model.study_nph import (
-    StudyCategory, Order, OrderedSample, Participant
+    StudyCategory, Order, OrderedSample, Participant, SampleUpdate, Site
 )
 
 
@@ -170,22 +167,36 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
                 if k.upper() != "ID":
                     self.assertEqual(query.get(k), result.get(k))
 
-    @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')
-    @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
-    @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
-    def test_patch_cancel(self, site_id, query_filter, database_factor, order_id):
-        order_id.return_value = Order(id=1, participant_id=124820391)
-        database_factor.return_value.session.return_value = MagicMock()
-        query_filter.return_value.first.return_value = Participant(id=124820391)
+    def test_patch_cancel(self, site_id):
+        participant = Participant(id=12345, biobank_id=12345)
+        site = Site(id=1)
+        self.session.add(participant)
+        self.session.add(site)
+        self.session.commit()
+        self.session.add(
+            Order(
+                id=1,
+                participant_id=participant.id,
+                notes={},
+                samples=[
+                    OrderedSample(id=1),
+                    OrderedSample(id=2)
+                ]
+            )
+        )
+        self.session.commit()
+
         site_id.return_value = 1
         queries = [PATCH_CANCEL_SAMPLE]
         for query in queries:
-            executed = app.test_client().patch('rdr/v1/api/v1/nph/Participant/1000124820391/BiobankOrder/1', json=query)
-            result = json.loads(executed.data.decode('utf-8'))
-            for k, _ in result.items():
-                if k.upper() != "ID":
-                    self.assertEqual(query.get(k), result.get(k))
+            response = self.send_patch(f'api/v1/nph/Participant/1000{participant.id}/BiobankOrder/1', query)
+
+            del response['id']
+            self.assertDictEqual(query, response)
+
+        sample_update_list = self.session.query(SampleUpdate).all()
+        self.assertListEqual([1, 2], [sample_update.ordered_sample_json['id'] for sample_update in sample_update_list])
 
     @patch('rdr_service.dao.study_nph_dao.NphOrderedSampleDao._get_child_order_sample')
     @patch('rdr_service.dao.study_nph_dao.NphOrderedSampleDao._get_parent_order_sample')

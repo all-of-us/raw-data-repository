@@ -1,8 +1,8 @@
-from sqlalchemy import (
-    Column, Integer, BigInteger, String, ForeignKey, Index, event)
+from typing import List
 
+from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Index, event
 from sqlalchemy.dialects.mysql import TINYINT, JSON
-from sqlalchemy.orm import relation
+from sqlalchemy.orm import relation, relationship
 
 from rdr_service.model.base import NphBase, model_insert_listener, model_update_listener
 from rdr_service.model.study_nph_enums import StoredSampleStatus
@@ -84,6 +84,8 @@ class Order(NphBase):
     notes = Column(JSON, nullable=False)
     status = Column(String(128))
 
+    samples: List['OrderedSample'] = relationship('OrderedSample', back_populates='order')
+
 
 Index("order_participant_id", Order.participant_id)
 Index("order_created_site", Order.created_site)
@@ -115,6 +117,8 @@ class OrderedSample(NphBase):
     supplemental_fields = Column(JSON, nullable=True)
     parent = relation("OrderedSample", remote_side=[id])
     children = relation("OrderedSample", remote_side=[parent_sample_id], uselist=True)
+
+    order = relationship(Order, back_populates='samples')
 
 
 class Activity(NphBase):
