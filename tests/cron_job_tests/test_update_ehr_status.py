@@ -176,8 +176,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
 
         # The first_seen and last_seen fields are set with mysql's NOW function,
         #   so check that the time is close to what is expected
-        self.assertAlmostEqual(first_seen, record.firstSeen, delta=datetime.timedelta(seconds=1))
-        self.assertAlmostEqual(last_seen, record.lastSeen, delta=datetime.timedelta(seconds=1))
+        self.assertAlmostEquals(first_seen, record.firstSeen, delta=datetime.timedelta(seconds=1))
+        self.assertAlmostEquals(last_seen, record.lastSeen, delta=datetime.timedelta(seconds=1))
 
         # Check generated data.
         ps_data = self.make_participant_resource(participant_id)
@@ -271,7 +271,6 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
                                   enrollment_status_v_3_1_time=None):
 
         # Additional Goal 1 data elements that will be part of the patch update upon receipt of EHR
-        # enrollment_status_baseline_time = None
         was_ehr_available = (is_ehr_available or first_ehr_time is not None)
         health_datastream_status = DigitalHealthSharingStatusV31.NEVER_SHARED
         health_datastream_status_time = None
