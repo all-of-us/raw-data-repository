@@ -8,7 +8,7 @@ from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.onsite_id_verification import OnsiteIdVerification
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.participant_enums import OnSiteVerificationType, OnSiteVerificationVisitType
+from rdr_service.participant_enums import OnSiteVerificationType, OnSiteVerificationVisitType, IdVerificationOriginType
 
 
 class OnsiteVerificationDao(BaseDao):
@@ -84,6 +84,10 @@ class OnsiteVerificationDao(BaseDao):
         participant_summary.onsiteIdVerificationVisitType = OnSiteVerificationVisitType(obj.visitType)
         participant_summary.onsiteIdVerificationUser = obj.userEmail
         participant_summary.onsiteIdVerificationSite = obj.siteId
+        participant_summary.everIdVerified = True
+        if not participant_summary.firstIdVerifiedOn:
+            participant_summary.firstIdVerifiedOn = obj.verifiedTime.date()
+        participant_summary.idVerificationOrigin = IdVerificationOriginType.ON_SITE
         participant_summary.lastModified = clock.CLOCK.now()
         participant_summary_dao.update(participant_summary)
 

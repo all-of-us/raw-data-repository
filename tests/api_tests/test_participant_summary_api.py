@@ -162,7 +162,8 @@ participant_summary_default_values = {
     "onsiteIdVerificationType": "UNSET",
     "onsiteIdVerificationVisitType": "UNSET",
     "questionnaireOnLifeFunctioning": "UNSET",
-    "aian": False
+    "aian": False,
+    "idVerificationOrigin": "UNSET"
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
@@ -4448,6 +4449,14 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(summary['remoteIdVerificationStatus'], True)
         self.assertEqual(summary['remoteIdVerifiedOn'], '2023-01-17')
 
+        resource['group']['question'][1]['answer'][0]['valueString'] = "1674066632000"
+        self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['remoteIdVerifiedOn'], '2023-01-18')
+        self.assertEqual(summary['everIdVerified'], True)
+        self.assertEqual(summary['firstIdVerifiedOn'], '2023-01-17')
+        self.assertEqual(summary['idVerificationOrigin'], 'REMOTE')
+
     def test_remote_id_not_verified(self):
         """ Test to see if a remote ID verification False Response saves successfully """
         # Set up participant, questionnaire, questionnaire response & send POST request to API
@@ -4467,4 +4476,3 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
         self.assertNotIn('remoteIdVerifiedOn', summary)
         self.assertEqual(summary['remoteIdVerificationStatus'], False)
-

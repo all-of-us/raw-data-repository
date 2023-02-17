@@ -46,7 +46,8 @@ from rdr_service.participant_enums import (
     RetentionType,
     SelfReportedPhysicalMeasurementsStatus,
     OnSiteVerificationType,
-    OnSiteVerificationVisitType
+    OnSiteVerificationVisitType,
+    IdVerificationOriginType
 )
 
 
@@ -1568,6 +1569,18 @@ class ParticipantSummary(Base):
 
     remoteIdVerifiedOn = Column("remote_id_verified_on", Date)
     """ Date of the most recent remote id verification """
+
+    everIdVerified = Column('ever_id_verified', Boolean)
+    """ Has the participant's ID been verified """
+
+    firstIdVerifiedOn = Column("first_id_verified_on", Date)
+    """ Date of the first time the participant has their id verified """
+
+    idVerificationOrigin = Column(
+        "id_verification_origin",
+        Enum(IdVerificationOriginType),
+        default=IdVerificationOriginType.UNSET)
+    """ Was the participant ON_SITE or REMOTE """
 
     aian = Column(Boolean, default=0)
     """Denotes if the participants race is AI_AN (AMERICAN_INDIAN_OR_ALASKA_NATIVE)"""
