@@ -24,6 +24,8 @@ class ConsentResponse(Base):
     """Id of the questionnaire response that is a consent for the participant."""
     type = sa.Column(Enum(ConsentType))
     """The type of consent given by the response."""
+    expected_authored_date = sa.Column(UTCDateTime)
+    """Signature date expected on the PDF file."""
 
     response = relationship(QuestionnaireResponse)
 
