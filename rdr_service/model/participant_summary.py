@@ -1576,7 +1576,10 @@ class ParticipantSummary(Base):
     firstIdVerifiedOn = Column("first_id_verified_on", Date)
     """ Date of the first time the participant has their id verified """
 
-    idVerificationOrigin = Column("id_verification_origin", Enum(IdVerificationOriginType))
+    idVerificationOrigin = Column(
+        "id_verification_origin",
+        Enum(IdVerificationOriginType),
+        default=IdVerificationOriginType.UNSET)
     """ Was the participant ON_SITE or REMOTE """
 
     aian = Column(Boolean, default=0)
