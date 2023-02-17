@@ -465,8 +465,9 @@ class ConsentValidationController:
 
         for consent_response in consent_responses:
             get_validation_results_func = validation_method_map[consent_response.type]
+            expected_signing_date = consent_response.expected_authored_date or consent_response.response.authored
             validation_results = self._process_validation_results(
-                get_validation_results_func(expected_signing_date=consent_response.response.authored)
+                get_validation_results_func(expected_signing_date=expected_signing_date)
             )
             for result in validation_results:
                 result.consent_response = consent_response

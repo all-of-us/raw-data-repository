@@ -1129,6 +1129,16 @@ class QuestionnaireResponseDao(BaseDao):
         # Check authored dates to see if it's a new consent response,
         # or if it's potentially just a replay of a previous questionnaire response
         for consent_type in self.consents_provided:
+            expected_date = None
+            if consent_type == ConsentType.CABOR:
+                extension_key = 'cabor-form-signed-timestamp'
+            else:
+                extension_key = 'consent-form-signed-timestamp'
+            for extension in questionnaire_response.extensions:
+                if extension_key in extension.url:
+                    expected_date = extension.valueDateTime
+                    break
+
             is_new_consent = True
             previous_authored_times = previous_consent_dates.get(consent_type)
             for previous_consent_authored_time in (previous_authored_times or []):
@@ -1140,7 +1150,13 @@ class QuestionnaireResponseDao(BaseDao):
                     break
 
             if is_new_consent:
-                session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
+                session.add(
+                    ConsentResponse(
+                        response=questionnaire_response,
+                        type=consent_type,
+                        expected_authored_date=expected_date
+                    )
+                )
 
     @classmethod
     def _authored_times_match(cls, new_authored_time: datetime, current_authored_item: datetime):
