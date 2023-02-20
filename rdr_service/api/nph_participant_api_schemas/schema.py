@@ -5,8 +5,7 @@ from sqlalchemy.orm import Query, aliased
 from sqlalchemy import and_
 
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
-from rdr_service.model.study_nph import Participant as DbParticipant, Site as nphSite, PairingEvent, EnrollmentEvent, \
-    EnrollmentEventType
+from rdr_service.model.study_nph import Participant as DbParticipant, Site as nphSite, PairingEvent
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping, Study
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
@@ -331,49 +330,72 @@ class ParticipantQuery(ObjectType):
         with database_factory.get_database().session() as sessions:
             logging.info('root: %s, info: %s, kwargs: %s', root, info, filter_kwargs)
             pm2 = aliased(PairingEvent)
-            ee2 = aliased(EnrollmentEvent)
-            deactivated = aliased(EnrollmentEvent)
-            deactivated_type = aliased(EnrollmentEventType)
-            withdrawn = aliased(EnrollmentEvent)
-            withdrawn_type = aliased(EnrollmentEventType)
-            et2 = aliased(EnrollmentEventType)
-            query = sessions.query(ParticipantSummaryModel, Site, nphSite, ParticipantMapping, EnrollmentEvent,
-                                   EnrollmentEventType, deactivated, withdrawn
-                                   ).join(Site, ParticipantSummaryModel.siteId == Site.siteId
-                                          ).join(ParticipantMapping,
-                                                 ParticipantSummaryModel.participantId
-                                                 == ParticipantMapping.primary_participant_id
-                                                 ).join(EnrollmentEvent,
-                                                        EnrollmentEvent.participant_id
-                                                        == ParticipantMapping.
-                                                        ancillary_participant_id
-                                                        ).join(et2, EnrollmentEvent.event_type_id
-                                                               == et2.id
-                                                               ).join(PairingEvent, PairingEvent.participant_id
-                                                                      == ParticipantMapping.ancillary_participant_id
-                                                                      ).outerjoin(pm2, and_(PairingEvent.participant_id
-                                                                                            == pm2.participant_id,
-                                                                                            PairingEvent.event_type_id
-                                                                                            == pm2.event_type_id,
-                                                                                            PairingEvent.
-                                                                                            event_authored_time
-                                                                                            < pm2.event_authored_time)
-                                                                                  ).join(nphSite,
-                                                                                         nphSite.id == PairingEvent
-                                                                                         .site_id).outerjoin(
-                ee2, and_(EnrollmentEvent.participant_id == ee2.participant_id,
-                          EnrollmentEvent.event_authored_time < ee2.event_authored_time)).outerjoin(
-                deactivated, ParticipantMapping.ancillary_participant_id == deactivated.participant_id
-            ).outerjoin(deactivated_type, deactivated.event_type_id == deactivated_type.id).outerjoin(
-                withdrawn, ParticipantMapping.ancillary_participant_id == withdrawn.participant_id
-            ).outerjoin(withdrawn_type, withdrawn.event_type_id == withdrawn_type.id).join(
-                EnrollmentEventType, EnrollmentEventType.id
-                                     == EnrollmentEvent
-                                     .event_type_id).filter(
-                pm2.id.is_(None), ParticipantMapping.ancillary_study_id == 2).filter(ee2.id.is_(None)
-                                                                                     ).filter(
-                deactivated_type.name == "Deactivated").filter(withdrawn_type.name == "Withdrawn").filter(
-                EnrollmentEventType.name != "Deactivated", EnrollmentEventType.name != "Withdrawn")
+            # ee2 = aliased(EnrollmentEvent)
+            # deactivated = aliased(EnrollmentEvent)
+            # deactivated_type = aliased(EnrollmentEventType)
+            # withdrawn = aliased(EnrollmentEvent)
+            # withdrawn_type = aliased(EnrollmentEventType)
+            # et2 = aliased(EnrollmentEventType)
+            query = sessions.query(
+                ParticipantSummaryModel, Site, nphSite, ParticipantMapping,
+                # EnrollmentEvent, EnrollmentEventType, deactivated, withdrawn
+            ).join(
+                Site,
+                ParticipantSummaryModel.siteId == Site.siteId
+            ).join(
+                ParticipantMapping,
+                ParticipantSummaryModel.participantId == ParticipantMapping.primary_participant_id
+            # ).join(
+            #     EnrollmentEvent,
+            #     EnrollmentEvent.participant_id == ParticipantMapping.ancillary_participant_id
+            # ).join(
+            #     et2,
+            #     EnrollmentEvent.event_type_id == et2.id
+            ).join(
+                PairingEvent,
+                PairingEvent.participant_id == ParticipantMapping.ancillary_participant_id
+            ).outerjoin(
+                pm2,
+                and_(
+                    PairingEvent.participant_id == pm2.participant_id,
+                    PairingEvent.event_type_id == pm2.event_type_id,
+                    PairingEvent.event_authored_time < pm2.event_authored_time
+                )
+            ).join(
+                nphSite,
+                nphSite.id == PairingEvent.site_id
+            # ).outerjoin(
+            #     ee2,
+            #     and_(
+            #         EnrollmentEvent.participant_id == ee2.participant_id,
+            #         EnrollmentEvent.event_authored_time < ee2.event_authored_time
+            #     )
+            # ).outerjoin(
+            #     deactivated,
+            #     ParticipantMapping.ancillary_participant_id == deactivated.participant_id
+            # ).outerjoin(
+            #     deactivated_type,
+            #     deactivated.event_type_id == deactivated_type.id
+            # ).outerjoin(
+            #     withdrawn,
+            #     ParticipantMapping.ancillary_participant_id == withdrawn.participant_id
+            # ).outerjoin(
+            #     withdrawn_type,
+            #     withdrawn.event_type_id == withdrawn_type.id
+            # ).join(
+            #     EnrollmentEventType,
+            #     and_(
+            #         EnrollmentEventType.id == EnrollmentEvent.event_type_id,
+            #         EnrollmentEventType.name != "Deactivated",
+            #         EnrollmentEventType.name != "Withdrawn"
+            #     )
+            ).filter(
+                pm2.id.is_(None),
+                ParticipantMapping.ancillary_study_id == 2,
+                # ee2.id.is_(None),
+                # deactivated_type.name == "Deactivated",
+                # withdrawn_type.name == "Withdrawn"
+            )
             study_query = sessions.query(Study).filter(Study.schema_name == "nph")
             study = study_query.first()
             current_class = Participant

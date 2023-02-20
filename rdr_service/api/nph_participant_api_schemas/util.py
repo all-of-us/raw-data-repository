@@ -57,7 +57,7 @@ def check_field_value(value):
 
 def load_participant_summary_data(query, prefix, biobank_prefix):
     results = []
-    for summary, site, nph_site, mapping, enrollment_time, enrollment_name, deactivated, withdrawn in query.all():
+    for summary, site, nph_site, mapping in query.all():
         results.append({
             'participantNphId': f"{prefix}{mapping.ancillary_participant_id}",
             'lastModified': summary.lastModified,
@@ -74,13 +74,15 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
             'withdrawalStatus': {"value": check_field_value(summary.withdrawalStatus),
                                  "time": summary.withdrawalAuthored},
             'nph_deactivation_status': {
-                "value": "Deactivate" if deactivated.event_authored_time else QuestionnaireStatus.UNSET,
-                "time": deactivated.event_authored_time if deactivated.event_authored_time else None},
+                "value": QuestionnaireStatus.UNSET,
+                "time": None
+            },
             'nph_withdrawal_status': {
-                "value": "Withdrawn" if withdrawn.event_authored_time else QuestionnaireStatus.UNSET,
-                "time": withdrawn.event_authored_time if withdrawn.event_authored_time else None},
-            'nph_enrollment_status': {"value": check_field_value(enrollment_name.name),
-                                      "time": enrollment_time.event_authored_time},
+                "value": QuestionnaireStatus.UNSET,
+                "time": None
+            },
+            'nph_enrollment_status': {"value": QuestionnaireStatus.UNSET,
+                                      "time": None},
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
                                  "time": summary.suspensionTime},
@@ -88,20 +90,24 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                                  "time": summary.dateOfBirth},
             'questionnaireOnTheBasics': {
                 "value": check_field_value(summary.questionnaireOnTheBasics),
-                "time": summary.questionnaireOnTheBasicsAuthored},
+                "time": summary.questionnaireOnTheBasicsAuthored
+            },
             'questionnaireOnHealthcareAccess': {
                 "value": check_field_value(summary.questionnaireOnHealthcareAccess),
-                "time": summary.questionnaireOnHealthcareAccessAuthored},
+                "time": summary.questionnaireOnHealthcareAccessAuthored
+            },
             'questionnaireOnLifestyle': {
                 "value": check_field_value(summary.questionnaireOnLifestyle),
-                "time": summary.questionnaireOnLifestyleAuthored},
+                "time": summary.questionnaireOnLifestyleAuthored
+            },
             'siteId': site.googleGroup,
             'external_id': nph_site.external_id,
             'organization_external_id': nph_site.organization_external_id,
             'awardee_external_id': nph_site.awardee_external_id,
-            'questionnaireOnSocialDeterminantsOfHealth':
-                {"value": check_field_value(summary.questionnaireOnSocialDeterminantsOfHealth),
-                 "time": summary.questionnaireOnSocialDeterminantsOfHealthAuthored}
+            'questionnaireOnSocialDeterminantsOfHealth': {
+                "value": check_field_value(summary.questionnaireOnSocialDeterminantsOfHealth),
+                 "time": summary.questionnaireOnSocialDeterminantsOfHealthAuthored
+            }
         })
 
     return results
