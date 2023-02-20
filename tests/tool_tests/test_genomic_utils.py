@@ -1,4 +1,5 @@
 from unittest import mock
+from dateutil.parser import parse
 
 from rdr_service import clock
 from tests import test_data
@@ -54,19 +55,22 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
     def setUp(self):
         super(GenomicUtilsGeneralTest, self).setUp()
 
-    def setup_raw_test_data(self, test_aw1, test_aw2):
-        gen_set = self.data_generator.create_database_genomic_set(
-            genomicSetName=".",
-            genomicSetCriteria=".",
-            genomicSetVersion=1
-        )
+    def setup_raw_test_data(self, test_aw1, test_aw2, created=None):
+        if not created:
+            created = clock.CLOCK.now()
+        with clock.FakeClock(created):
+            gen_set = self.data_generator.create_database_genomic_set(
+                genomicSetName=".",
+                genomicSetCriteria=".",
+                genomicSetVersion=1
+            )
 
-        self.data_generator.create_database_genomic_set_member(
-            genomicSetId=gen_set.id,
-            biobankId="1",
-            genomeType="aou_array",
-            genomicWorkflowState=GenomicWorkflowState.AW0
-        )
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="1",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.AW0,
+            )
 
         self.data_generator.create_database_genomic_job_run(
             jobId=GenomicJob.AW1_MANIFEST,
@@ -116,7 +120,7 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         test_aw1 = "test-bucket/test_folder/test_GEN_sample_manifest.csv"
         test_aw2 = "test-bucket/test_folder/test_GEN_data_manifest.csv"
 
-        self.setup_raw_test_data(test_aw1=test_aw1, test_aw2=test_aw2)
+        self.setup_raw_test_data(test_aw1=test_aw1, test_aw2=test_aw2, created=parse('2020-01-05T12:13:14'))
 
         self.data_generator.create_database_genomic_aw1_raw(
             file_path=test_aw1,
@@ -148,6 +152,7 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             'member_ids': "1",
             'csv': False,
             'cloud_task': False,
+            'allow_older': False
         })
 
         mdao = GenomicSetMemberDao()
@@ -171,6 +176,7 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             'member_ids': "1",
             'csv': False,
             'cloud_task': False,
+            'allow_older': False
         })
 
         vdao = GenomicGCValidationMetricsDao()
@@ -185,6 +191,47 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         m = mdao.get(1)
         self.assertEqual(GenomicWorkflowState.AW2, m.genomicWorkflowState)
         self.assertEqual(2, m.aw2FileProcessedId)
+
+    def test_skip_ingestion_manifest_older_than_member(self):
+        # Sample ingestion tool shouldn't ingest from manifest created before the member
+        test_aw1 = "test-bucket/test_folder/test_GEN_sample_manifest.csv"
+        self.setup_raw_test_data(test_aw1=test_aw1, test_aw2='', created=parse('2023-01-12T13:14:15'))
+
+        with clock.FakeClock(parse('2022-11-10T09:08:07')):
+            self.data_generator.create_database_genomic_aw1_raw(
+                file_path=test_aw1,
+                package_id="pkg-1",
+                well_position="A01",
+                sample_id="1001",
+                collection_tube_id="111000",
+                biobank_id="A1",
+                test_name="aou_array",
+            )
+
+        # Test AW1
+        GenomicUtilsGeneralTest.run_tool(IngestionClass, tool_args={
+            'command': 'sample-ingestion',
+            'job': "AW1_MANIFEST",
+            'manifest_file': test_aw1,
+            'data_type': 'aw1',
+            'use_raw': True,
+            'member_ids': "1",
+            'csv': False,
+            'cloud_task': False,
+            'allow_older': False
+        })
+
+        mdao = GenomicSetMemberDao()
+        m = mdao.get(1)
+
+        self.assertEqual(None, m.gcManifestWellPosition)
+        self.assertEqual(None, m.collectionTubeId)
+        self.assertEqual(None, m.packageId)
+        self.assertEqual(None, m.gcManifestWellPosition)
+        self.assertEqual(None, m.sampleId)
+        self.assertEqual(GenomicWorkflowState.AW0, m.genomicWorkflowState)
+        self.assertEqual(None, m.aw1FileProcessedId)
+
 
     def test_backfill_gvcf(self):
         test_file = test_data.data_path("test_gvcf_path.txt")
@@ -224,76 +271,77 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
 
     def test_unblock_samples(self):
         # Setup test data
-        gen_set = self.data_generator.create_database_genomic_set(
-            genomicSetName=".",
-            genomicSetCriteria=".",
-            genomicSetVersion=2
-        )
+        with clock.FakeClock(parse('2022-07-08T09:10:11')):
+            gen_set = self.data_generator.create_database_genomic_set(
+                genomicSetName=".",
+                genomicSetCriteria=".",
+                genomicSetVersion=2
+            )
 
-        self.data_generator.create_database_genomic_set_member(
-            genomicSetId=gen_set.id,
-            biobankId="11",
-            sampleId=None,
-            genomeType="aou_array",
-            genomicWorkflowState=GenomicWorkflowState.AW0,
-            blockResearch=True,
-            blockResults=True
-        )
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="11",
+                sampleId=None,
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.AW0,
+                blockResearch=True,
+                blockResults=True
+            )
 
-        self.data_generator.create_database_genomic_set_member(
-            genomicSetId=gen_set.id,
-            biobankId="12",
-            sampleId=None,
-            genomeType="aou_array",
-            genomicWorkflowState=GenomicWorkflowState.AW0,
-            blockResearch=True,
-            blockResults=True
-        )
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="12",
+                sampleId=None,
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.AW0,
+                blockResearch=True,
+                blockResults=True
+            )
 
-        self.data_generator.create_database_genomic_set_member(
-            genomicSetId=gen_set.id,
-            biobankId="14",
-            sampleId="1012",
-            genomeType="aou_array",
-            genomicWorkflowState=GenomicWorkflowState.AW1,
-            blockResearch=True,
-            blockResults=True,
-            blockResearchReason="test reason1",
-            blockResultsReason="test reason2"
-        )
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="14",
+                sampleId="1012",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.AW1,
+                blockResearch=True,
+                blockResults=True,
+                blockResearchReason="test reason1",
+                blockResultsReason="test reason2"
+            )
 
-        self.data_generator.create_database_genomic_set_member(
-            genomicSetId=gen_set.id,
-            biobankId="15",
-            sampleId="1013",
-            genomeType="aou_array",
-            genomicWorkflowState=GenomicWorkflowState.AW1,
-            blockResearch=True,
-            blockResults=True
-        )
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="15",
+                sampleId="1013",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.AW1,
+                blockResearch=True,
+                blockResults=True
+            )
 
-        self.data_generator.create_database_genomic_set_member(
-            genomicSetId=gen_set.id,
-            biobankId="16",
-            sampleId="1016",
-            genomeType="aou_array",
-            genomicWorkflowState=GenomicWorkflowState.AW1,
-            blockResearch=True,
-            blockResults=True
-        )
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="16",
+                sampleId="1016",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.AW1,
+                blockResearch=True,
+                blockResults=True
+            )
 
-        # Sample that was replated
-        self.data_generator.create_database_genomic_set_member(
-            genomicSetId=gen_set.id,
-            biobankId="14",
-            sampleId="1012",
-            genomeType="aou_array",
-            genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
-            blockResearch=True,
-            blockResults=True,
-            blockResearchReason="test reason1",
-            blockResultsReason="test reason2"
-        )
+            # Sample that was replated
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="14",
+                sampleId="1012",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
+                blockResearch=True,
+                blockResults=True,
+                blockResearchReason="test reason1",
+                blockResultsReason="test reason2"
+            )
 
         test_aw1 = "test-bucket/test_folder/testunblock_GEN_sample_manifest.csv"
         test_aw2 = "test-bucket/test_folder/testunblock_GEN_data_manifest.csv"
