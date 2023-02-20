@@ -258,35 +258,35 @@ class NphOrderDao(UpdatableDao):
             raise BadRequest(f"TimePoint does not match the corresponding visitType: {payload.timepoint}")
 
     def patch_update(self, order: Namespace, rdr_order_id: int, nph_participant_id: str, session) -> Order:
-        try:
-            if order.status.upper() == "RESTORED":
-                site_name = order.restoredInfo.site.value
-                amended_author = order.restoredInfo.author.value
-            elif order.status.upper() == "CANCELLED":
-                site_name = order.cancelledInfo.site.value
-                amended_author = order.cancelledInfo.author.value
-            else:
-                raise BadRequest(f"Invalid status value: {order.status}")
-            site_id = self.site_dao.get_id(session, site_name)
-            amended_reason = order.amendedReason
-            db_order = self.get_order(rdr_order_id, session)
-            p_id = self.participant_dao.get_id(session, nph_participant_id)
-            if db_order.participant_id == p_id:
-                db_order.amended_author = amended_author
-                db_order.amended_site = site_id
-                db_order.amended_reason = amended_reason
-                db_order.status = order.status
-            else:
-                raise BadRequest("Participant ID does not match the corresponding Order ID.")
-            return db_order
-        except exc.SQLAlchemyError as ex:
-            raise ex
-        except NotFound as not_found:
-            raise not_found
-        except BadRequest as bad_request:
-            raise bad_request
-        except Exception as exp:
-            raise exp
+        if order.status.upper() == "RESTORED":
+            site_name = order.restoredInfo.site.value
+            amended_author = order.restoredInfo.author.value
+        elif order.status.upper() == "CANCELLED":
+            site_name = order.cancelledInfo.site.value
+            amended_author = order.cancelledInfo.author.value
+        else:
+            raise BadRequest(f"Invalid status value: {order.status}")
+        site_id = self.site_dao.get_id(session, site_name)
+        amended_reason = order.amendedReason
+        db_order = self.get_order(rdr_order_id, session)
+        p_id = self.participant_dao.get_id(session, nph_participant_id)
+        if db_order.participant_id == p_id:
+            db_order.amended_author = amended_author
+            db_order.amended_site = site_id
+            db_order.amended_reason = amended_reason
+            db_order.status = order.status
+
+            sample_update_dao = NphSampleUpdateDao()
+            for ordered_sample in db_order.samples:
+                sample_update_dict = {
+                    "rdr_ordered_sample_id": ordered_sample.id,
+                    "ordered_sample_json": ordered_sample.asdict()
+                }
+                sample_update_dao.insert(SampleUpdate(**sample_update_dict))
+
+        else:
+            raise BadRequest("Participant ID does not match the corresponding Order ID.")
+        return db_order
 
     def update_order(self, rdr_order_id: int, nph_participant_id: str, session) -> Order:
         create_site = self.site_dao.get_id(session, self.order_cls.createdInfo.site.value)
@@ -401,20 +401,10 @@ class NphOrderDao(UpdatableDao):
 
     def insert_with_session(self, session, order: Order) -> Order:
         # Adding record(s) to nph.order table
-
-        try:
-            session.add(order)
-            session.commit()
-            session.refresh(order)
-            return order
-        except exc.SQLAlchemyError as ex:
-            raise ex
-        except NotFound as not_found:
-            raise not_found
-        except BadRequest as bad_request:
-            raise bad_request
-        except Exception as exp:
-            raise exp
+        session.add(order)
+        session.commit()
+        session.refresh(order)
+        return order
 
 
 class NphOrderedSampleDao(UpdatableDao):
@@ -478,32 +468,26 @@ class NphOrderedSampleDao(UpdatableDao):
 
     def _insert_order_sample(self, session, order: Namespace):
         # Adding record(s) to nph.order_sample table
-        try:
-            ordered_sample_list = []
-            nph_sample_id = fetch_identifier_value(order, "sample-id")
-            os = self.from_client_json(order, order.id, nph_sample_id)
-            ordered_sample_list.append(os)
-            if order.__dict__.get("aliquots"):
-                for aliquot in order.aliquots:
-                    oa = self.from_aliquot_client_json(aliquot, order.id, nph_sample_id)
-                    os.children.append(oa)
-                    ordered_sample_list.append(oa)
-            session.add(os)
-            session.commit()
-            sample_update_dao = NphSampleUpdateDao()
-            for ordered_sample in ordered_sample_list:
-                sample_update_dict = {
-                    "rdr_ordered_sample_id": ordered_sample.id,
-                    "ordered_sample_json": ordered_sample.asdict()
-                }
-                sample_update_dao.insert(SampleUpdate(**sample_update_dict))
-            return os
-        except exc.SQLAlchemyError as sql:
-            raise sql
-        except NotFound as not_found:
-            raise not_found
-        except BadRequest as bad_request:
-            raise bad_request
+        ordered_sample_list = []
+        nph_sample_id = fetch_identifier_value(order, "sample-id")
+        os = self.from_client_json(order, order.id, nph_sample_id)
+        ordered_sample_list.append(os)
+        if order.__dict__.get("aliquots"):
+            for aliquot in order.aliquots:
+                oa = self.from_aliquot_client_json(aliquot, order.id, nph_sample_id)
+                os.children.append(oa)
+                ordered_sample_list.append(oa)
+        session.add(os)
+        session.commit()
+        sample_update_dao = NphSampleUpdateDao()
+        for ordered_sample in ordered_sample_list:
+            sample_update_dao.insert(
+                SampleUpdate(
+                    rdr_ordered_sample_id=ordered_sample.id,
+                    ordered_sample_json=ordered_sample.asdict()
+                )
+            )
+        return os
 
     def update_order_sample(self, order: Namespace, rdr_order_id: int, session):
         try:
@@ -533,8 +517,6 @@ class NphOrderedSampleDao(UpdatableDao):
             raise not_found
         except BadRequest as bad_request:
             raise bad_request
-        except Exception as exp:
-            raise exp
 
     def _update_child_order(self, payload: Namespace, order_sample: List[OrderedSample], nph_sample_id: str,
                             rdr_order_id: int) -> List[OrderedSample]:
