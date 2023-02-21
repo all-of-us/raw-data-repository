@@ -101,11 +101,8 @@ class NphOrderApi(UpdatableApi):
                     order.id = rdr_order_id
                     return construct_response(order), 200
             except NotFound as not_found:
-                logging.error(not_found.description)
+                logging.error(not_found.description, exc_info=True)
                 return construct_response(order), 404
             except BadRequest as bad_request:
-                logging.error(bad_request.description)
-                return construct_response(order), 400
-            except exc.SQLAlchemyError as sql:
-                logging.error(sql)
+                logging.error(bad_request.description, exc_info=True)
                 return construct_response(order), 400
