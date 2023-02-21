@@ -69,7 +69,7 @@ class NphOrderApi(UpdatableApi):
                 if not exist:
                     logging.warning(f'Inserting new order to study_category table: module = {order.module}, '
                                     f'visitType: {order.visitType}, timePoint: {order.timepoint}')
-                    time_point_id = self.dao.insert_study_category_with_session(session, order)[1]
+                    time_point_id = self.dao.insert_study_category_with_session(order, session)[1]
                 new_order = self.dao.from_client_json(session, nph_participant_id, time_point_id)
                 new_order = self.dao.insert_with_session(session, new_order)
                 order.id = new_order.id
