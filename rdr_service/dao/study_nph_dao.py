@@ -279,8 +279,7 @@ class NphOrderDao(UpdatableDao):
             sample_update_dao = NphSampleUpdateDao()
             for ordered_sample in db_order.samples:
                 sample_update_dict = {
-                    "rdr_ordered_sample_id": ordered_sample.id,
-                    "ordered_sample_json": ordered_sample.asdict()
+                    "rdr_ordered_sample_id": ordered_sample.id
                 }
                 sample_update_dao.insert(SampleUpdate(**sample_update_dict))
 

@@ -1,4 +1,5 @@
 # Sample ID = NP124820391
+from datetime import datetime
 import json
 from sqlalchemy.orm import Query
 from unittest.mock import MagicMock, patch
@@ -180,7 +181,7 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
                 participant_id=participant.id,
                 notes={},
                 samples=[
-                    OrderedSample(id=1),
+                    OrderedSample(id=1, collected=datetime.utcnow()),
                     OrderedSample(id=2)
                 ]
             )
@@ -188,15 +189,15 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         self.session.commit()
 
         site_id.return_value = 1
-        queries = [PATCH_CANCEL_SAMPLE]
-        for query in queries:
-            response = self.send_patch(f'api/v1/nph/Participant/1000{participant.id}/BiobankOrder/1', query)
+        patch_json = PATCH_CANCEL_SAMPLE
 
-            del response['id']
-            self.assertDictEqual(query, response)
+        response = self.send_patch(f'api/v1/nph/Participant/1000{participant.id}/BiobankOrder/1', patch_json)
+
+        del response['id']
+        self.assertDictEqual(patch_json, response)
 
         sample_update_list = self.session.query(SampleUpdate).all()
-        self.assertListEqual([1, 2], [sample_update.ordered_sample_json['id'] for sample_update in sample_update_list])
+        self.assertListEqual([1, 2], [sample_update.rdr_ordered_sample_id for sample_update in sample_update_list])
 
     @patch('rdr_service.dao.study_nph_dao.NphOrderedSampleDao._get_child_order_sample')
     @patch('rdr_service.dao.study_nph_dao.NphOrderedSampleDao._get_parent_order_sample')
