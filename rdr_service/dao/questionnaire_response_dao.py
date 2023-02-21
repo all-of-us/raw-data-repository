@@ -963,8 +963,11 @@ class QuestionnaireResponseDao(BaseDao):
                     code.value.lower() if self._is_digital_health_share_code(code.value) else code.value)
                 if summary_field:
                     new_status = QuestionnaireStatus.SUBMITTED
-                    if code.value == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE and not ehr_consent:
-                        new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+                    if code.value == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE:
+                        if ehr_consent:
+                            new_status = QuestionnaireStatus.SUBMITTED_NOT_VALIDATED
+                        else:
+                            new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
                     elif code.value == CONSENT_FOR_DVEHR_MODULE:
                         new_status = dvehr_consent
                     elif code.value == CONSENT_FOR_GENOMICS_ROR_MODULE:
