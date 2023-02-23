@@ -199,6 +199,80 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         sample_update_list = self.session.query(SampleUpdate).all()
         self.assertListEqual([1, 2], [sample_update.rdr_ordered_sample_id for sample_update in sample_update_list])
 
+    @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
+    def test_patch_aliquot_update(self, site_id):
+        participant = Participant(id=12345, biobank_id=12345)
+        site = Site(id=1)
+        self.session.add(participant)
+        self.session.add(site)
+        self.session.commit()
+        test_order = Order(
+            id=1,
+            participant_id=participant.id,
+            notes={},
+            samples=[
+                OrderedSample(
+                    id=1,
+                    description='update this',
+                    children=[
+                        OrderedSample(aliquot_id='a12', volume='error'),
+                        OrderedSample(aliquot_id='c34', description='to be cancelled')
+                    ]
+                )
+            ]
+        )
+        self.session.add(test_order)
+        self.session.commit()
+
+        site_id.return_value = 1
+
+        self.send_patch(
+            f'api/v1/nph/Participant/1000{participant.id}/BiobankOrder/1',
+            {
+                'status': 'amended',
+                "amendedInfo": {
+                    "author": {
+                        "system": "https://www.pmi-ops.org\/nph-username",
+                        "value": "test@example.com"
+                    },
+                    "site": {
+                        "system": "https://www.pmi-ops.org\/site-id",
+                        "value": "nph-site-testa"
+                    }
+                },
+                'sample': {
+                    'description': 'updated'
+                },
+                "aliquots": [
+                    {
+                        "id": "a12",
+                        "volume": 450
+                    }, {
+                        "id": "456",
+                        "identifier": "new1",
+                        "container": "matrix tube",
+                        "volume": "970",
+                        "units": "uL",
+                        "description": "1.4 mL matrix tubes",
+                        "collected": "2022-11-03T09:45:49Z"
+                    }
+                ]
+            }
+        )
+
+        self.session.expire_all()  # Force the order to be refresh
+        db_order: Order = self.session.query(Order).filter(Order.id == 1).one()
+
+        # check updates on parent sample
+        parent_sample = db_order.samples[0]
+        self.assertEqual('updated', parent_sample.description)
+
+        for aliquot in parent_sample.children:
+            if aliquot.aliquot_id == 'a12':  # check that the volume updated
+                self.assertEqual('450', aliquot.volume)
+            elif aliquot.aliquot_id == 'c34':  # check that the aliquot got cancelled
+                self.assertEqual('cancelled', aliquot.status)
+
     @patch('rdr_service.dao.study_nph_dao.NphOrderedSampleDao._get_child_order_sample')
     @patch('rdr_service.dao.study_nph_dao.NphOrderedSampleDao._get_parent_order_sample')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.get_study_category_sample')
