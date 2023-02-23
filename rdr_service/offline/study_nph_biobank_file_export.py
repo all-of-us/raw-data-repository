@@ -10,7 +10,6 @@ from sqlalchemy import and_
 from sqlalchemy.orm import joinedload, aliased
 from google.cloud import storage
 from rdr_service import config
-from rdr_service.api_util import open_cloud_file
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantSummary as RdrParticipantSummary
 from rdr_service.model.rex import ParticipantMapping as RexParticipantMapping
@@ -36,6 +35,7 @@ from rdr_service.dao.study_nph_dao import (
     NphBiobankFileExportDao,
     NphSampleExportDao
 )
+from rdr_service.storage import GoogleCloudStorageProvider
 
 
 _logger = logging.getLogger("rdr_logger")
@@ -181,7 +181,11 @@ def _convert_orders_to_collections(
             order_id=order.nph_order_id,
             ordered_samples=_get_ordered_samples(order_id=order.id),
             ordered_cancelled=order.status == "cancelled",
-            notes=", ".join([f"{key}: {value if value is not None else 'null'}" for key, value in order.notes.items()])
+            notes=", ".join([
+                f"{key}: {value if value is not None else 'null'}"
+                for key, value in order.notes.items()
+                if value
+            ])
         )
         parent_study_category = _get_parent_study_category(order.category_id)
         code_obj = _get_code_obj_from_sex_id(rdr_participant_summary.stateId)
@@ -311,7 +315,7 @@ def main():
     bucket_name = config.getSetting(config.NPH_SAMPLE_DATA_BIOBANK_NIGHTLY_FILE_DROP)
     json_filepath = f"nph-orders/NPH_Orders_{today_dt_ts}.json"
     orders_filename = f"{bucket_name}/{json_filepath}"
-    with open_cloud_file(orders_filename, mode='w') as dest:
+    with GoogleCloudStorageProvider().open(orders_filename, mode='w') as dest:
         dump(orders_file_drop, dest, default=str)
 
     _logger.info(f"Created Biobank export file: '{orders_filename}'")
