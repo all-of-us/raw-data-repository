@@ -305,6 +305,9 @@ class NphOrderDao(UpdatableDao):
 
     def _patch_update_order(self, order_json, db_order: Order):
         # as of writing this, all nph orders have one, and only one, parent sample
+        if not db_order.samples:
+            return
+
         parent_sample: OrderedSample = db_order.samples[0]
         if hasattr(order_json, 'sample'):
             self._update_if_present(parent_sample, 'test', order_json.sample)
