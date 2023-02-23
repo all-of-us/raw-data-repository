@@ -316,6 +316,9 @@ class NphOrderDao(UpdatableDao):
             self._update_if_present(parent_sample, 'finalized', order_json.sample)
 
         # update aliquot level data, adding aliquots as needed, and setting others as cancelled
+        if not hasattr(order_json, 'aliquots'):
+            return
+
         updated_aliquots = set()
         for aliquot_json in order_json.aliquots:
             # find the matching aliquot data we already have based on the id
