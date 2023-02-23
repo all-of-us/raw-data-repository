@@ -259,8 +259,6 @@ class NphOrderDao(UpdatableDao):
             raise BadRequest(f"TimePoint does not match the corresponding visitType: {payload.timepoint}")
 
     def patch_update(self, order: Namespace, rdr_order_id: int, nph_participant_id: str, session) -> Order:
-
-
         if order.status.upper() == "RESTORED":
             site_name = order.restoredInfo.site.value
             amended_author = order.restoredInfo.author.value
