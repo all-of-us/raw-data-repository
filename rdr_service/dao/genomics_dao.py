@@ -3996,6 +3996,10 @@ class GenomicQueriesDao(BaseDao):
     def get_aw3_wgs_records(self, **kwargs):
         # should be only wgs genome but query also
         # used for wgs investigation workflow
+
+        def invoke_file_path_filter(*, file_type_attr):
+            return getattr(file_type_attr, file_path_method)('%dragen_%')
+
         genome_type = kwargs.get('genome_type', config.GENOME_TYPE_WGS)
         pipeline_id = kwargs.get('pipeline_id')
 
@@ -4003,21 +4007,19 @@ class GenomicQueriesDao(BaseDao):
             return []
 
         # only updated dragen version files will be placed in 'dragen_v' subfolder
-        is_dragen_path = True if pipeline_id == config.GENOMIC_UPDATED_WGS_DRAGEN else False
-        dragen_path_text = '%dragen_%'
+        file_path_method = 'contains' if pipeline_id == config.GENOMIC_UPDATED_WGS_DRAGEN else 'notlike'
+
+        hard_filtered_vcf_gz = aliased(GenomicGcDataFile)
+        hard_filtered_vcf_gz_tbi = aliased(GenomicGcDataFile)
+        hard_filtered_vcf_gz_md5_sum = aliased(GenomicGcDataFile)
+        cram = aliased(GenomicGcDataFile)
+        cram_md5_sum = aliased(GenomicGcDataFile)
+        cram_crai = aliased(GenomicGcDataFile)
+        hard_filtered_gvcf_gz = aliased(GenomicGcDataFile)
+        hard_filtered_gvcf_gz_md5_sum = aliased(GenomicGcDataFile)
+        array_check = aliased(GenomicSetMember)
 
         with self.session() as session:
-
-            hard_filtered_vcf_gz = aliased(GenomicGcDataFile)
-            hard_filtered_vcf_gz_tbi = aliased(GenomicGcDataFile)
-            hard_filtered_vcf_gz_md5_sum = aliased(GenomicGcDataFile)
-            cram = aliased(GenomicGcDataFile)
-            cram_md5_sum = aliased(GenomicGcDataFile)
-            cram_crai = aliased(GenomicGcDataFile)
-            hard_filtered_gvcf_gz = aliased(GenomicGcDataFile)
-            hard_filtered_gvcf_gz_md5_sum = aliased(GenomicGcDataFile)
-            array_check = aliased(GenomicSetMember)
-
             aw3_rows = session.query(
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                 GenomicSetMember.sampleId,
@@ -4074,8 +4076,7 @@ class GenomicQueriesDao(BaseDao):
                 and_(
                     hard_filtered_vcf_gz.file_type == 'hard-filtered.vcf.gz',
                     hard_filtered_vcf_gz.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_vcf_gz.file_path.contains(dragen_path_text) if is_dragen_path else
-                    hard_filtered_vcf_gz.file_path.notlike(dragen_path_text),
+                    invoke_file_path_filter(file_type_attr=hard_filtered_vcf_gz.file_path),
                     hard_filtered_vcf_gz.ignore_flag != 1
                 )
             ).join(
@@ -4083,8 +4084,7 @@ class GenomicQueriesDao(BaseDao):
                 and_(
                     hard_filtered_vcf_gz_tbi.file_type == 'hard-filtered.vcf.gz.tbi',
                     hard_filtered_vcf_gz_tbi.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_vcf_gz_tbi.file_path.contains(dragen_path_text) if is_dragen_path else
-                    hard_filtered_vcf_gz_tbi.file_path.notlike(dragen_path_text),
+                    invoke_file_path_filter(file_type_attr=hard_filtered_vcf_gz_tbi.file_path),
                     hard_filtered_vcf_gz_tbi.ignore_flag != 1
                 )
             ).join(
@@ -4092,8 +4092,7 @@ class GenomicQueriesDao(BaseDao):
                 and_(
                     hard_filtered_vcf_gz_md5_sum.file_type == 'hard-filtered.vcf.gz.md5sum',
                     hard_filtered_vcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_vcf_gz_md5_sum.file_path.contains(dragen_path_text) if is_dragen_path else
-                    hard_filtered_vcf_gz_md5_sum.file_path.notlike(dragen_path_text),
+                    invoke_file_path_filter(file_type_attr=hard_filtered_vcf_gz_md5_sum.file_path),
                     hard_filtered_vcf_gz_md5_sum.ignore_flag != 1
                 )
             ).join(
@@ -4101,8 +4100,7 @@ class GenomicQueriesDao(BaseDao):
                 and_(
                     cram.file_type == 'cram',
                     cram.identifier_value == GenomicSetMember.sampleId,
-                    cram.file_path.contains(dragen_path_text) if is_dragen_path else cram.file_path.notlike(
-                        dragen_path_text),
+                    invoke_file_path_filter(file_type_attr=cram.file_path),
                     cram.ignore_flag != 1
                 )
             ).join(
@@ -4110,9 +4108,7 @@ class GenomicQueriesDao(BaseDao):
                 and_(
                     cram_md5_sum.file_type == 'cram.md5sum',
                     cram_md5_sum.identifier_value == GenomicSetMember.sampleId,
-                    cram_md5_sum.file_path.contains(
-                        dragen_path_text) if is_dragen_path else cram_md5_sum.file_path.notlike(
-                        dragen_path_text),
+                    invoke_file_path_filter(file_type_attr=cram_md5_sum.file_path),
                     cram_md5_sum.ignore_flag != 1
                 )
             ).join(
@@ -4120,8 +4116,7 @@ class GenomicQueriesDao(BaseDao):
                 and_(
                     cram_crai.file_type == 'cram.crai',
                     cram_crai.identifier_value == GenomicSetMember.sampleId,
-                    cram_crai.file_path.contains(dragen_path_text) if is_dragen_path else cram_crai.file_path.notlike(
-                        dragen_path_text),
+                    invoke_file_path_filter(file_type_attr=cram_crai.file_path),
                     cram_crai.ignore_flag != 1
                 )
             ).join(
@@ -4129,8 +4124,7 @@ class GenomicQueriesDao(BaseDao):
                 and_(
                     hard_filtered_gvcf_gz.file_type == 'hard-filtered.gvcf.gz',
                     hard_filtered_gvcf_gz.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_gvcf_gz.file_path.contains(dragen_path_text) if is_dragen_path else
-                    hard_filtered_gvcf_gz.file_path.notlike(dragen_path_text),
+                    invoke_file_path_filter(file_type_attr=hard_filtered_gvcf_gz.file_path),
                     hard_filtered_gvcf_gz.ignore_flag != 1
                 )
             ).join(
@@ -4138,8 +4132,7 @@ class GenomicQueriesDao(BaseDao):
                 and_(
                     hard_filtered_gvcf_gz_md5_sum.file_type == 'hard-filtered.gvcf.gz.md5sum',
                     hard_filtered_gvcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_gvcf_gz_md5_sum.file_path.contains(dragen_path_text) if is_dragen_path else
-                    hard_filtered_gvcf_gz_md5_sum.file_path.notlike(dragen_path_text),
+                    invoke_file_path_filter(file_type_attr=hard_filtered_gvcf_gz_md5_sum.file_path),
                     hard_filtered_gvcf_gz_md5_sum.ignore_flag != 1
                 )
             ).outerjoin(

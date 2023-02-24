@@ -4472,13 +4472,17 @@ class GenomicPipelineTest(BaseTestCase):
                 existing_id=call_arg_data.get('metric_id')
             )
 
-        # Test sequencing file (required for AW3 WGS) with added dragen paths for same files
+        # Test sequencing file (required for AW3 WGS) with
+        # added dragen paths for same files to make sure distinct
+        # samples return
         sequencing_test_files = (
             'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
             'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
             'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
             'test_data_folder/RDR_2_1002_10002_1.cram',
+            f'test_data_folder/{config.GENOMIC_UPDATED_WGS_DRAGEN}/RDR_2_1002_10002_1.cram',
             'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
+            f'test_data_folder/{config.GENOMIC_UPDATED_WGS_DRAGEN}/RDR_2_1002_10002_1.cram.md5sum',
             'test_data_folder/RDR_2_1002_10002_1.cram.crai',
             f'test_data_folder/{config.GENOMIC_UPDATED_WGS_DRAGEN}/RDR_2_1002_10002_1.cram.crai',
             'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
@@ -4581,6 +4585,11 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.GENOMIC_AW3_WGS_SUBFOLDER
 
+        gc_data_file_paths = [f'gs://{obj.file_path}' for obj in self.data_file_dao.get_all()]
+        self.assertEqual(len(sequencing_test_files), len(gc_data_file_paths))
+
+        non_dragen_gc_data_file_paths = [obj for obj in gc_data_file_paths if 'dragen' not in obj]
+
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{pipeline_id}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) \
                 as csv_file:
             csv_reader = csv.DictReader(csv_file)
@@ -4591,13 +4600,8 @@ class GenomicPipelineTest(BaseTestCase):
             row = rows[0]
             metric = self.metrics_dao.get(1)
 
-            gc_data_file_paths = [f'gs://{obj.file_path}' for obj in self.data_file_dao.get_all()]
-            self.assertEqual(len(sequencing_test_files), len(gc_data_file_paths))
-
             metric_paths = [val for val in metric if 'Path' in val[0] and val[1] is not None]
             self.assertTrue(all('dragen' not in obj[1] for obj in metric_paths))
-
-            non_dragen_gc_data_file_paths = [obj for obj in gc_data_file_paths if 'dragen' not in obj]
 
             # check that files from gc data file were sent and
             # dragen paths are not in data files
