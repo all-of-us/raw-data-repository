@@ -116,7 +116,7 @@ class OrderedSample(NphBase):
     status = Column(String(128))
     supplemental_fields = Column(JSON, nullable=True)
     parent = relation("OrderedSample", remote_side=[id])
-    children = relation("OrderedSample", remote_side=[parent_sample_id], uselist=True)
+    children: List['OrderedSample'] = relation("OrderedSample", remote_side=[parent_sample_id], uselist=True)
 
     order = relationship(Order, back_populates='samples')
 
