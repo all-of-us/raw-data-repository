@@ -932,10 +932,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data = {}
         pm_list = list()
         activity = list()
+        # Records before this date can't be remote pm / SELF_REPORTED
+        remote_pm_start_date = datetime.datetime(2022, 6, 1)
 
         query = ro_session.query(PhysicalMeasurements.physicalMeasurementsId, PhysicalMeasurements.created,
-                                 PhysicalMeasurements.createdSiteId, PhysicalMeasurements.final,
-                                 PhysicalMeasurements.finalized, PhysicalMeasurements.finalizedSiteId,
+                                 PhysicalMeasurements.createdSiteId, PhysicalMeasurements.cancelledSiteId,
+                                 PhysicalMeasurements.finalizedSiteId,
+                                 PhysicalMeasurements.final, PhysicalMeasurements.finalizedSiteId,
                                  PhysicalMeasurements.collectType, PhysicalMeasurements.origin,
                                  PhysicalMeasurements.originMeasurementUnit,
                                  PhysicalMeasurements.questionnaireResponseId,
@@ -949,8 +952,19 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # Imitate some of the RDR 'participant_summary' table logic, the PM status value defaults to COMPLETED
             # unless PM status is CANCELLED.  So we set all NULL values to COMPLETED status here.
             pm_status = PhysicalMeasurementsStatus(row.status or PhysicalMeasurementsStatus.COMPLETED)
-            collection_type = PhysicalMeasurementsCollectType(row.collectType or PhysicalMeasurementsCollectType.UNSET)
             origin_measurements_type = OriginMeasurementUnit(row.originMeasurementUnit or OriginMeasurementUnit.UNSET)
+
+            # PDR-1649: Propagate collect_type values not backfilled in RDR records
+            if row.collectType:
+                collection_type = PhysicalMeasurementsCollectType(row.collectType)
+            elif row.questionnaireResponseId is not None:
+                # Only remote PM / self-reported measurements would have a related questionnaire response
+                collection_type = PhysicalMeasurementsCollectType.SELF_REPORTED
+            elif row.createdSiteId or row.finalizedSiteId or row.cancelledSiteId or row.created < remote_pm_start_date:
+                collection_type = PhysicalMeasurementsCollectType.SITE
+            else:
+                # "should never happen", but this would flag records that are missing expected values
+                collection_type = PhysicalMeasurementsCollectType.UNSET
 
             pm_list.append({
                 'physical_measurements_id': row.physicalMeasurementsId,
@@ -993,12 +1007,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return:
         """
-
-        # PDR-1432: Workaround for an edge case where HPRO created an "orphaned" biobank order that should be ignored
-        # TODO: When DA-3150 is implemented, need to adjust the biobank table queries in this method to filter on
-        # ignore flags, as appropriate
-        ignore_biobank_orders = ['WEBF77CR2BX5', ]
-
         def _get_stored_sample_row(stored_samples, ordered_sample):
             """
             Search a list of biobank_stored_sample rows to find a match to the biobank_ordered_sample record
@@ -1090,7 +1098,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    bo.finalized_time,
                    case when bmko.id is not null then 1 else 2 end as collection_method
              from biobank_order bo left outer join biobank_mail_kit_order bmko on bmko.biobank_order_id = bo.biobank_order_id
-             where bo.participant_id = :p_id
+             where bo.participant_id = :p_id and (bo.ignore_flag is null or bo.ignore_flag = 0)
              order by bo.created desc;
          """
 
@@ -1110,7 +1118,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             select
                 (select p.participant_id from participant p where p.biobank_id = bss.biobank_id) as participant_id,
                 (select distinct boi.biobank_order_id from biobank_order_identifier boi
-                   where boi.`value` = bss.biobank_order_identifier and boi.biobank_order_id not in :ignore_orders
+                   left join biobank_order bo on boi.biobank_order_id = bo.biobank_order_id
+                   where boi.`value` = bss.biobank_order_identifier
+                         and (bo.ignore_flag is null or bo.ignore_flag = 0)
                 ) as biobank_order_id,
                 bss.*
             from biobank_stored_sample bss
@@ -1121,11 +1131,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data = {}
         orders = list()
         activity = list()
-        # Find all biobank orders associated with this participant.  PDR-1432 WORKAROUND:  Certain biobank orders may
-        # be excluded from the list due to rare occurrences of "orphaned" orders created by HPRO
-        # TODO:  Update to use a new ignore column as filter when implemented for DA-3150
+        # Find all valid (not flagged "ignore") biobank orders associated with this participant.
         cursor = ro_session.execute(_biobank_orders_sql, {'p_id': p_id})
-        biobank_orders = [r for r in cursor if r.biobank_order_id not in ignore_biobank_orders]
+        biobank_orders = [r for r in cursor if r.biobank_order_id]
         # Create a unique identifier for each biobank order. This uid must be repeatable, so we sort by 'created'.
         # This unique biobank order id will be used as the prefix of the unique id for each biobank sample record.
         # Note: This is why every database table should have an 'id' integer field as the primary key, so we don't
@@ -1139,8 +1147,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # Find stored samples associated with this participant. For any stored samples for which there
         # is no known biobank order, create a separate list that will be consolidated into a "pseudo" order record
-        cursor = ro_session.execute(_biobank_stored_samples_sql, {'bb_id': p_bb_id,
-                                                                  'ignore_orders': ignore_biobank_orders})
+        cursor = ro_session.execute(_biobank_stored_samples_sql, {'bb_id': p_bb_id})
         bss_results = [r for r in cursor]
         bss_missing_orders = list(filter(lambda r: r.biobank_order_id is None, bss_results))
 
