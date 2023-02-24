@@ -3607,6 +3607,7 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
+            # f'test_data_folder/dragen/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
         )
         test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
 
@@ -4416,6 +4417,223 @@ class GenomicPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
         config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [4000])
+
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_wgs_manifest_correct_data_files(self, cloud_task):
+        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(3, arr_override=False,
+                                                recon_gc_man_id=1,
+                                                genome_center='rdr',
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                sample_source="Whole Blood",
+                                                ai_an='N')
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+
+        create_ingestion_test_file(
+            'RDR_AoU_SEQ_TestDataManifest.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
+        )
+
+        self._update_test_sample_ids()
+        self._create_stored_samples([(2, 1002)])
+
+        # Create corresponding array genomic_set_members
+        for i in range(1, 4):
+            self.data_generator.create_database_genomic_set_member(
+                participantId=i,
+                genomicSetId=1,
+                biobankId=i,
+                gcManifestParentSampleId=1000+i,
+                genomeType="aou_array",
+                aw3ManifestJobRunID=1,
+                ai_an='N'
+            )
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # metrics insert called via cloud task
+        self.assertEqual(cloud_task.call_count, 2)
+        call_args = cloud_task.call_args_list
+        self.assertEqual(len(call_args), 2)
+
+        # assimilate cloud task ingestion via call args for tests
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                data_to_upsert=call_arg_data.get('payload_dict'),
+                existing_id=call_arg_data.get('metric_id')
+            )
+
+        # Test sequencing file (required for AW3 WGS) with added dragen paths for same files
+        sequencing_test_files = (
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+            'test_data_folder/RDR_2_1002_10002_1.cram',
+            'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
+            'test_data_folder/RDR_2_1002_10002_1.cram.crai',
+            f'test_data_folder/{config.GENOMIC_UPDATED_WGS_DRAGEN}/RDR_2_1002_10002_1.cram.crai',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
+            f'test_data_folder/{config.GENOMIC_UPDATED_WGS_DRAGEN}/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
+            f'test_data_folder/{config.GENOMIC_UPDATED_WGS_DRAGEN}/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
+        )
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                max_int = 3 if 'dragen_' in f else 1
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': f.split('.', max_int)[-1],
+                    'identifier_type': 'sample_id',
+                    'identifier_value': '1002',
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        # test for correct (default) pipeline_id in metrics
+        metrics = self.metrics_dao.get_all()
+        self.assertTrue(all(obj.pipelineId == pipeline_id for obj in metrics))
+
+        # finally run the AW3 manifest workflow
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_wgs_manifest_workflow(
+                pipeline_id=pipeline_id
+            )  # run_id = 3
+
+        manifest_records = self.manifest_file_dao.get_all()
+        self.assertEqual(len(manifest_records), 1)
+        self.assertEqual(manifest_records[0].recordCount, 1)
+        self.assertIsNotNone(manifest_records[0].fileName)
+        self.assertIsNotNone(manifest_records[0].filePath)
+
+        self.assertEqual(cloud_task.call_count, 3)
+        call_args = cloud_task.call_args_list
+        self.assertEqual(len(call_args), 3)
+
+        for i, call_arg_data in enumerate(call_args):
+            call_arg_data = call_arg_data.args[0]
+            if i == 2:
+                member_ids = call_arg_data.get('member_ids')
+                field = call_arg_data.get('field')
+                self.assertIsNotNone(member_ids)
+                self.assertTrue(len(set(member_ids)) == len(member_ids))
+                self.assertEqual(field, 'aw3ManifestJobRunID')
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Test member was updated
+        member = self.member_dao.get(2)
+        self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
+
+        # Test the manifest file contents
+        expected_aw3_columns = (
+            "biobank_id",
+            "sample_id",
+            "biobankidsampleid",
+            "sex_at_birth",
+            "site_id",
+            "vcf_hf_path",
+            "vcf_hf_index_path",
+            "vcf_hf_md5_path",
+            "cram_path",
+            "cram_md5_path",
+            "crai_path",
+            "gvcf_path",
+            "gvcf_md5_path",
+            "contamination",
+            "sex_concordance",
+            "processing_status",
+            "mean_coverage",
+            "research_id",
+            "sample_source",
+            "mapped_reads_pct",
+            "sex_ploidy",
+            "ai_an",
+            "blocklisted",
+            "blocklisted_reason",
+            "pipeline_id",
+            "processing_count"
+        )
+
+        bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
+        sub_folder = config.GENOMIC_AW3_WGS_SUBFOLDER
+
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{pipeline_id}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) \
+                as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            self.assertEqual(len(set(expected_aw3_columns)), len(set(csv_reader.fieldnames)))
+
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+            row = rows[0]
+            metric = self.metrics_dao.get(1)
+
+            gc_data_file_paths = [f'gs://{obj.file_path}' for obj in self.data_file_dao.get_all()]
+            self.assertEqual(len(sequencing_test_files), len(gc_data_file_paths))
+
+            metric_paths = [val for val in metric if 'Path' in val[0] and val[1] is not None]
+            self.assertTrue(all('dragen' not in obj[1] for obj in metric_paths))
+
+            non_dragen_gc_data_file_paths = [obj for obj in gc_data_file_paths if 'dragen' not in obj]
+
+            # check that files from gc data file were sent and
+            # dragen paths are not in data files
+            self.assertTrue(row["vcf_hf_path"] in non_dragen_gc_data_file_paths)
+            self.assertTrue(row["vcf_hf_index_path"] in non_dragen_gc_data_file_paths)
+            self.assertTrue(row["vcf_hf_md5_path"] in non_dragen_gc_data_file_paths)
+            self.assertTrue(row["cram_path"] in non_dragen_gc_data_file_paths)
+            self.assertTrue(row["cram_md5_path"] in non_dragen_gc_data_file_paths)
+            self.assertTrue(row["crai_path"] in non_dragen_gc_data_file_paths)
+            self.assertTrue(row["gvcf_path"] in non_dragen_gc_data_file_paths)
+            self.assertTrue(row["gvcf_md5_path"] in non_dragen_gc_data_file_paths)
+
+            self.assertEqual(row['pipeline_id'], pipeline_id)
+            self.assertEqual(row['processing_count'], '1')
+
+            # Test AW3 loaded into raw table
+            aw3_dao = GenomicAW3RawDao()
+            raw_records = aw3_dao.get_all()
+            raw_records.sort(key=lambda x: x.biobank_id)
+
+            # Check rows in file against records in raw table
+            self.assertEqual(len(rows), len(raw_records))
+
+            for file_row in rows:
+                for field in file_row.keys():
+                    self.assertEqual(file_row[field], getattr(raw_records[0], field.lower()))
+
+                self.assertEqual("aou_wgs", raw_records[0].genome_type)
+
+        # Test run record is success
+        run_obj = self.job_run_dao.get(4)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
 
     def test_aw3_no_records(self):
         genomic_pipeline.aw3_wgs_manifest_workflow(
