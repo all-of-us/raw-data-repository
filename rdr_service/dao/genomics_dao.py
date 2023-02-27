@@ -561,7 +561,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicSetMember.ignoreFlag == 0,
                 GenomicSetMember.aw3ManifestJobRunID.isnot(None)
-            ).one_or_none()
+            ).first()
         return member
 
     def get_member_from_collection_tube(self, tube_id, genome_type, state=None):
