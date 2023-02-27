@@ -52,7 +52,7 @@ from rdr_service.participant_enums import (EnrollmentStatusV2, WithdrawalStatus,
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.calculators import EnrollmentStatusCalculator, ParticipantUBRCalculator as ubr
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
-    PDREnrollmentStatusEnum
+    PDREnrollmentStatusEnum, PDRPhysicalMeasurementsStatus
 from rdr_service.resource.schemas.participant import StreetAddressTypeEnum, BIOBANK_UNIQUE_TEST_IDS
 from rdr_service.resource.calculators.participant_enrollment_status_v30 import EnrollmentStatusCalculator_v3_0
 
@@ -950,8 +950,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         for row in results:
             # Imitate some of the RDR 'participant_summary' table logic, the PM status value defaults to COMPLETED
-            # unless PM status is CANCELLED.  So we set all NULL values to COMPLETED status here.
-            pm_status = PhysicalMeasurementsStatus(row.status or PhysicalMeasurementsStatus.COMPLETED)
+            # unless PM status is CANCELLED.  So we set all NULL values to COMPLETED status here.  As of PDR-1649,
+            # will map the RDR messages.enum to a PDR IntEnum class that includes an explicit AMENDED status
+            pm_status = PDRPhysicalMeasurementsStatus(int(row.status) if row.status\
+                                                                      else PDRPhysicalMeasurementsStatus.COMPLETED)
+            if row.amendedMeasurementsId is not None:
+                pm_status = PDRPhysicalMeasurementsStatus.AMENDED
             origin_measurements_type = OriginMeasurementUnit(row.originMeasurementUnit or OriginMeasurementUnit.UNSET)
 
             # PDR-1649: Propagate collect_type values not backfilled in RDR records
@@ -969,8 +973,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             pm_list.append({
                 'physical_measurements_id': row.physicalMeasurementsId,
                 'questionnaire_response_id': row.questionnaireResponseId,
-                'status': str(pm_status),
-                'status_id': int(pm_status),
+                'status': pm_status.name,
+                'status_id': pm_status.value,
                 'created': row.created,
                 'created_site': self._lookup_site_name(row.createdSiteId, ro_session),
                 'created_site_id': row.createdSiteId,
