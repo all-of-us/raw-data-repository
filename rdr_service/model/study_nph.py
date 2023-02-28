@@ -6,7 +6,7 @@ from sqlalchemy.orm import relation, relationship
 
 from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes
 from rdr_service.model.base import NphBase, model_insert_listener, model_update_listener
-from rdr_service.model.study_nph_enums import StoredSampleStatus
+from rdr_service.model.study_nph_enums import StoredSampleStatus, IncidentStatus, IncidentType
 from rdr_service.model.utils import UTCDateTime, Enum
 
 
@@ -343,3 +343,27 @@ class StoredSample(NphBase):
 
 event.listen(StoredSample, "before_insert", model_insert_listener)
 event.listen(StoredSample, "before_update", model_update_listener)
+
+
+class Incident(NphBase):
+    __tablename__ = "incident"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    dev_note = Column(String(1024))
+    status_str = Column(String(512), default=str(IncidentStatus.OPEN))
+    status_id = Column(Enum(IncidentStatus), default=IncidentStatus.OPEN)
+    message = Column(String(1024))
+    notification_sent_flag = Column(TINYINT, default=0)
+    notification_date = Column(UTCDateTime)
+    incident_type_str = Column(String(512), default=str(IncidentType.UNSET))
+    incident_type_id = Column(Enum(IncidentType), default=IncidentType.UNSET)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    trace_id = Column(String(128))  # Job Run Id for Tracing
+
+
+event.listen(Incident, "before_insert", model_insert_listener)
+event.listen(Incident, "before_update", model_update_listener)
