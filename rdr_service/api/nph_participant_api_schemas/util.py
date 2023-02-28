@@ -57,7 +57,7 @@ def check_field_value(value):
 
 def load_participant_summary_data(query, prefix, biobank_prefix):
     results = []
-    for summary, site, nph_site, mapping in query.all():
+    for summary, site, nph_site, mapping, enrollment_time, enrollment_name, deactivated, withdrawn in query.all():
         results.append({
             'participantNphId': f"{prefix}{mapping.ancillary_participant_id}",
             'lastModified': summary.lastModified,
@@ -74,15 +74,17 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
             'withdrawalStatus': {"value": check_field_value(summary.withdrawalStatus),
                                  "time": summary.withdrawalAuthored},
             'nph_deactivation_status': {
-                "value": QuestionnaireStatus.UNSET,
-                "time": None
+                "value": "Deactivate" if deactivated else "NULL",
+                "time": deactivated.event_authored_time if deactivated else None
             },
             'nph_withdrawal_status': {
-                "value": QuestionnaireStatus.UNSET,
-                "time": None
+                "value": "Withdrawn" if withdrawn else "NULL",
+                "time": withdrawn.event_authored_time if withdrawn else None
             },
-            'nph_enrollment_status': {"value": QuestionnaireStatus.UNSET,
-                                      "time": None},
+            'nph_enrollment_status': {
+                "value": check_field_value(enrollment_name.name),
+                "time": enrollment_time.event_authored_time
+            },
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
                                  "time": summary.suspensionTime},

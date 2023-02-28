@@ -2,6 +2,7 @@ from rdr_service.dao import database_factory
 from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
     PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
     DeactivatedEvent
+from rdr_service.ancillary_study_resources.nph import enums
 
 
 class NphDataGenerator:
@@ -123,9 +124,13 @@ class NphDataGenerator:
 
     def create_database_enrollment_event(self, participant_id, **kwargs):
         event_id = kwargs.get('event_id')
-        if event_id is None:
-            ee = self.create_database_enrollment_event_type()
-            event_id = ee.id
+        if not event_id:
+            pea = self.create_database_participant_event_activity(
+                activity_id=enums.Activity.ENROLLMENT.number,
+                participant_id=participant_id,
+                resource={}
+            )
+            event_id = pea.id
 
         fields = {
             "participant_id": participant_id,
