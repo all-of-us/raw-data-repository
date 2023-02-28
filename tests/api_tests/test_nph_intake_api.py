@@ -37,10 +37,7 @@ class NphIntakeAPITest(BaseTestCase):
             self.nph_data_gen.create_database_activity(
                 name=activity
             )
-        self.nph_data_gen.create_database_consent_event_type(
-            name='Module 1',
-            source_name='module1'
-        )
+
         self.nph_data_gen.create_database_pairing_event_type(
             name="Initial"
         )
@@ -60,6 +57,11 @@ class NphIntakeAPITest(BaseTestCase):
             )
 
     def test_m1_detailed_consent_payload(self):
+
+        self.nph_data_gen.create_database_consent_event_type(
+            name='Module 1',
+            source_name='module1'
+        )
 
         with open(data_path('nph_m1_detailed_consent_multi.json')) as f:
             consent_json = json.load(f)
@@ -128,6 +130,91 @@ class NphIntakeAPITest(BaseTestCase):
         self.assertTrue(self.nph_enrollment_event_dao.get_all() == [])
         self.assertTrue(self.nph_withdrawal_event_dao.get_all() == [])
         self.assertTrue(self.nph_deactivation_event_dao.get_all() == [])
+
+    def test_m1_detailed_consent_payload_inserts_provisions(self):
+
+        self.nph_data_gen.create_database_consent_event_type(
+            name='Module 1 GPS Consent',
+            source_name='m1_consent_gps'
+        )
+
+        self.nph_data_gen.create_database_consent_event_type(
+            name='Module 1 Consent Recontact',
+            source_name='m1_consent_recontact'
+        )
+
+        self.nph_data_gen.create_database_consent_event_type(
+            name='Module 1 Consent Tissue',
+            source_name='m1_consent_tissue'
+        )
+
+        with open(data_path('nph_m1_detailed_consent_multi.json')) as f:
+            consent_json = json.load(f)
+
+        all_participant_ids = self.nph_participant.get_all()
+        all_participant_ids = [obj.id for obj in all_participant_ids]
+
+        # response
+        response = self.send_post('nph/Intake', request_data=consent_json)
+
+        self.assertEqual(len(response), len(all_participant_ids))
+        self.assertTrue(all(int(obj['nph_participant_id']) in all_participant_ids for obj in response))
+
+        # participant event activities
+        # participant_event_activities = self.nph_participant_activity_dao.get_all()
+        #
+        # pairing_activity = self.nph_activity.get(2)
+        # consent_activity = self.nph_activity.get(3)
+        #
+        # # pairing and consent ids
+        # should_have_activity_ids = [pairing_activity.id, consent_activity.id]
+        #
+        # for event in participant_event_activities:
+        #     current_participant_events = list(
+        #         filter(lambda x: x.participant_id == event.participant_id, participant_event_activities)
+        #     )
+        #
+        #     self.assertTrue(len(current_participant_events), len(should_have_activity_ids))
+        #
+        #     activity_ids = [obj.activity_id for obj in current_participant_events]
+        #     self.assertEqual(activity_ids, should_have_activity_ids)
+        #
+        #     self.assertTrue(all(obj.resource is not None for obj in current_participant_events))
+        #     self.assertTrue(all(obj.resource.get('bundle_identifier') is not None for obj in
+        #                         current_participant_events))
+        #
+        # # pairing events
+        # pairing_events = self.nph_pairing_event_dao.get_all()
+        #
+        # self.assertEqual(len(pairing_events), len(all_participant_ids))
+        # self.assertTrue(all(obj.event_type_id == 1 for obj in pairing_events))
+        # self.assertTrue(all(obj.site_id is not None for obj in pairing_events))
+        # self.assertTrue(all(obj.site_id == 1 for obj in pairing_events))
+        # self.assertTrue(all(obj.participant_id in all_participant_ids for obj in pairing_events))
+        #
+        # pairing_participant_event_activity = list(
+        #     filter(lambda x: x.activity_id == pairing_activity.id, participant_event_activities))
+        # pairing_participant_event_activity_ids = [obj.id for obj in pairing_participant_event_activity]
+        #
+        # self.assertTrue(all(obj.event_id in pairing_participant_event_activity_ids for obj in pairing_events))
+        #
+        # # consent events
+        # consent_events = self.nph_consent_event_dao.get_all()
+        #
+        # self.assertEqual(len(consent_events), len(all_participant_ids))
+        # self.assertTrue(all(obj.event_type_id == 1 for obj in consent_events))
+        # self.assertTrue(all(obj.participant_id in all_participant_ids for obj in consent_events))
+        #
+        # consent_participant_event_activity = list(
+        #     filter(lambda x: x.activity_id == consent_activity.id, participant_event_activities))
+        # consent_participant_event_activity_ids = [obj.id for obj in consent_participant_event_activity]
+        #
+        # self.assertTrue(all(obj.event_id in consent_participant_event_activity_ids for obj in consent_events))
+        #
+        # # other events (should be null)
+        # self.assertTrue(self.nph_enrollment_event_dao.get_all() == [])
+        # self.assertTrue(self.nph_withdrawal_event_dao.get_all() == [])
+        # self.assertTrue(self.nph_deactivation_event_dao.get_all() == [])
 
     def test_m1_operational_payload(self):
 

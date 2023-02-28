@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import List
 
 from flask import request
 from werkzeug.exceptions import BadRequest
@@ -32,6 +33,7 @@ class NphIntakeAPI(BaseApi):
         self.nph_participant_activity_dao = NphParticipantEventActivityDao()
         self.nph_site_dao = NphSiteDao()
 
+        # self.nph_consent_type_dao = NphConsentEventTypeDao()
         self.nph_enrollment_type_dao = NphEnrollmentEventTypeDao()
 
         self.nph_pairing_event_dao = NphPairingEventDao()
@@ -41,6 +43,7 @@ class NphIntakeAPI(BaseApi):
         self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivatedEvent)
 
         self.bundle_identifier = None
+        self.event_dao_map = {}
 
     def extract_activity_data(self, entry: dict):
         activity_name, activity_source = None, None
@@ -92,7 +95,7 @@ class NphIntakeAPI(BaseApi):
     def get_event_type_id(self, *, activity_name, activity_source):
         event_type_dao_instance_items = {k: v for k, v in self.__dict__.items() if 'type_dao' in k}
 
-        if activity_name not in event_type_dao_instance_items.keys():
+        if not any(activity_name in key for key in event_type_dao_instance_items):
             return 1
 
         event_type_dao = event_type_dao_instance_items[f'nph_{activity_name}_type_dao']
@@ -103,13 +106,40 @@ class NphIntakeAPI(BaseApi):
 
         return event_activity.id
 
-    def build_event_dao_map(self):
+    def build_event_dao_map(self) -> dict:
         event_dao_map = {}
         event_dao_instance_items = {k: v for k, v in self.__dict__.items() if 'event_dao' in k}
         for activity in self.current_activities:
             event_dao_map[f'{activity.name.lower()}'] = event_dao_instance_items[
                 f'nph_{activity.name.lower()}_event_dao']
         return event_dao_map
+
+    def create_event_objs(self, *, participant_id: str, entry: dict, activity_data: ActivityData) -> List:
+
+        nph_event_dao = self.event_dao_map[activity_data.name]
+
+        event_obj = {
+            'created': clock.CLOCK.now(),
+            'modified': clock.CLOCK.now(),
+            'event_authored_time': self.extract_authored_time(entry),
+            'participant_id': participant_id,
+            'additional': {
+                'nph_event_dao': nph_event_dao,
+                'activity_id': activity_data.id,
+                'bundle_identifier': self.bundle_identifier
+            }
+        }
+
+        if hasattr(nph_event_dao.model_type.__table__.columns, 'site_id'):
+            event_obj['site_id'] = self.get_site_id(entry)
+
+        if hasattr(nph_event_dao.model_type.__table__.columns, 'event_type_id'):
+            event_obj['event_type_id'] = self.get_event_type_id(
+                activity_name=activity_data.name,
+                activity_source=activity_data.source
+            )
+
+        return [event_obj] if type(event_obj) is not list else event_obj
 
     def extract_participant_id(self, participant_obj: dict) -> str:
         participant_id = participant_obj['resource']['identifier'][0]['value']
@@ -140,10 +170,9 @@ class NphIntakeAPI(BaseApi):
         # per validation fail the payload is stored
         log_api_request(log=request.log_record)
 
-        event_dao_map = self.build_event_dao_map()
-        participant_event_objs, event_objs = [], []
+        self.event_dao_map = self.build_event_dao_map()
+        participant_event_objs, all_event_objs, participant_response = [], [], []
 
-        participant_response = []
         for resource in intake_payload:
             self.bundle_identifier = resource['identifier']['value']
 
@@ -160,7 +189,6 @@ class NphIntakeAPI(BaseApi):
                 'consent', 'encounter']]
 
             for entry in applicable_entries:
-
                 activity_data = self.extract_activity_data(entry)
                 entry['bundle_identifier'] = self.bundle_identifier
 
@@ -172,37 +200,20 @@ class NphIntakeAPI(BaseApi):
                     'resource': entry
                 })
 
-                nph_event_dao = event_dao_map[activity_data.name]
+                event_objs = self.create_event_objs(
+                    participant_id=participant_id,
+                    entry=entry,
+                    activity_data=activity_data
+                )
 
-                event_obj = {
-                    'created': clock.CLOCK.now(),
-                    'modified': clock.CLOCK.now(),
-                    'event_authored_time': self.extract_authored_time(entry),
-                    'participant_id': participant_id,
-                    'additional': {
-                        'nph_event_dao': nph_event_dao,
-                        'activity_id': activity_data.id,
-                        'bundle_identifier': self.bundle_identifier
-                    }
-                }
-
-                if hasattr(nph_event_dao.model_type.__table__.columns, 'site_id'):
-                    event_obj['site_id'] = self.get_site_id(entry)
-
-                if hasattr(nph_event_dao.model_type.__table__.columns, 'event_type_id'):
-                    event_obj['event_type_id'] = self.get_event_type_id(
-                        activity_name=activity_data.name,
-                        activity_source=activity_data.source
-                    )
-
-                event_objs.append(event_obj)
+                all_event_objs.extend(event_objs)
 
         self.nph_participant_activity_dao.insert_bulk(participant_event_objs)
 
-        for dao_key, dao in event_dao_map.items():
+        for dao_key, dao in self.event_dao_map.items():
             dao_event_objs = list(filter(
                 lambda x: x.get('additional') and dao_key in x['additional'][
-                    'nph_event_dao'].model_type.__name__.lower(), event_objs
+                    'nph_event_dao'].model_type.__name__.lower(), all_event_objs
             ))
             for dao_obj in dao_event_objs:
                 participant_event_obj = self.nph_participant_activity_dao.get_activity_event_intake(
