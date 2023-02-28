@@ -184,7 +184,7 @@ class Participant(ObjectType):
     )
     questionnaireOnTheBasics = SortableField(
         Event,
-        name="aouBasicStatus",
+        name="aouBasicsStatus",
         description='''
             Provides submission status and authored time for the participant’s completion of TheBasics module.
             Value should be UNSET or SUBMITTED and time should be the authored time. Both should be sourced from
@@ -217,7 +217,7 @@ class Participant(ObjectType):
             from the AoU participant_summary table’s suspension columns
         '''
     )
-    enrollmentStatus = SortableField(
+    nphEnrollmentStatus = SortableField(
         Event,
         name="aouEnrollmentStatus",
         description='''
