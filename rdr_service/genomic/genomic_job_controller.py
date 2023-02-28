@@ -31,7 +31,7 @@ from rdr_service.genomic.genomic_message_broker import GenomicMessageBroker
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, \
-    GenomicGCValidationMetrics, GenomicGcDataFile, GenomicGCROutreachEscalationNotified
+    GenomicGCValidationMetrics, GenomicGcDataFile, GenomicGCROutreachEscalationNotified, GenomicSetMember
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicIncidentCode, GenomicManifestTypes, GenomicReportState
 from rdr_service.genomic.genomic_job_components import (
@@ -327,7 +327,7 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def ingest_member_ids_from_awn_raw_table(self, member_ids):
+    def ingest_member_ids_from_awn_raw_table(self, member_ids, allow_older=True):
         """
         Pulls data from genomic_aw1_raw or genomic_aw2_raw based on the value
         of self.job_id.
@@ -336,6 +336,7 @@ class GenomicJobController:
         and genomic_gc_validation_metrics.
 
         :param member_ids: list of genomic_set_member_ids to ingest
+        :param allow_older: bool to allow manifest records older than the member created date tp be ingested
         :return: ingestion results as string
         """
 
@@ -351,7 +352,7 @@ class GenomicJobController:
             id_field = "sampleId"
 
         # Get member records
-        members = self.member_dao.get_members_from_member_ids(member_ids)
+        members: List[GenomicSetMember] = self.member_dao.get_members_from_member_ids(member_ids)
         update_recs = []
         completed_members = []
         multiples = []
@@ -370,9 +371,14 @@ class GenomicJobController:
             else:
                 bid = member.biobankId
             # Get Raw AW1 Records for biobank IDs and genome_type
+            if allow_older:
+                created_after = None
+            else:
+                created_after = member.created
             raw_rec = raw_dao.get_raw_record_from_identifier_genome_type(
                 identifier=bid if id_field == 'biobankId' else getattr(member, id_field),
-                genome_type=member.genomeType
+                genome_type=member.genomeType,
+                created_after=created_after
             )
             if raw_rec:
                 update_recs.append((member, raw_rec))

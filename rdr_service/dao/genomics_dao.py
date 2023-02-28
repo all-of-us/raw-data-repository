@@ -2665,7 +2665,7 @@ class GenomicAW1RawDao(BaseDao, GenomicDaoMixin):
                 GenomicAW1Raw.biobank_id != ""
             ).one_or_none()
 
-    def get_raw_record_from_identifier_genome_type(self, *, identifier, genome_type):
+    def get_raw_record_from_identifier_genome_type(self, *, identifier, genome_type, created_after:datetime=None):
         with self.session() as session:
             record = session.query(GenomicAW1Raw).filter(
                 GenomicAW1Raw.biobank_id == identifier,
@@ -2674,9 +2674,13 @@ class GenomicAW1RawDao(BaseDao, GenomicDaoMixin):
             ).order_by(
                 GenomicAW1Raw.biobank_id.desc(),
                 GenomicAW1Raw.created.desc()
-            ).first()
+            )
 
-            return record
+            if created_after:
+                record = record.filter(
+                    GenomicAW1Raw.created > created_after
+                )
+            return record.first()
 
     def get_set_member_deltas(self):
         with self.session() as session:
@@ -2725,7 +2729,7 @@ class GenomicAW2RawDao(BaseDao, GenomicDaoMixin):
                 GenomicAW2Raw.file_path == filepath
             ).one_or_none()
 
-    def get_raw_record_from_identifier_genome_type(self, *, identifier, genome_type):
+    def get_raw_record_from_identifier_genome_type(self, *, identifier, genome_type, created_after:datetime=None):
         with self.session() as session:
             record = session.query(GenomicAW2Raw).filter(
                 GenomicAW2Raw.sample_id == identifier,
@@ -2734,8 +2738,14 @@ class GenomicAW2RawDao(BaseDao, GenomicDaoMixin):
             ).order_by(
                 GenomicAW2Raw.biobank_id.desc(),
                 GenomicAW2Raw.created.desc()
-            ).first()
-            return record
+            )
+
+            if created_after:
+                record = record.filter(
+                    GenomicAW1Raw.created > created_after
+                )
+
+            return record.first()
 
     def get_aw2_ingestion_deltas(self):
         with self.session() as session:

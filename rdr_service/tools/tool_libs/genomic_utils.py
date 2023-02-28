@@ -1672,7 +1672,7 @@ class IngestionClass(GenomicManifestBase):
                 controller.bypass_record_count = self.args.bypass_record_count
 
                 if self.args.use_raw:
-                    results = controller.ingest_member_ids_from_awn_raw_table(member_ids)
+                    results = controller.ingest_member_ids_from_awn_raw_table(member_ids, self.args.allow_older)
                     logging.info(results)
 
                 if bucket_name:
@@ -2256,7 +2256,7 @@ class UnblockSamples(ToolBase):
                                   storage_provider=None
                                   ) as controller:
             controller.bypass_record_count = True
-            results = controller.ingest_member_ids_from_awn_raw_table(set_members)
+            results = controller.ingest_member_ids_from_awn_raw_table(set_members, allow_older=False)
             _logger.info(results)
 
     def _reingest_aw1_from_raw(self):
@@ -2280,7 +2280,8 @@ class UnblockSamples(ToolBase):
 
             bid = f"{pre}{set_member.biobankId}"
             result = self.aw1_raw_dao.get_raw_record_from_identifier_genome_type(identifier=bid,
-                                                                                 genome_type=set_member.genomeType)
+                                                                                 genome_type=set_member.genomeType,
+                                                                                 created_after=set_member.created)
             if result:
                 ingest_members.append(set_member.id)
             else:
@@ -2308,7 +2309,7 @@ class UnblockSamples(ToolBase):
             vmetric = self.metrics_dao.get_metrics_by_member_id(set_member.id)
             if vmetric is None:
                 aw2_record = self.aw2_raw_dao.get_raw_record_from_identifier_genome_type(
-                    identifier=set_member.sampleId, genome_type=set_member.genomeType)
+                    identifier=set_member.sampleId, genome_type=set_member.genomeType, created_after=set_member.created)
                 if aw2_record:
                     ingest_members.append(set_member.id)
                 else:
@@ -2697,6 +2698,9 @@ def run():
                                          default=False, required=False, action="store_true")  # noqa
     sample_ingestion_parser.add_argument("--cloud-task", help="Denotes whether to run workflow in cloud task",
                                          default=False, required=False)  # noqa
+    sample_ingestion_parser.add_argument("--allow-older", help="Flag to allow ingestion of manifest record older than"
+                                         " member created date",
+                                         default=False, required=False, action="store_true")
 
     gem_to_gp_parser = subparser.add_parser("gem-to-gp")
     gem_to_gp_parser.add_argument("--limit", help="limit for migration query", type=int,
