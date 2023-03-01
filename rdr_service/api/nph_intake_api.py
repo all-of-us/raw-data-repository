@@ -10,8 +10,10 @@ from rdr_service.api_util import RTI, RDR
 from rdr_service.app_util import auth_required
 from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphIntakeDao, NphParticipantEventActivityDao, NphActivityDao, \
-    NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao
+    NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao, NphConsentEventTypeDao
 from rdr_service.model.study_nph import WithdrawalEvent, DeactivatedEvent, ConsentEvent, EnrollmentEvent
+
+MAX_PAYLOAD_LENGTH = 50
 
 
 @dataclass
@@ -33,7 +35,7 @@ class NphIntakeAPI(BaseApi):
         self.nph_participant_activity_dao = NphParticipantEventActivityDao()
         self.nph_site_dao = NphSiteDao()
 
-        # self.nph_consent_type_dao = NphConsentEventTypeDao()
+        self.nph_consent_type_dao = NphConsentEventTypeDao()
         self.nph_enrollment_type_dao = NphEnrollmentEventTypeDao()
 
         self.nph_pairing_event_dao = NphPairingEventDao()
@@ -106,6 +108,22 @@ class NphIntakeAPI(BaseApi):
 
         return event_activity.id
 
+    def get_consent_provision_events(self, entry: dict) -> List:
+        if not entry['resource'].get('provision'):
+            return []
+
+        try:
+            provisions = []
+            for provision in entry['resource']['provision']['provision']:
+                provisions.append({
+                    'type': provision['type'],
+                    'code': provision['purpose'][0]['code']
+                })
+            return provisions
+
+        except KeyError as e:
+            raise BadRequest(f'Key error on provision lookup: {e} bundle_id: {self.bundle_identifier}')
+
     def build_event_dao_map(self) -> dict:
         event_dao_map = {}
         event_dao_instance_items = {k: v for k, v in self.__dict__.items() if 'event_dao' in k}
@@ -117,29 +135,50 @@ class NphIntakeAPI(BaseApi):
     def create_event_objs(self, *, participant_id: str, entry: dict, activity_data: ActivityData) -> List:
 
         nph_event_dao = self.event_dao_map[activity_data.name]
+        current_entry_consent_events = self.get_consent_provision_events(entry)
+        current_entry_events = current_entry_consent_events if current_entry_consent_events else [entry]
 
-        event_obj = {
-            'created': clock.CLOCK.now(),
-            'modified': clock.CLOCK.now(),
-            'event_authored_time': self.extract_authored_time(entry),
-            'participant_id': participant_id,
-            'additional': {
-                'nph_event_dao': nph_event_dao,
-                'activity_id': activity_data.id,
-                'bundle_identifier': self.bundle_identifier
+        current_event_objs = []
+        for event in current_entry_events:
+
+            # base event obj
+            event_obj = {
+                'created': clock.CLOCK.now(),
+                'modified': clock.CLOCK.now(),
+                'event_authored_time': self.extract_authored_time(entry),
+                'participant_id': participant_id,
             }
-        }
 
-        if hasattr(nph_event_dao.model_type.__table__.columns, 'site_id'):
-            event_obj['site_id'] = self.get_site_id(entry)
+            # handle consent events based on provisions in payload
+            if current_entry_consent_events:
+                event_obj['provision'] = event
 
-        if hasattr(nph_event_dao.model_type.__table__.columns, 'event_type_id'):
-            event_obj['event_type_id'] = self.get_event_type_id(
-                activity_name=activity_data.name,
-                activity_source=activity_data.source
-            )
+            # handle pairing event based on model
+            if hasattr(nph_event_dao.model_type.__table__.columns, 'site_id'):
+                event_obj['site_id'] = self.get_site_id(entry)
 
-        return [event_obj] if type(event_obj) is not list else event_obj
+            # handle models with event type relationships
+            if hasattr(nph_event_dao.model_type.__table__.columns, 'event_type_id'):
+
+                # source for consent activity data should be null
+                if activity_data.name == 'consent':
+                    activity_data.source = event_obj['provision']['code']
+
+                event_obj['event_type_id'] = self.get_event_type_id(
+                    activity_name=activity_data.name,
+                    activity_source=activity_data.source
+                )
+
+            # handle additional keys for later processing
+            event_obj['additional'] = {
+                    'nph_event_dao': nph_event_dao,
+                    'activity_id': activity_data.id,
+                    'bundle_identifier': self.bundle_identifier
+                }
+
+            current_event_objs.append(event_obj)
+
+        return current_event_objs
 
     def extract_participant_id(self, participant_obj: dict) -> str:
         participant_id = participant_obj['resource']['identifier'][0]['value']
@@ -169,6 +208,9 @@ class NphIntakeAPI(BaseApi):
         # Adding request log here so if exception is raised
         # per validation fail the payload is stored
         log_api_request(log=request.log_record)
+
+        if len(intake_payload) > MAX_PAYLOAD_LENGTH:
+            raise BadRequest(f'Payload bundle(s) length is limited to {MAX_PAYLOAD_LENGTH}')
 
         self.event_dao_map = self.build_event_dao_map()
         participant_event_objs, all_event_objs, participant_response = [], [], []
@@ -222,8 +264,8 @@ class NphIntakeAPI(BaseApi):
                     activity_id=dao_obj['additional']['activity_id']
                 )
                 dao_obj['event_id'] = participant_event_obj.id
-                del dao_obj['additional']
-
+                dao_obj.pop('additional')
+                dao_obj.pop('provision',  None)
             if dao_event_objs:
                 dao.insert_bulk(dao_event_objs)
 
