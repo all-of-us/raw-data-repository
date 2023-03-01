@@ -55,24 +55,18 @@ def _get_nph_participant(participant_id: int) -> NphParticipant:
         return session.query(NphParticipant).get(participant_id)
 
 
-def _get_latest_biobank_file_export() -> BiobankFileExport:
-    nph_biobank_file_export = NphBiobankFileExportDao()
-    with nph_biobank_file_export.session() as session:
-        return session.query(BiobankFileExport).order_by(
-            BiobankFileExport.created.desc()
-        ).first()
-
-
-def _get_sample_updates_since_last_file_export() -> Iterable[SampleUpdate]:
-    last_successful_biobank_file_export = _get_latest_biobank_file_export()
-    if last_successful_biobank_file_export is not None:
-        last_successful_biobank_file_export_date = last_successful_biobank_file_export.created
-    else:
-        last_successful_biobank_file_export_date = datetime(year=2023, month=1, day=1)
+def _get_sample_updates_needing_export() -> Iterable[SampleUpdate]:
+    """
+    Return any SampleUpdates that haven't already been included in an export
+    """
     sample_update_dao = NphSampleUpdateDao()
     with sample_update_dao.session() as session:
-        return session.query(SampleUpdate).filter(
-            SampleUpdate.created >= last_successful_biobank_file_export_date
+        return session.query(
+            SampleUpdate
+        ).outerjoin(
+            SampleExport
+        ).filter(
+            SampleExport.id.is_(None)
         ).all()
 
 
@@ -274,7 +268,7 @@ def _create_sample_export_references_for_sample_updates(
 
 def main():
     orders_file_drop: List[Dict[str, Any]] = []
-    sample_updates_for_file_export = _get_sample_updates_since_last_file_export()
+    sample_updates_for_file_export = _get_sample_updates_needing_export()
     orders = (
         _get_orders_related_to_sample_updates(sample_updates_for_file_export)
     )
@@ -321,6 +315,5 @@ def main():
         dump(orders_file_drop, dest, default=str)
 
     _logger.info(f"Created Biobank export file: '{orders_filename}'")
-    sample_updates_for_orders = _get_all_sample_updates_related_to_orders(orders)
     biobank_file_export = _create_biobank_file_export_reference(bucket_name, json_filepath)
-    _create_sample_export_references_for_sample_updates(biobank_file_export.id, sample_updates_for_orders)
+    _create_sample_export_references_for_sample_updates(biobank_file_export.id, sample_updates_for_file_export)
