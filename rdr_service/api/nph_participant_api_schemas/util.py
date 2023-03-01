@@ -88,7 +88,7 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
                                  "time": summary.suspensionTime},
-            'enrollmentStatus': {"value": check_field_value(summary.enrollmentStatus),
+            'nphEnrollmentStatus': {"value": check_field_value(summary.enrollmentStatus),
                                  "time": summary.dateOfBirth},
             'questionnaireOnTheBasics': {
                 "value": check_field_value(summary.questionnaireOnTheBasics),
@@ -122,7 +122,7 @@ def schema_field_lookup(value):
                     "value": ParticipantSummaryModel.dateOfBirth},
             "aouAianStatus": {"field": "aian", "table": ParticipantSummaryModel,
                               "value": ParticipantSummaryModel.aian},
-            "aouBasicStatus": {"field": "questionnaireOnTheBasics", "table": ParticipantSummaryModel,
+            "aouBasicsStatus": {"field": "questionnaireOnTheBasics", "table": ParticipantSummaryModel,
                                "value": ParticipantSummaryModel.questionnaireOnTheBasics},
             "aouDeceasedStatus": {"field": "deceasedStatus", "table": ParticipantSummaryModel,
                                   "value": ParticipantSummaryModel.deceasedStatus,

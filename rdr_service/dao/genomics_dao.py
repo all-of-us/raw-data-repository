@@ -561,7 +561,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicSetMember.ignoreFlag == 0,
                 GenomicSetMember.aw3ManifestJobRunID.isnot(None)
-            ).one_or_none()
+            ).first()
         return member
 
     def get_member_from_collection_tube(self, tube_id, genome_type, state=None):
@@ -2665,7 +2665,7 @@ class GenomicAW1RawDao(BaseDao, GenomicDaoMixin):
                 GenomicAW1Raw.biobank_id != ""
             ).one_or_none()
 
-    def get_raw_record_from_identifier_genome_type(self, *, identifier, genome_type):
+    def get_raw_record_from_identifier_genome_type(self, *, identifier, genome_type, created_after:datetime=None):
         with self.session() as session:
             record = session.query(GenomicAW1Raw).filter(
                 GenomicAW1Raw.biobank_id == identifier,
@@ -2674,9 +2674,13 @@ class GenomicAW1RawDao(BaseDao, GenomicDaoMixin):
             ).order_by(
                 GenomicAW1Raw.biobank_id.desc(),
                 GenomicAW1Raw.created.desc()
-            ).first()
+            )
 
-            return record
+            if created_after:
+                record = record.filter(
+                    GenomicAW1Raw.created > created_after
+                )
+            return record.first()
 
     def get_set_member_deltas(self):
         with self.session() as session:
@@ -2725,7 +2729,7 @@ class GenomicAW2RawDao(BaseDao, GenomicDaoMixin):
                 GenomicAW2Raw.file_path == filepath
             ).one_or_none()
 
-    def get_raw_record_from_identifier_genome_type(self, *, identifier, genome_type):
+    def get_raw_record_from_identifier_genome_type(self, *, identifier, genome_type, created_after:datetime=None):
         with self.session() as session:
             record = session.query(GenomicAW2Raw).filter(
                 GenomicAW2Raw.sample_id == identifier,
@@ -2734,8 +2738,14 @@ class GenomicAW2RawDao(BaseDao, GenomicDaoMixin):
             ).order_by(
                 GenomicAW2Raw.biobank_id.desc(),
                 GenomicAW2Raw.created.desc()
-            ).first()
-            return record
+            )
+
+            if created_after:
+                record = record.filter(
+                    GenomicAW1Raw.created > created_after
+                )
+
+            return record.first()
 
     def get_aw2_ingestion_deltas(self):
         with self.session() as session:
@@ -3996,6 +4006,10 @@ class GenomicQueriesDao(BaseDao):
     def get_aw3_wgs_records(self, **kwargs):
         # should be only wgs genome but query also
         # used for wgs investigation workflow
+
+        def invoke_file_path_filter(*, file_type_attr):
+            return getattr(file_type_attr, file_path_method)('%dragen_%')
+
         genome_type = kwargs.get('genome_type', config.GENOME_TYPE_WGS)
         pipeline_id = kwargs.get('pipeline_id')
 
@@ -4003,20 +4017,19 @@ class GenomicQueriesDao(BaseDao):
             return []
 
         # only updated dragen version files will be placed in 'dragen_v' subfolder
-        data_file_path = pipeline_id if pipeline_id == config.GENOMIC_UPDATED_WGS_DRAGEN else '/'
+        file_path_method = 'contains' if pipeline_id == config.GENOMIC_UPDATED_WGS_DRAGEN else 'notlike'
+
+        hard_filtered_vcf_gz = aliased(GenomicGcDataFile)
+        hard_filtered_vcf_gz_tbi = aliased(GenomicGcDataFile)
+        hard_filtered_vcf_gz_md5_sum = aliased(GenomicGcDataFile)
+        cram = aliased(GenomicGcDataFile)
+        cram_md5_sum = aliased(GenomicGcDataFile)
+        cram_crai = aliased(GenomicGcDataFile)
+        hard_filtered_gvcf_gz = aliased(GenomicGcDataFile)
+        hard_filtered_gvcf_gz_md5_sum = aliased(GenomicGcDataFile)
+        array_check = aliased(GenomicSetMember)
 
         with self.session() as session:
-
-            hard_filtered_vcf_gz = aliased(GenomicGcDataFile)
-            hard_filtered_vcf_gz_tbi = aliased(GenomicGcDataFile)
-            hard_filtered_vcf_gz_md5_sum = aliased(GenomicGcDataFile)
-            cram = aliased(GenomicGcDataFile)
-            cram_md5_sum = aliased(GenomicGcDataFile)
-            cram_crai = aliased(GenomicGcDataFile)
-            hard_filtered_gvcf_gz = aliased(GenomicGcDataFile)
-            hard_filtered_gvcf_gz_md5_sum = aliased(GenomicGcDataFile)
-            array_check = aliased(GenomicSetMember)
-
             aw3_rows = session.query(
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                 GenomicSetMember.sampleId,
@@ -4073,56 +4086,64 @@ class GenomicQueriesDao(BaseDao):
                 and_(
                     hard_filtered_vcf_gz.file_type == 'hard-filtered.vcf.gz',
                     hard_filtered_vcf_gz.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_vcf_gz.file_path.contains(data_file_path)
+                    invoke_file_path_filter(file_type_attr=hard_filtered_vcf_gz.file_path),
+                    hard_filtered_vcf_gz.ignore_flag != 1
                 )
             ).join(
                 hard_filtered_vcf_gz_tbi,
                 and_(
                     hard_filtered_vcf_gz_tbi.file_type == 'hard-filtered.vcf.gz.tbi',
                     hard_filtered_vcf_gz_tbi.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_vcf_gz_tbi.file_path.contains(data_file_path)
+                    invoke_file_path_filter(file_type_attr=hard_filtered_vcf_gz_tbi.file_path),
+                    hard_filtered_vcf_gz_tbi.ignore_flag != 1
                 )
             ).join(
                 hard_filtered_vcf_gz_md5_sum,
                 and_(
                     hard_filtered_vcf_gz_md5_sum.file_type == 'hard-filtered.vcf.gz.md5sum',
                     hard_filtered_vcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_vcf_gz_md5_sum.file_path.contains(data_file_path)
+                    invoke_file_path_filter(file_type_attr=hard_filtered_vcf_gz_md5_sum.file_path),
+                    hard_filtered_vcf_gz_md5_sum.ignore_flag != 1
                 )
             ).join(
                 cram,
                 and_(
                     cram.file_type == 'cram',
                     cram.identifier_value == GenomicSetMember.sampleId,
-                    cram.file_path.contains(data_file_path)
+                    invoke_file_path_filter(file_type_attr=cram.file_path),
+                    cram.ignore_flag != 1
                 )
             ).join(
                 cram_md5_sum,
                 and_(
                     cram_md5_sum.file_type == 'cram.md5sum',
                     cram_md5_sum.identifier_value == GenomicSetMember.sampleId,
-                    cram_md5_sum.file_path.contains(data_file_path)
+                    invoke_file_path_filter(file_type_attr=cram_md5_sum.file_path),
+                    cram_md5_sum.ignore_flag != 1
                 )
             ).join(
                 cram_crai,
                 and_(
                     cram_crai.file_type == 'cram.crai',
                     cram_crai.identifier_value == GenomicSetMember.sampleId,
-                    cram_crai.file_path.contains(data_file_path)
+                    invoke_file_path_filter(file_type_attr=cram_crai.file_path),
+                    cram_crai.ignore_flag != 1
                 )
             ).join(
                 hard_filtered_gvcf_gz,
                 and_(
                     hard_filtered_gvcf_gz.file_type == 'hard-filtered.gvcf.gz',
                     hard_filtered_gvcf_gz.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_gvcf_gz.file_path.contains(data_file_path)
+                    invoke_file_path_filter(file_type_attr=hard_filtered_gvcf_gz.file_path),
+                    hard_filtered_gvcf_gz.ignore_flag != 1
                 )
             ).join(
                 hard_filtered_gvcf_gz_md5_sum,
                 and_(
                     hard_filtered_gvcf_gz_md5_sum.file_type == 'hard-filtered.gvcf.gz.md5sum',
                     hard_filtered_gvcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
-                    hard_filtered_gvcf_gz_md5_sum.file_path.contains(data_file_path)
+                    invoke_file_path_filter(file_type_attr=hard_filtered_gvcf_gz_md5_sum.file_path),
+                    hard_filtered_gvcf_gz_md5_sum.ignore_flag != 1
                 )
             ).outerjoin(
                 GenomicAW3Raw,

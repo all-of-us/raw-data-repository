@@ -36,7 +36,7 @@ foodIsecurity{current{value time} historical{value time}} aouBasicsQuestionnaire
 sampleSa1{ordered{parent{current{value time}}} }} } } }'''
 
 QUERY_WITH_NONE_VALUE = '''
-{ participant  { edges { node { aouLifestyleStatus{ value time } aouBasicStatus{ value time }
+{ participant  { edges { node { aouLifestyleStatus{ value time } aouBasicsStatus{ value time }
 aouOverallHealthStatus{ value time } aouLifestyleStatus{ value time } aouSDOHStatus{ value time }}}}}
 '''
 
