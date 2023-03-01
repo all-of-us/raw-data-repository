@@ -130,6 +130,15 @@ class NphIntakeAPITest(BaseTestCase):
         self.assertEqual(len(consent_events), len(all_participant_ids) * 3)
         self.assertTrue(all(obj.event_type_id in [1, 2, 3] for obj in consent_events))
         self.assertTrue(all(obj.participant_id in all_participant_ids for obj in consent_events))
+        self.assertTrue(all(obj.opt_in is not None for obj in consent_events))
+
+        # granular answers for consent opt ins
+        self.assertTrue(all(obj.event_id == 2 for obj in consent_events if obj.participant_id == 100000000))
+        # deny permit permit
+        self.assertTrue([obj.opt_in.number for obj in consent_events if obj.participant_id == 100000000] == [2, 1, 1])
+        self.assertTrue(all(obj.event_id == 4 for obj in consent_events if obj.participant_id == 100000001))
+        # deny permit deny
+        self.assertTrue([obj.opt_in.number for obj in consent_events if obj.participant_id == 100000001] == [2, 1, 2])
 
         consent_participant_event_activity = list(
             filter(lambda x: x.activity_id == consent_activity.id, participant_event_activities))

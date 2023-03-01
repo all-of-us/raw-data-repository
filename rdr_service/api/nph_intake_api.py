@@ -5,6 +5,7 @@ from flask import request
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import clock
+from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RTI, RDR
 from rdr_service.app_util import auth_required
@@ -29,9 +30,7 @@ class NphIntakeAPI(BaseApi):
 
         self.nph_prefix = RexStudyDao().get_prefix_by_schema('nph')
         self.nph_prefix = self.nph_prefix[0]
-
         self.current_activities = NphActivityDao().get_all()
-
         self.nph_participant_activity_dao = NphParticipantEventActivityDao()
         self.nph_site_dao = NphSiteDao()
 
@@ -108,15 +107,14 @@ class NphIntakeAPI(BaseApi):
 
         return event_activity.id
 
-    def get_consent_provision_events(self, entry: dict) -> List:
+    def get_consent_provision_events(self, entry: dict) -> List[dict]:
         if not entry['resource'].get('provision'):
             return []
-
         try:
             provisions = []
             for provision in entry['resource']['provision']['provision']:
                 provisions.append({
-                    'type': provision['type'],
+                    'opt_in': ConsentOptInTypes.lookup_by_name(provision['type'].upper()),
                     'code': provision['purpose'][0]['code']
                 })
             return provisions
@@ -139,8 +137,7 @@ class NphIntakeAPI(BaseApi):
         current_entry_events = current_entry_consent_events if current_entry_consent_events else [entry]
 
         current_event_objs = []
-        for event in current_entry_events:
-
+        for entry_event in current_entry_events:
             # base event obj
             event_obj = {
                 'created': clock.CLOCK.now(),
@@ -151,7 +148,7 @@ class NphIntakeAPI(BaseApi):
 
             # handle consent events based on provisions in payload
             if current_entry_consent_events:
-                event_obj['provision'] = event
+                event_obj['provision'] = entry_event
 
             # handle pairing event based on model
             if hasattr(nph_event_dao.model_type.__table__.columns, 'site_id'):
@@ -159,15 +156,17 @@ class NphIntakeAPI(BaseApi):
 
             # handle models with event type relationships
             if hasattr(nph_event_dao.model_type.__table__.columns, 'event_type_id'):
-
-                # source for consent activity data should be null
-                if activity_data.name == 'consent':
+                # source for consent activity data should be null add opt_in value
+                if activity_data.name == 'consent' and event_obj.get('provision'):
                     activity_data.source = event_obj['provision']['code']
+                    event_obj['opt_in'] = event_obj['provision']['opt_in']
 
                 event_obj['event_type_id'] = self.get_event_type_id(
                     activity_name=activity_data.name,
                     activity_source=activity_data.source
                 )
+
+            event_obj.pop('provision', None)
 
             # handle additional keys for later processing
             event_obj['additional'] = {
@@ -175,7 +174,6 @@ class NphIntakeAPI(BaseApi):
                     'activity_id': activity_data.id,
                     'bundle_identifier': self.bundle_identifier
                 }
-
             current_event_objs.append(event_obj)
 
         return current_event_objs
@@ -265,7 +263,7 @@ class NphIntakeAPI(BaseApi):
                 )
                 dao_obj['event_id'] = participant_event_obj.id
                 dao_obj.pop('additional')
-                dao_obj.pop('provision',  None)
+
             if dao_event_objs:
                 dao.insert_bulk(dao_event_objs)
 
