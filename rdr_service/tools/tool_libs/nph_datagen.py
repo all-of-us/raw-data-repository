@@ -141,6 +141,12 @@ class ParticipantGeneratorTool(ToolBase):
             event_authored_time=clock.CLOCK.now()
         )
 
+        # NPH Enrollment Event REFERRED
+        self.nph_generator.create_database_enrollment_event(
+            participant_id=nph_participant.id,
+            event_authored_time=clock.CLOCK.now()
+        )
+
         # Insert Rex Mapping
         rex_mapping_obj = ParticipantMapping(
             primary_study_id=1,
