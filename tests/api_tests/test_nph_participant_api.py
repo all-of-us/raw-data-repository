@@ -69,39 +69,43 @@ def mock_load_participant_data(session):
         participant_query = Query(aouParticipant)
         participant_query.session = session
         participant_result = participant_query.all()
-        for each in participant_result:
-            aou_generator.create_database_participant_summary(hpoId=0, participant=each, siteId=1,
+        for aou_participant in participant_result:
+            aou_generator.create_database_participant_summary(hpoId=0, participant=aou_participant, siteId=1,
                                                               dateOfBirth=fake.date_of_birth(),
                                                               deceasedAuthored=fake.date_time())
         rdr_study_record = Study(ignore_flag=0, schema_name="rdr")
         nph_study_record = Study(ignore_flag=0, schema_name='nph', prefix=1000)
-        for each in [rdr_study_record, nph_study_record]:
-            session.add(each)
+        for study in [rdr_study_record, nph_study_record]:
+            session.add(study)
+
+        nph_data_gen = NphDataGenerator()
+        for activity_name in ['ENROLLMENT', 'PAIRING', 'CONSENT', 'WITHDRAWAL', 'DEACTIVATION']:
+            nph_data_gen.create_database_activity(
+                name=activity_name
+            )
+
+        nph_data_gen.create_database_pairing_event_type(name="INITIAL")
+
+        status = ['referred']
+
+        for name in status:
+            nph_data_gen.create_database_enrollment_event_type(name=name)
         participant_mapping_query = Query(ParticipantMapping)
         participant_mapping_query.session = session
         participant_mapping_result = participant_mapping_query.all()
         if len(participant_mapping_result) < 10:
             ancillary_participant_id = 100000000
             for each in participant_result:
+                nph_data_gen.create_database_participant(id=ancillary_participant_id)
                 pm = ParticipantMapping(primary_participant_id=each.participantId,
                                         ancillary_participant_id=ancillary_participant_id,
                                         ancillary_study_id=2
                                         )
                 session.add(pm)
+                nph_data_gen.create_database_enrollment_event(ancillary_participant_id)
                 ancillary_participant_id = ancillary_participant_id + 1
+
         session.commit()
-    nph_data_gen = NphDataGenerator()
-    for activity_name in ['ENROLLMENT', 'PAIRING', 'CONSENT', 'WITHDRAWAL', 'DEACTIVATION']:
-        nph_data_gen.create_database_activity(
-            name=activity_name
-        )
-
-    nph_data_gen.create_database_pairing_event_type(name="INITIAL")
-
-    status = ['Module 3 Complete', 'Withdrawn', 'Deactivated']
-
-    for name in status:
-        nph_data_gen.create_database_enrollment_event_type(name=name)
 
     for i in range(1, 3):
         nph_data_gen.create_database_site(
