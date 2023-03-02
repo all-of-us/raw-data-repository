@@ -232,6 +232,8 @@ BIOBANK_DATA_COMPARISON_DOCUMENT_ID = "biobank_data_comparison_document_id"
 RDR_SLACK_WEBHOOKS = "rdr_slack_webhooks"
 RDR_VALIDATION_WEBHOOK = "rdr_validation_webhook"
 
+NPH_SLACK_WEBHOOKS = "nph_slack_webhooks"
+
 DECEASED_REPORT_FILTER_EXCEPTIONS = "deceased_report_filter_exceptions"
 
 PTSC_SERVICE_DESK_EMAIL = "ptsc_service_desk_email"

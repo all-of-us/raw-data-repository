@@ -13,7 +13,7 @@ from rdr_service.model.study_nph import (
     Activity, ParticipantEventActivity, EnrollmentEventType,
     PairingEventType, PairingEvent, ConsentEventType,
     SampleUpdate, BiobankFileExport, SampleExport,
-    StoredSample, EnrollmentEvent
+    StoredSample, EnrollmentEvent, Incident
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
@@ -817,4 +817,12 @@ class NphStoredSampleDao(BaseDao):
         super(NphStoredSampleDao, self).__init__(StoredSample)
 
     def get_id(self, obj: StoredSample):
+        return obj.id
+
+
+class NphIncidentDao(BaseDao):
+    def __init__(self):
+        super(NphIncidentDao, self).__init__(Incident)
+
+    def get_id(self, obj: Incident):
         return obj.id
