@@ -866,6 +866,10 @@ class NphIncidentDao(UpdatableDao):
         with self.session() as session:
             return self.insert_with_session(session, obj)
 
+    def _validate_update(self, session, obj, existing_obj):
+        # NPH Incidents aren't versioned; suppress the normal check here.
+        pass
+
     def update(self, obj: Incident) -> Incident:
         maximum_message_length = Incident.message.type.length
         is_truncated, truncated_value = self.truncate_value(
