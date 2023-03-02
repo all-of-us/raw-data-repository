@@ -218,7 +218,7 @@ class Participant(ObjectType):
             from the AoU participant_summary table’s suspension columns
         '''
     )
-    nphEnrollmentStatus = SortableField(
+    aouEnrollmentStatus = SortableField(
         Event,
         name="aouEnrollmentStatus",
         description='''
@@ -264,7 +264,7 @@ class Participant(ObjectType):
     awardee_external_id = SortableField(String, name="nphPairedAwardee", description='Sourced from NPH Schema.',
                                         sort_modifier=lambda context: context.set_order_expression(
                                             nphSite.awardee_external_id))
-    nph_enrollment_status = SortableField(Event, name="enrollmentStatus", description='Sourced from NPH Schema.')
+    nph_enrollment_status = SortableField(Event, name="nphEnrollmentStatus", description='Sourced from NPH Schema.')
     nph_withdrawal_status = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
     nph_deactivation_status = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
     # Bio-specimen

@@ -293,14 +293,14 @@ class TestQueryExecution(BaseTestCase):
         nph_id = str(prefix) + str(participant_nph_id)
         self.assertEqual(nph_id, resulting_participant_data.get('participantNphId'))
 
-    def test_enrollmentStatus_fields(self):
-        field_to_test = "enrollmentStatus {value time} "
+    def test_nphEnrollmentStatus_fields(self):
+        field_to_test = "nphEnrollmentStatus {value time} "
         query = simple_query(field_to_test)
         mock_load_participant_data(self.session)
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
         result = json.loads(executed.data.decode('utf-8'))
         self.assertEqual(2, len(result.get('participant').get('edges')))
-        actual_result = result.get('participant').get('edges')[0].get('node').get('enrollmentStatus')
+        actual_result = result.get('participant').get('edges')[0].get('node').get('nphEnrollmentStatus')
         self.assertIn("time", actual_result)
         self.assertIn("value", actual_result)
 
