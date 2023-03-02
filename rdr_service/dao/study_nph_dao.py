@@ -853,15 +853,27 @@ class NphIncidentDao(UpdatableDao):
                     Incident.message == truncated_value
                 ).first()
 
-    def insert(self, incident: Incident) -> Incident:
+    def insert(self, obj: Incident) -> Incident:
         maximum_message_length = Incident.message.type.length
         is_truncated, truncated_value = self.truncate_value(
-            incident.message,
+            obj.message,
             maximum_message_length,
         )
         if is_truncated:
             _logger.warning('Truncating incident message when storing (too many characters for database column)')
-        incident.message = truncated_value
+        obj.message = truncated_value
 
         with self.session() as session:
-            return self.insert_with_session(session, incident)
+            return self.insert_with_session(session, obj)
+
+    def update(self, obj: Incident) -> Incident:
+        maximum_message_length = Incident.message.type.length
+        is_truncated, truncated_value = self.truncate_value(
+            obj.message,
+            maximum_message_length,
+        )
+        if is_truncated:
+            _logger.warning('Truncating incident message when storing (too many characters for database column)')
+        obj.message = truncated_value
+        with self.session() as session:
+            return self.update_with_session(session, obj)
