@@ -216,16 +216,20 @@ class TestQueryExecution(BaseTestCase):
             self.assertEqual('nph-test-org', each.get('node').get(field_to_test))
 
     def test_client_biobank_id_prefix(self):
-        field_to_test = "biobankId"
-        query = simple_query(field_to_test)
         mock_load_participant_data(self.session)
-        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data=simple_query('biobankId')
+        )
         result = json.loads(executed.data.decode('utf-8'))
         self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
-        expected_biobank_id = ["500000000", "500000001"]
-        for index, each in enumerate(result.get('participant').get('edges')):
-            self.assertEqual(f"{NPH_BIOBANK_PREFIX}{expected_biobank_id[index]}",
-                             each.get('node').get(field_to_test))
+        self.assertListEqual(
+            ['T1100000000', 'T1100000001'],
+            [
+                participant_data['node']['biobankId']
+                for participant_data in result.get('participant').get('edges')
+            ]
+        )
 
     def test_client_nph_pair_site_with_id(self):
         fetch_value = '"{}"'.format("1000100000000")
