@@ -1,16 +1,20 @@
 from dataclasses import dataclass
+from typing import List
 
 from flask import request
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import clock
+from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RTI, RDR
 from rdr_service.app_util import auth_required
 from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphIntakeDao, NphParticipantEventActivityDao, NphActivityDao, \
-    NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao
+    NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao, NphConsentEventTypeDao
 from rdr_service.model.study_nph import WithdrawalEvent, DeactivatedEvent, ConsentEvent, EnrollmentEvent
+
+MAX_PAYLOAD_LENGTH = 50
 
 
 @dataclass
@@ -26,12 +30,11 @@ class NphIntakeAPI(BaseApi):
 
         self.nph_prefix = RexStudyDao().get_prefix_by_schema('nph')
         self.nph_prefix = self.nph_prefix[0]
-
         self.current_activities = NphActivityDao().get_all()
-
         self.nph_participant_activity_dao = NphParticipantEventActivityDao()
         self.nph_site_dao = NphSiteDao()
 
+        self.nph_consent_type_dao = NphConsentEventTypeDao()
         self.nph_enrollment_type_dao = NphEnrollmentEventTypeDao()
 
         self.nph_pairing_event_dao = NphPairingEventDao()
@@ -41,6 +44,7 @@ class NphIntakeAPI(BaseApi):
         self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivatedEvent)
 
         self.bundle_identifier = None
+        self.event_dao_map = {}
 
     def extract_activity_data(self, entry: dict):
         activity_name, activity_source = None, None
@@ -92,7 +96,7 @@ class NphIntakeAPI(BaseApi):
     def get_event_type_id(self, *, activity_name, activity_source):
         event_type_dao_instance_items = {k: v for k, v in self.__dict__.items() if 'type_dao' in k}
 
-        if activity_name not in event_type_dao_instance_items.keys():
+        if not any(activity_name in key for key in event_type_dao_instance_items):
             return 1
 
         event_type_dao = event_type_dao_instance_items[f'nph_{activity_name}_type_dao']
@@ -103,13 +107,76 @@ class NphIntakeAPI(BaseApi):
 
         return event_activity.id
 
-    def build_event_dao_map(self):
+    def get_consent_provision_events(self, entry: dict) -> List[dict]:
+        if not entry['resource'].get('provision'):
+            return []
+        try:
+            provisions = []
+            for provision in entry['resource']['provision']['provision']:
+                provisions.append({
+                    'opt_in': ConsentOptInTypes.lookup_by_name(provision['type'].upper()),
+                    'code': provision['purpose'][0]['code']
+                })
+            return provisions
+
+        except KeyError as e:
+            raise BadRequest(f'Key error on provision lookup: {e} bundle_id: {self.bundle_identifier}')
+
+    def build_event_dao_map(self) -> dict:
         event_dao_map = {}
         event_dao_instance_items = {k: v for k, v in self.__dict__.items() if 'event_dao' in k}
         for activity in self.current_activities:
             event_dao_map[f'{activity.name.lower()}'] = event_dao_instance_items[
                 f'nph_{activity.name.lower()}_event_dao']
         return event_dao_map
+
+    def create_event_objs(self, *, participant_id: str, entry: dict, activity_data: ActivityData) -> List:
+
+        nph_event_dao = self.event_dao_map[activity_data.name]
+        current_entry_consent_events = self.get_consent_provision_events(entry)
+        current_entry_events = current_entry_consent_events if current_entry_consent_events else [entry]
+
+        current_event_objs = []
+        for entry_event in current_entry_events:
+            # base event obj
+            event_obj = {
+                'created': clock.CLOCK.now(),
+                'modified': clock.CLOCK.now(),
+                'event_authored_time': self.extract_authored_time(entry),
+                'participant_id': participant_id,
+            }
+
+            # handle consent events based on provisions in payload
+            if current_entry_consent_events:
+                event_obj['provision'] = entry_event
+
+            # handle pairing event based on model
+            if hasattr(nph_event_dao.model_type.__table__.columns, 'site_id'):
+                event_obj['site_id'] = self.get_site_id(entry)
+
+            # handle models with event type relationships
+            if hasattr(nph_event_dao.model_type.__table__.columns, 'event_type_id'):
+                # source for consent activity data should be null add opt_in value
+                if activity_data.name == 'consent' and event_obj.get('provision'):
+                    activity_data.source = event_obj['provision']['code']
+                    event_obj['opt_in'] = event_obj['provision']['opt_in']
+
+                event_obj['event_type_id'] = self.get_event_type_id(
+                    activity_name=activity_data.name,
+                    activity_source=activity_data.source
+                )
+
+            event_obj.pop('provision', None)
+
+            # handle additional keys for later processing
+            event_obj['additional'] = {
+                    'nph_event_dao': nph_event_dao,
+                    'activity_id': activity_data.id,
+                    'bundle_identifier': self.bundle_identifier
+                }
+            current_event_objs.append(event_obj)
+
+        return current_event_objs
 
     def extract_participant_id(self, participant_obj: dict) -> str:
         participant_id = participant_obj['resource']['identifier'][0]['value']
@@ -140,10 +207,12 @@ class NphIntakeAPI(BaseApi):
         # per validation fail the payload is stored
         log_api_request(log=request.log_record)
 
-        event_dao_map = self.build_event_dao_map()
-        participant_event_objs, event_objs = [], []
+        if len(intake_payload) > MAX_PAYLOAD_LENGTH:
+            raise BadRequest(f'Payload bundle(s) length is limited to {MAX_PAYLOAD_LENGTH}')
 
-        participant_response = []
+        self.event_dao_map = self.build_event_dao_map()
+        participant_event_objs, all_event_objs, participant_response = [], [], []
+
         for resource in intake_payload:
             self.bundle_identifier = resource['identifier']['value']
 
@@ -160,7 +229,6 @@ class NphIntakeAPI(BaseApi):
                 'consent', 'encounter']]
 
             for entry in applicable_entries:
-
                 activity_data = self.extract_activity_data(entry)
                 entry['bundle_identifier'] = self.bundle_identifier
 
@@ -172,37 +240,20 @@ class NphIntakeAPI(BaseApi):
                     'resource': entry
                 })
 
-                nph_event_dao = event_dao_map[activity_data.name]
+                event_objs = self.create_event_objs(
+                    participant_id=participant_id,
+                    entry=entry,
+                    activity_data=activity_data
+                )
 
-                event_obj = {
-                    'created': clock.CLOCK.now(),
-                    'modified': clock.CLOCK.now(),
-                    'event_authored_time': self.extract_authored_time(entry),
-                    'participant_id': participant_id,
-                    'additional': {
-                        'nph_event_dao': nph_event_dao,
-                        'activity_id': activity_data.id,
-                        'bundle_identifier': self.bundle_identifier
-                    }
-                }
-
-                if hasattr(nph_event_dao.model_type.__table__.columns, 'site_id'):
-                    event_obj['site_id'] = self.get_site_id(entry)
-
-                if hasattr(nph_event_dao.model_type.__table__.columns, 'event_type_id'):
-                    event_obj['event_type_id'] = self.get_event_type_id(
-                        activity_name=activity_data.name,
-                        activity_source=activity_data.source
-                    )
-
-                event_objs.append(event_obj)
+                all_event_objs.extend(event_objs)
 
         self.nph_participant_activity_dao.insert_bulk(participant_event_objs)
 
-        for dao_key, dao in event_dao_map.items():
+        for dao_key, dao in self.event_dao_map.items():
             dao_event_objs = list(filter(
                 lambda x: x.get('additional') and dao_key in x['additional'][
-                    'nph_event_dao'].model_type.__name__.lower(), event_objs
+                    'nph_event_dao'].model_type.__name__.lower(), all_event_objs
             ))
             for dao_obj in dao_event_objs:
                 participant_event_obj = self.nph_participant_activity_dao.get_activity_event_intake(
@@ -211,7 +262,7 @@ class NphIntakeAPI(BaseApi):
                     activity_id=dao_obj['additional']['activity_id']
                 )
                 dao_obj['event_id'] = participant_event_obj.id
-                del dao_obj['additional']
+                dao_obj.pop('additional')
 
             if dao_event_objs:
                 dao.insert_bulk(dao_event_objs)

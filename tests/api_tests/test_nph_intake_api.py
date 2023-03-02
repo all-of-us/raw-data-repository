@@ -37,10 +37,7 @@ class NphIntakeAPITest(BaseTestCase):
             self.nph_data_gen.create_database_activity(
                 name=activity
             )
-        self.nph_data_gen.create_database_consent_event_type(
-            name='Module 1',
-            source_name='module1'
-        )
+
         self.nph_data_gen.create_database_pairing_event_type(
             name="Initial"
         )
@@ -60,6 +57,21 @@ class NphIntakeAPITest(BaseTestCase):
             )
 
     def test_m1_detailed_consent_payload(self):
+
+        self.nph_data_gen.create_database_consent_event_type(
+            name='Module 1 GPS Consent',
+            source_name='m1_consent_gps'
+        )
+
+        self.nph_data_gen.create_database_consent_event_type(
+            name='Module 1 Consent Recontact',
+            source_name='m1_consent_recontact'
+        )
+
+        self.nph_data_gen.create_database_consent_event_type(
+            name='Module 1 Consent Tissue',
+            source_name='m1_consent_tissue'
+        )
 
         with open(data_path('nph_m1_detailed_consent_multi.json')) as f:
             consent_json = json.load(f)
@@ -114,9 +126,19 @@ class NphIntakeAPITest(BaseTestCase):
         # consent events
         consent_events = self.nph_consent_event_dao.get_all()
 
-        self.assertEqual(len(consent_events), len(all_participant_ids))
-        self.assertTrue(all(obj.event_type_id == 1 for obj in consent_events))
+        # should have 3 consent events per participant_id
+        self.assertEqual(len(consent_events), len(all_participant_ids) * 3)
+        self.assertTrue(all(obj.event_type_id in [1, 2, 3] for obj in consent_events))
         self.assertTrue(all(obj.participant_id in all_participant_ids for obj in consent_events))
+        self.assertTrue(all(obj.opt_in is not None for obj in consent_events))
+
+        # granular answers for consent opt ins
+        self.assertTrue(all(obj.event_id == 2 for obj in consent_events if obj.participant_id == 100000000))
+        # deny permit permit
+        self.assertTrue([obj.opt_in.number for obj in consent_events if obj.participant_id == 100000000] == [2, 1, 1])
+        self.assertTrue(all(obj.event_id == 4 for obj in consent_events if obj.participant_id == 100000001))
+        # deny permit deny
+        self.assertTrue([obj.opt_in.number for obj in consent_events if obj.participant_id == 100000001] == [2, 1, 2])
 
         consent_participant_event_activity = list(
             filter(lambda x: x.activity_id == consent_activity.id, participant_event_activities))

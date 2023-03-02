@@ -32,3 +32,9 @@ class EnrollmentEventTypes(messages.Enum):
     MODULE_3_COMPLETE = 18
     WITHDRAWN = 19
     DEACTIVATED = 20
+
+
+class ConsentOptInTypes(messages.Enum):
+
+    PERMIT = 1
+    DENY = 2
