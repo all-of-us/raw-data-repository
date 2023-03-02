@@ -52,7 +52,7 @@ from rdr_service.participant_enums import (EnrollmentStatusV2, WithdrawalStatus,
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.calculators import EnrollmentStatusCalculator, ParticipantUBRCalculator as ubr
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
-    PDREnrollmentStatusEnum
+    PDREnrollmentStatusEnum, PDRPhysicalMeasurementsStatus
 from rdr_service.resource.schemas.participant import StreetAddressTypeEnum, BIOBANK_UNIQUE_TEST_IDS
 from rdr_service.resource.calculators.participant_enrollment_status_v30 import EnrollmentStatusCalculator_v3_0
 
@@ -932,10 +932,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data = {}
         pm_list = list()
         activity = list()
+        # Records before this date can't be remote pm / SELF_REPORTED
+        remote_pm_start_date = datetime.datetime(2022, 6, 1)
 
         query = ro_session.query(PhysicalMeasurements.physicalMeasurementsId, PhysicalMeasurements.created,
-                                 PhysicalMeasurements.createdSiteId, PhysicalMeasurements.final,
-                                 PhysicalMeasurements.finalized, PhysicalMeasurements.finalizedSiteId,
+                                 PhysicalMeasurements.createdSiteId, PhysicalMeasurements.cancelledSiteId,
+                                 PhysicalMeasurements.finalizedSiteId,
+                                 PhysicalMeasurements.final, PhysicalMeasurements.finalized,
                                  PhysicalMeasurements.collectType, PhysicalMeasurements.origin,
                                  PhysicalMeasurements.originMeasurementUnit,
                                  PhysicalMeasurements.questionnaireResponseId,
@@ -947,16 +950,31 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         for row in results:
             # Imitate some of the RDR 'participant_summary' table logic, the PM status value defaults to COMPLETED
-            # unless PM status is CANCELLED.  So we set all NULL values to COMPLETED status here.
-            pm_status = PhysicalMeasurementsStatus(row.status or PhysicalMeasurementsStatus.COMPLETED)
-            collection_type = PhysicalMeasurementsCollectType(row.collectType or PhysicalMeasurementsCollectType.UNSET)
+            # unless PM status is CANCELLED.  So we set all NULL values to COMPLETED status here.  As of PDR-1649,
+            # will map the RDR messages.enum to a PDR IntEnum class that includes an explicit AMENDED status
+            pm_status = PDRPhysicalMeasurementsStatus(int(row.status) if row.status\
+                                                                      else PDRPhysicalMeasurementsStatus.COMPLETED)
+            if row.amendedMeasurementsId is not None:
+                pm_status = PDRPhysicalMeasurementsStatus.AMENDED
             origin_measurements_type = OriginMeasurementUnit(row.originMeasurementUnit or OriginMeasurementUnit.UNSET)
+
+            # PDR-1649: Propagate collect_type values not backfilled in RDR records
+            if row.collectType:
+                collection_type = PhysicalMeasurementsCollectType(row.collectType)
+            elif row.questionnaireResponseId is not None:
+                # Only remote PM / self-reported measurements would have a related questionnaire response
+                collection_type = PhysicalMeasurementsCollectType.SELF_REPORTED
+            elif row.createdSiteId or row.finalizedSiteId or row.cancelledSiteId or row.created < remote_pm_start_date:
+                collection_type = PhysicalMeasurementsCollectType.SITE
+            else:
+                # "should never happen", but this would flag records that are missing all expected details
+                collection_type = PhysicalMeasurementsCollectType.UNSET
 
             pm_list.append({
                 'physical_measurements_id': row.physicalMeasurementsId,
                 'questionnaire_response_id': row.questionnaireResponseId,
-                'status': str(pm_status),
-                'status_id': int(pm_status),
+                'status': pm_status.name,
+                'status_id': pm_status.value,
                 'created': row.created,
                 'created_site': self._lookup_site_name(row.createdSiteId, ro_session),
                 'created_site_id': row.createdSiteId,
@@ -993,11 +1011,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return:
         """
-
         # PDR-1432: Workaround for an edge case where HPRO created an "orphaned" biobank order that should be ignored
         # TODO: When DA-3150 is implemented, need to adjust the biobank table queries in this method to filter on
         # ignore flags, as appropriate
-        ignore_biobank_orders = ['WEBF77CR2BX5', ]
+        ignore_biobank_orders = ['WEBF77CR2BX5',]
 
         def _get_stored_sample_row(stored_samples, ordered_sample):
             """
@@ -1123,7 +1140,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         activity = list()
         # Find all biobank orders associated with this participant.  PDR-1432 WORKAROUND:  Certain biobank orders may
         # be excluded from the list due to rare occurrences of "orphaned" orders created by HPRO
-        # TODO:  Update to use a new ignore column as filter when implemented for DA-3150
+        # TODO:  Update to use a new ignore column as filter when implemented for DA-3150 and backfill is completed
         cursor = ro_session.execute(_biobank_orders_sql, {'p_id': p_id})
         biobank_orders = [r for r in cursor if r.biobank_order_id not in ignore_biobank_orders]
         # Create a unique identifier for each biobank order. This uid must be repeatable, so we sort by 'created'.

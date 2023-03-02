@@ -175,3 +175,13 @@ class RetentionTypeEnum(IntEnum):
     ACTIVE = 1
     PASSIVE = 2
     ACTIVE_AND_PASSIVE = 3
+
+# PDR-1649:  Extending the RDR PhysicalMeasurementsStatus Enum class for PDR
+class PDRPhysicalMeasurementsStatus(IntEnum):
+    """The state of the participant's physical measurements."""
+
+    UNSET = 0
+    COMPLETED = 1
+    CANCELLED = 2
+    AMENDED = 3
+    RESTORED = 4  # not currently used by PDR generator
