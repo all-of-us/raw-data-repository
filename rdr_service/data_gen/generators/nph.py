@@ -9,7 +9,7 @@ class NphDataGenerator:
     def __init__(self):
         self.session = database_factory.get_database().make_session()
         self._next_unique_participant_id = 100000000
-        self._next_unique_biobank_id = 1000000000
+        self._next_unique_biobank_id = 1100000000
         self._next_unique_research_id = 10000
 
     def _commit_to_database(self, model):
