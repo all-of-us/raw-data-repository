@@ -4,6 +4,7 @@ from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Index, e
 from sqlalchemy.dialects.mysql import TINYINT, JSON
 from sqlalchemy.orm import relation, relationship
 
+from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes
 from rdr_service.model.base import NphBase, model_insert_listener, model_update_listener
 from rdr_service.model.study_nph_enums import StoredSampleStatus
 from rdr_service.model.utils import UTCDateTime, Enum
@@ -251,10 +252,12 @@ class ConsentEvent(NphBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_id = Column(BigInteger, ForeignKey("consent_event_type.id"))
+    opt_in = Column(Enum(ConsentOptInTypes), nullable=False)
 
 
 event.listen(ConsentEvent, "before_insert", model_insert_listener)
 event.listen(ConsentEvent, "before_update", model_update_listener)
+
 
 
 class WithdrawalEvent(NphBase):
