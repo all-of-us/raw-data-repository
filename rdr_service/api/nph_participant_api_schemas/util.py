@@ -57,8 +57,8 @@ def check_field_value(value):
 
 def load_participant_summary_data(query, prefix, biobank_prefix):
     results = []
-    for summary, site, nph_site, mapping, enrollment_time, enrollment_name, \
-            deactivated, withdrawn, nph_participant in query.all():
+    for summary, site, nph_site, mapping, nph_participant, enrollment_time, enrollment_name, \
+            deactivated, withdrawn in query.all():
         results.append({
             'participantNphId': f"{prefix}{mapping.ancillary_participant_id}",
             'lastModified': summary.lastModified,
