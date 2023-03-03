@@ -951,53 +951,55 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         if len(results):
             amended_ids = set([r.amendedMeasurementsId for r in results])
 
-        for row in results:
-            # Imitate some of the RDR 'participant_summary' table logic, the PM status value defaults to COMPLETED
-            # unless PM status is CANCELLED.  So we set all NULL values to COMPLETED status here.  As of PDR-1649,
-            # will map the RDR messages.enum to a PDR IntEnum class that includes an explicit AMENDED status
-            pm_status = PDRPhysicalMeasurementsStatus(int(row.status) if row.status\
-                                                                      else PDRPhysicalMeasurementsStatus.COMPLETED)
-            if row.physicalMeasurementsId in amended_ids:
-                pm_status = PDRPhysicalMeasurementsStatus.AMENDED
-            origin_measurements_type = OriginMeasurementUnit(row.originMeasurementUnit or OriginMeasurementUnit.UNSET)
+            for row in results:
+                # Imitate some of the RDR 'participant_summary' table logic, the PM status value defaults to COMPLETED
+                # unless PM status is CANCELLED.  So we set all NULL values to COMPLETED status here.  As of PDR-1649,
+                # will map the RDR messages.enum to a PDR IntEnum class that includes an explicit AMENDED status
+                pm_status = PDRPhysicalMeasurementsStatus(int(row.status) if row.status\
+                                                                          else PDRPhysicalMeasurementsStatus.COMPLETED)
+                if row.physicalMeasurementsId in amended_ids:
+                    pm_status = PDRPhysicalMeasurementsStatus.AMENDED
+                origin_measurements_type = OriginMeasurementUnit(row.originMeasurementUnit \
+                                                                 or OriginMeasurementUnit.UNSET)
 
-            # PDR-1649: Propagate collect_type values not backfilled in RDR records
-            if row.collectType:
-                collection_type = PhysicalMeasurementsCollectType(row.collectType)
-            elif row.questionnaireResponseId is not None:
-                # Only remote PM / self-reported measurements would have a related questionnaire response
-                collection_type = PhysicalMeasurementsCollectType.SELF_REPORTED
-            elif row.createdSiteId or row.finalizedSiteId or row.cancelledSiteId or row.created < remote_pm_start_date:
-                collection_type = PhysicalMeasurementsCollectType.SITE
-            else:
-                # "should never happen", but this would flag records that are missing all expected details
-                collection_type = PhysicalMeasurementsCollectType.UNSET
+                # PDR-1649: Propagate collect_type values not backfilled in RDR records
+                if row.collectType:
+                    collection_type = PhysicalMeasurementsCollectType(row.collectType)
+                elif row.questionnaireResponseId is not None:
+                    # Only remote PM / self-reported measurements would have a related questionnaire response
+                    collection_type = PhysicalMeasurementsCollectType.SELF_REPORTED
+                elif row.createdSiteId or row.finalizedSiteId or row.cancelledSiteId \
+                       or row.created < remote_pm_start_date:
+                    collection_type = PhysicalMeasurementsCollectType.SITE
+                else:
+                    # "should never happen", but this would flag records that are missing all expected details
+                    collection_type = PhysicalMeasurementsCollectType.UNSET
 
-            pm_list.append({
-                'physical_measurements_id': row.physicalMeasurementsId,
-                'questionnaire_response_id': row.questionnaireResponseId,
-                'status': pm_status.name,
-                'status_id': pm_status.value,
-                'created': row.created,
-                'created_site': self._lookup_site_name(row.createdSiteId, ro_session),
-                'created_site_id': row.createdSiteId,
-                'final': 1 if row.final else 0,
-                'finalized': row.finalized,
-                'finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
-                'finalized_site_id': row.finalizedSiteId,
-                'amended_measurements_id': row.amendedMeasurementsId,
-                'collect_type':  str(collection_type),
-                'collect_type_id': int(collection_type),
-                'origin': row.origin,
-                'origin_measurement_unit': str(origin_measurements_type),
-                'origin_measurement_unit_id': int(origin_measurements_type),
-                # If status == UNSET in data, then the record has been cancelled and then restored. PM status is
-                # only set to UNSET in this scenario.
-                'restored': 1 if row.status == 0 else 0
-            })
-            activity.append(_act(row.finalized or row.created, ActivityGroupEnum.Profile,
-                                 ParticipantEventEnum.PhysicalMeasurements,
-                                 **{'status': str(pm_status), 'status_id': int(pm_status)}))
+                pm_list.append({
+                    'physical_measurements_id': row.physicalMeasurementsId,
+                    'questionnaire_response_id': row.questionnaireResponseId,
+                    'status': pm_status.name,
+                    'status_id': pm_status.value,
+                    'created': row.created,
+                    'created_site': self._lookup_site_name(row.createdSiteId, ro_session),
+                    'created_site_id': row.createdSiteId,
+                    'final': 1 if row.final else 0,
+                    'finalized': row.finalized,
+                    'finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
+                    'finalized_site_id': row.finalizedSiteId,
+                    'amended_measurements_id': row.amendedMeasurementsId,
+                    'collect_type':  str(collection_type),
+                    'collect_type_id': int(collection_type),
+                    'origin': row.origin,
+                    'origin_measurement_unit': str(origin_measurements_type),
+                    'origin_measurement_unit_id': int(origin_measurements_type),
+                    # If status == UNSET in data, then the record has been cancelled and then restored. PM status is
+                    # only set to UNSET in this scenario.
+                    'restored': 1 if row.status == 0 else 0
+                })
+                activity.append(_act(row.finalized or row.created, ActivityGroupEnum.Profile,
+                                     ParticipantEventEnum.PhysicalMeasurements,
+                                     **{'status': str(pm_status), 'status_id': int(pm_status)}))
 
         if len(pm_list) > 0:
             data['pm'] = pm_list
