@@ -7,6 +7,7 @@ from rdr_service.offline.sync_consent_files import ConsentSyncController, DEFAUL
 from rdr_service.storage import GoogleCloudStorageProvider
 from tests.helpers.unittest_base import BaseTestCase
 
+
 @mock.patch('rdr_service.offline.sync_consent_files.dispatch_rebuild_consent_metrics_tasks')
 class ConsentSyncControllerTest(BaseTestCase):
     def __init__(self, *args, **kwargs):
