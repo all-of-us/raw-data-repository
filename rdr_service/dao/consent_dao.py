@@ -226,7 +226,8 @@ class ConsentDao(BaseDao):
                 or_(
                     Organization.externalId.in_(org_names),
                     HPO.name.in_(hpo_names)
-                )
+                ),
+                ConsentFile.type != ConsentType.ETM
             )
         )
         return query.all()
