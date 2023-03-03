@@ -948,13 +948,16 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # sql = self.dao.query_to_text(query)
         results = query.all()
 
+        if len(results):
+            amended_ids = set([r.amendedMeasurementsId for r in results])
+
         for row in results:
             # Imitate some of the RDR 'participant_summary' table logic, the PM status value defaults to COMPLETED
             # unless PM status is CANCELLED.  So we set all NULL values to COMPLETED status here.  As of PDR-1649,
             # will map the RDR messages.enum to a PDR IntEnum class that includes an explicit AMENDED status
             pm_status = PDRPhysicalMeasurementsStatus(int(row.status) if row.status\
                                                                       else PDRPhysicalMeasurementsStatus.COMPLETED)
-            if row.amendedMeasurementsId is not None:
+            if row.physicalMeasurementsId in amended_ids:
                 pm_status = PDRPhysicalMeasurementsStatus.AMENDED
             origin_measurements_type = OriginMeasurementUnit(row.originMeasurementUnit or OriginMeasurementUnit.UNSET)
 
