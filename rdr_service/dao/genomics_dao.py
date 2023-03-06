@@ -4574,7 +4574,8 @@ class GenomicCVLResultPastDueDao(UpdatableDao, GenomicDaoMixin):
                 result_attributes.get('w1il_run_id').isnot(None),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                 genomic_past_due_alias.id.is_(None),
-                GenomicW4WRRaw.id.is_(None)
+                GenomicW4WRRaw.id.is_(None),
+                GenomicSetMember.sampleId.isnot(None)
             )
             return records.all()
 
