@@ -213,7 +213,7 @@ class NphIntakeAPI(BaseApi):
             raise BadRequest(f'Payload bundle(s) length is limited to {MAX_PAYLOAD_LENGTH}')
 
         self.event_dao_map = self.build_event_dao_map()
-        participant_event_objs, all_event_objs, participant_response = [], [], []
+        participant_event_objs, all_event_objs, participant_response, summary_updates = [], [], [], []
 
         for resource in intake_payload:
             self.bundle_identifier = resource['identifier']['value']
@@ -251,16 +251,12 @@ class NphIntakeAPI(BaseApi):
                 all_event_objs.extend(event_objs)
 
                 if activity_data.name in ('consent','withdrawal','deactivate'):
-                    data = {
+                    summary_update = {
                         'event_type': activity_data.name,
                         'participant_id': participant_id,
                         'event_authored_time': event_objs[0]['event_authored_time']
                     }
-                    if GAE_PROJECT == 'localhost':
-                        pass
-                    else:
-                        _task = GCPCloudTask()
-                        _task.execute(endpoint='update_participant_summary_task', payload=data, queue='nph')
+                    summary_updates.append(summary_update)
 
         self.nph_participant_activity_dao.insert_bulk(participant_event_objs)
 
@@ -280,5 +276,12 @@ class NphIntakeAPI(BaseApi):
 
             if dao_event_objs:
                 dao.insert_bulk(dao_event_objs)
+
+        if GAE_PROJECT == 'localhost':
+            pass
+        else:
+            _task = GCPCloudTask()
+            for summary_update in summary_updates:
+                _task.execute(endpoint='update_participant_summary_for_nph_task', payload=summary_update, queue='nph')
 
         return self._make_response(participant_response)
