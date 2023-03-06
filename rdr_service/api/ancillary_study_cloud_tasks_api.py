@@ -6,6 +6,9 @@ from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.study_nph_dao import NphConsentEventDao, NphPairingEventDao, NphEnrollmentEventDao, \
     NphParticipantEventActivityDao
+from rdr_service.dao.rex_dao import RexParticipantMappingDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.participant_summary import ParticipantSummary
 
 
 class BaseAncillaryTaskApi(Resource):
@@ -77,3 +80,45 @@ class InsertStudyEventTaskApi(BaseAncillaryTaskApi):
             event_type_id=self.data['event_type_id'],
             event_id=pea.id
         ))
+
+
+class UpdateParticipantSummaryTaskApi(BaseAncillaryTaskApi):
+    """
+    Cloud Task endpoint: Updates ParticipantSummary when CONSENT, WITHDRAW, or DEACTIVATE events are received
+    Expected data fields are:
+        study: i.e. 'nph'
+        participant_id: i.e. NPH PID
+        event_type: i.e. CONSENT, WITHDRAW, or DEACTIVATE
+        event_authored_time: i.e. "2023-02-07T13:28:17.239+02:00"
+    """
+    def post(self):
+        super().post()
+        log_msg = f'Insert {self.data.get("study")} ' \
+                  f'Event: {self.data.get("event_type")}' \
+                  f'PID: {self.data.get("participant_id")}'
+        logging.info(log_msg)
+
+        rex_dao = RexParticipantMappingDao()
+        ps_dao = ParticipantSummaryDao()
+        # Lookup PID from NPH PID
+        aou_pid = rex_dao.get_from_ancillary_id(self.data.get("study"), self.data.get("participant_id"))
+
+        ps:ParticipantSummary = ps_dao.get_by_participant_id(aou_pid)
+
+        event_type = self.data.get("event_type")
+        event_authored = self.data.get("event_authored_time")
+
+        if event_type == "CONSENT":
+            ps.consentForNphModule1 = True
+            ps.consentForNphModule1Authored = event_authored
+        elif event_type == "WITHDRAW":
+            ps.NphWithdrawal = True
+            ps.NphWithdrawalAuthored = event_authored
+        elif event_type == "DEACTIVATE":
+            ps.NphDeactivation = True
+            ps.NphDeactivationAuthored = event_authored
+
+        ps_dao.update(ps)
+
+        logging.info('Complete.')
+        return {"success": True}
