@@ -32,3 +32,12 @@ class RexParticipantMappingDao(BaseDao):
 
     def from_client_json(self):
         pass
+
+    def get_from_ancillary_id(self, ancillary_study_id, ancillary_participant_id):
+        with self.session() as session:
+            return session.query(
+                ParticipantMapping.primary_participant_id
+            ).filter(
+                ParticipantMapping.ancillary_study_id == ancillary_study_id,
+                ParticipantMapping.ancillary_participant_id == ancillary_participant_id
+            )

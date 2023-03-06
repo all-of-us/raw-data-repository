@@ -1585,6 +1585,22 @@ class ParticipantSummary(Base):
     aian = Column(Boolean, default=0)
     """Denotes if the participants race is AI_AN (AMERICAN_INDIAN_OR_ALASKA_NATIVE)"""
 
+    consentForNphModule1 = Column("consent_for_nph_module1", Boolean, default=False)
+    """Participant has NPH Module 1 consent"""
+
+    consentForNphModule1Authored = Column("consent_for_nph_module1_authored", UTCDateTime)
+    """The time participant consent for NPH Module 1 was authored"""
+
+    NphWithdrawal = Column("nph_withdrawal", Boolean, default=False)
+    """Participant has withdrawn from NPH"""
+    NphWithdrawalAuthored = Column("nph_withdrawal_authored", UTCDateTime)
+    """The time participant withdrawal was authored"""
+
+    NphDeactivation = Column("nph_deactivation", Boolean, default=False)
+    """Participant has been deactivated from NPH"""
+    NphDeactivationAuthored = Column("nph_deactivation_authored", UTCDateTime)
+    """The time participant deactivation was authored"""
+
     lastModified = Column("last_modified", UTCDateTime6)
     """UTC timestamp of the last time the participant summary was modified"""
 
