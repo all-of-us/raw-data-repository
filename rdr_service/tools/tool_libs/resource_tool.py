@@ -860,7 +860,7 @@ class MiscResourceClass(object):
             'task_name': 'bq_organization_update_all',
             'payload_id_list_key': None
         },
-        'sire': {
+        'site': {
             'pk_col': Site.siteId,
             'task_name': 'bq_site_update_all',
             'payload_id_list_key': None

@@ -104,6 +104,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRGRORView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRWearConsentView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRLifeFunctioningSurveyView'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRRemoteIdVerificationSurveyView'),
 
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherGenderView'),

@@ -113,6 +113,7 @@ class RebuildSiteAllTaskApi(Resource):
         bq_site_update_all()
         logging.info('Complete')
         return '{"success": "true"}'
+
 class OnSiteIdVerificationBuildTaskApi(Resource):
     """
     Cloud Task endpoint:  Build a single OnSiteIdVerification resource record for PDR
