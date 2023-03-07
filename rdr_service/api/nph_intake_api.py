@@ -222,7 +222,7 @@ class NphIntakeAPI(BaseApi):
             participant_id = self.extract_participant_id(participant_obj=participant_obj)
 
             participant_response.append({
-                'nph_participant_id': participant_id
+                'nph_participant_id': f'{self.nph_prefix}{participant_id}'
             })
 
             applicable_entries = [obj for obj in resource['entry'] if obj['resource']['resourceType'].lower() in [

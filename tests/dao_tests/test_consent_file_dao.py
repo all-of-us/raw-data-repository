@@ -144,6 +144,27 @@ class ConsentFileDaoTest(BaseTestCase):
         self.assertEqual([primary_response.authored, reconsent.authored], consent_responses[ConsentType.PRIMARY])
         self.assertEqual([ehr_response.authored], consent_responses[ConsentType.EHR])
 
+    def test_etm_files_are_skipped(self):
+        """Consent PDFs for ancillary consents (such as ETM) should not be sent in the monthly sync"""
+        hpo = self.data_generator.create_database_hpo(name='consent_sync_test')
+        participant = self.data_generator.create_database_participant(hpoId=hpo.hpoId)
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.PRIMARY,
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC
+        )
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.ETM,
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC
+        )
+
+        files_to_sync = self.consent_dao.get_files_ready_to_sync(
+            org_names=[],
+            hpo_names=[hpo.name]
+        )
+        self.assertEqual(1, len(files_to_sync))
+
     def assertListsMatch(self, expected_list, actual_list, id_attribute):
         self.assertEqual(len(expected_list), len(actual_list))
 
