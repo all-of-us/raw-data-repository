@@ -178,9 +178,9 @@ def _build_resource_app():
                       TASK_PREFIX + "InsertStudyEventTaskApi",
                       endpoint="insert_study_event_task", methods=["POST"])
 
-    _api.add_resource(ancillary_study_cloud_tasks_api.UpdateParticipantSummaryTaskApi,
-                      TASK_PREFIX + "UpdateParticipantSummaryTaskApi",
-                      endpoint="update_participant_summary_task", methods=["POST"])
+    _api.add_resource(ancillary_study_cloud_tasks_api.UpdateParticipantSummaryForNphTaskApi,
+                      TASK_PREFIX + "UpdateParticipantSummaryForNphTaskApi",
+                      endpoint="update_participant_summary_for_nph_task", methods=["POST"])
 
     #
     # End Ancillary Studies Cloud Task API endpoings
