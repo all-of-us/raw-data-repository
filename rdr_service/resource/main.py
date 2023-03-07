@@ -78,6 +78,27 @@ def _build_resource_app():
                       TASK_PREFIX + "RebuildUserEventMetricsApi",
                       endpoint="batch_rebuild_user_event_metrics_task", methods=["POST"])
 
+    # OnSiteIdVerification resource build task endpoints
+    _api.add_resource(cloud_tasks_api.OnSiteIdVerificationBuildTaskApi,
+                      TASK_PREFIX + "OnSiteIdVerificationBuildTaskApi",
+                      endpoint="onsite_id_verification_build_task", methods=["POST"])
+
+    _api.add_resource(cloud_tasks_api.OnSiteIdVerificationBatchRebuildTaskApi,
+                      TASK_PREFIX + "OnSiteIdVerificationBatchRebuildTaskApi",
+                      endpoint="onsite_id_verification_batch_rebuild_task", methods=["POST"])
+
+    _api.add_resource(cloud_tasks_api.RebuildHpoAllTaskApi,
+                      TASK_PREFIX + "RebuildHpoAllTaskApi",
+                      endpoint="bq_hpo_update_all", methods=["POST"])
+
+    _api.add_resource(cloud_tasks_api.RebuildOrganizationAllTaskApi,
+                      TASK_PREFIX + "RebuildOrganizationAllTaskApi",
+                      endpoint="bq_organization_update_all", methods=["POST"])
+
+    _api.add_resource(cloud_tasks_api.RebuildSiteAllTaskApi,
+                      TASK_PREFIX + "RebuildSiteAllTaskApi",
+                      endpoint="bq_site_update_all", methods=["POST"])
+
     #
     # Begin Genomic Cloud Task API Endpoints
     #

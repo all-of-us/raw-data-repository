@@ -35,6 +35,7 @@ BQ_TABLES = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRGROR'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRWearConsent'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRLifeFunctioningSurvey'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRRemoteIdVerificationSurvey'),
 
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummary'),
 

@@ -8,6 +8,9 @@ from rdr_service.api.data_gen_api import generate_samples_task
 from rdr_service.api_util import parse_date, returns_success
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
+from rdr_service.dao.bq_hpo_dao import bq_hpo_update_all
+from rdr_service.dao.bq_organization_dao import bq_organization_update_all
+from rdr_service.dao.bq_site_dao import bq_site_update_all
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
@@ -19,6 +22,8 @@ from rdr_service.resource.generators.code import rebuild_codebook_resources_task
 from rdr_service.resource.generators.participant import participant_summary_update_resource_task
 from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
     res_institutional_affiliations_batch_update, res_researcher_batch_update
+from rdr_service.resource.generators.onsite_id_verification import onsite_id_verification_build_task, \
+    onsite_id_verification_batch_rebuild_task
 from rdr_service.resource.tasks import batch_rebuild_participants_task, batch_rebuild_retention_metrics_task, \
     batch_rebuild_consent_metrics_task, batch_rebuild_user_event_metrics_task, check_consent_errors_task
 from rdr_service.services.participant_data_validation import ParticipantDataValidation
@@ -67,6 +72,85 @@ class RebuildOneParticipantTaskApi(Resource):
         logging.info('Complete.')
         return '{"success": "true"}'
 
+class RebuildHpoAllTaskApi(Resource):
+    """
+     Cloud Task endpoint: Rebuild all the HPO records for PDR
+     Triggered by resource tool, on resource-rebuild queue
+     No payload expected
+     """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        logging.info('Rebuilding all HPO table records')
+        bq_hpo_update_all()
+        logging.info('Complete')
+        return '{"success": "true"}'
+
+class RebuildOrganizationAllTaskApi(Resource):
+    """
+     Cloud Task endpoint: Rebuild all the Organization records for PDR
+     Triggered by resource tool, on resource-rebuild queue
+     No payload expected
+     """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        logging.info('Rebuilding all Organization table records')
+        bq_organization_update_all()
+        logging.info('Complete')
+        return '{"success": "true"}'
+
+class RebuildSiteAllTaskApi(Resource):
+    """
+     Cloud Task endpoint: Rebuild all the Organization records for PDR
+     Triggered by resource tool, on resource-rebuild queue
+     No payload expected
+     """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        logging.info('Rebuilding all Site table records')
+        bq_site_update_all()
+        logging.info('Complete')
+        return '{"success": "true"}'
+class OnSiteIdVerificationBuildTaskApi(Resource):
+    """
+    Cloud Task endpoint:  Build a single OnSiteIdVerification resource record for PDR
+    Triggered by RDR POST /Onsite/Id/Verification/, on resource-tasks queue
+    Payload contains a single record id (primary key) to rebuild
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        ov_id = data.get('onsite_verification_id', 0)
+        if not ov_id:
+            raise NotFound('OnSiteIdVerification record id invalid')
+
+        logging.info(f'Rebuilding onsite_id_verification record: {ov_id}')
+        onsite_id_verification_build_task(ov_id)
+        logging.info('Complete.')
+        return '{"success": "true"}'
+
+class OnSiteIdVerificationBatchRebuildTaskApi(Resource):
+    """
+    Cloud Task endpoint:  Rebuild a list of OnSiteIdVerification resource records for PDR
+    Triggered by resource tool on resource-rebuild queue.
+    Payload contains a list of integer ids (rec primary keys) to rebuild
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        ov_ids = data.get('onsite_verification_id_list', [])
+        if not ov_ids:
+            raise NotFound('OnSiteIdVerification record id list invalid')
+
+        logging.info(f'Rebuilding onsite_id_verification records')
+        logging.debug(f'Rebuild id list: {ov_ids}')
+        onsite_id_verification_batch_rebuild_task(ov_ids)
+        logging.info('Complete.')
+        return '{"success": "true"}'
 
 class RebuildCodebookTaskApi(Resource):
     """

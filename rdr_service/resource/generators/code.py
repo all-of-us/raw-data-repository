@@ -27,6 +27,15 @@ class CodeGenerator(generators.BaseGenerator):
             data = ro_dao.to_resource_dict(row, schema=schemas.CodeSchema)
             return generators.ResourceRecordSet(schemas.CodeSchema, data)
 
+def rebuild_codebook_resources(_pk_ids):
+    """
+    Build
+    """
+    gen = CodeGenerator()
+    for pk_id in _pk_ids:
+        res = gen.make_resource(pk_id)
+        res.save()
+
 
 def rebuild_codebook_resources_task():
     """
@@ -34,10 +43,8 @@ def rebuild_codebook_resources_task():
     """
     ro_dao = ResourceDataDao(backup=True)
     with ro_dao.session() as ro_session:
-        gen = CodeGenerator()
         results = ro_session.query(Code.codeId).all()
-
-    logging.info('Code table: rebuilding {0} resource records...'.format(len(results)))
-    for row in results:
-        res = gen.make_resource(row.codeId)
-        res.save()
+        if len(results):
+            logging.info('Code table: rebuilding {0} resource records...'.format(len(results)))
+            id_list = [r.codeId for r in results]
+            rebuild_codebook_resources(id_list)

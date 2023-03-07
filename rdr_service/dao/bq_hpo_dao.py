@@ -2,6 +2,7 @@ import logging
 
 from sqlalchemy.sql import text
 
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_hpo import BQHPOSchema, BQHPO, BQOrganizationTypeEnum, BQObsoleteStatusEnum
@@ -41,7 +42,7 @@ class BQHPOGenerator(BigQueryGenerator):
             return BQRecord(schema=BQHPOSchema, data=data, convert_to_enum=convert_to_enum)
 
 
-def bq_hpo_update(project_id=None):
+def bq_hpo_update_all(project_id=GAE_PROJECT):
     """
     Generate all new HPO records for BQ. Since there is called from a tool, this is not deferred.
     :param project_id: Override the project_id
@@ -59,7 +60,7 @@ def bq_hpo_update(project_id=None):
             gen.save_bqrecord(row.hpoId, bqr, bqtable=BQHPO, w_dao=w_dao, w_session=w_session, project_id=project_id)
 
 
-def bq_hpo_update_by_id(hpo_id, project_id=None):
+def bq_hpo_update_by_id(hpo_id, project_id=GAE_PROJECT):
     gen = BQHPOGenerator()
     # get from main database in case the backup is not synch in time
     bqr = gen.make_bqrecord(hpo_id, backup=False)

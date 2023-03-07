@@ -1355,6 +1355,21 @@ class BQPDRLifeFunctioningSurveyView(BQModuleView):
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
+class BQPDRRemoteIdVerificationSurveySchema(_BQModuleSchema):
+    """ Remote ID verification record (minimal data) """
+    _module = 'remote_id_verification'
+
+class BQPDRRemoteIdVerificationSurvey(BQTable):
+    __tablename__ = 'pdr_mod_remote_id_verification'
+    __schema__ =  BQPDRRemoteIdVerificationSurveySchema
+
+class BQPDRRemoteIdVerificationSurveyView(BQModuleView):
+    __viewname__ = 'v_pdr_mod_remote_id_verification'
+    __viewdescr__ = 'Remote ID Verification Survey Module View'
+    __table__ = BQPDRRemoteIdVerificationSurvey
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
+
 #
 #
 #
@@ -1388,7 +1403,8 @@ PDR_MODULE_LIST = (
     BQPDRPostPMBFeedback,
     BQPDRPPIModuleFeedback,
     BQPDRWearConsent,
-    BQPDRLifeFunctioningSurvey
+    BQPDRLifeFunctioningSurvey,
+    BQPDRRemoteIdVerificationSurvey
 )
 
 # Create a dictionary of module codes and table object references.
