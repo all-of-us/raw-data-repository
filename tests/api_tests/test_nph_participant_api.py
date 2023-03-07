@@ -89,7 +89,7 @@ def mock_load_participant_data(session):
         status = ['referred']
 
         for name in status:
-            nph_data_gen.create_database_enrollment_event_type(name=name)
+            nph_data_gen.create_database_enrollment_event_type(name=name, source_name=f'module1_{name}')
         participant_mapping_query = Query(ParticipantMapping)
         participant_mapping_query.session = session
         participant_mapping_result = participant_mapping_query.all()
@@ -307,6 +307,7 @@ class TestQueryExecution(BaseTestCase):
         actual_result = result.get('participant').get('edges')[0].get('node').get('nphEnrollmentStatus')
         self.assertIn("time", actual_result)
         self.assertIn("value", actual_result)
+        self.assertEqual(actual_result['value'], 'module1_referred')
 
     def test_nphWithdrawalStatus_fields(self):
         field_to_test = "nphWithdrawalStatus {value time} "

@@ -83,7 +83,7 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                 "time": withdrawn.event_authored_time if withdrawn else None
             },
             'nph_enrollment_status': {
-                "value": check_field_value(enrollment_name.name),
+                "value": check_field_value(enrollment_name.source_name),
                 "time": enrollment_time.event_authored_time
             },
             'aianStatus': summary.aian,
