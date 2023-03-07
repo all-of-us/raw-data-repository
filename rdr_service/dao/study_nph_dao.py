@@ -608,7 +608,7 @@ class NphOrderedSampleDao(UpdatableDao):
     @staticmethod
     def _update_restored_child_order(obj: Namespace, order_sample: OrderedSample, nph_sample_id: str) -> OrderedSample:
         incoming_status = getattr(obj, 'status', None)
-        if 'cancel' in incoming_status:
+        if incoming_status is not None and 'cancel' in incoming_status:
             incoming_status = 'cancelled'
 
         order_sample.nph_sample_id = nph_sample_id
