@@ -6,17 +6,14 @@ from rdr_service.model.study_nph import Incident as NphIncident
 from rdr_service.dao.study_nph_dao import NphIncidentDao
 
 
-_logger = logging.getLogger("rdr_logger")
-
-
 def get_slack_message_handler() -> SlackMessageHandler:
     slack_config = config.getSettingJson(config.NPH_SLACK_WEBHOOKS, {})
     if slack_config is None:
-        _logger.error("'slack_config' for 'NPH_SLACK_WEBHOOKS' is empty")
+        logging.warning("'slack_config' for 'NPH_SLACK_WEBHOOKS' is empty")
 
     webbook_url = slack_config.get('nph_incident_alerts', None)
     if webbook_url is None:
-        _logger.error("'nph_incident_alerts' is not available in slack config. 'webhook_url' is None")
+        logging.warning("'nph_incident_alerts' is not available in slack config. 'webhook_url' is None")
     return SlackMessageHandler(webhook_url=webbook_url)
 
 
