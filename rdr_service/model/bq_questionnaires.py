@@ -1356,7 +1356,7 @@ class BQPDRLifeFunctioningSurveyView(BQModuleView):
     _show_created = True
 
 class BQPDRRemoteIdVerificationSurveySchema(_BQModuleSchema):
-    """ Remote ID verification record (minimal data) """
+    """ Remote ID verification survey response record """
     _module = 'remote_id_verification'
 
 class BQPDRRemoteIdVerificationSurvey(BQTable):
@@ -1374,6 +1374,7 @@ class BQPDRRemoteIdVerificationSurveyView(BQModuleView):
                external_id, `status`, status_id,
                CASE WHEN remote_identity_verified = "true" THEN 1 ELSE 0 END AS remote_identity_verified,
                CASE WHEN remote_identity_verified_on is not null
+                    -- Mimics RDR questionnaire_response_dao conversion of epoch string to python datetime object
                     THEN DATETIME(TIMESTAMP_MILLIS(CAST(remote_identity_verified_on AS INT64))) ELSE null
                END AS remote_identity_verified_on
         FROM `{project}`.{dataset}.pdr_mod_remote_id_verification

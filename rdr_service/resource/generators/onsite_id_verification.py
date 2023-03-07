@@ -64,7 +64,7 @@ class OnSiteIdVerificationGenerator(generators.BaseGenerator):
 
 def onsite_id_verification_build(_pk, gen=None, w_dao=None):
     """
-    Generate OnSiteIdVerification resource record.
+    Generate a single OnSiteIdVerification resource record.
     :param _pk: Primary Key integer value
     :param gen: OnSiteIdVerificationGenerator object
     :param w_dao: Writable DAO object.
@@ -78,7 +78,7 @@ def onsite_id_verification_build(_pk, gen=None, w_dao=None):
 
 def onsite_id_verification_batch_rebuild(_pk_ids):
     """
-    Generate a batch of OnSiteIdVerification resource records.
+    Generate OnSiteIdVerification resource records for a batch/list of record ids.
     :param _pk_ids: list of primary key id integer values
     """
     gen = OnSiteIdVerificationGenerator()
@@ -88,7 +88,7 @@ def onsite_id_verification_batch_rebuild(_pk_ids):
 
 def onsite_id_verification_build_task(_pk_id: int):
     """
-    Build a single PDR resource record triggered by RDR POST /OnSite/Id/Verification
+    Task endpoint triggered by RDR POST /OnSite/Id/Verification.  Builds a single resource record
     :param _pk_id:  Primary key id for RDR onsite_id_verification table
     """
     if not isinstance(_pk_id, int):
@@ -97,8 +97,8 @@ def onsite_id_verification_build_task(_pk_id: int):
 
 def onsite_id_verification_batch_rebuild_task(_pk_ids):
     """
-    Batch rebuild of PDR OnSiteIdVerification resource records
-    Triggered by resource tool
+    Task endpoint to rebuild a list of PDR OnSiteIdVerification resource records
+    Triggered by resource tool --batch mode
     :param _pk_ids:  List of integer primary key ids for RDR onsite_id_verification table
     """
     if not isinstance(_pk_ids, list) or not all(isinstance(pk_id, int) for pk_id in _pk_ids):

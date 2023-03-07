@@ -837,7 +837,7 @@ class MiscResourceClass(object):
     Generic class for miscellaneous RDR tables / PDR data rebuilds
     Uses pre-existing BQ/resource rebuild functions and call signatures, which don't have uniform parameter options.
     """
-    # Details for queueing cloud tasks for rebuild (--batch mode)
+    # Details for queueing cloud tasks for rebuild (--batch mode).  Keys are RDR table names
     misc_table_batch_task_info = {
         'onsite_id_verification': {
             'pk_col': OnsiteIdVerification.id,
@@ -884,7 +884,6 @@ class MiscResourceClass(object):
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
         """
-
         self.args = args
         self.gcp_env = gcp_env
         self.args.id_list = ids if ids else []
@@ -909,7 +908,7 @@ class MiscResourceClass(object):
         if self.args.all_ids:
             _logger.info('  Rebuild all ids      : {0}'.format(clr.fmt('Yes')))
             batch_mode = True
-            # Generate the id list for the cloud task payloads, if applicable
+            # Generate list of all ids for the cloud tasks, if a list of primary key ids is included in payload
             if self.misc_table_batch_task_info[table]['payload_id_list_key']:
                 model_id_column = self.misc_table_batch_task_info[table]['pk_col']
                 with ro_dao.session() as session:
@@ -920,7 +919,7 @@ class MiscResourceClass(object):
                 # E.g.: Pre-existing code table batch mode rebuild task, doesn't take an id list
                 id_list = []
         else:
-            # Get id values specified by --id or --from-file
+            # Get targeted id values specified by --id or --from-file
             id_list = [self.args.id] if self.args.id else self.args.id_list
             _logger.info('  Records to build     : {0}'.format(clr.fmt(len(id_list))))
 
@@ -930,6 +929,7 @@ class MiscResourceClass(object):
             task_id_list_key = self.misc_table_batch_task_info[table]['payload_id_list_key']
             task_count = 0
             if id_list:
+                # Cloud tasks max id list size arbitrarily set to 500
                 for batch_list in list_chunks(id_list, 500):
                     payload = {task_id_list_key: batch_list}
                     task.execute(task_name, payload=payload, in_seconds=30,
@@ -945,7 +945,7 @@ class MiscResourceClass(object):
             if task_count:
                 _logger.info(f'Queued {task_count} rebuild tasks on resource-rebuild queue')
 
-        # Run rebuild functions locally
+        # Not triggering cloud tasks; rebuild functions called locally
         elif table in self.misc_table_build_by_id_func:
             # hpo/organization/site targeted id builds: can only pass one id at a time to the bq_*_build_by_id() func
             for rec_id in id_list:

@@ -31,7 +31,7 @@ def _build_resource_app():
     # Task Queue API endpoint to rebuild ONE participant resource.
     _api.add_resource(cloud_tasks_api.RebuildOneParticipantTaskApi, TASK_PREFIX + "RebuildOneParticipantTaskApi",
                       endpoint="rebuild_one_participant_task", methods=["POST"])
-    # Task Queue API endpoing to rebuild codebook resources.
+    # Task Queue API endpoint to rebuild codebook resources.
     _api.add_resource(cloud_tasks_api.RebuildCodebookTaskApi, TASK_PREFIX + "RebuildCodebookTaskApi",
                       endpoint="rebuild_codebook_task", methods=["POST"])
     _api.add_resource(cloud_tasks_api.BQRebuildQuestionnaireTaskApi, TASK_PREFIX + "RebuildQuestionnaireTaskApi",
@@ -191,7 +191,7 @@ def _build_resource_app():
     #
 
     #
-    # Begin Ancillary Studies Cloud Task API endpoings
+    # Begin Ancillary Studies Cloud Task API endpoints
     #
 
     # Insert Study Events
@@ -200,7 +200,7 @@ def _build_resource_app():
                       endpoint="insert_study_event_task", methods=["POST"])
 
     #
-    # End Ancillary Studies Cloud Task API endpoings
+    # End Ancillary Studies Cloud Task API endpoints
     #
 
     #

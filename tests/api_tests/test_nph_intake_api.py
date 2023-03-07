@@ -86,7 +86,6 @@ class NphIntakeAPITest(BaseTestCase):
         self.assertEqual(len(response), len(all_participant_ids))
         self.assertTrue(all(obj['nph_participant_id'] in response_participant_ids for obj in response))
 
-
         # participant event activities
         participant_event_activities = self.nph_participant_activity_dao.get_all()
 
@@ -166,7 +165,6 @@ class NphIntakeAPITest(BaseTestCase):
         self.assertEqual(len(response), 1)
         self.assertTrue(all(obj['nph_participant_id'] == f'1000{current_participant_id}' for obj in response))
 
-
         # participant event activities
         participant_event_activities = self.nph_participant_activity_dao.get_all()
 
@@ -234,7 +232,6 @@ class NphIntakeAPITest(BaseTestCase):
 
         self.assertEqual(len(response), 1)
         self.assertTrue(all(obj['nph_participant_id'] == f'1000{current_participant_id}' for obj in response))
-
 
         # participant event activities
         participant_event_activities = self.nph_participant_activity_dao.get_all()

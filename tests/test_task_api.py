@@ -10,7 +10,6 @@ class TaskApiTest(BaseTestCase):
 
         from rdr_service.resource.main import app
         self.test_client = app.test_client()
-        self.done = True
 
     @mock.patch('rdr_service.api.cloud_tasks_api.ParticipantDataValidation')
     def test_date_of_birth_check(self, validation_mock):
@@ -35,7 +34,7 @@ class TaskApiTest(BaseTestCase):
         onsite_build_task_mock.assert_called_with(1)
 
     @mock.patch('rdr_service.api.cloud_tasks_api.onsite_id_verification_batch_rebuild_task')
-    def test_onsite_id_verification_build(self, onsite_batch_rebuild_task_mock):
+    def test_onsite_id_verification_batch_rebuild(self, onsite_batch_rebuild_task_mock):
         self._call_task_endpoint(
             task_path='OnSiteIdVerificationBatchRebuildTaskApi',
             json={'onsite_verification_id_list': [1, 2, 3]}

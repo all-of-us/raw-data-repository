@@ -10,7 +10,7 @@ from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
 
-# TODO: RDR-PDR pipeline requires Enum classes to exist in PDR codebase, so define them here for easier migration
+# TODO: RDR-PDR pipeline will require Enum classes to exist in PDR codebase, so define them here for easier migration
 # RDR Enum class:  OnsiteVerificationType
 class PDROnsiteVerificationType(Enum):
     """Types of on site verification"""
@@ -50,5 +50,5 @@ class OnSiteIdVerificationSchema(Schema):
         schema_id = SchemaID.onsite_id_verification
         resource_uri = 'OnSiteIdVerification'
         resource_pk_field = 'id'
-        pii_fields = ('user_email',)  # List fields that contain PII data.
+        pii_fields = ('user_email',)  # List fields that contain PII data, to be excluded/filtered
         pii_filter = {}  # dict(field: lambda function)
