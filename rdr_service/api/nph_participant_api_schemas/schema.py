@@ -2,8 +2,8 @@ import logging
 from graphene import ObjectType, String, Int, DateTime, Field, List, Date, Schema, NonNull
 from graphene import relay
 from sqlalchemy.orm import Query, aliased
-from sqlalchemy import and_
-
+from sqlalchemy import and_, func
+from sqlalchemy.dialects.mysql import JSON
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX, NPH_STUDY_ID
 from rdr_service.model.study_nph import Participant as DbParticipant, Site as nphSite, PairingEvent, DeactivatedEvent, \
     WithdrawalEvent, EnrollmentEvent, EnrollmentEventType
@@ -264,7 +264,7 @@ class Participant(ObjectType):
     awardee_external_id = SortableField(String, name="nphPairedAwardee", description='Sourced from NPH Schema.',
                                         sort_modifier=lambda context: context.set_order_expression(
                                             nphSite.awardee_external_id))
-    nph_enrollment_status = SortableField(Event, name="nphEnrollmentStatus", description='Sourced from NPH Schema.')
+    nph_enrollment_status = List(Event, name="nphEnrollmentStatus", description='Sourced from NPH Schema.')
     nph_withdrawal_status = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
     nph_deactivation_status = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
     # Bio-specimen
@@ -331,10 +331,33 @@ class ParticipantQuery(ObjectType):
         with database_factory.get_database().session() as sessions:
             logging.info('root: %s, info: %s, kwargs: %s', root, info, filter_kwargs)
             pm2 = aliased(PairingEvent)
-            ee2 = aliased(EnrollmentEvent)
+            enrollment_subquery = sessions.query(
+                DbParticipant.id.label('enrollment_pid'),
+                func.json_object(
+                    'enrollment_json',
+                    func.json_arrayagg(
+                            func.json_object(
+                                'time', EnrollmentEvent.event_authored_time,
+                                'value', EnrollmentEventType.source_name)
+                    ), type_=JSON
+                ).label('enrollment_status'),
+            ).join(
+                EnrollmentEvent,
+                EnrollmentEvent.participant_id == DbParticipant.id
+            ).join(
+                 EnrollmentEventType,
+                 EnrollmentEventType.id == EnrollmentEvent.event_type_id,
+            ).group_by(DbParticipant.id).subquery()
+
             query = sessions.query(
-                ParticipantSummaryModel, Site, nphSite, ParticipantMapping, DbParticipant,
-                EnrollmentEvent, EnrollmentEventType, DeactivatedEvent, WithdrawalEvent
+                ParticipantSummaryModel,
+                Site,
+                nphSite,
+                ParticipantMapping,
+                DbParticipant,
+                enrollment_subquery.c.enrollment_status,
+                DeactivatedEvent,
+                WithdrawalEvent
             ).join(
                 Site,
                 ParticipantSummaryModel.siteId == Site.siteId
@@ -342,14 +365,11 @@ class ParticipantQuery(ObjectType):
                 ParticipantMapping,
                 ParticipantSummaryModel.participantId == ParticipantMapping.primary_participant_id
             ).join(
-                EnrollmentEvent,
-                EnrollmentEvent.participant_id == ParticipantMapping.ancillary_participant_id
-            ).join(
-                 EnrollmentEventType,
-                 EnrollmentEventType.id == EnrollmentEvent.event_type_id,
-            ).join(
                 DbParticipant,
                 DbParticipant.id == ParticipantMapping.ancillary_participant_id
+            ).join(
+                enrollment_subquery,
+                enrollment_subquery.c.enrollment_pid == DbParticipant.id
             ).join(
                 PairingEvent,
                 PairingEvent.participant_id == ParticipantMapping.ancillary_participant_id
@@ -364,12 +384,6 @@ class ParticipantQuery(ObjectType):
                 nphSite,
                 nphSite.id == PairingEvent.site_id
             ).outerjoin(
-                ee2,
-                and_(
-                    EnrollmentEvent.participant_id == ee2.participant_id,
-                    EnrollmentEvent.event_authored_time < ee2.event_authored_time
-                )
-            ).outerjoin(
                  DeactivatedEvent,
                  ParticipantMapping.ancillary_participant_id == DeactivatedEvent.participant_id
             ).outerjoin(
@@ -378,7 +392,6 @@ class ParticipantQuery(ObjectType):
             ).filter(
                 pm2.id.is_(None),
                 ParticipantMapping.ancillary_study_id == NPH_STUDY_ID,
-                ee2.id.is_(None)
             )
             study_query = sessions.query(Study).filter(Study.schema_name == "nph")
             study = study_query.first()
