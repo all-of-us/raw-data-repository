@@ -200,6 +200,128 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         self.assertListEqual([1, 2], [sample_update.rdr_ordered_sample_id for sample_update in sample_update_list])
 
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
+    def test_put_cancel(self, site_id):
+        participant = Participant(id=12345, biobank_id=12345)
+        site = Site(id=1, external_id='nph-site-testa')
+        self.session.add(participant)
+        self.session.add(site)
+
+        timepoint = StudyCategory(
+            name='15min',
+            type_label='timepoint',
+            parent=StudyCategory(
+                name='LMT',
+                type_label='visitType',
+                parent=StudyCategory(
+                    name='1',
+                    type_label='module'
+                )
+            )
+        )
+        self.session.add(timepoint)
+        self.session.commit()
+        self.session.add(
+            Order(
+                id=1,
+                participant_id=participant.id,
+                notes={},
+                category_id=timepoint.id,
+                samples=[
+                    OrderedSample(
+                        id=1,
+                        collected=datetime.utcnow(),
+                        description='parent sample',
+                        children=[
+                            OrderedSample(
+                                aliquot_id='a123',
+                                order_id=1
+                            )
+                        ]
+                    )
+                ]
+            )
+        )
+        self.session.commit()
+
+        site_id.return_value = 1
+        patch_json = {
+            "subject": f"Patient/P{participant.id}",
+            "identifier": [
+                {
+                    "system": "http://www.pmi-ops.org/order-id",
+                    "value": "nph-order-id-123"
+                }, {
+                    "system": "http://www.pmi-ops.org/sample-id",
+                    "value": "nph-sample-id-456"
+                },  {
+                        "system": "https://www.pmi-ops.org/client-id",
+                        "value": "7042688"
+                }
+            ],
+            "createdInfo": {
+                "author": {
+                    "system": "https://www.pmi-ops.org\/nph-username",
+                    "value": "test@example.com"
+                },
+                "site": {
+                    "system": "https://www.pmi-ops.org\/site-id",
+                    "value": "nph-site-testa"
+                }
+            },
+            "collectedInfo": {
+                "author": {
+                    "system": "https://www.pmi-ops.org\/nph-username",
+                    "value": "test@example.com"
+                },
+                "site": {
+                    "system": "https://www.pmi-ops.org\/site-id",
+                    "value": "nph-site-testa"
+                }
+            },
+            "finalizedInfo": {
+                "author": {
+                    "system": "https://www.pmi-ops.org\/nph-username",
+                    "value": "test@example.com"
+                },
+                "site": {
+                    "system": "https://www.pmi-ops.org\/site-id",
+                    "value": "nph-site-testa"
+                }
+            },
+            "created": "2022-11-03T09:40:21Z",
+            "module": "1",
+            "visitType": "LMT",
+            "timepoint": "15min",
+            "sample": {
+                "test": "PST8",
+                "description": "8 mL PST",
+                "collected": "2022-11-03T09:45:49Z",
+                "finalized": "2022-11-03T10:55:41Z"
+            },
+            "aliquots": [
+                {
+                    "id": "a123",
+                    "identifier": "a123",
+                    "container": "1.4mL Matrix Tube (500 uL)",
+                    "volume": "450",
+                    "units": "uL",
+                    "description": "1.4 mL matrix tubes",
+                    "collected": "2022-11-03T09:45:49Z",
+                    "status": "cancel"
+                }
+            ],
+            "notes": {}
+        }
+
+        self.send_put(
+            f'api/v1/nph/Participant/1000{participant.id}/BiobankOrder/1',
+            patch_json,
+            expected_status=201
+        )
+        aliquot = self.session.query(OrderedSample).filter(OrderedSample.aliquot_id == 'a123').one()
+        self.assertEqual('cancelled', aliquot.status)
+
+    @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
     def test_patch_aliquot_update(self, site_id):
         participant = Participant(id=12345, biobank_id=12345)
         site = Site(id=1)
