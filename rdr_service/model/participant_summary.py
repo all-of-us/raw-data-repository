@@ -1591,14 +1591,14 @@ class ParticipantSummary(Base):
     consentForNphModule1Authored = Column("consent_for_nph_module1_authored", UTCDateTime)
     """The time participant consent for NPH Module 1 was authored"""
 
-    NphWithdrawal = Column("nph_withdrawal", Boolean, default=False)
+    nphWithdrawal = Column("nph_withdrawal", Boolean, default=False)
     """Participant has withdrawn from NPH"""
-    NphWithdrawalAuthored = Column("nph_withdrawal_authored", UTCDateTime)
+    nphWithdrawalAuthored = Column("nph_withdrawal_authored", UTCDateTime)
     """The time participant withdrawal was authored"""
 
-    NphDeactivation = Column("nph_deactivation", Boolean, default=False)
+    nphDeactivation = Column("nph_deactivation", Boolean, default=False)
     """Participant has been deactivated from NPH"""
-    NphDeactivationAuthored = Column("nph_deactivation_authored", UTCDateTime)
+    nphDeactivationAuthored = Column("nph_deactivation_authored", UTCDateTime)
     """The time participant deactivation was authored"""
 
     lastModified = Column("last_modified", UTCDateTime6)

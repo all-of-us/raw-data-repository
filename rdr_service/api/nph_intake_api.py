@@ -13,6 +13,8 @@ from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphIntakeDao, NphParticipantEventActivityDao, NphActivityDao, \
     NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao, NphConsentEventTypeDao
 from rdr_service.model.study_nph import WithdrawalEvent, DeactivatedEvent, ConsentEvent, EnrollmentEvent
+from rdr_service.config import GAE_PROJECT
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 MAX_PAYLOAD_LENGTH = 50
 
@@ -247,6 +249,18 @@ class NphIntakeAPI(BaseApi):
                 )
 
                 all_event_objs.extend(event_objs)
+
+                if activity_data.name in ('consent','withdrawal','deactivate'):
+                    data = {
+                        'event_type': activity_data.name,
+                        'participant_id': participant_id,
+                        'event_authored_time': event_objs[0]['event_authored_time']
+                    }
+                    if GAE_PROJECT == 'localhost':
+                        pass
+                    else:
+                        _task = GCPCloudTask()
+                        _task.execute(endpoint='update_participant_summary_task', payload=data, queue='nph')
 
         self.nph_participant_activity_dao.insert_bulk(participant_event_objs)
 
