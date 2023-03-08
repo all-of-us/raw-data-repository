@@ -564,6 +564,7 @@ class NphOrderedSampleDao(UpdatableDao):
         session.add(db_parent_order_sample)
         session.commit()
         sample_update_dao = NphSampleUpdateDao()
+
         for ordered_sample in ordered_sample_list:
             sample_update_dict = {
                 "rdr_ordered_sample_id": ordered_sample.id,
@@ -610,13 +611,17 @@ class NphOrderedSampleDao(UpdatableDao):
 
     @staticmethod
     def _update_restored_child_order(obj: Namespace, order_sample: OrderedSample, nph_sample_id: str) -> OrderedSample:
+        incoming_status = getattr(obj, 'status', None)
+        if incoming_status is not None and 'cancel' in incoming_status:
+            incoming_status = 'cancelled'
+
         order_sample.nph_sample_id = nph_sample_id
         order_sample.identifier = obj.identifier
         order_sample.container = obj.container
         order_sample.volume = obj.volume
         order_sample.description = obj.description
         order_sample.collected = obj.collected
-        order_sample.status = "restored"
+        order_sample.status = incoming_status or "restored"
         return order_sample
 
     @staticmethod
