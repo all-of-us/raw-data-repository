@@ -5,9 +5,11 @@ from typing import Dict, List, Optional
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import aliased, joinedload, Session
 
-from rdr_service import code_constants, participant_enums as enums
+from rdr_service import code_constants, config, participant_enums as enums
 from rdr_service.domain_model import response as response_domain_model
 from rdr_service.model.code import Code
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
@@ -144,6 +146,19 @@ class QuestionnaireResponseRepository:
         return dict(participant_response_map)
 
     @classmethod
+    def get_validated_ehr_consent_ids(cls, participant_id, session: Session):
+        query = (
+            session.query(ConsentResponse.questionnaire_response_id)
+            .join(ConsentFile)
+            .filter(
+                ConsentFile.type == ConsentType.EHR,
+                ConsentFile.sync_status.in_([ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE]),
+                ConsentFile.participant_id == participant_id
+            )
+        )
+        return [consent_response.questionnaire_response_id for consent_response in query.all()]
+
+    @classmethod
     def get_interest_in_sharing_ehr_ranges(cls, participant_id, session: Session):
         # Load all EHR and DV_EHR responses
         sharing_response_list = cls.get_responses_to_surveys(
@@ -154,14 +169,20 @@ class QuestionnaireResponseRepository:
             ],
             participant_ids=[participant_id]
         ).get(participant_id)
+        validated_ehr_id_list = cls.get_validated_ehr_consent_ids(participant_id=participant_id, session=session)
 
         # Find all ranges where interest in sharing EHR was expressed (DV_EHR) or consent to share was provided
         ehr_interest_date_ranges = []
 
+        skip_validation_check = config.getSettingJson('ENROLLMENT_STATUS_SKIP_VALIDATION', False)
         if sharing_response_list:
 
             current_date_range = None
             for response in sharing_response_list.in_authored_order:
+                # ignore any EHR responses that are not validated
+                if response.id not in validated_ehr_id_list and not skip_validation_check:
+                    continue
+
                 dv_interest_answer = response.get_single_answer_for(code_constants.DVEHR_SHARING_QUESTION_CODE)
                 # TODO: check if answer is null, and use a safe version of get_single_answer
                 if dv_interest_answer:

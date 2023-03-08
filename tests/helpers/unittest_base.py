@@ -525,6 +525,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             database_patch.start()
             self.addCleanup(database_patch.stop)
 
+        config.override_setting('ENROLLMENT_STATUS_SKIP_VALIDATION', True)
+
     def tearDown(self):
         super(BaseTestCase, self).tearDown()
         if self.uses_database:

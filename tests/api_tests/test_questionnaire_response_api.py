@@ -452,6 +452,27 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
                                  "&_includeTotal=true")
         self.assertEqual(len(summary2.get('entry')), 1)
 
+    def test_enrollment_status_requires_valid_ehr(self):
+        config.override_setting('ENROLLMENT_STATUS_SKIP_VALIDATION', False)
+
+        # setup participant
+        participant_id = self.create_participant()
+        authored_1 = datetime.datetime(2019, 3, 16, 1, 39, 33, tzinfo=pytz.utc)
+        created = datetime.datetime(2019, 3, 16, 1, 51, 22)
+        with FakeClock(created):
+            self.send_consent(participant_id, authored=authored_1)
+
+        # send consent for ehr
+        self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
+        with FakeClock(datetime.datetime(2020, 3, 12)):
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE, None,
+                                          datetime.datetime(2020, 2, 12))
+            self._mark_ehr_valid_in_summary(from_client_participant_id(participant_id))
+
+        # Check that the enrollment status remains at INTERESTED
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary.get('enrollmentStatus'), 'INTERESTED')
+
     def test_ehr_conflicting_responses_received_out_of_order(self):
         """
         Multiple EHR with conflicting consent responses received with non-consecutive authored dates
