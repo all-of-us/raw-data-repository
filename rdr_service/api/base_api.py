@@ -17,6 +17,7 @@ from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.query import OrderBy, Query
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
+from rdr_service.resource.generators.onsite_id_verification import onsite_id_verification_build
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 
@@ -202,14 +203,27 @@ class BaseApi(Resource, ApiUtilMixin):
         submit_pipeline_pubsub_msg_from_model(result, self.dao.get_connection_database_name())
 
         # TODO: Delete this block after RDR to PDR pipeline is in production.
+        ov_id = None  # OnSiteIdVerification record id
         if participant_id or (result and hasattr(result, 'participantId')):
             if not participant_id:
                 participant_id = getattr(result, 'participantId')
 
-            # Rebuild participant for BigQuery
+            # POST /Onsite/Id/Verification takes participant arg, but OnsiteIdVerification DAO inserts will trigger
+            # a different PDR resource type build task;  PDR participant summary data does not need updating
+            if result.__class__.__name__.lower() == 'onsiteidverification' and hasattr(result, 'id'):
+                ov_id = result.id
+
+            # Rebuild participant or participant onsite_id_verification record for PDR
             if GAE_PROJECT == 'localhost':
-                bq_participant_summary_update_task(participant_id)
-                rebuild_participant_summary_resource(participant_id)
+                if ov_id:
+                    onsite_id_verification_build(ov_id)
+                else:
+                    bq_participant_summary_update_task(participant_id)
+                    rebuild_participant_summary_resource(participant_id)
+            elif ov_id:
+                params = {'onsite_verification_id': ov_id}
+                self._task.execute('onsite_id_verification_build_task',
+                                   queue='resource-tasks', payload=params)
             else:
                 params = {'p_id': participant_id}
                 self._task.execute('rebuild_one_participant_task',

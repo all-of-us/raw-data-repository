@@ -35,6 +35,7 @@ BQ_TABLES = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRGROR'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRWearConsent'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRLifeFunctioningSurvey'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRRemoteIdVerificationSurvey'),
 
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummary'),
 
@@ -103,6 +104,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRGRORView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRWearConsentView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRLifeFunctioningSurveyView'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRRemoteIdVerificationSurveyView'),
 
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherGenderView'),
