@@ -10,7 +10,7 @@ from itertools import zip_longest
 from werkzeug.exceptions import BadRequest, NotFound
 from rdr_service.dao import database_factory
 from sqlalchemy.orm import Query
-
+from faker import Faker
 
 from rdr_service.dao.study_nph_dao import (
     NphParticipantDao,
@@ -20,8 +20,12 @@ from rdr_service.dao.study_nph_dao import (
     NphOrderedSampleDao,
     NphSampleUpdateDao,
     NphBiobankFileExportDao,
-    NphSampleExportDao
+    NphSampleExportDao,
+    NphActivityDao,
+    NphParticipantEventActivityDao,
+    NphIncidentDao,
 )
+from rdr_service.model.study_nph_enums import IncidentStatus, IncidentType
 from rdr_service.clock import FakeClock
 from rdr_service.model.study_nph import (
     Participant,
@@ -31,7 +35,10 @@ from rdr_service.model.study_nph import (
     OrderedSample,
     SampleUpdate,
     BiobankFileExport,
-    SampleExport
+    SampleExport,
+    Activity,
+    ParticipantEventActivity,
+    Incident
 )
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -1520,4 +1527,166 @@ class NphSampleExportDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.order")
         self.clear_table_after_test("nph.site")
         self.clear_table_after_test("nph.study_category")
+        self.clear_table_after_test("nph.participant")
+
+
+class NphIncidentDaoTest(BaseTestCase):
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.nph_participant_dao = NphParticipantDao()
+        self.nph_activity_dao = NphActivityDao()
+        self.nph_participant_event_activity_dao = NphParticipantEventActivityDao()
+        self.nph_incident_dao = NphIncidentDao()
+        self.faker = Faker()
+
+    def _create_nph_participant(self, participant_obj: Dict[str, Any]) -> Participant:
+        nph_participant = Participant(**participant_obj)
+        with FakeClock(TIME):
+            return self.nph_participant_dao.insert(nph_participant)
+
+    def _create_nph_activity(self, activity_obj: Dict[str, Any]) -> Activity:
+        nph_activity = Activity(**activity_obj)
+        with FakeClock(TIME):
+            return self.nph_activity_dao.insert(nph_activity)
+
+    def _create_nph_participant_event_activity(self, obj: Dict[str, Any]) -> ParticipantEventActivity:
+        nph_participant_event_activity = ParticipantEventActivity(**obj)
+        with FakeClock(TIME):
+            return self.nph_participant_event_activity_dao.insert(nph_participant_event_activity)
+
+    def test_get_before_insert(self):
+        self.assertIsNone(self.nph_incident_dao.get(1))
+
+    def test_insert_incident(self):
+        participant_obj_params = {
+            "ignore_flag": 0,
+            "disable_flag": 0,
+            "disable_reason": "N/A",
+            "biobank_id": 1E7,
+            "research_id": 1E7
+        }
+        nph_participant = self._create_nph_participant(participant_obj_params)
+        nph_activity_obj_params = {
+            "ignore_flag": 0,
+            "name": "sample activity",
+            "rdr_note": "sample rdr note",
+            "rule_codes": None,
+        }
+        nph_activity = self._create_nph_activity(nph_activity_obj_params)
+
+        nph_participant_event_activity_obj_params = {
+            "ignore_flag": 0,
+            "participant_id": nph_participant.id,
+            "activity_id": nph_activity.id,
+            "resource": None,
+        }
+        nph_participant_event_activity = (
+            self._create_nph_participant_event_activity(nph_participant_event_activity_obj_params)
+        )
+
+        notification_ts = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
+        mock_trace_id = str(uuid4())
+        mock_dev_note = ''.join(self.faker.random_letters(length=1024))
+        mock_message = ''.join(self.faker.random_letters(length=1024))
+        nph_incident_obj_params = {
+            "ignore_flag": 0,
+            "dev_note": mock_dev_note,
+            "status_str": str(IncidentStatus.OPEN),
+            "status_id": IncidentStatus.OPEN,
+            "message": mock_message,
+            "notification_sent_flag": 1,
+            "notification_date": notification_ts,
+            "incident_type_str": str(IncidentType.UNSET),
+            "incident_type_id": IncidentType.UNSET,
+            "participant_id": nph_participant.id,
+            "event_id": nph_participant_event_activity.id,
+            "trace_id": mock_trace_id,
+        }
+        nph_incident = Incident(**nph_incident_obj_params)
+        with FakeClock(TIME):
+            self.nph_incident_dao.insert(nph_incident)
+
+        expected_nph_incident = {
+            "id": 1,
+            "created": TIME,
+            "modified": TIME,
+            "ignore_flag": 0,
+            "dev_note": mock_dev_note,
+            "status_str": str(IncidentStatus.OPEN),
+            "status_id": IncidentStatus.OPEN,
+            "message": mock_message,
+            "notification_sent_flag": 1,
+            "notification_date": notification_ts,
+            "incident_type_str": str(IncidentType.UNSET),
+            "incident_type_id": IncidentType.UNSET,
+            "participant_id": nph_participant.id,
+            "event_id": nph_participant_event_activity.id,
+            "trace_id": mock_trace_id,
+        }
+        self.assertEqual(
+            nph_incident.asdict(), expected_nph_incident
+        )
+
+    def test_insert_incident_truncates_message_with_more_than_1024_characters(self):
+        participant_obj_params = {
+            "ignore_flag": 0,
+            "disable_flag": 0,
+            "disable_reason": "N/A",
+            "biobank_id": 1E7,
+            "research_id": 1E7
+        }
+        nph_participant = self._create_nph_participant(participant_obj_params)
+        nph_activity_obj_params = {
+            "ignore_flag": 0,
+            "name": "sample activity",
+            "rdr_note": "sample rdr note",
+            "rule_codes": None,
+        }
+        nph_activity = self._create_nph_activity(nph_activity_obj_params)
+
+        nph_participant_event_activity_obj_params = {
+            "ignore_flag": 0,
+            "participant_id": nph_participant.id,
+            "activity_id": nph_activity.id,
+            "resource": None,
+        }
+        nph_participant_event_activity = (
+            self._create_nph_participant_event_activity(nph_participant_event_activity_obj_params)
+        )
+
+        notification_ts = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
+        mock_trace_id = str(uuid4())
+        mock_dev_note = ''.join(self.faker.random_letters(length=1024))
+        mock_message = ''.join(self.faker.random_letters(length=1024))
+        nph_incident_obj_params = {
+            "ignore_flag": 0,
+            "dev_note": mock_dev_note,
+            "status_str": str(IncidentStatus.OPEN),
+            "status_id": IncidentStatus.OPEN,
+            "message": mock_message,
+            "notification_sent_flag": 1,
+            "notification_date": notification_ts,
+            "incident_type_str": str(IncidentType.UNSET),
+            "incident_type_id": IncidentType.UNSET,
+            "participant_id": nph_participant.id,
+            "event_id": nph_participant_event_activity.id,
+            "trace_id": mock_trace_id,
+        }
+        nph_incident = Incident(**nph_incident_obj_params)
+        with FakeClock(TIME):
+            self.nph_incident_dao.insert(nph_incident)
+
+        nph_incident_dict = nph_incident.asdict()
+        self.assertEqual(
+            nph_incident_dict["dev_note"], mock_dev_note[:1024]
+        )
+        self.assertEqual(
+            nph_incident_dict["message"], mock_message[:1024]
+        )
+
+    def tearDown(self):
+        self.clear_table_after_test("nph.incident")
+        self.clear_table_after_test("nph.participant_event_activity")
+        self.clear_table_after_test("nph.activity")
         self.clear_table_after_test("nph.participant")

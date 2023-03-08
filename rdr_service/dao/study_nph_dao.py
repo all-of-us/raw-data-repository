@@ -1,3 +1,4 @@
+import logging
 from typing import Tuple, Dict, List, Any, Optional
 import json
 from types import SimpleNamespace as Namespace
@@ -13,10 +14,13 @@ from rdr_service.model.study_nph import (
     Activity, ParticipantEventActivity, EnrollmentEventType,
     PairingEventType, PairingEvent, ConsentEventType,
     SampleUpdate, BiobankFileExport, SampleExport,
-    StoredSample, EnrollmentEvent
+    StoredSample, EnrollmentEvent, Incident
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
+
+
+_logger = logging.getLogger("rdr_logger")
 
 
 class OrderStatus(messages.Enum):
@@ -818,3 +822,62 @@ class NphStoredSampleDao(BaseDao):
 
     def get_id(self, obj: StoredSample):
         return obj.id
+
+
+class NphIncidentDao(UpdatableDao):
+    def __init__(self):
+        super(NphIncidentDao, self).__init__(Incident)
+
+    def get_id(self, obj: Incident) -> int:
+        return obj.id
+
+    @staticmethod
+    def truncate_value(value, max_length):
+        is_truncated = False
+        if len(value) > max_length:
+            is_truncated = True
+            value = value[:max_length]
+
+        return is_truncated, value
+
+    def get_by_message(self, message: Optional[str]) -> Optional[Incident]:
+        maximum_message_length = Incident.message.type.length
+        _, truncated_value = self.truncate_value(
+            message,
+            maximum_message_length,
+        )
+        with self.session() as session:
+            return session.query(
+                    Incident
+                ).filter(
+                    Incident.message == truncated_value
+                ).first()
+
+    def insert(self, obj: Incident) -> Incident:
+        maximum_message_length = Incident.message.type.length
+        is_truncated, truncated_value = self.truncate_value(
+            obj.message,
+            maximum_message_length,
+        )
+        if is_truncated:
+            _logger.warning('Truncating incident message when storing (too many characters for database column)')
+        obj.message = truncated_value
+
+        with self.session() as session:
+            return self.insert_with_session(session, obj)
+
+    def _validate_update(self, session, obj, existing_obj):
+        # NPH Incidents aren't versioned; suppress the normal check here.
+        pass
+
+    def update(self, obj: Incident) -> Incident:
+        maximum_message_length = Incident.message.type.length
+        is_truncated, truncated_value = self.truncate_value(
+            obj.message,
+            maximum_message_length,
+        )
+        if is_truncated:
+            _logger.warning('Truncating incident message when storing (too many characters for database column)')
+        obj.message = truncated_value
+        with self.session() as session:
+            return self.update_with_session(session, obj)
