@@ -4,6 +4,8 @@ from typing import Optional, Dict
 from graphene import List
 
 from sqlalchemy.orm import Query, aliased
+
+from rdr_service.api_util import parse_date
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.participant_enums import QuestionnaireStatus
 
@@ -57,8 +59,14 @@ def check_field_value(value):
 
 def load_participant_summary_data(query, prefix, biobank_prefix):
     results = []
-    for summary, site, nph_site, mapping, nph_participant, enrollment_time, enrollment_name, \
-            deactivated, withdrawn in query.all():
+    records = query.all()
+    for summary, site, nph_site, mapping, nph_participant, enrollment, \
+            deactivated, withdrawn in records:
+        # NPH Enrollment Statuses are nested
+        enrollment_statuses = list(map(
+            lambda x: {'value': x['value'], 'time': parse_date(x['time']) if x['time'] else None},
+            enrollment['enrollment_json']
+        ))
         results.append({
             'participantNphId': f"{prefix}{mapping.ancillary_participant_id}",
             'lastModified': summary.lastModified,
@@ -82,14 +90,11 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                 "value": "Withdrawn" if withdrawn else "NULL",
                 "time": withdrawn.event_authored_time if withdrawn else None
             },
-            'nph_enrollment_status': {
-                "value": check_field_value(enrollment_name.name),
-                "time": enrollment_time.event_authored_time
-            },
+            'nph_enrollment_status': enrollment_statuses,
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
                                  "time": summary.suspensionTime},
-            'nphEnrollmentStatus': {"value": check_field_value(summary.enrollmentStatus),
+            'aouEnrollmentStatus': {"value": check_field_value(summary.enrollmentStatus),
                                  "time": summary.dateOfBirth},
             'questionnaireOnTheBasics': {
                 "value": check_field_value(summary.questionnaireOnTheBasics),

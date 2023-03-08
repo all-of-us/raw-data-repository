@@ -86,10 +86,10 @@ def mock_load_participant_data(session):
 
         nph_data_gen.create_database_pairing_event_type(name="INITIAL")
 
-        status = ['referred']
+        status = ['referred', 'consented']
 
         for name in status:
-            nph_data_gen.create_database_enrollment_event_type(name=name)
+            nph_data_gen.create_database_enrollment_event_type(name=name, source_name=f'module1_{name}')
         participant_mapping_query = Query(ParticipantMapping)
         participant_mapping_query.session = session
         participant_mapping_result = participant_mapping_query.all()
@@ -300,13 +300,26 @@ class TestQueryExecution(BaseTestCase):
     def test_nphEnrollmentStatus_fields(self):
         field_to_test = "nphEnrollmentStatus {value time} "
         query = simple_query(field_to_test)
+
         mock_load_participant_data(self.session)
+        nph_datagen = NphDataGenerator()
+        for nph_id in [100000000, 100000001]:
+            nph_datagen.create_database_enrollment_event(participant_id=nph_id,
+                                                         event_type_id=2,
+                                                         event_authored_time=datetime.now())
+
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
         result = json.loads(executed.data.decode('utf-8'))
+
         self.assertEqual(2, len(result.get('participant').get('edges')))
-        actual_result = result.get('participant').get('edges')[0].get('node').get('nphEnrollmentStatus')
-        self.assertIn("time", actual_result)
-        self.assertIn("value", actual_result)
+
+        enrollment_statuses = result.get('participant').get('edges')[0].get('node').get('nphEnrollmentStatus')
+
+        for status in enrollment_statuses:
+            self.assertIn("time", status)
+            self.assertIn("value", status)
+            if status['time']:
+                self.assertEqual(status['value'], 'module1_consented')
 
     def test_nphWithdrawalStatus_fields(self):
         field_to_test = "nphWithdrawalStatus {value time} "
