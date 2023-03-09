@@ -64,6 +64,9 @@ class ModuleLookupEnum(enum.Enum):
     LAST = 2
 
 
+# TODO in new RDR-PDR pipeine:  See if we need to create separate participant_module records for CABOR consent, if
+# the extra CABOR question code/signature answer code is part of a ConsentPII payload.
+
 _consent_module_question_map = {
     # { module: question code string }
     'ConsentPII': None,
@@ -720,6 +723,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             last_answer_hash = None  # Track the answer hash of the payload of the last response processed (PDR-484)
             last_mod_processed = {}
             last_consent_processed = {}
+            prior_ehr_submitted_status = False
             for row in results:
                 # ROC-692 Exclude CE replayed ConsentPII responses that contain an invalid minimum authored date.
                 if row.authored and row.authored < min_valid_authored:
@@ -804,6 +808,16 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                                     qnan.get(_consent_expired_question_map[module_name] or 'None', None)
                             # TODO: Should we have also have a 'consent_expired_id', if so what would the integer
                             #  value be (there is only a question code_id in the code table, no answer code_id)?
+
+                        # DA-3278 : "Yes" EHR consents now have module_status determined by consent PDF validation state
+                        # Make sure once a participant has a SUBMITTED EHR module_status in their history, that sticks.
+                        # Participants whose consent PDF validation failed prior to rolling out the new
+                        # DA-3278/PDR-1625 changes, should still keep a SUBMITTED status if they answered "Yes"
+                        if (module_name == 'EHRConsentPII' and module_status == BQModuleStatusEnum.SUBMITTED
+                                and not prior_ehr_submitted_status):
+                            module_status = self.get_pdf_validation_status(row.questionnaireResponseId,
+                                                                           row.authored, module_name, ro_session)
+                            prior_ehr_submitted_status = module_status == BQModuleStatusEnum.SUBMITTED
 
                         module_data['status'] = module_status.name
                         module_data['status_id'] = module_status.value
@@ -1658,13 +1672,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         consent_status = _consent_answer_status_map.get(answer_code, None) if answer_code else None
         if not consent_status:
             if module == 'EHRConsentPII':
-                # PDR-979:  Match RDR by defaulting to SUBMITTED_NO_CONSENT for (sensitive) EHRConsentPII if
-                # there was not a recognized "yes" consent answer
+                # PDR-979:  Match RDR, default to SUBMITTED_NO_CONSENT for (sensitive) EHRConsentPII if there was no
+                # recognized "yes" consent answer.
                 consent_status = BQModuleStatusEnum.SUBMITTED_NO_CONSENT
             else:
-                # For other modules/cases where there wasn't any recognized consent answer found in the payload
-                # (not even PMI_SKIP, which maps to UNSET)
-                consent_status = BQModuleStatusEnum.SUBMITTED_INVALID
+                # PDR-1625: SUBMITTED_INVALID has a revised meaning for PDF validation, so use UNSET for missing answers
+                consent_status = BQModuleStatusEnum.UNSET
 
         return answer_code, consent_status
 
@@ -1828,6 +1841,60 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data['ubr_overall'] = ubr.ubr_overall(data)
 
         return data
+
+    @staticmethod
+    def get_pdf_validation_status(qr_id, consent_authored,
+                                  module_name='EHRConsentPII', ro_session=None):
+        """
+        Determines consent status based on PDF validation status. Initially only applies to EHR PDF validation
+        :param qr_id:  A questionnaire_response_id value
+        :param consent_authored: An authored date for the consent
+        :param module_name:  Consent module name.  *** Only EHRCOnsentPII currently supported
+        :param ro_session:  A read-only session object
+        """
+        # Cutoff for avoiding incorrectly assuming SUBMITTED_NOT_VALIDATED.  Based on expected release date
+        # of RDR changes that will begin using SUBMITTED_NOT_VALIDATED/SUBMITTED_INVALID statuses.
+        pdf_validation_start_date = datetime.datetime(2023, 3, 10)
+        status = BQModuleStatusEnum.SUBMITTED  # Default, this method is only called for "Yes" consents that have PDF
+        dao = None
+        if not ro_session:
+            dao = ResourceDataDao(backup=True)
+            ro_session = dao.session()
+
+        # TODO:  If this is expanded for other non-EHR consents:
+        # Primary and CABOR consent types in the consent_file table have their own validation records, but share the
+        # same questionnaire_response_id and can lead to multiple results for multiple consent types using the query
+        # below.  May need to add a match on consent_file.type by mapping the module_name to the ConsentType (enum
+        # value) to filter on.  For now, no-op for any non-EHR consents.
+        if module_name != 'EHRConsentPII':
+            logging.warning(f'PDF Validation status for consent {module_name} not currently supported')
+            return status
+
+        # Find consent validation result associated with this questionnaire response.  Should normally only be a single
+        # consent_file entry for each consent_type/questionnaire_response_id, but if there are unexpected multiple
+        # matches, reverse-ordering by sync_status enum values should yield the most accurate, up-to-date sync_status
+        sql = """
+             select cf.created, cf.sync_status
+             from consent_response cr
+             join consent_file cf on cr.id = cf.consent_response_id
+             where cr.questionnaire_response_id = :qr_id
+             order by cf.sync_status desc
+             limit 1
+        """
+        result = ro_session.execute(sql, {'qr_id': qr_id}).fetchone()
+        if result:
+            if (result.created > pdf_validation_start_date and
+                   result.sync_status in (int(ConsentSyncStatus.NEEDS_CORRECTING), int(ConsentSyncStatus.OBSOLETE))):
+                status = BQModuleStatusEnum.SUBMITTED_INVALID
+
+        elif consent_authored > pdf_validation_start_date:
+            # No consent_file (consent_response) record yet to match to the questionnaire_response_id
+            status = BQModuleStatusEnum.SUBMITTED_NOT_VALIDATED
+
+        if dao is not None:
+            dao.session().close()
+
+        return status
 
     @staticmethod
     def generate_primary_consent_metrics(p_id, ro_session=None):
