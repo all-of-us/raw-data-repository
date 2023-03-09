@@ -4157,7 +4157,7 @@ class GenomicQueriesDao(BaseDao):
                     and_(
                         GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                         GenomicSetMember.genomeType == genome_type,
-                        GenomicSetMember.aw3ManifestJobRunID.is_(None),
+                        GenomicGCValidationMetrics.aw3ManifestJobRunID.is_(None),
                         GenomicSetMember.ignoreFlag != 1,
                         GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                         GenomicGCValidationMetrics.ignoreFlag != 1,

@@ -3777,6 +3777,10 @@ class GenomicPipelineTest(BaseTestCase):
         investigation_member.blockResearch = 1
         self.member_dao.update(investigation_member)
 
+        current_investigation_metric = self.metrics_dao.get(1)
+        current_investigation_metric.aw3ManifestJobRunID = None
+        self.metrics_dao.upsert(current_investigation_metric)
+
         fake_dt = datetime.datetime(2020, 8, 4, 0, 0, 0, 0)
         with clock.FakeClock(fake_dt):
             genomic_pipeline.aw3_wgs_investigation_workflow(
@@ -4068,6 +4072,10 @@ class GenomicPipelineTest(BaseTestCase):
         updated_member = self.member_dao.get(3)
         updated_member.sexAtBirth = 'A'
         self.member_dao.update(updated_member)
+
+        current_investigation_metric = self.metrics_dao.get(2)
+        current_investigation_metric.aw3ManifestJobRunID = None
+        self.metrics_dao.upsert(current_investigation_metric)
 
         with clock.FakeClock(fake_dt):
             genomic_pipeline.aw3_wgs_manifest_workflow(
@@ -7023,6 +7031,10 @@ class GenomicPipelineTest(BaseTestCase):
         investigation_member.genomeType = 'aou_wgs_investigation'
         investigation_member.blockResearch = 1
         self.member_dao.update(investigation_member)
+
+        current_investigation_metric = self.metrics_dao.get(1)
+        current_investigation_metric.aw3ManifestJobRunID = None
+        self.metrics_dao.upsert(current_investigation_metric)
 
         fake_dt = datetime.datetime(2020, 8, 4, 0, 0, 0, 0)
         with clock.FakeClock(fake_dt):
