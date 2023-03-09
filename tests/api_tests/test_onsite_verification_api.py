@@ -1,3 +1,4 @@
+import mock
 from datetime import datetime, date
 
 from tests.helpers.unittest_base import BaseTestCase
@@ -23,7 +24,31 @@ class OnsiteVerificationApiTest(BaseTestCase):
 
         self.ps_dao = ParticipantSummaryDao()
 
-    def test_onsite_verification(self):
+    def verify_pdr_resource_data(self, pdr_dict, test_payload):
+        """
+        Verify the data dict built by the PDR resource generator against the RDR onsite_id_verification test data
+        """
+        # Payloads may only have a subset of the usual values; set up expectations
+        expected_verification_type = test_payload['verificationType'] if 'verificationType' in test_payload else 'UNSET'
+        expected_visit_type = test_payload['visitType'] if 'visitType' in test_payload else 'UNSET'
+        expected_site = test_payload['siteGoogleGroup'] if 'siteGoogleGroup' in test_payload else None
+        expected_site_id = self.site.siteId if 'siteGoogleGroup' in test_payload else None
+        # POST payloads prefix participant ids with 'P' and add a 'Z' to the end of the timestamp; adjust for comparison
+        participant_id = int(test_payload['participantId'][1:])
+        verified_time = test_payload['verifiedTime'][:-1]
+        self.assertEqual(pdr_dict['participant_id'], participant_id)
+        self.assertEqual(pdr_dict['verified_time'], verified_time)
+        self.assertEqual(pdr_dict['verification_type'], str(OnSiteVerificationType(expected_verification_type)))
+        self.assertEqual(pdr_dict['verification_type_id'], int(OnSiteVerificationType(expected_verification_type)))
+        self.assertEqual(pdr_dict['visit_type'], str(OnSiteVerificationVisitType(expected_visit_type)))
+        self.assertEqual(pdr_dict['visit_type_id'], int(OnSiteVerificationVisitType(expected_visit_type)))
+        self.assertEqual(pdr_dict['site'], expected_site)
+        self.assertEqual(pdr_dict['site_id'], expected_site_id)
+        # Extra fields for the resource_data table record;  check for presence
+        self.assertTrue(all(key in pdr_dict.keys() for key in ['id', 'created', 'modified']))
+
+    @mock.patch('rdr_service.resource.generators.ResourceRecordSet')
+    def test_onsite_verification(self, mock_pdr_resource_generator):
         path = 'Onsite/Id/Verification'
         payload_1 = {
           "participantId": 'P' + str(self.p.participantId),
@@ -149,5 +174,13 @@ class OnsiteVerificationApiTest(BaseTestCase):
         self.assertEqual(participant_summary.everIdVerified, True)
         self.assertEqual(participant_summary.firstIdVerifiedOn, date(2022, 3, 22))
         self.assertEqual(participant_summary.idVerificationOrigin, IdVerificationOriginType.ON_SITE)
+
+        # Verify the data dict arg from each mocked ResourceRecordSet(schema, data) created by the PDR generator,
+        # triggered by POST /OnSite/Id/Verification requests
+        self.assertEqual(mock_pdr_resource_generator.call_count, 4)
+        payload_list = [payload_1, payload_2, payload_3, payload_4]
+        for i in range(4):
+            resource_dict = mock_pdr_resource_generator.call_args_list[i].args[1]
+            self.verify_pdr_resource_data(resource_dict, payload_list[i])
 
 
