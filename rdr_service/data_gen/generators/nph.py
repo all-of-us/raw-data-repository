@@ -162,6 +162,7 @@ class NphDataGenerator:
             "participant_id": participant_id,
             "event_id": event_id,
             "event_type_id": 1,
+            "opt_in": enums.ConsentOptInTypes.PERMIT,
         }
         fields.update(kwargs)
         consent_event = self._consent_event(**fields)
@@ -194,5 +195,3 @@ class NphDataGenerator:
         deactivated_event = self._deactivated_event(**kwargs)
         self._commit_to_database(deactivated_event)
         return deactivated_event
-
-
