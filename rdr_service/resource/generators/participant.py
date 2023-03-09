@@ -64,6 +64,9 @@ class ModuleLookupEnum(enum.Enum):
     LAST = 2
 
 
+# TODO in new RDR-PDR pipeine:  See if we need to create separate participant_module records for CABOR consent, if
+# the extra CABOR question code/signature answer code is part of a ConsentPII payload.
+
 _consent_module_question_map = {
     # { module: question code string }
     'ConsentPII': None,
@@ -813,7 +816,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         if (module_name == 'EHRConsentPII' and module_status == BQModuleStatusEnum.SUBMITTED
                                 and not prior_ehr_submitted_status):
                             module_status = self.get_pdf_validation_status(row.questionnaireResponseId,
-                                                                           row.authored, ro_session)
+                                                                           row.authored, module_name, ro_session)
                             prior_ehr_submitted_status = module_status == BQModuleStatusEnum.SUBMITTED
 
                         module_data['status'] = module_status.name
@@ -1840,11 +1843,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         return data
 
     @staticmethod
-    def get_pdf_validation_status(qr_id, consent_authored, ro_session=None):
+    def get_pdf_validation_status(qr_id, consent_authored,
+                                  module_name='EHRConsentPII', ro_session=None):
         """
         Determines consent status based on PDF validation status. Initially only applies to EHR PDF validation
         :param qr_id:  A questionnaire_response_id value
         :param consent_authored: An authored date for the consent
+        :param module_name:  Consent module name.  *** Only EHRCOnsentPII currently supported
         :param ro_session:  A read-only session object
         """
         # Cutoff for avoiding incorrectly assuming SUBMITTED_NOT_VALIDATED.  Based on expected release date
@@ -1856,14 +1861,25 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             dao = ResourceDataDao(backup=True)
             ro_session = dao.session()
 
-        # Find consent validation result associated with this questionnaire response.  Note, many older consent
-        # validation results do not have a consent_response record because that relation/table was added later
+        # TODO:  If this is expanded for other non-EHR consents:
+        # Primary and CABOR consent types in the consent_file table have their own validation records, but share the
+        # same questionnaire_response_id and can lead to multiple results for multiple consent types using the query
+        # below.  May need to add a match on consent_file.type by mapping the module_name to the ConsentType (enum
+        # value) to filter on.  For now, no-op for any non-EHR consents.
+        if module_name != 'EHRConsentPII':
+            logging.warning(f'PDF Validation status for consent {module_name} not currently supported')
+            return status
+
+        # Find consent validation result associated with this questionnaire response.  Should normally only be a single
+        # consent_file entry for each consent_type/questionnaire_response_id, but if there are unexpected multiple
+        # matches, reverse-ordering by sync_status enum values should yield the most accurate, up-to-date sync_status
         sql = """
              select cf.created, cf.sync_status
              from consent_response cr
              join consent_file cf on cr.id = cf.consent_response_id
              where cr.questionnaire_response_id = :qr_id
-
+             order by cf.sync_status desc
+             limit 1
         """
         result = ro_session.execute(sql, {'qr_id': qr_id}).fetchone()
         if result:
