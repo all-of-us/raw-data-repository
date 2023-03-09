@@ -38,3 +38,8 @@ class ConsentOptInTypes(messages.Enum):
 
     PERMIT = 1
     DENY = 2
+
+
+class ParticipantOpsElementTypes(messages.Enum):
+
+    BIRTHDATE = 1

@@ -15,7 +15,8 @@
                         "system": "https://nphdx.rti.org/api/fhir/module1/",
                         "value": "patient/1000100000001"
                     }
-                ]
+                ],
+                "birthDate": "1988-02-02"
             }
         },
         {
