@@ -147,7 +147,7 @@ class OnSiteIdVerificationBatchRebuildTaskApi(Resource):
         if not ov_ids:
             raise NotFound('OnSiteIdVerification record id list invalid')
 
-        logging.info(f'Rebuilding onsite_id_verification records')
+        logging.info('Rebuilding onsite_id_verification records')
         logging.debug(f'Rebuild id list: {ov_ids}')
         onsite_id_verification_batch_rebuild_task(ov_ids)
         logging.info('Complete.')
