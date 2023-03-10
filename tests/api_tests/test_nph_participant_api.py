@@ -4,6 +4,7 @@ from graphql import GraphQLSyntaxError
 import json
 from datetime import datetime, timedelta
 
+from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
 from rdr_service.data_gen.generators.data_generator import DataGenerator
 from sqlalchemy.orm import Query
@@ -141,6 +142,11 @@ def mock_load_participant_data(session):
         event_authored_time=datetime(2023, 1, 1, 12, 1),
         site_id=2
     )
+
+    nph_data_gen.create_database_participant_ops_data_element(
+        participant_id=100000001,
+        source_data_element=ParticipantOpsElementTypes.BIRTHDATE,
+        source_value='1980-01-01')
 
 
 class TestQueryExecution(BaseTestCase):
@@ -281,16 +287,13 @@ class TestQueryExecution(BaseTestCase):
                 study_nph.Participant.id == ParticipantMapping.ancillary_participant_id
             ).first()
         )
-
         executed = app.test_client().post(
             '/rdr/v1/nph_participant',
             data='{participant (firstName: "%s") { edges { node { participantNphId firstName } } } }' % first_name
         )
         result = json.loads(executed.data.decode('utf-8'))
-
         result_participant_list = result.get('participant').get('edges')
         self.assertEqual(1, len(result_participant_list))
-
         resulting_participant_data = result_participant_list[0].get('node')
         self.assertEqual(first_name, resulting_participant_data.get('firstName'))
         prefix = 1000
@@ -300,21 +303,16 @@ class TestQueryExecution(BaseTestCase):
     def test_nphEnrollmentStatus_fields(self):
         field_to_test = "nphEnrollmentStatus {value time} "
         query = simple_query(field_to_test)
-
         mock_load_participant_data(self.session)
         nph_datagen = NphDataGenerator()
         for nph_id in [100000000, 100000001]:
             nph_datagen.create_database_enrollment_event(participant_id=nph_id,
                                                          event_type_id=2,
                                                          event_authored_time=datetime.now())
-
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
         result = json.loads(executed.data.decode('utf-8'))
-
         self.assertEqual(2, len(result.get('participant').get('edges')))
-
         enrollment_statuses = result.get('participant').get('edges')[0].get('node').get('nphEnrollmentStatus')
-
         for status in enrollment_statuses:
             self.assertIn("time", status)
             self.assertIn("value", status)
@@ -374,6 +372,7 @@ class TestQueryExecution(BaseTestCase):
         self.clear_table_after_test("nph.pairing_event")
         self.clear_table_after_test("nph.enrollment_event")
         self.clear_table_after_test("nph.enrollment_event_type")
+        self.clear_table_after_test("nph.participant_ops_data_element")
 
 
 class TestQueryValidator(BaseTestCase):

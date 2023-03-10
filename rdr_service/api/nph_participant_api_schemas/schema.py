@@ -1,12 +1,13 @@
 import logging
-from graphene import ObjectType, String, Int, DateTime, Field, List, Date, Schema, NonNull
+from graphene import ObjectType, String, Int, DateTime, Field, List, Schema, NonNull
 from graphene import relay
 from sqlalchemy.orm import Query, aliased
 from sqlalchemy import and_, func
 from sqlalchemy.dialects.mysql import JSON
+
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX, NPH_STUDY_ID
 from rdr_service.model.study_nph import Participant as DbParticipant, Site as nphSite, PairingEvent, DeactivatedEvent, \
-    WithdrawalEvent, EnrollmentEvent, EnrollmentEventType
+    WithdrawalEvent, EnrollmentEvent, EnrollmentEventType, ParticipantOpsDataElement
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping, Study
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
@@ -69,16 +70,6 @@ class Sample(ObjectType):
     @staticmethod
     def sort(context, value):
         raise NotImplementedError
-        # if value.upper() == 'PARENT':
-        #     return context.set_sort_table('sample')
-        # if value.upper() == 'CHILD':
-        #     return context.add_ref(
-        #         NphSample, 'child'
-        #     ).add_join(
-        #         context.references['child'],
-        #         context.references['child'].parent_id == context.references['sample'].id
-        #     ).set_sort_table('child')
-        # raise NotImplementedError
 
 
 class SampleCollection(ObjectType):
@@ -88,11 +79,6 @@ class SampleCollection(ObjectType):
     @staticmethod
     def sort(context, sort_info, _):
         raise NotImplementedError
-        # return context.add_ref(
-        #     NphSample, 'sample'
-        # ).add_join(
-        #     context.references['sample'], context.references['sample'].participant_id == DbParticipant.participantId
-        # ).add_filter(context.references['sample'].test == context.table)
 
 
 def _build_filter_parameters(cls):
@@ -114,7 +100,7 @@ class Participant(ObjectType):
     biobankId = SortableField(
         String,
         description='NPH Biobank id value for the participant, sourced from NPH participant data table',
-        sort_modifier=lambda context: context.set_order_expression(DbParticipant.biobankId),
+        sort_modifier=lambda context: context.set_order_expression(DbParticipant.biobank_id),
         filter_modifier=lambda context, value: context.add_filter(DbParticipant.biobank_id == value)
     )
     firstName = SortableField(
@@ -137,11 +123,13 @@ class Participant(ObjectType):
         filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.lastName == value)
     )
     dateOfBirth = SortableField(
-        Date,
+        String,
         name='DOB',
         description="Participant's date of birth, sourced from Aou participant_summary_table",
         sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.dateOfBirth),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.dateOfBirth == value)
+        filter_modifier=lambda context, value: context.add_filter(
+            ParticipantSummaryModel.dateOfBirth == value
+        )
     )
     zipCode = SortableField(
         String,
@@ -200,7 +188,6 @@ class Participant(ObjectType):
             and time should be the authored time. Both should be sourced from the AoU participant_summary table.
         '''
     )
-
     withdrawalStatus = SortableField(
         Event,
         name="aouWithdrawalStatus",
@@ -227,7 +214,6 @@ class Participant(ObjectType):
             fields. Both should be sourced from the AoU participant_summary table.
         '''
     )
-
     questionnaireOnHealthcareAccess = SortableField(
         Event,
         name="aouOverallHealthStatus",
@@ -357,7 +343,8 @@ class ParticipantQuery(ObjectType):
                 DbParticipant,
                 enrollment_subquery.c.enrollment_status,
                 DeactivatedEvent,
-                WithdrawalEvent
+                WithdrawalEvent,
+                ParticipantOpsDataElement
             ).join(
                 Site,
                 ParticipantSummaryModel.siteId == Site.siteId
@@ -389,6 +376,9 @@ class ParticipantQuery(ObjectType):
             ).outerjoin(
                 WithdrawalEvent,
                 ParticipantMapping.ancillary_participant_id == WithdrawalEvent.participant_id
+            ).outerjoin(
+                ParticipantOpsDataElement,
+                ParticipantMapping.ancillary_participant_id == ParticipantOpsDataElement.participant_id
             ).filter(
                 pm2.id.is_(None),
                 ParticipantMapping.ancillary_study_id == NPH_STUDY_ID,
@@ -397,7 +387,7 @@ class ParticipantQuery(ObjectType):
             study = study_query.first()
             current_class = Participant
             query_builder = QueryBuilder(query)
-            # sampleSA2:ordered:child:current:time
+
             try:
                 if sort_by:
                     sort_parts = sort_by.split(':')
