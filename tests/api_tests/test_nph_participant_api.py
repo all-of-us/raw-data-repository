@@ -230,7 +230,7 @@ class TestQueryExecution(BaseTestCase):
         result = json.loads(executed.data.decode('utf-8'))
         self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
         self.assertListEqual(
-            ['T1100000000', 'T1100000001'],
+            ['T1100000001', 'T1100000000'],
             [
                 participant_data['node']['biobankId']
                 for participant_data in result.get('participant').get('edges')
