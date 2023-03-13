@@ -10,13 +10,14 @@ from dateutil.parser import parse
 from sqlalchemy.orm import Session
 
 from rdr_service import code_constants, config
+from rdr_service.config import MissingConfigException
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType,\
-    ConsentOtherErrors
+    ConsentOtherErrors, CONSENT_TYPE_MODULE_NAMES
 from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import ParticipantCohort, QuestionnaireStatus
@@ -128,12 +129,15 @@ class ValidationOutputStrategy(ABC):
     def set_reconsented_file_as_ready(self, file: ParsingResult):
         ...
 
+    @abstractmethod
+    def set_consent_response_ids_for_results(self):
+        ...
+
     @classmethod
     def _build_consent_list_structure(cls):
         def participant_results():
             return defaultdict(lambda: [])
         return defaultdict(participant_results)
-
 
 class StoreResultStrategy(ValidationOutputStrategy):
     def __init__(self, session, consent_dao: ConsentDao, project_id=None):
@@ -180,6 +184,9 @@ class StoreResultStrategy(ValidationOutputStrategy):
         file.sync_status = ConsentSyncStatus.READY_FOR_SYNC
         self._reconsented_files.append(file)
 
+    def set_consent_response_ids_for_results(self):
+        # TODO:  Is this functionality only needed in the ReplacementStoringStrategy class, or here as well?
+        ...
 
 class ReplacementStoringStrategy(ValidationOutputStrategy):
     def __init__(self, session, consent_dao: ConsentDao, project_id=None):
@@ -247,6 +254,33 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
     def set_reconsented_file_as_ready(self, file: ParsingResult):
         file.sync_status = ConsentSyncStatus.READY_FOR_SYNC
         self._reconsented_files.append(file)
+
+    def set_consent_response_ids_for_results(self):
+        """
+        Iterate through results and look for records that do not have an expected consent_response_id value.   Attempt
+        to match the result.file_path with a QuestionnaireResponse's consent-form-signed-pdf extension data to assign
+        the consent_response_id value
+        """
+        # Results are hierarchical dictionaries ordered by participant_id key, then consent type key where its value is
+        # a list of ConsentFile validation result records for that participant/consent type
+        for pid, result_list in self.results.items():
+            for consent_type, results in result_list.items():
+                for result in results:
+                    if (consent_type in CONSENT_TYPE_MODULE_NAMES
+                                     and result.consent_response_id is None
+                                     and result.file_path is not None):
+                        consent_response_id = QuestionnaireResponseDao.find_consent_response_with_pdf(
+                            pid,
+                            consent_type,
+                            CONSENT_TYPE_MODULE_NAMES[consent_type],
+                            result.file_path,
+                            self.session
+                        )
+                        result.consent_response_id = consent_response_id
+                    elif consent_type not in CONSENT_TYPE_MODULE_NAMES:
+                        logging.error(f'Consent type {str(consent_type)} missing associated module name')
+
+        self.session.commit()
 
     @classmethod
     def _find_file_ready_for_sync(cls, results: List[ParsingResult]):
@@ -344,6 +378,10 @@ class LogResultStrategy(ValidationOutputStrategy):
         # Not modifying files since this class is just meant to write logs about the files
         ...
 
+    def set_consent_response_ids_for_results(self):
+        # Not modifying files
+        ...
+
     def _line_output_for_validation(self, file: ParsingResult, verbose: bool):
         output_line = StringIO()
         if verbose:
@@ -423,7 +461,6 @@ class ConsentValidationController:
         self.consent_dao = consent_dao
         self.participant_summary_dao = participant_summary_dao
         self.storage_provider = storage_provider
-
         self.va_hpo_id = hpo_dao.get_by_name('VA').hpoId
         self._session = session
 
@@ -537,6 +574,8 @@ class ConsentValidationController:
         if self._check_consent_type(ConsentType.ETM, types_to_validate):
             output_strategy.add_all(self._process_validation_results(validator.get_etm_validation_results()))
 
+        # DA-3423:  Populate the consent_response_id values for the ConsentFile validation results as needed
+        output_strategy.set_consent_response_ids_for_results()
 
     def validate_consent_uploads(self, output_strategy: ValidationOutputStrategy):
         """
@@ -547,6 +586,13 @@ class ConsentValidationController:
         # Pre-schedule the error reporting tasks to run in 8 hours.  Ensures the error report check occurs once a day.
         dispatch_check_consent_errors_task(origin='vibrent', in_seconds=28800)
         dispatch_check_consent_errors_task(origin='careevolution', in_seconds=28800)
+
+        # set all pdfminer logging to WARN: https://stackoverflow.com/questions/29762706/warnings-on-pdfminer
+        # trying to prevent unusable Python 2 info logging that shows up in GCP logs from pdfinterp.py and pdfpage.py
+        pdfminer_logs = [logging.getLogger(name)
+                         for name in logging.root.manager.loggerDict if name.startswith('pdfminer')]
+        for ll in pdfminer_logs:
+            ll.setLevel(logging.WARNING)
 
         # Retrieve consent response objects that need to be validated
         is_last_batch = False
@@ -865,8 +911,12 @@ class ConsentValidator:
         if self.participant_summary.participantOrigin == 'careevolution':
             return
 
-        sensitive_form_release_date_str = config.getSettingJson(config.SENSITIVE_EHR_RELEASE_DATE)
-        sensitive_form_release_date = parse(sensitive_form_release_date_str).date()
+        # Config item for SENSITIVE_EHR_RELEASE_DATE may not exist in lower environments
+        try:
+            sensitive_form_release_date_str = config.getSettingJson(config.SENSITIVE_EHR_RELEASE_DATE)
+            sensitive_form_release_date = parse(sensitive_form_release_date_str).date()
+        except MissingConfigException:
+            return
 
         if result.expected_sign_date < sensitive_form_release_date or consent.get_is_va_consent():
             return  # Skip the following checks for sensitive release fields

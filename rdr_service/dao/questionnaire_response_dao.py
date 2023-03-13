@@ -1553,13 +1553,61 @@ class QuestionnaireResponseDao(BaseDao):
     def _code_in_list(cls, code_value: str, code_list: List[str]):
         return code_value.lower in [list_value.lower() for list_value in code_list]
 
+    @classmethod
+    def find_consent_response_with_pdf(cls, participant_id: int, consent_type: ConsentType,
+                                       modules: List[str], pdf_name_to_match: str, session: Session):
+        """
+        Look for the QuestionnaireResponse record containing the consent PDF name and return the id for its
+        associated ConsentResponse record.  Note: consent responses that were received prior the implementation
+        of the ConsentResponse table will not be successfully matched.
+        :param participant_id:  participant_id whose responses should be searched
+        :param consent_type: ConsentType value to match on
+        :param modules: A list of consent module names to filter on, which can be single-element (e.g., ['ConsentPII'])
+        :param pdf_name_to_match: The PDF name to be matched to the response's consent-form-signed-pdf extension data
+        :param session: Session object for querying
+        :return: The id of the ConsentResponse record created for the matching QuestionnaireResponse
+                 (or None if no matching QuestionnaireResponse)
+        """
+
+        # Not expected that more than one QuestionnaireResponse would reference the same PDF unless it is a
+        # duplicate/replay of a previous payload;  but order results by most recently authored and use first match
+        matched_response_id = None
+        results = session.query(
+            QuestionnaireResponse.resource, ConsentResponse.id.label('consent_response_id')
+        ).join(
+            ConsentResponse,
+            ConsentResponse.questionnaire_response_id == QuestionnaireResponse.questionnaireResponseId
+        ).join(
+            QuestionnaireConcept,
+            and_(QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
+                 QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion)
+        ).join(
+            Code, QuestionnaireConcept.codeId == Code.codeId
+        ).filter(
+            QuestionnaireResponse.participantId == participant_id
+        ).filter(
+            Code.value.in_(modules)
+        ).filter(
+            ConsentResponse.type == consent_type
+        ).order_by(QuestionnaireResponse.authored.desc()).all()
+
+        if results:
+            for qr_rec in results:
+                resource_json = json.loads(qr_rec.resource)
+                ext_pdfs = _get_consent_filenames_from_resource(resource_json)
+                for ext_pdf in ext_pdfs:
+                    if pdf_name_to_match.endswith(ext_pdf):
+                        matched_response_id = qr_rec.consent_response_id
+                        break
+
+        return matched_response_id
 
 def _validate_consent_pdfs(resource):
     """Checks for any consent-form-signed-pdf extensions and validates their PDFs in GCS."""
     if resource.get("resourceType") != "QuestionnaireResponse":
         raise ValueError(f'Expected QuestionnaireResponse for "resourceType" in {resource}.')
 
-    # We now lookup up consent bucket names by participant origin id.
+    # We now look up consent bucket names by participant origin id.
     p_origin = get_account_origin_id()
     consent_bucket_config = config.getSettingJson(config.CONSENT_PDF_BUCKET)
     # If we don't match the origin id, just return the first bucket in the dict.
@@ -1569,17 +1617,14 @@ def _validate_consent_pdfs(resource):
         pass
 
     found_pdf = False
-    for extension in resource.get("extension", []):
-        if extension["url"] != _SIGNED_CONSENT_EXTENSION:
-            continue
-        local_pdf_path = extension["valueString"]
+    parsed_files = _get_consent_filenames_from_resource(resource)
+    for local_pdf_path in parsed_files:
         _, ext = os.path.splitext(local_pdf_path)
         if ext.lower() != ".pdf":
             raise BadRequest(f"Signed PDF must end in .pdf, found {ext} (from {local_pdf_path}).")
         # Treat the value as a bucket-relative path, allowing a leading slash or not.
         if not local_pdf_path.startswith("/"):
             local_pdf_path = "/" + local_pdf_path
-
         _raise_if_gcloud_file_missing("/{}{}".format(consent_bucket, local_pdf_path))
         found_pdf = True
 
@@ -1590,6 +1635,19 @@ def _validate_consent_pdfs(resource):
     else:
         return found_pdf
 
+def _get_consent_filenames_from_resource(resource: Dict) -> List[str]:
+    """
+    Given a QuestionnaireResponse payload, extract the consent filename(s) from the consent-form-signed-pdf extension(s)
+    :param resource: QuestionnaireResponse resource data (as Dict)
+    :returns: List of valueString from the consent-form-signed-pdf extensions (or empty string if no extension present)
+    """
+    consent_files = []
+    for extension in resource.get("extension", []):
+        if extension["url"] != _SIGNED_CONSENT_EXTENSION:
+            continue
+        consent_files.append(extension["valueString"])
+
+    return consent_files
 
 def _raise_if_gcloud_file_missing(path):
     """Checks that a GCS file exists.
