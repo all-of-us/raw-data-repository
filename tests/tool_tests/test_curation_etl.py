@@ -100,13 +100,16 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
     @staticmethod
     def run_cdm_data_generation(cutoff=None, vocabulary='gs://curation-vocabulary/aou_vocab_20220201/',
-                                participant_origin='all', participant_list_file=None):
+                                participant_origin='all', participant_list_file=None, include_surveys=None,
+                                exclude_surveys=None):
         CurationEtlTest.run_tool(CurationExportClass, tool_args={
             'command': 'cdm-data',
             'cutoff': cutoff,
             'vocabulary': vocabulary,
             'participant_origin': participant_origin,
-            'participant_list_file': participant_list_file
+            'participant_list_file': participant_list_file,
+            'include_surveys': include_surveys,
+            'exclude_surveys': exclude_surveys
         })
 
     @staticmethod
