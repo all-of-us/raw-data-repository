@@ -89,12 +89,24 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
         return questionnaire_response
 
+    def _participant_in_src_clean(self, participant_id:int) -> bool:
+        participant_exists = self.session.query(SrcClean.participant_id).filter(
+            SrcClean.participant_id == participant_id
+        ).distinct().scalar()
+        if participant_exists:
+            return True
+        else:
+            return False
+
     @staticmethod
-    def run_cdm_data_generation(cutoff=None, vocabulary='gs://curation-vocabulary/aou_vocab_20220201/'):
+    def run_cdm_data_generation(cutoff=None, vocabulary='gs://curation-vocabulary/aou_vocab_20220201/',
+                                participant_origin='all', participant_list_file=None):
         CurationEtlTest.run_tool(CurationExportClass, tool_args={
             'command': 'cdm-data',
             'cutoff': cutoff,
-            'vocabulary': vocabulary
+            'vocabulary': vocabulary,
+            'participant_origin': participant_origin,
+            'participant_list_file': participant_list_file
         })
 
     @staticmethod
@@ -694,3 +706,50 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
                 self.assertIsNone(src_clean_answer)
             else:
                 self.assertEqual(expected_answer, src_clean_answer.value_string)
+
+    def test_participant_origin_flag(self):
+        """ Test the participant origin flag selects the intended participants"""
+        participant_ce = self.data_generator.create_database_participant(participantOrigin='careevolution')
+        self.data_generator.create_database_participant_summary(
+            participant=participant_ce,
+            dateOfBirth=datetime(1982, 1, 9),
+            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10))
+        self._setup_questionnaire_response(
+            participant_ce,
+            self.questionnaire
+        )
+
+        participant_vibrent = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        self.data_generator.create_database_participant_summary(
+            participant=participant_vibrent,
+            dateOfBirth=datetime(1982, 1, 9),
+            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10))
+        self._setup_questionnaire_response(
+            participant_vibrent,
+            self.questionnaire
+        )
+
+        self.run_cdm_data_generation(participant_origin='careevolution')
+        ce_ppt_exists = self._participant_in_src_clean(participant_ce.participantId)
+        vibrent_ppt_exists = self._participant_in_src_clean(participant_vibrent.participantId)
+
+        self.assertTrue(ce_ppt_exists)
+        self.assertFalse(vibrent_ppt_exists)
+
+        self.session.commit()
+
+        self.run_cdm_data_generation(participant_origin='vibrent')
+        ce_ppt_exists = self._participant_in_src_clean(participant_ce.participantId)
+        vibrent_ppt_exists = self._participant_in_src_clean(participant_vibrent.participantId)
+
+        self.assertFalse(ce_ppt_exists)
+        self.assertTrue(vibrent_ppt_exists)
+
+        self.session.commit()
+
+        self.run_cdm_data_generation()
+        ce_ppt_exists = self._participant_in_src_clean(participant_ce.participantId)
+        vibrent_ppt_exists = self._participant_in_src_clean(participant_vibrent.participantId)
+
+        self.assertTrue(ce_ppt_exists)
+        self.assertTrue(vibrent_ppt_exists)
