@@ -587,13 +587,6 @@ class ConsentValidationController:
         dispatch_check_consent_errors_task(origin='vibrent', in_seconds=28800)
         dispatch_check_consent_errors_task(origin='careevolution', in_seconds=28800)
 
-        # set all pdfminer logging to WARN: https://stackoverflow.com/questions/29762706/warnings-on-pdfminer
-        # trying to prevent unusable Python 2 info logging that shows up in GCP logs from pdfinterp.py and pdfpage.py
-        pdfminer_logs = [logging.getLogger(name)
-                         for name in logging.root.manager.loggerDict if name.startswith('pdfminer')]
-        for ll in pdfminer_logs:
-            ll.setLevel(logging.WARNING)
-
         # Retrieve consent response objects that need to be validated
         is_last_batch = False
         while not is_last_batch:
