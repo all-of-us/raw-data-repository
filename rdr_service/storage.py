@@ -19,6 +19,8 @@ from google.cloud.exceptions import GatewayTimeout
 from google.cloud.storage import Blob
 from google.cloud._helpers import UTC
 from google.cloud._helpers import _RFC3339_MICROS
+from zipfile import ZipFile
+
 from rdr_service.provider import Provider
 
 
@@ -205,8 +207,9 @@ class GoogleCloudStorageFile(ContextDecorator):
             self._w_temp_file = tempfile.NamedTemporaryFile(delete=False)
         if isinstance(content, str):
             content = content.encode()
-        self._w_temp_file.write(content)
+        num_written = self._w_temp_file.write(content)
         self._w_temp_file.flush()
+        return num_written
 
     def flush(self):
         self._w_temp_file.flush()
@@ -276,6 +279,30 @@ class GoogleCloudStorageFile(ContextDecorator):
         if buffer.tell() > 0:
             buffer.seek(0)
             yield buffer.read()
+
+
+class GoogleCloudStorageZipFile:
+    def __init__(self, upload_destination_path):
+        self._upload_destination_path = upload_destination_path
+        self._storage_provider = GoogleCloudStorageProvider()
+        self._destination_handle = None
+
+    def __enter__(self):
+        self._destination_handle = self._storage_provider.open(self._upload_destination_path, mode='w').__enter__()
+        self._zip_file = ZipFile(self._destination_handle, 'w')
+        self._zip_file.__enter__()
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self._zip_file.__exit__(*args, **kwargs)
+        self._destination_handle.__exit__(*args, **kwargs)
+
+    def write_blob(self, blob_source_str: str, archive_name: str = None):
+        with self._storage_provider.open(blob_source_str, 'rb') as blob:
+            self._zip_file.writestr(
+                zinfo_or_arcname=archive_name or blob_source_str,
+                data=blob.read()
+            )
 
 
 class GoogleCloudStorageProvider(StorageProvider):
