@@ -36,7 +36,7 @@ CONSENT_TYPE_MODULE_NAMES = {
     ConsentType.CABOR: ['ConsentPII'],
     ConsentType.EHR: ['EHRConsentPII'],
     ConsentType.GROR: ['GROR'],
-    ConsentType.PRIMARY_UPDATE: ['ProgramUpdate'],
+    ConsentType.PRIMARY_UPDATE: ['PrimaryConsentUpdate'],
     ConsentType.WEAR: ['wear_consent'],
     ConsentType.PRIMARY_RECONSENT: ['vaprimaryreconsent_c1_2', 'vaprimaryreconsent_c3', 'nonvaprimaryreconsent'],
     ConsentType.EHR_RECONSENT: ['vaehrreconsent'],
