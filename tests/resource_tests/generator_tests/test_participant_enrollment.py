@@ -273,3 +273,24 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin, PDRGeneratorTest
         self._submit_dvehrconsent(self.participant_id, response_time=datetime(2019, 4, 1))
         ps_data = self.make_participant_resource(self.participant_id)
         self.assertEqual('PARTICIPANT', ps_data['enrollment_status'])
+
+    def test_prior_ehr_treated_as_validated(self):
+        # For EHR consents authored before 2023-03-12, normal test setup with PPI modules, PM, and Biospecimen
+        # should result in PDR enrollment_status of CORE_PARTICIPANT
+        self._set_up_participant_data() # Default test setup uses EHR authored in 2019
+        ps_data = self.make_participant_resource(self.participant_id)
+        self.assertEqual('CORE_PARTICIPANT', ps_data['enrollment_status'])
+
+    def test_unvalidated_ehr_stays_participant(self):
+        # As of EHR consents authored on 2023-03-12 or later:
+        # Upon initial receipt of EHR consent, it will now start out in SUBMITTED_NOT_VALIDATED.
+        # That should prevent PDR enrollment status from elevating to FULLY_CONSENTED or higher (stays PARTICIPANT)
+        self._set_up_participant_data(skip_ehr=True)
+        # Force a specific authored time on the EHR consent instead of default test setup
+        self._submit_ehrconsent(self.participant_id,
+                                response_code=CONSENT_PERMISSION_YES_CODE,
+                                response_time=datetime(2023, 3, 12))
+        ps_data = self.make_participant_resource(self.participant_id)
+        self.assertEqual('PARTICIPANT', ps_data['enrollment_status'])
+
+

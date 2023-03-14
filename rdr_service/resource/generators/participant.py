@@ -841,7 +841,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     mod_found = False
                     for en in ParticipantEventEnum:
                         # module_name can be None in the unittests.
-                        if module_name and en.name.lower() == module_name.lower():
+                        if (module_name and en.name.lower() == module_name.lower()
+                                # Exclude consents that have not passed validation. Initially will only apply to EHR
+                                and module_status not in (BQModuleStatusEnum.SUBMITTED_NOT_VALIDATED,
+                                                          BQModuleStatusEnum.SUBMITTED_INVALID)
+                        ):
                             activity.append(_act(row.authored, ActivityGroupEnum.QuestionnaireModule, en, **mod_ca))
                             mod_found = True
                             break
@@ -1852,9 +1856,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param module_name:  Consent module name.  *** Only EHRCOnsentPII currently supported
         :param ro_session:  A read-only session object
         """
-        # Cutoff for avoiding incorrectly assuming SUBMITTED_NOT_VALIDATED.  Based on expected release date
-        # of RDR changes that will begin using SUBMITTED_NOT_VALIDATED/SUBMITTED_INVALID statuses.
-        pdf_validation_start_date = datetime.datetime(2023, 3, 10)
+        # Cutoff for avoiding incorrectly assuming SUBMITTED_NOT_VALIDATED.  Timestamp determined from checking RDR
+        # data to find the earliest authored EHR consent that was put into SUBMITTED_NOT_VALIDATED when the new statuses
+        # went live in RDR.
+        pdf_validation_start_date = datetime.datetime(2023, 3, 11, 1, 34, 2)
         status = BQModuleStatusEnum.SUBMITTED  # Default, this method is only called for "Yes" consents that have PDF
         dao = None
         if not ro_session:
