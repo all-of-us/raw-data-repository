@@ -278,8 +278,10 @@ class TestQueryExecution(BaseTestCase):
     def test_client_filter_parameter(self):
         mock_load_participant_data(self.session)
         participant_nph_id, first_name = (
-            self.session.query(study_nph.Participant.id, ParticipantSummaryModel.firstName)
-            .join(
+            self.session.query(
+                study_nph.Participant.id,
+                ParticipantSummaryModel.firstName
+            ).join(
                 ParticipantMapping,
                 ParticipantMapping.primary_participant_id == ParticipantSummaryModel.participantId
             ).join(

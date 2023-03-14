@@ -31,22 +31,6 @@ event.listen(Participant, "before_insert", model_insert_listener)
 event.listen(Participant, "before_update", model_update_listener)
 
 
-class ParticipantOpsDataElement(NphBase):
-    __tablename__ = "participant_ops_data_element"
-
-    id = Column("id", BigInteger, primary_key=True)
-    created = Column(UTCDateTime)
-    modified = Column(UTCDateTime)
-    ignore_flag = Column(TINYINT, default=0)
-    participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    source_data_element = Column(Enum(ParticipantOpsElementTypes), nullable=False)
-    source_value = Column(String(512))
-
-
-event.listen(ParticipantOpsDataElement, "before_insert", model_insert_listener)
-event.listen(ParticipantOpsDataElement, "before_update", model_update_listener)
-
-
 class StudyCategory(NphBase):
     __tablename__ = "study_category"
 
@@ -383,3 +367,19 @@ class Incident(NphBase):
 
 event.listen(Incident, "before_insert", model_insert_listener)
 event.listen(Incident, "before_update", model_update_listener)
+
+
+class ParticipantOpsDataElement(NphBase):
+    __tablename__ = "participant_ops_data_element"
+
+    id = Column("id", BigInteger, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    source_data_element = Column(Enum(ParticipantOpsElementTypes), nullable=False)
+    source_value = Column(String(512))
+
+
+event.listen(ParticipantOpsDataElement, "before_insert", model_insert_listener)
+event.listen(ParticipantOpsDataElement, "before_update", model_update_listener)
