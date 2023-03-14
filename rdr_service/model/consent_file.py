@@ -30,6 +30,21 @@ class ConsentType(messages.Enum):
     EHR_RECONSENT = 9
     ETM = 10
 
+# DA-3423: Map ConsentType values to their possible module strings, for use in QuestionnaireResponse query filtering
+CONSENT_TYPE_MODULE_NAMES = {
+    ConsentType.PRIMARY: ['ConsentPII'],
+    ConsentType.CABOR: ['ConsentPII'],
+    ConsentType.EHR: ['EHRConsentPII'],
+    ConsentType.GROR: ['GROR'],
+    ConsentType.PRIMARY_UPDATE: ['PrimaryConsentUpdate'],
+    ConsentType.WEAR: ['wear_consent'],
+    ConsentType.PRIMARY_RECONSENT: ['vaprimaryreconsent_c1_2', 'vaprimaryreconsent_c3', 'nonvaprimaryreconsent'],
+    ConsentType.EHR_RECONSENT: ['vaehrreconsent'],
+    # TODO: Currently seeing both ETM module strings in lower env test payloads.  Confirm if both will be needed
+    ConsentType.ETM: ['welcome_to_etm', 'english_exploring_the_mind_consent_form']
+    # ConsentType.UNKNOWN intentionally omitted
+}
+
 
 class ConsentSyncStatus(messages.Enum):
     NEEDS_CORRECTING = 1
