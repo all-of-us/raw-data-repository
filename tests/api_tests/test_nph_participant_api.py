@@ -1,14 +1,15 @@
 import faker
+import json
+
 from itertools import zip_longest
 from graphql import GraphQLSyntaxError
-import json
 from datetime import datetime, timedelta
 
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
 from rdr_service.data_gen.generators.data_generator import DataGenerator
 from sqlalchemy.orm import Query
-from rdr_service.model import study_nph
+from rdr_service.model.study_nph import Participant as nphParticipant
 from rdr_service.model.participant import Participant as aouParticipant
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.model.rex import ParticipantMapping, Study
@@ -279,14 +280,14 @@ class TestQueryExecution(BaseTestCase):
         mock_load_participant_data(self.session)
         participant_nph_id, first_name = (
             self.session.query(
-                study_nph.Participant.id,
+                nphParticipant.id,
                 ParticipantSummaryModel.firstName
             ).join(
                 ParticipantMapping,
                 ParticipantMapping.primary_participant_id == ParticipantSummaryModel.participantId
             ).join(
-                study_nph.Participant,
-                study_nph.Participant.id == ParticipantMapping.ancillary_participant_id
+                nphParticipant,
+                nphParticipant.id == ParticipantMapping.ancillary_participant_id
             ).first()
         )
         executed = app.test_client().post(
