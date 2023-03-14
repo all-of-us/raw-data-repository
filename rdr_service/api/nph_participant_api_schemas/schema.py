@@ -1,5 +1,5 @@
 import logging
-from graphene import ObjectType, String, Int, DateTime, Field, List, Schema, NonNull
+from graphene import ObjectType, String, Int, DateTime, Field, List, Schema, NonNull, Date
 from graphene import relay
 from sqlalchemy.orm import Query, aliased
 from sqlalchemy import and_, func
@@ -123,7 +123,7 @@ class Participant(ObjectType):
         filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.lastName == value)
     )
     dateOfBirth = SortableField(
-        String,
+        Date,
         name='DOB',
         description="Participant's date of birth, sourced from Aou participant_summary_table",
         sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.dateOfBirth),
@@ -242,17 +242,18 @@ class Participant(ObjectType):
         '''
     )
     # NPH
-    external_id = SortableField(String, name="nphPairedSite", description='Sourced from NPH Schema.',
+    externalId = SortableField(String, name="nphPairedSite", description='Sourced from NPH Schema.',
                                 sort_modifier=lambda context: context.set_order_expression(nphSite.external_id))
-    organization_external_id = SortableField(String, name="nphPairedOrg", description='Sourced from NPH Schema.',
+    organizationExternalId = SortableField(String, name="nphPairedOrg", description='Sourced from NPH Schema.',
                                              sort_modifier=lambda context: context.set_order_expression(
                                                  nphSite.organization_external_id))
-    awardee_external_id = SortableField(String, name="nphPairedAwardee", description='Sourced from NPH Schema.',
+    awardeeExternalId = SortableField(String, name="nphPairedAwardee", description='Sourced from NPH Schema.',
                                         sort_modifier=lambda context: context.set_order_expression(
                                             nphSite.awardee_external_id))
-    nph_enrollment_status = List(Event, name="nphEnrollmentStatus", description='Sourced from NPH Schema.')
-    nph_withdrawal_status = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
-    nph_deactivation_status = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
+    nphEnrollmentStatus = List(Event, name="nphEnrollmentStatus", description='Sourced from NPH Schema.')
+    nphWithdrawalStatus = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
+    nphDeactivationStatus = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
+    nphDateOfBirth = Field(String, name="nphDateOfBirth", description='Sourced from NPH Schema.')
     # Bio-specimen
     sample_8_5ml_ssts_1 = Field(SampleCollection, description='Sample 8.5ml SSTS1')
     sample_4ml_ssts_1 = Field(SampleCollection, description='Sample 4ml SSTS1')

@@ -86,7 +86,8 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
             'firstName': summary.firstName,
             'middleName': summary.middleName,
             'lastName': summary.lastName,
-            'dateOfBirth': get_value_from_ops_data(ops_data, ParticipantOpsElementTypes.BIRTHDATE),
+            'dateOfBirth': summary.dateOfBirth,
+            'nphDateOfBirth': get_value_from_ops_data(ops_data, ParticipantOpsElementTypes.BIRTHDATE),
             'zipCode': summary.zipCode,
             'phoneNumber': summary.phoneNumber,
             'email': summary.email,
@@ -94,15 +95,15 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                                "time": summary.deceasedAuthored},
             'withdrawalStatus': {"value": check_field_value(summary.withdrawalStatus),
                                  "time": summary.withdrawalAuthored},
-            'nph_deactivation_status': {
+            'nphDeactivationStatus': {
                 "value": "Deactivate" if deactivated else "NULL",
                 "time": deactivated.event_authored_time if deactivated else None
             },
-            'nph_withdrawal_status': {
+            'nphWithdrawalStatus': {
                 "value": "Withdrawn" if withdrawn else "NULL",
                 "time": withdrawn.event_authored_time if withdrawn else None
             },
-            'nph_enrollment_status': get_enrollment_statuses(enrollment['enrollment_json']),
+            'nphEnrollmentStatus': get_enrollment_statuses(enrollment['enrollment_json']),
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
                                  "time": summary.suspensionTime},
@@ -121,9 +122,9 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                 "time": summary.questionnaireOnLifestyleAuthored
             },
             'siteId': site.googleGroup,
-            'external_id': nph_site.external_id,
-            'organization_external_id': nph_site.organization_external_id,
-            'awardee_external_id': nph_site.awardee_external_id,
+            'externalId': nph_site.external_id,
+            'organizationExternalId': nph_site.organization_external_id,
+            'awardeeExternalId': nph_site.awardee_external_id,
             'questionnaireOnSocialDeterminantsOfHealth': {
                 "value": check_field_value(summary.questionnaireOnSocialDeterminantsOfHealth),
                 "time": summary.questionnaireOnSocialDeterminantsOfHealthAuthored

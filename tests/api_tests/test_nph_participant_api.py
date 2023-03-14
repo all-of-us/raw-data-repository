@@ -289,7 +289,8 @@ class TestQueryExecution(BaseTestCase):
         )
         executed = app.test_client().post(
             '/rdr/v1/nph_participant',
-            data='{participant (firstName: "%s") { edges { node { participantNphId firstName } } } }' % first_name
+            data='{participant (firstName: "%s") { edges { node { participantNphId firstName } } } }'
+                 % first_name
         )
         result = json.loads(executed.data.decode('utf-8'))
         result_participant_list = result.get('participant').get('edges')
@@ -340,6 +341,18 @@ class TestQueryExecution(BaseTestCase):
         actual_result = result.get('participant').get('edges')[0].get('node').get('nphDeactivationStatus')
         self.assertIn("time", actual_result)
         self.assertIn("value", actual_result)
+
+    def test_nphDateOfBirth_field(self):
+        field_to_test = "nphDateOfBirth"
+        query = simple_query(field_to_test)
+        mock_load_participant_data(self.session)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, len(result.get('participant').get('edges')))
+        has_nph_dob = result.get('participant').get('edges')[0].get('node')
+        self.assertTrue(has_nph_dob.get('nphDateOfBirth') == '1980-01-01')
+        no_nph_dob = result.get('participant').get('edges')[1].get('node')
+        self.assertTrue(no_nph_dob.get('nphDateOfBirth') == 'UNSET')
 
     def test_graphql_syntax_error(self):
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SYNTAX_ERROR)
