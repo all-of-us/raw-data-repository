@@ -65,7 +65,6 @@ set_db_connection_string
 
 echo "Running ETL..."
 
-mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/partially_initialize_cdm.sql
 if [ -z "${CUTOFF}" ]
 then
   python -m tools curation --project ${PROJECT} cdm-data --vocabulary ${VOCABULARY} --participant-list-file ${PARTICIPANT_LIST_FILE} --exclude-surveys ${EXCLUDE_SURVEYS} --include-surveys ${INCLUDE_SURVEYS} --participant-origin ${PARTICIPANT_ORIGIN}

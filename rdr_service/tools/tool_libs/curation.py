@@ -18,7 +18,10 @@ from rdr_service import api_util
 from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, PMI_SKIP_CODE, \
     EMPLOYMENT_ZIPCODE_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
 from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean
+from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean, Location, CareSite, Provider, \
+    Person, Death, ObservationPeriod, PayerPlanPeriod, VisitOccurrence, ConditionOccurrence, ProcedureOccurrence, \
+    Observation, Measurement, Note, DrugExposure, DeviceExposure, Cost, FactRelationship, ConditionEra, DrugEra, \
+    DoseEra, Metadata, NoteNlp, VisitDetail
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
@@ -746,11 +749,8 @@ class CurationExportClass(ToolBase):
         with self.get_session() as session:
             etl_history = self.cdr_etl_run_history_dao.create_etl_history_record(session, cutoff_date,
                                                                                  self.args.vocabulary, filter_options)
-        with self.get_session(database_name='cdm', alembic=True) as session:  # using alembic to get CREATE permission
-            self._create_tables(session, [
-                QuestionnaireAnswersByModule,
-                SrcClean
-            ])
+        # Create cdm tables
+        self._initialize_cdm()
 
         # using alembic here to get the database_factory code to set up a connection to the CDM database
         with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
@@ -807,6 +807,37 @@ class CurationExportClass(ToolBase):
             return self.manage_etl_exclude_code()
 
         return 0
+
+    def _initialize_cdm(self):
+        with self.get_session(database_name='cdm', alembic=True) as session:  # using alembic to get CREATE permission
+            session.execute("Delete from voc.concept WHERE concept_id IN (1585549, 1585565, 1585548)")
+
+            self._create_tables(session, [QuestionnaireAnswersByModule,
+                SrcClean,
+                Note,
+                DrugExposure,
+                DeviceExposure,
+                Cost,
+                FactRelationship,
+                ConditionEra,
+                DrugEra,
+                DoseEra,
+                Metadata,
+                NoteNlp,
+                VisitDetail,
+                Location,
+                CareSite,
+                Provider,
+                Person,
+                Death,
+                ObservationPeriod,
+                PayerPlanPeriod,
+                VisitOccurrence,
+                ConditionOccurrence,
+                ProcedureOccurrence,
+                Observation,
+                Measurement])
+
 
 
 def add_additional_arguments(parser):
