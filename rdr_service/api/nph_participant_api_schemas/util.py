@@ -174,7 +174,6 @@ def schema_field_lookup(value):
 
 def load_participant_data(query):
     # query.session = sessions
-
     results = []
     for participants in query.all():
         samples_data = defaultdict(lambda: {
@@ -209,7 +208,6 @@ def load_participant_data(query):
                 **samples_data
             }
         )
-
     return []
 
 

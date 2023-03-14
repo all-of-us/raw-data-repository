@@ -197,7 +197,7 @@ class TestQueryExecution(BaseTestCase):
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
         result = json.loads(executed.data.decode('utf-8'))
         self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
-        expected_site_name = ["nph-test-site-1", "nph-test-site-2"]
+        expected_site_name = ["nph-test-site-2", "nph-test-site-1"]
         for index, each in enumerate(result.get('participant').get('edges')):
             self.assertEqual(expected_site_name[index], each.get('node').get(field_to_test))
 
