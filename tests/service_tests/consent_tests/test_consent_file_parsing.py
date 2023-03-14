@@ -8,7 +8,6 @@ from typing import Collection, List
 from rdr_service.services.consent import files
 from tests.helpers.unittest_base import BaseTestCase
 
-
 class ConsentFileParsingTest(BaseTestCase):
     def __init__(self, *args, **kwargs):
         super(ConsentFileParsingTest, self).__init__(*args, **kwargs)
