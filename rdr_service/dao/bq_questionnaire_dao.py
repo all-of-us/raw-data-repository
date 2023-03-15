@@ -79,7 +79,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         _response_answers_sql = """
             SELECT qr.questionnaire_id,
                qq.code_id,
-               (select c.value from code c where c.code_id = qq.code_id and c.system = :system) as code_name,
+               (select c.value from code c where c.code_id = qq.code_id and c.system = :system)
+                        as question_code,
                COALESCE((SELECT c.value from code c where c.code_id = qra.value_code_id),
                         qra.value_integer, qra.value_decimal,
                         qra.value_boolean, qra.value_string, qra.value_system,
@@ -109,14 +110,12 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             question_codes = session.execute(_question_code_sql, {'module_id': module_id, 'system': PPI_SYSTEM})
             pdr_schema = table().get_schema()
             pdr_field_list = {}
-            pdr_columns = [col['name'] for col in pdr_schema.get_fields()]
+            expected_pdr_columns = [col['name'] for col in pdr_schema.get_fields()]
             for code in question_codes:
-                # PDR-1672:  We may have to map question codes whose strings can't be used "as is" for a destination PDR
-                # table column name (e.g., contains spaces) to a DB-friendly string.  make_bq_field_name() will either
-                # return the "as is" code name if it's usable, or the mapped col name (e.g., spaces replaced with _)
-                # (The same thing is/was done when the _BQModuleSchema child class is instantiated)
+                # make_bq_field_name() will either return code.value if it can be used as the PDR table column name,
+                # or a mapped version that has converted embedded spaces or / chars, etc., to underscores
                 pdr_col_name, _ = pdr_schema.make_bq_field_name(code.value)
-                if pdr_col_name not in pdr_columns:
+                if pdr_col_name not in expected_pdr_columns:
                     logging.warning(f'Unknown question code {code.value} not in {table().get_name()} schema')
                 else:
                     pdr_field_list[code.value] = pdr_col_name
@@ -137,21 +136,21 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
 
                 answers = session.execute(_response_answers_sql, {'qr_id': qr.questionnaire_response_id,
                                                                   'system': PPI_SYSTEM})
-                # Initialize the answer data dict to all null/None
-                ans_dict = {pdr_field_list[qc]: None for qc in pdr_field_list}
+                # Initialize values for each question code/column name in the data dict to null
+                ans_dict = {pdr_field_list[field]: None for field in pdr_field_list}
                 for ans in answers:
-                    # When going through the answers results, have to do the same mapping on the code_name string that
-                    # is describing the questionnaire_question being answered (PDR-1672)
-                    mapped_field, _ = pdr_schema.make_bq_field_name(ans.code_name)
+                    # When going through the answers results, have to pass the question_code string to the mapping
+                    # function so we match up with the PDR table column/field names (in case they were also mapped)
+                    mapped_field, _ = pdr_schema.make_bq_field_name(ans.question_code)
                     if mapped_field not in pdr_field_list:
                         logging.debug("""questionnaireResponseID {0} contains previously unrecognized question code {1}
                                 for module {2}
-                            """.format(qr.questionnaire_response_id, ans.code_name, module_id))
+                            """.format(qr.questionnaire_response_id, ans.question_code, module_id))
 
                     # Handle multi-select question codes (such as ethnicity or gender identity response options) where
                     # user provided more than one answer and concatenate into comma-separated list.  This mirrors
                     # GROUP_CONCAT SQL logic from the deprecated sp_get_questionnaire_answers proc
-                    if mapped_field in pdr_field_list and ans_dict[ans.code_name]:
+                    if mapped_field in pdr_field_list and ans_dict[mapped_field]:
                         # If answer value coalesced to null, skip those (found during testing in lower environments)
                         if ans.answer:
                             prev_answer = ans_dict[mapped_field]
