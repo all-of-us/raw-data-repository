@@ -4,6 +4,7 @@ from graphql import GraphQLSyntaxError
 import json
 from datetime import datetime, timedelta
 
+from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
 from rdr_service.data_gen.generators.data_generator import DataGenerator
 from sqlalchemy.orm import Query
@@ -53,59 +54,54 @@ def condition_query(condition, sort_value, sort_field):
 
 def mock_load_participant_data(session):
     fake = faker.Faker()
-    ps_query = session.query(ParticipantSummaryModel)
-    ps_query.session = session
-    ps_result = ps_query.all()
-    num = len(ps_result)
-    print(f'NPH TESTING: found {num} participants')
-    if num < 10:
-        print('NPH TESTING: generating test data')
-        aou_generator = DataGenerator(session, fake)
-        aou_generator.create_database_hpo()
-        aou_generator.create_database_site()
-        aou_generator.create_database_code()
-        for _ in enumerate(range(11)):
-            aou_generator.create_database_participant(hpoId=0)
-        participant_query = Query(aouParticipant)
-        participant_query.session = session
-        participant_result = participant_query.all()
-        for aou_participant in participant_result:
-            aou_generator.create_database_participant_summary(hpoId=0, participant=aou_participant, siteId=1,
-                                                              dateOfBirth=fake.date_of_birth(),
-                                                              deceasedAuthored=fake.date_time())
-        rdr_study_record = Study(ignore_flag=0, schema_name="rdr")
-        nph_study_record = Study(ignore_flag=0, schema_name='nph', prefix=1000)
-        for study in [rdr_study_record, nph_study_record]:
-            session.add(study)
+    aou_generator = DataGenerator(session, fake)
+    aou_generator.create_database_hpo()
+    aou_generator.create_database_site()
+    aou_generator.create_database_code()
+    for _ in enumerate(range(11)):
+        aou_generator.create_database_participant(hpoId=0)
+    participant_query = Query(aouParticipant)
+    participant_query.session = session
+    participant_result = participant_query.all()
+    for aou_participant in participant_result:
+        aou_generator.create_database_participant_summary(hpoId=0, participant=aou_participant, siteId=1,
+                                                          dateOfBirth=fake.date_of_birth(),
+                                                          deceasedAuthored=fake.date_time())
+    rdr_study_record = Study(ignore_flag=0, schema_name="rdr")
+    nph_study_record = Study(ignore_flag=0, schema_name='nph', prefix=1000)
+    for study in [
+        rdr_study_record,
+        nph_study_record
+    ]:
+        session.add(study)
 
-        nph_data_gen = NphDataGenerator()
-        for activity_name in ['ENROLLMENT', 'PAIRING', 'CONSENT', 'WITHDRAWAL', 'DEACTIVATION']:
-            nph_data_gen.create_database_activity(
-                name=activity_name
-            )
+    nph_data_gen = NphDataGenerator()
+    for activity_name in ['ENROLLMENT', 'PAIRING', 'CONSENT', 'WITHDRAWAL', 'DEACTIVATION']:
+        nph_data_gen.create_database_activity(
+            name=activity_name
+        )
 
-        nph_data_gen.create_database_pairing_event_type(name="INITIAL")
+    nph_data_gen.create_database_pairing_event_type(name="INITIAL")
+    status = ['referred', 'consented']
 
-        status = ['referred', 'consented']
+    for name in status:
+        nph_data_gen.create_database_enrollment_event_type(name=name, source_name=f'module1_{name}')
+    participant_mapping_query = Query(ParticipantMapping)
+    participant_mapping_query.session = session
+    participant_mapping_result = participant_mapping_query.all()
+    if len(participant_mapping_result) < 10:
+        ancillary_participant_id = 100000000
+        for each in participant_result:
+            nph_data_gen.create_database_participant(id=ancillary_participant_id)
+            pm = ParticipantMapping(primary_participant_id=each.participantId,
+                                    ancillary_participant_id=ancillary_participant_id,
+                                    ancillary_study_id=2
+                                    )
+            session.add(pm)
+            nph_data_gen.create_database_enrollment_event(ancillary_participant_id)
+            ancillary_participant_id = ancillary_participant_id + 1
 
-        for name in status:
-            nph_data_gen.create_database_enrollment_event_type(name=name, source_name=f'module1_{name}')
-        participant_mapping_query = Query(ParticipantMapping)
-        participant_mapping_query.session = session
-        participant_mapping_result = participant_mapping_query.all()
-        if len(participant_mapping_result) < 10:
-            ancillary_participant_id = 100000000
-            for each in participant_result:
-                nph_data_gen.create_database_participant(id=ancillary_participant_id)
-                pm = ParticipantMapping(primary_participant_id=each.participantId,
-                                        ancillary_participant_id=ancillary_participant_id,
-                                        ancillary_study_id=2
-                                        )
-                session.add(pm)
-                nph_data_gen.create_database_enrollment_event(ancillary_participant_id)
-                ancillary_participant_id = ancillary_participant_id + 1
-
-        session.commit()
+    session.commit()
 
     for i in range(1, 3):
         nph_data_gen.create_database_site(
@@ -141,6 +137,11 @@ def mock_load_participant_data(session):
         event_authored_time=datetime(2023, 1, 1, 12, 1),
         site_id=2
     )
+
+    nph_data_gen.create_database_participant_ops_data_element(
+        participant_id=100000000,
+        source_data_element=ParticipantOpsElementTypes.BIRTHDATE,
+        source_value='1980-01-01')
 
 
 class TestQueryExecution(BaseTestCase):
@@ -374,6 +375,7 @@ class TestQueryExecution(BaseTestCase):
         self.clear_table_after_test("nph.pairing_event")
         self.clear_table_after_test("nph.enrollment_event")
         self.clear_table_after_test("nph.enrollment_event_type")
+        self.clear_table_after_test("nph.participant_ops_data_element")
 
 
 class TestQueryValidator(BaseTestCase):
