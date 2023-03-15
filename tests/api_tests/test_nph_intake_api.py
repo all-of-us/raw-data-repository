@@ -1,10 +1,12 @@
 import json
 
+from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
 from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphParticipantDao, NphSiteDao, NphParticipantEventActivityDao, \
     NphEnrollmentEventTypeDao, NphPairingEventDao, NphDefaultBaseDao, NphActivityDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
-from rdr_service.model.study_nph import ConsentEvent, EnrollmentEvent, WithdrawalEvent, DeactivatedEvent
+from rdr_service.model.study_nph import ConsentEvent, EnrollmentEvent, WithdrawalEvent, DeactivatedEvent, \
+    ParticipantOpsDataElement
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
 
@@ -26,6 +28,7 @@ class NphIntakeAPITest(BaseTestCase):
         self.nph_enrollment_event_dao = NphDefaultBaseDao(model_type=EnrollmentEvent)
         self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
         self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivatedEvent)
+        self.participant_op_data = NphDefaultBaseDao(model_type=ParticipantOpsDataElement)
 
         self.rex_study_dao.insert(
             self.rex_study_dao.model_type(**{
@@ -280,6 +283,15 @@ class NphIntakeAPITest(BaseTestCase):
         withdrawal_participant_event_activity_ids = [obj.id for obj in withdrawal_participant_event_activity]
 
         self.assertTrue(all(obj.event_id in withdrawal_participant_event_activity_ids for obj in withdrawal_events))
+
+        # check date of birth was added from Patient resourceType
+        all_ops_data = self.participant_op_data.get_all()
+        self.assertTrue(len(all_ops_data), 1)
+
+        ops_data_record = self.participant_op_data.get(1)
+        self.assertTrue(ops_data_record.participant_id == current_participant_id)
+        self.assertTrue(ops_data_record.source_value == '1988-02-02')
+        self.assertTrue(ops_data_record.source_data_element == ParticipantOpsElementTypes.lookup_by_name('BIRTHDATE'))
 
         # other events (should be null)
         self.assertTrue(self.nph_consent_event_dao.get_all() == [])
