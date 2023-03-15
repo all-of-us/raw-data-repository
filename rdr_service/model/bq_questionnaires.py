@@ -1355,6 +1355,32 @@ class BQPDRLifeFunctioningSurveyView(BQModuleView):
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
+class BQPDRRemoteIdVerificationSurveySchema(_BQModuleSchema):
+    """ Remote ID verification survey response record """
+    _module = 'remote_id_verification'
+
+class BQPDRRemoteIdVerificationSurvey(BQTable):
+    __tablename__ = 'pdr_mod_remote_id_verification'
+    __schema__ = BQPDRRemoteIdVerificationSurveySchema
+
+class BQPDRRemoteIdVerificationSurveyView(BQModuleView):
+    __viewname__ = 'v_pdr_mod_remote_id_verification'
+    __viewdescr__ = 'Remote ID Verification Survey Module View'
+    __table__ = BQPDRRemoteIdVerificationSurvey
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    __sql__ = """
+        SELECT id, created, modified, authored, `language`,
+               participant_id, questionnaire_response_id, questionnaire_id,
+               external_id, `status`, status_id,
+               CASE WHEN remote_identity_verified = "true" THEN 1 ELSE 0 END AS remote_identity_verified,
+               CASE WHEN remote_identity_verified_on is not null
+                    -- Mimics RDR questionnaire_response_dao conversion of epoch string to python datetime object
+                    THEN DATETIME(TIMESTAMP_MILLIS(CAST(remote_identity_verified_on AS INT64))) ELSE null
+               END AS remote_identity_verified_on
+        FROM `{project}`.{dataset}.pdr_mod_remote_id_verification
+    """
+    _show_created = True
+
 #
 #
 #
@@ -1388,7 +1414,8 @@ PDR_MODULE_LIST = (
     BQPDRPostPMBFeedback,
     BQPDRPPIModuleFeedback,
     BQPDRWearConsent,
-    BQPDRLifeFunctioningSurvey
+    BQPDRLifeFunctioningSurvey,
+    BQPDRRemoteIdVerificationSurvey
 )
 
 # Create a dictionary of module codes and table object references.

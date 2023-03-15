@@ -32,6 +32,7 @@ class SchemaID(IntEnum):
     patient_statuses = 2090
     ehr_recept = 2100
     pdr_participant = 2110
+    onsite_id_verification = 2200
     # Genomic schemas
     genomic_set = 3000
     genomic_set_member = 3010

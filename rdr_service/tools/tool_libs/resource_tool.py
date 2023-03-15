@@ -19,7 +19,6 @@ from rdr_service.model.genomics import UserEventMetrics
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
-from rdr_service.dao.bq_code_dao import BQCodeGenerator, BQCode
 from rdr_service.dao.code_dao import Code
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_set_member_update, \
@@ -27,16 +26,21 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_se
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
 from rdr_service.dao.bq_workbench_dao import bq_workspace_update, bq_workspace_user_update, \
     bq_institutional_affiliations_update, bq_researcher_update, bq_audit_update
-from rdr_service.dao.bq_hpo_dao import bq_hpo_update, bq_hpo_update_by_id
-from rdr_service.dao.bq_organization_dao import bq_organization_update, bq_organization_update_by_id
-from rdr_service.dao.bq_site_dao import bq_site_update, bq_site_update_by_id
+from rdr_service.dao.bq_code_dao import rebuild_bq_code_ids
+from rdr_service.dao.bq_hpo_dao import bq_hpo_update_by_id
+from rdr_service.dao.bq_organization_dao import bq_organization_update_by_id
+from rdr_service.dao.bq_site_dao import bq_site_update_by_id
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.bq_questionnaires import PDR_MODULE_LIST
 from rdr_service.model.consent_file import ConsentFile
+from rdr_service.model.onsite_id_verification import OnsiteIdVerification
 from rdr_service.model.participant import Participant
 from rdr_service.model.resource_data import ResourceData
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
+from rdr_service.model.hpo import HPO
+from rdr_service.model.organization import Organization
+from rdr_service.model.site import Site
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource import generators
 from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
@@ -44,10 +48,11 @@ from rdr_service.resource.generators.genomics import genomic_set_update, genomic
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_informing_loop_update, \
     genomic_cvl_result_past_due_update, genomic_member_report_state_update, genomic_result_viewed_update, \
     genomic_appointment_event_update
+from rdr_service.resource.generators.onsite_id_verification import onsite_id_verification_batch_rebuild
 from rdr_service.resource.constants import SKIP_TEST_PIDS_FOR_PDR
 from rdr_service.resource.tasks import batch_rebuild_consent_metrics_task
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
-from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
+from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar, list_chunks
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 
 _logger = logging.getLogger("rdr_logger")
@@ -72,13 +77,7 @@ GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'ge
 
 RESEARCH_WORKBENCH_TABLES = ('workspace', 'workspace_user', 'researcher', 'institutional_affiliations', 'audit')
 
-SITE_TABLES = ('hpo', 'site', 'organization')
-
-# Convenience function used by multiple resource tool classes
-def chunks(lst, n):
-    """Yield successive n-sized chunks from lst."""
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+MISC_TABLES = ('hpo', 'site', 'organization', 'code', 'onsite_verification_id')
 
 class CleanPDRDataClass(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject, pk_id_list: None):
@@ -115,7 +114,7 @@ class CleanPDRDataClass(object):
                 batch_count = 500
                 batch_total = len(self.pk_id_list)
                 processed = 0
-                for pk_ids in chunks(self.pk_id_list, batch_count):
+                for pk_ids in list_chunks(self.pk_id_list, batch_count):
                     session.query(BigQuerySync
                                   ).filter(BigQuerySync.projectId == project_id,
                                            BigQuerySync.datasetId == dataset_id,
@@ -140,7 +139,7 @@ class CleanPDRDataClass(object):
             batch_count = 500
             batch_total = len(self.pk_id_list)
             processed = 0
-            for pk_ids in chunks(self.pk_id_list, batch_count):
+            for pk_ids in list_chunks(self.pk_id_list, batch_count):
                 session.query(ResourceData
                               ).filter(ResourceData.resourceTypeID == resource_type_id
                               ).filter(ResourceData.resourcePKID.in_(pk_ids)
@@ -413,60 +412,6 @@ class ParticipantResourceClass(object):
 
         return 1
 
-class CodeResourceClass(object):
-
-    def __init__(self, args, gcp_env: GCPEnvConfigObject):
-        """
-        :param args: command line arguments.
-        :param gcp_env: gcp environment information, see: gcp_initialize().
-        """
-        self.args = args
-        self.gcp_env = gcp_env
-
-    def update_code_table(self):
-        ro_dao = BigQuerySyncDao(backup=True)
-
-        with ro_dao.session() as ro_session:
-            if not self.args.id:
-                results = ro_session.query(Code.codeId).all()
-            else:
-                # Force a list return type for the single-id lookup
-                results = ro_session.query(Code.codeId).filter(Code.codeId == self.args.id).all()
-
-        count = 0
-        total_ids = len(results)
-
-        w_dao = BigQuerySyncDao()
-        _logger.info('  Code table: rebuilding {0} records...'.format(total_ids))
-        with w_dao.session() as w_session:
-            for row in results:
-                gen = BQCodeGenerator()
-                rsc_gen = generators.code.CodeGenerator()
-                bqr = gen.make_bqrecord(row.codeId)
-                gen.save_bqrecord(row.codeId, bqr, project_id=self.gcp_env.project,
-                                  bqtable=BQCode, w_dao=w_dao, w_session=w_session)
-                rsc_rec = rsc_gen.make_resource(row.codeId)
-                rsc_rec.save()
-                count += 1
-                if not self.args.debug:
-                    print_progress_bar(count, total_ids, prefix="{0}/{1}:".format(count, total_ids), suffix="complete")
-
-
-    def run(self):
-
-        clr = self.gcp_env.terminal_colors
-
-        self.gcp_env.activate_sql_proxy()
-        _logger.info('')
-
-        _logger.info(clr.fmt('\nUpdate Code table:',
-                             clr.custom_fg_color(156)))
-        _logger.info('')
-        _logger.info('=' * 90)
-        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
-        return self.update_code_table()
-
-
 class GenomicResourceClass(object):
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject, id_list: None):
@@ -527,7 +472,7 @@ class GenomicResourceClass(object):
                 count, len(_ids), prefix="{0}/{1}:".format(count, len(_ids)), suffix="complete"
             )
 
-        for batch in chunks(_ids, 250):
+        for batch in list_chunks(_ids, 250):
             if self.gcp_env.project == 'localhost':
                 for _id in batch:
                     self.update_single_id(table, _id)
@@ -785,7 +730,7 @@ class ResearchWorkbenchResourceClass(object):
                 count, len(_ids), prefix="{0}/{1}:".format(count, len(_ids)), suffix="complete"
             )
 
-        for batch in chunks(_ids, 250):
+        for batch in list_chunks(_ids, 250):
             if self.gcp_env.project == 'localhost':
                 for _id in batch:
                     self.update_single_id(table, _id)
@@ -832,7 +777,6 @@ class ResearchWorkbenchResourceClass(object):
             _logger.warning(f'\n\nThere were {errors} IDs not found during processing.')
 
         return 0
-
 
     def run(self):
         clr = self.gcp_env.terminal_colors
@@ -888,62 +832,129 @@ class ResearchWorkbenchResourceClass(object):
 
         return 1
 
-class SiteResourceClass(object):
+class MiscResourceClass(object):
+    """
+    Generic class for miscellaneous RDR tables / PDR data rebuilds
+    Uses pre-existing BQ/resource rebuild functions and call signatures, which don't have uniform parameter options.
+    """
+    # Details for queueing cloud tasks for rebuild (--batch mode).  Keys are RDR table names
+    misc_table_batch_task_info = {
+        'onsite_id_verification': {
+            'pk_col': OnsiteIdVerification.id,
+            'task_name': 'onsite_id_verification_batch_rebuild_task',
+            'payload_id_list_key': 'onsite_verification_id_list',
+        },
+        'code': {
+            'pk_col': Code.codeId,
+            # Pre-existing task definition to rebuild all Code table entries (does not take a list of ids)
+            'task_name': 'rebuild_codebook_task',
+            'payload_id_list_key': None,
+        },
+        'hpo': {
+            'pk_col': HPO.hpoId,
+            'task_name': 'bq_hpo_update_all',
+            'payload_id_list_key': None
+        },
+        'organization': {
+            'pk_col': Organization.organizationId,
+            'task_name': 'bq_organization_update_all',
+            'payload_id_list_key': None
+        },
+        'site': {
+            'pk_col': Site.siteId,
+            'task_name': 'bq_site_update_all',
+            'payload_id_list_key': None
+        },
+    }
 
-    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+    # For rebuilds on local server (--all-ids or --batch are not specified), functions that take a list of ids to build
+    misc_table_build_id_list_func = {
+        'onsite_id_verification': onsite_id_verification_batch_rebuild,
+        'code': rebuild_bq_code_ids
+    }
+    # Pre-existing hpo/site/organization build functions for a single id parameter only
+    misc_table_build_by_id_func = {
+        'hpo': bq_hpo_update_by_id,
+        'organization': bq_organization_update_by_id,
+        'site': bq_site_update_by_id
+    }
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject, ids):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
         """
         self.args = args
         self.gcp_env = gcp_env
+        self.args.id_list = ids if ids else []
 
     def run(self):
         clr = self.gcp_env.terminal_colors
-
-        if not self.args.table and not self.args.all_tables:
-            _logger.error('Nothing to do')
+        if not self.args.table or (self.args.id is None and self.args.id_list is None and not self.args.all_ids):
+            _logger.error('Table or id options missing')
             return 1
 
+        batch_mode = self.args.batch and self.gcp_env.project != 'localhost'
+        table = self.args.table
         self.gcp_env.activate_sql_proxy()
+        ro_dao = ResourceDataDao()
         _logger.info('')
-
-        _logger.info(clr.fmt('\nRebuild hpo/organization/site Records for PDR:', clr.custom_fg_color(156)))
+        _logger.info(clr.fmt('\nRebuild records for PDR:', clr.custom_fg_color(156)))
         _logger.info('')
         _logger.info('=' * 90)
         _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
-        _logger.info('  Database Table        : {0}'.format(clr.fmt(self.args.table)))
+        _logger.info('  Database Table        : {0}'.format(clr.fmt(table)))
 
-        if self.args.all_tables:
-            tables = [t for t in SITE_TABLES]
-        else:
-            tables = [self.args.table]
-
-        if self.args.id:
-            _logger.info('  Record ID             : {0}'.format(clr.fmt(self.args.id)))
-        else:
-            _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
-
-        _logger.info('  Rebuild Table(s)      : {0}'.format(clr.fmt(', '.join([t for t in tables]))))
-
-        for table in tables:
-            if table == 'hpo':
-                if self.args.id:
-                    bq_hpo_update_by_id(self.args.id, self.gcp_env.project)
-                else:
-                    bq_hpo_update(self.gcp_env.project)
-            elif table == 'site':
-                if self.args.id:
-                    bq_site_update_by_id(self.args.id, self.gcp_env.project)
-                else:
-                    bq_site_update(self.gcp_env.project)
-            elif table == 'organization':
-                if self.args.id:
-                    bq_organization_update_by_id(self.gcp_env.project, self.gcp_env.project)
-                else:
-                    bq_organization_update(self.gcp_env.project)
+        if self.args.all_ids:
+            _logger.info('  Rebuild all ids      : {0}'.format(clr.fmt('Yes')))
+            batch_mode = True
+            # Generate list of all ids for the cloud tasks, if a list of primary key ids is included in payload
+            if self.misc_table_batch_task_info[table]['payload_id_list_key']:
+                model_id_column = self.misc_table_batch_task_info[table]['pk_col']
+                with ro_dao.session() as session:
+                    rows = session.query(model_id_column).all()
+                    if rows:
+                        id_list = [r.id for r in rows]
             else:
-                _logger.warning(f'Unknown table {table}.  Skipping rebuild for {table}')
+                # E.g.: Pre-existing code table batch mode rebuild task, doesn't take an id list
+                id_list = []
+        else:
+            # Get targeted id values specified by --id or --from-file
+            id_list = [self.args.id] if self.args.id else self.args.id_list
+            _logger.info('  Records to build     : {0}'.format(clr.fmt(len(id_list))))
+
+        if batch_mode:
+            task = GCPCloudTask()
+            task_name = self.misc_table_batch_task_info[table]['task_name']
+            task_id_list_key = self.misc_table_batch_task_info[table]['payload_id_list_key']
+            task_count = 0
+            if id_list:
+                # Cloud tasks max id list size arbitrarily set to 500
+                for batch_list in list_chunks(id_list, 500):
+                    payload = {task_id_list_key: batch_list}
+                    task.execute(task_name, payload=payload, in_seconds=30,
+                                 queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
+                    task_count += 1
+
+            # The pre-existing code table rebuild cloud task always builds all the ids, doesn't take an id list
+            else:
+                task.execute(task_name, in_seconds=30, queue='resource-rebuild',
+                             project_id=self.gcp_env.project, quiet=True)
+                task_count += 1
+
+            if task_count:
+                _logger.info(f'Queued {task_count} rebuild tasks on resource-rebuild queue')
+
+        # Not triggering cloud tasks; rebuild functions called locally
+        elif table in self.misc_table_build_by_id_func:
+            # hpo/organization/site targeted id builds: can only pass one id at a time to the bq_*_build_by_id() func
+            for rec_id in id_list:
+                self.misc_table_build_by_id_func[table](rec_id, self.gcp_env.project)
+            return 0
+
+        else:
+            for ids in list_chunks(id_list, 500):
+                self.misc_table_build_id_list_func[table](ids)
 
         return 0
 
@@ -983,7 +994,7 @@ class RetentionEligibleMetricClass:
                 count, len(pids), prefix="{0}/{1}:".format(count, len(pids)), suffix="complete"
             )
 
-        for batch in chunks(pids, 250):
+        for batch in list_chunks(pids, 250):
             if self.gcp_env.project == 'localhost':
                 for id_ in batch:
                     self.update_single_id(id_)
@@ -1097,7 +1108,7 @@ class ConsentMetricClass(object):
         _logger.info('  Batch size  : {0}'.format(self.gcp_env.terminal_colors.fmt(batch_size)))
         _logger.info('  Tasks       : {0}'.format(self.gcp_env.terminal_colors.fmt(batches)))
 
-        for batch in chunks(_ids, batch_size):
+        for batch in list_chunks(_ids, batch_size):
             payload = {'batch': [id for id in batch]}
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_consent_metrics_task(payload)
@@ -1234,7 +1245,7 @@ class UserEventMetricsClass(object):
                 count, len(ids), prefix="{0}/{1}:".format(count, len(ids)), suffix="complete"
             )
 
-        for batch in chunks(ids, 250):
+        for batch in list_chunks(ids, 250):
             if self.gcp_env.project == 'localhost':
                 for id_ in batch:
                     self.update_single_id(id_)
@@ -1377,7 +1388,7 @@ def run():
                                 metavar='FILE', type=str, default=None)
 
     table_parser = argparse.ArgumentParser(add_help=False)
-    table_parser.add_argument("--table", help="research workbench db table name to rebuild from", type=str,
+    table_parser.add_argument("--table", help="db table name to rebuild from", type=str,
                               metavar='TABLE')
 
     all_tables_parser = argparse.ArgumentParser(add_help=False)
@@ -1432,14 +1443,6 @@ def run():
     update_argument(rebuild_parser, dest='from_file',
                     help="rebuild participant ids from a file with a list of pids")
 
-    # Rebuild the code table ids
-    code_parser = subparser.add_parser(
-        "code",
-        parents=[all_ids_parser]
-    )
-    code_parser.add_argument("--id", help="rebuild single code id", type=int, default=None)
-    update_argument(code_parser, dest='all_ids', help='rebuild all ids from the code table (default)')
-
     # Rebuild genomic resources.
     genomic_parser = subparser.add_parser(
         "genomic",
@@ -1462,12 +1465,13 @@ def run():
     rw_parser.epilog = f'Possible TABLE Values: {{{",".join(RESEARCH_WORKBENCH_TABLES)}}}.'
 
     # Rebuild hpo/site/organization tables.  Specify a single table name or all-tables
-    site_parser = subparser.add_parser(
-        "site-tables",
-        parents=[table_parser, all_tables_parser, id_parser]
+    misc_parser = subparser.add_parser(
+        "misc-tables",
+        parents=[table_parser, all_ids_parser, id_parser, from_file_parser, batch_parser]
     )
-    update_argument(site_parser, 'table', help='db table name to rebuild from.  All ids will be rebuilt')
-    site_parser.epilog = f'Possible TABLE values: {{{",".join(SITE_TABLES)}}}.'
+    update_argument(misc_parser, dest='all_ids', help='rebuild all ids from the code table (default)')
+    update_argument(misc_parser, 'table', help='db table name to rebuild from.  All ids will be rebuilt')
+    misc_parser.epilog = f'Possible TABLE values: {{{",".join(MISC_TABLES)}}}.'
 
     # Rebuild Retention Eligibility resources
     retention_parser = subparser.add_parser(
@@ -1554,12 +1558,8 @@ def run():
             process = ResearchWorkbenchResourceClass(args, gcp_env, ids)
             exit_code = process.run()
 
-        elif args.resource == 'code':
-            process = CodeResourceClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.resource == 'site-tables':
-            process = SiteResourceClass(args, gcp_env)
+        elif args.resource == 'misc-tables':
+            process = MiscResourceClass(args, gcp_env, ids)
             exit_code = process.run()
 
         elif args.resource == 'retention':
