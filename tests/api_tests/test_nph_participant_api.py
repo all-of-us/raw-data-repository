@@ -12,6 +12,7 @@ from rdr_service.model import study_nph
 from rdr_service.model.participant import Participant as aouParticipant
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.model.rex import ParticipantMapping, Study
+from rdr_service.model.study_nph import PairingEvent
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.main import app
 from tests.helpers.unittest_base import BaseTestCase
@@ -140,12 +141,6 @@ def mock_load_participant_data(session):
 
     nph_data_gen.create_database_participant_ops_data_element(
         participant_id=100000000,
-        source_data_element=ParticipantOpsElementTypes.BIRTHDATE,
-        source_value='1980-01-01'
-    )
-
-    nph_data_gen.create_database_participant_ops_data_element(
-        participant_id=100000001,
         source_data_element=ParticipantOpsElementTypes.BIRTHDATE,
         source_value='1980-01-01'
     )
@@ -287,6 +282,9 @@ class TestQueryExecution(BaseTestCase):
             ).join(
                 study_nph.Participant,
                 study_nph.Participant.id == ParticipantMapping.ancillary_participant_id
+            ).join(
+                PairingEvent,
+                PairingEvent.participant_id == ParticipantMapping.ancillary_participant_id
             ).first()
         )
 
@@ -360,8 +358,8 @@ class TestQueryExecution(BaseTestCase):
         self.assertEqual(2, len(result.get('participant').get('edges')))
         has_nph_dob = result.get('participant').get('edges')[0].get('node')
         self.assertTrue(has_nph_dob.get('nphDateOfBirth') == '1980-01-01')
-        # no_nph_dob = result.get('participant').get('edges')[1].get('node')
-        # self.assertTrue(no_nph_dob.get('nphDateOfBirth') == 'UNSET')
+        no_nph_dob = result.get('participant').get('edges')[1].get('node')
+        self.assertTrue(no_nph_dob.get('nphDateOfBirth') == 'UNSET')
 
     def test_graphql_syntax_error(self):
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SYNTAX_ERROR)
