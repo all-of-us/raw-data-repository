@@ -22,6 +22,5 @@ else
 fi
 
 python -m tools curation --project localhost cdm-data --participant-origin all --vocabulary gs://curation-vocabulary/aou_vocab_20220623
-mysql -v -v -v -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < etl/raw_sql/finalize_cdm_data.sql
 
 echo "Done."

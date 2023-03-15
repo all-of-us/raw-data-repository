@@ -1,5 +1,5 @@
 
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Index, String, SmallInteger, Integer, Date
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Index, String, SmallInteger, Integer, Date, Float
 from sqlalchemy.dialects.mysql import DECIMAL, TINYINT, TEXT
 
 from rdr_service.model.base import CdmBase
@@ -208,7 +208,7 @@ class ConditionOccurrence(CdmBase):
 
 class ProcedureOccurrence(CdmBase):
     __tablename__ = "procedure_occurrence"
-    id = Column(BigInteger, nullable=False, unique=True)
+    id = Column(BigInteger, nullable=False, unique=True, autoincrement=True)
     procedure_occurrence_id = Column(BigInteger, autoincrement=True, nullable=False, primary_key=True)
     person_id = Column(BigInteger, nullable=False)
     procedure_concept_id = Column(BigInteger, nullable=False)
@@ -484,5 +484,204 @@ class VisitDetail(CdmBase):
     visit_detail_parent_id = Column(BigInteger)
     visit_occurrence_id = Column(BigInteger, nullable=False)
 
+class SrcParticipant(CdmBase):
+    __tablename__ = "src_participant"
+    participant_id = Column(BigInteger, primary_key=True)
+    latest_date_of_survey = Column(DateTime)
+    date_of_birth = Column(Date)
 
 
+class SrcMapped(CdmBase):
+    """ This is src_clean, mapped to standard concepts.
+        'question_source_concept_id' must be related to
+        'question_concept_id' as 'Maps To' relation.
+        'value_source_concept_id' and 'value_concept_id' - the same relation."""
+    __tablename__ = "src_mapped"
+    id = Column(BigInteger, primary_key=True)
+    participant_id = Column(BigInteger)
+    date_of_survey = Column(DateTime)
+    question_ppi_code = Column(String(200))
+    question_code_id = Column(BigInteger)
+    question_source_concept_id = Column(BigInteger)
+    question_concept_id = Column(BigInteger)
+    value_ppi_code = Column(String(200))
+    topic_value = Column(String(200))
+    value_code_id = Column(BigInteger)
+    value_source_concept_id = Column(BigInteger)
+    value_concept_id = Column(BigInteger)
+    value_number = Column(DECIMAL(20, 6))
+    value_boolean = Column(TINYINT)
+    value_boolean_concept_id = Column(BigInteger)
+    value_date = Column(DateTime)
+    value_string = Column(String(1024))
+    questionnaire_response_id = Column(BigInteger)
+    unit_id = Column(String(50))
+    is_invalid = Column(TINYINT(1))
+
+class SrcPersonLocation(CdmBase):
+    """ Address is taken as answer to address-related questions during last survey. """
+    __tablename__ = "src_person_location"
+    participant_id = Column(BigInteger, primary_key=True)
+    address_1 = Column(String(255))
+    address_2 = Column(String(255))
+    city = Column(String(255))
+    zip = Column(String(255))
+    state_ppi_code = Column(String(255))
+    state = Column(String(255))
+    location_id = Column(BigInteger)
+
+class SrcGender(CdmBase):
+    """ Contains gender information from patient surveys. """
+    __tablename__ = "src_gender"
+    person_id = Column(BigInteger, primary_key=True)
+    ppi_code = Column(String(255))
+    gender_source_concept_id = Column(BigInteger)
+    gender_target_concept_id = Column(BigInteger)
+
+class SrcRace(CdmBase):
+    """ Contains racial information from patient surveys. """
+    __tablename__ = "src_race"
+    person_id = Column(BigInteger, primary_key=True)
+    ppi_code = Column(String(255))
+    race_source_concept_id = Column(BigInteger)
+    race_target_concept_id = Column(BigInteger)
+
+class SrcEthnicity(CdmBase):
+    """ Contains ethnicity information from patient surveys. """
+    __tablename__ = "src_ethnicity"
+    person_id = Column(BigInteger, primary_key=True)
+    ppi_code = Column(String(255))
+    ethnicity_source_concept_id = Column(BigInteger)
+    ethnicity_target_concept_id = Column(BigInteger)
+
+class SrcMeas(CdmBase):
+    """ Contains information about physical measurements of patient, which is necessary for filling OMOP CDM tables."""
+    __tablename__ = "src_meas"
+    id = Column(BigInteger, primary_key=True)
+    participant_id = Column(BigInteger, nullable=False)
+    finalized_site_id = Column(Integer)
+    code_value = Column(String(255), nullable=False)
+    measurement_time = Column(DateTime, nullable=False)
+    value_decimal = Column(Float)
+    value_unit = Column(String(255))
+    value_code_value = Column(String(255))
+    value_string = Column(String(1024))
+    measurement_id = Column(BigInteger)
+    physical_measurements_id = Column(Integer, nullable=False)
+    parent_id = Column(BigInteger)
+
+class MeasurementCodeMap(CdmBase):
+    """ Maps measurements code values to standard concept_ids. """
+    __tablename__ = "tmp_cv_concept_lk"
+    code_value = Column(String(500), primary_key=True)
+    cv_source_concept_id = Column(BigInteger)
+    cv_concept_id = Column(BigInteger)
+    cv_domain_id = Column(String(50))
+
+class MeasurementValueCodeMap(CdmBase):
+    """ Maps measurement results value_code_value to standard concept_ids. """
+    __tablename__ = "tmp_vcv_concept_lk"
+    value_code_value = Column(String(500), primary_key=True)
+    vcv_source_concept_id = Column(BigInteger)
+    vcv_concept_id = Column(BigInteger)
+    vcv_domain_id = Column(String(50))
+
+class SrcMeasMapped(CdmBase):
+    """ Joins altogether patient measurements information in source and cdm codes from 'tmp_cv_concept_lk' and
+        'tmp_vcv_concept_lk', excluding notes, because notes will migrate to cdm.note.
+    """
+    __tablename__ = "src_meas_mapped"
+    id = Column(BigInteger, primary_key=True)
+    participant_id = Column(BigInteger, nullable=False)
+    finalized_site_id = Column(Integer)
+    code_value = Column(String(255), nullable=False)
+    cv_source_concept_id = Column(BigInteger)
+    cv_concept_id = Column(BigInteger)
+    cv_domain_id = Column(String(50))
+    measurement_time = Column(DateTime, nullable=False)
+    value_decimal = Column(Float)
+    value_unit = Column(String(255))
+    vu_concept_id = Column(BigInteger)
+    value_code_value = Column(String(255))
+    vcv_source_concept_id = Column(BigInteger)
+    vcv_concept_id = Column(BigInteger)
+    measurement_id = Column(BigInteger)
+    physical_measurements_id = Column(Integer, nullable=False)
+    parent_id = Column(BigInteger)
+
+class SrcVisits(CdmBase):
+    __tablename__ = "tmp_visits_src"
+    visit_occurrence_id = Column(BigInteger, primary_key=True)
+    person_id = Column(BigInteger, nullable=False)
+    visit_start_datetime = Column(DateTime, nullable=False)
+    visit_end_datetime = Column(DateTime, nullable=False)
+    care_site_id = Column(BigInteger)
+
+class TempObsTarget(CdmBase):
+    """ tmp_obs_target contains dates of all person's clinical events """
+    __tablename__ = "temp_obs_target"
+    id = Column(BigInteger, primary_key=True)
+    person_id = Column(BigInteger)
+    start_date = Column(Date)
+    end_date = Column(Date)
+
+class TempObsEndUnion(CdmBase):
+    """ In 'temp_obs_end_union' we number observations from 'tmp_obs_target' by start_date.
+        start_ordinal column contains number of start patient's observation events: first
+        is 1, subsequent is 2, 3 and so on.
+        End person observation events contains null in start_ordinal column.
+        It is necessary for finding possibly intersecting patient observations intervals.
+    """
+    __tablename__ = "temp_obs_end_union"
+    id = Column(BigInteger, primary_key=True)
+    person_id = Column(BigInteger)
+    event_date = Column(Date)
+    event_type = Column(Integer)
+    start_ordinal = Column(Integer)
+
+class TempObsEndUnionPart(CdmBase):
+    __tablename__ = "temp_obs_end_union_part"
+    id = Column(BigInteger, primary_key=True)
+    person_id = Column(BigInteger)
+    event_date = Column(Date)
+    event_type = Column(Integer)
+    start_ordinal = Column(Integer)
+    overall_ord = Column(Integer)
+
+class TempObsEnd(CdmBase):
+    __tablename__ = "temp_obs_end"
+    id = Column(BigInteger, primary_key=True)
+    person_id = Column(BigInteger)
+    end_date = Column(Date)
+    start_ordinal = Column(Integer)
+    overall_ord = Column(Integer)
+
+class TempObs(CdmBase):
+    __tablename__ = "temp_obs"
+    id = Column(BigInteger, primary_key=True)
+    person_id = Column(BigInteger)
+    observation_start_date = Column(Date)
+    observation_end_date = Column(Date)
+
+class TempFactRelSd(CdmBase):
+    """ tmp_fact_rel_sd contains blood pressure measurements """
+    __tablename__ = "tmp_fact_rel_sd"
+    id = Column(BigInteger, primary_key=True)
+    measurement_id = Column(BigInteger, nullable=False)
+    systolic_blood_pressure_ind = Column(Integer, nullable=False)
+    diastolic_blood_pressure_ind = Column(Integer, nullable=False)
+    person_id = Column(BigInteger, nullable=False)
+    parent_id = Column(BigInteger)
+
+class PidRidMapping(CdmBase):
+    __tablename__ = "pid_rid_mapping"
+    person_id = Column(BigInteger, primary_key=True)
+    research_id = Column(BigInteger)
+    external_id = Column(BigInteger)
+
+class QuestionnaireResponseAdditionalInfo(CdmBase):
+    __tablename__ = "questionnaire_response_additional_info"
+    id = Column(BigInteger, primary_key=True)
+    questionnaire_response_id = Column(BigInteger)
+    type = Column(String(255))
+    value = Column(String(255))

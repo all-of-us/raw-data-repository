@@ -68,10 +68,8 @@ echo "Running ETL..."
 if [ -z "${CUTOFF}" ]
 then
   python -m tools curation --project ${PROJECT} cdm-data --vocabulary ${VOCABULARY} --participant-list-file ${PARTICIPANT_LIST_FILE} --exclude-surveys ${EXCLUDE_SURVEYS} --include-surveys ${INCLUDE_SURVEYS} --participant-origin ${PARTICIPANT_ORIGIN}
-  mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/finalize_cdm_data.sql
 else
   python -m tools curation --project ${PROJECT} cdm-data --cutoff ${CUTOFF} --vocabulary ${VOCABULARY} --participant-list-file ${PARTICIPANT_LIST_FILE} --exclude-surveys ${EXCLUDE_SURVEYS} --include-surveys ${INCLUDE_SURVEYS} --participant-origin ${PARTICIPANT_ORIGIN}
-  sed 's/-- %SED_PM_CUTOFF_FILTER%/AND pm.finalized < "'"${CUTOFF}"'"/g' etl/raw_sql/finalize_cdm_data.sql | mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT}
 fi
 
 echo "Done with ETL. Please manually run export."
