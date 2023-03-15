@@ -234,7 +234,6 @@ class ParticipantResourceClass(object):
                 # Generate participant questionnaire module response data
                 for module in PDR_MODULE_LIST:
                     mod = module()
-
                     table, mod_bqrs = mod_bqgen.make_bqrecord(pid, mod.get_schema().get_module_name())
                     if not table:
                         continue

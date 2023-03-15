@@ -31,7 +31,6 @@ class _BQModuleSchema(BQSchema):
         """ Return the questionnaire module name """
         return self._module
 
-
     def get_fields(self):
         """
         Look up questionnaire concept to get fields.
@@ -458,7 +457,6 @@ class BQPDRDVEHRSharingSchema(_BQModuleSchema):
         'EHRConsentPII_Signature',
     )
 
-
 class BQPDRDVEHRSharing(BQTable):
     """ DVEHRSharing BigQuery Table """
     __tablename__ = 'pdr_mod_dvehrsharing'
@@ -601,7 +599,6 @@ class BQPDRPersonalMedicalHistorySchema(_BQModuleSchema):
         'OtherMentalHealthSubstanceUse_FreeTextBox',
         'OtherDiagnosis_FreeTextBox',
     )
-
 
 class BQPDRPersonalMedicalHistory(BQTable):
     """ PersonalMedicalHistory BigQuery Table """

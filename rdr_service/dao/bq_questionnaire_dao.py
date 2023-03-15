@@ -107,6 +107,19 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         #  code table so we can more robustly handle the codebook definitions we get from REDCap
         with self.ro_dao.session() as session:
             question_codes = session.execute(_question_code_sql, {'module_id': module_id, 'system': PPI_SYSTEM})
+            pdr_schema = table().get_schema()
+            pdr_field_list = {}
+            pdr_columns = [col['name'] for col in pdr_schema.get_fields()]
+            for code in question_codes:
+                # PDR-1672:  We may have to map question codes whose strings can't be used "as is" for a destination PDR
+                # table column name (e.g., contains spaces) to a DB-friendly string.  make_bq_field_name() will either
+                # return the "as is" code name if it's usable, or the mapped col name (e.g., spaces replaced with _)
+                # (The same thing is/was done when the _BQModuleSchema child class is instantiated)
+                pdr_col_name, _ = pdr_schema.make_bq_field_name(code.value)
+                if pdr_col_name not in pdr_columns:
+                    logging.warning(f'Unknown question code {code.value} not in {table().get_name()} schema')
+                else:
+                    pdr_field_list[code.value] = pdr_col_name
 
             # Retrieve all the responses for this participant/module ID (most recent first)
             qnans = []
@@ -124,25 +137,27 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
 
                 answers = session.execute(_response_answers_sql, {'qr_id': qr.questionnaire_response_id,
                                                                   'system': PPI_SYSTEM})
-                ans_dict = {qc.value: None for qc in question_codes}
+                # Initialize the answer data dict to all null/None
+                ans_dict = {pdr_field_list[qc]: None for qc in pdr_field_list}
                 for ans in answers:
-                    # Note: BigQuery will ignore unrecognized fields, but log potentially new content for debugging
-                    # purposes
-                    if ans.code_name not in ans_dict.keys():
-                        logging.debug("""questionnaireResponseID {0} contains previously unrecognized answer code {1}
+                    # When going through the answers results, have to do the same mapping on the code_name string that
+                    # is describing the questionnaire_question being answered (PDR-1672)
+                    mapped_field, _ = pdr_schema.make_bq_field_name(ans.code_name)
+                    if mapped_field not in pdr_field_list:
+                        logging.debug("""questionnaireResponseID {0} contains previously unrecognized question code {1}
                                 for module {2}
                             """.format(qr.questionnaire_response_id, ans.code_name, module_id))
 
                     # Handle multi-select question codes (such as ethnicity or gender identity response options) where
                     # user provided more than one answer and concatenate into comma-separated list.  This mirrors
                     # GROUP_CONCAT SQL logic from the deprecated sp_get_questionnaire_answers proc
-                    if ans.code_name in ans_dict.keys() and ans_dict[ans.code_name]:
+                    if mapped_field in pdr_field_list and ans_dict[ans.code_name]:
                         # If answer value coalesced to null, skip those (found during testing in lower environments)
                         if ans.answer:
-                            prev_answer = ans_dict[ans.code_name]
-                            ans_dict[ans.code_name] = ",".join([prev_answer, ans.answer])
+                            prev_answer = ans_dict[mapped_field]
+                            ans_dict[mapped_field] = ",".join([prev_answer, ans.answer])
                     else:
-                        ans_dict[ans.code_name] = ans.answer
+                        ans_dict[mapped_field] = ans.answer
 
                 # Merge all the answers from this response payload with the response metadata and save
                 data.update(ans_dict)
@@ -153,7 +168,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
 
             bqrs = list()
             for qnan in qnans:
-                bqr = BQRecord(schema=table().get_schema(), data=qnan, convert_to_enum=convert_to_enum)
+                bqr = BQRecord(schema=pdr_schema, data=qnan, convert_to_enum=convert_to_enum)
                 bqr.participant_id = p_id  # reset participant_id.
 
                 fields = bqr.get_fields()
