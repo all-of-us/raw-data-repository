@@ -8,5 +8,6 @@ entrypoint: gunicorn -c rdr_service/services/gunicorn_config.py --timeout 18000 
 # https://cloud.google.com/appengine/docs/standard/reference/app-yaml?tab=python#scaling_elements
 instance_class: F4_1G
 automatic_scaling:
-  min_idle_instances: 10
+  min_idle_instances: automatic
+  max_pending_latency: automatic
 
