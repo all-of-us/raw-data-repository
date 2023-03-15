@@ -28,7 +28,7 @@ class NphIntakeAPITest(BaseTestCase):
         self.nph_enrollment_event_dao = NphDefaultBaseDao(model_type=EnrollmentEvent)
         self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
         self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivatedEvent)
-        self.participant_op_data = NphDefaultBaseDao(model_type=ParticipantOpsDataElement)
+        self.participant_ops_data = NphDefaultBaseDao(model_type=ParticipantOpsDataElement)
 
         self.rex_study_dao.insert(
             self.rex_study_dao.model_type(**{
@@ -285,10 +285,10 @@ class NphIntakeAPITest(BaseTestCase):
         self.assertTrue(all(obj.event_id in withdrawal_participant_event_activity_ids for obj in withdrawal_events))
 
         # check date of birth was added from Patient resourceType
-        all_ops_data = self.participant_op_data.get_all()
+        all_ops_data = self.participant_ops_data.get_all()
         self.assertTrue(len(all_ops_data), 1)
 
-        ops_data_record = self.participant_op_data.get(1)
+        ops_data_record = self.participant_ops_data.get(1)
         self.assertTrue(ops_data_record.participant_id == current_participant_id)
         self.assertTrue(ops_data_record.source_value == '1988-02-02')
         self.assertTrue(ops_data_record.source_data_element == ParticipantOpsElementTypes.lookup_by_name('BIRTHDATE'))
@@ -312,3 +312,4 @@ class NphIntakeAPITest(BaseTestCase):
         self.clear_table_after_test("nph.participant_event_activity")
         self.clear_table_after_test("nph.consent_event_type")
         self.clear_table_after_test("nph.enrollment_event_type")
+        self.clear_table_after_test("nph.participant_ops_data_element")
