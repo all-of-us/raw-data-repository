@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List
 
 from flask import request
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock
 from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, ParticipantOpsElementTypes
@@ -11,7 +11,8 @@ from rdr_service.api_util import RTI, RDR
 from rdr_service.app_util import auth_required
 from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphIntakeDao, NphParticipantEventActivityDao, NphActivityDao, \
-    NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao, NphConsentEventTypeDao
+    NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao, NphConsentEventTypeDao, \
+    NphParticipantDao
 from rdr_service.model.study_nph import WithdrawalEvent, DeactivatedEvent, ConsentEvent, EnrollmentEvent, \
     ParticipantOpsDataElement
 
@@ -31,6 +32,7 @@ class PostIntakePayload:
         self.nph_prefix = RexStudyDao().get_prefix_by_schema('nph')
         self.nph_prefix = self.nph_prefix[0]
         self.current_activities = NphActivityDao().get_all()
+        self.nph_participant_dao = NphParticipantDao()
         self.nph_participant_activity_dao = NphParticipantEventActivityDao()
         self.nph_site_dao = NphSiteDao()
 
@@ -203,10 +205,22 @@ class PostIntakePayload:
         except KeyError as e:
             raise BadRequest(f'Key error on provision lookup: {e} bundle_id: {self.bundle_identifier}')
 
-    def extract_participant_id(self, participant_obj: dict) -> str:
-        participant_id = participant_obj['resource']['identifier'][0]['value']
-        participant_id = participant_id.split(f'/{self.nph_prefix}')[-1]
-        return participant_id
+    def extract_participant_id(self, participant_obj: dict):
+        try:
+            participant_id = participant_obj['resource']['identifier'][0]['value']
+            participant_str_data = participant_id.split('/')
+            with self.nph_participant_dao.session() as session:
+                is_nph_participant = self.nph_participant_dao.check_participant_exist(
+                    participant_str_data[-1],
+                    session
+                )
+                if not is_nph_participant:
+                    raise NotFound(f'NPH participant {participant_str_data[-1]} not found bundle_id:'
+                                   f' {self.bundle_identifier}')
+                return participant_str_data[1][4:]
+        except (KeyError, Exception) as e:
+            raise BadRequest(f'Cannot parse participant information from payload: {e} bundle_id:'
+                             f' {self.bundle_identifier}')
 
     def extract_authored_time(self, entry: dict):
         try:
