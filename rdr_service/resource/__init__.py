@@ -122,7 +122,6 @@ class Schema(MarshmallowSchema):
     def __repr__(self):
         return self.Meta.name()
 
-
     class Meta:
         """
         schema_meta info declares how the schema and data is stored and organized in the Resource database tables.

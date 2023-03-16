@@ -1,6 +1,7 @@
 import logging
 from sqlalchemy.sql import text
 
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_organization import BQOrganizationSchema, BQOrganization
@@ -35,7 +36,7 @@ class BQOrganizationGenerator(BigQueryGenerator):
             return BQRecord(schema=BQOrganizationSchema, data=data, convert_to_enum=convert_to_enum)
 
 
-def bq_organization_update(project_id=None):
+def bq_organization_update_all(project_id=GAE_PROJECT):
     """
     Generate all new Organization records for BQ. Since there is called from a tool, this is not deferred.
     :param project_id: Override the project_id
@@ -54,7 +55,7 @@ def bq_organization_update(project_id=None):
                               project_id=project_id)
 
 
-def bq_organization_update_by_id(org_id, project_id=None):
+def bq_organization_update_by_id(org_id, project_id=GAE_PROJECT):
     gen = BQOrganizationGenerator()
     bqr = gen.make_bqrecord(org_id, backup=False)
     w_dao = BigQuerySyncDao()

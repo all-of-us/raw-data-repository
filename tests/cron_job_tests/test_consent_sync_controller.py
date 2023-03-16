@@ -19,7 +19,17 @@ class ConsentSyncControllerTest(BaseTestCase):
 
         self.consent_dao_mock = mock.MagicMock()
         self.participant_dao_mock = mock.MagicMock(spec=ParticipantDao)
+
         self.storage_provider_mock = mock.MagicMock(spec=GoogleCloudStorageProvider)
+        patcher = mock.patch('rdr_service.storage.GoogleCloudStorageProvider')
+        provider_class_mock = patcher.start()
+        provider_class_mock.return_value = self.storage_provider_mock
+        self.addCleanup(patcher.stop)
+
+        zip_patcher = mock.patch('rdr_service.storage.ZipFile')
+        self.zip_mock = zip_patcher.start()
+        self.addCleanup(zip_patcher.stop)
+
         self.sync_controller = ConsentSyncController(
             consent_dao=self.consent_dao_mock,
             participant_dao=self.participant_dao_mock,
@@ -151,14 +161,17 @@ class ConsentSyncControllerTest(BaseTestCase):
             )
         )
 
-        self.storage_provider_mock.download_blob.assert_called_once_with(
-            source_path=self.foo_file.file_path,
-            destination_path=mock.ANY  # Downloaded to a temp directory, don't really need to know specifically where
+        # check that the PDF was added to the zip file
+        self.zip_mock.return_value.writestr.assert_any_call(
+            zinfo_or_arcname='P4567/foo.pdf',
+            data=mock.ANY
         )
-        self.storage_provider_mock.upload_from_file.assert_called_once_with(
-            source_file=mock.ANY,  # Uploading archive generated from temp directory
-            path=f'{self.foo_bucket_name}/Participant/{self.foo_org_name}/{DEFAULT_GOOGLE_GROUP}.zip'
+        # check that the zip file was uploaded
+        self.storage_provider_mock.open.assert_any_call(
+            'foo_dest_bucket/Participant/FOO_CLINIC/no-site-assigned.zip',
+            mode='w'
         )
+
         mock_dispatch_rebuild.assert_has_calls(
             [
                 mock.call([self.bob_file.id]),

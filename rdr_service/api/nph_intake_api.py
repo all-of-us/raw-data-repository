@@ -9,6 +9,8 @@ from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, P
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RTI, RDR
 from rdr_service.app_util import auth_required
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphIntakeDao, NphParticipantEventActivityDao, NphActivityDao, \
     NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao, NphConsentEventTypeDao, \
@@ -270,7 +272,7 @@ class PostIntakePayload:
 
         self.event_dao_map = self.build_event_dao_map()
 
-        participant_event_objs, all_event_objs = [], []
+        participant_event_objs, all_event_objs, summary_updates = [], [], []
 
         for resource in self.intake_payload:
             self.bundle_identifier = resource['identifier']['value']
@@ -308,6 +310,14 @@ class PostIntakePayload:
                     activity_data=activity_data
                 )
 
+                if activity_data.name in ('consent', 'withdrawal', 'deactivate'):
+                    summary_update = {
+                        'event_type': activity_data.name,
+                        'participant_id': participant_id,
+                        'event_authored_time': event_objs[0]['event_authored_time']
+                    }
+                    summary_updates.append(summary_update)
+
                 all_event_objs.extend(event_objs)
 
         self.handle_data_inserts(
@@ -315,6 +325,15 @@ class PostIntakePayload:
             all_event_objs=all_event_objs,
             participant_ops_data=participant_ops_data
         )
+
+        if GAE_PROJECT != 'localhost' and summary_updates:
+            cloud_task = GCPCloudTask()
+            for summary_update in summary_updates:
+                cloud_task.execute(
+                    endpoint='update_participant_summary_for_nph_task',
+                    payload=summary_update,
+                    queue='nph'
+                )
 
 
 class NphIntakeAPI(BaseApi):

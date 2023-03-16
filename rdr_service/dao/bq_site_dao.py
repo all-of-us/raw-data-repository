@@ -1,6 +1,7 @@
 import logging
 from sqlalchemy.sql import text
 
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_site import (
@@ -57,7 +58,7 @@ class BQSiteGenerator(BigQueryGenerator):
             return BQRecord(schema=BQSiteSchema, data=data, convert_to_enum=convert_to_enum)
 
 
-def bq_site_update(project_id=None):
+def bq_site_update_all(project_id=GAE_PROJECT):
     """
     Generate all new Site records for BQ. Since there is called from a tool, this is not deferred.
     :param project_id: Override the project_id
@@ -75,7 +76,7 @@ def bq_site_update(project_id=None):
             gen.save_bqrecord(row.siteId, bqr, bqtable=BQSite, w_dao=w_dao, w_session=w_session, project_id=project_id)
 
 
-def bq_site_update_by_id(site_id, project_id=None):
+def bq_site_update_by_id(site_id, project_id=GAE_PROJECT):
     gen = BQSiteGenerator()
     bqr = gen.make_bqrecord(site_id, backup=False)
     w_dao = BigQuerySyncDao()

@@ -31,7 +31,7 @@ def _build_resource_app():
     # Task Queue API endpoint to rebuild ONE participant resource.
     _api.add_resource(cloud_tasks_api.RebuildOneParticipantTaskApi, TASK_PREFIX + "RebuildOneParticipantTaskApi",
                       endpoint="rebuild_one_participant_task", methods=["POST"])
-    # Task Queue API endpoing to rebuild codebook resources.
+    # Task Queue API endpoint to rebuild codebook resources.
     _api.add_resource(cloud_tasks_api.RebuildCodebookTaskApi, TASK_PREFIX + "RebuildCodebookTaskApi",
                       endpoint="rebuild_codebook_task", methods=["POST"])
     _api.add_resource(cloud_tasks_api.BQRebuildQuestionnaireTaskApi, TASK_PREFIX + "RebuildQuestionnaireTaskApi",
@@ -77,6 +77,27 @@ def _build_resource_app():
     _api.add_resource(cloud_tasks_api.RebuildUserEventMetricsApi,
                       TASK_PREFIX + "RebuildUserEventMetricsApi",
                       endpoint="batch_rebuild_user_event_metrics_task", methods=["POST"])
+
+    # OnSiteIdVerification resource build task endpoints
+    _api.add_resource(cloud_tasks_api.OnSiteIdVerificationBuildTaskApi,
+                      TASK_PREFIX + "OnSiteIdVerificationBuildTaskApi",
+                      endpoint="onsite_id_verification_build_task", methods=["POST"])
+
+    _api.add_resource(cloud_tasks_api.OnSiteIdVerificationBatchRebuildTaskApi,
+                      TASK_PREFIX + "OnSiteIdVerificationBatchRebuildTaskApi",
+                      endpoint="onsite_id_verification_batch_rebuild_task", methods=["POST"])
+
+    _api.add_resource(cloud_tasks_api.RebuildHpoAllTaskApi,
+                      TASK_PREFIX + "RebuildHpoAllTaskApi",
+                      endpoint="bq_hpo_update_all", methods=["POST"])
+
+    _api.add_resource(cloud_tasks_api.RebuildOrganizationAllTaskApi,
+                      TASK_PREFIX + "RebuildOrganizationAllTaskApi",
+                      endpoint="bq_organization_update_all", methods=["POST"])
+
+    _api.add_resource(cloud_tasks_api.RebuildSiteAllTaskApi,
+                      TASK_PREFIX + "RebuildSiteAllTaskApi",
+                      endpoint="bq_site_update_all", methods=["POST"])
 
     #
     # Begin Genomic Cloud Task API Endpoints
@@ -170,7 +191,7 @@ def _build_resource_app():
     #
 
     #
-    # Begin Ancillary Studies Cloud Task API endpoings
+    # Begin Ancillary Studies Cloud Task API endpoints
     #
 
     # Insert Study Events
@@ -178,8 +199,12 @@ def _build_resource_app():
                       TASK_PREFIX + "InsertStudyEventTaskApi",
                       endpoint="insert_study_event_task", methods=["POST"])
 
+    _api.add_resource(ancillary_study_cloud_tasks_api.UpdateParticipantSummaryForNphTaskApi,
+                      TASK_PREFIX + "UpdateParticipantSummaryForNphTaskApi",
+                      endpoint="update_participant_summary_for_nph_task", methods=["POST"])
+
     #
-    # End Ancillary Studies Cloud Task API endpoings
+    # End Ancillary Studies Cloud Task API endpoints
     #
 
     #

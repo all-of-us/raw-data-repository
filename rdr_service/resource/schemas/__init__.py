@@ -18,6 +18,7 @@ from .genomics import GenomicSetSchema, GenomicSetMemberSchema, GenomicJobRunSch
     GenomicAppointmentEventSchema
 from .retention_metrics import RetentionMetricSchema
 from .consent_metrics import ConsentMetricSchema
+from .onsite_id_verification import OnSiteIdVerificationSchema
 
 __all__ = [
     'ParticipantSchema',
@@ -46,5 +47,6 @@ __all__ = [
     'GenomicCVLResultPastDueSchema',
     'GenomicMemberReportStateSchema',
     'GenomicResultViewedSchema',
-    'GenomicAppointmentEventSchema'
+    'GenomicAppointmentEventSchema',
+    'OnSiteIdVerificationSchema'
 ]

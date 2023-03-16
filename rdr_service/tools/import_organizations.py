@@ -20,9 +20,9 @@ import os
 import googlemaps
 from dateutil.parser import parse
 
-from rdr_service.dao.bq_hpo_dao import bq_hpo_update
-from rdr_service.dao.bq_organization_dao import bq_organization_update
-from rdr_service.dao.bq_site_dao import bq_site_update
+from rdr_service.dao.bq_hpo_dao import bq_hpo_update_all
+from rdr_service.dao.bq_organization_dao import bq_organization_update_all
+from rdr_service.dao.bq_site_dao import bq_site_update_all
 
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
@@ -656,9 +656,9 @@ def main(args):
 
     # Update Organization BigQuery records
     if not args.dry_run:
-        bq_hpo_update(args.project)
-        bq_organization_update(args.project)
-        bq_site_update(args.project)
+        bq_hpo_update_all(args.project)
+        bq_organization_update_all(args.project)
+        bq_site_update_all(args.project)
 
 
 if __name__ == "__main__":

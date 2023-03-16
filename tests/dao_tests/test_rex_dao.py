@@ -123,6 +123,28 @@ class RexParticipantMappingDaoTest(BaseTestCase):
         expected_rex_participant_mapping_ = ParticipantMapping(**expected_rex_participant_mapping)
         self.assertEqual(expected_rex_participant_mapping_.asdict(), self.rex_participant_mapping_dao.get(1).asdict())
 
+    def test_get_from_ancillary_id(self):
+        primary_rex_study: Study = self._create_rex_study(schema_name="primary_rex_study")
+        ancillary_rex_study: Study = self._create_rex_study(schema_name="ancillary_rex_study")
+        participant_mapping_data = ParticipantMapping(
+            primary_study_id=primary_rex_study.id,
+            ancillary_study_id=ancillary_rex_study.id,
+            primary_participant_id=101,
+            ancillary_participant_id=10032
+        )
+        self.rex_participant_mapping_dao.insert(participant_mapping_data)
+
+        participant_mapping = self.rex_participant_mapping_dao.get_from_ancillary_id(primary_rex_study.id,
+                                                                            ancillary_rex_study.id,
+                                                                            10032)
+
+        self.assertEqual(101, participant_mapping.primary_participant_id)
+
+        participant_mapping = self.rex_participant_mapping_dao.get_from_ancillary_id(primary_rex_study.id,
+                                                                            ancillary_rex_study.id,
+                                                                            32110)
+        self.assertIsNone(participant_mapping)
+
     def tearDown(self):
         self.clear_table_after_test("rex.participant_mapping")
         self.clear_table_after_test("rex.study")

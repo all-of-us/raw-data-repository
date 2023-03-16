@@ -12,6 +12,7 @@ from .genomics import GenomicSetSchemaGenerator, GenomicManifestFileSchemaGenera
 from .workbench import WBWorkspaceGenerator, WBWorkspaceUsersGenerator, WBInstitutionalAffiliationsGenerator, \
     WBResearcherGenerator
 from .consent_metrics import ConsentMetricGenerator, ConsentErrorReportGenerator
+from .onsite_id_verification import OnSiteIdVerificationGenerator
 
 __all__ = [
     'BaseGenerator',
@@ -32,5 +33,6 @@ __all__ = [
     'WBWorkspaceGenerator',
     'WBWorkspaceUsersGenerator',
     'WBInstitutionalAffiliationsGenerator',
-    'WBResearcherGenerator'
+    'WBResearcherGenerator',
+    'OnSiteIdVerificationGenerator'
 ]
