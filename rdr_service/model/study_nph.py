@@ -4,7 +4,7 @@ from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Index, e
 from sqlalchemy.dialects.mysql import TINYINT, JSON
 from sqlalchemy.orm import relation, relationship
 
-from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes
+from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, ParticipantOpsElementTypes
 from rdr_service.model.base import NphBase, model_insert_listener, model_update_listener
 from rdr_service.model.study_nph_enums import StoredSampleStatus, IncidentStatus, IncidentType
 from rdr_service.model.utils import UTCDateTime, Enum
@@ -259,7 +259,6 @@ event.listen(ConsentEvent, "before_insert", model_insert_listener)
 event.listen(ConsentEvent, "before_update", model_update_listener)
 
 
-
 class WithdrawalEvent(NphBase):
     __tablename__ = "withdrawal_event"
 
@@ -367,3 +366,19 @@ class Incident(NphBase):
 
 event.listen(Incident, "before_insert", model_insert_listener)
 event.listen(Incident, "before_update", model_update_listener)
+
+
+class ParticipantOpsDataElement(NphBase):
+    __tablename__ = "participant_ops_data_element"
+
+    id = Column("id", BigInteger, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    source_data_element = Column(Enum(ParticipantOpsElementTypes), nullable=False)
+    source_value = Column(String(512))
+
+
+event.listen(ParticipantOpsDataElement, "before_insert", model_insert_listener)
+event.listen(ParticipantOpsDataElement, "before_update", model_update_listener)
