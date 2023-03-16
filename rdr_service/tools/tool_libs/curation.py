@@ -62,8 +62,8 @@ class CurationExportClass(ToolBase):
     # TODO: gracefully handle observation's timeout
     problematic_tables = ['observation']
 
-    def __init__(self, args, gcp_env=None, tool_name=None):
-        super(CurationExportClass, self).__init__(args, gcp_env, tool_name)
+    def __init__(self, args, gcp_env=None, tool_name=None, replica=False):
+        super(CurationExportClass, self).__init__(args, gcp_env, tool_name, replica)
         self.db_conn = None
         self.cdr_etl_run_history_dao = CdrEtlRunHistoryDao()
         self.cdr_etl_survey_history_dao = CdrEtlSurveyHistoryDao()
@@ -534,11 +534,11 @@ class CurationExportClass(ToolBase):
 
         if include_surveys:
             questionnaire_answers_select = questionnaire_answers_select.filter(
-                module_code.Value.in_(include_surveys)
+                module_code.value.in_(include_surveys)
             )
         elif exclude_surveys:
             questionnaire_answers_select = questionnaire_answers_select.filter(
-                module_code.Value.notin_(include_surveys)
+                module_code.value.notin_(exclude_surveys)
             )
 
         return column_map, questionnaire_answers_select, module_code, question_code

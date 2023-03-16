@@ -34,7 +34,8 @@ class CdrEtlRunHistoryDao(UpdatableDao):
             CdrEtlRunHistory.vocabularyPath,
             CdrEtlRunHistory.cutoffDate,
             CdrEtlRunHistory.startTime,
-            CdrEtlRunHistory.endTime
+            CdrEtlRunHistory.endTime,
+            CdrEtlRunHistory.filterOptions
         ).order_by(CdrEtlRunHistory.id.desc()).limit(1)
 
         if is_sql:
