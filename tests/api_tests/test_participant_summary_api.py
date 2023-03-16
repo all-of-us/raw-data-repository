@@ -163,7 +163,10 @@ participant_summary_default_values = {
     "onsiteIdVerificationVisitType": "UNSET",
     "questionnaireOnLifeFunctioning": "UNSET",
     "aian": False,
-    "idVerificationOrigin": "UNSET"
+    "idVerificationOrigin": "UNSET",
+    "consentForNphModule1": False,
+    "nphWithdrawal": False,
+    "nphDeactivation": False
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)

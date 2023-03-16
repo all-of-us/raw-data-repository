@@ -318,7 +318,10 @@ class DataGenerator:
             "participantOrigin": participant.participantOrigin,
             "deceasedStatus": DeceasedStatus.UNSET,
             "isEhrDataAvailable": False,
-            "wasParticipantMediatedEhrAvailable": False
+            "wasParticipantMediatedEhrAvailable": False,
+            "consentForNphModule1": False,
+            "nphWithdrawal": False,
+            "nphDeactivation": False
         }
 
         defaults.update(kwargs)
