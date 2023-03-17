@@ -407,7 +407,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 ParticipantSummary.participantId == participant_id
             ).one_or_none()
 
-    def get_by_hpo(self, hpo):
+    def get_by_hpo(self, hpo, yield_batch_size=1000):
         """ Returns participants for HPO except test and ghost participants"""
         with self.session() as session:
             return session.query(
@@ -419,7 +419,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 Participant.isTestParticipant != 1,
                 # Just filtering on isGhostId != 1 will return no results
                 or_(Participant.isGhostId != 1, Participant.isGhostId == None)
-            ).all()
+            ).yield_per(yield_batch_size)
 
     def _validate_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
         """Participant summaries don't have a version value; drop it from validation logic."""

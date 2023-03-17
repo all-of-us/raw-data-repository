@@ -15,22 +15,49 @@ _MAX_FILE_AGE = datetime.timedelta(days=7)
 FILE_PREFIX = 'va_daily_participant_wq_'
 
 
+class ParticipantSummaryJsonIterable(list):
+    """
+    Wrapper class to be able to have a generator serialized into a JSON file
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._source = []
+        self._dao = ParticipantSummaryDao()
+
+    @classmethod
+    def from_source(cls, source_iterable):
+        instance = ParticipantSummaryJsonIterable()
+        instance._source = source_iterable
+        return instance
+
+    def __iter__(self):
+        for participant in self._source:
+            yield self._dao.to_client_json(participant)
+
+    def __len__(self):
+        # Need to return something larger than 0 for json module to iterate
+        return 1
+
+
 def generate_workqueue_report():
     """ Creates csv file from ParticipantSummary table for participants paired to VA """
-    hpo_dao = HPODao()
-    summary_dao = ParticipantSummaryDao()
+    # Build export file name
     bucket = config.getSetting(config.VA_WORKQUEUE_BUCKET_NAME)
     subfolder = config.getSetting(config.VA_WORKQUEUE_SUBFOLDER)
     file_timestamp = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
     file_name = f'{FILE_PREFIX}{file_timestamp}.json'
-    participants = summary_dao.get_by_hpo(hpo_dao.get_by_name('VA'))
-    participants_to_export = []
-    for participant in participants:
-        participants_to_export.append(summary_dao.to_client_json(participant))
-    export_data = json.dumps(participants_to_export)
     export_path = f'/{bucket}/{subfolder}/{file_name}'
+
+    # Retrieve data
+    hpo_dao = HPODao()
+    summary_dao = ParticipantSummaryDao()
+    participants = summary_dao.get_by_hpo(hpo_dao.get_by_name('VA'))
+
+    # Write participant JSON to file
+    json_generator = ParticipantSummaryJsonIterable.from_source(participants)
     with open_cloud_file(export_path, mode='w') as export_file:
-        export_file.write(export_data)
+        json.dump(json_generator, export_file)
 
 
 def delete_old_reports():
