@@ -37,7 +37,7 @@ class ParticipantSummaryJsonIterable(list):
 
     def __len__(self):
         # Need to return something larger than 0 for json module to iterate
-        return 1
+        return self._source.count()
 
 
 def generate_workqueue_report():
@@ -52,12 +52,16 @@ def generate_workqueue_report():
     # Retrieve data
     hpo_dao = HPODao()
     summary_dao = ParticipantSummaryDao()
-    participants = summary_dao.get_by_hpo(hpo_dao.get_by_name('VA'))
+    with summary_dao.session() as session:
+        participants = summary_dao.get_by_hpo(
+            hpo=hpo_dao.get_by_name('VA'),
+            session=session
+        )
 
-    # Write participant JSON to file
-    json_generator = ParticipantSummaryJsonIterable.from_source(participants)
-    with open_cloud_file(export_path, mode='w') as export_file:
-        json.dump(json_generator, export_file)
+        # Write participant JSON to file
+        json_generator = ParticipantSummaryJsonIterable.from_source(participants)
+        with open_cloud_file(export_path, mode='w') as export_file:
+            json.dump(json_generator, export_file)
 
 
 def delete_old_reports():
