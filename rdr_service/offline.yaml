@@ -4,10 +4,10 @@ runtime: python37
 service: offline
 entrypoint: gunicorn -c rdr_service/services/gunicorn_config.py --timeout 18000 --max-requests 10 --max-requests-jitter 3 rdr_service.offline.main:app
 
-# Because we are changing to an auto-scaled class, need to specify automatic_scaling
+# RDR Cron Jobs run for longer than 10 minutes, B4_1G allows basic scaling, which handles requests up to 24 hours.
 # https://cloud.google.com/appengine/docs/standard/reference/app-yaml?tab=python#scaling_elements
-instance_class: F4_1G
-automatic_scaling:
-  min_idle_instances: automatic
-  max_pending_latency: automatic
+instance_class: B4_1G
+basic_scaling:
+  max_instances: 10
+  idle_timeout: 1m
 
