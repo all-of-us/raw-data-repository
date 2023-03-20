@@ -97,11 +97,8 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         ).filter(
             getattr(SrcClean,column_name) == value
         ).distinct().scalar()
-        if value_exists:
-            return True
-        else:
-            return False
-
+        return bool(value_exists
+                    )
     @staticmethod
     def run_cdm_data_generation(cutoff=None, vocabulary='gs://curation-vocabulary/aou_vocab_20220201/',
                                 participant_origin='all', participant_list_file=None, include_surveys=None,
@@ -771,7 +768,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertIn({'participant_origin': 'all'}, run_history)
 
     def test_participant_list(self):
-        pids = [n for n in range(10000,10010)]
+        pids = list(range(10000,10010))
         for pid in pids:
             participant = self.data_generator.create_database_participant(participantId=pid)
             self.data_generator.create_database_participant_summary(
@@ -797,7 +794,8 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
                 self.assertFalse(pid_exists)
 
         run_history = self.history_dao.get_last_etl_run_info(self.session)
-        self.assertIn('test-data/test_curation_participant_list.txt', run_history.filterOptions['participant_list_file'])
+        self.assertIn('test-data/test_curation_participant_list.txt',
+                      run_history.filterOptions['participant_list_file'])
 
     def _create_questionnaire(self, survey_name):
         module_code = self.data_generator.create_database_code(value=survey_name)
