@@ -1,7 +1,7 @@
 from rdr_service.dao import database_factory
 from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
     PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
-    DeactivatedEvent
+    DeactivatedEvent, ParticipantOpsDataElement
 from rdr_service.ancillary_study_resources.nph import enums
 
 
@@ -162,6 +162,7 @@ class NphDataGenerator:
             "participant_id": participant_id,
             "event_id": event_id,
             "event_type_id": 1,
+            "opt_in": enums.ConsentOptInTypes.PERMIT,
         }
         fields.update(kwargs)
         consent_event = self._consent_event(**fields)
@@ -195,4 +196,11 @@ class NphDataGenerator:
         self._commit_to_database(deactivated_event)
         return deactivated_event
 
+    @staticmethod
+    def _ops_data_element(**kwargs):
+        return ParticipantOpsDataElement(**kwargs)
 
+    def create_database_participant_ops_data_element(self, **kwargs):
+        ops_data_element = self._ops_data_element(**kwargs)
+        self._commit_to_database(ops_data_element)
+        return ops_data_element

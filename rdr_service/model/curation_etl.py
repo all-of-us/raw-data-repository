@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Date, event
+from sqlalchemy import Column, ForeignKey, Integer, String, Date, event, JSON
 from sqlalchemy.orm import relationship
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, UTCDateTime6
@@ -23,6 +23,8 @@ class CdrEtlRunHistory(Base):
     """The curation ETL vocabulary path"""
     cutoffDate = Column("cut_off_date", Date, nullable=True)
     """The cut off date of this ETL run"""
+    filterOptions = Column("filter_options", JSON, nullable=True)
+    """JSON dictionary of options used for the run"""
 
 
 class CdrEtlSurveyHistory(Base):

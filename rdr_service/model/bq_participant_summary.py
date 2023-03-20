@@ -21,7 +21,9 @@ class BQModuleStatusEnum(Enum):
     SUBMITTED = 1
     SUBMITTED_NO_CONSENT = 2
     SUBMITTED_NOT_SURE = 3
+    # See: DA-3278, these status can now depend on state of the consent PDF validation
     SUBMITTED_INVALID = 4
+    SUBMITTED_NOT_VALIDATED = 5
 
 
 class BQConsentCohort(Enum):

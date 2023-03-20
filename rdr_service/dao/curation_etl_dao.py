@@ -13,12 +13,13 @@ class CdrEtlRunHistoryDao(UpdatableDao):
     def __init__(self):
         super(CdrEtlRunHistoryDao, self).__init__(CdrEtlRunHistory)
 
-    def create_etl_history_record(self, session, cutoff, vocabulary):
+    def create_etl_history_record(self, session, cutoff, vocabulary, filter_options=None):
         now = clock.CLOCK.now()
         cdr_etl_run_history = CdrEtlRunHistory(
             startTime=now,
             vocabularyPath=vocabulary,
-            cutoffDate=cutoff
+            cutoffDate=cutoff,
+            filterOptions=filter_options
         )
         return self.insert_with_session(session, cdr_etl_run_history)
 

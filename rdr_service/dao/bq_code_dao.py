@@ -37,6 +37,18 @@ class BQCodeGenerator(BigQueryGenerator):
 
             return BQRecord(schema=BQCodeSchema, data=data, convert_to_enum=convert_to_enum)
 
+def rebuild_bq_code_ids(_pk_ids):
+    """
+    Rebuild a list of code table records for PDR (BigQuery)
+    :param _pk_ids:  List of primary key values for RDR code table
+    """
+    w_dao = BigQuerySyncDao()
+    gen = BQCodeGenerator()
+    with w_dao.session() as w_session:
+        for pk_id in _pk_ids:
+            bqr = gen.make_bqrecord(pk_id)
+            gen.save_bqrecord(pk_id, bqr, bqtable=BQCode, w_dao=w_dao, w_session=w_session)
+
 @task_auth_required
 def rebuild_bq_codebook_task():
     """
@@ -44,12 +56,8 @@ def rebuild_bq_codebook_task():
     """
     ro_dao = BigQuerySyncDao(backup=True)
     with ro_dao.session() as ro_session:
-        gen = BQCodeGenerator()
         results = ro_session.query(Code.codeId).all()
-
-    w_dao = BigQuerySyncDao()
-    logging.info('Code table: rebuilding {0} records...'.format(len(results)))
-    with w_dao.session() as w_session:
-        for row in results:
-            bqr = gen.make_bqrecord(row.codeId)
-            gen.save_bqrecord(row.codeId, bqr, bqtable=BQCode, w_dao=w_dao, w_session=w_session)
+        if len(results):
+            id_list = [r.codeId for r in results]
+            logging.info('Code table: rebuilding {0} records...'.format(len(id_list)))
+            rebuild_bq_code_ids(id_list)

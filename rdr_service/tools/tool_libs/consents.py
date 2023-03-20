@@ -14,9 +14,10 @@ from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_dao import ParticipantHistoryDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.gcp_utils import gcp_make_auth_header
-from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType, CONSENT_TYPE_MODULE_NAMES
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import Enum
 from rdr_service.offline.sync_consent_files import ConsentSyncGuesser
@@ -179,6 +180,30 @@ class ConsentTool(ToolBase):
                 logger.error('Unable to find validation record')
 
             logger.info('File info:'.ljust(16) + f'P{file.participant_id}, {file.file_path}')
+            consent_response_id = file.consent_response_id
+            if self.args.consent_response:
+                if consent_response_id:
+                    logger.info(f'Record {file.id} already linked to consent_response_id {file.consent_response_id}')
+                elif CONSENT_TYPE_MODULE_NAMES[file.type]:
+                    consent_response_id = QuestionnaireResponseDao.find_consent_response_with_pdf(
+                        participant_id=file.participant_id,
+                        consent_type=file.type,
+                        modules=CONSENT_TYPE_MODULE_NAMES[file.type],
+                        pdf_name_to_match=file.file_path,
+                        session=session
+                    )
+                    if consent_response_id:
+                        self._check_for_update(
+                            new_value=consent_response_id,
+                            stored_value=file.consent_response_id,
+                            parser_func=None,
+                            callback=lambda parsed_value: self._log_property_change('consent_response_id',
+                                                                                    file.consent_response_id,
+                                                                                    parsed_value)
+                        )
+                else:
+                    logger.error(f'Could not determine module names for {str(file.type)}')
+
             self._check_for_update(
                 new_value=self.args.type,
                 stored_value=file.type,
@@ -208,21 +233,31 @@ class ConsentTool(ToolBase):
                     parser_func=ConsentSyncStatus,
                     callback=lambda parsed_value: setattr(file, 'sync_status', parsed_value)
                 )
+                self._check_for_update(
+                    new_value=consent_response_id,
+                    stored_value=file.consent_response_id,
+                    parser_func=None,
+                    callback=lambda parsed_value: setattr(file, 'consent_response_id', parsed_value)
+                )
                 self._consent_dao.batch_update_consent_files([file], session)
                 session.commit()
                 dispatch_rebuild_consent_metrics_tasks([file.id],
                                                        project_id=self.gcp_env.project, build_locally=True)
 
     def validate_consents(self):
-        consent_type = None
+        consent_types = None
+        # Default to all consent types if no specific type was specified, per tool help text
         if self.args.type:
-            consent_type = ConsentType(self.args.type)
+            consent_types = [ConsentType(self.args.type)]
+        else:
+            consent_types = [t for t in ConsentType]
 
         controller = ConsentValidationController(
             consent_dao=ConsentDao(),
             participant_summary_dao=ParticipantSummaryDao(),
             hpo_dao=HPODao(),
-            storage_provider=GoogleCloudStorageProvider()
+            storage_provider=GoogleCloudStorageProvider(),
+            session=self.get_session()
         )
         with open(self.args.pid_file) as pid_file,\
                 self.get_session() as session,\
@@ -241,7 +276,7 @@ class ConsentTool(ToolBase):
                     controller.validate_participant_consents(
                         summary=participant_summary,
                         output_strategy=store_strategy,
-                        types_to_validate=[consent_type]
+                        types_to_validate=consent_types
                     )
                 participant_ids = list(islice(pid_file, participant_lookup_batch_size))
 
@@ -339,7 +374,12 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
         '--type', help='New consent type value to set'
     )
     modify_parser.add_argument(
-        '--sync-status', help='New sync status to set (format: string or int value of the new status'
+        '--sync-status', help='New sync status to set (format: string or int value of the new status)'
+    )
+    modify_parser.add_argument(
+        '--consent-response',
+        help="Search for ConsentResponse id to link to the record being modified (set consent_response_id field)",
+        action="store_true"
     )
 
     modify_parser = subparsers.add_parser('validate')

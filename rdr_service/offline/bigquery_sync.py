@@ -14,9 +14,9 @@ from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
-from rdr_service.dao.bq_hpo_dao import bq_hpo_update
-from rdr_service.dao.bq_organization_dao import bq_organization_update
-from rdr_service.dao.bq_site_dao import bq_site_update
+from rdr_service.dao.bq_hpo_dao import bq_hpo_update_all
+from rdr_service.dao.bq_organization_dao import bq_organization_update_all
+from rdr_service.dao.bq_site_dao import bq_site_update_all
 from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.participant import Participant
 from rdr_service.resource.generators.code import rebuild_codebook_resources_task
@@ -128,11 +128,11 @@ def rebuild_bigquery_handler():
     rebuild_bq_codebook_task()
     rebuild_codebook_resources_task()
     # HPO Table
-    bq_hpo_update()
+    bq_hpo_update_all()
     # Organization Table
-    bq_organization_update()
+    bq_organization_update_all()
     # Site Table
-    bq_site_update()
+    bq_site_update_all()
 
 
 def daily_rebuild_bigquery_handler():

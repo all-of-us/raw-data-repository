@@ -6,7 +6,7 @@ from sqlalchemy import and_, func
 from sqlalchemy.dialects.mysql import JSON
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX, NPH_STUDY_ID
 from rdr_service.model.study_nph import Participant as DbParticipant, Site as nphSite, PairingEvent, DeactivatedEvent, \
-    WithdrawalEvent, EnrollmentEvent, EnrollmentEventType
+    WithdrawalEvent, EnrollmentEvent, EnrollmentEventType, ParticipantOpsDataElement
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping, Study
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
@@ -69,16 +69,6 @@ class Sample(ObjectType):
     @staticmethod
     def sort(context, value):
         raise NotImplementedError
-        # if value.upper() == 'PARENT':
-        #     return context.set_sort_table('sample')
-        # if value.upper() == 'CHILD':
-        #     return context.add_ref(
-        #         NphSample, 'child'
-        #     ).add_join(
-        #         context.references['child'],
-        #         context.references['child'].parent_id == context.references['sample'].id
-        #     ).set_sort_table('child')
-        # raise NotImplementedError
 
 
 class SampleCollection(ObjectType):
@@ -88,11 +78,6 @@ class SampleCollection(ObjectType):
     @staticmethod
     def sort(context, sort_info, _):
         raise NotImplementedError
-        # return context.add_ref(
-        #     NphSample, 'sample'
-        # ).add_join(
-        #     context.references['sample'], context.references['sample'].participant_id == DbParticipant.participantId
-        # ).add_filter(context.references['sample'].test == context.table)
 
 
 def _build_filter_parameters(cls):
@@ -114,7 +99,7 @@ class Participant(ObjectType):
     biobankId = SortableField(
         String,
         description='NPH Biobank id value for the participant, sourced from NPH participant data table',
-        sort_modifier=lambda context: context.set_order_expression(DbParticipant.biobankId),
+        sort_modifier=lambda context: context.set_order_expression(DbParticipant.biobank_id),
         filter_modifier=lambda context, value: context.add_filter(DbParticipant.biobank_id == value)
     )
     firstName = SortableField(
@@ -141,7 +126,9 @@ class Participant(ObjectType):
         name='DOB',
         description="Participant's date of birth, sourced from Aou participant_summary_table",
         sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.dateOfBirth),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.dateOfBirth == value)
+        filter_modifier=lambda context, value: context.add_filter(
+            ParticipantSummaryModel.dateOfBirth == value
+        )
     )
     zipCode = SortableField(
         String,
@@ -256,17 +243,18 @@ class Participant(ObjectType):
         '''
     )
     # NPH
-    external_id = SortableField(String, name="nphPairedSite", description='Sourced from NPH Schema.',
+    externalId = SortableField(String, name="nphPairedSite", description='Sourced from NPH Schema.',
                                 sort_modifier=lambda context: context.set_order_expression(nphSite.external_id))
-    organization_external_id = SortableField(String, name="nphPairedOrg", description='Sourced from NPH Schema.',
+    organizationExternalId = SortableField(String, name="nphPairedOrg", description='Sourced from NPH Schema.',
                                              sort_modifier=lambda context: context.set_order_expression(
                                                  nphSite.organization_external_id))
-    awardee_external_id = SortableField(String, name="nphPairedAwardee", description='Sourced from NPH Schema.',
-                                        sort_modifier=lambda context: context.set_order_expression(
-                                            nphSite.awardee_external_id))
-    nph_enrollment_status = List(Event, name="nphEnrollmentStatus", description='Sourced from NPH Schema.')
-    nph_withdrawal_status = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
-    nph_deactivation_status = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
+    awardeeExternalId = SortableField(String, name="nphPairedAwardee", description='Sourced from NPH Schema.',
+                                      sort_modifier=lambda context: context.set_order_expression(
+                                          nphSite.awardee_external_id))
+    nphEnrollmentStatus = List(Event, name="nphEnrollmentStatus", description='Sourced from NPH Schema.')
+    nphWithdrawalStatus = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
+    nphDeactivationStatus = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
+    nphDateOfBirth = Field(String, name="nphDateOfBirth", description='Sourced from NPH Schema.')
     # Bio-specimen
     sample_8_5ml_ssts_1 = Field(SampleCollection, description='Sample 8.5ml SSTS1')
     sample_4ml_ssts_1 = Field(SampleCollection, description='Sample 4ml SSTS1')
@@ -357,7 +345,8 @@ class ParticipantQuery(ObjectType):
                 DbParticipant,
                 enrollment_subquery.c.enrollment_status,
                 DeactivatedEvent,
-                WithdrawalEvent
+                WithdrawalEvent,
+                ParticipantOpsDataElement
             ).join(
                 Site,
                 ParticipantSummaryModel.siteId == Site.siteId
@@ -384,6 +373,9 @@ class ParticipantQuery(ObjectType):
                 nphSite,
                 nphSite.id == PairingEvent.site_id
             ).outerjoin(
+                ParticipantOpsDataElement,
+                ParticipantMapping.ancillary_participant_id == ParticipantOpsDataElement.participant_id
+            ).outerjoin(
                  DeactivatedEvent,
                  ParticipantMapping.ancillary_participant_id == DeactivatedEvent.participant_id
             ).outerjoin(
@@ -392,12 +384,16 @@ class ParticipantQuery(ObjectType):
             ).filter(
                 pm2.id.is_(None),
                 ParticipantMapping.ancillary_study_id == NPH_STUDY_ID,
-            )
-            study_query = sessions.query(Study).filter(Study.schema_name == "nph")
-            study = study_query.first()
+            ).distinct()
+
+            study = sessions.query(
+                Study
+            ).filter(
+                Study.schema_name == "nph"
+            ).first()
             current_class = Participant
             query_builder = QueryBuilder(query)
-            # sampleSA2:ordered:child:current:time
+
             try:
                 if sort_by:
                     sort_parts = sort_by.split(':')

@@ -13,10 +13,11 @@ logger = logging.getLogger("rdr_logger")
 
 
 class ToolBase:
-    def __init__(self, args, gcp_env=None, tool_name=None):
+    def __init__(self, args, gcp_env=None, tool_name=None, replica=False):
         self.args = args
         self.tool_cmd = tool_name
         self.gcp_env = gcp_env
+        self.replica = replica
 
     def initialize_process_context(self, tool_cmd=None, project=None, account=None, service_account=None):
         if tool_cmd is None:
@@ -41,7 +42,7 @@ class ToolBase:
             return self.run()
 
     def run(self):
-        proxy_pid = self.gcp_env.activate_sql_proxy()
+        proxy_pid = self.gcp_env.activate_sql_proxy(replica=self.replica)
         if not proxy_pid:
             logger.error("activating google sql proxy failed.")
             return 1
@@ -66,7 +67,7 @@ class ToolBase:
             # convert ids from a list of strings to a list of integers.
             return [int(i) for i in ids if i.strip()]
 
-def cli_run(tool_cmd, tool_desc, tool_class: Type[ToolBase], parser_hook=None, defaults={}):
+def cli_run(tool_cmd, tool_desc, tool_class: Type[ToolBase], parser_hook=None, defaults={}, replica=False):
     # Set global debug value and setup application logging.
     if hasattr(tool_class, 'logger_name'):
         global logger
@@ -88,5 +89,5 @@ def cli_run(tool_cmd, tool_desc, tool_class: Type[ToolBase], parser_hook=None, d
         parser_hook(parser)
 
     args = parser.parse_args()
-    process = tool_class(args, tool_name=tool_cmd)
+    process = tool_class(args, tool_name=tool_cmd, replica=replica)
     return process.run_process()
