@@ -1,4 +1,5 @@
 import faker
+from typing import Iterable
 from itertools import zip_longest
 from graphql import GraphQLSyntaxError
 import json
@@ -12,7 +13,9 @@ from rdr_service.model import study_nph
 from rdr_service.model.participant import Participant as aouParticipant
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.model.rex import ParticipantMapping, Study
-from rdr_service.model.study_nph import PairingEvent
+from rdr_service.model.study_nph import (
+    PairingEvent, Participant as NphParticipant, ConsentEventType, ConsentEvent
+)
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.main import app
 from tests.helpers.unittest_base import BaseTestCase
@@ -111,8 +114,11 @@ def mock_load_participant_data(session):
             awardee_external_id="nph-test-hpo",
             organization_external_id="nph-test-org"
         )
+
+    participants: Iterable[NphParticipant] = []
     for _ in range(2):
         participant = nph_data_gen.create_database_participant()
+        participants.append(participant)
         nph_data_gen.create_database_pairing_event(
             participant_id=participant.id,
             event_authored_time=datetime(2023, 1, 1, 12, 0),
@@ -125,6 +131,28 @@ def mock_load_participant_data(session):
                 event_authored_time=datetime(2023, 1, 1, 12, 0) - timedelta(days=counter + 1),
                 event_id=1,
                 event_type_id=counter + 1
+            )
+
+    consent_event_types = [
+        ("Module 1 GPS Consent", "m1_consent_gps"),
+        ("Module 1 Consent Recontact", "m1_consent_recontact"),
+        ("Module 1 Consent Tissue", "m1_consent_tissue"),
+    ]
+    consent_event_type_objs: Iterable[ConsentEventType] = []
+    for name, source_name in consent_event_types:
+        consent_event_type = nph_data_gen.create_database_consent_event_type(
+            name=name, source_name=source_name
+        )
+        consent_event_type_objs.append(consent_event_type)
+
+    consent_events: Iterable[ConsentEvent] = []
+    for participant in participants:
+        for consent_event_type in consent_event_type_objs:
+            consent_events.append(
+                nph_data_gen.create_database_consent_event(
+                    participant_id=participant.id,
+                    event_type_id=consent_event_type.id
+                )
             )
 
     nph_data_gen.create_database_pairing_event(
@@ -321,6 +349,35 @@ class TestQueryExecution(BaseTestCase):
 
         enrollment_statuses = result.get('participant').get('edges')[0].get('node').get('nphEnrollmentStatus')
 
+        for status in enrollment_statuses:
+            self.assertIn("time", status)
+            self.assertIn("value", status)
+            if status['time']:
+                self.assertEqual(status['value'], 'module1_consented')
+
+    def test_nphModule1ConsentStatus_fields(self):
+        field_to_test = "nphModule1ConsentStatus {value time} "
+        query = simple_query(field_to_test)
+
+        mock_load_participant_data(self.session)
+        nph_datagen = NphDataGenerator()
+        for nph_id in [100000000, 100000001]:
+            nph_datagen.create_database_enrollment_event(
+                participant_id=nph_id,
+                event_type_id=2,
+                event_authored_time=datetime.now()
+            )
+
+        breakpoint()
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+
+        breakpoint()
+        self.assertEqual(2, len(result.get('participant').get('edges')))
+
+        # consent_events = result.get('participant').get('edges')[0].get('node').get('nphModule1ConsentStatus')
+        breakpoint()
+        enrollment_statuses = result.get('participant').get('edges')[0].get('node').get('nphEnrollmentStatus')
         for status in enrollment_statuses:
             self.assertIn("time", status)
             self.assertIn("value", status)
