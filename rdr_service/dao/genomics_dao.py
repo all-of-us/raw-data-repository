@@ -4285,7 +4285,8 @@ class GenomicQueriesDao(BaseDao):
                 GenomicGCValidationMetrics,
                 and_(
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
-                    GenomicGCValidationMetrics.ignoreFlag != 1
+                    GenomicGCValidationMetrics.ignoreFlag != 1,
+                    GenomicGCValidationMetrics.pipelineId != GENOMIC_UPDATED_WGS_DRAGEN
                 )
             ).join(
                 informing_loop_subquery,
@@ -4308,8 +4309,7 @@ class GenomicQueriesDao(BaseDao):
                 ParticipantSummary.participantOrigin != 'careevolution',
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY,
-                previous_w1il_job_field.is_(None),
-                GenomicGCValidationMetrics.pipelineId != GENOMIC_UPDATED_WGS_DRAGEN
+                previous_w1il_job_field.is_(None)
             )
 
             if sample_ids:
