@@ -132,10 +132,15 @@ def _build_resource_app():
                       TASK_PREFIX + "IngestAW5ManifestTaskApi",
                       endpoint="ingest_aw5_manifest_task", methods=["POST"])
 
-    # Ingest W2SC manifest
+    # Ingest CVL manifest
     _api.add_resource(genomic_cloud_tasks_api.IngestCVLManifestTaskApi,
                       TASK_PREFIX + "IngestCVLManifestTaskApi",
                       endpoint="ingest_cvl_manifest_task", methods=["POST"])
+
+    # Ingest Long Read manifest
+    _api.add_resource(genomic_cloud_tasks_api.IngestLongReadManifestTaskApi,
+                      TASK_PREFIX + "IngestLongReadManifestTaskApi",
+                      endpoint="ingest_long_read_manifest_task", methods=["POST"])
 
     # Ingest member samples from raw models
     _api.add_resource(genomic_cloud_tasks_api.IngestSamplesFromRawTaskAPI,
