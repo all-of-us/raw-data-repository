@@ -47,7 +47,7 @@ from rdr_service.model.genomics import (
     GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
-    GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified)
+    GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -4706,3 +4706,18 @@ class GenomicDefaultBaseDao(BaseDao, GenomicDaoMixin):
 
     def get_id(self, obj):
         pass
+
+
+class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
+
+    validate_version_match = False
+
+    def __init__(self):
+        super().__init__(GenomicLongRead, order_by_ending=["id"])
+
+    def get_id(self, obj):
+        return obj.id
+
+    def get_new_long_read_participants(self):
+        with self.session() as _:
+            pass

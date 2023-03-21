@@ -22,7 +22,7 @@ from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, Genom
 from rdr_service.offline import genomic_pipeline, genomic_cvl_pipeline
 from rdr_service.participant_enums import WithdrawalStatus
 from tests import test_data
-from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
+from tests.genomics_tests.test_genomic_utils import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
 

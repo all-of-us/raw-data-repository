@@ -164,6 +164,7 @@ class GenomicJob(messages.Enum):
     LOAD_CVL_W5NF_TO_RAW_TABLE = 259
 
     LR_LR_WORKFLOW = 300
+
     LOAD_LR_TO_RAW_TABLE = 350
 
     # Gem to GP Migration Job

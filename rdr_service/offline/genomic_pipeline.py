@@ -7,6 +7,7 @@ from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, Gen
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_storage_class import GenomicStorageClass
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
+from rdr_service.model.genomics import GenomicLRRaw
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -377,7 +378,8 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.CVL_W3SC_WORKFLOW,
         GenomicJob.CVL_W3SS_WORKFLOW,
         GenomicJob.CVL_W4WR_WORKFLOW,
-        GenomicJob.CVL_W5NF_WORKFLOW
+        GenomicJob.CVL_W5NF_WORKFLOW,
+        GenomicJob.LR_LR_WORKFLOW
     )
 
     if _task_data.job in ingestion_workflows:
@@ -475,6 +477,10 @@ def load_awn_manifest_into_raw_table(
             'job_id': GenomicJob.LOAD_CVL_W5NF_TO_RAW_TABLE,
             'dao': GenomicW5NFRawDao
         },
+        "lr": {
+            'job_id': GenomicJob.LOAD_LR_TO_RAW_TABLE,
+            'dao': GenomicLRRaw
+        }
     }
 
     raw_job = raw_jobs_map.get(manifest_type)
