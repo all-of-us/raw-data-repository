@@ -2,6 +2,7 @@
 #
 # Template for RDR tool python program.
 #
+import os
 from datetime import datetime
 import logging
 import pytz
@@ -10,7 +11,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql.functions import coalesce, concat
-from typing import Type
+from typing import Type, List
 
 from rdr_service import config
 from rdr_service import api_util
@@ -61,11 +62,14 @@ class CurationExportClass(ToolBase):
     # TODO: gracefully handle observation's timeout
     problematic_tables = ['observation']
 
-    def __init__(self, args, gcp_env=None, tool_name=None):
-        super(CurationExportClass, self).__init__(args, gcp_env, tool_name)
+    def __init__(self, args, gcp_env=None, tool_name=None, replica=False):
+        super(CurationExportClass, self).__init__(args, gcp_env, tool_name, replica)
         self.db_conn = None
         self.cdr_etl_run_history_dao = CdrEtlRunHistoryDao()
         self.cdr_etl_survey_history_dao = CdrEtlSurveyHistoryDao()
+        self.pid_list: List[int] = []
+        self.include_surveys: List[str] = []
+        self.exclude_surveys: List[str] = []
 
     @classmethod
     def _render_export_select(cls, export_sql, column_name_list):
@@ -370,11 +374,20 @@ class CurationExportClass(ToolBase):
         ).filter(
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
-            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.PROFILE_UPDATE
+            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.PROFILE_UPDATE,
+            QuestionnaireResponse.participantId.in_(self.pid_list)
         )
         if cutoff_date:
             answers_by_module_select = answers_by_module_select.filter(
                 QuestionnaireResponse.authored < cutoff_date
+            )
+        if self.include_surveys:
+            answers_by_module_select = answers_by_module_select.filter(
+                Code.value.in_(self.include_surveys)
+            )
+        elif self.exclude_surveys:
+            answers_by_module_select = answers_by_module_select.filter(
+                Code.value.notin_(self.exclude_surveys)
             )
 
         insert_query = insert(QuestionnaireAnswersByModule).from_select(column_map.keys(), answers_by_module_select)
@@ -390,7 +403,8 @@ class CurationExportClass(ToolBase):
         )
 
     @classmethod
-    def _get_base_src_clean_answers_select(cls, session, cutoff_date=None):
+    def _get_base_src_clean_answers_select(cls, session, pid_list:List[int], cutoff_date=None, include_surveys=None,
+                                           exclude_surveys=None):
         module_code = aliased(Code)
         question_code = aliased(Code)
         answer_code = aliased(Code)
@@ -454,9 +468,8 @@ class CurationExportClass(ToolBase):
             SrcClean.filter: literal_column('0')
         }
 
-        # Participant is implicitly the first table, others are joined
-        questionnaire_answers_select = session.query(*column_map.values()).join(
-            HPO
+        questionnaire_answers_select = session.query(*column_map.values()).select_from(
+            Participant
         ).join(
             QuestionnaireResponse
         ).join(
@@ -485,24 +498,7 @@ class CurationExportClass(ToolBase):
         ).outerjoin(
             module_code,
             module_code.codeId == QuestionnaireConcept.codeId
-        ).outerjoin(
-            ParticipantSummary,
-            ParticipantSummary.participantId == Participant.participantId
         ).filter(
-            or_(
-                Participant.isGhostId.isnot(True),
-                and_(
-                    ParticipantSummary.participantId.isnot(None),
-                    Participant.dateAddedGhost > datetime(2022, 3, 18),
-                    or_(
-                        ParticipantSummary.consentForElectronicHealthRecords != QuestionnaireStatus.UNSET,
-                        ParticipantSummary.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
-                    )
-                )
-            ),
-            Participant.isTestParticipant.isnot(True),
-            Participant.participantOrigin != 'careevolution',
-            HPO.name != 'TEST',
             or_(
                 and_(QuestionnaireResponseAnswer.valueCodeId.isnot(None), answer_code.codeId.isnot(None)),
                 QuestionnaireResponseAnswer.valueInteger.isnot(None),
@@ -515,12 +511,7 @@ class CurationExportClass(ToolBase):
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.PROFILE_UPDATE,
-            and_(
-                ParticipantSummary.dateOfBirth.isnot(None),
-                ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored.isnot(None),
-                func.timestampdiff(text('YEAR'), ParticipantSummary.dateOfBirth,
-                                   ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored) >= 18
-            ),
+
             not_(QuestionnaireConcept.codeId.in_(
                 session.query(CdrExcludedCode.codeId).filter(
                     CdrExcludedCode.codeType == CdrEtlCodeType.MODULE).subquery())),
@@ -532,33 +523,28 @@ class CurationExportClass(ToolBase):
                 not_(QuestionnaireResponseAnswer.valueCodeId.in_(
                     session.query(CdrExcludedCode.codeId).filter(
                         CdrExcludedCode.codeType == CdrEtlCodeType.ANSWER).subquery()))
-            )
+            ),
+            QuestionnaireResponse.participantId.in_(pid_list)
         )
 
         if cutoff_date is not None:
             questionnaire_answers_select = questionnaire_answers_select.filter(
-                or_(
-                    and_(
-                        QuestionnaireResponse.authored < cutoff_date,
-                        ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored < cutoff_date,
-                        ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE
-                    ),
-                    and_(
-                        QuestionnaireResponse.authored < cutoff_date,
-                        ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored < cutoff_date,
-                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NO_USE,
-                        ParticipantSummary.withdrawalAuthored >= cutoff_date
-                    )
-                )
+                QuestionnaireResponse.authored < cutoff_date
             )
-        else:
+
+        if include_surveys:
             questionnaire_answers_select = questionnaire_answers_select.filter(
-                Participant.withdrawalStatus != WithdrawalStatus.NO_USE
+                module_code.value.in_(include_surveys)
+            )
+        elif exclude_surveys:
+            questionnaire_answers_select = questionnaire_answers_select.filter(
+                module_code.value.notin_(exclude_surveys)
             )
 
         return column_map, questionnaire_answers_select, module_code, question_code
 
     def _populate_src_clean(self, session, cutoff_date=None):
+
         self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion, ParticipantSummary,
                                     QuestionnaireResponse, QuestionnaireResponseAnswer])
 
@@ -575,7 +561,8 @@ class CurationExportClass(ToolBase):
         ).distinct().subquery()
 
         column_map, questionnaire_answers_select, module_code, question_code \
-            = self._get_base_src_clean_answers_select(session, cutoff_date)
+            = self._get_base_src_clean_answers_select(session, self.pid_list, cutoff_date, self.include_surveys,
+                                                      self.exclude_surveys)
 
         latest_responses_select = questionnaire_answers_select.outerjoin(
             responses_by_module_subquery,
@@ -633,22 +620,132 @@ class CurationExportClass(ToolBase):
         insert_query = insert(SrcClean).from_select(column_map.keys(), rolled_up_responses_select)
         session.execute(insert_query)
 
+
+    def _select_participant_ids(self, session, origin:str, cutoff_date:datetime=None) -> None:
+        """ Generates a list of PIDs to build the src_clean tables with"""
+        self._set_rdr_model_schema([HPO, Participant, ParticipantSummary])
+        query = session.query(
+            Participant.participantId
+        ).join(
+            ParticipantSummary,
+            Participant.participantId == ParticipantSummary.participantId
+        ).join(
+            HPO,
+            Participant.hpoId == HPO.hpoId
+        ).filter(
+            or_(
+                Participant.isGhostId.isnot(True),
+                and_(
+                    ParticipantSummary.participantId.isnot(None),
+                    Participant.dateAddedGhost > datetime(2022, 3, 18),
+                    or_(
+                        ParticipantSummary.consentForElectronicHealthRecords != QuestionnaireStatus.UNSET,
+                        ParticipantSummary.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
+                    )
+                )
+            ),
+            Participant.isTestParticipant.isnot(True),
+            HPO.name != 'TEST',
+            ParticipantSummary.dateOfBirth.isnot(None),
+            ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored.isnot(None),
+            func.timestampdiff(text('YEAR'), ParticipantSummary.dateOfBirth,
+                               ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored) >= 18
+
+        )
+        if cutoff_date:
+            query = query.filter(
+                or_(
+                    and_(
+                        ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored < cutoff_date,
+                        ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE
+                    ),
+                    and_(
+                        ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored < cutoff_date,
+                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NO_USE,
+                        ParticipantSummary.withdrawalAuthored >= cutoff_date
+                    )
+                )
+            )
+        else:
+            query = query.filter(
+                ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE
+            )
+
+        if origin == 'vibrent':
+            query = query.filter(
+                Participant.participantOrigin == 'vibrent'
+            )
+        elif origin == 'careevolution':
+            query = query.filter(
+                Participant.participantOrigin == 'careevolution'
+            )
+        result = query.all()
+        self.pid_list = [pid[0] for pid in result]
+
+
     def populate_cdm_database(self):
+        """ Generates the src_clean table which is used to populate the rest of the ETL tables """
         cutoff_date = None
+        surveys_file_name = None
+        include_flag = False
+        filter_options = {}
+
         if self.args.cutoff:
             cutoff_date = api_util.parse_date(self.args.cutoff, '%Y-%m-%d')
             cutoff_date = cutoff_date.replace(tzinfo=pytz.UTC)
             _logger.info(f"populating cdm data with cutoff date {self.args.cutoff}...")
         else:
-            _logger.info(f"populating cdm data without cutoff date")
+            _logger.info("populating cdm data without cutoff date")
+        _logger.info(f"{self.args}")
+        if not any((self.args.participant_origin, self.args.participant_list_file)):
+            raise NameError("One of parameters participant-origin or participant-list-file is required")
+        elif all((self.args.participant_origin, self.args.participant_list_file)):
+            raise NameError(
+                "Only one of parameters participant-origin or participant-list-file may be used")
+
+        if all((self.args.include_surveys, self.args.exclude_surveys)):
+            raise NameError("Cannot use both --include-surveys and --exclude-surveys")
+
+        if self.args.participant_list_file:
+            if not os.path.exists(self.args.participant_list_file):
+                raise NameError(f'File {self.args.participant_list_file} was not found.')
+            with open(self.args.participant_list_file, encoding='utf-8-sig') as pid_file:
+                lines = pid_file.readlines()
+                for line in lines:
+                    self.pid_list.append(int(line.strip()))
+            filter_options["participant_list_file"] = self.args.participant_list_file
+        else:
+            filter_options["participant_origin"] = self.args.participant_origin
+
+        if self.args.include_surveys:
+            surveys_file_name = self.args.include_surveys
+            include_flag = True
+        elif self.args.exclude_surveys:
+            surveys_file_name = self.args.exclude_surveys
+
+        if surveys_file_name:
+            surveys = []
+            if not os.path.exists(surveys_file_name):
+                raise NameError(f'File {surveys_file_name} was not found.')
+            with open(surveys_file_name, encoding='utf-8-sig') as surveys_file:
+                lines = surveys_file.readlines()
+                for line in lines:
+                    surveys.append(line.strip())
+            if include_flag:
+                self.include_surveys = surveys
+                filter_options["include_surveys"] = surveys
+            else:
+                self.exclude_surveys = surveys
+                filter_options["exclude_surveys"] = surveys
 
         # save ETL running info into ETL history table
         if not self.args.vocabulary:
             raise NameError(
                 "parameter vocabulary must be set, example: gs://curation-vocabulary/aou_vocab_20220201/")
+
         with self.get_session() as session:
             etl_history = self.cdr_etl_run_history_dao.create_etl_history_record(session, cutoff_date,
-                                                                                 self.args.vocabulary)
+                                                                                 self.args.vocabulary, filter_options)
         with self.get_session(database_name='cdm', alembic=True) as session:  # using alembic to get CREATE permission
             self._create_tables(session, [
                 QuestionnaireAnswersByModule,
@@ -657,6 +754,8 @@ class CurationExportClass(ToolBase):
 
         # using alembic here to get the database_factory code to set up a connection to the CDM database
         with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
+            if not self.args.participant_list_file:
+                self._select_participant_ids(session, self.args.participant_origin, cutoff_date)
             self._populate_questionnaire_answers_by_module(session, cutoff_date)
             self._populate_src_clean(session, cutoff_date)
 
@@ -726,6 +825,16 @@ def add_additional_arguments(parser):
     cdm_parser.add_argument("--vocabulary", help="the path of the vocabulary of this run, "
                                                  "example: gs://curation-vocabulary/aou_vocab_20220201/",
                             type=str, default=None)  # noqa
+    cdm_parser.add_argument("--participant-origin",
+                            help="Participant origin for run, accepts vibrent, careevolution, or all",
+                            type=str, default=None)
+    cdm_parser.add_argument("--participant-list-file",
+                            help="Path to a file containing a list of PIDs to run the ETL process with",
+                            type=str, default=None)
+    cdm_parser.add_argument("--include-surveys", help="Path to a file containing list of survey names to include",
+                            type=str, default=None)
+    cdm_parser.add_argument("--exclude-surveys", help="Path to a file containing list of survey names to exclude",
+                            type=str, default=None)
 
     manage_code_parser = subparsers.add_parser('exclude-code')
     manage_code_parser.add_argument("--operation", help="operation type for exclude code command: add or remove",

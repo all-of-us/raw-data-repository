@@ -8,6 +8,10 @@ while true; do
     --cutoff) CUTOFF=$2; shift 2;;
     --vocabulary) VOCABULARY=$2; shift 2;;
     --noclone) NOCLONE="Y"; shift 1;;
+    --participant-origin) PARTICIPANT_ORIGIN=$2; shift 2;;
+    --participant-list-file) PARTICIPANT_LIST_FILE=$2; shift 2;;
+    --include-surveys) INCLUDE_SURVEYS=$2; shift 2;;
+    --exclude-surveys) EXCLUDE_SURVEYS=$2; shift 2;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -64,10 +68,10 @@ echo "Running ETL..."
 mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/partially_initialize_cdm.sql
 if [ -z "${CUTOFF}" ]
 then
-  python -m tools curation --project ${PROJECT} cdm-data --vocabulary ${VOCABULARY}
+  python -m tools curation --project ${PROJECT} cdm-data --vocabulary ${VOCABULARY} --participant-list-file ${PARTICIPANT_LIST_FILE} --exclude-surveys ${EXCLUDE_SURVEYS} --include-surveys ${INCLUDE_SURVEYS} --participant-origin ${PARTICIPANT_ORIGIN}
   mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/finalize_cdm_data.sql
 else
-  python -m tools curation --project ${PROJECT} cdm-data --cutoff ${CUTOFF} --vocabulary ${VOCABULARY}
+  python -m tools curation --project ${PROJECT} cdm-data --cutoff ${CUTOFF} --vocabulary ${VOCABULARY} --participant-list-file ${PARTICIPANT_LIST_FILE} --exclude-surveys ${EXCLUDE_SURVEYS} --include-surveys ${INCLUDE_SURVEYS} --participant-origin ${PARTICIPANT_ORIGIN}
   sed 's/-- %SED_PM_CUTOFF_FILTER%/AND pm.finalized < "'"${CUTOFF}"'"/g' etl/raw_sql/finalize_cdm_data.sql | mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT}
 fi
 
