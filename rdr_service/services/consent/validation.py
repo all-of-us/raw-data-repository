@@ -46,10 +46,11 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
     a EHR PDF is encountered.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, project_name=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._summary_dao = ParticipantSummaryDao()
         self._task = GCPCloudTask()
+        self._project_name = project_name
 
     def process_results(self, result_list: List[ParsingResult]):
         # Filter down to just the EHR results and organize them by participant
