@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Optional, Dict
+from typing import Dict
 from graphene import List
 
 from sqlalchemy.orm import Query, aliased
@@ -14,7 +14,7 @@ from rdr_service.participant_enums import QuestionnaireStatus
 @dataclass
 class QueryBuilder:
     query: Query
-    order_expression: Optional = None
+    order_expression = None
     filter_expressions: List = field(default_factory=list)
     references: Dict = field(default_factory=dict)
     join_expressions: List = field(default_factory=list)
@@ -66,6 +66,12 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
             enrollment_data
         ))
 
+    # def get_consent_statutes(consent_data):
+    #     return list(map(
+    #         lambda x: {'value': x['value'], 'time': parse_date(x['time']) if x['time'] else None},
+    #         consent_data
+    #     ))
+
     def get_value_from_ops_data(participant_ops_data, enum):
         if not participant_ops_data:
             return QuestionnaireStatus.UNSET
@@ -77,7 +83,7 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
     results = []
     records = query.all()
 
-    for summary, site, nph_site, mapping, nph_participant, enrollment, \
+    for summary, site, nph_site, mapping, nph_participant, enrollment, consents, \
             deactivated, withdrawn, ops_data in records:
         results.append({
             'participantNphId': f"{prefix}{mapping.ancillary_participant_id}",
@@ -108,6 +114,8 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                 "time": withdrawn.event_authored_time if withdrawn else None
             },
             'nphEnrollmentStatus': get_enrollment_statuses(enrollment['enrollment_json']),
+            # TODO: Add nphModule1ConsentStatus
+            'nphModule1ConsentStatus': get_enrollment_statuses(consents['consent_json']),
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
                                  "time": summary.suspensionTime},
