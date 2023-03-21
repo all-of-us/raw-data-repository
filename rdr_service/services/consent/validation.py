@@ -46,11 +46,10 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
     a EHR PDF is encountered.
     """
 
-    def __init__(self, project_name, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._summary_dao = ParticipantSummaryDao()
         self._task = GCPCloudTask()
-        self._project_name = project_name
 
     def process_results(self, result_list: List[ParsingResult]):
         # Filter down to just the EHR results and organize them by participant
@@ -93,14 +92,10 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
                 session=self._session
             )
             # Rebuild for PDR
-            additional_args = {}
-            if self._project_name is not None:
-                additional_args['project_id'] = self._project_name
             self._task.execute(
                 'rebuild_one_participant_task',
                 payload={'p_id': participant_id},
-                in_seconds=30,
-                **additional_args
+                in_seconds=30
             )
 
         self._session.commit()  # release the for_update lock obtained on the participant_summary
