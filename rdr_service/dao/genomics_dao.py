@@ -4151,6 +4151,7 @@ class GenomicQueriesDao(BaseDao):
                     GenomicAW3Raw.sample_id == GenomicSetMember.sampleId,
                     GenomicAW3Raw.genome_type == genome_type,
                     GenomicAW3Raw.ignore_flag != 1,
+                    GenomicAW3Raw.pipeline_id == pipeline_id,
                 )
             ).filter(
                 or_(
