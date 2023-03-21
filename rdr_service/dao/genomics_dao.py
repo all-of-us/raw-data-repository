@@ -21,7 +21,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, code_constants, config
 from rdr_service.clock import CLOCK
-from rdr_service.config import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT, GENOMIC_UPDATED_WGS_DRAGEN
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus, \
     ResultsWorkflowState, ResultsModuleType
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
@@ -4308,7 +4308,8 @@ class GenomicQueriesDao(BaseDao):
                 ParticipantSummary.participantOrigin != 'careevolution',
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY,
-                previous_w1il_job_field.is_(None)
+                previous_w1il_job_field.is_(None),
+                GenomicGCValidationMetrics.pipelineId != GENOMIC_UPDATED_WGS_DRAGEN
             )
 
             if sample_ids:
