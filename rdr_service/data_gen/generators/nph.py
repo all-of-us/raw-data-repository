@@ -161,7 +161,7 @@ class NphDataGenerator:
         fields = {
             "participant_id": participant_id,
             "event_id": event_id,
-            "event_type_id": 1,
+            "event_type_id": kwargs.get("event_type_id", 1),
             "opt_in": enums.ConsentOptInTypes.PERMIT,
         }
         fields.update(kwargs)
