@@ -118,6 +118,7 @@ def mock_load_participant_data(session):
 
     for _ in range(2):
         participant = nph_data_gen.create_database_participant()
+        participants.append(participant)
         nph_data_gen.create_database_pairing_event(
             participant_id=participant.id,
             event_authored_time=datetime(2023, 1, 1, 12, 0),
