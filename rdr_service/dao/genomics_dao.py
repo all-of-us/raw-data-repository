@@ -4309,7 +4309,13 @@ class GenomicQueriesDao(BaseDao):
                 ParticipantSummary.participantOrigin != 'careevolution',
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY,
-                previous_w1il_job_field.is_(None)
+                previous_w1il_job_field.is_(None),
+                GenomicGCValidationMetrics.hfVcfPath.isnot(None),
+                GenomicGCValidationMetrics.hfVcfTbiPath.isnot(None),
+                GenomicGCValidationMetrics.hfVcfMd5Path.isnot(None),
+                GenomicGCValidationMetrics.gvcfPath.isnot(None),
+                GenomicGCValidationMetrics.gvcfMd5Path.isnot(None),
+                GenomicGCValidationMetrics.cramPath.isnot(None)
             )
 
             if sample_ids:
