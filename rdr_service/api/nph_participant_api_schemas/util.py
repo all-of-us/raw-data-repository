@@ -5,7 +5,7 @@ from graphene import List
 
 from sqlalchemy.orm import Query, aliased
 
-from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
+from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, ConsentOptInTypes
 from rdr_service.api_util import parse_date
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.participant_enums import QuestionnaireStatus
@@ -66,11 +66,15 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
             enrollment_data
         ))
 
-    # def get_consent_statutes(consent_data):
-    #     return list(map(
-    #         lambda x: {'value': x['value'], 'time': parse_date(x['time']) if x['time'] else None},
-    #         consent_data
-    #     ))
+    def get_consent_statuses(consent_data):
+        return list(map(
+            lambda x: {
+                'value': x['value'],
+                'time': parse_date(x['time']) if x['time'] else None,
+                'opt_in': str(ConsentOptInTypes(int(x['opt_in'])))
+            },
+            consent_data
+        ))
 
     def get_value_from_ops_data(participant_ops_data, enum):
         if not participant_ops_data:
@@ -115,7 +119,7 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
             },
             'nphEnrollmentStatus': get_enrollment_statuses(enrollment['enrollment_json']),
             # TODO: Add nphModule1ConsentStatus
-            'nphModule1ConsentStatus': get_enrollment_statuses(consents['consent_json']),
+            'nphModule1ConsentStatus': get_consent_statuses(consents['consent_json']),
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
                                  "time": summary.suspensionTime},
