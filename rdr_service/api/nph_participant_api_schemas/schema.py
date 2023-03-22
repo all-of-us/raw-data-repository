@@ -351,8 +351,10 @@ class ParticipantQuery(ObjectType):
                     'consent_json',
                     func.json_arrayagg(
                             func.json_object(
-                                'time', ConsentEvent.event_authored_time,
-                                'value', ConsentEventType.source_name)
+                                "value", ConsentEventType.source_name,
+                                "time", ConsentEvent.event_authored_time,
+                                "opt_in", ConsentEvent.opt_in,
+                            )
                     ), type_=JSON
                 ).label('consent_status'),
             ).join(
