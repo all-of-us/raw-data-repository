@@ -50,6 +50,28 @@ class Event(ObjectType):
         raise ValueError(f"{value} : Invalid Key -- Event Object Type")
 
 
+class GraphQLConsentEvent(ObjectType):
+    """ NPH ConsentEvent """
+
+    value = SortableField(
+        NonNull(String), sort_modifier=lambda context: context.set_order_expression(context.sort_table.status)
+    )
+    time = SortableField(
+        DateTime,
+        sort_modifier=lambda context: context.set_order_expression(context.sort_table.time)  # Order by time
+    )
+
+    opt_in = Field(NonNull(String))
+
+    @staticmethod
+    def sort(context, sort_info, value):
+        if value.upper() == "TIME":
+            return context.set_order_expression(sort_info.get('time'))
+        if value.upper() == 'VALUE':
+            return context.set_order_expression(sort_info.get('value'))
+        raise ValueError(f"{value} : Invalid Key -- Event Object Type")
+
+
 class EventCollection(ObjectType):
     current = SortableField(Event)
     # TODO: historical field need to sort by newest to oldest for a given aspect of a participant’s data
@@ -252,7 +274,9 @@ class Participant(ObjectType):
                                       sort_modifier=lambda context: context.set_order_expression(
                                           nphSite.awardee_external_id))
     nphEnrollmentStatus = List(Event, name="nphEnrollmentStatus", description='Sourced from NPH Schema.')
-    nphModule1ConsentStatus = List(Event, name="nphModule1ConsentStatus", description="Sourced from NPH Schema")
+    nphModule1ConsentStatus = List(
+        GraphQLConsentEvent, name="nphModule1ConsentStatus", description="Sourced from NPH Schema"
+    )
     nphWithdrawalStatus = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
     nphDeactivationStatus = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
     nphDateOfBirth = Field(String, name="nphDateOfBirth", description='Sourced from NPH Schema.')
