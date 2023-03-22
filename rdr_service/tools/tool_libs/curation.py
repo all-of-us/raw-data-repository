@@ -862,9 +862,9 @@ class CurationExportClass(ToolBase):
                                           QuestionnaireResponseAdditionalInfo])
 
     def _finalize_cdm(self, session, cutoff_date: datetime):
-        cutoff_filter = None
+        cutoff_filter = ''
         if cutoff_date:
-            cutoff_filter = f"AND pm.finalized < {cutoff_date.strftime('%Y-%m-%d')}"
+            cutoff_filter = f"AND pm.finalized < '{cutoff_date.strftime('%Y-%m-%d')}'"
 
         session.execute("Delete from voc.concept WHERE concept_id IN (1585549, 1585565, 1585548)")
         # Update cdm.src_clean to filter specific surveys.
@@ -977,7 +977,7 @@ class CurationExportClass(ToolBase):
                         """)
 
         session.execute("""
-                INSERT cdm.src_person_location
+                INSERT INTO cdm.src_person_location
                 SELECT
                     src_participant.participant_id        AS participant_id,
                     MAX(m_address_1.value_string)         AS address_1,
@@ -1017,9 +1017,8 @@ class CurationExportClass(ToolBase):
                 """)
 
         session.execute("""
-        INSERT cdm.location
+        INSERT INTO cdm.location (location_id, address_1, address_2, city, state, zip, county, location_source_value, unit_id)
             SELECT DISTINCT
-                0                               AS id,
                 NULL                            AS location_id,
                 src.address_1                   AS address_1,
                 src.address_2                   AS address_2,
@@ -1216,10 +1215,10 @@ class CurationExportClass(ToolBase):
                             """)
 
         # Drop Temporary Tables
-        session.execute("""  DROP TABLE IF EXISTS cdm.src_gender;
-                            DROP TABLE IF EXISTS cdm.src_race;
-                            DROP TABLE IF EXISTS cdm.src_person_location;
-                        """)
+        # session.execute("""  DROP TABLE IF EXISTS cdm.src_gender;
+        #                     DROP TABLE IF EXISTS cdm.src_race;
+        #                     DROP TABLE IF EXISTS cdm.src_person_location;
+        #                 """)
 
         # -- In patient surveys data only organs transplantation information
         # -- fits the procedure_occurrence table.
@@ -1361,9 +1360,9 @@ class CurationExportClass(ToolBase):
                            CREATE INDEX src_meas_pm_ids ON cdm.src_meas_mapped
                                         (physical_measurements_id, measurement_id);
                         """)
-        session.execute("""DROP TABLE IF EXISTS cdm.tmp_cv_concept_lk;
-                           DROP TABLE IF EXISTS cdm.tmp_vcv_concept_lk;
-                        """)
+        # session.execute("""DROP TABLE IF EXISTS cdm.tmp_cv_concept_lk;
+        #                    DROP TABLE IF EXISTS cdm.tmp_vcv_concept_lk;
+        #                 """)
         session.execute("""DROP TABLE IF EXISTS cdm.tmp_care_site;
                             CREATE TABLE cdm.tmp_care_site LIKE cdm.care_site;
                             ALTER TABLE cdm.tmp_care_site DROP COLUMN id;
@@ -1424,7 +1423,7 @@ class CurationExportClass(ToolBase):
                                 'vis.meas'                              AS unit_id
                             FROM cdm.tmp_visits_src src
                         """)
-        session.execute("""DROP TABLE IF EXISTS cdm.tmp_visits_src""")
+        # session.execute("""DROP TABLE IF EXISTS cdm.tmp_visits_src""")
         # -- units: observ.code, observ.str, observ.num, observ.bool
         # -- 'observation' table consists of 2 parts:
         # -- 1) patient's questionnaries
@@ -1986,8 +1985,9 @@ class CurationExportClass(ToolBase):
                             ALTER TABLE cdm.dose_era DROP COLUMN unit_id, DROP COLUMN id;
                             ALTER TABLE cdm.drug_era DROP COLUMN unit_id, DROP COLUMN id;
                             ALTER TABLE cdm.drug_exposure DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.location DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id, DROP COLUMN id;""")
+        session.execute("""
+                            ALTER TABLE cdm.location DROP COLUMN unit_id;
                             ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN parent_id, DROP COLUMN id;
                             ALTER TABLE cdm.observation DROP COLUMN unit_id, DROP COLUMN meas_id, DROP COLUMN id;
                             ALTER TABLE cdm.observation_period DROP COLUMN unit_id, DROP COLUMN id;

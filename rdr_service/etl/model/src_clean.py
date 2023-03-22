@@ -48,7 +48,6 @@ class SrcClean(CdmBase):
 
 class Location(CdmBase):
     __tablename__ = "location"
-    id = Column(BigInteger, unique=True, nullable=False)
     location_id = Column(BigInteger, autoincrement=True, primary_key=True)
     address_1 = Column(String(255))
     address_2 = Column(String(255))
@@ -685,3 +684,4 @@ class QuestionnaireResponseAdditionalInfo(CdmBase):
     questionnaire_response_id = Column(BigInteger)
     type = Column(String(255))
     value = Column(String(255))
+

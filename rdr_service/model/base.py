@@ -34,6 +34,7 @@ NphBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="nph"))
 
 CdmBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="cdm"))
 
+VocBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="voc"))
 
 class ModelMixin(object):
     """
