@@ -13,9 +13,7 @@ from rdr_service.model import study_nph
 from rdr_service.model.participant import Participant as aouParticipant
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.model.rex import ParticipantMapping, Study
-from rdr_service.model.study_nph import (
-    PairingEvent, Participant as NphParticipant, ConsentEventType, ConsentEvent
-)
+from rdr_service.model.study_nph import PairingEvent, ConsentEventType, ConsentEvent
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.main import app
 from tests.helpers.unittest_base import BaseTestCase
@@ -95,12 +93,15 @@ def mock_load_participant_data(session):
     participant_mapping_result = participant_mapping_query.all()
     if len(participant_mapping_result) < 10:
         ancillary_participant_id = 100000000
+        participants: Iterable[participant] = []
         for each in participant_result:
-            nph_data_gen.create_database_participant(id=ancillary_participant_id)
-            pm = ParticipantMapping(primary_participant_id=each.participantId,
-                                    ancillary_participant_id=ancillary_participant_id,
-                                    ancillary_study_id=2
-                                    )
+            participant = nph_data_gen.create_database_participant(id=ancillary_participant_id)
+            participants.append(participant)
+            pm = ParticipantMapping(
+                primary_participant_id=each.participantId,
+                ancillary_participant_id=ancillary_participant_id,
+                ancillary_study_id=2
+            )
             session.add(pm)
             nph_data_gen.create_database_enrollment_event(ancillary_participant_id)
             ancillary_participant_id = ancillary_participant_id + 1
@@ -115,10 +116,8 @@ def mock_load_participant_data(session):
             organization_external_id="nph-test-org"
         )
 
-    participants: Iterable[NphParticipant] = []
     for _ in range(2):
         participant = nph_data_gen.create_database_participant()
-        participants.append(participant)
         nph_data_gen.create_database_pairing_event(
             participant_id=participant.id,
             event_authored_time=datetime(2023, 1, 1, 12, 0),
@@ -356,7 +355,7 @@ class TestQueryExecution(BaseTestCase):
                 self.assertEqual(status['value'], 'module1_consented')
 
     def test_nphModule1ConsentStatus_fields(self):
-        field_to_test = "nphModule1ConsentStatus {value time} "
+        field_to_test = "nphModule1ConsentStatus {value time optIn} "
         query = simple_query(field_to_test)
 
         mock_load_participant_data(self.session)
@@ -368,21 +367,17 @@ class TestQueryExecution(BaseTestCase):
                 event_authored_time=datetime.now()
             )
 
-        breakpoint()
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
         result = json.loads(executed.data.decode('utf-8'))
-
-        breakpoint()
         self.assertEqual(2, len(result.get('participant').get('edges')))
-
-        # consent_events = result.get('participant').get('edges')[0].get('node').get('nphModule1ConsentStatus')
-        breakpoint()
-        enrollment_statuses = result.get('participant').get('edges')[0].get('node').get('nphEnrollmentStatus')
-        for status in enrollment_statuses:
+        consent_events = result.get('participant').get('edges')[0].get('node').get('nphModule1ConsentStatus')
+        for status in consent_events:
             self.assertIn("time", status)
-            self.assertIn("value", status)
-            if status['time']:
-                self.assertEqual(status['value'], 'module1_consented')
+            self.assertIn(
+                status["value"],
+                ["m1_consent_gps", "m1_consent_recontact", "m1_consent_tissue"]
+            )
+            self.assertIn(status["optIn"], ["PERMIT", "DENY"])
 
     def test_nphWithdrawalStatus_fields(self):
         field_to_test = "nphWithdrawalStatus {value time} "
