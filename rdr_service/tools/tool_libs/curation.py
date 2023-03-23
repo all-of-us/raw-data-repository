@@ -685,7 +685,7 @@ class CurationExportClass(ToolBase):
             query = query.filter(
                 Participant.participantOrigin == 'careevolution'
             )
-        result = query.all()
+        result = query.limit(10000)
         self.pid_list = [pid[0] for pid in result]
 
 
@@ -758,12 +758,24 @@ class CurationExportClass(ToolBase):
         # using alembic here to get the database_factory code to set up a connection to the CDM database
         with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
             if not self.args.participant_list_file:
+                _logger.info(f"[{datetime.utcnow()}] Selecting participant IDs")
                 self._select_participant_ids(session, self.args.participant_origin, cutoff_date)
+            _logger.info(f"[{datetime.utcnow()}] Populating src_clean")
             self._populate_questionnaire_answers_by_module(session, cutoff_date)
             self._populate_src_clean(session, cutoff_date)
+            _logger.info(f"[{datetime.utcnow()}] Populating src tables")
+            self._populate_src_tables(session)
+            if not self.args.omit_measurements:
+                _logger.info(f"[{datetime.utcnow()}] Populating measurements")
+                self._populate_measurements(session, cutoff_date)
+            if not self.args.omit_surveys:
+                _logger.info(f"[{datetime.utcnow()}] Populating observation survey data")
+                self._populate_observation_surveys(session)
+                self._populate_questionnaire_response_additional_info(session)
+            _logger.info(f"[{datetime.utcnow()}] Finalizing ETL")
+            self._finalize_cdm(session)
 
-            self._finalize_cdm(session, cutoff_date)
-
+        _logger.info(f"[{datetime.utcnow()}] Saving ETL run history")
         with self.get_session() as session:
             self.cdr_etl_survey_history_dao.save_include_exclude_code_history_for_etl_run(session, etl_history.id)
             self.cdr_etl_run_history_dao.update_etl_end_time(session, etl_history.id)
@@ -861,10 +873,290 @@ class CurationExportClass(ToolBase):
                                           PidRidMapping,
                                           QuestionnaireResponseAdditionalInfo])
 
-    def _finalize_cdm(self, session, cutoff_date: datetime):
-        cutoff_filter = ''
-        if cutoff_date:
-            cutoff_filter = f"AND pm.finalized < '{cutoff_date.strftime('%Y-%m-%d')}'"
+    def _finalize_cdm(self, session):
+        # -- In patient surveys data only organs transplantation information
+        # -- fits the procedure_occurrence table.
+        session.execute("""INSERT INTO cdm.procedure_occurrence
+                            SELECT
+                                NULL                                        AS procedure_occurrence_id,
+                                src_m1.participant_id                       AS person_id,
+                                COALESCE(vc.concept_id, 0)                  AS procedure_concept_id,
+                                src_m2.value_date                           AS procedure_date,
+                                TIMESTAMP(src_m2.value_date)                AS procedure_datetime,
+                                581412                                      AS procedure_type_concept_id,   -- 581412, Procedure Recorded from a Survey
+                                0                                           AS modifier_concept_id,
+                                NULL                                        AS quantity,
+                                NULL                                        AS provider_id,
+                                NULL                                        AS visit_occurrence_id,
+                                NULL                                        AS visit_detail_id,
+                                stcm.source_code                            AS procedure_source_value,
+                                COALESCE(stcm.source_concept_id, 0)         AS procedure_source_concept_id,
+                                NULL                                        AS modifier_source_value,
+                                'procedure'                                 AS unit_id
+                            FROM cdm.src_mapped src_m1
+                            INNER JOIN cdm.source_to_concept_map stcm
+                                ON src_m1.value_ppi_code = stcm.source_code
+                                AND stcm.source_vocabulary_id = 'ppi-proc'
+                            INNER JOIN cdm.src_mapped src_m2
+                                ON src_m1.participant_id = src_m2.participant_id
+                                AND src_m2.question_ppi_code = 'OrganTransplant_Date'
+                                AND src_m2.value_date IS NOT NULL
+                            LEFT JOIN voc.concept vc
+                                ON stcm.target_concept_id = vc.concept_id
+                                AND vc.standard_concept = 'S'
+                                AND vc.invalid_reason IS NULL
+                                """)
+
+
+
+
+        session.execute("""INSERT INTO cdm.temp_obs_target
+                            -- VISIT_OCCURENCE
+                            SELECT
+                                0 AS id,
+                                person_id,
+                                visit_start_date                               AS start_date,
+                                COALESCE(visit_end_date, visit_start_date) AS end_date
+                            FROM cdm.visit_occurrence
+
+                            UNION
+                            -- CONDITION_OCCURRENCE
+                            SELECT
+                                0 AS id,
+                                person_id,
+                                condition_start_date                                   AS start_date,
+                                COALESCE(condition_end_date, condition_start_date) AS end_date
+                            FROM cdm.condition_occurrence
+
+                            UNION
+                            -- PROCEDURE_OCCURRENCE
+                            SELECT
+                                0 AS id,
+                                person_id,
+                                procedure_date                    AS start_date,
+                                procedure_date                    AS end_date
+                            FROM cdm.procedure_occurrence
+
+                            UNION
+                            -- OBSERVATION
+                            SELECT
+                                0 AS id,
+                                person_id,
+                                observation_date                    AS start_date,
+                                observation_date                    AS end_date
+                            FROM cdm.observation
+
+                            UNION
+                            -- MEASUREMENT
+                            SELECT
+                                0 AS id,
+                                person_id,
+                                measurement_date                    AS start_date,
+                                measurement_date                    AS end_date
+                            FROM cdm.measurement
+
+                            UNION
+                            -- DEVICE_EXPOSURE
+                            SELECT
+                                0 AS id,
+                                person_id,
+                                device_exposure_start_date                                          AS start_date,
+                                COALESCE( device_exposure_end_date, device_exposure_start_date) AS end_date
+                            FROM cdm.device_exposure
+
+                            UNION
+                            -- DRUG_EXPOSURE
+                            SELECT
+                                0 AS id,
+                                person_id,
+                                drug_exposure_start_date                                        AS start_date,
+                                COALESCE( drug_exposure_end_date, drug_exposure_start_date) AS end_date
+                            FROM cdm.drug_exposure
+                                    """)
+        session.execute("""CREATE INDEX temp_obs_target_idx_start ON cdm.temp_obs_target (person_id, start_date);
+                           CREATE INDEX temp_obs_target_idx_end ON cdm.temp_obs_target (person_id, end_date);
+                        """)
+        session.execute("""SELECT NULL INTO @partition_expr;
+                            SELECT NULL INTO @last_part_expr;
+                            SELECT NULL INTO @row_number;
+                            SELECT NULL INTO @reset_num;
+
+                            INSERT INTO cdm.temp_obs_end_union
+                            SELECT
+                              0                           AS id,
+                              person_id                   AS person_id,
+                              start_date                  AS event_date,
+                              -1                          AS event_type,
+                              row_number                  AS start_ordinal
+                            FROM
+                                ( SELECT
+                                    @partition_expr := person_id                                AS partition_expr,
+                                    @reset_num :=
+                                        CASE
+                                            WHEN @partition_expr = @last_part_expr THEN 0
+                                            ELSE 1
+                                        END                                                     AS reset_num,
+                                    @last_part_expr := @partition_expr                          AS last_part_expr,
+                                    @row_number :=
+                                        CASE
+                                            WHEN @reset_num = 0 THEN @row_number + 1
+                                            ELSE 1
+                                        END                                                     AS row_number,
+                                    person_id,
+                                    start_date
+                                  FROM cdm.temp_obs_target
+                                  ORDER BY
+                                    person_id,
+                                    start_date
+                                ) F
+                            UNION ALL
+                            SELECT
+                              0                                 AS id,
+                              person_id                         AS person_id,
+                              (end_date + INTERVAL 1 DAY)       AS event_date,
+                              1                                 AS event_type,
+                              NULL                              AS start_ordinal
+                            FROM cdm.temp_obs_target
+                                    """)
+        # -- We need to re-count event ordinal number in 'overall_ord' and define null start_ordinal
+        # -- by start_ordinal of start_event. So events, owned by the same observation, will have
+        # -- the same ordinal number - the start_ordinal of start observation event.
+        # -- overall_ord is overall counter of start and end observations events.
+        session.execute("""SELECT NULL INTO @partition_expr;
+                            SELECT NULL INTO @last_part_expr;
+                            SELECT NULL INTO @row_number;
+                            SELECT NULL INTO @reset_num;
+                            SELECT NULL INTO @row_max;
+                            INSERT INTO cdm.temp_obs_end_union_part
+                            SELECT
+                                0                                    AS id,
+                                person_id                            AS person_id,
+                                event_date                           AS event_date,
+                                event_type                           AS event_type,
+                                row_max                              AS start_ordinal,
+                                row_number                           AS overall_ord
+                            FROM  (
+                                    SELECT
+                                        @partition_expr := person_id                                 AS partition_expr,
+                                        @reset_num :=
+                                            CASE
+                                                WHEN @partition_expr = @last_part_expr THEN 0
+                                                ELSE 1
+                                            END                                                      AS reset_num,
+                                        @last_part_expr := @partition_expr                           AS last_part_expr,
+                                        @row_number :=
+                                            CASE
+                                                WHEN @reset_num = 0 THEN @row_number + 1
+                                                ELSE 1
+                                            END                                                      AS row_number,
+                                        @row_max :=
+                                            CASE
+                                                WHEN @reset_num = 1 THEN start_ordinal
+                                                ELSE COALESCE(start_ordinal, @row_max)
+                                            END                                                      AS row_max,
+                                        person_id,
+                                        event_date,
+                                        event_type,
+                                        start_ordinal
+                                    FROM cdm.temp_obs_end_union
+                                    ORDER BY
+                                        person_id,
+                                        event_date,
+                                        event_type
+                                        ) F
+        """)
+        # -- Here we just filter observations ends. As start_ordinal of start and
+        # -- end events is the same, expression
+        # -- (2 * start_ordinal) == e.overall_ord gives us observation end event.
+        session.execute("""INSERT INTO  cdm.temp_obs_end
+                            SELECT
+                                0                                             AS id,
+                                person_id                                     AS person_id,
+                                (event_date - INTERVAL 1 DAY)                 AS end_date,
+                                start_ordinal                                 AS start_ordinal,
+                                overall_ord                                   AS overall_ord
+                            FROM cdm.temp_obs_end_union_part e
+                            WHERE
+                                (2 * e.start_ordinal) - e.overall_ord = 0
+                        """)
+        session.execute("""CREATE INDEX temp_obs_end_idx ON cdm.temp_obs_end (person_id, end_date)""")
+        # -- Here we form observations start and end dates. For each start_date
+        # -- we look for minimal end_date for the particular person observation.
+        session.execute("""INSERT INTO cdm.temp_obs
+                            SELECT
+                                0                             AS id,
+                                dt.person_id,
+                                dt.start_date                 AS observation_start_date,
+                                MIN(e.end_date)               AS observation_end_date
+                            FROM cdm.temp_obs_target dt
+                            JOIN cdm.temp_obs_end e
+                                ON dt.person_id = e.person_id AND
+                                e.end_date >= dt.start_date
+                            GROUP BY
+                                dt.person_id,
+                                dt.start_date
+                                    """)
+        session.execute("""CREATE INDEX temp_obs_idx ON cdm.temp_obs (person_id, observation_end_date)""")
+
+        # -- observation_period is formed as merged possibly intersecting
+        # -- tmp_obs intervals
+        session.execute("""INSERT INTO cdm.observation_period
+                            SELECT
+                                NULL                                    AS observation_period_id,
+                                person_id                               AS person_id,
+                                MIN(observation_start_date)             AS observation_period_start_date,
+                                observation_end_date                    AS observation_period_end_date,
+                                44814725                                AS period_type_concept_id,         -- 44814725, Period inferred by algorithm
+                                'observ_period'                       AS unit_id
+                            FROM cdm.temp_obs
+                            GROUP BY
+                                person_id,
+                                observation_end_date
+                                    """)
+        # session.execute("""DROP TABLE IF EXISTS cdm.temp_cdm_observation_period;
+        #                     DROP TABLE IF EXISTS cdm.temp_obs_target;
+        #                     DROP TABLE IF EXISTS cdm.temp_obs_end_union;
+        #                     DROP TABLE IF EXISTS cdm.temp_obs_end;
+        #                     DROP TABLE IF EXISTS cdm.temp_obs_end_union_part;
+        #                     DROP TABLE IF EXISTS cdm.temp_obs;
+        # """)
+
+
+
+        session.execute("""INSERT INTO cdm.pid_rid_mapping
+                            SELECT DISTINCT sc.participant_id, sc.research_id, sc.external_id
+                            FROM cdm.src_clean sc join cdm.person p on sc.participant_id=p.person_id
+                                    """)
+
+
+
+        # session.execute("""DROP TABLE IF EXISTS cdm.tmp_fact_rel_sd;""")
+
+        # Drop columns only used for ETL purposes
+        session.execute("""ALTER TABLE cdm.care_site DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.condition_era DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.condition_occurrence DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.cost DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.death DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.device_exposure DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.dose_era DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.drug_era DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.drug_exposure DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id, DROP COLUMN id;""")
+        session.execute("""
+                            ALTER TABLE cdm.location DROP COLUMN unit_id;
+                            ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN parent_id, DROP COLUMN id;
+                            ALTER TABLE cdm.observation DROP COLUMN unit_id, DROP COLUMN meas_id;
+                            ALTER TABLE cdm.observation_period DROP COLUMN unit_id;
+                            ALTER TABLE cdm.payer_plan_period DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.person DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.procedure_occurrence DROP COLUMN unit_id;
+                            ALTER TABLE cdm.provider DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.visit_occurrence DROP COLUMN unit_id, DROP COLUMN id;
+                                    """)
+
+    @staticmethod
+    def _populate_src_tables(session):
 
         session.execute("Delete from voc.concept WHERE concept_id IN (1585549, 1585565, 1585548)")
         # Update cdm.src_clean to filter specific surveys.
@@ -1220,39 +1512,12 @@ class CurationExportClass(ToolBase):
         #                     DROP TABLE IF EXISTS cdm.src_person_location;
         #                 """)
 
-        # -- In patient surveys data only organs transplantation information
-        # -- fits the procedure_occurrence table.
-        session.execute("""INSERT INTO cdm.procedure_occurrence
-                            SELECT
-                                0                                           AS id,
-                                NULL                                        AS procedure_occurrence_id,
-                                src_m1.participant_id                       AS person_id,
-                                COALESCE(vc.concept_id, 0)                  AS procedure_concept_id,
-                                src_m2.value_date                           AS procedure_date,
-                                TIMESTAMP(src_m2.value_date)                AS procedure_datetime,
-                                581412                                      AS procedure_type_concept_id,   -- 581412, Procedure Recorded from a Survey
-                                0                                           AS modifier_concept_id,
-                                NULL                                        AS quantity,
-                                NULL                                        AS provider_id,
-                                NULL                                        AS visit_occurrence_id,
-                                NULL                                        AS visit_detail_id,
-                                stcm.source_code                            AS procedure_source_value,
-                                COALESCE(stcm.source_concept_id, 0)         AS procedure_source_concept_id,
-                                NULL                                        AS modifier_source_value,
-                                'procedure'                                 AS unit_id
-                            FROM cdm.src_mapped src_m1
-                            INNER JOIN cdm.source_to_concept_map stcm
-                                ON src_m1.value_ppi_code = stcm.source_code
-                                AND stcm.source_vocabulary_id = 'ppi-proc'
-                            INNER JOIN cdm.src_mapped src_m2
-                                ON src_m1.participant_id = src_m2.participant_id
-                                AND src_m2.question_ppi_code = 'OrganTransplant_Date'
-                                AND src_m2.value_date IS NOT NULL
-                            LEFT JOIN voc.concept vc
-                                ON stcm.target_concept_id = vc.concept_id
-                                AND vc.standard_concept = 'S'
-                                AND vc.invalid_reason IS NULL
-                                """)
+
+    @staticmethod
+    def _populate_measurements(session, cutoff_date:datetime):
+        cutoff_filter = ''
+        if cutoff_date:
+            cutoff_filter = f"AND pm.finalized < '{cutoff_date.strftime('%Y-%m-%d')}'"
         session.execute(f"""INSERT INTO cdm.src_meas
                             SELECT
                                 0                               AS id,
@@ -1424,16 +1689,264 @@ class CurationExportClass(ToolBase):
                             FROM cdm.tmp_visits_src src
                         """)
         # session.execute("""DROP TABLE IF EXISTS cdm.tmp_visits_src""")
+
+        # unit: observ.meas - observations from measurement table
+        session.execute("""
+        INSERT INTO cdm.observation
+                            SELECT
+                                NULL                                    AS observation_id,
+                                meas.participant_id                     AS person_id,
+                                meas.cv_concept_id                      AS observation_concept_id,
+                                DATE(meas.measurement_time)             AS observation_date,
+                                meas.measurement_time                   AS observation_datetime,
+                                581413                                  AS observation_type_concept_id,   -- 581413, Observation from Measurement
+                                NULL                                    AS value_as_number,
+                                NULL                                    AS value_as_string,
+                                meas.vcv_concept_id                     AS value_as_concept_id,
+                                0                                       AS qualifier_concept_id,
+                                meas.vu_concept_id                      AS unit_concept_id,
+                                NULL                                    AS provider_id,
+                                meas.physical_measurements_id           AS visit_occurrence_id,
+                                NULL                                    AS visit_detail_id,
+                                meas.code_value                         AS observation_source_value,
+                                meas.cv_source_concept_id               AS observation_source_concept_id,
+                                meas.value_unit                         AS unit_source_value,
+                                NULL                                    AS qualifier_source_value,
+                                meas.vcv_source_concept_id              AS value_source_concept_id,
+                                meas.value_code_value                   AS value_source_value,
+                                NULL                                    AS questionnaire_response_id,
+                                meas.measurement_id                     AS meas_id,
+                                'observ.meas'                           AS unit_id
+                            FROM cdm.src_meas_mapped meas
+                            WHERE
+                                meas.cv_domain_id = 'Observation'
+                                    """)
+        session.execute("""ALTER TABLE cdm.observation ADD KEY (meas_id)""")
+        # -- unit: meas.dec   - measurements represented as decimal values
+        # -- unit: meas.value - measurements represented as value_code_value
+        # -- unit: meas.empty - measurements with empty value_decimal and value_code_value fields
+        # -- 'measurement' table is filled from src_meas_mapped table only.
+        session.execute("""SET @row_number = 0;
+                                  INSERT INTO cdm.measurement
+                                  SELECT
+                                      (@row_number:=@row_number + 1)          AS id,
+                                      meas.measurement_id                     AS measurement_id,
+                                      meas.participant_id                     AS person_id,
+                                      meas.cv_concept_id                      AS measurement_concept_id,
+                                      DATE(meas.measurement_time)             AS measurement_date,
+                                      meas.measurement_time                   AS measurement_datetime,
+                                      NULL                                    AS measurement_time,
+                                      44818701                                AS measurement_type_concept_id, -- 44818701, From physical examination
+                                      0                                       AS operator_concept_id,
+                                      meas.value_decimal                      AS value_as_number,
+                                      meas.vcv_concept_id                     AS value_as_concept_id,
+                                      meas.vu_concept_id                      AS unit_concept_id,
+                                      NULL                                    AS range_low,
+                                      NULL                                    AS range_high,
+                                      NULL                                    AS provider_id,
+                                      meas.physical_measurements_id           AS visit_occurrence_id,
+                                      NULL                                    AS visit_detail_id,
+                                      meas.code_value                         AS measurement_source_value,
+                                      meas.cv_source_concept_id               AS measurement_source_concept_id,
+                                      meas.value_unit                         AS unit_source_value,
+                                      CASE
+                                          WHEN meas.value_decimal IS NOT NULL OR meas.value_unit IS NOT NULL
+                                              THEN CONCAT(COALESCE(meas.value_decimal, ''), ' ',
+                                                  COALESCE(meas.value_unit, ''))     -- 'meas.dec'
+                                          WHEN meas.value_code_value IS NOT NULL
+                                              THEN meas.value_code_value             -- 'meas.value'
+                                          ELSE NULL                                  -- 'meas.empty'
+                                      END                                     AS value_source_value,
+                                      meas.parent_id                          AS parent_id,
+                                      CASE
+                                          WHEN meas.value_decimal IS NOT NULL OR meas.value_unit IS NOT NULL
+                                              THEN 'meas.dec'
+                                          WHEN meas.value_code_value IS NOT NULL
+                                              THEN 'meas.value'
+                                          ELSE 'meas.empty'
+                                      END                                     AS unit_id
+                                  FROM cdm.src_meas_mapped meas
+                                  WHERE
+                                      meas.cv_domain_id = 'Measurement' OR meas.cv_domain_id IS NULL
+                                          """)
+        session.execute("""CREATE INDEX measurement_idx
+                                  ON cdm.measurement (person_id, measurement_date, measurement_datetime, parent_id)
+                              """)
+        session.execute("""SET @row_number = 0;
+                                  INSERT INTO cdm.note
+                                  SELECT
+                                      (@row_number:=@row_number + 1)          AS id,
+                                      NULL                                    AS note_id,
+                                      meas.participant_id                     AS person_id,
+                                      DATE(meas.measurement_time)             AS note_date,
+                                      meas.measurement_time                   AS note_datetime,
+                                      44814645                                AS note_type_concept_id,    -- 44814645 - 'Note'
+                                      0                                       AS note_class_concept_id,
+                                      NULL                                    AS note_title,
+                                      COALESCE(meas.value_string, '')         AS note_text,
+                                      0                                       AS encoding_concept_id,
+                                      4180186                                 AS language_concept_id,     -- 4180186 - 'English language'
+                                      NULL                                    AS provider_id,
+                                      NULL                                    AS visit_detail_id,
+                                      meas.code_value                         AS note_source_value,
+                                      meas.physical_measurements_id           AS visit_occurrence_id,
+                                      'note'                                  AS unit_id
+                                  FROM cdm.src_meas meas
+                                  WHERE
+                                      meas.code_value = 'notes'
+                                          """)
+        # Insert to fact_relationships measurement-to-observation relations
+        session.execute("""SET @row_number = 0;
+                             INSERT INTO cdm.fact_relationship
+                             SELECT
+                                 (@row_number:=@row_number + 1)  AS id,
+                                 21                              AS domain_concept_id_1,     -- Measurement
+                                 mtq.measurement_id              AS fact_id_1,
+                                 27                              AS domain_concept_id_2,     -- Observation
+                                 cdm_obs.observation_id          AS fact_id_2,
+                                 581411                          AS relationship_concept_id, -- Measurement to Observation
+                                 'observ.meas1'                  AS unit_id
+                             FROM cdm.observation cdm_obs
+                             INNER JOIN rdr.measurement_to_qualifier mtq
+                                 ON mtq.qualifier_id = cdm_obs.meas_id
+                                     """)
+        session.execute("""INSERT INTO cdm.fact_relationship
+                             SELECT
+                                 (@row_number:=@row_number + 1)  AS id,
+                                 27                              AS domain_concept_id_1,     -- Observation
+                                 cdm_obs.observation_id          AS fact_id_1,
+                                 21                              AS domain_concept_id_2,     -- Measurement
+                                 mtq.measurement_id              AS fact_id_2,
+                                 581410                          AS relationship_concept_id, -- Observation to Measurement
+                                 'observ.meas2'                  AS unit_id
+                             FROM cdm.observation cdm_obs
+                             INNER JOIN rdr.measurement_to_qualifier mtq
+                                 ON mtq.qualifier_id = cdm_obs.meas_id
+                         """)
+
+        # temporary table for populating cdm_fact_relationship table from systolic and
+        # diastolic blood pressure measurements
+        session.execute("""INSERT INTO cdm.tmp_fact_rel_sd
+                             SELECT
+                                 0                                                           AS id,
+                                 m.measurement_id                                            AS measurement_id,
+                                 CASE
+                                     WHEN m.measurement_source_value = 'blood-pressure-systolic-1'     THEN 1
+                                     WHEN m.measurement_source_value = 'blood-pressure-systolic-2'     THEN 2
+                                     WHEN m.measurement_source_value = 'blood-pressure-systolic-3'     THEN 3
+                                     WHEN m.measurement_source_value = 'blood-pressure-systolic-mean'  THEN 4
+                                     ELSE 0
+                                 END                                                         AS systolic_blood_pressure_ind,
+                                 CASE
+                                     WHEN m.measurement_source_value = 'blood-pressure-diastolic-1'    THEN 1
+                                     WHEN m.measurement_source_value = 'blood-pressure-diastolic-2'    THEN 2
+                                     WHEN m.measurement_source_value = 'blood-pressure-diastolic-3'    THEN 3
+                                     WHEN m.measurement_source_value = 'blood-pressure-diastolic-mean' THEN 4
+                                     ELSE 0
+                                 END                                                         AS diastolic_blood_pressure_ind,
+                                 m.person_id                                                 AS person_id,
+                                 m.parent_id                                                 AS parent_id
+
+                             FROM cdm.measurement m
+                             WHERE
+                                 m.measurement_source_value IN (
+                                     'blood-pressure-systolic-1', 'blood-pressure-systolic-2',
+                                     'blood-pressure-systolic-3', 'blood-pressure-systolic-mean',
+                                     'blood-pressure-diastolic-1', 'blood-pressure-diastolic-2',
+                                     'blood-pressure-diastolic-3', 'blood-pressure-diastolic-mean'
+                                 )
+                                 AND m.parent_id IS NOT NULL
+                                     """)
+        session.execute("""ALTER TABLE cdm.tmp_fact_rel_sd ADD KEY (person_id, parent_id)""")
+
+        # -- unit: syst.diast.*[1,2] - to link systolic and diastolic blood pressure
+        # -- Insert into fact_relationship table systolic to disatolic blood pressure
+        # -- measurements relations
+        session.execute("""INSERT INTO cdm.fact_relationship
+                             SELECT
+                                 (@row_number:=@row_number + 1)  AS id,
+                                 21                          AS domain_concept_id_1,     -- Measurement
+                                 tmp1.measurement_id         AS fact_id_1,               -- measurement_id of the first/second/third/mean systolic blood pressure
+                                 21                          AS domain_concept_id_2,     -- Measurement
+                                 tmp2.measurement_id         AS fact_id_2,               -- measurement_id of the first/second/third/mean diastolic blood pressure
+                                 46233683                    AS relationship_concept_id, -- Systolic to diastolic blood pressure measurement
+                                 CASE
+                                   WHEN tmp1.systolic_blood_pressure_ind = 1 THEN 'syst.diast.first1'
+                                   WHEN tmp1.systolic_blood_pressure_ind = 2 THEN 'syst.diast.second1'
+                                   WHEN tmp1.systolic_blood_pressure_ind = 3 THEN 'syst.diast.third1'
+                                   WHEN tmp1.systolic_blood_pressure_ind = 4 THEN 'syst.diast.mean1'
+                                 END                         AS unit_id
+                             FROM cdm.tmp_fact_rel_sd tmp1
+                             INNER JOIN cdm.tmp_fact_rel_sd tmp2
+                                 ON tmp1.person_id = tmp2.person_id
+                                 AND tmp1.parent_id = tmp2.parent_id
+                                 AND tmp1.systolic_blood_pressure_ind = tmp2.diastolic_blood_pressure_ind   -- get the same index to refer between
+                                                                                                            -- first, second, third and mean blood pressure measurements
+                             WHERE tmp1.systolic_blood_pressure_ind != 0              -- take only systolic blood pressure measurements
+                                 AND tmp2.diastolic_blood_pressure_ind != 0             -- take only diastolic blood pressure measurements
+                                     """)
+        # -- Insert into fact_relationship diastolic to systolic blood pressure
+        # -- measurements relation
+        session.execute("""INSERT INTO cdm.fact_relationship
+                             SELECT
+                                 (@row_number:=@row_number + 1)  AS id,
+                                 21                          AS domain_concept_id_1,     -- Measurement
+                                 tmp2.measurement_id         AS fact_id_1,               -- measurement_id of the first/second/third/mean diastolic blood pressure
+                                 21                          AS domain_concept_id_2,     -- Measurement
+                                 tmp1.measurement_id         AS fact_id_2,               -- measurement_id of the first/second/third/mean systolic blood pressure
+                                 46233682                    AS relationship_concept_id, -- Diastolic to systolic blood pressure measurement
+                                 CASE
+                                   WHEN tmp1.systolic_blood_pressure_ind = 1 THEN 'syst.diast.first2'
+                                   WHEN tmp1.systolic_blood_pressure_ind = 2 THEN 'syst.diast.second2'
+                                   WHEN tmp1.systolic_blood_pressure_ind = 3 THEN 'syst.diast.third2'
+                                   WHEN tmp1.systolic_blood_pressure_ind = 4 THEN 'syst.diast.mean2'
+                                 END                         AS unit_id
+                             FROM cdm.tmp_fact_rel_sd tmp1
+                             INNER JOIN cdm.tmp_fact_rel_sd tmp2
+                                 ON tmp1.person_id = tmp2.person_id
+                                 AND tmp1.parent_id = tmp2.parent_id
+                                 AND tmp1.systolic_blood_pressure_ind = tmp2.diastolic_blood_pressure_ind   -- get the same index to refer between
+                                                                                                            -- first, second, third and mean blood pressurre measurements
+                             WHERE tmp1.systolic_blood_pressure_ind != 0              -- take only systolic blood pressure measurements
+                                 AND tmp2.diastolic_blood_pressure_ind != 0             -- take only diastolic blood pressure measurements
+                                     """)
+
+        # Insert into fact_relationship child-to-parent measurements relations
+        session.execute("""INSERT INTO cdm.fact_relationship
+                             SELECT
+                                 (@row_number:=@row_number + 1)  AS id,
+                                 21                              AS domain_concept_id_1,     -- Measurement
+                                 cdm_meas.measurement_id         AS fact_id_1,
+                                 21                              AS domain_concept_id_2,     -- Measurement
+                                 cdm_meas.parent_id              AS fact_id_2,
+                                 581437                          AS relationship_concept_id, -- 581437, Child to Parent Measurement
+                                 'meas.meas1'                    AS unit_id
+                             FROM cdm.measurement cdm_meas
+                             WHERE cdm_meas.parent_id IS NOT NULL
+                                     """)
+        session.execute("""INSERT INTO cdm.fact_relationship
+                             SELECT
+                                 (@row_number:=@row_number + 1)  AS id,
+                                 21                              AS domain_concept_id_1,     -- Measurement
+                                 cdm_meas.parent_id              AS fact_id_1,
+                                 21                              AS domain_concept_id_2,     -- Measurement
+                                 cdm_meas.measurement_id         AS fact_id_2,
+                                 581436                          AS relationship_concept_id, -- 581436, Parent to Child Measurement
+                                 'meas.meas2'                    AS unit_id
+                             FROM cdm.measurement cdm_meas
+                             WHERE cdm_meas.parent_id IS NOT NULL
+                                     """)
+
+    @staticmethod
+    def _populate_observation_surveys(session):
         # -- units: observ.code, observ.str, observ.num, observ.bool
         # -- 'observation' table consists of 2 parts:
         # -- 1) patient's questionnaries
         # -- 2) patient's observations from measurements
         # -- First part we fill from 'src_mapped', second -
         # -- from 'src_meas_mapped'
-        session.execute("""SET @row_number = 0;
-                            INSERT INTO cdm.observation
+        session.execute("""INSERT INTO cdm.observation
                             SELECT
-                                (@row_number:=@row_number + 1)              AS id,
                                 NULL                                        AS observation_id,
                                 src_m.participant_id                        AS person_id,
                                 src_m.question_concept_id                   AS observation_concept_id,
@@ -1477,475 +1990,13 @@ class CurationExportClass(ToolBase):
                             FROM cdm.src_mapped src_m
                             WHERE src_m.question_ppi_code is not null
                                     """)
-        # unit: observ.meas - observations from measurement table
-        session.execute("""INSERT INTO cdm.observation
-                            SELECT
-                                (@row_number:=@row_number + 1)          AS id,
-                                NULL                                    AS observation_id,
-                                meas.participant_id                     AS person_id,
-                                meas.cv_concept_id                      AS observation_concept_id,
-                                DATE(meas.measurement_time)             AS observation_date,
-                                meas.measurement_time                   AS observation_datetime,
-                                581413                                  AS observation_type_concept_id,   -- 581413, Observation from Measurement
-                                NULL                                    AS value_as_number,
-                                NULL                                    AS value_as_string,
-                                meas.vcv_concept_id                     AS value_as_concept_id,
-                                0                                       AS qualifier_concept_id,
-                                meas.vu_concept_id                      AS unit_concept_id,
-                                NULL                                    AS provider_id,
-                                meas.physical_measurements_id           AS visit_occurrence_id,
-                                NULL                                    AS visit_detail_id,
-                                meas.code_value                         AS observation_source_value,
-                                meas.cv_source_concept_id               AS observation_source_concept_id,
-                                meas.value_unit                         AS unit_source_value,
-                                NULL                                    AS qualifier_source_value,
-                                meas.vcv_source_concept_id              AS value_source_concept_id,
-                                meas.value_code_value                   AS value_source_value,
-                                NULL                                    AS questionnaire_response_id,
-                                meas.measurement_id                     AS meas_id,
-                                'observ.meas'                           AS unit_id
-                            FROM cdm.src_meas_mapped meas
-                            WHERE
-                                meas.cv_domain_id = 'Observation'
-                                    """)
-        session.execute("""ALTER TABLE cdm.observation ADD KEY (meas_id)""")
+
         # remove special character
         session.execute("""update cdm.observation set value_as_string = replace(value_as_string, '\0', '')
                            where value_as_string like '%\0%'""")
 
-        # -- unit: meas.dec   - measurements represented as decimal values
-        # -- unit: meas.value - measurements represented as value_code_value
-        # -- unit: meas.empty - measurements with empty value_decimal and value_code_value fields
-        # -- 'measurement' table is filled from src_meas_mapped table only.
-        session.execute("""SET @row_number = 0;
-                            INSERT INTO cdm.measurement
-                            SELECT
-                                (@row_number:=@row_number + 1)          AS id,
-                                meas.measurement_id                     AS measurement_id,
-                                meas.participant_id                     AS person_id,
-                                meas.cv_concept_id                      AS measurement_concept_id,
-                                DATE(meas.measurement_time)             AS measurement_date,
-                                meas.measurement_time                   AS measurement_datetime,
-                                NULL                                    AS measurement_time,
-                                44818701                                AS measurement_type_concept_id, -- 44818701, From physical examination
-                                0                                       AS operator_concept_id,
-                                meas.value_decimal                      AS value_as_number,
-                                meas.vcv_concept_id                     AS value_as_concept_id,
-                                meas.vu_concept_id                      AS unit_concept_id,
-                                NULL                                    AS range_low,
-                                NULL                                    AS range_high,
-                                NULL                                    AS provider_id,
-                                meas.physical_measurements_id           AS visit_occurrence_id,
-                                NULL                                    AS visit_detail_id,
-                                meas.code_value                         AS measurement_source_value,
-                                meas.cv_source_concept_id               AS measurement_source_concept_id,
-                                meas.value_unit                         AS unit_source_value,
-                                CASE
-                                    WHEN meas.value_decimal IS NOT NULL OR meas.value_unit IS NOT NULL
-                                        THEN CONCAT(COALESCE(meas.value_decimal, ''), ' ',
-                                            COALESCE(meas.value_unit, ''))     -- 'meas.dec'
-                                    WHEN meas.value_code_value IS NOT NULL
-                                        THEN meas.value_code_value             -- 'meas.value'
-                                    ELSE NULL                                  -- 'meas.empty'
-                                END                                     AS value_source_value,
-                                meas.parent_id                          AS parent_id,
-                                CASE
-                                    WHEN meas.value_decimal IS NOT NULL OR meas.value_unit IS NOT NULL
-                                        THEN 'meas.dec'
-                                    WHEN meas.value_code_value IS NOT NULL
-                                        THEN 'meas.value'
-                                    ELSE 'meas.empty'
-                                END                                     AS unit_id
-                            FROM cdm.src_meas_mapped meas
-                            WHERE
-                                meas.cv_domain_id = 'Measurement' OR meas.cv_domain_id IS NULL
-                                    """)
-        session.execute("""CREATE INDEX measurement_idx
-                            ON cdm.measurement (person_id, measurement_date, measurement_datetime, parent_id)
-                        """)
-        session.execute("""SET @row_number = 0;
-                            INSERT INTO cdm.note
-                            SELECT
-                                (@row_number:=@row_number + 1)          AS id,
-                                NULL                                    AS note_id,
-                                meas.participant_id                     AS person_id,
-                                DATE(meas.measurement_time)             AS note_date,
-                                meas.measurement_time                   AS note_datetime,
-                                44814645                                AS note_type_concept_id,    -- 44814645 - 'Note'
-                                0                                       AS note_class_concept_id,
-                                NULL                                    AS note_title,
-                                COALESCE(meas.value_string, '')         AS note_text,
-                                0                                       AS encoding_concept_id,
-                                4180186                                 AS language_concept_id,     -- 4180186 - 'English language'
-                                NULL                                    AS provider_id,
-                                NULL                                    AS visit_detail_id,
-                                meas.code_value                         AS note_source_value,
-                                meas.physical_measurements_id           AS visit_occurrence_id,
-                                'note'                                  AS unit_id
-                            FROM cdm.src_meas meas
-                            WHERE
-                                meas.code_value = 'notes'
-                                    """)
-        session.execute("""INSERT INTO cdm.temp_obs_target
-                            -- VISIT_OCCURENCE
-                            SELECT
-                                0 AS id,
-                                person_id,
-                                visit_start_date                               AS start_date,
-                                COALESCE(visit_end_date, visit_start_date) AS end_date
-                            FROM cdm.visit_occurrence
-
-                            UNION
-                            -- CONDITION_OCCURRENCE
-                            SELECT
-                                0 AS id,
-                                person_id,
-                                condition_start_date                                   AS start_date,
-                                COALESCE(condition_end_date, condition_start_date) AS end_date
-                            FROM cdm.condition_occurrence
-
-                            UNION
-                            -- PROCEDURE_OCCURRENCE
-                            SELECT
-                                0 AS id,
-                                person_id,
-                                procedure_date                    AS start_date,
-                                procedure_date                    AS end_date
-                            FROM cdm.procedure_occurrence
-
-                            UNION
-                            -- OBSERVATION
-                            SELECT
-                                0 AS id,
-                                person_id,
-                                observation_date                    AS start_date,
-                                observation_date                    AS end_date
-                            FROM cdm.observation
-
-                            UNION
-                            -- MEASUREMENT
-                            SELECT
-                                0 AS id,
-                                person_id,
-                                measurement_date                    AS start_date,
-                                measurement_date                    AS end_date
-                            FROM cdm.measurement
-
-                            UNION
-                            -- DEVICE_EXPOSURE
-                            SELECT
-                                0 AS id,
-                                person_id,
-                                device_exposure_start_date                                          AS start_date,
-                                COALESCE( device_exposure_end_date, device_exposure_start_date) AS end_date
-                            FROM cdm.device_exposure
-
-                            UNION
-                            -- DRUG_EXPOSURE
-                            SELECT
-                                0 AS id,
-                                person_id,
-                                drug_exposure_start_date                                        AS start_date,
-                                COALESCE( drug_exposure_end_date, drug_exposure_start_date) AS end_date
-                            FROM cdm.drug_exposure
-                                    """)
-        session.execute("""CREATE INDEX temp_obs_target_idx_start ON cdm.temp_obs_target (person_id, start_date);
-                           CREATE INDEX temp_obs_target_idx_end ON cdm.temp_obs_target (person_id, end_date);
-                        """)
-        session.execute("""SELECT NULL INTO @partition_expr;
-                            SELECT NULL INTO @last_part_expr;
-                            SELECT NULL INTO @row_number;
-                            SELECT NULL INTO @reset_num;
-
-                            INSERT INTO cdm.temp_obs_end_union
-                            SELECT
-                              0                           AS id,
-                              person_id                   AS person_id,
-                              start_date                  AS event_date,
-                              -1                          AS event_type,
-                              row_number                  AS start_ordinal
-                            FROM
-                                ( SELECT
-                                    @partition_expr := person_id                                AS partition_expr,
-                                    @reset_num :=
-                                        CASE
-                                            WHEN @partition_expr = @last_part_expr THEN 0
-                                            ELSE 1
-                                        END                                                     AS reset_num,
-                                    @last_part_expr := @partition_expr                          AS last_part_expr,
-                                    @row_number :=
-                                        CASE
-                                            WHEN @reset_num = 0 THEN @row_number + 1
-                                            ELSE 1
-                                        END                                                     AS row_number,
-                                    person_id,
-                                    start_date
-                                  FROM cdm.temp_obs_target
-                                  ORDER BY
-                                    person_id,
-                                    start_date
-                                ) F
-                            UNION ALL
-                            SELECT
-                              0                                 AS id,
-                              person_id                         AS person_id,
-                              (end_date + INTERVAL 1 DAY)       AS event_date,
-                              1                                 AS event_type,
-                              NULL                              AS start_ordinal
-                            FROM cdm.temp_obs_target
-                                    """)
-        # -- We need to re-count event ordinal number in 'overall_ord' and define null start_ordinal
-        # -- by start_ordinal of start_event. So events, owned by the same observation, will have
-        # -- the same ordinal number - the start_ordinal of start observation event.
-        # -- overall_ord is overall counter of start and end observations events.
-        session.execute("""SELECT NULL INTO @partition_expr;
-                            SELECT NULL INTO @last_part_expr;
-                            SELECT NULL INTO @row_number;
-                            SELECT NULL INTO @reset_num;
-                            SELECT NULL INTO @row_max;
-                            INSERT INTO cdm.temp_obs_end_union_part
-                            SELECT
-                                0                                    AS id,
-                                person_id                            AS person_id,
-                                event_date                           AS event_date,
-                                event_type                           AS event_type,
-                                row_max                              AS start_ordinal,
-                                row_number                           AS overall_ord
-                            FROM  (
-                                    SELECT
-                                        @partition_expr := person_id                                 AS partition_expr,
-                                        @reset_num :=
-                                            CASE
-                                                WHEN @partition_expr = @last_part_expr THEN 0
-                                                ELSE 1
-                                            END                                                      AS reset_num,
-                                        @last_part_expr := @partition_expr                           AS last_part_expr,
-                                        @row_number :=
-                                            CASE
-                                                WHEN @reset_num = 0 THEN @row_number + 1
-                                                ELSE 1
-                                            END                                                      AS row_number,
-                                        @row_max :=
-                                            CASE
-                                                WHEN @reset_num = 1 THEN start_ordinal
-                                                ELSE COALESCE(start_ordinal, @row_max)
-                                            END                                                      AS row_max,
-                                        person_id,
-                                        event_date,
-                                        event_type,
-                                        start_ordinal
-                                    FROM cdm.temp_obs_end_union
-                                    ORDER BY
-                                        person_id,
-                                        event_date,
-                                        event_type
-                                        ) F
-        """)
-        # -- Here we just filter observations ends. As start_ordinal of start and
-        # -- end events is the same, expression
-        # -- (2 * start_ordinal) == e.overall_ord gives us observation end event.
-        session.execute("""INSERT INTO  cdm.temp_obs_end
-                            SELECT
-                                0                                             AS id,
-                                person_id                                     AS person_id,
-                                (event_date - INTERVAL 1 DAY)                 AS end_date,
-                                start_ordinal                                 AS start_ordinal,
-                                overall_ord                                   AS overall_ord
-                            FROM cdm.temp_obs_end_union_part e
-                            WHERE
-                                (2 * e.start_ordinal) - e.overall_ord = 0
-                        """)
-        session.execute("""CREATE INDEX temp_obs_end_idx ON cdm.temp_obs_end (person_id, end_date)""")
-        # -- Here we form observations start and end dates. For each start_date
-        # -- we look for minimal end_date for the particular person observation.
-        session.execute("""INSERT INTO cdm.temp_obs
-                            SELECT
-                                0                             AS id,
-                                dt.person_id,
-                                dt.start_date                 AS observation_start_date,
-                                MIN(e.end_date)               AS observation_end_date
-                            FROM cdm.temp_obs_target dt
-                            JOIN cdm.temp_obs_end e
-                                ON dt.person_id = e.person_id AND
-                                e.end_date >= dt.start_date
-                            GROUP BY
-                                dt.person_id,
-                                dt.start_date
-                                    """)
-        session.execute("""CREATE INDEX temp_obs_idx ON cdm.temp_obs (person_id, observation_end_date)""")
-
-        # -- observation_period is formed as merged possibly intersecting
-        # -- tmp_obs intervals
-        session.execute("""SET @row_number = 0;
-                            INSERT INTO cdm.observation_period
-                            SELECT
-                                (@row_number:=@row_number + 1)          AS id,
-                                NULL                                    AS observation_period_id,
-                                person_id                               AS person_id,
-                                MIN(observation_start_date)             AS observation_period_start_date,
-                                observation_end_date                    AS observation_period_end_date,
-                                44814725                                AS period_type_concept_id,         -- 44814725, Period inferred by algorithm
-                                'observ_period'                       AS unit_id
-                            FROM cdm.temp_obs
-                            GROUP BY
-                                person_id,
-                                observation_end_date
-                                    """)
-        # session.execute("""DROP TABLE IF EXISTS cdm.temp_cdm_observation_period;
-        #                     DROP TABLE IF EXISTS cdm.temp_obs_target;
-        #                     DROP TABLE IF EXISTS cdm.temp_obs_end_union;
-        #                     DROP TABLE IF EXISTS cdm.temp_obs_end;
-        #                     DROP TABLE IF EXISTS cdm.temp_obs_end_union_part;
-        #                     DROP TABLE IF EXISTS cdm.temp_obs;
-        # """)
-
-        # Insert to fact_relationships measurement-to-observation relations
-        session.execute("""SET @row_number = 0;
-                            INSERT INTO cdm.fact_relationship
-                            SELECT
-                                (@row_number:=@row_number + 1)  AS id,
-                                21                              AS domain_concept_id_1,     -- Measurement
-                                mtq.measurement_id              AS fact_id_1,
-                                27                              AS domain_concept_id_2,     -- Observation
-                                cdm_obs.observation_id          AS fact_id_2,
-                                581411                          AS relationship_concept_id, -- Measurement to Observation
-                                'observ.meas1'                  AS unit_id
-                            FROM cdm.observation cdm_obs
-                            INNER JOIN rdr.measurement_to_qualifier mtq
-                                ON mtq.qualifier_id = cdm_obs.meas_id
-                                    """)
-        session.execute("""INSERT INTO cdm.fact_relationship
-                            SELECT
-                                (@row_number:=@row_number + 1)  AS id,
-                                27                              AS domain_concept_id_1,     -- Observation
-                                cdm_obs.observation_id          AS fact_id_1,
-                                21                              AS domain_concept_id_2,     -- Measurement
-                                mtq.measurement_id              AS fact_id_2,
-                                581410                          AS relationship_concept_id, -- Observation to Measurement
-                                'observ.meas2'                  AS unit_id
-                            FROM cdm.observation cdm_obs
-                            INNER JOIN rdr.measurement_to_qualifier mtq
-                                ON mtq.qualifier_id = cdm_obs.meas_id
-                        """)
-
-        # temporary table for populating cdm_fact_relationship table from systolic and
-        # diastolic blood pressure measurements
-        session.execute("""INSERT INTO cdm.tmp_fact_rel_sd
-                            SELECT
-                                0                                                           AS id,
-                                m.measurement_id                                            AS measurement_id,
-                                CASE
-                                    WHEN m.measurement_source_value = 'blood-pressure-systolic-1'     THEN 1
-                                    WHEN m.measurement_source_value = 'blood-pressure-systolic-2'     THEN 2
-                                    WHEN m.measurement_source_value = 'blood-pressure-systolic-3'     THEN 3
-                                    WHEN m.measurement_source_value = 'blood-pressure-systolic-mean'  THEN 4
-                                    ELSE 0
-                                END                                                         AS systolic_blood_pressure_ind,
-                                CASE
-                                    WHEN m.measurement_source_value = 'blood-pressure-diastolic-1'    THEN 1
-                                    WHEN m.measurement_source_value = 'blood-pressure-diastolic-2'    THEN 2
-                                    WHEN m.measurement_source_value = 'blood-pressure-diastolic-3'    THEN 3
-                                    WHEN m.measurement_source_value = 'blood-pressure-diastolic-mean' THEN 4
-                                    ELSE 0
-                                END                                                         AS diastolic_blood_pressure_ind,
-                                m.person_id                                                 AS person_id,
-                                m.parent_id                                                 AS parent_id
-
-                            FROM cdm.measurement m
-                            WHERE
-                                m.measurement_source_value IN (
-                                    'blood-pressure-systolic-1', 'blood-pressure-systolic-2',
-                                    'blood-pressure-systolic-3', 'blood-pressure-systolic-mean',
-                                    'blood-pressure-diastolic-1', 'blood-pressure-diastolic-2',
-                                    'blood-pressure-diastolic-3', 'blood-pressure-diastolic-mean'
-                                )
-                                AND m.parent_id IS NOT NULL
-                                    """)
-        session.execute("""ALTER TABLE cdm.tmp_fact_rel_sd ADD KEY (person_id, parent_id)""")
-
-        # -- unit: syst.diast.*[1,2] - to link systolic and diastolic blood pressure
-        # -- Insert into fact_relationship table systolic to disatolic blood pressure
-        # -- measurements relations
-        session.execute("""INSERT INTO cdm.fact_relationship
-                            SELECT
-                                (@row_number:=@row_number + 1)  AS id,
-                                21                          AS domain_concept_id_1,     -- Measurement
-                                tmp1.measurement_id         AS fact_id_1,               -- measurement_id of the first/second/third/mean systolic blood pressure
-                                21                          AS domain_concept_id_2,     -- Measurement
-                                tmp2.measurement_id         AS fact_id_2,               -- measurement_id of the first/second/third/mean diastolic blood pressure
-                                46233683                    AS relationship_concept_id, -- Systolic to diastolic blood pressure measurement
-                                CASE
-                                  WHEN tmp1.systolic_blood_pressure_ind = 1 THEN 'syst.diast.first1'
-                                  WHEN tmp1.systolic_blood_pressure_ind = 2 THEN 'syst.diast.second1'
-                                  WHEN tmp1.systolic_blood_pressure_ind = 3 THEN 'syst.diast.third1'
-                                  WHEN tmp1.systolic_blood_pressure_ind = 4 THEN 'syst.diast.mean1'
-                                END                         AS unit_id
-                            FROM cdm.tmp_fact_rel_sd tmp1
-                            INNER JOIN cdm.tmp_fact_rel_sd tmp2
-                                ON tmp1.person_id = tmp2.person_id
-                                AND tmp1.parent_id = tmp2.parent_id
-                                AND tmp1.systolic_blood_pressure_ind = tmp2.diastolic_blood_pressure_ind   -- get the same index to refer between
-                                                                                                           -- first, second, third and mean blood pressure measurements
-                            WHERE tmp1.systolic_blood_pressure_ind != 0              -- take only systolic blood pressure measurements
-                                AND tmp2.diastolic_blood_pressure_ind != 0             -- take only diastolic blood pressure measurements
-                                    """)
-        # -- Insert into fact_relationship diastolic to systolic blood pressure
-        # -- measurements relation
-        session.execute("""INSERT INTO cdm.fact_relationship
-                            SELECT
-                                (@row_number:=@row_number + 1)  AS id,
-                                21                          AS domain_concept_id_1,     -- Measurement
-                                tmp2.measurement_id         AS fact_id_1,               -- measurement_id of the first/second/third/mean diastolic blood pressure
-                                21                          AS domain_concept_id_2,     -- Measurement
-                                tmp1.measurement_id         AS fact_id_2,               -- measurement_id of the first/second/third/mean systolic blood pressure
-                                46233682                    AS relationship_concept_id, -- Diastolic to systolic blood pressure measurement
-                                CASE
-                                  WHEN tmp1.systolic_blood_pressure_ind = 1 THEN 'syst.diast.first2'
-                                  WHEN tmp1.systolic_blood_pressure_ind = 2 THEN 'syst.diast.second2'
-                                  WHEN tmp1.systolic_blood_pressure_ind = 3 THEN 'syst.diast.third2'
-                                  WHEN tmp1.systolic_blood_pressure_ind = 4 THEN 'syst.diast.mean2'
-                                END                         AS unit_id
-                            FROM cdm.tmp_fact_rel_sd tmp1
-                            INNER JOIN cdm.tmp_fact_rel_sd tmp2
-                                ON tmp1.person_id = tmp2.person_id
-                                AND tmp1.parent_id = tmp2.parent_id
-                                AND tmp1.systolic_blood_pressure_ind = tmp2.diastolic_blood_pressure_ind   -- get the same index to refer between
-                                                                                                           -- first, second, third and mean blood pressurre measurements
-                            WHERE tmp1.systolic_blood_pressure_ind != 0              -- take only systolic blood pressure measurements
-                                AND tmp2.diastolic_blood_pressure_ind != 0             -- take only diastolic blood pressure measurements
-                                    """)
-
-        # Insert into fact_relationship child-to-parent measurements relations
-        session.execute("""INSERT INTO cdm.fact_relationship
-                            SELECT
-                                (@row_number:=@row_number + 1)  AS id,
-                                21                              AS domain_concept_id_1,     -- Measurement
-                                cdm_meas.measurement_id         AS fact_id_1,
-                                21                              AS domain_concept_id_2,     -- Measurement
-                                cdm_meas.parent_id              AS fact_id_2,
-                                581437                          AS relationship_concept_id, -- 581437, Child to Parent Measurement
-                                'meas.meas1'                    AS unit_id
-                            FROM cdm.measurement cdm_meas
-                            WHERE cdm_meas.parent_id IS NOT NULL
-                                    """)
-        session.execute("""INSERT INTO cdm.fact_relationship
-                            SELECT
-                                (@row_number:=@row_number + 1)  AS id,
-                                21                              AS domain_concept_id_1,     -- Measurement
-                                cdm_meas.parent_id              AS fact_id_1,
-                                21                              AS domain_concept_id_2,     -- Measurement
-                                cdm_meas.measurement_id         AS fact_id_2,
-                                581436                          AS relationship_concept_id, -- 581436, Parent to Child Measurement
-                                'meas.meas2'                    AS unit_id
-                            FROM cdm.measurement cdm_meas
-                            WHERE cdm_meas.parent_id IS NOT NULL
-                                    """)
-
-        session.execute("""INSERT INTO cdm.pid_rid_mapping
-                            SELECT DISTINCT sc.participant_id, sc.research_id, sc.external_id
-                            FROM cdm.src_clean sc join cdm.person p on sc.participant_id=p.person_id
-                                    """)
-
+    @staticmethod
+    def _populate_questionnaire_response_additional_info(session):
         # Preventing locks on questionnaire_response table when reading data
         session.execute("""SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED""")
 
@@ -1972,32 +2023,6 @@ class CurationExportClass(ToolBase):
                                     """)
         # Reset ISOLATION level to previous setting (assuming here that it was MySql's default)
         session.execute("""SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ""")
-
-        # session.execute("""DROP TABLE IF EXISTS cdm.tmp_fact_rel_sd;""")
-
-        # Drop columns only used for ETL purposes
-        session.execute("""ALTER TABLE cdm.care_site DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.condition_era DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.condition_occurrence DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.cost DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.death DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.device_exposure DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.dose_era DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.drug_era DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.drug_exposure DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id, DROP COLUMN id;""")
-        session.execute("""
-                            ALTER TABLE cdm.location DROP COLUMN unit_id;
-                            ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN parent_id, DROP COLUMN id;
-                            ALTER TABLE cdm.observation DROP COLUMN unit_id, DROP COLUMN meas_id, DROP COLUMN id;
-                            ALTER TABLE cdm.observation_period DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.payer_plan_period DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.person DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.procedure_occurrence DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.provider DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.visit_occurrence DROP COLUMN unit_id, DROP COLUMN id;
-                                    """)
-
 
 
 
@@ -2029,6 +2054,11 @@ def add_additional_arguments(parser):
                             type=str, default=None)
     cdm_parser.add_argument("--exclude-surveys", help="Path to a file containing list of survey names to exclude",
                             type=str, default=None)
+    cdm_parser.add_argument("--omit-surveys", help="Observation table won't include survey data",
+                            action="store_true", default=False)
+    cdm_parser.add_argument("--omit-measurements", help="Observation table won't include physical measurements",
+                            action="store_true", default=False)
+
 
     manage_code_parser = subparsers.add_parser('exclude-code')
     manage_code_parser.add_argument("--operation", help="operation type for exclude code command: add or remove",

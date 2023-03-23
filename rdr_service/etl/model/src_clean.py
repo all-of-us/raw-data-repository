@@ -129,7 +129,6 @@ class Death(CdmBase):
 
 class ObservationPeriod(CdmBase):
     __tablename__ = "observation_period"
-    id = Column(BigInteger, nullable=False, unique=True)
     observation_period_id = Column(BigInteger, autoincrement=True, nullable=False, primary_key=True)
     person_id = Column(BigInteger, nullable=False)
     observation_period_start_date = Column(Date, nullable=False)
@@ -207,7 +206,6 @@ class ConditionOccurrence(CdmBase):
 
 class ProcedureOccurrence(CdmBase):
     __tablename__ = "procedure_occurrence"
-    id = Column(BigInteger, nullable=False, unique=True, autoincrement=True)
     procedure_occurrence_id = Column(BigInteger, autoincrement=True, nullable=False, primary_key=True)
     person_id = Column(BigInteger, nullable=False)
     procedure_concept_id = Column(BigInteger, nullable=False)
@@ -227,7 +225,6 @@ class ProcedureOccurrence(CdmBase):
 
 class Observation(CdmBase):
     __tablename__ = "observation"
-    id = Column(BigInteger, nullable=False, unique=True)
     observation_id = Column(BigInteger, autoincrement=True, nullable=False, primary_key=True)
     person_id = Column(BigInteger, nullable=False)
     observation_concept_id = Column(BigInteger, nullable=False)
