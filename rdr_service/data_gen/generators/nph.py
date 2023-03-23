@@ -95,7 +95,6 @@ class NphDataGenerator:
             )
             event_id = pea.id
 
-        # Todo: Add more default fields as needed
         fields = {
             "participant_id": participant_id,
             "event_id": event_id,
@@ -163,7 +162,6 @@ class NphDataGenerator:
             )
             event_id = pea.id
 
-        # Todo: Add more default fields as needed
         fields = {
             "event_authored_time": TIME,
             "participant_id": participant_id,

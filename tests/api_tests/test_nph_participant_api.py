@@ -359,14 +359,6 @@ class TestQueryExecution(BaseTestCase):
         query = simple_query(field_to_test)
 
         mock_load_participant_data(self.session)
-        nph_datagen = NphDataGenerator()
-        for nph_id in [100000000, 100000001]:
-            nph_datagen.create_database_enrollment_event(
-                participant_id=nph_id,
-                event_type_id=2,
-                event_authored_time=datetime.now()
-            )
-
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
         result = json.loads(executed.data.decode('utf-8'))
         self.assertEqual(2, len(result.get('participant').get('edges')))
@@ -377,7 +369,7 @@ class TestQueryExecution(BaseTestCase):
                 status["value"],
                 ["m1_consent_gps", "m1_consent_recontact", "m1_consent_tissue"]
             )
-            self.assertIn(status["optIn"], ["PERMIT", "DENY"])
+            self.assertIn(status["optIn"], ["PERMIT"])
 
     def test_nphWithdrawalStatus_fields(self):
         field_to_test = "nphWithdrawalStatus {value time} "

@@ -118,7 +118,6 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                 "time": withdrawn.event_authored_time if withdrawn else None
             },
             'nphEnrollmentStatus': get_enrollment_statuses(enrollment['enrollment_json']),
-            # TODO: Add nphModule1ConsentStatus
             'nphModule1ConsentStatus': get_consent_statuses(consents['consent_json']),
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
