@@ -138,6 +138,7 @@ def _convert_ordered_samples_to_samples(
     samples = []
     for ordered_sample in ordered_samples:
         processing_timestamp = ordered_sample.collected if not ordered_sample.parent is None else None
+        sample_cancelled = ordered_cancelled or ordered_sample.status == 'cancelled'
         sample = {
             "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
             "specimenCode": (ordered_sample.identifier or ordered_sample.test),
@@ -146,7 +147,7 @@ def _convert_ordered_samples_to_samples(
             "volumeUOM": ordered_sample.volumeUnits,
             "collectionDateUTC": _format_timestamp((ordered_sample.parent or ordered_sample).collected),
             "processingDateUTC": _format_timestamp(processing_timestamp),
-            "cancelledFlag": "Y" if ordered_cancelled else "N",
+            "cancelledFlag": "Y" if sample_cancelled else "N",
             "notes": notes,
         }
         samples.append(sample)
