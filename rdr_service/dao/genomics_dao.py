@@ -4248,6 +4248,7 @@ class GenomicQueriesDao(BaseDao):
             GenomicInformingLoop.decision_value.ilike('yes')
         )
         informing_loop_subquery = aliased(GenomicInformingLoop, informing_loop_decision_query.subquery())
+        pipeline_metrics = aliased(GenomicGCValidationMetrics)
 
         with self.session() as session:
             query = session.query(
@@ -4290,6 +4291,13 @@ class GenomicQueriesDao(BaseDao):
             ).join(
                 informing_loop_subquery,
                 informing_loop_subquery.participant_id == GenomicSetMember.participantId
+            ).outerjoin(
+                pipeline_metrics,
+                and_(
+                    pipeline_metrics.genomicSetMemberId == GenomicSetMember.id,
+                    pipeline_metrics.ignoreFlag != 1,
+                    pipeline_metrics.pipelineId < GenomicGCValidationMetrics.pipelineId
+                )
             ).filter(
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
@@ -4308,7 +4316,14 @@ class GenomicQueriesDao(BaseDao):
                 ParticipantSummary.participantOrigin != 'careevolution',
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY,
-                previous_w1il_job_field.is_(None)
+                previous_w1il_job_field.is_(None),
+                GenomicGCValidationMetrics.hfVcfPath.isnot(None),
+                GenomicGCValidationMetrics.hfVcfTbiPath.isnot(None),
+                GenomicGCValidationMetrics.hfVcfMd5Path.isnot(None),
+                GenomicGCValidationMetrics.gvcfPath.isnot(None),
+                GenomicGCValidationMetrics.gvcfMd5Path.isnot(None),
+                GenomicGCValidationMetrics.cramPath.isnot(None),
+                pipeline_metrics.id.is_(None)
             )
 
             if sample_ids:
