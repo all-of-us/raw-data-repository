@@ -8,6 +8,7 @@ from typing import Tuple
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
+from rdr_service.config import GENOMIC_DEPRECATED_WGS_DRAGEN
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
     GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, \
     GenomicW3SCRawDao, GenomicResultWorkflowStateDao, GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, \
@@ -1075,7 +1076,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
                 'cramPath': self.fake.pystr(),
                 'aouHdrCoverage': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
                 'contamination': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
-                'sexPloidy': self.fake.pystr(1, 10)
+                'sexPloidy': self.fake.pystr(1, 10),
+                'pipelineId': GENOMIC_DEPRECATED_WGS_DRAGEN
             },
             **validation_metrics_params
         }
