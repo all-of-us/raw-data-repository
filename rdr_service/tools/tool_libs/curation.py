@@ -779,7 +779,7 @@ class CurationExportClass(ToolBase):
                 _logger.debug(f"Chunk {chunk} of {chunks}")
                 chunk += 1
                 self._populate_questionnaire_answers_by_module(session, participant_id_subset, cutoff_date)
-                self._populate_src_clean(session, cutoff_date)
+                self._populate_src_clean(session, participant_id_subset, cutoff_date)
             _logger.debug("Populating src tables")
             self._populate_src_tables(session)
             if not self.args.omit_measurements:
