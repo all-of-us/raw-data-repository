@@ -38,6 +38,7 @@ from rdr_service.participant_enums import QuestionnaireResponseStatus, Withdrawa
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 from rdr_service.dao.curation_etl_dao import CdrEtlRunHistoryDao, CdrEtlSurveyHistoryDao, CdrExcludedCodeDao
+from rdr_service.services.system_utils import list_chunks
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -48,6 +49,7 @@ tool_desc = "Support tool for Curation ETL process"
 
 
 EXPORT_BATCH_SIZE = 10000
+CHUNK_SIZE=1000
 
 # TODO: Rewrite the Curation ETL bash scripts into multiple Classes here.
 
@@ -344,7 +346,8 @@ class CurationExportClass(ToolBase):
             else_=code_reference.value
         )
 
-    def _populate_questionnaire_answers_by_module(self, session, cutoff_date=None):
+    def _populate_questionnaire_answers_by_module(self, session, pid_list:List[int], cutoff_date=None):
+        session.execute("TRUNCATE TABLE questionnaire_answers_by_module")
         self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept, QuestionnaireHistory,
                                     QuestionnaireQuestion, QuestionnaireResponseAnswer, CdrExcludedCode])
         column_map = {
@@ -381,7 +384,7 @@ class CurationExportClass(ToolBase):
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.PROFILE_UPDATE,
-            QuestionnaireResponse.participantId.in_(self.pid_list)
+            QuestionnaireResponse.participantId.in_(pid_list)
         )
         if cutoff_date:
             answers_by_module_select = answers_by_module_select.filter(
@@ -549,7 +552,7 @@ class CurationExportClass(ToolBase):
 
         return column_map, questionnaire_answers_select, module_code, question_code
 
-    def _populate_src_clean(self, session, cutoff_date=None):
+    def _populate_src_clean(self, session, pid_list:List[int], cutoff_date=None):
 
         self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion, ParticipantSummary,
                                     QuestionnaireResponse, QuestionnaireResponseAnswer])
@@ -567,7 +570,7 @@ class CurationExportClass(ToolBase):
         ).distinct().subquery()
 
         column_map, questionnaire_answers_select, module_code, question_code \
-            = self._get_base_src_clean_answers_select(session, self.pid_list, cutoff_date, self.include_surveys,
+            = self._get_base_src_clean_answers_select(session, pid_list, cutoff_date, self.include_surveys,
                                                       self.exclude_surveys)
 
         latest_responses_select = questionnaire_answers_select.outerjoin(
@@ -685,7 +688,7 @@ class CurationExportClass(ToolBase):
             query = query.filter(
                 Participant.participantOrigin == 'careevolution'
             )
-        result = query.limit(10000)
+        result = query.order_by(Participant.participantId).all()
         self.pid_list = [pid[0] for pid in result]
 
 
@@ -744,6 +747,12 @@ class CurationExportClass(ToolBase):
                 self.exclude_surveys = surveys
                 filter_options["exclude_surveys"] = surveys
 
+        if self.args.omit_surveys:
+            filter_options["omit_surveys"] = True
+
+        if self.args.omit_measurements:
+            filter_options["omit_measurements"] = True
+
         # save ETL running info into ETL history table
         if not self.args.vocabulary:
             raise NameError(
@@ -758,24 +767,36 @@ class CurationExportClass(ToolBase):
         # using alembic here to get the database_factory code to set up a connection to the CDM database
         with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
             if not self.args.participant_list_file:
-                _logger.info(f"[{datetime.utcnow()}] Selecting participant IDs")
+                _logger.debug("Selecting participant IDs")
                 self._select_participant_ids(session, self.args.participant_origin, cutoff_date)
-            _logger.info(f"[{datetime.utcnow()}] Populating src_clean")
-            self._populate_questionnaire_answers_by_module(session, cutoff_date)
-            self._populate_src_clean(session, cutoff_date)
-            _logger.info(f"[{datetime.utcnow()}] Populating src tables")
+
+            _logger.debug("Populating src_clean")
+            full_pid_list_len = len(self.pid_list)
+            _logger.debug(f"Populating with {full_pid_list_len} PIDs")
+            chunk = 1
+            chunks = int(full_pid_list_len/CHUNK_SIZE) + 1
+            for participant_id_subset in list_chunks(lst=self.pid_list, chunk_size=CHUNK_SIZE):
+                _logger.debug(f"Chunk {chunk} of {chunks}")
+                chunk += 1
+                self._populate_questionnaire_answers_by_module(session, participant_id_subset, cutoff_date)
+                self._populate_src_clean(session, cutoff_date)
+            _logger.debug("Populating src tables")
             self._populate_src_tables(session)
             if not self.args.omit_measurements:
-                _logger.info(f"[{datetime.utcnow()}] Populating measurements")
+                _logger.debug("Populating measurements")
                 self._populate_measurements(session, cutoff_date)
             if not self.args.omit_surveys:
-                _logger.info(f"[{datetime.utcnow()}] Populating observation survey data")
-                self._populate_observation_surveys(session)
+                _logger.debug("Populating observation survey data")
+                chunk = 1
+                for participant_id_subset in list_chunks(lst=self.pid_list, chunk_size=CHUNK_SIZE):
+                    _logger.debug(f"Chunk {chunk} of {chunks}")
+                    chunk += 1
+                    self._populate_observation_surveys(session, participant_id_subset)
                 self._populate_questionnaire_response_additional_info(session)
-            _logger.info(f"[{datetime.utcnow()}] Finalizing ETL")
+            _logger.debug("Finalizing ETL")
             self._finalize_cdm(session)
 
-        _logger.info(f"[{datetime.utcnow()}] Saving ETL run history")
+        _logger.debug("Saving ETL run history")
         with self.get_session() as session:
             self.cdr_etl_survey_history_dao.save_include_exclude_code_history_for_etl_run(session, etl_history.id)
             self.cdr_etl_run_history_dao.update_etl_end_time(session, etl_history.id)
@@ -873,7 +894,7 @@ class CurationExportClass(ToolBase):
                                           PidRidMapping,
                                           QuestionnaireResponseAdditionalInfo])
 
-    def _finalize_cdm(self, session):
+    def _finalize_cdm(self, session, drop_tables:bool=False):
         # -- In patient surveys data only organs transplantation information
         # -- fits the procedure_occurrence table.
         session.execute("""INSERT INTO cdm.procedure_occurrence
@@ -1113,13 +1134,7 @@ class CurationExportClass(ToolBase):
                                 person_id,
                                 observation_end_date
                                     """)
-        # session.execute("""DROP TABLE IF EXISTS cdm.temp_cdm_observation_period;
-        #                     DROP TABLE IF EXISTS cdm.temp_obs_target;
-        #                     DROP TABLE IF EXISTS cdm.temp_obs_end_union;
-        #                     DROP TABLE IF EXISTS cdm.temp_obs_end;
-        #                     DROP TABLE IF EXISTS cdm.temp_obs_end_union_part;
-        #                     DROP TABLE IF EXISTS cdm.temp_obs;
-        # """)
+
 
 
 
@@ -1127,10 +1142,24 @@ class CurationExportClass(ToolBase):
                             SELECT DISTINCT sc.participant_id, sc.research_id, sc.external_id
                             FROM cdm.src_clean sc join cdm.person p on sc.participant_id=p.person_id
                                     """)
-
-
-
-        # session.execute("""DROP TABLE IF EXISTS cdm.tmp_fact_rel_sd;""")
+        if drop_tables:
+            # Drop Temporary Tables
+            session.execute("""  DROP TABLE IF EXISTS cdm.src_gender;
+                                DROP TABLE IF EXISTS cdm.src_race;
+                                DROP TABLE IF EXISTS cdm.src_person_location;
+                            """)
+            session.execute("""DROP TABLE IF EXISTS cdm.temp_cdm_observation_period;
+                                DROP TABLE IF EXISTS cdm.temp_obs_target;
+                                DROP TABLE IF EXISTS cdm.temp_obs_end_union;
+                                DROP TABLE IF EXISTS cdm.temp_obs_end;
+                                DROP TABLE IF EXISTS cdm.temp_obs_end_union_part;
+                                DROP TABLE IF EXISTS cdm.temp_obs;
+            """)
+            session.execute("""DROP TABLE IF EXISTS cdm.tmp_visits_src""")
+            session.execute("""DROP TABLE IF EXISTS cdm.tmp_fact_rel_sd;""")
+            session.execute("""DROP TABLE IF EXISTS cdm.tmp_cv_concept_lk;
+                               DROP TABLE IF EXISTS cdm.tmp_vcv_concept_lk;
+                            """)
 
         # Drop columns only used for ETL purposes
         session.execute("""ALTER TABLE cdm.care_site DROP COLUMN unit_id, DROP COLUMN id;
@@ -1153,6 +1182,7 @@ class CurationExportClass(ToolBase):
                             ALTER TABLE cdm.procedure_occurrence DROP COLUMN unit_id;
                             ALTER TABLE cdm.provider DROP COLUMN unit_id, DROP COLUMN id;
                             ALTER TABLE cdm.visit_occurrence DROP COLUMN unit_id, DROP COLUMN id;
+                            ALTER TABLE cdm.metadata DROP COLUMN id;
                                     """)
 
     @staticmethod
@@ -1506,13 +1536,6 @@ class CurationExportClass(ToolBase):
                             DROP TABLE cdm.tmp_person;
                             """)
 
-        # Drop Temporary Tables
-        # session.execute("""  DROP TABLE IF EXISTS cdm.src_gender;
-        #                     DROP TABLE IF EXISTS cdm.src_race;
-        #                     DROP TABLE IF EXISTS cdm.src_person_location;
-        #                 """)
-
-
     @staticmethod
     def _populate_measurements(session, cutoff_date:datetime):
         cutoff_filter = ''
@@ -1588,7 +1611,7 @@ class CurationExportClass(ToolBase):
                             WHERE
                                 meas.value_code_value IS NOT NULL
                                     """)
-        session.execute("""INSERT INTO cdm.src_meas_mapped
+        session.execute(f"""INSERT INTO cdm.src_meas_mapped
                             SELECT
                                 0                                           AS id,
                                 meas.participant_id                         AS participant_id,
@@ -1625,9 +1648,7 @@ class CurationExportClass(ToolBase):
                            CREATE INDEX src_meas_pm_ids ON cdm.src_meas_mapped
                                         (physical_measurements_id, measurement_id);
                         """)
-        # session.execute("""DROP TABLE IF EXISTS cdm.tmp_cv_concept_lk;
-        #                    DROP TABLE IF EXISTS cdm.tmp_vcv_concept_lk;
-        #                 """)
+
         session.execute("""DROP TABLE IF EXISTS cdm.tmp_care_site;
                             CREATE TABLE cdm.tmp_care_site LIKE cdm.care_site;
                             ALTER TABLE cdm.tmp_care_site DROP COLUMN id;
@@ -1688,7 +1709,7 @@ class CurationExportClass(ToolBase):
                                 'vis.meas'                              AS unit_id
                             FROM cdm.tmp_visits_src src
                         """)
-        # session.execute("""DROP TABLE IF EXISTS cdm.tmp_visits_src""")
+
 
         # unit: observ.meas - observations from measurement table
         session.execute("""
@@ -1937,15 +1958,17 @@ class CurationExportClass(ToolBase):
                              WHERE cdm_meas.parent_id IS NOT NULL
                                      """)
 
-    @staticmethod
-    def _populate_observation_surveys(session):
+
+    def _populate_observation_surveys(self, session, pid_list:List[int]):
         # -- units: observ.code, observ.str, observ.num, observ.bool
         # -- 'observation' table consists of 2 parts:
-        # -- 1) patient's questionnaries
+        # -- 1) patient's questionnaires
         # -- 2) patient's observations from measurements
         # -- First part we fill from 'src_mapped', second -
         # -- from 'src_meas_mapped'
-        session.execute("""INSERT INTO cdm.observation
+
+
+        session.execute(f"""INSERT INTO cdm.observation
                             SELECT
                                 NULL                                        AS observation_id,
                                 src_m.participant_id                        AS person_id,
@@ -1989,6 +2012,7 @@ class CurationExportClass(ToolBase):
                                 END                                         AS unit_id
                             FROM cdm.src_mapped src_m
                             WHERE src_m.question_ppi_code is not null
+                            AND src_m.participant_id IN ({",".join([str(pid) for pid in pid_list])})
                                     """)
 
         # remove special character
