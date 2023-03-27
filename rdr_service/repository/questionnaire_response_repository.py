@@ -179,10 +179,6 @@ class QuestionnaireResponseRepository:
 
             current_date_range = None
             for response in sharing_response_list.in_authored_order:
-                # ignore any EHR responses that are not validated
-                if response.id not in validated_ehr_id_list and not skip_validation_check:
-                    continue
-
                 dv_interest_answer = response.get_single_answer_for(code_constants.DVEHR_SHARING_QUESTION_CODE)
                 # TODO: check if answer is null, and use a safe version of get_single_answer
                 if dv_interest_answer:
@@ -201,6 +197,10 @@ class QuestionnaireResponseRepository:
 
                 consent_answer = response.get_single_answer_for(code_constants.EHR_CONSENT_QUESTION_CODE)
                 if consent_answer:
+                    # ignore any EHR responses that are not validated
+                    if response.id not in validated_ehr_id_list and not skip_validation_check:
+                        continue
+
                     if (
                         consent_answer.value.lower() == code_constants.CONSENT_PERMISSION_YES_CODE.lower()
                         and current_date_range is None
