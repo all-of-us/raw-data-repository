@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import json
 import mock
 from typing import List, Type
@@ -333,6 +333,66 @@ class ConsentValidationTesting(BaseTestCase):
             [new_primary_result.id, new_gror_result.id],
             project_id=None
         )
+
+    @mock.patch('rdr_service.services.consent.validation.dispatch_rebuild_consent_metrics_tasks')
+    def test_multiple_distinct_consents(self, _):
+        """
+        It's possible to have multiple consents that need to be processed independently
+        rather than ignored as duplicates. For example, when a new EHR consent is submitted, the participant's
+        status is set to NOT_VALIDATED, and the new consent file needs to continue through processing to
+        have their status updated.
+        """
+        # mock a consent DAO so we can isolate the output strategy instance
+        consent_dao_mock = mock.MagicMock()
+
+        # Create two existing consent validation records:
+        #   one that should appear as an older record, but not prevent a new file from being saved
+        #   and another that would be found as a duplication of a new record and prevent it from being saved
+        participant_id = 1234
+        consent_dao_mock.get_validation_results_for_participants.return_value = [
+            ConsentFile(
+                participant_id=participant_id,
+                type=ConsentType.PRIMARY,
+                expected_sign_date=date(2021, 10, 17),
+                file_path='duplicate_primary',
+                sync_status=ConsentSyncStatus.SYNC_COMPLETE
+            ),
+            ConsentFile(
+                participant_id=participant_id,
+                type=ConsentType.EHR,
+                expected_sign_date=date(2022, 2, 4),
+                file_path='older_ehr',
+                sync_status=ConsentSyncStatus.SYNC_COMPLETE
+            )
+        ]
+
+        # Create two new validations: one that would be a duplication, and another that's not
+        duplicate_primary_result = ConsentFile(  # A re-play of the primary consent
+            participant_id=participant_id,
+            type=ConsentType.PRIMARY,
+            expected_sign_date=date(2021, 10, 17),
+            file_exists=True,
+            file_path='replay_primary',
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC
+        )
+        new_ehr_result = ConsentFile(  # Another EHR file, but signed later than the one we've already seen
+            participant_id=participant_id,
+            type=ConsentType.EHR,
+            expected_sign_date=date(2023, 1, 23),
+            file_exists=True,
+            file_path='newer_ehr',
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC
+        )
+
+        # Create a new storage validation strategy and provide the new validation results for each participant
+        with StoreResultStrategy(
+            session=mock.MagicMock(),
+            consent_dao=consent_dao_mock
+        ) as output_strategy:
+            output_strategy.add_all([duplicate_primary_result, new_ehr_result])
+
+        # Verify that the EHR validation was fully processed and the duplicate Primary was ignored
+        consent_dao_mock.batch_update_consent_files.assert_called_with([new_ehr_result], mock.ANY)
 
     def test_primary_update_agreement_check(self):
         self.participant_summary.consentForStudyEnrollmentAuthored = datetime.combine(
