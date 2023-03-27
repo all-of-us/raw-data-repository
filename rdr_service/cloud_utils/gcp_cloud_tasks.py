@@ -2,12 +2,13 @@ from datetime import datetime, timedelta, date
 import json
 import logging
 from time import sleep
+from typing import Optional
 
 from google.api_core.exceptions import InternalServerError, GoogleAPICallError
 from google.cloud import tasks_v2
 from google.protobuf import timestamp_pb2
 
-from rdr_service.config import GAE_PROJECT
+from rdr_service.environment import EnvironmentManager
 from rdr_service.services.flask import TASK_PREFIX
 
 
@@ -18,8 +19,8 @@ class GCPCloudTask(object):
     # Create a client.
     _client = None
 
-    def execute(self, endpoint: str, payload: (dict, list) = None, in_seconds: int = 0, project_id: str = GAE_PROJECT,
-                location: str = 'us-central1', queue: str = 'default', quiet=False):
+    def execute(self, endpoint: str, payload: (dict, list) = None, in_seconds: int = 0,
+                project_id: Optional[str] = None, location: str = 'us-central1', queue: str = 'default', quiet=False):
         """
         Make GCP Cloud Task API request to run task later.
         :param endpoint: Flask API endpoint to call.
@@ -30,7 +31,9 @@ class GCPCloudTask(object):
         :param queue: target cloud task queue.
         :param quiet: suppress logging.
         """
-        if not project_id or project_id == 'localhost':
+        if project_id is None:
+            project_id = EnvironmentManager.target_project_id
+        if project_id == 'localhost':
             raise ValueError('Invalid GCP project id')
         if not self._client:
             self._client = tasks_v2.CloudTasksClient()
