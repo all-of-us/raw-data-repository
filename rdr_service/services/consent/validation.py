@@ -447,7 +447,9 @@ class _ValidationOutputHelper:
         is_same_type = new_result.type == existing_result.type
         is_same_participant = new_result.participant_id == existing_result.participant_id
         is_same_path = new_result.file_path == existing_result.file_path
-        is_ready_to_sync = new_result.sync_status in (ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE)
+        is_possible_match_valid = existing_result.sync_status in (
+            ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE
+        )
 
         # Determine if it's for the same consent response, regardless of the date actually on the file
         is_for_same_date = new_result.expected_sign_date == existing_result.expected_sign_date
@@ -456,7 +458,7 @@ class _ValidationOutputHelper:
             return (
                 is_same_path
                 or (
-                    is_same_type and is_same_participant and is_ready_to_sync and is_for_same_date
+                    is_same_type and is_same_participant and is_possible_match_valid and is_for_same_date
                 )
             )
         else:
