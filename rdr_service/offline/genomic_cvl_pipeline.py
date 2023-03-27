@@ -17,7 +17,8 @@ def cvl_w1il_manifest_workflow(cvl_site_bucket_map, module_type):
         with GenomicJobController(
             GenomicJob.CVL_W1IL_WORKFLOW,
             bucket_name=cvl_bucket_name_key,
-            cvl_site_id=site_id
+            cvl_site_id=site_id,
+            max_num=1000
         ) as controller:
             controller.generate_manifest(
                 manifest_type=manifest_type,
