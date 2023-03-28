@@ -706,7 +706,7 @@ class ParticipantSummaryDao(UpdatableDao):
             session=session
         )
 
-        dna_update_time_list = [summary.questionnaireOnDnaProgramAuthored]
+        revised_consent_time_list = []
         response_collection = QuestionnaireResponseRepository.get_responses_to_surveys(
             session=session,
             survey_codes=[PRIMARY_CONSENT_UPDATE_MODULE],
@@ -717,8 +717,8 @@ class ParticipantSummaryDao(UpdatableDao):
             for response in program_update_response_list:
                 reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE).value.lower()
                 if reconsent_answer == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
-                    dna_update_time_list.append(response.authored_datetime)
-        dna_update_time = min_or_none(dna_update_time_list)
+                    revised_consent_time_list.append(response.authored_datetime)
+        revised_consent_time = min_or_none(revised_consent_time_list)
 
         enrollment_info = EnrollmentCalculation.get_enrollment_info(
             EnrollmentDependencies(
@@ -733,7 +733,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 earliest_physical_measurements_time=earliest_physical_measurements_time,
                 earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
                 ehr_consent_date_range_list=ehr_consent_ranges,
-                dna_update_time=dna_update_time
+                dna_update_time=revised_consent_time
             )
         )
 
