@@ -2262,7 +2262,7 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         )
 
         # note_available should have changes to True
-        self.assertTrue(all(obj['status'] == 'scheduled' for obj in resp['data']))
+        self.assertTrue(all(obj['status'] == 'note_available' for obj in resp['data']))
         self.assertTrue(all(obj['note_available'] is True for obj in resp['data']))
 
     def test_module_params(self):
