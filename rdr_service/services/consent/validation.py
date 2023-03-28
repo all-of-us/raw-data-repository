@@ -46,7 +46,7 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
     a EHR PDF is encountered.
     """
 
-    def __init__(self, project_name, *args, **kwargs):
+    def __init__(self, project_name=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._summary_dao = ParticipantSummaryDao()
         self._task = GCPCloudTask()
@@ -93,14 +93,10 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
                 session=self._session
             )
             # Rebuild for PDR
-            additional_args = {}
-            if self._project_name is not None:
-                additional_args['project_id'] = self._project_name
             self._task.execute(
                 'rebuild_one_participant_task',
                 payload={'p_id': participant_id},
-                in_seconds=30,
-                **additional_args
+                in_seconds=30
             )
 
         self._session.commit()  # release the for_update lock obtained on the participant_summary
@@ -437,22 +433,36 @@ class _ValidationOutputHelper:
 
     @classmethod
     def _is_file_in_collection(cls, file: ParsingResult, file_collection: Collection[ParsingResult]):
-        if file.file_exists:
-            return any(
-                [file.file_path == possible_matching_file.file_path for possible_matching_file in file_collection]
-            ) or any(
-                [file.type == possible_matching_file.type
-                 and possible_matching_file.sync_status in
-                 (ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE)
-                 and file.participant_id == possible_matching_file.participant_id
-                 for possible_matching_file in file_collection]
+        return any([
+            cls._matches_existing_result(
+                new_result=file,
+                existing_result=possible_matching_file
+            )
+            for possible_matching_file in file_collection
+        ])
+
+    @classmethod
+    def _matches_existing_result(cls, new_result: ParsingResult, existing_result: ParsingResult):
+        """Provides whether a new validation result matches the given existing result"""
+        is_same_type = new_result.type == existing_result.type
+        is_same_participant = new_result.participant_id == existing_result.participant_id
+        is_same_path = new_result.file_path == existing_result.file_path
+        is_possible_match_valid = existing_result.sync_status in (
+            ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE
+        )
+
+        # Determine if it's for the same consent response, regardless of the date actually on the file
+        is_for_same_date = new_result.expected_sign_date == existing_result.expected_sign_date
+
+        if new_result.file_exists:
+            return (
+                is_same_path
+                or (
+                    is_same_type and is_same_participant and is_possible_match_valid and is_for_same_date
+                )
             )
         else:
-            return any([
-                file.type == possible_matching_file.type
-                and file.participant_id == possible_matching_file.participant_id
-                for possible_matching_file in file_collection
-            ])
+            return is_same_type and is_same_participant and is_for_same_date
 
 
 class ConsentValidationController:

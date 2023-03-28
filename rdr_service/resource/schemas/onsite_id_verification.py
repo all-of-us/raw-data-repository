@@ -44,7 +44,7 @@ class OnSiteIdVerificationSchema(Schema):
     verification_type_id = fields.EnumInteger(enum=PDROnsiteVerificationType)
     visit_type = fields.EnumString(enum=PDROnsiteVerificationVisitType)
     visit_type_id = fields.EnumInteger(enum=PDROnsiteVerificationVisitType)
-    verification_time = fields.DateTime()
+    verified_time = fields.DateTime()
 
     class Meta:
         schema_id = SchemaID.onsite_id_verification
