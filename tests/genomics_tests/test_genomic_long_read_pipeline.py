@@ -40,6 +40,14 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         # Execute from cloud task
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
+    def test_full_lr_manifest_ingestion(self):
+
+        self.execute_base_lr_ingestion(
+            test_file='RDR_AoU_LR_Requests.csv',
+            job_id=GenomicJob.LR_LR_WORKFLOW,
+            manifest_type=GenomicManifestTypes.LR_LR,
+        )
+
     def test_lr_manifest_to_raw_ingestion(self):
 
         self.execute_base_lr_ingestion(
