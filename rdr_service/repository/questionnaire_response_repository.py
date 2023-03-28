@@ -167,7 +167,12 @@ class QuestionnaireResponseRepository:
                 code_constants.CONSENT_FOR_DVEHR_MODULE,
                 code_constants.CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
             ],
-            participant_ids=[participant_id]
+            participant_ids=[participant_id],
+            classification_types=[
+                # The EHR response linked to a validated EHR file might be marked as duplicate of another response
+                enums.QuestionnaireResponseClassificationType.COMPLETE,
+                enums.QuestionnaireResponseClassificationType.DUPLICATE
+            ]
         ).get(participant_id)
         validated_ehr_id_list = cls.get_validated_ehr_consent_ids(participant_id=participant_id, session=session)
 
@@ -198,7 +203,12 @@ class QuestionnaireResponseRepository:
                 consent_answer = response.get_single_answer_for(code_constants.EHR_CONSENT_QUESTION_CODE)
                 if consent_answer:
                     # ignore any EHR responses that are not validated
-                    if response.id not in validated_ehr_id_list and not skip_validation_check:
+                    # Note: only check for validated EHR if the consent was authored after the response->consent data
+                    #       started being generated (2022-02-18)
+                    if (
+                        response.id not in validated_ehr_id_list and not skip_validation_check
+                        and response.authored_datetime > datetime(2022, 2, 18)
+                    ):
                         continue
 
                     if (

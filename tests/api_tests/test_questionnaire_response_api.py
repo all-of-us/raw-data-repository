@@ -464,9 +464,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
 
         # send consent for ehr
         self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
-        with FakeClock(datetime.datetime(2020, 3, 12)):
+        with FakeClock(datetime.datetime(2023, 3, 12)):
             self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE, None,
-                                          datetime.datetime(2020, 2, 12))
+                                          datetime.datetime(2023, 2, 12))
             self._mark_ehr_valid_in_summary(from_client_participant_id(participant_id))
 
         # Check that the enrollment status remains at INTERESTED
