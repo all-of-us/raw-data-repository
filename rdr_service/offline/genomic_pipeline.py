@@ -3,7 +3,7 @@ import logging
 from rdr_service import config
 from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicAW3RawDao, \
     GenomicAW4RawDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao, \
-    GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, GenomicW2WRawDao, GenomicW1ILRawDao
+    GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, GenomicW2WRawDao, GenomicW1ILRawDao, GenomicDefaultBaseDao
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_storage_class import GenomicStorageClass
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
@@ -450,7 +450,8 @@ def load_awn_manifest_into_raw_table(
         },
         "lr": {
             'job_id': GenomicJob.LOAD_LR_TO_RAW_TABLE,
-            'dao': GenomicLRRaw
+            'dao': GenomicDefaultBaseDao,
+            'model': GenomicLRRaw
         }
     }
 
@@ -458,13 +459,16 @@ def load_awn_manifest_into_raw_table(
     if not raw_job:
         return
 
-    with GenomicJobController(raw_job.get('job_id'),
-                              bq_project_id=project_id,
-                              storage_provider=provider) as controller:
+    with GenomicJobController(
+        raw_job.get('job_id'),
+        bq_project_id=project_id,
+        storage_provider=provider
+    ) as controller:
         controller.load_raw_awn_data_from_filepath(
             file_path,
             raw_job.get('dao'),
-            cvl_site_id=cvl_site_id
+            cvl_site_id=cvl_site_id,
+            model=raw_job.get('model')
         )
 
 

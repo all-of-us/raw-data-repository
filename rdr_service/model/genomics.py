@@ -1665,7 +1665,7 @@ class GenomicLongRead(Base):
     modified = Column(DateTime)
     genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"), nullable=False, index=True)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
-    biobank_id = Column(String(128), nullable=True, index=True)
+    biobank_id = Column(String(128), nullable=False, index=True)
     sample_id = Column(String(80), nullable=True, index=True)
     genome_type = Column(String(80), nullable=False, default='aou_long_read')
     lr_site_id = Column(String(11), nullable=False)

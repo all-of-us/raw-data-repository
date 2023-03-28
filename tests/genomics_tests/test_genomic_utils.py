@@ -3,8 +3,9 @@ import time
 
 from rdr_service import storage, clock
 from rdr_service.api_util import open_cloud_file
-from tests.genomics_tests.test_genomic_pipeline import _FAKE_BUCKET
 from tests.test_data import data_path
+
+_FAKE_BUCKET = "rdr_fake_bucket"
 
 
 def create_ingestion_test_file(

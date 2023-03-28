@@ -305,7 +305,8 @@ class GenomicFileIngester:
                 GenomicJob.CVL_W3SS_WORKFLOW: self._ingest_cvl_w3ss_manifest,
                 GenomicJob.CVL_W3SC_WORKFLOW: self._ingest_cvl_w3sc_manifest,
                 GenomicJob.CVL_W4WR_WORKFLOW: self._ingest_cvl_w4wr_manifest,
-                GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest
+                GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
+                GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_lr_manifest
             }
 
             self.file_validator.valid_schema = None
@@ -580,7 +581,7 @@ class GenomicFileIngester:
         :return:
         """
 
-        dao = raw_dao()
+        dao = raw_dao() if not kwargs.get('model') else raw_dao(model_type=kwargs.get('model'))
 
         # look up if any rows exist already for the file
         records = dao.get_from_filepath(self.target_file)
@@ -912,6 +913,83 @@ class GenomicFileIngester:
                         metrics.drcFpConcordance = row_copy['drcfpconcordance']
 
                     self.metrics_dao.upsert(metrics)
+
+                self.member_dao.update(member)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_aw5_manifest(self, rows):
+        try:
+            for row in rows:
+                row_copy = self._clean_row_keys(row)
+
+                biobank_id = row_copy['biobankid']
+                biobank_id = self._clean_alpha_values(biobank_id)
+                sample_id = row_copy['sampleid']
+
+                member = self.member_dao.get_member_from_biobank_id_and_sample_id(biobank_id, sample_id)
+                if not member:
+                    logging.warning(f'Can not find genomic member record for biobank_id: '
+                                    f'{biobank_id} and sample_id: {sample_id}, skipping...')
+                    continue
+
+                existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+                if existing_metrics_obj is not None:
+                    metric_id = existing_metrics_obj.id
+                else:
+                    logging.warning(f'Can not find metrics record for member id: '
+                                    f'{member.id}, skipping...')
+                    continue
+
+                self.metrics_dao.update_gc_validation_metrics_deleted_flags_from_dict(row_copy, metric_id)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_aw1c_manifest(self, rows):
+        """
+        Processes the CVL AW1C manifest file data
+        :param rows:
+        :return: Result Code
+        """
+        try:
+            for row in rows:
+                row_copy = self._clean_row_keys(row)
+
+                collection_tube_id = row_copy['collectiontubeid']
+                member = self.member_dao.get_member_from_collection_tube(collection_tube_id, GENOME_TYPE_WGS)
+
+                if member is None:
+                    # Currently ignoring invalid cases
+                    logging.warning(f'Invalid collection tube ID: {collection_tube_id}')
+                    continue
+
+                # Update the AW1C job run ID and genome_type
+                member.cvlAW1CManifestJobRunID = self.job_run_id
+                member.genomeType = row_copy['genometype']
+
+                # Handle genomic state
+                _signal = "aw1c-reconciled"
+
+                if row_copy['failuremode'] not in (None, ''):
+                    member.gcManifestFailureMode = row_copy['failuremode']
+                    member.gcManifestFailureDescription = row_copy['failuremodedesc']
+                    _signal = 'aw1c-failed'
+
+                # update state and state modifed time only if changed
+                if member.genomicWorkflowState != GenomicStateHandler.get_new_state(
+                    member.genomicWorkflowState, signal=_signal):
+                    member.genomicWorkflowState = GenomicStateHandler.get_new_state(
+                        member.genomicWorkflowState,
+                        signal=_signal)
+
+                    member.genomicWorkflowStateStr = member.genomicWorkflowState.name
+                    member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
 
@@ -1554,80 +1632,9 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
-    def _ingest_aw5_manifest(self, rows):
+    def _ingest_lr_lr_manifest(self, _):
         try:
-            for row in rows:
-                row_copy = self._clean_row_keys(row)
-
-                biobank_id = row_copy['biobankid']
-                biobank_id = self._clean_alpha_values(biobank_id)
-                sample_id = row_copy['sampleid']
-
-                member = self.member_dao.get_member_from_biobank_id_and_sample_id(biobank_id, sample_id)
-                if not member:
-                    logging.warning(f'Can not find genomic member record for biobank_id: '
-                                    f'{biobank_id} and sample_id: {sample_id}, skipping...')
-                    continue
-
-                existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
-                if existing_metrics_obj is not None:
-                    metric_id = existing_metrics_obj.id
-                else:
-                    logging.warning(f'Can not find metrics record for member id: '
-                                    f'{member.id}, skipping...')
-                    continue
-
-                self.metrics_dao.update_gc_validation_metrics_deleted_flags_from_dict(row_copy, metric_id)
-
             return GenomicSubProcessResult.SUCCESS
-
-        except (RuntimeError, KeyError):
-            return GenomicSubProcessResult.ERROR
-
-    def _ingest_aw1c_manifest(self, rows):
-        """
-        Processes the CVL AW1C manifest file data
-        :param rows:
-        :return: Result Code
-        """
-        try:
-            for row in rows:
-                row_copy = self._clean_row_keys(row)
-
-                collection_tube_id = row_copy['collectiontubeid']
-                member = self.member_dao.get_member_from_collection_tube(collection_tube_id, GENOME_TYPE_WGS)
-
-                if member is None:
-                    # Currently ignoring invalid cases
-                    logging.warning(f'Invalid collection tube ID: {collection_tube_id}')
-                    continue
-
-                # Update the AW1C job run ID and genome_type
-                member.cvlAW1CManifestJobRunID = self.job_run_id
-                member.genomeType = row_copy['genometype']
-
-                # Handle genomic state
-                _signal = "aw1c-reconciled"
-
-                if row_copy['failuremode'] not in (None, ''):
-                    member.gcManifestFailureMode = row_copy['failuremode']
-                    member.gcManifestFailureDescription = row_copy['failuremodedesc']
-                    _signal = 'aw1c-failed'
-
-                # update state and state modifed time only if changed
-                if member.genomicWorkflowState != GenomicStateHandler.get_new_state(
-                    member.genomicWorkflowState, signal=_signal):
-                    member.genomicWorkflowState = GenomicStateHandler.get_new_state(
-                        member.genomicWorkflowState,
-                        signal=_signal)
-
-                    member.genomicWorkflowStateStr = member.genomicWorkflowState.name
-                    member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
-
-                self.member_dao.update(member)
-
-            return GenomicSubProcessResult.SUCCESS
-
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 

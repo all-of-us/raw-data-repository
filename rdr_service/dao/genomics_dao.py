@@ -4734,6 +4734,28 @@ class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
     def get_id(self, obj):
         return obj.id
 
-    def get_new_long_read_participants(self):
-        with self.session() as _:
-            pass
+    def get_new_long_read_participants(self, biobank_ids: List[int], parent_tube_ids: List[int]):
+        with self.session() as session:
+            records = session.query(
+                GenomicSetMember.id.label('genomic_set_member_id'),
+                GenomicSetMember.biobankId.label('biobank_id')
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).filter(
+                GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
+                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
+                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
+                GenomicSetMember.diversionPouchSiteFlag != 1,
+                ParticipantSummary.participantOrigin != 'careevolution',
+                GenomicSetMember.blockResults != 1,
+                GenomicSetMember.blockResearch != 1,
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.biobankId.in_(biobank_ids),
+                GenomicSetMember.gcManifestParentSampleId.in_(parent_tube_ids)
+            )
+            return records

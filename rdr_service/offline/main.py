@@ -639,13 +639,6 @@ def check_for_w1il_gror_resubmit_participants():
     genomic_cvl_pipeline.notify_email_group_of_w1il_gror_resubmit_participants(since_datetime=a_week_ago)
     return '{"success": "true"}'
 
-# Disabling job until further notice
-# @app_util.auth_required_cron
-# @check_genomic_cron_job('reconcile_raw_to_aw1_ingested_workflow')
-# def reconcile_raw_to_aw1_ingested():
-#     genomic_pipeline.reconcile_raw_to_aw1_ingested()
-#     return '{"success": "true"}'
-
 
 @app_util.auth_required_cron
 @check_genomic_cron_job('reconcile_raw_to_aw2_ingested_workflow')

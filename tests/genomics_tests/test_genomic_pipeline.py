@@ -112,7 +112,6 @@ class ExpectedCsvColumns(object):
     ALL = (SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, VALIDATION_PASSED, AI_AN)
 
 
-# noinspection DuplicatedCode
 class GenomicPipelineTest(BaseTestCase):
     def setUp(self):
         super(GenomicPipelineTest, self).setUp()
