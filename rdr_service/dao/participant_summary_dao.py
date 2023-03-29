@@ -673,7 +673,8 @@ class ParticipantSummaryDao(UpdatableDao):
 
     @classmethod
     def _update_timestamp_value(cls, summary, field_name, new_value):
-        if new_value and getattr(summary, field_name) != new_value:
+        existing_value = getattr(summary, field_name)
+        if new_value and existing_value != new_value and existing_value is None:
             setattr(summary, field_name, new_value)
 
     def _clear_timestamp_if_set(cls, summary, field_name):
