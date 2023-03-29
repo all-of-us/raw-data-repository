@@ -1,6 +1,6 @@
 import datetime
 
-from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestFileDao
+from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestFileDao, GenomicLongReadDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob
 from rdr_service.model.genomics import GenomicLRRaw
 from rdr_service.offline import genomic_pipeline
@@ -17,6 +17,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             genomicSetCriteria=".",
             genomicSetVersion=1
         )
+        self.long_read_dao = GenomicLongReadDao()
 
     def execute_base_lr_ingestion(self, **kwargs):
         test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
@@ -74,6 +75,16 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             job_id=GenomicJob.LR_LR_WORKFLOW,
             manifest_type=GenomicManifestTypes.LR_LR,
         )
+
+        long_read_members = self.long_read_dao.get_all()
+
+        self.assertEqual(len(long_read_members), 3)
+        self.assertTrue(all(obj.biobank_id is not None for obj in long_read_members))
+        self.assertTrue(all(obj.sample_id is None for obj in long_read_members))
+        self.assertTrue(all(obj.genome_type == 'aou_long_read' for obj in long_read_members))
+        self.assertTrue(all(obj.long_read_platform == 'pacbio_css' for obj in long_read_members))
+        self.assertTrue(all(obj.lr_site_id == 'bcm' for obj in long_read_members))
+        self.assertTrue(all(obj.genomic_set_member_id is not None for obj in long_read_members))
 
     def test_lr_manifest_to_raw_ingestion(self):
 
