@@ -12,11 +12,38 @@ class GenomicLongReadPipelineTest(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.manifest_file_dao = GenomicManifestFileDao()
+        self.gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
 
     def execute_base_lr_ingestion(self, **kwargs):
         test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
         bucket_name = 'test_lr_bucket'
         subfolder = 'lr_subfolder'
+
+        for num in range(1, kwargs.get('num_set_members', 4)):
+            participant_summary = self.data_generator.create_database_participant_summary(
+                withdrawalStatus=1,
+                suspensionStatus=1,
+                consentForStudyEnrollment=1
+            )
+
+            member = self.data_generator.create_database_genomic_set_member(
+                participantId=participant_summary.participantId,
+                genomicSetId=self.gen_set.id,
+                biobankId=f"{num}",
+                genomeType="aou_array",
+                qcStatus=1,
+                gcManifestSampleSource="whole blood",
+                gcManifestParentSampleId=f"{num}11111111111",
+                participantOrigin="vibrent"
+            )
+            self.data_generator.create_database_genomic_gc_validation_metrics(
+                genomicSetMemberId=member.id,
+                processingStatus='Pass'
+            )
 
         test_file_name = create_ingestion_test_file(
             kwargs.get('test_file'),

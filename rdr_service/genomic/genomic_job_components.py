@@ -7,7 +7,7 @@ import csv
 import json
 import logging
 import re
-from typing import List
+from typing import List, OrderedDict
 
 import pytz
 from collections import deque, namedtuple
@@ -18,6 +18,7 @@ import sqlalchemy
 from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.genomic.genomic_long_read import GenomicLongReadWorkFlow
 from rdr_service.genomic_enums import ResultsModuleType, ResultsWorkflowState
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -1633,8 +1634,9 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
-    def _ingest_lr_lr_manifest(self, _):
+    def _ingest_lr_lr_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
+            GenomicLongReadWorkFlow().run_lr_workflow(rows)
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
@@ -1698,7 +1700,7 @@ class GenomicFileIngester:
             genomicWorkflowStateStr=GenomicWorkflowState.AW1.name
         )
 
-        # Set member attribures from AW1
+        # Set member attributes from AW1
         new_member_obj = self._set_member_attributes_from_aw1(aw1_data, new_member_obj)
         new_member_obj = self._set_rdr_member_attributes_for_aw1(aw1_data, new_member_obj)
 
