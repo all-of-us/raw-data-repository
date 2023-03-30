@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 
-from rdr_service.model.base import Base, MetricsBase, RexBase, NphBase
+from rdr_service.model.base import Base, MetricsBase, RexBase, NphBase, VocBase, CdmBase
 
 # All tables in the schema should be imported below here.
 # pylint: disable=unused-import
@@ -74,6 +74,8 @@ from rdr_service.model.profile_update import ProfileUpdate
 
 from rdr_service.model.study_nph import Participant
 from rdr_service.model.rex import Study
+from rdr_service.etl.model.etl_vocabulary import Concept, ConceptRelationship, CombinedQuestionFilter,\
+    CombinedSurveyFilter, SourceToConceptMap
 
 
 RETRY_CONNECTION_LIMIT = 10
@@ -116,6 +118,12 @@ class Database(object):
 
     def create_nph_schema(self):
         NphBase.metadata.create_all(self._engine)
+
+    def create_voc_schema(self):
+        VocBase.metadata.create_all(self._engine)
+
+    def create_cdm_schema(self):
+        CdmBase.metadata.create_all(self._engine)
 
     def make_session(self) -> Session:
         return self._Session()
