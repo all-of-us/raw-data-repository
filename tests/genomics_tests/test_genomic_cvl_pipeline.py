@@ -616,7 +616,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W5NF.name for obj in
                             current_workflow_states))
 
-
     def test_w5nf_manifest_to_raw_ingestion(self):
 
         self.execute_base_cvl_ingestion(

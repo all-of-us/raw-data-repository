@@ -1,42 +1,14 @@
 import logging
 
-from rdr_service import clock, config
+from rdr_service import config
 from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicAW3RawDao, \
-    GenomicAW4RawDao, GenomicJobRunDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao, \
-    GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, GenomicW2WRawDao, GenomicW1ILRawDao
+    GenomicAW4RawDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao, \
+    GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, GenomicW2WRawDao, GenomicW1ILRawDao, GenomicDefaultBaseDao
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_storage_class import GenomicStorageClass
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
+from rdr_service.model.genomics import GenomicLRRaw
 from rdr_service.services.system_utils import JSONObject
-
-
-def run_genomic_cron_job(val):
-    def inner_decorator(f):
-        def wrapped(*args, **kwargs):
-            if not config.getSettingJson(config.GENOMIC_CRON_JOBS).get(val):
-                raise RuntimeError(f'Cron job for {val} is currently disabled')
-            return f(*args, **kwargs)
-        return wrapped
-    return inner_decorator
-
-
-def interval_run_schedule(job_id, run_type):
-    def inner_decorator(f):
-        def wrapped(*args, **kwargs):
-            interval_run_map = {
-                'skip_week': 14
-            }
-            today = clock.CLOCK.now()
-            day_interval = interval_run_map.get(run_type)
-
-            job_run_dao = GenomicJobRunDao()
-            last_run = job_run_dao.get_last_successful_runtime(job_id)
-
-            if last_run and ((today.date() - last_run.date()).days < day_interval):
-                raise RuntimeError(f'Cron job for {job_id.name} is currently disabled for this time')
-            return f(*args, **kwargs)
-        return wrapped
-    return inner_decorator
 
 
 def new_participant_workflow():
@@ -377,7 +349,8 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.CVL_W3SC_WORKFLOW,
         GenomicJob.CVL_W3SS_WORKFLOW,
         GenomicJob.CVL_W4WR_WORKFLOW,
-        GenomicJob.CVL_W5NF_WORKFLOW
+        GenomicJob.CVL_W5NF_WORKFLOW,
+        GenomicJob.LR_LR_WORKFLOW
     )
 
     if _task_data.job in ingestion_workflows:
@@ -475,19 +448,27 @@ def load_awn_manifest_into_raw_table(
             'job_id': GenomicJob.LOAD_CVL_W5NF_TO_RAW_TABLE,
             'dao': GenomicW5NFRawDao
         },
+        "lr": {
+            'job_id': GenomicJob.LOAD_LR_TO_RAW_TABLE,
+            'dao': GenomicDefaultBaseDao,
+            'model': GenomicLRRaw
+        }
     }
 
     raw_job = raw_jobs_map.get(manifest_type)
     if not raw_job:
         return
 
-    with GenomicJobController(raw_job.get('job_id'),
-                              bq_project_id=project_id,
-                              storage_provider=provider) as controller:
+    with GenomicJobController(
+        raw_job.get('job_id'),
+        bq_project_id=project_id,
+        storage_provider=provider
+    ) as controller:
         controller.load_raw_awn_data_from_filepath(
             file_path,
             raw_job.get('dao'),
-            cvl_site_id=cvl_site_id
+            cvl_site_id=cvl_site_id,
+            model=raw_job.get('model')
         )
 
 

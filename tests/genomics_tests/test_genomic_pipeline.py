@@ -11,7 +11,7 @@ from copy import deepcopy
 from dateutil.parser import parse
 from itertools import chain
 
-from rdr_service import clock, config, storage
+from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.code_constants import (
     BIOBANK_TESTS, COHORT_1_REVIEW_CONSENT_YES_CODE, COHORT_1_REVIEW_CONSENT_NO_CODE)
@@ -71,6 +71,7 @@ from rdr_service.participant_enums import (
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
     GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus
+from tests.genomics_tests.test_genomic_utils import create_ingestion_test_file, open_genomic_set_file, write_cloud_csv
 
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -111,65 +112,6 @@ class ExpectedCsvColumns(object):
     ALL = (SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, VALIDATION_PASSED, AI_AN)
 
 
-def create_ingestion_test_file(
-    test_data_filename,
-    bucket_name,
-    folder=None,
-    include_timestamp=True,
-    include_sub_num=False,
-    extension=None
-):
-    test_data_file = open_genomic_set_file(test_data_filename)
-
-    input_filename = '{}{}{}{}'.format(
-        test_data_filename.replace('.csv', ''),
-        '_11192019' if include_timestamp else '',
-        '_1' if include_sub_num else '',
-        '.csv' if not extension else extension
-    )
-    write_cloud_csv(
-        input_filename,
-        test_data_file,
-        folder=folder,
-        bucket=bucket_name
-    )
-
-    return input_filename
-
-
-def open_genomic_set_file(test_filename):
-    with open(data_path(test_filename)) as f:
-        lines = f.readlines()
-        csv_str = ""
-        for line in lines:
-            csv_str += line
-
-        return csv_str
-
-
-def write_cloud_csv(
-    file_name,
-    contents_str,
-    bucket=None,
-    folder=None,
-):
-    bucket = _FAKE_BUCKET if bucket is None else bucket
-    if folder is None:
-        path = "/%s/%s" % (bucket, file_name)
-    else:
-        path = "/%s/%s/%s" % (bucket, folder, file_name)
-    with open_cloud_file(path, mode='wb') as cloud_file:
-        cloud_file.write(contents_str.encode("utf-8"))
-
-    # handle update time of test files
-    provider = storage.get_storage_provider()
-    n = clock.CLOCK.now()
-    ntime = time.mktime(n.timetuple())
-    os.utime(provider.get_local_path(path), (ntime, ntime))
-    return cloud_file
-
-
-# noinspection DuplicatedCode
 class GenomicPipelineTest(BaseTestCase):
     def setUp(self):
         super(GenomicPipelineTest, self).setUp()
@@ -600,8 +542,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         with clock.FakeClock(test_date):
             test_file_name = create_ingestion_test_file(test_file, bucket_name,
-                                                              folder=subfolder,
-                                                              include_sub_num=True)
+                                                        folder=subfolder,
+                                                        include_sub_num=True)
 
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
                                                 array_participants=(1, 2),
@@ -840,9 +782,9 @@ class GenomicPipelineTest(BaseTestCase):
         # ingest AW5 files
         with clock.FakeClock(test_date):
             test_file_name_aw5_array = create_ingestion_test_file('aw5_deletion_array.csv',
-                                                                        bucket_name, folder=subfolder)
+                                                                  bucket_name, folder=subfolder)
             test_file_name_aw5_wgs = create_ingestion_test_file('aw5_deletion_wgs.csv',
-                                                                      bucket_name, folder=subfolder)
+                                                                bucket_name, folder=subfolder)
         task_data_aw5_wgs = {
             "job": GenomicJob.AW5_WGS_MANIFEST,
             "bucket": bucket_name,
@@ -1103,8 +1045,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         with clock.FakeClock(test_date):
             test_file_name = create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                                              bucket_name,
-                                                              folder=subfolder)
+                                                        bucket_name,
+                                                        folder=subfolder)
 
         self._update_test_sample_ids()
 
@@ -2733,8 +2675,8 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         sub_folder = config.GENOMIC_GEM_A2_MANIFEST_SUBFOLDER
         create_ingestion_test_file('AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv',
-                                         bucket_name, folder=sub_folder,
-                                         include_timestamp=False)
+                                   bucket_name, folder=sub_folder,
+                                   include_timestamp=False)
 
         # Run Workflow at fake time
         fake_now = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)
@@ -2909,8 +2851,8 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
         create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
+                                   bucket_name,
+                                   folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
         self._update_test_sample_ids()
 
@@ -4691,10 +4633,10 @@ class GenomicPipelineTest(BaseTestCase):
         file_name = 'AoU_DRCB_GEN_2020-07-11-00-00-00.csv'
 
         create_ingestion_test_file(file_name,
-                                         bucket_name,
-                                         folder=sub_folder,
-                                         include_timestamp=False
-                                         )
+                                   bucket_name,
+                                   folder=sub_folder,
+                                   include_timestamp=False
+                                   )
 
         # Set up file/JSON
         task_data = {
@@ -4904,16 +4846,16 @@ class GenomicPipelineTest(BaseTestCase):
         file_name = 'AoU_DRCB_GEN_2020-07-11-00-00-00.csv'
 
         create_ingestion_test_file(file_name,
-                                         bucket_name,
-                                         folder=sub_folder,
-                                         include_timestamp=False
-                                         )
+                                   bucket_name,
+                                   folder=sub_folder,
+                                   include_timestamp=False
+                                   )
 
         create_ingestion_test_file(file_name,
-                                         bucket_name,
-                                         folder='AW5_array_manifest',
-                                         include_timestamp=False
-                                         )
+                                   bucket_name,
+                                   folder='AW5_array_manifest',
+                                   include_timestamp=False
+                                   )
 
         # Set up file/JSON
         task_data = {
@@ -4995,8 +4937,8 @@ class GenomicPipelineTest(BaseTestCase):
         sub_folder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
         file_name = 'RDR_AoU_GEN_TestDataManifest_11192019.csv'
         create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
-                                         bucket_name,
-                                         folder=sub_folder)
+                                   bucket_name,
+                                   folder=sub_folder)
 
         # Set up file/JSON
         task_data = {
@@ -5575,8 +5517,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Setup Test file
         test_file_name = create_ingestion_test_file(test_manifest,
-                                                          _FAKE_GENOMIC_CENTER_BUCKET_A,
-                                                          folder=_FAKE_BUCKET_FOLDER)
+                                                    _FAKE_GENOMIC_CENTER_BUCKET_A,
+                                                    folder=_FAKE_BUCKET_FOLDER)
 
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
 
@@ -5831,8 +5773,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         with clock.FakeClock(test_date):
             test_file_name = create_ingestion_test_file(test_file, bucket_name,
-                                                              folder=subfolder,
-                                                              include_sub_num=True)
+                                                        folder=subfolder,
+                                                        include_sub_num=True)
 
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
                                                 array_participants=(1, 2),
@@ -6289,8 +6231,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Setup Test file
         test_file_name = create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                                          _FAKE_GENOMIC_CENTER_BUCKET_A,
-                                                          folder=_FAKE_BUCKET_FOLDER)
+                                                    _FAKE_GENOMIC_CENTER_BUCKET_A,
+                                                    folder=_FAKE_BUCKET_FOLDER)
 
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
 
@@ -6654,8 +6596,8 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_RDR
 
         create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
+                                   bucket_name,
+                                   folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
         self._update_test_sample_ids()
 

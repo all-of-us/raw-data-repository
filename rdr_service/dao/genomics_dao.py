@@ -47,7 +47,7 @@ from rdr_service.model.genomics import (
     GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
-    GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified)
+    GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -4706,3 +4706,43 @@ class GenomicDefaultBaseDao(BaseDao, GenomicDaoMixin):
 
     def get_id(self, obj):
         pass
+
+
+class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
+
+    validate_version_match = False
+
+    def __init__(self):
+        super().__init__(GenomicLongRead, order_by_ending=["id"])
+
+    def get_id(self, obj):
+        return obj.id
+
+    def get_new_long_read_members(self, *, biobank_ids: List[str], parent_tube_ids: List[str]) -> List:
+        with self.session() as session:
+            records = session.query(
+                GenomicSetMember.id.label('genomic_set_member_id'),
+                GenomicSetMember.biobankId.label('biobank_id')
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).filter(
+                GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
+                GenomicSetMember.participantOrigin != 'careevolution',
+                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
+                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
+                GenomicSetMember.diversionPouchSiteFlag != 1,
+                GenomicSetMember.blockResults != 1,
+                GenomicSetMember.blockResearch != 1,
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.biobankId.in_(biobank_ids),
+                GenomicSetMember.gcManifestParentSampleId.in_(parent_tube_ids)
+            ).distinct()
+            return records.all()

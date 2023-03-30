@@ -1649,3 +1649,53 @@ class GenomicStorageUpdate(Base):
 
 event.listen(GenomicStorageUpdate, 'before_insert', model_insert_listener)
 event.listen(GenomicStorageUpdate, 'before_update', model_update_listener)
+
+
+class GenomicLongRead(Base):
+    """
+    Used for storing the member records that are being
+    sequenced in the long read pipeline
+    """
+
+    __tablename__ = "genomic_long_read"
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"), nullable=False, index=True)
+    biobank_id = Column(String(128), nullable=False, index=True)
+    sample_id = Column(String(80), nullable=True, index=True)
+    genome_type = Column(String(80), nullable=False, default='aou_long_read')
+    lr_site_id = Column(String(11), nullable=False)
+    long_read_platform = Column(String(80), nullable=False, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+
+event.listen(GenomicLongRead, 'before_insert', model_insert_listener)
+event.listen(GenomicLongRead, 'before_update', model_update_listener)
+
+
+class GenomicLRRaw(Base):
+    """
+    Raw data from LR files
+    """
+    __tablename__ = 'genomic_lr_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    parent_tube_id = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+
+
+event.listen(GenomicLRRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicLRRaw, 'before_update', model_update_listener)

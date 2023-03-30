@@ -47,6 +47,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             "w3ss": "IngestCVLManifestTaskApi",
             "w4wr": "IngestCVLManifestTaskApi",
             "w5nf": "IngestCVLManifestTaskApi",
+            "lr": "IngestLongReadManifestTaskApi"
         }
 
     def run(self):
@@ -64,46 +65,38 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         # AW1 files have "_sample_manifests" in file name
         if '_sample_manifests' in object_id:
             task_key = "aw1"
-
         # AW1F files have "aw1f_pre_results" in file name
         elif 'aw1f_pre_results' in object_id:
             task_key = "aw1f"
-
         # AW2 files have "_data_manifests" in their file name
         elif '_data_manifests' in object_id:
             task_key = "aw2"
-
         # AW4 files have "AW4" in their file path (bucket name)
         elif 'aw4_' in object_id:
             task_key = "aw4"
-
         # AW5 files have "AW5" in their file path (bucket name)
         elif 'aw5_' in object_id:
             task_key = "aw5"
-
         # W2SC files have "W2SC" in their file path (bucket name)
         elif '_w2sc_' in object_id:
             task_key = "w2sc"
-
         # W3NS files have "W3NS" in their file path (bucket name)
         elif '_w3ns_' in object_id:
             task_key = "w3ns"
-
         # W3SC files have "W3SC" in their file path (bucket name)
         elif '_w3sc_' in object_id:
             task_key = "w3sc"
-
         # W3SS files have "_PKG" in their file path (bucket name)
         elif '_pkg' in object_id:
             task_key = "w3ss"
-
         # W4WR files have "W4WR" in their file path (bucket name)
         elif '_w4wr_' in object_id:
             task_key = "w4wr"
-
         # W5NF files have "W5NF" in their file path (bucket name)
         elif '_w5nf_' in object_id:
             task_key = "w5nf"
+        elif '_lr_requests_' in object_id:
+            task_key = "lr"
 
         else:
             _logger.info("No files match ingestion criteria.")
@@ -129,19 +122,19 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 "cloud_function": True,
             }
 
-            raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w3ns', 'w3sc', 'w3ss', 'w4wr', 'w5nf']
+            raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w3ns', 'w3sc', 'w3ss', 'w4wr', 'w5nf', 'lr']
 
             # Load into raw table
             if task_key in raw_manifest_keys:
-                _task = GCPCloudTask()
-                _task.execute(
+                raw_cloud_task = GCPCloudTask()
+                raw_cloud_task.execute(
                     f'{self.task_root}LoadRawAWNManifestDataAPI',
                     payload=data,
                     queue=task_queue
                 )
 
-            _task = GCPCloudTask()
-            _task.execute(api_route, payload=data, queue=task_queue)
+            cloud_task = GCPCloudTask()
+            cloud_task.execute(api_route, payload=data, queue=task_queue)
 
 
 def get_deploy_args(gcp_env):
