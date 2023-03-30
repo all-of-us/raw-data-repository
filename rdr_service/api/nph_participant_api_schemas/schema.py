@@ -6,7 +6,7 @@ from sqlalchemy import and_, func
 from sqlalchemy.dialects.mysql import JSON
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX, NPH_STUDY_ID
 from rdr_service.model.study_nph import Participant as DbParticipant, Site as nphSite, PairingEvent, DeactivatedEvent, \
-    WithdrawalEvent, EnrollmentEvent, EnrollmentEventType, ParticipantOpsDataElement
+    WithdrawalEvent, EnrollmentEvent, EnrollmentEventType, ParticipantOpsDataElement, ConsentEvent, ConsentEventType
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping, Study
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
@@ -48,6 +48,11 @@ class Event(ObjectType):
         if value.upper() == 'VALUE':
             return context.set_order_expression(sort_info.get('value'))
         raise ValueError(f"{value} : Invalid Key -- Event Object Type")
+
+
+class GraphQLConsentEvent(Event):
+    """ NPH ConsentEvent """
+    opt_in = Field(NonNull(String))
 
 
 class EventCollection(ObjectType):
@@ -252,6 +257,9 @@ class Participant(ObjectType):
                                       sort_modifier=lambda context: context.set_order_expression(
                                           nphSite.awardee_external_id))
     nphEnrollmentStatus = List(Event, name="nphEnrollmentStatus", description='Sourced from NPH Schema.')
+    nphModule1ConsentStatus = List(
+        GraphQLConsentEvent, name="nphModule1ConsentStatus", description="Sourced from NPH Schema"
+    )
     nphWithdrawalStatus = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
     nphDeactivationStatus = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
     nphDateOfBirth = Field(String, name="nphDateOfBirth", description='Sourced from NPH Schema.')
@@ -319,6 +327,27 @@ class ParticipantQuery(ObjectType):
         with database_factory.get_database().session() as sessions:
             logging.info('root: %s, info: %s, kwargs: %s', root, info, filter_kwargs)
             pm2 = aliased(PairingEvent)
+
+            consent_subquery = sessions.query(
+                DbParticipant.id.label('consent_pid'),
+                func.json_object(
+                    'consent_json',
+                    func.json_arrayagg(
+                            func.json_object(
+                                "value", ConsentEventType.source_name,
+                                "time", ConsentEvent.event_authored_time,
+                                "opt_in", ConsentEvent.opt_in,
+                            )
+                    ), type_=JSON
+                ).label('consent_status'),
+            ).join(
+                ConsentEvent,
+                ConsentEvent.participant_id == DbParticipant.id
+            ).join(
+                 ConsentEventType,
+                 ConsentEventType.id == ConsentEvent.event_type_id,
+            ).group_by(DbParticipant.id).subquery()
+
             enrollment_subquery = sessions.query(
                 DbParticipant.id.label('enrollment_pid'),
                 func.json_object(
@@ -344,6 +373,7 @@ class ParticipantQuery(ObjectType):
                 ParticipantMapping,
                 DbParticipant,
                 enrollment_subquery.c.enrollment_status,
+                consent_subquery.c.consent_status,
                 DeactivatedEvent,
                 WithdrawalEvent,
                 ParticipantOpsDataElement
@@ -359,6 +389,9 @@ class ParticipantQuery(ObjectType):
             ).join(
                 enrollment_subquery,
                 enrollment_subquery.c.enrollment_pid == DbParticipant.id
+            ).join(
+                consent_subquery,
+                consent_subquery.c.consent_pid == DbParticipant.id
             ).join(
                 PairingEvent,
                 PairingEvent.participant_id == ParticipantMapping.ancillary_participant_id
