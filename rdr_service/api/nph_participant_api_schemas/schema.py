@@ -50,26 +50,9 @@ class Event(ObjectType):
         raise ValueError(f"{value} : Invalid Key -- Event Object Type")
 
 
-class GraphQLConsentEvent(ObjectType):
+class GraphQLConsentEvent(Event):
     """ NPH ConsentEvent """
-
-    value = SortableField(
-        NonNull(String), sort_modifier=lambda context: context.set_order_expression(context.sort_table.status)
-    )
-    time = SortableField(
-        DateTime,
-        sort_modifier=lambda context: context.set_order_expression(context.sort_table.time)  # Order by time
-    )
-
     opt_in = Field(NonNull(String))
-
-    @staticmethod
-    def sort(context, sort_info, value):
-        if value.upper() == "TIME":
-            return context.set_order_expression(sort_info.get('time'))
-        if value.upper() == 'VALUE':
-            return context.set_order_expression(sort_info.get('value'))
-        raise ValueError(f"{value} : Invalid Key -- Event Object Type")
 
 
 class EventCollection(ObjectType):
