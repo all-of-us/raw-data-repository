@@ -284,7 +284,7 @@ class BiobankOrderDao(UpdatableDao):
         # TODO(mwf) FHIR validation for identifiers?
         # Verify that no identifier is in use by another order.
         for identifier in obj.identifiers:
-            if identifier.system != FEDEX_TRACKING_NUMBER_URL:  # skip the check for fedex tracking numbers
+            if not identifier.system.endswith('tracking-number'):  # skip the check for tracking numbers
                 for existing in (
                     session.query(BiobankOrderIdentifier).filter(
                         BiobankOrderIdentifier.system == identifier.system,
