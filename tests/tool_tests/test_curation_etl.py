@@ -494,7 +494,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertEqual(records[0].startTime, TIME_2)
         self.assertEqual(records[0].endTime, TIME_2)
         self.assertEqual(records[0].vocabularyPath, 'gs://curation-vocabulary/aou_vocab_20220201/')
-        self.assertEqual(records[0].filterOptions,{'participant_origin': 'all'})
+        self.assertEqual(records[0].filterOptions['participant_origin'],'all')
 
         self.clear_table_after_test('cdr_etl_survey_history')
         self.clear_table_after_test('cdr_etl_run_history')
@@ -741,7 +741,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertFalse(vibrent_ppt_exists)
 
         run_history = self.history_dao.get_last_etl_run_info(self.session)
-        self.assertIn({'participant_origin': 'careevolution'}, run_history)
+        self.assertEqual('careevolution', run_history.filterOptions['participant_origin'])
 
         self.session.commit()
 
@@ -753,7 +753,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertTrue(vibrent_ppt_exists)
 
         run_history = self.history_dao.get_last_etl_run_info(self.session)
-        self.assertIn({'participant_origin': 'vibrent'}, run_history)
+        self.assertEqual('vibrent', run_history.filterOptions['participant_origin'])
 
         self.session.commit()
 
@@ -765,7 +765,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertTrue(vibrent_ppt_exists)
 
         run_history = self.history_dao.get_last_etl_run_info(self.session)
-        self.assertIn({'participant_origin': 'all'}, run_history)
+        self.assertEqual('all', run_history.filterOptions['participant_origin'])
 
     def test_participant_list(self):
         pids = list(range(10000,10010))
