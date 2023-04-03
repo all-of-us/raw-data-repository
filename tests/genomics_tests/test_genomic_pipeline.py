@@ -30,7 +30,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicAW2RawDao,
     GenomicIncidentDao,
     GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao, GenomicAW4RawDao, GenomicAW3RawDao)
+    GenomicGcDataFileMissingDao, GenomicAW4RawDao, GenomicAW3RawDao, GenomicDefaultBaseDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -52,7 +52,7 @@ from rdr_service.model.genomics import (
     GenomicJobRun,
     GenomicGCValidationMetrics,
     GenomicSampleContamination,
-    GenomicAW3Raw)
+    GenomicAW3Raw, GenomicAW4Raw)
 from rdr_service.model.participant import Participant
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
@@ -4803,7 +4803,10 @@ class GenomicPipelineTest(BaseTestCase):
         # Test AW4 Raw table
         genomic_pipeline.load_awn_manifest_into_raw_table(f"{bucket_name}/{sub_folder}/{file_name}", "aw4")
 
-        aw4_dao = GenomicAW4RawDao()
+        aw4_dao = GenomicDefaultBaseDao(
+            model_type=GenomicAW4Raw
+        )
+
         raw_records = aw4_dao.get_all()
         raw_records.sort(key=lambda x: x.biobank_id)
 
