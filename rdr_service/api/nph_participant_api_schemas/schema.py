@@ -65,6 +65,25 @@ class GraphQLConsentEvent(Event):
     opt_in = Field(NonNull(String))
 
 
+class GraphQLNphBioSpecimen(ObjectType):
+    orderID = Field(String)
+    studyID = Field(String)
+    visitID = Field(String)
+    specimenCode = Field(String)
+    timepointID = Field(String)
+    volume  = Field(String)
+    volumeUOM = Field(String)
+    status = Field(String)
+    clientID = Field(String)
+    collectionDateUTC = Field(String)
+    processingDateUTC = Field(String)
+    finalizedDateUTC = Field(String)
+    sampleID = Field(String)
+    kitID = Field(String)
+    limsID = Field(String)
+    biobankStatus = Field(String)
+
+
 class EventCollection(ObjectType):
     current = SortableField(Event)
     # TODO: historical field need to sort by newest to oldest for a given aspect of a participant’s data
@@ -270,6 +289,7 @@ class Participant(ObjectType):
     nphModule1ConsentStatus = List(
         GraphQLConsentEvent, name="nphModule1ConsentStatus", description="Sourced from NPH Schema"
     )
+    nphBiospecimens = List(GraphQLNphBioSpecimen, name="nphBiospecimens", description="NPH Biospecimens")
     nphWithdrawalStatus = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
     nphDeactivationStatus = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
     nphDateOfBirth = Field(String, name="nphDateOfBirth", description='Sourced from NPH Schema.')
