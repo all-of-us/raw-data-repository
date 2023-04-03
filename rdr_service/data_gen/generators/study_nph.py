@@ -14,7 +14,9 @@ from rdr_service.model.study_nph import (
     OrderedSample,
     SampleUpdate,
     BiobankFileExport,
-    SampleExport
+    SampleExport,
+    StoredSample,
+    StoredSampleStatus
 )
 from rdr_service.dao.rex_dao import RexStudyDao, RexParticipantMappingDao
 from rdr_service.dao.participant_dao import ParticipantDao as RdrParticipantDao
@@ -26,7 +28,8 @@ from rdr_service.dao.study_nph_dao import (
     NphOrderedSampleDao,
     NphSampleUpdateDao,
     NphBiobankFileExportDao,
-    NphSampleExportDao
+    NphSampleExportDao,
+    NphStoredSampleDao
 )
 
 
@@ -236,7 +239,11 @@ class GenFakeOrderedSample:
             "status": status,
         }
         nph_ordered_sample = OrderedSample(**nph_ordered_sample_params)
-        return self.nph_ordered_sample_dao.insert(nph_ordered_sample)
+        nph_ordered_sample_dao = NphOrderedSampleDao()
+        with nph_ordered_sample_dao.session() as session:
+            session.add(nph_ordered_sample)
+            session.commit()
+            return nph_ordered_sample
 
     def create_nph_ordered_sample_with_parent_sample_id(self, order_id: int) -> Tuple[OrderedSample, OrderedSample]:
         parent_ordered_sample = self.create_nph_ordered_sample(order_id=order_id)
@@ -290,6 +297,44 @@ class GenFakeSampleExport:
     def create_nph_sample_export(self, nph_sample_export_params: Dict[str, Any]) -> SampleExport:
         nph_sample_export = SampleExport(**nph_sample_export_params)
         return self.nph_sample_export_dao.insert(nph_sample_export)
+
+
+class GenFakeStoredSample:
+
+    def __init__(self) -> None:
+        self.nph_stored_sample = NphStoredSampleDao()
+        self.faker = Faker()
+        self.start_date = datetime.now() - timedelta(days=2)
+        self.end_date = datetime.now()
+
+    def create_nph_stored_sample(
+        self,
+        nph_participant: NphParticipant,
+        ignore_flag: Optional[int] = 0,
+    ) -> StoredSample:
+
+        date = self.faker.date_between_dates(self.start_date, self.end_date)
+        biobank_modified: datetime = datetime(year=date.year, month=date.month, day=date.day)
+        sample_id = self.faker.random_int(10E5, 10E6)
+        lims_id = ''.join(self.faker.random_letters(length=64))
+        status = choice([
+            StoredSampleStatus.SHIPPED,
+            StoredSampleStatus.RECEIVED,
+            StoredSampleStatus.DISPOSED,
+        ])
+        disposition = ''.join(self.faker.random_letters(length=256))
+
+        nph_stored_sample_params = {
+            "biobank_modified": biobank_modified,
+            "biobank_id": nph_participant.biobank_id,
+            "ignore_flag": ignore_flag,
+            "sample_id": sample_id,
+            "lims_id": lims_id,
+            "status": status,
+            "disposition": disposition
+        }
+        nph_stored_sample = StoredSample(**nph_stored_sample_params)
+        return self.nph_stored_sample.insert(nph_stored_sample)
 
 
 def _get_rdr_participants() -> Iterable[RdrParticpant]:
@@ -415,22 +460,23 @@ def generate_fake_orders(
     for sc in fake_study_categories:
         if sc.type_label == "timepoint":
             timepoint_sc.append(sc)
-    for _ in range(10):
-        fake_participant: NphParticipant = choice(fake_participants)
-        fake_study_category: StudyCategory = choice(timepoint_sc)
-        fake_created_site: Site = choice(fake_sites)
-        fake_collected_site: Site = choice(fake_sites)
-        fake_amended_site: Site = choice(fake_sites)
-        fake_finalized_site: Site = choice(fake_sites)
-        order = gen_fake_orders.create_nph_order(
-            study_category_id=fake_study_category.id,
-            participant_id=fake_participant.id,
-            created_site_id=fake_created_site.id,
-            collected_site_id=fake_collected_site.id,
-            amended_site_id=fake_amended_site.id,
-            finalized_site_id=fake_finalized_site.id,
-        )
-        orders.append(order)
+
+    for fake_participant in fake_participants:
+        for _ in range(2):
+            fake_study_category: StudyCategory = choice(timepoint_sc)
+            fake_created_site: Site = choice(fake_sites)
+            fake_collected_site: Site = choice(fake_sites)
+            fake_amended_site: Site = choice(fake_sites)
+            fake_finalized_site: Site = choice(fake_sites)
+            order = gen_fake_orders.create_nph_order(
+                study_category_id=fake_study_category.id,
+                participant_id=fake_participant.id,
+                created_site_id=fake_created_site.id,
+                collected_site_id=fake_collected_site.id,
+                amended_site_id=fake_amended_site.id,
+                finalized_site_id=fake_finalized_site.id,
+            )
+            orders.append(order)
     return orders
 
 
@@ -438,28 +484,36 @@ def generate_fake_ordered_samples(
     fake_orders: Iterable[Order]
 ) -> Iterable[OrderedSample]:
     gen_fake_ordered_samples = GenFakeOrderedSample()
-    ordered_samples: Iterable[OrderedSample] = []
-    for _ in range(10):
-        fake_order: Order = choice(fake_orders)
-        pos, cos = (
+    for fake_order in fake_orders:
+        for _ in range(3):
             gen_fake_ordered_samples.create_nph_ordered_sample_with_parent_sample_id(
                 order_id=fake_order.id
             )
-        )
-        ordered_samples.extend([pos, cos])
-    return ordered_samples
+    nph_ordered_sample_dao = NphOrderedSampleDao()
+    return list(nph_ordered_sample_dao.get_all())
 
 
 def generate_fake_sample_updates(
     fake_ordered_samples: Iterable[OrderedSample]
 ) -> Iterable[SampleUpdate]:
     gen_fake_sample_update = GenFakeSampleUpdate()
-    for _ in range(40):
-        ordered_sample = choice(fake_ordered_samples)
+    for _, ordered_sample in enumerate(fake_ordered_samples):
         ignore_flag = choice([0, 1])
         gen_fake_sample_update.create_nph_sample_update(
             ordered_sample=ordered_sample, ignore_flag=ignore_flag
         )
+
+
+def generate_fake_stored_samples(
+    fake_participants: Iterable[NphParticipant]
+) -> Iterable[StoredSample]:
+    stored_samples = []
+    gen_fake_stored_sample = GenFakeStoredSample()
+    for fake_participant in fake_participants:
+        stored_samples.append(
+            gen_fake_stored_sample.create_nph_stored_sample(nph_participant=fake_participant)
+        )
+    return stored_samples
 
 
 def main():
