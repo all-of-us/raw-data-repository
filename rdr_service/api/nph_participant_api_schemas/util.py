@@ -1,12 +1,18 @@
 from collections import defaultdict
+import json
 from dataclasses import dataclass, field
-from typing import Dict
-from graphene import List
+from typing import Dict, Tuple, Any, Iterable
+from graphene import List as GrapheneList
 
 from sqlalchemy.orm import Query, aliased
 
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, ConsentOptInTypes
 from rdr_service.api_util import parse_date
+from rdr_service.model.study_nph import Participant as NphParticipant, Order, OrderedSample, StoredSample
+from rdr_service.dao.study_nph_dao import NphOrderDao, NphOrderedSampleDao, NphStoredSampleDao
+from rdr_service.offline.study_nph_biobank_file_export import (
+    _get_parent_study_category, _get_study_category, _format_timestamp
+)
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.participant_enums import QuestionnaireStatus
 
@@ -15,9 +21,9 @@ from rdr_service.participant_enums import QuestionnaireStatus
 class QueryBuilder:
     query: Query
     order_expression = None
-    filter_expressions: List = field(default_factory=list)
+    filter_expressions: GrapheneList = field(default_factory=list)
     references: Dict = field(default_factory=dict)
-    join_expressions: List = field(default_factory=list)
+    join_expressions: GrapheneList = field(default_factory=list)
     sort_table = None
     table = None
 
@@ -76,6 +82,99 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
             consent_data
         ))
 
+    def _is_order_cancelled(order: Order) -> bool:
+        return order.status == "cancelled"
+
+    def _is_ordered_sample_cancelled(ordered_sample: OrderedSample) -> bool:
+        return ordered_sample.status == "cancelled"
+
+    def _get_biobank_status_and_lims_id(
+        nph_participant: NphParticipant, ordered_sample: OrderedSample
+    ) -> Iterable[Tuple[str]]:
+        participant_biobank_id = nph_participant.biobank_id
+        stored_sample_dao = NphStoredSampleDao()
+        with stored_sample_dao.session() as session:
+            stored_sample: StoredSample = session.query(StoredSample)\
+                .order_by(StoredSample.id.desc())\
+                .filter(
+                    StoredSample.biobank_id == participant_biobank_id,
+                    StoredSample.sample_id == ordered_sample.nph_sample_id
+                )\
+                .first()
+
+        if stored_sample:
+            return (
+                stored_sample.lims_id,
+                json.dumps({
+                    "biobank_modified": _format_timestamp(stored_sample.biobank_modified),
+                    "status": _format_timestamp(stored_sample.biobank_modified),
+                })
+            )
+        return None, None
+
+
+    def _get_biospecimens_for_order(order: Order) -> Iterable[Dict[str, Any]]:
+        nph_ordered_sample_dao = NphOrderedSampleDao()
+        with nph_ordered_sample_dao.session() as session:
+            ordered_samples_for_participant: Iterable[OrderedSample] = list(
+                session.query(OrderedSample).filter(OrderedSample.order_id == order.id).all()
+            )
+            for ordered_sample in ordered_samples_for_participant:
+                parent_study_category = _get_parent_study_category(order.category_id)
+                nph_module_id = _get_parent_study_category(parent_study_category.id)
+                sample_processing_ts = ordered_sample.collected if not ordered_sample.parent is None else None
+                collectionDateUTC = _format_timestamp((ordered_sample.parent or ordered_sample).collected)
+                processingDateUTC = _format_timestamp(sample_processing_ts)
+                finalizedDateUTC = _format_timestamp(ordered_sample.finalized) if ordered_sample.finalized else None
+                sample_is_cancelled = (
+                    _is_order_cancelled(order) or
+                    _is_ordered_sample_cancelled(ordered_sample)
+                )
+                kit_id = ""
+                if (ordered_sample.identifier or ordered_sample.test).startswith("ST"):
+                    kit_id = order.nph_order_id
+
+                sample_status = "Cancelled" if sample_is_cancelled else "Active"
+                biospecimen_dict = {
+                    "orderID": order.nph_order_id,
+                    "visitID": parent_study_category.name if parent_study_category else "",
+                    "studyID": f"NPH Module {nph_module_id.name}",
+                    "specimenCode": (ordered_sample.identifier or ordered_sample.test),
+                    "timepointID": _get_study_category(order.category_id).name,
+                    "volume": ordered_sample.volume,
+                    "volumeUOM": ordered_sample.volumeUnits,
+                    "status": sample_status,
+                    "clientID": order.client_id,
+                    "collectionDateUTC": collectionDateUTC,
+                    "processingDateUTC": processingDateUTC,
+                    "finalizedDateUTC": finalizedDateUTC,
+                    "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
+                    "kitID": kit_id,
+                    "limsID": None,
+                    "biobankStatus": None,
+                }
+                biobank_status_and_lims_id = _get_biobank_status_and_lims_id(nph_participant, ordered_sample)
+                if biobank_status_and_lims_id[0] is not None and biobank_status_and_lims_id[1] is not None:
+                    biospecimen_dict.update({
+                        "limsID": biobank_status_and_lims_id[0],
+                        "biobankStatus": biobank_status_and_lims_id[1],
+                    })
+                yield biospecimen_dict
+
+
+    def get_nph_biospecimens_for_participant(nph_participant: NphParticipant):
+        nph_order_dao = NphOrderDao()
+        with nph_order_dao.session() as session:
+            orders_for_participant: Iterable[Order] = list(
+                session.query(Order).filter(Order.participant_id == nph_participant.id).all()
+            )
+
+        biospecimens: Iterable[Dict[str, Any]] = []
+        for order in orders_for_participant:
+            for biospecimen in _get_biospecimens_for_order(order):
+                biospecimens.append(biospecimen)
+        return biospecimens
+
     def get_value_from_ops_data(participant_ops_data, enum):
         if not participant_ops_data:
             return QuestionnaireStatus.UNSET
@@ -119,6 +218,7 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
             },
             'nphEnrollmentStatus': get_enrollment_statuses(enrollment['enrollment_json']),
             'nphModule1ConsentStatus': get_consent_statuses(consents['consent_json']),
+            "nphBiospecimens": get_nph_biospecimens_for_participant(nph_participant),
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
                                  "time": summary.suspensionTime},
