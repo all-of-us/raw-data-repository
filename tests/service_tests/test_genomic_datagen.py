@@ -5,14 +5,13 @@ from rdr_service import clock
 from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao, GenomicDataGenOutputTemplateDao, \
     GenomicDataGenManifestSchemaDao
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicGCValidationMetricsDao, \
-    GenomicCVLSecondSampleDao, GenomicInformingLoopDao, GenomicResultWorkflowStateDao
+    GenomicCVLSecondSampleDao, GenomicInformingLoopDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.genomic_datagen_dao import GenomicDataGenRunDao, GenomicDataGenMemberRunDao
 from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus
 from rdr_service.services.genomic_datagen import ParticipantGenerator, GeneratorOutputTemplate, ManifestGenerator
-from rdr_service.genomic_enums import ResultsWorkflowState
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -672,14 +671,6 @@ class GenomicDataGenManifestGeneratorTest(BaseTestCase):
         members = self.member_dao.get_members_from_sample_ids(test_samples)
         self.assertEqual(2, len(members))
 
-        self.result_state_dao = GenomicResultWorkflowStateDao()
-
-        for member in members:
-            result_state = self.result_state_dao.get_by_member_id(member.id)
-            self.assertEqual("CVL_W3NS", result_state[0].results_workflow_state_str)
-            self.assertEqual(ResultsWorkflowState.CVL_W3NS, result_state[0].results_workflow_state)
-            self.assertEqual(1, member.cvlW3nsManifestJobRunID)
-
     def test_execute_internal_manifest_generation(self):
         self.data_generator.create_database_genomic_job_run(startTime=clock.CLOCK.now())
 
@@ -708,14 +699,6 @@ class GenomicDataGenManifestGeneratorTest(BaseTestCase):
         # Test Job Run ID and State
         members = self.member_dao.get_members_from_sample_ids(['1001', '1002'])
         self.assertEqual(2, len(members))
-
-        self.result_state_dao = GenomicResultWorkflowStateDao()
-
-        for member in members:
-            result_state = self.result_state_dao.get_by_member_id(member.id)
-            self.assertEqual("CVL_W3SR", result_state[0].results_workflow_state_str)
-            self.assertEqual(ResultsWorkflowState.CVL_W3SR, result_state[0].results_workflow_state)
-            self.assertEqual(2, member.cvlW3srManifestJobRunID)
 
     def test_execute_internal_manifest_with_sample_ids(self):
         self.data_generator.create_database_genomic_job_run(startTime=clock.CLOCK.now())

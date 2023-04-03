@@ -11,7 +11,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
     GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
     GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState, \
-    ResultsWorkflowState, ResultsModuleType, GenomicSampleSwapCategory
+    GenomicSampleSwapCategory
 
 
 class GenomicSet(Base):
@@ -332,28 +332,6 @@ class GenomicSetMember(Base):
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
-
-
-class GenomicResultWorkflowState(Base):
-    """
-    Used for storing results workflow state
-    """
-
-    __tablename__ = 'genomic_result_workflow_state'
-
-    id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
-    created = Column(DateTime, nullable=True)
-    modified = Column(DateTime, nullable=True)
-    genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False, index=True)
-    results_workflow_state = Column(Enum(ResultsWorkflowState), default=ResultsWorkflowState.UNSET)
-    results_workflow_state_str = Column(String(64), default="UNSET")
-    results_module = Column(Enum(ResultsModuleType), default=ResultsModuleType.UNSET, nullable=False)
-    results_module_str = Column(String(64), default="UNSET")
-    ignore_flag = Column(SmallInteger, nullable=False, default=0)
-
-
-event.listen(GenomicResultWorkflowState, "before_insert", model_insert_listener)
-event.listen(GenomicResultWorkflowState, "before_update", model_update_listener)
 
 
 class GenomicJobRun(Base):

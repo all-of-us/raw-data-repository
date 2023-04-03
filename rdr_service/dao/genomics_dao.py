@@ -23,7 +23,7 @@ from rdr_service import clock, code_constants, config
 from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus, \
-    ResultsWorkflowState, ResultsModuleType
+    ResultsModuleType
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
@@ -44,7 +44,7 @@ from rdr_service.model.genomics import (
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
-    GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
+    GenomicW3SCRaw, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead)
@@ -833,17 +833,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         member.genomicWorkflowState = new_state
         member.genomicWorkflowStateStr = new_state.name
         member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
-        self.update(member)
-
-    def update_member_results_state(self, member, new_state):
-        """
-        Sets the member's state to a new state
-        :param member:  ResultsWorkflowState
-        :param new_state:
-        """
-        member.resultsWorkflowState = new_state
-        member.resultsWorkflowStateStr = new_state.name
-        member.resultsWorkflowStateModifiedTime = clock.CLOCK.now()
         self.update(member)
 
     def get_blocklist_members_from_date(self, *, attributes, from_days=1):
@@ -3730,45 +3719,6 @@ class GenomicCVLSecondSampleDao(BaseDao):
 
     def get_id(self, obj):
         pass
-
-
-class GenomicResultWorkflowStateDao(BaseDao):
-
-    def __init__(self):
-        super(GenomicResultWorkflowStateDao, self).__init__(
-            GenomicResultWorkflowState, order_by_ending=['id'])
-
-    def from_client_json(self):
-        pass
-
-    def get_id(self, obj):
-        pass
-
-    def get_by_member_id(self, member_id, module_type=None):
-        with self.session() as session:
-            records = session.query(
-                GenomicResultWorkflowState
-            ).filter(
-                GenomicResultWorkflowState.genomic_set_member_id == member_id
-            )
-            if not module_type:
-                return records.all()
-
-            records = records.filter(
-                GenomicResultWorkflowState.results_module == module_type
-            ).one_or_none()
-
-            return records
-
-    def insert_new_result_record(self, *, member_id, module_type, state=None):
-        inserted_state = ResultsWorkflowState.CVL_W1IL if not state else state
-        self.insert(GenomicResultWorkflowState(
-            genomic_set_member_id=member_id,
-            results_workflow_state=inserted_state,
-            results_workflow_state_str=inserted_state.name,
-            results_module=module_type,
-            results_module_str=module_type.name
-        ))
 
 
 class GenomicQueriesDao(BaseDao):
