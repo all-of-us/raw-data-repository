@@ -6,7 +6,7 @@ from rdr_service.genomic.genomic_mappings import array_file_types_attributes, wg
 from rdr_service.genomic.genomic_storage_class import GenomicStorageClass
 from rdr_service.genomic_enums import GenomicWorkflowState, GenomicJob, GenomicSubProcessResult
 from rdr_service.model.genomics import GenomicStorageUpdate
-from rdr_service.offline import genomic_pipeline
+from rdr_service.offline.genomics import genomic_pipeline
 from tests.helpers.unittest_base import BaseTestCase
 
 

@@ -2536,7 +2536,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.data_file_dao = GenomicGcDataFileDao()
         self.cloud_req_dao = GenomicCloudRequestsDao()
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.dispatch_genomic_job_from_task')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.dispatch_genomic_job_from_task')
     def test_calculate_record_count_task_api(self, dispatch_job_mock):
 
         manifest = self.data_generator.create_database_genomic_manifest_file()
@@ -2571,7 +2571,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
             expected_payload.job,
             called_json_obj.job)
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.load_awn_manifest_into_raw_table')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.load_awn_manifest_into_raw_table')
     def test_load_manifests_raw_data_task_api(self, load_raw_awn_data_mock):
 
         from rdr_service.resource import main as resource_main
@@ -2613,7 +2613,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertIsNotNone(sample_results)
         self.assertEqual(sample_results['success'], True)
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
     def test_ingest_aw1_data_task_api(self, ingest_aw1_mock):
         aw1_file_path = "AW1_sample_manifests/test_aw1_file.csv"
         aw1_failure_file_path = "AW1_sample_manifests/test_aw1_FAILURE_file.csv"
@@ -2660,7 +2660,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(call_json['job'], GenomicJob.AW1F_MANIFEST)
         self.assertIsNotNone(call_json['file_data'])
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
     def test_ingest_aw2_data_task_api(self, ingest_aw1_mock):
         aw2_file_path = "AW2_data_manifests/test_aw2_file.csv"
 
@@ -2686,7 +2686,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(call_json['job'], GenomicJob.METRICS_INGESTION)
         self.assertIsNotNone(call_json['file_data'])
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
     def test_ingest_aw4_data_task_api(self, ingest_aw4_mock):
         aw4_wgs_file_path = "AW4_wgs_manifest/test_aw4_file.csv"
         aw4_array_file_path = "AW4_array_manifest/test_aw4_file.csv"
@@ -2735,7 +2735,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertIsNotNone(call_json['file_data'])
         self.assertEqual(call_json['subfolder'], 'AW4_wgs_manifest')
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
     def test_ingest_aw5_data_task_api(self, ingest_aw5_mock):
         aw5_wgs_file_path = "AW5_wgs_manifest/test_aw5_file.csv"
         aw5_array_file_path = "AW5_array_manifest/test_aw5_file.csv"
@@ -2782,7 +2782,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(call_json['job'], GenomicJob.AW5_WGS_MANIFEST)
         self.assertIsNotNone(call_json['file_data'])
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
     def test_ingest_cvl_job_task_api(self, ingest_mock):
 
         from rdr_service.resource import main as resource_main
@@ -2864,7 +2864,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertIsNotNone(insert_files_result)
         self.assertEqual(insert_files_result['success'], True)
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
     def test_create_cloud_record(self, ingest_mock):
 
         base_payload = {
@@ -2938,7 +2938,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         self.assertEqual(len(mappings), len(self.cloud_req_dao.get_all()))
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
     def test_batching_manifest_task_api(self, ingest_mock):
         mappings = {
             "aw1": {
@@ -3186,7 +3186,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertTrue(update_member['success'])
         self.assertTrue(update_mock.called)
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
     def test_manifest_execute_in_manifest_ingestions(self, pipeline_mock):
 
         from rdr_service.resource import main as resource_main
@@ -3447,7 +3447,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(gc_metrics['success'], True)
         self.assertEqual(ingest_mock.call_count, 1)
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
     def test_ingest_lr_job_task_api(self, ingest_mock):
 
         from rdr_service.resource import main as resource_main

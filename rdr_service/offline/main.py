@@ -23,8 +23,9 @@ from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.requests_log import RequestsLog
-from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status, \
-    antibody_study_pipeline, genomic_data_quality_pipeline, export_va_workqueue, genomic_cvl_pipeline
+from rdr_service.offline import biobank_samples_pipeline, sync_consent_files, update_ehr_status, \
+    antibody_study_pipeline, export_va_workqueue
+from rdr_service.offline.genomics import genomic_pipeline, genomic_cvl_pipeline, genomic_data_quality_pipeline
 from rdr_service.offline.ce_health_data_reconciliation_pipeline import CeHealthDataReconciliationPipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \

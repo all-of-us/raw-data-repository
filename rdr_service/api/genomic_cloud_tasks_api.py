@@ -18,7 +18,7 @@ from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
-from rdr_service.offline import genomic_pipeline
+from rdr_service.offline.genomics import genomic_dispatch
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
     genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, \
@@ -80,7 +80,7 @@ class BaseGenomicTaskApi(Resource):
         if not task_data.get('job') in self.disallowed_jobs:
             logging.info(f'Ingesting {_type} File: {self.data.get("filename")}')
             # Call pipeline function
-            genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+            genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
         else:
             logging.warning(f'Cannot run ingestion task. {task_data.get("job")} is currently disabled.')
 
@@ -95,7 +95,7 @@ class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
         logging.info(f'Loading {self.data.get("file_type").upper()} Raw Data: {self.data.get("filename")}')
 
         # Call pipeline function
-        genomic_pipeline.load_awn_manifest_into_raw_table(self.data.get("file_path"), self.data.get("file_type"))
+        genomic_dispatch.load_awn_manifest_into_raw_table(self.data.get("file_path"), self.data.get("file_type"))
 
         self.create_cloud_record()
 
@@ -566,7 +566,7 @@ class CalculateRecordCountTaskApi(BaseGenomicTaskApi):
             logging.info(f'Calculate Record Count task data: {task_data}')
 
             # Call pipeline function
-            genomic_pipeline.dispatch_genomic_job_from_task(JSONObject(task_data))
+            genomic_dispatch.dispatch_genomic_job_from_task(JSONObject(task_data))
 
         self.create_cloud_record()
 

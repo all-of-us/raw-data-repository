@@ -3,7 +3,7 @@ import datetime
 from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestFileDao, GenomicLongReadDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob
 from rdr_service.model.genomics import GenomicLRRaw
-from rdr_service.offline import genomic_pipeline
+from rdr_service.offline.genomics import genomic_dispatch
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -66,7 +66,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         }
 
         # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
     def test_full_lr_manifest_ingestion(self):
 
@@ -101,7 +101,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         manifest_type = 'lr'
         lr_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_pipeline.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_awn_manifest_into_raw_table(
             lr_manifest_file.filePath,
             manifest_type
         )

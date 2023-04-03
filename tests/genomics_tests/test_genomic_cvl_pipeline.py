@@ -19,7 +19,8 @@ from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvide
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.genomics import GenomicGCValidationMetrics, GenomicSetMember
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.offline import genomic_pipeline, genomic_cvl_pipeline
+from rdr_service.offline.genomics import genomic_cvl_pipeline
+from rdr_service.offline.genomics import genomic_dispatch
 from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
@@ -75,7 +76,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         }
 
         # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
     def test_w2sc_manifest_ingestion(self):
 
@@ -126,7 +127,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         manifest_type = 'w2sc'
         w2sc_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_pipeline.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_awn_manifest_into_raw_table(
             w2sc_manifest_file.filePath,
             manifest_type
         )
@@ -359,7 +360,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         manifest_type = 'w3ns'
         w3sc_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_pipeline.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_awn_manifest_into_raw_table(
             w3sc_manifest_file.filePath,
             manifest_type
         )
@@ -432,7 +433,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         manifest_type = 'w3sc'
         w3sc_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_pipeline.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_awn_manifest_into_raw_table(
             w3sc_manifest_file.filePath,
             manifest_type
         )
@@ -504,7 +505,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         manifest_type = 'w3ss'
         w3ss_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_pipeline.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_awn_manifest_into_raw_table(
             w3ss_manifest_file.filePath,
             manifest_type
         )
@@ -566,7 +567,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         manifest_type = 'w4wr'
         w4wr_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_pipeline.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_awn_manifest_into_raw_table(
             w4wr_manifest_file.filePath,
             manifest_type
         )
@@ -632,7 +633,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         manifest_type = 'w5nf'
         w5nf_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_pipeline.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_awn_manifest_into_raw_table(
             w5nf_manifest_file.filePath,
             manifest_type
         )
