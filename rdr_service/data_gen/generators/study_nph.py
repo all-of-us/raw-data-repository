@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple, Optional, Iterable
+from typing import List, Dict, Any, Tuple, Optional, Iterable
 from random import getrandbits, choice
 from datetime import datetime, timedelta
 from rdr_service.clock import FakeClock
@@ -211,7 +211,7 @@ class GenFakeOrderedSample:
         ]
         specimen_identifier = choice(specimen_identifiers)
         volume_units = self._get_volume_units(specimen_identifier)
-        nph_sample_id = ''.join(self.faker.random_letters(length=64))
+        nph_sample_id = str(self.faker.random_int(10E5, 10E7))
         test = ''.join(self.faker.random_letters(length=40))
         description = ''.join(self.faker.random_letters(length=256))
         collected_dt = self.faker.date_between_dates(self.start_date, self.end_date)
@@ -310,12 +310,12 @@ class GenFakeStoredSample:
     def create_nph_stored_sample(
         self,
         nph_participant: NphParticipant,
+        sample_id: str,
         ignore_flag: Optional[int] = 0,
     ) -> StoredSample:
 
         date = self.faker.date_between_dates(self.start_date, self.end_date)
         biobank_modified: datetime = datetime(year=date.year, month=date.month, day=date.day)
-        sample_id = self.faker.random_int(10E5, 10E6)
         lims_id = ''.join(self.faker.random_letters(length=64))
         status = choice([
             StoredSampleStatus.SHIPPED,
@@ -505,14 +505,17 @@ def generate_fake_sample_updates(
 
 
 def generate_fake_stored_samples(
-    fake_participants: Iterable[NphParticipant]
+    fake_participants: Iterable[NphParticipant], grouped_ordered_samples: Dict[int, List[OrderedSample]]
 ) -> Iterable[StoredSample]:
     stored_samples = []
     gen_fake_stored_sample = GenFakeStoredSample()
     for fake_participant in fake_participants:
-        stored_samples.append(
-            gen_fake_stored_sample.create_nph_stored_sample(nph_participant=fake_participant)
-        )
+        for ordered_sample in grouped_ordered_samples[fake_participant.id]:
+            stored_samples.append(
+                gen_fake_stored_sample.create_nph_stored_sample(
+                    nph_participant=fake_participant, sample_id=ordered_sample.nph_sample_id
+                )
+            )
     return stored_samples
 
 
