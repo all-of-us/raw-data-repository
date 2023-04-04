@@ -1,5 +1,6 @@
 import faker
-from typing import Iterable
+from typing import Iterable, Dict, List
+from collections import defaultdict
 from itertools import zip_longest
 from graphql import GraphQLSyntaxError
 import json
@@ -14,7 +15,7 @@ from rdr_service.model.participant import Participant as aouParticipant
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.model.rex import ParticipantMapping, Study
 from rdr_service.model.study_nph import (
-    PairingEvent, ConsentEventType, ConsentEvent, Participant as NphParticipant, Site as NphSite
+    PairingEvent, ConsentEventType, ConsentEvent, Participant as NphParticipant, Site as NphSite, OrderedSample, Order
 )
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.main import app
@@ -414,6 +415,18 @@ class TestQueryExecution(BaseTestCase):
         no_nph_dob = result.get('participant').get('edges')[1].get('node')
         self.assertTrue(no_nph_dob.get('nphDateOfBirth') == 'UNSET')
 
+    def _group_ordered_samples_by_participant(
+        self,
+        nph_participants: Iterable[NphParticipant],
+        grouped_orders: Dict[int, List[Order]],
+        grouped_ordered_samples: Dict[int, List[OrderedSample]],
+    ) -> List[OrderedSample]:
+        grouped_ordered_samples_by_participant = defaultdict(list)
+        for participant in nph_participants:
+            for order in grouped_orders[participant.id]:
+                grouped_ordered_samples_by_participant[participant.id].extend(grouped_ordered_samples[order.id])
+        return grouped_ordered_samples_by_participant
+
     def _create_test_sample_updates(self):
         participant_query = Query(NphParticipant)
         participant_query.session = self.session
@@ -430,12 +443,20 @@ class TestQueryExecution(BaseTestCase):
         )
         ordered_samples = generate_fake_ordered_samples(fake_orders=orders)
         generate_fake_sample_updates(fake_ordered_samples=ordered_samples)
-        generate_fake_stored_samples(nph_participants)
+        grouped_orders = defaultdict(list)
+        _grouped_ordered_samples = defaultdict(list)
+        for order in orders:
+            grouped_orders[order.participant_id].append(order)
+
+        for ordered_sample in ordered_samples:
+            _grouped_ordered_samples[ordered_sample.order_id].append(ordered_sample)
+        grouped_ordered_samples_by_participant = self._group_ordered_samples_by_participant(nph_participants, grouped_orders, _grouped_ordered_samples)
+        generate_fake_stored_samples(nph_participants, grouped_ordered_samples_by_participant)
 
     def test_nph_biospecimen_for_participant(self):
         mock_load_participant_data(self.session)
         self._create_test_sample_updates()
-        field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID timepointID limsID biobankStatus} "
+        field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID timepointID biobankStatus { limsID biobankModified status } } "
         query = simple_query(field_to_test)
 
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
