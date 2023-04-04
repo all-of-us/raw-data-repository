@@ -65,6 +65,15 @@ class GraphQLConsentEvent(Event):
     opt_in = Field(NonNull(String))
 
 
+class GraphQLNphBiobankStatus(ObjectType):
+    """
+    ObjectType to serialize biobankStatus field as a list of dictionaries.
+    """
+    limsID = Field(String)
+    biobankModified = Field(String)
+    status = Field(String)
+
+
 class GraphQLNphBioSpecimen(ObjectType):
     orderID = Field(String)
     studyID = Field(String)
@@ -81,7 +90,7 @@ class GraphQLNphBioSpecimen(ObjectType):
     sampleID = Field(String)
     kitID = Field(String)
     limsID = Field(String)
-    biobankStatus = Field(String)
+    biobankStatus = Field(List(GraphQLNphBiobankStatus))
 
 
 class EventCollection(ObjectType):
