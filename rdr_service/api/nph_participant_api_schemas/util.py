@@ -1,7 +1,6 @@
 from collections import defaultdict
-import json
 from dataclasses import dataclass, field
-from typing import Dict, Tuple, Any, Iterable
+from typing import Dict, Tuple, Any, Iterable, Iterator
 from graphene import List as GrapheneList
 
 from sqlalchemy.orm import Query, aliased
@@ -94,26 +93,23 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
         participant_biobank_id = nph_participant.biobank_id
         stored_sample_dao = NphStoredSampleDao()
         with stored_sample_dao.session() as session:
-            stored_sample: StoredSample = session.query(StoredSample)\
+            stored_samples: Iterable[StoredSample] = session.query(StoredSample)\
                 .order_by(StoredSample.id.desc())\
                 .filter(
                     StoredSample.biobank_id == participant_biobank_id,
                     StoredSample.sample_id == ordered_sample.nph_sample_id
                 )\
-                .first()
+                .all()
 
-        if stored_sample:
-            return (
-                stored_sample.lims_id,
-                json.dumps({
-                    "biobank_modified": _format_timestamp(stored_sample.biobank_modified),
-                    "status": _format_timestamp(stored_sample.biobank_modified),
-                })
-            )
-        return None, None
+        return [
+            {
+                "limsID": stored_sample.lims_id,
+                "biobankModified": _format_timestamp(stored_sample.biobank_modified),
+                "status": str(stored_sample.status),
+            } for stored_sample in stored_samples
+        ]
 
-
-    def _get_biospecimens_for_order(order: Order) -> Iterable[Dict[str, Any]]:
+    def _get_biospecimens_for_order(order: Order) -> Iterator[Dict[str, Any]]:
         nph_ordered_sample_dao = NphOrderedSampleDao()
         with nph_ordered_sample_dao.session() as session:
             ordered_samples_for_participant: Iterable[OrderedSample] = list(
@@ -150,15 +146,11 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                     "finalizedDateUTC": finalizedDateUTC,
                     "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
                     "kitID": kit_id,
-                    "limsID": None,
                     "biobankStatus": None,
                 }
                 biobank_status_and_lims_id = _get_biobank_status_and_lims_id(nph_participant, ordered_sample)
-                if biobank_status_and_lims_id[0] is not None and biobank_status_and_lims_id[1] is not None:
-                    biospecimen_dict.update({
-                        "limsID": biobank_status_and_lims_id[0],
-                        "biobankStatus": biobank_status_and_lims_id[1],
-                    })
+                if biobank_status_and_lims_id:
+                    biospecimen_dict.update({"biobankStatus": biobank_status_and_lims_id})
                 yield biospecimen_dict
 
 
