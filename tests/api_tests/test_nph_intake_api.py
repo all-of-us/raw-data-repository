@@ -5,7 +5,7 @@ from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphParticipantDao, NphSiteDao, NphParticipantEventActivityDao, \
     NphEnrollmentEventTypeDao, NphPairingEventDao, NphDefaultBaseDao, NphActivityDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
-from rdr_service.model.study_nph import ConsentEvent, EnrollmentEvent, WithdrawalEvent, DeactivatedEvent, \
+from rdr_service.model.study_nph import ConsentEvent, EnrollmentEvent, WithdrawalEvent, DeactivationEvent, \
     ParticipantOpsDataElement
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -27,7 +27,7 @@ class NphIntakeAPITest(BaseTestCase):
         self.nph_consent_event_dao = NphDefaultBaseDao(model_type=ConsentEvent)
         self.nph_enrollment_event_dao = NphDefaultBaseDao(model_type=EnrollmentEvent)
         self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
-        self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivatedEvent)
+        self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivationEvent)
         self.participant_ops_data = NphDefaultBaseDao(model_type=ParticipantOpsDataElement)
 
         self.rex_study_dao.insert(
@@ -173,9 +173,10 @@ class NphIntakeAPITest(BaseTestCase):
 
         enrollment_activity = self.nph_activity.get(1)
         pairing_activity = self.nph_activity.get(2)
+        deactivation_activity = self.nph_activity.get(5)
 
-        # pairing and enrollment ids
-        should_have_activity_ids = [enrollment_activity.id, pairing_activity.id]
+        # pairing, enrollment, deactivation ids
+        should_have_activity_ids = [enrollment_activity.id, pairing_activity.id, deactivation_activity.id]
 
         for event in participant_event_activities:
             current_participant_events = list(
@@ -222,7 +223,6 @@ class NphIntakeAPITest(BaseTestCase):
         # other events (should be null)
         self.assertTrue(self.nph_consent_event_dao.get_all() == [])
         self.assertTrue(self.nph_withdrawal_event_dao.get_all() == [])
-        self.assertTrue(self.nph_deactivation_event_dao.get_all() == [])
 
     def test_m2_operational_payload(self):
 
@@ -307,6 +307,7 @@ class NphIntakeAPITest(BaseTestCase):
         self.clear_table_after_test("nph.enrollment_event")
         self.clear_table_after_test("nph.consent_event")
         self.clear_table_after_test("nph.withdrawal_event")
+        self.clear_table_after_test("nph.deactivation_event")
         self.clear_table_after_test("nph.pairing_event_type")
         self.clear_table_after_test("nph.site")
         self.clear_table_after_test("nph.participant_event_activity")
