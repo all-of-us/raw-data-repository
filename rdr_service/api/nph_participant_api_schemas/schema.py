@@ -5,8 +5,18 @@ from sqlalchemy.orm import Query, aliased
 from sqlalchemy import and_, func
 from sqlalchemy.dialects.mysql import JSON
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX, NPH_STUDY_ID
-from rdr_service.model.study_nph import Participant as DbParticipant, Site as nphSite, PairingEvent, DeactivatedEvent, \
-    WithdrawalEvent, EnrollmentEvent, EnrollmentEventType, ParticipantOpsDataElement, ConsentEvent, ConsentEventType
+from rdr_service.model.study_nph import (
+    Participant as DbParticipant,
+    Site as nphSite,
+    PairingEvent,
+    DeactivationEvent,
+    WithdrawalEvent,
+    EnrollmentEvent,
+    EnrollmentEventType,
+    ParticipantOpsDataElement,
+    ConsentEvent,
+    ConsentEventType
+)
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping, Study
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
@@ -374,7 +384,7 @@ class ParticipantQuery(ObjectType):
                 DbParticipant,
                 enrollment_subquery.c.enrollment_status,
                 consent_subquery.c.consent_status,
-                DeactivatedEvent,
+                DeactivationEvent,
                 WithdrawalEvent,
                 ParticipantOpsDataElement
             ).join(
@@ -409,8 +419,8 @@ class ParticipantQuery(ObjectType):
                 ParticipantOpsDataElement,
                 ParticipantMapping.ancillary_participant_id == ParticipantOpsDataElement.participant_id
             ).outerjoin(
-                 DeactivatedEvent,
-                 ParticipantMapping.ancillary_participant_id == DeactivatedEvent.participant_id
+                 DeactivationEvent,
+                ParticipantMapping.ancillary_participant_id == DeactivationEvent.participant_id
             ).outerjoin(
                 WithdrawalEvent,
                 ParticipantMapping.ancillary_participant_id == WithdrawalEvent.participant_id

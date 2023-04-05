@@ -110,7 +110,7 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                 "time": summary.withdrawalAuthored
             },
             'nphDeactivationStatus': {
-                "value": "Deactivate" if deactivated else "NULL",
+                "value": "DEACTIVATED" if deactivated else "NULL",
                 "time": deactivated.event_authored_time if deactivated else None
             },
             'nphWithdrawalStatus': {
