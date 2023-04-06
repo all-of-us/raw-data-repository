@@ -78,6 +78,7 @@ class CurationExportClass(ToolBase):
         self.pid_list: List[int] = []
         self.include_surveys: List[str] = []
         self.exclude_surveys: List[str] = []
+        self.exclude_pid_list: List[int] = []
 
     @classmethod
     def _render_export_select(cls, export_sql, column_name_list):
@@ -629,7 +630,6 @@ class CurationExportClass(ToolBase):
         insert_query = insert(SrcClean).from_select(column_map.keys(), rolled_up_responses_select)
         session.execute(insert_query)
 
-
     def _select_participant_ids(self, session, origin:str, cutoff_date:datetime=None) -> None:
         """ Generates a list of PIDs to build the src_clean tables with"""
         self._set_rdr_model_schema([HPO, Participant, ParticipantSummary])
@@ -688,9 +688,12 @@ class CurationExportClass(ToolBase):
             query = query.filter(
                 Participant.participantOrigin == 'careevolution'
             )
+        if self.exclude_pid_list:
+            query = query.filter(
+                Participant.participantId.notin_(self.exclude_pid_list)
+            )
         result = query.order_by(Participant.participantId).all()
         self.pid_list = [pid[0] for pid in result]
-
 
     def populate_cdm_database(self):
         """ Generates the src_clean table which is used to populate the rest of the ETL tables """
@@ -725,6 +728,15 @@ class CurationExportClass(ToolBase):
             filter_options["participant_list_file"] = self.args.participant_list_file
         else:
             filter_options["participant_origin"] = self.args.participant_origin
+
+        if self.args.exclude_participants:
+            if not os.path.exists(self.args.exclude_participants):
+                raise NameError(f'File {self.args.exclude_participants} was not found.')
+            with open(self.args.exclude_participants, encoding='utf-8-sig') as pid_file:
+                lines = pid_file.readlines()
+                for line in lines:
+                    self.exclude_pid_list.append(int(line.strip()))
+            filter_options["participant_exclude_file"] = self.args.exclude_participants
 
         if self.args.include_surveys:
             surveys_file_name = self.args.include_surveys
@@ -848,7 +860,6 @@ class CurationExportClass(ToolBase):
 
     def _initialize_cdm(self):
         with self.get_session(database_name='cdm', alembic=True) as session:  # using alembic to get CREATE permission
-
             self._create_tables(session, [QuestionnaireAnswersByModule,
                                           SrcClean,
                                           Note,
@@ -2082,6 +2093,8 @@ def add_additional_arguments(parser):
                             action="store_true", default=False)
     cdm_parser.add_argument("--omit-measurements", help="Observation table won't include physical measurements",
                             action="store_true", default=False)
+    cdm_parser.add_argument("--exclude-participants", help="Path to a file containing a list of PIDs to exclude",
+                            type=str, default=None)
 
 
     manage_code_parser = subparsers.add_parser('exclude-code')

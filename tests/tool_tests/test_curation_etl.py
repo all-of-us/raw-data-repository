@@ -102,7 +102,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
     @staticmethod
     def run_cdm_data_generation(cutoff=None, vocabulary='gs://curation-vocabulary/aou_vocab_20220201/',
                                 participant_origin='all', participant_list_file=None, include_surveys=None,
-                                exclude_surveys=None):
+                                exclude_surveys=None, exclude_participants=None):
         CurationEtlTest.run_tool(CurationExportClass, tool_args={
             'command': 'cdm-data',
             'cutoff': cutoff,
@@ -110,7 +110,8 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             'participant_origin': participant_origin,
             'participant_list_file': participant_list_file,
             'include_surveys': include_surveys,
-            'exclude_surveys': exclude_surveys
+            'exclude_surveys': exclude_surveys,
+            'exclude_participants': exclude_participants
         })
 
     @staticmethod
@@ -862,3 +863,32 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         last_run = self.history_dao.get_last_etl_run_info(self.session)
         self.assertEqual(['Q2', 'Q3'], last_run.filterOptions['exclude_surveys'])
 
+    def test_exclude_participants(self):
+        pids = list(range(10000,10010))
+        for pid in pids:
+            participant = self.data_generator.create_database_participant(participantId=pid)
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                dateOfBirth=datetime(1982, 1, 9),
+                consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10))
+            self._setup_questionnaire_response(
+                participant,
+                self.questionnaire
+            )
+
+        self.run_cdm_data_generation(
+            participant_origin='all',
+            exclude_participants=test_data.data_path('test_curation_participant_list.txt')
+        )
+
+        excluded_participants = [10002, 10004, 10007]
+        for pid in pids:
+            pid_exists = self._exists_in_src_clean("participant_id", pid)
+            if pid in excluded_participants:
+                self.assertFalse(pid_exists)
+            else:
+                self.assertTrue(pid_exists)
+
+        run_history = self.history_dao.get_last_etl_run_info(self.session)
+        self.assertIn('test-data/test_curation_participant_list.txt',
+                         run_history.filterOptions['participant_exclude_file'])
