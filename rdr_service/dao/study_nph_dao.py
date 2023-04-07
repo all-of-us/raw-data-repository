@@ -479,6 +479,19 @@ class NphOrderDao(UpdatableDao):
         session.refresh(order)
         return order
 
+    def get_nph_biospecimens_for_participant(self, nph_participant: Participant):
+        with self.session() as session:
+            orders_for_participant: Iterable[Order] = list(
+                session.query(Order).filter(Order.participant_id == nph_participant.id).all()
+            )
+
+        biospecimens: Iterable[Dict[str, Any]] = []
+        nph_ordered_sample_dao = NphOrderedSampleDao()
+        for order in orders_for_participant:
+            for biospecimen in nph_ordered_sample_dao.get_biospecimens_for_order(nph_participant, order):
+                biospecimens.append(biospecimen)
+        return biospecimens
+
 
 class NphOrderedSampleDao(UpdatableDao):
     def __init__(self):
