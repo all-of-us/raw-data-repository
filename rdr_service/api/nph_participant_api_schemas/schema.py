@@ -82,14 +82,13 @@ class GraphQLNphBioSpecimen(ObjectType):
     timepointID = Field(String)
     volume  = Field(String)
     volumeUOM = Field(String)
-    status = Field(String)
+    orderedSampleStatus = Field(String)
     clientID = Field(String)
     collectionDateUTC = Field(String)
     processingDateUTC = Field(String)
     finalizedDateUTC = Field(String)
     sampleID = Field(String)
     kitID = Field(String)
-    limsID = Field(String)
     biobankStatus = Field(List(GraphQLNphBiobankStatus))
 
 

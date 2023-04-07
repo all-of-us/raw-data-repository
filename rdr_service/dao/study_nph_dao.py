@@ -539,7 +539,7 @@ class NphOrderedSampleDao(UpdatableDao):
                     "timepointID": nph_study_category_dao.get_study_category(order.category_id).name,
                     "volume": ordered_sample.volume,
                     "volumeUOM": ordered_sample.volumeUnits,
-                    "status": sample_status,
+                    "orderedSampleStatus": sample_status,
                     "clientID": order.client_id,
                     "collectionDateUTC": collectionDateUTC,
                     "processingDateUTC": processingDateUTC,
