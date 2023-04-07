@@ -911,6 +911,26 @@ class NphStoredSampleDao(BaseDao):
     def get_id(self, obj: StoredSample):
         return obj.id
 
+    def get_biobank_status_and_lims_id(
+        self, nph_participant: Participant, ordered_sample: OrderedSample
+    ) -> Iterable[Tuple[str]]:
+        participant_biobank_id = nph_participant.biobank_id
+        with self.session() as session:
+            stored_samples: Iterable[StoredSample] = session.query(StoredSample)\
+                .order_by(StoredSample.id.desc())\
+                .filter(
+                    StoredSample.biobank_id == participant_biobank_id,
+                    StoredSample.sample_id == ordered_sample.nph_sample_id,
+                )\
+                .all()
+
+        return [
+            {
+                "limsID": stored_sample.lims_id,
+                "biobankModified": _format_timestamp(stored_sample.biobank_modified),
+                "status": str(stored_sample.status),
+            } for stored_sample in stored_samples
+        ]
 
 class NphIncidentDao(UpdatableDao):
     def __init__(self):
