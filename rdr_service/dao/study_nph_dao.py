@@ -1,5 +1,6 @@
 import logging
-from typing import Tuple, Dict, List, Any, Optional
+from datetime import datetime
+from typing import Tuple, Dict, List, Any, Optional, Iterator, Iterable
 import json
 from types import SimpleNamespace as Namespace
 from typing import Optional
@@ -21,6 +22,10 @@ from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
 
 
 _logger = logging.getLogger("rdr_logger")
+
+
+def _format_timestamp(timestamp: datetime) -> str:
+    return timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') if timestamp else None
 
 
 class OrderStatus(messages.Enum):
@@ -170,6 +175,14 @@ class NphStudyCategoryDao(UpdatableDao):
             if result:
                 return True, result
         return False, None
+
+    def get_study_category(self, study_category_id: int) -> StudyCategory:
+        with self.session() as session:
+            return session.query(StudyCategory).get(study_category_id)
+
+    def get_parent_study_category(self, study_category_id: int) -> StudyCategory:
+        study_category = self.get_study_category(study_category_id)
+        return self.get_study_category(study_category.parent_id)
 
 
 class NphSiteDao(BaseDao):
