@@ -554,6 +554,7 @@ class GenomicQueryClass:
                 WHERE TRUE
                     AND raw.created >= :from_date
                     AND raw.ignore_flag = 0
+                    AND m.ignore_flag = 0
                     AND raw.biobank_id <> ""
                 GROUP BY raw.file_path, file_type
                 UNION
@@ -582,6 +583,7 @@ class GenomicQueryClass:
                 WHERE TRUE
                     AND raw.created >=  :from_date
                     AND raw.ignore_flag = 0
+                    AND m.ignore_flag = 0
                     AND raw.biobank_id <> ""
                 GROUP BY raw.file_path, file_type
             """
