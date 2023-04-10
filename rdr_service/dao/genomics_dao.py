@@ -4668,6 +4668,18 @@ class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
     def get_id(self, obj):
         return obj.id
 
+    @classmethod
+    def get_max_set_subquery(cls):
+        return sqlalchemy.orm.Query(
+            functions.max(GenomicLongRead.long_read_set)
+        ).subquery()
+
+    def get_max_set(self):
+        with self.session() as session:
+            return session.query(
+                self.get_max_set_subquery()
+            ).one()
+
     def get_new_long_read_members(self, *, biobank_ids: List[str], parent_tube_ids: List[str]) -> List:
         with self.session() as session:
             return session.query(
@@ -4697,10 +4709,6 @@ class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
             ).distinct().all()
 
     def get_l0_records_from_max_set(self) -> List[GenomicLongRead]:
-
-        # max_set_subquery = sqlalchemy.orm.Query(
-        #     GenomicLongRead.long_read_set
-        # ).subquery()
 
         with self.session() as _:
             pass

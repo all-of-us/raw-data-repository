@@ -1606,7 +1606,7 @@ class GenomicFileIngester:
     @staticmethod
     def _ingest_lr_lr_manifest(rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
-            GenomicLongReadWorkFlow().run_lr_workflow(rows)
+            GenomicLongReadWorkFlow.run_lr_workflow(rows)
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
