@@ -8,17 +8,12 @@ from rdr_service import clock
 from rdr_service.dao import database_factory
 from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao, GenomicDataGenRunDao, \
     GenomicDataGenMemberRunDao, GenomicDataGenOutputTemplateDao, GenomicDataGenManifestSchemaDao
-from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicJobRunDao, GenomicResultWorkflowStateDao, \
-    GenomicGCValidationMetricsDao
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicJobRunDao, GenomicGCValidationMetricsDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider, ManifestCompiler
-from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
-    ResultsWorkflowState, GenomicManifestTypes
-from rdr_service.model.genomics import (
-    GenomicSetMember,
-    GenomicResultWorkflowState
-)
+from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes
+from rdr_service.model.genomics import GenomicSetMember
 from rdr_service.data_gen.generators.data_generator import DataGenerator
 
 
@@ -501,10 +496,8 @@ class ManifestGenerator:
             self.job_run_dao = GenomicJobRunDao()
             self.job_run = self.job_run_dao.insert_run_record(self.job)
             self.member_dao = GenomicSetMemberDao()
-            self.results_state_dao = GenomicResultWorkflowStateDao()
 
             self._set_member_run_id_attribute()
-            self._set_pipeline_state()
 
         return self
 
@@ -659,16 +652,6 @@ class ManifestGenerator:
         # Update job run ID
         self.member_dao.update_member_job_run_id(member_ids, self.job_run.id, self.member_run_id_attribute)
 
-        # Insert results workflow state
-        for member in members:
-            self.results_state_dao.insert(
-                GenomicResultWorkflowState(
-                    genomic_set_member_id=member.id,
-                    results_workflow_state=self.pipeline_state,
-                    results_workflow_state_str=self.pipeline_state.name,
-                )
-            )
-
     @staticmethod
     def _prepare_model_column(field):
         field_tuple = (field.source_value.split('.')[0],
@@ -696,8 +679,4 @@ class ManifestGenerator:
 
         self.member_run_id_attribute = columns[self.member_run_id_column]
 
-    def _set_pipeline_state(self):
-        state_name = f"{self.project_name.upper()}_{self.template_name.upper()}"
-        self.pipeline_state = ResultsWorkflowState.lookup_by_name(state_name)
-        return self.pipeline_state
 
