@@ -11,7 +11,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
     GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
     GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState, \
-    GenomicSampleSwapCategory
+    GenomicSampleSwapCategory, GenomicLongReadPlatform
 
 
 class GenomicSet(Base):
@@ -1646,7 +1646,7 @@ class GenomicLongRead(Base):
     sample_id = Column(String(80), nullable=True, index=True)
     genome_type = Column(String(80), nullable=False, default='aou_long_read')
     lr_site_id = Column(String(11), nullable=False)
-    long_read_platform = Column(String(80), nullable=False, index=True)
+    long_read_platform = Column(Enum(GenomicLongReadPlatform), default=GenomicLongReadPlatform.UNSET)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
     long_read_set = Column(Integer, nullable=False, default=0)
 

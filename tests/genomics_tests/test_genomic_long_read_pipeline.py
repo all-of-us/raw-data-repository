@@ -2,7 +2,7 @@ import datetime
 from unittest import mock
 
 from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestFileDao, GenomicLongReadDao
-from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob
+from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicLongReadPlatform
 from rdr_service.model.genomics import GenomicLRRaw
 from rdr_service.offline.genomics import genomic_dispatch
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
@@ -83,7 +83,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.biobank_id is not None for obj in long_read_members))
         self.assertTrue(all(obj.sample_id is None for obj in long_read_members))
         self.assertTrue(all(obj.genome_type == 'aou_long_read' for obj in long_read_members))
-        self.assertTrue(all(obj.long_read_platform == 'pacbio_css' for obj in long_read_members))
+        self.assertTrue(all(obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CSS for obj in long_read_members))
         self.assertTrue(all(obj.lr_site_id == 'bcm' for obj in long_read_members))
         self.assertTrue(all(obj.genomic_set_member_id is not None for obj in long_read_members))
         self.assertTrue(all(obj.long_read_set == 1 for obj in long_read_members))

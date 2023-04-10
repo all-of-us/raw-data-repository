@@ -365,3 +365,9 @@ class GenomicSampleSwapCategory(messages.Enum):
     RESULT_NOT_READY = 1
     RESULT_READY_NOT_VIEWED = 2
     RESULT_READY_VIEWED = 3
+
+
+class GenomicLongReadPlatform(messages.Enum):
+    UNSET = 0
+    ONT = 1
+    PACBIO_CSS = 2
