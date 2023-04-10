@@ -3623,10 +3623,7 @@ class ManifestDefinitionProvider:
             GenomicManifestTypes.LR_L0: {
                 'output_filename':
                     f'{LR_L0_MANIFEST_SUBFOLDER}/LongRead-Manifest-AoU-{now_formatted}.csv',
-                'query': self.long_read_dao.get_l0_records_from_max_set,
-                'params': {
-                    'max_set': self.kwargs.get('max_set')
-                }
+                'query': self.long_read_dao.get_l0_records_from_max_set
             },
         }
         def_config = def_config[manifest_type]
