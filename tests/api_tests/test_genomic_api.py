@@ -3489,3 +3489,37 @@ class GenomicCloudTasksApiTest(BaseTestCase):
                 call_json['file_data']['manifest_type'],
                 lr_data['manifest_type']
             )
+
+    @mock.patch('rdr_service.offline.genomics.genomic_long_read_pipeline.lr_l0_manifest_workflow')
+    def test_generate_l0_manifest_api(self, ingest_mock):
+
+        from rdr_service.resource import main as resource_main
+
+        data = {}
+
+        manifest_generation = self.send_post(
+            local_path='GenerateManifestApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(manifest_generation)
+        self.assertEqual(manifest_generation['success'], False)
+        self.assertEqual(ingest_mock.call_count, 0)
+
+        data = {
+            'manifest_type': 'l0'
+        }
+
+        manifest_generation = self.send_post(
+            local_path='GenerateManifestApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(manifest_generation)
+        self.assertEqual(manifest_generation['success'], True)
+        self.assertEqual(ingest_mock.call_count, 1)
+

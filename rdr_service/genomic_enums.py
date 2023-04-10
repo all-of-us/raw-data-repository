@@ -164,8 +164,10 @@ class GenomicJob(messages.Enum):
     LOAD_CVL_W5NF_TO_RAW_TABLE = 259
 
     LR_LR_WORKFLOW = 300
+    LR_L0_WORKFLOW = 301
 
     LOAD_LR_TO_RAW_TABLE = 350
+    LOAD_L0_TO_RAW_TABLE = 351
 
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
@@ -318,6 +320,7 @@ class GenomicManifestTypes(messages.Enum):
     CVL_W1IL_PGX = 26
     CVL_W1IL_HDR = 27
     LR_LR = 28
+    LR_L0 = 29
 
 
 class GenomicContaminationCategory(messages.Enum):

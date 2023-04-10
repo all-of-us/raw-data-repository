@@ -18,7 +18,7 @@ from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
-from rdr_service.offline.genomics import genomic_dispatch
+from rdr_service.offline.genomics import genomic_dispatch, genomic_long_read_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
     genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, \
@@ -752,6 +752,28 @@ class GenomicGCMetricsUpsertApi(BaseGenomicTaskApi):
             data_to_upsert=payload_dict,
             existing_id=metric_id
         )
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
+class GenerateManifestApi(BaseGenomicTaskApi):
+    """
+    Cloud task endpoint: Execute manifest generation
+    """
+    def post(self):
+        super().post()
+        manifest_type = self.data.get('manifest_type')
+        generate_manifest_map = {
+            'l0': genomic_long_read_pipeline.lr_l0_manifest_workflow
+        }
+
+        run_manifest_generation = generate_manifest_map.get(manifest_type, None)
+        if not run_manifest_generation:
+            logging.warning(f'Genomics Manifest {manifest_type} is not available for generation.')
+            return {"success": False}
+
+        run_manifest_generation()
 
         logging.info('Complete.')
         return {"success": True}

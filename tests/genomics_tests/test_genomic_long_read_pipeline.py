@@ -1,4 +1,5 @@
 import datetime
+from unittest import mock
 
 from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestFileDao, GenomicLongReadDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob
@@ -73,7 +74,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.execute_base_lr_ingestion(
             test_file='RDR_AoU_LR_Requests.csv',
             job_id=GenomicJob.LR_LR_WORKFLOW,
-            manifest_type=GenomicManifestTypes.LR_LR,
+            manifest_type=GenomicManifestTypes.LR_LR
         )
 
         long_read_members = self.long_read_dao.get_all()
@@ -85,6 +86,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.long_read_platform == 'pacbio_css' for obj in long_read_members))
         self.assertTrue(all(obj.lr_site_id == 'bcm' for obj in long_read_members))
         self.assertTrue(all(obj.genomic_set_member_id is not None for obj in long_read_members))
+        self.assertTrue(all(obj.long_read_set == 1 for obj in long_read_members))
 
     def test_lr_manifest_to_raw_ingestion(self):
 
@@ -115,3 +117,20 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.long_read_platform is not None for obj in lr_raw_records))
         self.assertTrue(all(obj.lr_site_id is not None for obj in lr_raw_records))
         self.assertTrue(all(obj.parent_tube_id is not None for obj in lr_raw_records))
+
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_full_lr_to_l0_cloud_task_manifest(self, cloud_task_mock):
+
+        self.execute_base_lr_ingestion(
+            test_file='RDR_AoU_LR_Requests.csv',
+            job_id=GenomicJob.LR_LR_WORKFLOW,
+            manifest_type=GenomicManifestTypes.LR_LR
+        )
+
+        self.assertEqual(cloud_task_mock.called, True)
+        self.assertEqual(cloud_task_mock.call_count, 1)
+
+        call_json = cloud_task_mock.call_args[0][0]
+        self.assertTrue(len(call_json), 1)
+        self.assertTrue(call_json.get('manifest_type') == 'l0')
+

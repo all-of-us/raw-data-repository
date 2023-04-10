@@ -135,19 +135,26 @@ class GenomicJobController:
         logging.info(f'Beginning {self.job_id.name} workflow')
         self.job_run = self._create_run(self.job_id)
         slack_config = config.getSettingJson(RDR_SLACK_WEBHOOKS, {})
-        webbook_url = None
-
         if slack_config.get('rdr_genomic_alerts'):
             webbook_url = slack_config.get('rdr_genomic_alerts')
-
-        self.genomic_alert_slack = SlackMessageHandler(
-            webhook_url=webbook_url
-        )
-
+            self.genomic_alert_slack = SlackMessageHandler(
+                webhook_url=webbook_url
+            )
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.execute_auto_generation()
         self._end_run()
+
+    def execute_auto_generation(self):
+        auto_generation_map = {
+            GenomicJob.LR_LR_WORKFLOW: 'l0'
+        }
+        manifest_generation = auto_generation_map.get(self.job_id, None)
+        if manifest_generation:
+            self.execute_cloud_task({
+                'manifest_type': manifest_generation
+            }, 'genomic_generate_manifest')
 
     def insert_genomic_manifest_file_record(self):
         """
@@ -2011,11 +2018,9 @@ class GenomicJobController:
 
     @staticmethod
     def execute_cloud_task(payload, endpoint):
-        if GAE_PROJECT == 'localhost':
-            return
-
-        cloud_task = GCPCloudTask()
-        cloud_task.execute(endpoint=endpoint, payload=payload, queue='genomics')
+        if GAE_PROJECT != 'localhost':
+            cloud_task = GCPCloudTask()
+            cloud_task.execute(endpoint=endpoint, payload=payload, queue='genomics')
 
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
@@ -2170,11 +2175,8 @@ class DataQualityJobController:
         :return: dictionary of the results of a workflow
         """
         logging.info(f"Executing {self.job}")
-
         job_function = self.get_job_registry_entry(self.job)
-
         result_data = job_function(**kwargs)
-
         return result_data
 
     def get_report(self, **kwargs):

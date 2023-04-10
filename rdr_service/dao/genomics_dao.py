@@ -4718,9 +4718,17 @@ class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
     def get_id(self, obj):
         return obj.id
 
+    def get_max_set(self) -> List[GenomicLongRead]:
+        with self.session() as session:
+            return session.query(
+                functions.max(
+                    GenomicLongRead.long_read_set
+                )
+            ).one()
+
     def get_new_long_read_members(self, *, biobank_ids: List[str], parent_tube_ids: List[str]) -> List:
         with self.session() as session:
-            records = session.query(
+            return session.query(
                 GenomicSetMember.id.label('genomic_set_member_id'),
                 GenomicSetMember.biobankId.label('biobank_id')
             ).join(
@@ -4744,5 +4752,7 @@ class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.biobankId.in_(biobank_ids),
                 GenomicSetMember.gcManifestParentSampleId.in_(parent_tube_ids)
-            ).distinct()
-            return records.all()
+            ).distinct().all()
+
+    def get_l0_records_from_max_set(self, max_set: int) -> List:
+        pass

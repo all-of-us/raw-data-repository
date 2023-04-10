@@ -1670,6 +1670,7 @@ class GenomicLongRead(Base):
     lr_site_id = Column(String(11), nullable=False)
     long_read_platform = Column(String(80), nullable=False, index=True)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
+    long_read_set = Column(Integer, nullable=False, default=0)
 
 
 event.listen(GenomicLongRead, 'before_insert', model_insert_listener)
@@ -1699,3 +1700,33 @@ class GenomicLRRaw(Base):
 
 event.listen(GenomicLRRaw, 'before_insert', model_insert_listener)
 event.listen(GenomicLRRaw, 'before_update', model_update_listener)
+
+
+class GenomicL0Raw(Base):
+    """
+    Raw data from L0 files
+    """
+    __tablename__ = 'genomic_l0_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    collection_tube_id = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    ny_flag = Column(String(255), nullable=True)
+    validation_passed = Column(String(255), nullable=True)
+    ai_an = Column(String(255), nullable=True)
+    parent_tube_id = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL0Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicL0Raw, 'before_update', model_update_listener)
