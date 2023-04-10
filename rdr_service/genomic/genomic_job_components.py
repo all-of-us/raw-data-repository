@@ -63,7 +63,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     UserEventMetricsDao,
     GenomicQueriesDao,
-    GenomicResultWorkflowStateDao, GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao)
+    GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
