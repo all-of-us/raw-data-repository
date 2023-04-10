@@ -171,3 +171,4 @@ class QuestionnaireResponseExtension(Base):
     url = Column(String(1024))
     valueCode = Column('value_code', String(512))
     valueString = Column('value_string', String(512))
+    valueDateTime = Column('value_datetime', UTCDateTime)

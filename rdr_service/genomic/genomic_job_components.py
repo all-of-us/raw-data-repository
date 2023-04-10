@@ -19,7 +19,7 @@ from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.genomic.genomic_long_read import GenomicLongReadWorkFlow
-from rdr_service.genomic_enums import ResultsModuleType, ResultsWorkflowState
+from rdr_service.genomic_enums import ResultsModuleType
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
@@ -138,7 +138,6 @@ class GenomicFileIngester:
         self.manifest_dao = GenomicManifestFileDao()
         self.incident_dao = GenomicIncidentDao()
         self.user_metrics_dao = UserEventMetricsDao()
-        self.results_workflow_dao = GenomicResultWorkflowStateDao()
         self.set_dao = None
         self.cvl_second_sample_dao = None
 
@@ -1428,14 +1427,6 @@ class GenomicFileIngester:
 
         self.member_dao.insert(new_member_wgs)
 
-    @staticmethod
-    def get_result_module(module_str):
-        results_attr_mapping = {
-            'hdrv1': ResultsModuleType.HDRV1,
-            'pgxv1': ResultsModuleType.PGXV1,
-        }
-        return results_attr_mapping.get(module_str)
-
     def _base_cvl_ingestion(self, **kwargs):
         row_copy = self._clean_row_keys(kwargs.get('row'))
         biobank_id = row_copy.get('biobankid')
@@ -1459,14 +1450,6 @@ class GenomicFileIngester:
         setattr(member, kwargs.get('run_attr'), self.job_run_id)
         self.member_dao.update(member)
 
-        # result workflow state
-        if kwargs.get('result_state') and kwargs.get('module_type'):
-            self.results_workflow_dao.insert_new_result_record(
-                member_id=member.id,
-                module_type=kwargs.get('module_type'),
-                state=kwargs.get('result_state')
-            )
-
         return row_copy, member
 
     def _ingest_cvl_w2sc_manifest(self, rows):
@@ -1479,9 +1462,7 @@ class GenomicFileIngester:
             for row in rows:
                 self._base_cvl_ingestion(
                     row=row,
-                    run_attr='cvlW2scManifestJobRunID',
-                    result_state=ResultsWorkflowState.CVL_W2SC,
-                    module_type=ResultsModuleType.HDRV1
+                    run_attr='cvlW2scManifestJobRunID'
                 )
 
             return GenomicSubProcessResult.SUCCESS
@@ -1499,9 +1480,7 @@ class GenomicFileIngester:
             for row in rows:
                 self._base_cvl_ingestion(
                     row=row,
-                    run_attr='cvlW3nsManifestJobRunID',
-                    result_state=ResultsWorkflowState.CVL_W3NS,
-                    module_type=ResultsModuleType.HDRV1
+                    run_attr='cvlW3nsManifestJobRunID'
                 )
 
             return GenomicSubProcessResult.SUCCESS
@@ -1519,9 +1498,7 @@ class GenomicFileIngester:
             for row in rows:
                 row_copy, member = self._base_cvl_ingestion(
                     row=row,
-                    run_attr='cvlW3scManifestJobRunID',
-                    result_state=ResultsWorkflowState.CVL_W3SC,
-                    module_type=ResultsModuleType.HDRV1
+                    run_attr='cvlW3scManifestJobRunID'
                 )
                 if not (row_copy and member):
                     continue
@@ -1549,9 +1526,7 @@ class GenomicFileIngester:
             for row in rows:
                 row_copy, member = self._base_cvl_ingestion(
                     row=row,
-                    run_attr='cvlW3ssManifestJobRunID',
-                    result_state=ResultsWorkflowState.CVL_W3SS,
-                    module_type=ResultsModuleType.HDRV1
+                    run_attr='cvlW3ssManifestJobRunID'
                 )
                 if not (row_copy and member):
                     continue
@@ -1585,20 +1560,17 @@ class GenomicFileIngester:
             'hdrv1': 'cvlW4wrHdrManifestJobRunID',
             'pgxv1': 'cvlW4wrPgxManifestJobRunID'
         }
-        run_id, module = None, None
+        run_id = None
         for result_key in run_attr_mapping.keys():
             if result_key in self.file_obj.fileName.lower():
                 run_id = run_attr_mapping[result_key]
-                module = self.get_result_module(result_key)
                 break
         try:
             for row in rows:
                 row_copy, member = self._base_cvl_ingestion(
-                                        row=row,
-                                        run_attr=run_id,
-                                        result_state=ResultsWorkflowState.CVL_W4WR,
-                                        module_type=module
-                                    )
+                    row=row,
+                    run_attr=run_id,
+                )
                 if not (row_copy and member):
                     continue
 
@@ -1612,20 +1584,17 @@ class GenomicFileIngester:
             'hdrv1': 'cvlW5nfHdrManifestJobRunID',
             'pgxv1': 'cvlW5nfPgxManifestJobRunID'
         }
-        run_id, module = None, None
+        run_id = None
         for result_key in run_attr_mapping.keys():
             if result_key in self.file_obj.fileName.lower():
                 run_id = run_attr_mapping[result_key]
-                module = self.get_result_module(result_key)
                 break
         try:
             for row in rows:
                 row_copy, member = self._base_cvl_ingestion(
-                                        row=row,
-                                        run_attr=run_id,
-                                        result_state=ResultsWorkflowState.CVL_W5NF,
-                                        module_type=module,
-                                    )
+                    row=row,
+                    run_attr=run_id,
+                )
                 if not (row_copy and member):
                     continue
 
@@ -1634,7 +1603,8 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
-    def _ingest_lr_lr_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
+    @staticmethod
+    def _ingest_lr_lr_manifest(rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
             GenomicLongReadWorkFlow().run_lr_workflow(rows)
             return GenomicSubProcessResult.SUCCESS
@@ -3695,7 +3665,6 @@ class ManifestCompiler:
         # Dao components
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
-        self.results_workflow_dao = GenomicResultWorkflowStateDao()
 
     def generate_and_transfer_manifest(
         self,
@@ -3827,7 +3796,6 @@ class ManifestCompiler:
                 'member_ids': member_ids
             })
 
-        cvl_manifest_data = CVLManifestData(manifest_type)
         members = self.member_dao.get_members_from_member_ids(all_member_ids)
 
         for member in members:
@@ -3840,14 +3808,6 @@ class ManifestCompiler:
                 )
                 if new_wf_state or new_wf_state != member.genomicWorkflowState:
                     self.member_dao.update_member_workflow_state(member, new_wf_state)
-
-            # result workflow state
-            if cvl_manifest_data.is_cvl_manifest:
-                self.results_workflow_dao.insert_new_result_record(
-                    member_id=member.id,
-                    module_type=cvl_manifest_data.module_type,
-                    state=cvl_manifest_data.result_state
-                )
 
         # Updates job run field on set member
         if self.manifest_def.job_run_field:
@@ -3957,33 +3917,3 @@ class ManifestCompiler:
 
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
-
-
-class CVLManifestData:
-    result_state = None
-    module_type = ResultsModuleType.HDRV1
-    is_cvl_manifest = True
-
-    def __init__(self, manifest_type: GenomicManifestTypes):
-        self.manifest_type = manifest_type
-        self.get_is_cvl_manifest()
-
-    def get_is_cvl_manifest(self):
-        if 'cvl' not in self.manifest_type.name.lower():
-            self.is_cvl_manifest = False
-            return
-
-        self.get_module_type()
-        self.get_result_state()
-
-    def get_module_type(self) -> ResultsModuleType:
-        if 'pgx' in self.manifest_type.name.lower():
-            self.module_type = ResultsModuleType.PGXV1
-        return self.module_type
-
-    def get_result_state(self) -> ResultsWorkflowState:
-        manifest_name = self.manifest_type.name.rsplit('_', 1)[0] \
-            if self.manifest_type.name.count('_') > 1 else \
-            self.manifest_type.name
-        self.result_state = ResultsWorkflowState.lookup_by_name(manifest_name)
-        return self.result_state

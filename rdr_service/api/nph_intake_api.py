@@ -15,7 +15,7 @@ from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphIntakeDao, NphParticipantEventActivityDao, NphActivityDao, \
     NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao, NphConsentEventTypeDao, \
     NphParticipantDao
-from rdr_service.model.study_nph import WithdrawalEvent, DeactivatedEvent, ConsentEvent, EnrollmentEvent, \
+from rdr_service.model.study_nph import WithdrawalEvent, DeactivationEvent, ConsentEvent, EnrollmentEvent, \
     ParticipantOpsDataElement
 
 MAX_PAYLOAD_LENGTH = 50
@@ -45,7 +45,7 @@ class PostIntakePayload:
         self.nph_consent_event_dao = NphDefaultBaseDao(model_type=ConsentEvent)
         self.nph_enrollment_event_dao = NphDefaultBaseDao(model_type=EnrollmentEvent)
         self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
-        self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivatedEvent)
+        self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivationEvent)
 
         self.participant_op_data = NphDefaultBaseDao(model_type=ParticipantOpsDataElement)
         self.bundle_identifier = None
@@ -310,7 +310,7 @@ class PostIntakePayload:
                     activity_data=activity_data
                 )
 
-                if activity_data.name in ('consent', 'withdrawal', 'deactivate'):
+                if activity_data.name in ('consent', 'withdrawal', 'deactivation'):
                     summary_update = {
                         'event_type': activity_data.name,
                         'participant_id': participant_id,

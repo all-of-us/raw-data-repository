@@ -275,8 +275,8 @@ event.listen(WithdrawalEvent, "before_insert", model_insert_listener)
 event.listen(WithdrawalEvent, "before_update", model_update_listener)
 
 
-class DeactivatedEvent(NphBase):
-    __tablename__ = "deactivated_event"
+class DeactivationEvent(NphBase):
+    __tablename__ = "deactivation_event"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -287,8 +287,8 @@ class DeactivatedEvent(NphBase):
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
 
 
-event.listen(DeactivatedEvent, "before_insert", model_insert_listener)
-event.listen(DeactivatedEvent, "before_update", model_update_listener)
+event.listen(DeactivationEvent, "before_insert", model_insert_listener)
+event.listen(DeactivationEvent, "before_update", model_update_listener)
 
 
 class SampleUpdate(NphBase):

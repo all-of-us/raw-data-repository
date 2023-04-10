@@ -79,6 +79,23 @@
                     "start": "2022-02-15T16:51:02-05:00"
                 }
             }
+        },
+        {
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/deactivation/1000100000000",
+			"resource": {
+                "resourceType": "Encounter",
+                "status": "finished",
+                "class": {
+                  "code": "deactivation",
+                  "system": "https://nphdx.rti.org/api/fhir/codesystem/study-stage"
+                },
+                "subject": {
+                    "reference": "patient/1000100000000"
+                },
+                "period": {
+                    "start": "2022-02-15T19:51:02-05:00"
+                }
+            }
         }
     ]
 }

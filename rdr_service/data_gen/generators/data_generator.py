@@ -16,7 +16,7 @@ from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate, Genomi
 from rdr_service.model.genomics import GenomicManifestFeedback, GenomicManifestFile, GenomicJobRun, GenomicSet, \
     GenomicSetMember, GenomicAW1Raw, GenomicAW2Raw, GenomicFileProcessed, GenomicIncident, GenomicGCValidationMetrics, \
     GenomicMemberReportState, UserEventMetrics, GenomicInformingLoop, GenomicGcDataFile, GenomicGcDataFileMissing, \
-    GenomicResultViewed, GenomicResultWorkflowState, GenomicCVLSecondSample, GenomicSampleSwap, \
+    GenomicResultViewed, GenomicCVLSecondSample, GenomicSampleSwap, \
     GenomicSampleSwapMember, GenomicCVLResultPastDue, GenomicW4WRRaw, GenomicW3SCRaw, GenomicAppointmentEvent, \
     GenomicAppointmentEventMetrics, GenomicLongRead
 from rdr_service.model.hpo import HPO
@@ -770,15 +770,6 @@ class DataGenerator:
         result_viewed = self._genomic_result_viewed(**kwargs)
         self._commit_to_database(result_viewed)
         return result_viewed
-
-    @staticmethod
-    def _genomic_result_workflow_state(**kwargs):
-        return GenomicResultWorkflowState(**kwargs)
-
-    def create_database_genomic_result_workflow_state(self, **kwargs):
-        m = self._genomic_result_workflow_state(**kwargs)
-        self._commit_to_database(m)
-        return m
 
     @staticmethod
     def _genomic_datagen_template(**kwargs):

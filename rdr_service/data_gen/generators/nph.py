@@ -3,7 +3,7 @@ from datetime import datetime
 from rdr_service.dao import database_factory
 from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
     PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
-    DeactivatedEvent, ParticipantOpsDataElement
+    DeactivationEvent, ParticipantOpsDataElement
 from rdr_service.ancillary_study_resources.nph import enums
 
 
@@ -194,7 +194,7 @@ class NphDataGenerator:
 
     @staticmethod
     def _deactivated_event(**kwargs):
-        return DeactivatedEvent(**kwargs)
+        return DeactivationEvent(**kwargs)
 
     def create_database_deactivated_event(self, **kwargs):
         deactivated_event = self._deactivated_event(**kwargs)
