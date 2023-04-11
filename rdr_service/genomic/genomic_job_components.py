@@ -3622,11 +3622,12 @@ class ManifestDefinitionProvider:
             },
             GenomicManifestTypes.LR_L0: {
                 'output_filename':
-                    f'{LR_L0_MANIFEST_SUBFOLDER}/LongRead-Manifest-AoU-{now_formatted}.csv',
+                    f'{LR_L0_MANIFEST_SUBFOLDER}/LongRead-Manifest-AoU-{self.kwargs.get("long_read_max_set")}'
+                    f'-{now_formatted}.csv',
                 'query': self.long_read_dao.get_l0_records_from_max_set
             },
         }
-        def_config = def_config[manifest_type]
+        def_config = def_config.get(manifest_type)
         return self.ManifestDef(
             job_run_field=def_config.get('job_run_field'),
             source_data=self._get_source_data_query(manifest_type),
@@ -3677,9 +3678,14 @@ class ManifestCompiler:
             "feedback_file": None or feedback file record to update,
             "record_count": integer
         """
-        def _extract_member_ids_update(obj_list) -> list:
-            update_member_ids = [obj.genomic_set_member_id for obj in
-                                 obj_list if hasattr(obj, 'genomic_set_member_id')]
+
+        def _extract_member_ids_update(obj_list: List[dict]) -> List[int]:
+            if self.controller.job_id in [GenomicJob.LR_L0_WORKFLOW]:
+                return []
+            update_member_ids = [
+                obj.genomic_set_member_id for obj in
+                obj_list if hasattr(obj, 'genomic_set_member_id')
+            ]
             if update_member_ids:
                 return update_member_ids
 
@@ -3793,9 +3799,7 @@ class ManifestCompiler:
                 'member_ids': member_ids
             })
 
-        members = self.member_dao.get_members_from_member_ids(all_member_ids)
-
-        for member in members:
+        for member in self.member_dao.get_members_from_member_ids(all_member_ids):
             # member workflow states
             if self.manifest_def.signal != "bypass":
                 # genomic workflow state
@@ -3807,7 +3811,7 @@ class ManifestCompiler:
                     self.member_dao.update_member_workflow_state(member, new_wf_state)
 
         # Updates job run field on set member
-        if self.manifest_def.job_run_field:
+        if self.manifest_def.job_run_field and all_member_ids:
             self.controller.execute_cloud_task({
                 'member_ids': list(set(all_member_ids)),
                 'field': self.manifest_def.job_run_field,
@@ -3815,9 +3819,7 @@ class ManifestCompiler:
                 'is_job_run': True
             }, 'genomic_set_member_update_task')
 
-        return {
-            "code": GenomicSubProcessResult.SUCCESS,
-        }
+        return {"code": GenomicSubProcessResult.SUCCESS}
 
     def pull_source_data(self):
         """

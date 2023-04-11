@@ -1438,7 +1438,7 @@ class GenomicJobController:
                 result = self.manifest_compiler.generate_and_transfer_manifest(
                     manifest_type,
                     genome_type,
-                    pipeline_id=kwargs.get('pipeline_id')
+                    **kwargs
                 )
 
             if result.get('code') == GenomicSubProcessResult.NO_FILES:
