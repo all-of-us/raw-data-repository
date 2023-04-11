@@ -24,7 +24,7 @@ from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
 _logger = logging.getLogger("rdr_logger")
 
 
-def _format_timestamp(timestamp: datetime) -> str:
+def _format_timestamp(timestamp: datetime) -> Optional[str]:
     return timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') if timestamp else None
 
 
@@ -181,8 +181,10 @@ class NphStudyCategoryDao(UpdatableDao):
             return session.query(StudyCategory).get(study_category_id)
 
     def get_parent_study_category(self, study_category_id: int) -> StudyCategory:
-        study_category = self.get_study_category(study_category_id)
-        return self.get_study_category(study_category.parent_id)
+        with self.session() as session:
+            study_category: StudyCategory = session.query(StudyCategory).get(study_category_id)
+            parent_study_category = study_category.parent
+            return parent_study_category
 
 
 class NphSiteDao(BaseDao):
@@ -506,7 +508,7 @@ class NphOrderedSampleDao(UpdatableDao):
 
     @staticmethod
     def _is_ordered_sample_cancelled(ordered_sample: OrderedSample) -> bool:
-        return ordered_sample.status == "cancelled"
+        return str(ordered_sample.status).lower() == "cancelled"
 
     def get_biospecimens_for_order(self, nph_participant: Participant, order: Order) -> Iterator[Dict[str, Any]]:
         nph_stored_sample_session = NphStoredSampleDao()
@@ -519,14 +521,14 @@ class NphOrderedSampleDao(UpdatableDao):
                 parent_study_category = nph_study_category_dao.get_parent_study_category(order.category_id)
                 nph_module_id = nph_study_category_dao.get_parent_study_category(parent_study_category.id)
                 sample_processing_ts = ordered_sample.collected if not ordered_sample.parent is None else None
-                collectionDateUTC = _format_timestamp((ordered_sample.parent or ordered_sample).collected)
-                processingDateUTC = _format_timestamp(sample_processing_ts)
-                finalizedDateUTC = _format_timestamp(ordered_sample.finalized) if ordered_sample.finalized else None
+                collection_date_utc = _format_timestamp((ordered_sample.parent or ordered_sample).collected)
+                processing_date_utc = _format_timestamp(sample_processing_ts)
+                finalized_date_utc = _format_timestamp(ordered_sample.finalized) if ordered_sample.finalized else None
                 sample_is_cancelled = (
                     self._is_order_cancelled(order) or
                     self._is_ordered_sample_cancelled(ordered_sample)
                 )
-                kit_id = ""
+                kit_id = None
                 if (ordered_sample.identifier or ordered_sample.test).startswith("ST"):
                     kit_id = order.nph_order_id
 
@@ -541,9 +543,9 @@ class NphOrderedSampleDao(UpdatableDao):
                     "volumeUOM": ordered_sample.volumeUnits,
                     "orderedSampleStatus": sample_status,
                     "clientID": order.client_id,
-                    "collectionDateUTC": collectionDateUTC,
-                    "processingDateUTC": processingDateUTC,
-                    "finalizedDateUTC": finalizedDateUTC,
+                    "collectionDateUTC": collection_date_utc,
+                    "processingDateUTC": processing_date_utc,
+                    "finalizedDateUTC": finalized_date_utc,
                     "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
                     "kitID": kit_id,
                     "biobankStatus": None,
@@ -928,9 +930,10 @@ class NphStoredSampleDao(BaseDao):
             {
                 "limsID": stored_sample.lims_id,
                 "biobankModified": _format_timestamp(stored_sample.biobank_modified),
-                "status": str(stored_sample.status),
+                "status": stored_sample.status.name,
             } for stored_sample in stored_samples
         ]
+
 
 class NphIncidentDao(UpdatableDao):
     def __init__(self):
