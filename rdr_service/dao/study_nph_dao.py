@@ -930,7 +930,7 @@ class NphStoredSampleDao(BaseDao):
             {
                 "limsID": stored_sample.lims_id,
                 "biobankModified": _format_timestamp(stored_sample.biobank_modified),
-                "status": stored_sample.status.name,
+                "status": stored_sample.status.name if stored_sample.status else None,
             } for stored_sample in stored_samples
         ]
 
