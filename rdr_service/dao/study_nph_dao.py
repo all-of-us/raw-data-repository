@@ -230,6 +230,21 @@ class NphSiteDao(BaseDao):
     def from_client_json(self):
         pass
 
+    def get_site_using_params(
+        self,
+        external_id: str,
+        awardee_external_id: str,
+        organization_external_id: str,
+        name: str
+    ) -> Optional[Site]:
+        with self.session() as session:
+            return session.query(Site).filter(
+                Site.name == name,
+                Site.external_id == external_id,
+                Site.awardee_external_id == awardee_external_id,
+                Site.organization_external_id == organization_external_id,
+            ).one_or_none()
+
 
 class NphOrderDao(UpdatableDao):
     def __init__(self):
