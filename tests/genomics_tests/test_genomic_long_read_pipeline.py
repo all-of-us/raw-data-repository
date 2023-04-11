@@ -3,9 +3,8 @@ import datetime
 import os
 from unittest import mock
 
-from aou_cloud.services.gcp_cloud_storage import open_cloud_file
-
 from rdr_service import config, clock
+from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestFileDao, GenomicLongReadDao, \
     GenomicFileProcessedDao, GenomicJobRunDao
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
