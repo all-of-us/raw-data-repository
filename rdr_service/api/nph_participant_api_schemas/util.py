@@ -1,12 +1,14 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict
-from graphene import List
+from graphene import List as GrapheneList
 
 from sqlalchemy.orm import Query, aliased
 
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, ConsentOptInTypes
 from rdr_service.api_util import parse_date
+from rdr_service.model.study_nph import Participant as NphParticipant
+from rdr_service.dao.study_nph_dao import NphOrderDao
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.participant_enums import QuestionnaireStatus
 
@@ -15,9 +17,9 @@ from rdr_service.participant_enums import QuestionnaireStatus
 class QueryBuilder:
     query: Query
     order_expression = None
-    filter_expressions: List = field(default_factory=list)
+    filter_expressions: GrapheneList = field(default_factory=list)
     references: Dict = field(default_factory=dict)
-    join_expressions: List = field(default_factory=list)
+    join_expressions: GrapheneList = field(default_factory=list)
     sort_table = None
     table = None
 
@@ -76,6 +78,10 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
             consent_data
         ))
 
+    def get_nph_biospecimens_for_participant(nph_participant: NphParticipant):
+        nph_order_dao = NphOrderDao()
+        return nph_order_dao.get_nph_biospecimens_for_participant(nph_participant)
+
     def get_value_from_ops_data(participant_ops_data, enum):
         if not participant_ops_data:
             return QuestionnaireStatus.UNSET
@@ -119,6 +125,7 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
             },
             'nphEnrollmentStatus': get_enrollment_statuses(enrollment['enrollment_json']),
             'nphModule1ConsentStatus': get_consent_statuses(consents['consent_json']),
+            "nphBiospecimens": get_nph_biospecimens_for_participant(nph_participant),
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
                                  "time": summary.suspensionTime},

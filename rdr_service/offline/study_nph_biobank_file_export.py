@@ -27,6 +27,7 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao as RdrParticipantSummaryDao
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.study_nph_dao import (
+    _format_timestamp,
     NphParticipantDao,
     NphStudyCategoryDao,
     NphOrderDao,
@@ -43,10 +44,6 @@ _logger = logging.getLogger("rdr_logger")
 
 # FILE_BUFFER_SIZE_IN_BYTES = 1024 * 1024 # 1MB File Buffer
 NPH_ANCILLARY_STUDY_ID = 2
-
-
-def _format_timestamp(timestamp: datetime) -> str:
-    return timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') if timestamp else None
 
 
 def _get_nph_participant(participant_id: int) -> NphParticipant:

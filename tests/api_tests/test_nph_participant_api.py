@@ -1,5 +1,6 @@
 import faker
-from typing import Iterable
+from typing import Iterable, Dict, List
+from collections import defaultdict
 from itertools import zip_longest
 from graphql import GraphQLSyntaxError
 import json
@@ -13,13 +14,22 @@ from rdr_service.model import study_nph
 from rdr_service.model.participant import Participant as aouParticipant
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.model.rex import ParticipantMapping, Study
-from rdr_service.model.study_nph import PairingEvent, ConsentEventType, ConsentEvent
+from rdr_service.model.study_nph import (
+    PairingEvent, ConsentEventType, ConsentEvent, Participant as NphParticipant, Site as NphSite, OrderedSample, Order
+)
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.main import app
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.data_gen.generators.nph import NphDataGenerator
 import rdr_service.api.nph_participant_api as api
 from rdr_service import config
+from rdr_service.data_gen.generators.study_nph import (
+    generate_fake_study_categories,
+    generate_fake_orders,
+    generate_fake_ordered_samples,
+    generate_fake_sample_updates,
+    generate_fake_stored_samples,
+)
 
 NPH_BIOBANK_PREFIX = NPH_PROD_BIOBANK_PREFIX if config.GAE_PROJECT == "all-of-us-rdr-prod" else NPH_TEST_BIOBANK_PREFIX
 
@@ -405,6 +415,60 @@ class TestQueryExecution(BaseTestCase):
         no_nph_dob = result.get('participant').get('edges')[1].get('node')
         self.assertTrue(no_nph_dob.get('nphDateOfBirth') == 'UNSET')
 
+    def _group_ordered_samples_by_participant(
+        self,
+        nph_participants: Iterable[NphParticipant],
+        grouped_orders: Dict[int, List[Order]],
+        grouped_ordered_samples: Dict[int, List[OrderedSample]],
+    ) -> List[OrderedSample]:
+        grouped_ordered_samples_by_participant = defaultdict(list)
+        for participant in nph_participants:
+            for order in grouped_orders[participant.id]:
+                grouped_ordered_samples_by_participant[participant.id].extend(grouped_ordered_samples[order.id])
+        return grouped_ordered_samples_by_participant
+
+    def _create_test_sample_updates(self):
+        participant_query = Query(NphParticipant)
+        participant_query.session = self.session
+        nph_participants = list(participant_query.all())
+
+        nph_sites_query = Query(NphSite)
+        nph_sites_query.session = self.session
+        sites = list(nph_sites_query.all())
+        study_categories = generate_fake_study_categories()
+        orders = generate_fake_orders(
+            fake_participants=nph_participants,
+            fake_study_categories=study_categories,
+            fake_sites=sites,
+        )
+        ordered_samples = generate_fake_ordered_samples(fake_orders=orders)
+        generate_fake_sample_updates(fake_ordered_samples=ordered_samples)
+        grouped_orders = defaultdict(list)
+        _grouped_ordered_samples = defaultdict(list)
+        for order in orders:
+            grouped_orders[order.participant_id].append(order)
+
+        for ordered_sample in ordered_samples:
+            _grouped_ordered_samples[ordered_sample.order_id].append(ordered_sample)
+        grouped_ordered_samples_by_participant = self._group_ordered_samples_by_participant(nph_participants, grouped_orders, _grouped_ordered_samples)
+        generate_fake_stored_samples(nph_participants, grouped_ordered_samples_by_participant)
+
+    def test_nph_biospecimen_for_participant(self):
+        mock_load_participant_data(self.session)
+        self._create_test_sample_updates()
+        field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID timepointID biobankStatus { limsID biobankModified status } } "
+        query = simple_query(field_to_test)
+
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, len(result.get('participant').get('edges')))
+        n_participants = len(result.get('participant').get('edges'))
+        for i in range(n_participants):
+            self.assertEqual(
+                12,
+                len(result.get("participant").get("edges")[i].get("node").get("nphBiospecimens"))
+            )
+
     def test_graphql_syntax_error(self):
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SYNTAX_ERROR)
         result = json.loads(executed.data.decode('utf-8'))
@@ -432,6 +496,10 @@ class TestQueryExecution(BaseTestCase):
         self.clear_table_after_test("nph.activity")
         self.clear_table_after_test("nph.pairing_event_type")
         self.clear_table_after_test("nph.site")
+        self.clear_table_after_test("nph.order")
+        self.clear_table_after_test("nph.ordered_sample")
+        self.clear_table_after_test("nph.sample_update")
+        self.clear_table_after_test("nph.stored_sample")
         self.clear_table_after_test("nph.participant_event_activity")
         self.clear_table_after_test("nph.pairing_event")
         self.clear_table_after_test("nph.enrollment_event")
