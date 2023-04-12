@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, Any, Iterator, Optional
-from io import StringIO
 from csv import DictReader
 
 from rdr_service.model.study_nph import Site
@@ -11,15 +10,8 @@ _logger = logging.getLogger("rdr_logger")
 
 
 def read_csv(filepath: str) -> Iterator[Dict[str, Any]]:
-
-    def _decode_utf8_sig_content(csv_fp) -> StringIO:
-        content = csv_fp.read()
-        content = content.decode("utf-8-sig")
-        return StringIO(content)
-
-    with open(filepath, "rb") as csv_fp:
-        csv_file_content = _decode_utf8_sig_content(csv_fp)
-        csv_dict_reader = DictReader(csv_file_content)
+    with open(filepath, "r", encoding="utf-8-sig") as csv_fp:
+        csv_dict_reader = DictReader(csv_fp)
         for row in csv_dict_reader:
             yield row
 
