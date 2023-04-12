@@ -5,7 +5,7 @@ from csv import DictReader
 
 from rdr_service.model.study_nph import Site
 from rdr_service.dao.study_nph_dao import NphSiteDao
-from rdr_service.offline.study_nph_ingest_awardee_data import create_sites_from_csv
+from rdr_service.tools.tool_libs.study_nph_ingest_org_awardee_site_data_from_csv import create_sites_from_csv
 
 from tests.helpers.unittest_base import BaseTestCase
 
