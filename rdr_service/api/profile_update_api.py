@@ -280,7 +280,8 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
         self._record_request(json)
         return json
 
-    def _process_request(self, json):
+    @classmethod
+    def _process_request(cls, json):
         update_payload = PatientPayload(json)
         update_field_list = {
             'participant_id': from_client_participant_id(update_payload.participant_id)
@@ -318,10 +319,10 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
             study_interface = EnrollmentInterface(update_payload.ancillary_study_code)
             study_interface.create_study_participant(
                 aou_pid=update_field_list['participant_id'],
-                ancillary_pid=update_payload.ancillary_study_pid,
-                event_authored_time=update_payload.ancillary_event_authored_time
+                ancillary_pid=update_payload.ancillary_study_pid
             )
 
-    def _record_request(self, json):
+    @classmethod
+    def _record_request(cls, json):
         repository = ProfileUpdateRepository()
         repository.store_update_json(json)
