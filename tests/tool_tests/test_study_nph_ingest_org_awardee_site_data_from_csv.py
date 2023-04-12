@@ -13,6 +13,7 @@ from tests.helpers.unittest_base import BaseTestCase
 class StudyNphIngestOrgAwardeeDataTest(BaseTestCase):
 
     def setUp(self) -> None:
+        super().setUp()
         self.nph_site_dao = NphSiteDao()
         self.csv_path = Path(dirname(dirname(realpath(__file__)))) / "test-data/study_nph_awardee_data.csv"
 
@@ -36,4 +37,5 @@ class StudyNphIngestOrgAwardeeDataTest(BaseTestCase):
             self.assertIsNotNone(site)
 
     def tearDown(self):
+        super().tearDown()
         self.clear_table_after_test("nph.site")
