@@ -552,7 +552,22 @@ def get_gcp_logger() -> GCPStackDriverLogger:
     return None
 
 
+# Any packages listed here will have their logs ignored (not sent to GCP logging)
+_IGNORED_PACKAGES = [
+    'pdfminer'
+]
+
+
 class GCPLoggingHandler(logging.Handler):
+
+    @classmethod
+    def _ignore_log(cls, record: logging.LogRecord) -> bool:
+        logger_name = record.name
+        if '.' not in logger_name:
+            return False  # logger's name doesn't look like a package.module formatted name
+
+        package_name = logger_name.split('.')[0]
+        return package_name in _IGNORED_PACKAGES
 
     def emit(self, record: logging.LogRecord):
         """
@@ -560,7 +575,7 @@ class GCPLoggingHandler(logging.Handler):
         :param record: Python log record
         """
         _logger = get_gcp_logger()
-        if _logger:
+        if _logger and not self._ignore_log(record):
             _logger.log_event(record)
             return
 
