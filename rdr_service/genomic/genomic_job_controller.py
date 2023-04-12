@@ -152,9 +152,13 @@ class GenomicJobController:
         }
         manifest_generation = auto_generation_map.get(self.job_id, None)
         if manifest_generation:
-            self.execute_cloud_task({
-                'manifest_type': manifest_generation
-            }, 'genomic_generate_manifest')
+            self.execute_cloud_task(
+                {
+                    'manifest_type': manifest_generation
+                },
+                'genomic_generate_manifest',
+                'genomic-generate-manifest'
+            )
 
     def insert_genomic_manifest_file_record(self):
         """
@@ -2016,11 +2020,11 @@ class GenomicJobController:
         else:
             self.job_result = GenomicSubProcessResult.NO_RESULTS
 
-    @staticmethod
-    def execute_cloud_task(payload, endpoint):
+    @classmethod
+    def execute_cloud_task(cls, payload, endpoint, task_queue='genomics'):
         if GAE_PROJECT != 'localhost':
             cloud_task = GCPCloudTask()
-            cloud_task.execute(endpoint=endpoint, payload=payload, queue='genomics')
+            cloud_task.execute(endpoint=endpoint, payload=payload, queue=task_queue)
 
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
