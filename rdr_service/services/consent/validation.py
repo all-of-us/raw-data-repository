@@ -594,8 +594,8 @@ class ConsentValidationController:
 
         # Workaround for this job frequently failing (OOM killer) before it can launch these tasks on a normal exit:
         # Pre-schedule the error reporting tasks to run in 8 hours.  Ensures the error report check occurs once a day.
-        dispatch_check_consent_errors_task(origin='vibrent', in_seconds=28800)
-        dispatch_check_consent_errors_task(origin='careevolution', in_seconds=28800)
+        dispatch_check_consent_errors_task(origin='vibrent', in_seconds=1800)
+        dispatch_check_consent_errors_task(origin='careevolution', in_seconds=1800)
 
         # Retrieve consent response objects that need to be validated
         is_last_batch = False
