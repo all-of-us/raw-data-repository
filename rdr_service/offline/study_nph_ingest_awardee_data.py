@@ -17,7 +17,6 @@ def read_csv(filepath: str) -> Iterator[Dict[str, Any]]:
 
 
 def _convert_csv_obj_to_site_obj(awardee_data_obj: Dict[str, Any]) -> Dict[str, Any]:
-
     return {
         "external_id": awardee_data_obj["healthpro_site_id"],
         "name": awardee_data_obj["site_name"],
