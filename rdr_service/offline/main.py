@@ -1394,6 +1394,13 @@ def _build_pipeline_app():
         methods=['GET']
     )
 
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'NphBiobankInventoryFileImport',
+        endpoint="nph_biobank_inventory_file_import",
+        view_func=nph_biobank_inventory_file_import,
+        methods=["GET"]
+    )
+
     offline_app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
     offline_app.add_url_rule("/_ah/stop", endpoint="stop", view_func=flask_stop, methods=["GET"])
 
