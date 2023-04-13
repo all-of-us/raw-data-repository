@@ -264,4 +264,9 @@ cron:
   timezone: America/New_York
   schedule: every day 04:30
   target: offline
+- description: Validate the consent files
+  url: /offline/ValidateConsentFiles
+  schedule: every 1 hours
+  timezone: America/New_York
+  target: offline
 
