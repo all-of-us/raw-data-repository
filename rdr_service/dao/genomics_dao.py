@@ -4668,9 +4668,21 @@ class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
     def get_id(self, obj):
         return obj.id
 
+    @classmethod
+    def get_max_set_subquery(cls):
+        return sqlalchemy.orm.Query(
+            functions.max(GenomicLongRead.long_read_set).label('long_read_set')
+        ).subquery()
+
+    def get_max_set(self):
+        with self.session() as session:
+            return session.query(
+                self.get_max_set_subquery()
+            ).one()
+
     def get_new_long_read_members(self, *, biobank_ids: List[str], parent_tube_ids: List[str]) -> List:
         with self.session() as session:
-            records = session.query(
+            return session.query(
                 GenomicSetMember.id.label('genomic_set_member_id'),
                 GenomicSetMember.biobankId.label('biobank_id')
             ).join(
@@ -4678,7 +4690,10 @@ class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
                 ParticipantSummary.participantId == GenomicSetMember.participantId
             ).join(
                 GenomicGCValidationMetrics,
-                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                and_(
+                    GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
+                    GenomicGCValidationMetrics.ignoreFlag != 1
+                )
             ).filter(
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
@@ -4694,5 +4709,35 @@ class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.biobankId.in_(biobank_ids),
                 GenomicSetMember.gcManifestParentSampleId.in_(parent_tube_ids)
-            ).distinct()
-            return records.all()
+            ).distinct().all()
+
+    def get_l0_records_from_max_set(self) -> List[GenomicLongRead]:
+        with self.session() as session:
+            return session.query(
+                func.concat(get_biobank_id_prefix(), GenomicLongRead.biobank_id),
+                GenomicSetMember.collectionTubeId,
+                GenomicSetMember.sexAtBirth,
+                GenomicLongRead.genome_type,
+                func.IF(GenomicSetMember.nyFlag == 1,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("N")).label('ny_flag'),
+                func.IF(GenomicSetMember.validationStatus == 1,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("N")).label('validation_passed'),
+                GenomicSetMember.ai_an,
+                GenomicSetMember.gcManifestParentSampleId.label('parent_tube_id'),
+                GenomicLongRead.lr_site_id,
+                GenomicLongRead.long_read_platform
+            ).join(
+                GenomicSetMember,
+                and_(
+                    GenomicSetMember.id == GenomicLongRead.genomic_set_member_id,
+                    GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                    GenomicSetMember.ignoreFlag != 1
+                )
+            ).filter(
+                GenomicLongRead.long_read_set ==
+                self.get_max_set_subquery().c.long_read_set
+            ).distinct().all()
+
+

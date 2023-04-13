@@ -62,7 +62,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicGcDataFileMissingDao,
     GenomicIncidentDao,
     UserEventMetricsDao,
-    GenomicQueriesDao, GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao)
+    GenomicQueriesDao,
+    GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -89,7 +90,7 @@ from rdr_service.config import (
     CVL_W1IL_HDR_MANIFEST_SUBFOLDER,
     CVL_W1IL_PGX_MANIFEST_SUBFOLDER,
     CVL_W2W_MANIFEST_SUBFOLDER,
-    CVL_W3SR_MANIFEST_SUBFOLDER
+    CVL_W3SR_MANIFEST_SUBFOLDER, LR_L0_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes, \
@@ -1605,7 +1606,7 @@ class GenomicFileIngester:
     @staticmethod
     def _ingest_lr_lr_manifest(rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
-            GenomicLongReadWorkFlow().run_lr_workflow(rows)
+            GenomicLongReadWorkFlow.run_lr_workflow(rows)
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
@@ -3354,6 +3355,7 @@ class ManifestDefinitionProvider:
             genome_type=self.genome_type
         )
         self.query_dao = GenomicQueriesDao()
+        self.long_read_dao = GenomicLongReadDao()
 
         self.manifest_columns_config = {
             GenomicManifestTypes.GEM_A1: (
@@ -3512,6 +3514,18 @@ class ManifestDefinitionProvider:
                 "CONTAMINATION_CATEGORY",
                 "CONSENT_FOR_ROR",
             ),
+            GenomicManifestTypes.LR_L0: (
+                'biobank_id',
+                'collection_tube_id',
+                'sex_at_birth',
+                'genome_type',
+                'ny_flag',
+                'validation_passed',
+                'ai_an',
+                'parent_tube_id',
+                'lr_site_id',
+                'long_read_platform'
+            ),
         }
 
     def _get_source_data_query(self, manifest_type):
@@ -3605,9 +3619,15 @@ class ManifestDefinitionProvider:
                 'job_run_field': 'aw2fManifestJobRunID',
                 'output_filename': f'{BIOBANK_AW2F_SUBFOLDER}/GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv',
                 'signal': 'bypass'
-            }
+            },
+            GenomicManifestTypes.LR_L0: {
+                'output_filename':
+                    f'{LR_L0_MANIFEST_SUBFOLDER}/LongRead-Manifest-AoU-{self.kwargs.get("long_read_max_set")}'
+                    f'-{now_formatted}.csv',
+                'query': self.long_read_dao.get_l0_records_from_max_set
+            },
         }
-        def_config = def_config[manifest_type]
+        def_config = def_config.get(manifest_type)
         return self.ManifestDef(
             job_run_field=def_config.get('job_run_field'),
             source_data=self._get_source_data_query(manifest_type),
@@ -3644,7 +3664,13 @@ class ManifestCompiler:
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
 
-    def generate_and_transfer_manifest(self, manifest_type, genome_type, version=None, **kwargs):
+    def generate_and_transfer_manifest(
+        self,
+        manifest_type,
+        genome_type,
+        version=None,
+        **kwargs
+    ):
         """
         Main execution method for ManifestCompiler
         :return: result dict:
@@ -3653,9 +3679,13 @@ class ManifestCompiler:
             "record_count": integer
         """
 
-        def _extract_member_ids_update(obj_list) -> list:
-            update_member_ids = [obj.genomic_set_member_id for obj in
-                                 obj_list if hasattr(obj, 'genomic_set_member_id')]
+        def _extract_member_ids_update(obj_list: List[dict]) -> List[int]:
+            if self.controller.job_id in [GenomicJob.LR_L0_WORKFLOW]:
+                return []
+            update_member_ids = [
+                obj.genomic_set_member_id for obj in
+                obj_list if hasattr(obj, 'genomic_set_member_id')
+            ]
             if update_member_ids:
                 return update_member_ids
 
@@ -3769,9 +3799,7 @@ class ManifestCompiler:
                 'member_ids': member_ids
             })
 
-        members = self.member_dao.get_members_from_member_ids(all_member_ids)
-
-        for member in members:
+        for member in self.member_dao.get_members_from_member_ids(all_member_ids):
             # member workflow states
             if self.manifest_def.signal != "bypass":
                 # genomic workflow state
@@ -3783,7 +3811,7 @@ class ManifestCompiler:
                     self.member_dao.update_member_workflow_state(member, new_wf_state)
 
         # Updates job run field on set member
-        if self.manifest_def.job_run_field:
+        if self.manifest_def.job_run_field and all_member_ids:
             self.controller.execute_cloud_task({
                 'member_ids': list(set(all_member_ids)),
                 'field': self.manifest_def.job_run_field,
@@ -3791,9 +3819,7 @@ class ManifestCompiler:
                 'is_job_run': True
             }, 'genomic_set_member_update_task')
 
-        return {
-            "code": GenomicSubProcessResult.SUCCESS,
-        }
+        return {"code": GenomicSubProcessResult.SUCCESS}
 
     def pull_source_data(self):
         """
@@ -3813,7 +3839,7 @@ class ManifestCompiler:
 
         if manifest_type in [
             GenomicManifestTypes.AW3_ARRAY,
-            GenomicManifestTypes.AW3_WGS
+            GenomicManifestTypes.AW3_WGS,
         ]:
             prefix = get_biobank_id_prefix()
             path_positions = []

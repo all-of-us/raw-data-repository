@@ -19,7 +19,7 @@ from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics,\
     GenomicGCROutreachEscalationNotified
-from rdr_service.offline import genomic_pipeline, genomic_cvl_pipeline
+from rdr_service.offline.genomics import genomic_pipeline, genomic_cvl_pipeline
 from rdr_service.participant_enums import WithdrawalStatus
 from tests import test_data
 from tests.genomics_tests.test_genomic_utils import create_ingestion_test_file

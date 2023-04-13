@@ -191,6 +191,11 @@ def _build_resource_app():
                       TASK_PREFIX + "GenomicGCMetricsUpsertApi",
                       endpoint="genomic_gc_metrics_upsert", methods=["POST"])
 
+    # Generate Manifest via Cloud Task
+    _api.add_resource(genomic_cloud_tasks_api.GenerateManifestApi,
+                      TASK_PREFIX + "GenerateManifestApi",
+                      endpoint="genomic_generate_manifest", methods=["POST"])
+
     #
     # End Genomic Cloud Task API endpoints
     #
