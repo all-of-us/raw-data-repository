@@ -130,7 +130,7 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
-    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant')
+    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant_by_id')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
     def test_post(self, site_id, pid, database_factor, query_filter):
         query_filter.return_value.first.return_value = StudyCategory()

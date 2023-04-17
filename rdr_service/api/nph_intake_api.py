@@ -209,7 +209,7 @@ class PostIntakePayload:
             participant_id = participant_obj['resource']['identifier'][0]['value']
             participant_str_data = participant_id.split('/')
             with self.nph_participant_dao.session() as session:
-                is_nph_participant = self.nph_participant_dao.check_participant_exist(
+                is_nph_participant = self.nph_participant_dao.get_participant_by_id(
                     participant_str_data[-1],
                     session
                 )

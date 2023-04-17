@@ -9,19 +9,17 @@ class EnrollmentInterface:
         self.study_code = study_code
 
     def create_study_participant(self, aou_pid, ancillary_pid):
-        cln_study_pid = int(ancillary_pid[4:])
-
         # We have to use the AoU research ID
         aou_participant_dao = ParticipantDao()
         aou_participant = aou_participant_dao.get(aou_pid)
         insert_params = {
-            'id': cln_study_pid,
+            'id': ancillary_pid,
             'research_id': aou_participant.researchId,
         }
 
         self.participant_dao.insert_participant_with_random_biobank_id(
             self.participant_dao.model_type(**insert_params))
-        self.create_rex_participant_mapping(aou_pid, cln_study_pid)
+        self.create_rex_participant_mapping(aou_pid, ancillary_pid)
 
     def create_rex_participant_mapping(self, aou_pid, study_pid):
         rex_dao = RexParticipantMappingDao()

@@ -258,7 +258,7 @@ class NphParticipantDaoTest(BaseTestCase):
         session = MagicMock()
         query_filter.return_value.first.return_value = response
         test_participant_dao = NphParticipantDao()
-        participant = test_participant_dao.get_participant("10001", session)
+        participant = test_participant_dao.get_participant_by_id("10001", session)
         self.assertEqual(test_data.get("id"), participant.id)
         self.assertEqual(test_data.get("name"), participant.name)
 
@@ -269,16 +269,11 @@ class NphParticipantDaoTest(BaseTestCase):
         session = MagicMock()
         query_filter.return_value.first.return_value = response
         test_participant_dao = NphParticipantDao()
-        exist = test_participant_dao.check_participant_exist("10001000000011", session)
-        self.assertTrue(exist)
+        participant = test_participant_dao.get_participant_by_id("10001000000011", session)
+        self.assertTrue(participant)
         query_filter.return_value.first.return_value = None
-        not_exist = test_participant_dao.check_participant_exist("10001", session)
-        self.assertFalse(not_exist)
-
-    def test_convert_id(self):
-        test_participant_dao = NphParticipantDao()
-        participant_id = test_participant_dao.convert_id("10001000000011")
-        self.assertEqual("1000000011", participant_id)
+        participant = test_participant_dao.get_participant_by_id("10001", session)
+        self.assertFalse(participant)
 
     def tearDown(self):
         self.clear_table_after_test("nph.participant")
@@ -650,7 +645,7 @@ class NphOrderDaoTest(BaseTestCase):
         self.assertEqual(request.amendedReason, result.amended_reason)
         self.assertEqual("CANCELLED", result.status.upper())
 
-    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant')
+    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant_by_id')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
     def test_from_client_json(self, site_id, p_id):
         session = MagicMock()
@@ -739,7 +734,7 @@ class NphOrderDaoTest(BaseTestCase):
         order = order_dao.order_cls
         self.assertEqual(request, order)
 
-    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant')
+    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant_by_id')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
     def test_validate_model(self, site_id, p_id):
         session = MagicMock()

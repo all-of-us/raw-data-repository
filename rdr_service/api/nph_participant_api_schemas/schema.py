@@ -21,7 +21,6 @@ from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping, Study
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.dao import database_factory
-from rdr_service.dao.study_nph_dao import NphParticipantDao
 from rdr_service.api.nph_participant_api_schemas.util import QueryBuilder, load_participant_summary_data, \
     schema_field_lookup
 from rdr_service import config
@@ -490,9 +489,7 @@ class ParticipantQuery(ObjectType):
 
                 if nph_id:
                     logging.info('Fetch NPH ID: %d', nph_id)
-                    nph_participant_dao = NphParticipantDao()
-                    nph_participant_id = nph_participant_dao.convert_id(nph_id)
-                    query = query.filter(ParticipantMapping.ancillary_participant_id == int(nph_participant_id))
+                    query = query.filter(ParticipantMapping.ancillary_participant_id == int(nph_id))
                     logging.info(query)
                     return load_participant_summary_data(query, study.prefix, NPH_BIOBANK_PREFIX)
 
