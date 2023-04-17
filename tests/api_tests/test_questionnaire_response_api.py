@@ -1701,7 +1701,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
 
         # Load a response with an identifier
         resource = self._load_response_json("questionnaire_response3.json", questionnaire_id, participant_id_str)
-        resource['identifier']['value'] = '1234' * 15
+        resource['identifier']['value'] = '1234' * 20
         self._save_codes(resource)
         response = self.send_post(_questionnaire_response_url(participant_id_str), resource, expected_status=200)
 
