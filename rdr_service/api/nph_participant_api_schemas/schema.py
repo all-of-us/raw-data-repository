@@ -18,7 +18,7 @@ from rdr_service.model.study_nph import (
     ConsentEventType
 )
 from rdr_service.model.site import Site
-from rdr_service.model.rex import ParticipantMapping, Study
+from rdr_service.model.rex import ParticipantMapping
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.dao import database_factory
 from rdr_service.api.nph_participant_api_schemas.util import QueryBuilder, load_participant_summary_data, \
@@ -456,14 +456,8 @@ class ParticipantQuery(ObjectType):
                 ParticipantMapping.ancillary_study_id == NPH_STUDY_ID,
             ).distinct()
 
-            study = sessions.query(
-                Study
-            ).filter(
-                Study.schema_name == "nph"
-            ).first()
             current_class = Participant
             query_builder = QueryBuilder(query)
-
             try:
                 if sort_by:
                     sort_parts = sort_by.split(':')
@@ -491,7 +485,7 @@ class ParticipantQuery(ObjectType):
                     logging.info('Fetch NPH ID: %d', nph_id)
                     query = query.filter(ParticipantMapping.ancillary_participant_id == int(nph_id))
                     logging.info(query)
-                    return load_participant_summary_data(query, study.prefix, NPH_BIOBANK_PREFIX)
+                    return load_participant_summary_data(query, NPH_BIOBANK_PREFIX)
 
                 query = query_builder.get_resulting_query()
                 if limit:
@@ -499,7 +493,7 @@ class ParticipantQuery(ObjectType):
                 if off_set:
                     query = query.offset(off_set)
                 logging.info(query)
-                return load_participant_summary_data(query, study.prefix, NPH_BIOBANK_PREFIX)
+                return load_participant_summary_data(query, NPH_BIOBANK_PREFIX)
             except Exception as ex:
                 logging.error(ex)
                 raise ex

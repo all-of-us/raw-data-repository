@@ -60,7 +60,7 @@ def check_field_value(value):
     return QuestionnaireStatus.UNSET
 
 
-def load_participant_summary_data(query, prefix, biobank_prefix):
+def load_participant_summary_data(query, biobank_prefix):
 
     def get_enrollment_statuses(enrollment_data):
         return list(map(
@@ -96,7 +96,7 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
     for summary, site, nph_site, mapping, nph_participant, enrollment, consents, \
             deactivated, withdrawn, ops_data in records:
         results.append({
-            'participantNphId': f"{prefix}{mapping.ancillary_participant_id}",
+            'participantNphId': mapping.ancillary_participant_id,
             'lastModified': summary.lastModified,
             'biobankId': f"{biobank_prefix}{nph_participant.biobank_id}",
             'firstName': summary.firstName,
