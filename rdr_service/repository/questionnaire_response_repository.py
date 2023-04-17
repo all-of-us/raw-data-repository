@@ -159,7 +159,7 @@ class QuestionnaireResponseRepository:
         return [consent_response.questionnaire_response_id for consent_response in query.all()]
 
     @classmethod
-    def get_interest_in_sharing_ehr_ranges(cls, participant_id, session: Session):
+    def get_interest_in_sharing_ehr_ranges(cls, participant_id, session: Session, default_authored_datetime=None):
         # Load all EHR and DV_EHR responses
         sharing_response_list = cls.get_responses_to_surveys(
             session=session,
@@ -204,9 +204,11 @@ class QuestionnaireResponseRepository:
                 if consent_answer:
                     # ignore any EHR responses that are not validated
                     # Note: only check for validated EHR if the consent was authored after the response->consent data
-                    #       started being generated (2022-02-18)
+                    #       started being generated (2022-02-18).  Also, if a default_authored_datetime was specified,
+                    #       consider a response with matching authored as validated.  (See ROC-1572/PDR-1699)
                     if (
                         response.id not in validated_ehr_id_list and not skip_validation_check
+                        and response.authored_datetime != default_authored_datetime
                         and response.authored_datetime > datetime(2022, 2, 18)
                     ):
                         continue
