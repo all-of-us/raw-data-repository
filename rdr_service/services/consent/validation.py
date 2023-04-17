@@ -96,6 +96,7 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
             # Rebuild for PDR
             self._task.execute(
                 'rebuild_one_participant_task',
+                queue='resource-tasks',
                 payload={'p_id': participant_id},
                 in_seconds=30
             )
