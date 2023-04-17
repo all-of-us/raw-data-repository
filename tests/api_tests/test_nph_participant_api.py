@@ -103,7 +103,7 @@ def mock_load_participant_data(session):
     participant_mapping_result = participant_mapping_query.all()
     if len(participant_mapping_result) < 10:
         ancillary_participant_id = 100000000
-        participants: Iterable[participant] = []
+        participants = []
         for each in participant_result:
             participant = nph_data_gen.create_database_participant(id=ancillary_participant_id)
             participants.append(participant)
@@ -336,9 +336,7 @@ class TestQueryExecution(BaseTestCase):
 
         resulting_participant_data = result_participant_list[0].get('node')
         self.assertEqual(first_name, resulting_participant_data.get('firstName'))
-        prefix = 1000
-        nph_id = str(prefix) + str(participant_nph_id)
-        self.assertEqual(nph_id, resulting_participant_data.get('participantNphId'))
+        self.assertEqual(participant_nph_id, resulting_participant_data.get('participantNphId'))
 
     def test_nphEnrollmentStatus_fields(self):
         field_to_test = "nphEnrollmentStatus {value time} "
