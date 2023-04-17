@@ -63,9 +63,8 @@ class NphParticipantDao(BaseDao):
         else:
             raise NotFound(f"Participant not found : {nph_participant_id}")
 
-    def check_participant_exist(self, nph_participant_id: str, session=None) -> bool:
-        # expect the participant ID comes in with the prefix 1000.
-        nph_participant_id = self.convert_id(nph_participant_id)
+    @classmethod
+    def check_participant_exist(cls, nph_participant_id: str, session=None) -> bool:
         query = Query(Participant)
         query.session = session
         result = query.filter(Participant.id == int(nph_participant_id)).first()

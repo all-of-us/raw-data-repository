@@ -1,7 +1,6 @@
 import json
 
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
-from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphParticipantDao, NphSiteDao, NphParticipantEventActivityDao, \
     NphEnrollmentEventTypeDao, NphPairingEventDao, NphDefaultBaseDao, NphActivityDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
@@ -16,8 +15,6 @@ class NphIntakeAPITest(BaseTestCase):
         super().setUp()
         self.nph_data_gen = NphDataGenerator()
         activities = ['ENROLLMENT', 'PAIRING', 'CONSENT', 'WITHDRAWAL', 'DEACTIVATION']
-
-        self.rex_study_dao = RexStudyDao()
         self.nph_activity = NphActivityDao()
         self.nph_participant = NphParticipantDao()
         self.nph_participant_activity_dao = NphParticipantEventActivityDao()
@@ -29,12 +26,6 @@ class NphIntakeAPITest(BaseTestCase):
         self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
         self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivationEvent)
         self.participant_ops_data = NphDefaultBaseDao(model_type=ParticipantOpsDataElement)
-
-        self.rex_study_dao.insert(
-            self.rex_study_dao.model_type(**{
-                'schema_name': 'nph',
-                'prefix': 1000
-            }))
 
         for activity in activities:
             self.nph_data_gen.create_database_activity(
@@ -84,10 +75,9 @@ class NphIntakeAPITest(BaseTestCase):
 
         # response
         response = self.send_post('nph/Intake', request_data=consent_json)
-        response_participant_ids = [f'1000{obj}' for obj in all_participant_ids]
 
         self.assertEqual(len(response), len(all_participant_ids))
-        self.assertTrue(all(obj['nph_participant_id'] in response_participant_ids for obj in response))
+        self.assertTrue(all(int(obj['nph_participant_id']) in all_participant_ids for obj in response))
 
         # participant event activities
         participant_event_activities = self.nph_participant_activity_dao.get_all()
@@ -166,7 +156,7 @@ class NphIntakeAPITest(BaseTestCase):
         response = self.send_post('nph/Intake', request_data=consent_json)
 
         self.assertEqual(len(response), 1)
-        self.assertTrue(all(obj['nph_participant_id'] == f'1000{current_participant_id}' for obj in response))
+        self.assertTrue(all(int(obj['nph_participant_id']) == current_participant_id for obj in response))
 
         # participant event activities
         participant_event_activities = self.nph_participant_activity_dao.get_all()
@@ -234,7 +224,7 @@ class NphIntakeAPITest(BaseTestCase):
         response = self.send_post('nph/Intake', request_data=consent_json)
 
         self.assertEqual(len(response), 1)
-        self.assertTrue(all(obj['nph_participant_id'] == f'1000{current_participant_id}' for obj in response))
+        self.assertTrue(all(int(obj['nph_participant_id']) == current_participant_id for obj in response))
 
         # participant event activities
         participant_event_activities = self.nph_participant_activity_dao.get_all()
@@ -300,7 +290,6 @@ class NphIntakeAPITest(BaseTestCase):
 
     def tearDown(self):
         super().tearDown()
-        self.clear_table_after_test("rex.study")
         self.clear_table_after_test("nph.participant")
         self.clear_table_after_test("nph.activity")
         self.clear_table_after_test("nph.pairing_event")
