@@ -11,7 +11,6 @@ from rdr_service.api_util import RTI, RDR
 from rdr_service.app_util import auth_required
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.config import GAE_PROJECT
-from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphIntakeDao, NphParticipantEventActivityDao, NphActivityDao, \
     NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao, NphConsentEventTypeDao, \
     NphParticipantDao
@@ -31,8 +30,6 @@ class ActivityData:
 class PostIntakePayload:
 
     def __init__(self, intake_payload):
-        self.nph_prefix = RexStudyDao().get_prefix_by_schema('nph')
-        self.nph_prefix = self.nph_prefix[0]
         self.current_activities = NphActivityDao().get_all()
         self.nph_participant_dao = NphParticipantDao()
         self.nph_participant_activity_dao = NphParticipantEventActivityDao()
@@ -212,14 +209,14 @@ class PostIntakePayload:
             participant_id = participant_obj['resource']['identifier'][0]['value']
             participant_str_data = participant_id.split('/')
             with self.nph_participant_dao.session() as session:
-                is_nph_participant = self.nph_participant_dao.check_participant_exist(
+                is_nph_participant = self.nph_participant_dao.get_participant_by_id(
                     participant_str_data[-1],
                     session
                 )
                 if not is_nph_participant:
                     raise NotFound(f'NPH participant {participant_str_data[-1]} not found bundle_id:'
                                    f' {self.bundle_identifier}')
-                return participant_str_data[1][4:]
+                return participant_str_data[1]
         except (KeyError, Exception) as e:
             raise BadRequest(f'Cannot parse participant information from payload: {e} bundle_id:'
                              f' {self.bundle_identifier}')
@@ -286,7 +283,7 @@ class PostIntakePayload:
             )
 
             self.participant_response.append({
-                'nph_participant_id': f'{self.nph_prefix}{participant_id}'
+                'nph_participant_id': participant_id
             })
 
             applicable_entries = [obj for obj in resource['entry'] if obj['resource']['resourceType'].lower() in [

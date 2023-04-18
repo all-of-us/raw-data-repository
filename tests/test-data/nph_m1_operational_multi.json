@@ -7,19 +7,19 @@
     },
     "entry": [
         {
-            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/patient/1000100000000",
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/patient/100000000",
             "resource": {
                 "resourceType": "Patient",
                 "identifier": [
                     {
                         "system": "https://nphdx.rti.org/api/fhir/module1/",
-                        "value": "patient/1000100000000"
+                        "value": "patient/100000000"
                     }
                 ]
             }
         },
         {
-            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/module1/consent/1000100000000",
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/module1/consent/100000000",
 			"resource": {
                 "resourceType": "Encounter",
                 "status": "in-progress",
@@ -46,7 +46,7 @@
                     ]
                 },
                 "subject": {
-                    "reference": "patient/1000100000000"
+                    "reference": "patient/100000000"
                 },
                 "period": {
                     "start": "2022-02-24T09:55:53-05:00"
@@ -54,7 +54,7 @@
             }
         },
         {
-            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/pairing/1000100000000",
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/pairing/100000000",
 			"resource": {
                 "resourceType": "Encounter",
                 "status": "finished",
@@ -73,7 +73,7 @@
                     }
                 ],
                 "subject": {
-                    "reference": "patient/1000100000000"
+                    "reference": "patient/100000000"
                 },
                 "period": {
                     "start": "2022-02-15T16:51:02-05:00"
@@ -81,7 +81,7 @@
             }
         },
         {
-            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/deactivation/1000100000000",
+            "fullUrl": "https://nphdx.rti.org/api/fhir/module1/encounter/deactivation/100000000",
 			"resource": {
                 "resourceType": "Encounter",
                 "status": "finished",
@@ -90,7 +90,7 @@
                   "system": "https://nphdx.rti.org/api/fhir/codesystem/study-stage"
                 },
                 "subject": {
-                    "reference": "patient/1000100000000"
+                    "reference": "patient/100000000"
                 },
                 "period": {
                     "start": "2022-02-15T19:51:02-05:00"

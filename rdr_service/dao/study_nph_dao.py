@@ -43,8 +43,8 @@ class NphParticipantDao(BaseDao):
     def fetch_participant_id(obj) -> int:
         return obj.id
 
-    def get_id(self, session, nph_participant_id: str) -> int:
-        nph_participant_id = self.convert_id(nph_participant_id)
+    @staticmethod
+    def get_id(session, nph_participant_id: str) -> int:
         query = Query(Participant)
         query.session = session
         result = query.filter(Participant.id == int(nph_participant_id)).first()
@@ -53,30 +53,11 @@ class NphParticipantDao(BaseDao):
         else:
             raise NotFound(f"Participant ID not found : {nph_participant_id}")
 
-    def get_participant(self, nph_participant_id: str, session) -> Participant:
-        nph_participant_id = self.convert_id(nph_participant_id)
-        query = Query(Participant)
-        query.session = session
-        result = query.filter(Participant.id == int(nph_participant_id)).first()
-        if result:
-            return result
-        else:
-            raise NotFound(f"Participant not found : {nph_participant_id}")
-
-    def check_participant_exist(self, nph_participant_id: str, session=None) -> bool:
-        # expect the participant ID comes in with the prefix 1000.
-        nph_participant_id = self.convert_id(nph_participant_id)
-        query = Query(Participant)
-        query.session = session
-        result = query.filter(Participant.id == int(nph_participant_id)).first()
-        if result:
-            return True
-        else:
-            return False
-
     @staticmethod
-    def convert_id(nph_participant_id: str) -> str:
-        return nph_participant_id[4:]
+    def get_participant_by_id(nph_participant_id: str, session) -> Participant:
+        query = Query(Participant)
+        query.session = session
+        return query.filter(Participant.id == int(nph_participant_id)).first()
 
     def insert_participant_with_random_biobank_id(self, obj):
         return self._insert_with_random_id(
@@ -259,12 +240,12 @@ class NphOrderDao(UpdatableDao):
         return obj.id
 
     def validate(self, order_id: int, nph_participant_id: str, session):
-        participant_exist = self.participant_dao.check_participant_exist(nph_participant_id, session)
+        participant = self.participant_dao.get_participant_by_id(nph_participant_id, session)
         order_exist, order = self.check_order_exist(order_id, session)
         create_site_exist = self.site_dao.site_exist(session, self.order_cls.createdInfo.site.value)
         collected_site_exist = self.site_dao.site_exist(session, self.order_cls.collectedInfo.site.value)
         finalized_site_exist = self.site_dao.site_exist(session, self.order_cls.finalizedInfo.site.value)
-        if participant_exist is not True:
+        if not participant:
             raise BadRequest(f"Participant ID does not exist: {nph_participant_id}")
         if order_exist is not True:
             raise BadRequest(f"Order ID does not exist: {order_id}")
@@ -428,7 +409,7 @@ class NphOrderDao(UpdatableDao):
             create_site = self.site_dao.get_id(session, self.order_cls.createdInfo.site.value)
             collected_site = self.site_dao.get_id(session, self.order_cls.collectedInfo.site.value)
             finalized_site = self.site_dao.get_id(session, self.order_cls.finalizedInfo.site.value)
-            participant = self.participant_dao.get_participant(nph_participant_id, session)
+            participant = self.participant_dao.get_participant_by_id(nph_participant_id, session)
         except NotFound:
             raise
         if not create_site and not collected_site and not finalized_site:

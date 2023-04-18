@@ -130,7 +130,7 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
-    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant')
+    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant_by_id')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
     def test_post(self, site_id, pid, database_factor, query_filter):
         query_filter.return_value.first.return_value = StudyCategory()
@@ -191,7 +191,7 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         site_id.return_value = 1
         patch_json = PATCH_CANCEL_SAMPLE
 
-        response = self.send_patch(f'api/v1/nph/Participant/1000{participant.id}/BiobankOrder/1', patch_json)
+        response = self.send_patch(f'api/v1/nph/Participant/{participant.id}/BiobankOrder/1', patch_json)
 
         del response['id']
         self.assertDictEqual(patch_json, response)
@@ -314,7 +314,7 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         }
 
         self.send_put(
-            f'api/v1/nph/Participant/1000{participant.id}/BiobankOrder/1',
+            f'api/v1/nph/Participant/{participant.id}/BiobankOrder/1',
             patch_json,
             expected_status=201
         )
@@ -349,7 +349,7 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         site_id.return_value = 1
 
         self.send_patch(
-            f'api/v1/nph/Participant/1000{participant.id}/BiobankOrder/1',
+            f'api/v1/nph/Participant/{participant.id}/BiobankOrder/1',
             {
                 'status': 'amended',
                 "amendedInfo": {
@@ -401,7 +401,7 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
     @patch('rdr_service.dao.study_nph_dao.NphOrderDao.check_order_exist')
     @patch('rdr_service.dao.study_nph_dao.NphOrderDao.get_order')
     @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
-    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.check_participant_exist')
+    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant_by_id')
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.site_exist')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
