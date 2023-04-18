@@ -390,7 +390,6 @@ class SpotTool(ToolBase):
 
         return 0
 
-
     @validate_args(arg_string="cutoff_date")
     def export_ods_data_to_datamart(self):
         """
@@ -510,6 +509,7 @@ class SpotTool(ToolBase):
             GenomicSetMember.participantId,
             GenomicSetMember.sampleId,
             GenomicSetMember.genomeType,
+            GenomicGCValidationMetrics.pipelineId,
             Participant.researchId,
             func.now().label('created_timestamp'),
         ]
@@ -665,6 +665,7 @@ class SpotTool(ToolBase):
                     'research_id': old_row.researchId,
                     'sample_id': old_row.sampleId,
                     'genome_type': old_row.genomeType.upper(),
+                    'pipeline_id': old_row.pipelineId,
                     'data_element_id': data_element.data_element_id,
                     'value_string': de_val,
                     'created_timestamp': old_row.created_timestamp.isoformat()
