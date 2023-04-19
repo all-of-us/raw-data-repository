@@ -17,7 +17,6 @@ from rdr_service.model.study_nph import (
     SampleUpdate, BiobankFileExport, SampleExport,
     StoredSample, EnrollmentEvent, Incident
 )
-from rdr_service.dao import database_factory
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
 
@@ -534,19 +533,20 @@ class NphOrderDao(UpdatableDao):
             yield biospecimen_dict
 
     def get_nph_biospecimens_for_participant(self, nph_participant: Participant):
-        with database_factory.get_database().session() as sessions:
-            participant: Participant = sessions.query(Participant).filter(
+        with self.session() as session:
+            participant: Participant = session.query(Participant).filter(
                     Order.participant_id == nph_participant.id
                 )\
                 .options(joinedload(Participant.orders).joinedload(Order.samples)).first()
 
             biospecimens: Iterable[Dict[str, Any]] = []
-            for order in participant.orders:
-                _biospecimens = self._get_biospecimens_for_order(
-                    nph_participant, order, list(order.samples)
-                )
-                for biospecimen in _biospecimens:
-                    biospecimens.append(biospecimen)
+            if participant:
+                for order in participant.orders:
+                    _biospecimens = self._get_biospecimens_for_order(
+                        nph_participant, order, list(order.samples)
+                    )
+                    for biospecimen in _biospecimens:
+                        biospecimens.append(biospecimen)
             return biospecimens
 
 
