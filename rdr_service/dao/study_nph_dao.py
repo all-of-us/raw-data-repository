@@ -7,7 +7,7 @@ from typing import Optional
 from protorpc import messages
 from werkzeug.exceptions import BadRequest, NotFound
 
-from sqlalchemy.orm import Query, aliased
+from sqlalchemy.orm import Query, aliased, joinedload
 from sqlalchemy import exc
 
 from rdr_service.model.study_nph import (
@@ -17,6 +17,7 @@ from rdr_service.model.study_nph import (
     SampleUpdate, BiobankFileExport, SampleExport,
     StoredSample, EnrollmentEvent, Incident
 )
+from rdr_service.dao import database_factory
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
 
@@ -477,27 +478,6 @@ class NphOrderDao(UpdatableDao):
         session.refresh(order)
         return order
 
-    def get_nph_biospecimens_for_participant(self, nph_participant: Participant):
-        with self.session() as session:
-            orders_for_participant: Iterable[Order] = list(
-                session.query(Order).filter(Order.participant_id == nph_participant.id).all()
-            )
-
-        biospecimens: Iterable[Dict[str, Any]] = []
-        nph_ordered_sample_dao = NphOrderedSampleDao()
-        for order in orders_for_participant:
-            for biospecimen in nph_ordered_sample_dao.get_biospecimens_for_order(nph_participant, order):
-                biospecimens.append(biospecimen)
-        return biospecimens
-
-
-class NphOrderedSampleDao(UpdatableDao):
-    def __init__(self):
-        super(NphOrderedSampleDao, self).__init__(OrderedSample)
-
-    def get_id(self, obj: OrderedSample):
-        return obj.id
-
     @staticmethod
     def _is_order_cancelled(order: Order) -> bool:
         return order.status == "cancelled"
@@ -506,54 +486,76 @@ class NphOrderedSampleDao(UpdatableDao):
     def _is_ordered_sample_cancelled(ordered_sample: OrderedSample) -> bool:
         return str(ordered_sample.status).lower() == "cancelled"
 
-    def get_biospecimens_for_order(self, nph_participant: Participant, order: Order) -> Iterator[Dict[str, Any]]:
+    def _get_biospecimens_for_order(
+        self, nph_participant: Participant, order: Order, ordered_samples: Iterable[OrderedSample]
+    ) -> Iterator[Dict[str, Any]]:
         nph_stored_sample_session = NphStoredSampleDao()
         nph_study_category_dao = NphStudyCategoryDao()
-        with self.session() as session:
-            ordered_samples_for_participant: Iterable[OrderedSample] = list(
-                session.query(OrderedSample).filter(OrderedSample.order_id == order.id).all()
+        for ordered_sample in ordered_samples:
+            parent_study_category = nph_study_category_dao.get_parent_study_category(order.category_id)
+            nph_module_id = nph_study_category_dao.get_parent_study_category(parent_study_category.id)
+            sample_processing_ts = ordered_sample.collected if not ordered_sample.parent is None else None
+            collection_date_utc = _format_timestamp((ordered_sample.parent or ordered_sample).collected)
+            processing_date_utc = _format_timestamp(sample_processing_ts)
+            finalized_date_utc = _format_timestamp(ordered_sample.finalized) if ordered_sample.finalized else None
+            sample_is_cancelled = (
+                self._is_order_cancelled(order) or
+                self._is_ordered_sample_cancelled(ordered_sample)
             )
-            for ordered_sample in ordered_samples_for_participant:
-                parent_study_category = nph_study_category_dao.get_parent_study_category(order.category_id)
-                nph_module_id = nph_study_category_dao.get_parent_study_category(parent_study_category.id)
-                sample_processing_ts = ordered_sample.collected if not ordered_sample.parent is None else None
-                collection_date_utc = _format_timestamp((ordered_sample.parent or ordered_sample).collected)
-                processing_date_utc = _format_timestamp(sample_processing_ts)
-                finalized_date_utc = _format_timestamp(ordered_sample.finalized) if ordered_sample.finalized else None
-                sample_is_cancelled = (
-                    self._is_order_cancelled(order) or
-                    self._is_ordered_sample_cancelled(ordered_sample)
-                )
-                kit_id = None
-                if (ordered_sample.identifier or ordered_sample.test).startswith("ST"):
-                    kit_id = order.nph_order_id
+            kit_id = None
+            if (ordered_sample.identifier or ordered_sample.test).startswith("ST"):
+                kit_id = order.nph_order_id
 
-                sample_status = "Cancelled" if sample_is_cancelled else "Active"
-                biospecimen_dict = {
-                    "orderID": order.nph_order_id,
-                    "visitID": parent_study_category.name if parent_study_category else "",
-                    "studyID": f"NPH Module {nph_module_id.name}",
-                    "specimenCode": (ordered_sample.identifier or ordered_sample.test),
-                    "timepointID": nph_study_category_dao.get_study_category(order.category_id).name,
-                    "volume": ordered_sample.volume,
-                    "volumeUOM": ordered_sample.volumeUnits,
-                    "orderedSampleStatus": sample_status,
-                    "clientID": order.client_id,
-                    "collectionDateUTC": collection_date_utc,
-                    "processingDateUTC": processing_date_utc,
-                    "finalizedDateUTC": finalized_date_utc,
-                    "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
-                    "kitID": kit_id,
-                    "biobankStatus": None,
-                }
-                biobank_status_and_lims_id = (
-                    nph_stored_sample_session.get_biobank_status_and_lims_id(
-                        nph_participant, ordered_sample
-                    )
+            sample_status = "Cancelled" if sample_is_cancelled else "Active"
+            biospecimen_dict = {
+                "orderID": order.nph_order_id,
+                "visitID": parent_study_category.name if parent_study_category else "",
+                "studyID": f"NPH Module {nph_module_id.name}",
+                "specimenCode": (ordered_sample.identifier or ordered_sample.test),
+                "timepointID": nph_study_category_dao.get_study_category(order.category_id).name,
+                "volume": ordered_sample.volume,
+                "volumeUOM": ordered_sample.volumeUnits,
+                "orderedSampleStatus": sample_status,
+                "clientID": order.client_id,
+                "collectionDateUTC": collection_date_utc,
+                "processingDateUTC": processing_date_utc,
+                "finalizedDateUTC": finalized_date_utc,
+                "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
+                "kitID": kit_id,
+                "biobankStatus": None,
+            }
+            biobank_status_and_lims_id = (
+                nph_stored_sample_session.get_biobank_status_and_lims_id(
+                    nph_participant, ordered_sample
                 )
-                if biobank_status_and_lims_id:
-                    biospecimen_dict.update({"biobankStatus": biobank_status_and_lims_id})
-                yield biospecimen_dict
+            )
+            if biobank_status_and_lims_id:
+                biospecimen_dict.update({"biobankStatus": biobank_status_and_lims_id})
+            yield biospecimen_dict
+
+    def get_nph_biospecimens_for_participant(self, nph_participant: Participant):
+        with database_factory.get_database().session() as sessions:
+            participant: Participant = sessions.query(Participant).filter(
+                    Order.participant_id == nph_participant.id
+                )\
+                .options(joinedload(Participant.orders).joinedload(Order.samples)).first()
+
+            biospecimens: Iterable[Dict[str, Any]] = []
+            for order in participant.orders:
+                _biospecimens = self._get_biospecimens_for_order(
+                    nph_participant, order, list(order.samples)
+                )
+                for biospecimen in _biospecimens:
+                    biospecimens.append(biospecimen)
+            return biospecimens
+
+
+class NphOrderedSampleDao(UpdatableDao):
+    def __init__(self):
+        super(NphOrderedSampleDao, self).__init__(OrderedSample)
+
+    def get_id(self, obj: OrderedSample):
+        return obj.id
 
     @staticmethod
     def _get_parent_order_sample(order_id, session) -> OrderedSample:
