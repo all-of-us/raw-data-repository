@@ -24,6 +24,8 @@ class Participant(NphBase):
     biobank_id = Column(BigInteger, nullable=False, unique=True)
     research_id = Column(BigInteger, unique=True)
 
+    orders: List['Order'] = relationship('Order', back_populates='participant')
+
 
 Index("participant_biobank_id", Participant.biobank_id)
 
@@ -84,7 +86,7 @@ class Order(NphBase):
     amended_reason = Column(String(1024))
     notes = Column(JSON, nullable=False)
     status = Column(String(128))
-
+    participant = relationship(Participant, back_populates='orders')
     samples: List['OrderedSample'] = relationship('OrderedSample', back_populates='order')
 
 
