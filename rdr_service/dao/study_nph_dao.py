@@ -1,4 +1,5 @@
 import logging
+from functools import lru_cache
 from datetime import datetime
 from typing import Tuple, Dict, List, Any, Optional, Iterator, Iterable
 import json
@@ -156,11 +157,12 @@ class NphStudyCategoryDao(UpdatableDao):
             if result:
                 return True, result
         return False, None
-
+    @lru_cache(maxsize=128, typed=False)
     def get_study_category(self, study_category_id: int) -> StudyCategory:
         with self.session() as session:
             return session.query(StudyCategory).get(study_category_id)
 
+    @lru_cache(maxsize=128, typed=False)
     def get_parent_study_category(self, study_category_id: int) -> StudyCategory:
         with self.session() as session:
             study_category: StudyCategory = session.query(StudyCategory).get(study_category_id)
