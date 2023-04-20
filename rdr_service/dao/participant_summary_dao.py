@@ -702,9 +702,15 @@ class ParticipantSummaryDao(UpdatableDao):
                 sample.confirmed for sample in confirmed_dna_sample_list
             ])
 
+        # See ROC-1572/PDR-1699.  Provide a default date to get_interest_in_sharing_ehr_ranges() if participant
+        # has SUBMITTED status for their EHR consent.  Remediates data issues w/older consent validations
+        default_ehr_date = summary.consentForElectronicHealthRecordsFirstYesAuthored \
+            if summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED else None
+
         ehr_consent_ranges = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
             participant_id=summary.participantId,
-            session=session
+            session=session,
+            default_authored_datetime=default_ehr_date
         )
 
         revised_consent_time_list = []
