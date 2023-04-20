@@ -457,6 +457,8 @@ class ParticipantQuery(ObjectType):
                 ParticipantMapping.ancillary_study_id == NPH_STUDY_ID,
             ).options(
                 subqueryload(DbParticipant.orders).subqueryload(Order.samples)
+            ).options(
+                subqueryload(DbParticipant.stored_samples)
             ).distinct()
 
             current_class = Participant

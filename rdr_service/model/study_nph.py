@@ -25,6 +25,9 @@ class Participant(NphBase):
     research_id = Column(BigInteger, unique=True)
 
     orders: List['Order'] = relationship('Order', back_populates='participant')
+    stored_samples: List['StoredSample'] = relationship(
+        'StoredSample', back_populates="participant", order_by="desc(StoredSample.id)"
+    )
 
 
 Index("participant_biobank_id", Participant.biobank_id)
@@ -340,6 +343,7 @@ class StoredSample(NphBase):
     lims_id = Column(String(64))
     status = Column(Enum(StoredSampleStatus), default=StoredSampleStatus.SHIPPED)
     disposition = Column(String(256))
+    participant = relationship(Participant, back_populates="stored_samples")
 
 
 event.listen(StoredSample, "before_insert", model_insert_listener)
