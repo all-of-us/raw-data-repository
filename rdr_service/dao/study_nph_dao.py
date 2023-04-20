@@ -8,7 +8,7 @@ from typing import Optional
 from protorpc import messages
 from werkzeug.exceptions import BadRequest, NotFound
 
-from sqlalchemy.orm import Query, aliased, joinedload
+from sqlalchemy.orm import Query, aliased
 from sqlalchemy import exc
 
 from rdr_service.model.study_nph import (
@@ -535,20 +535,15 @@ class NphOrderDao(UpdatableDao):
             yield biospecimen_dict
 
     def get_nph_biospecimens_for_participant(self, nph_participant: Participant):
-        with self.session() as session:
-            # participant: Participant = session.query(Participant).filter(
-            #         Order.participant_id == nph_participant.id
-            #     )\
-            #     .options(joinedload(Participant.orders).joinedload(Order.samples)).first()
-            biospecimens: Iterable[Dict[str, Any]] = []
-            if nph_participant:
-                for order in nph_participant.orders:
-                    _biospecimens = self._get_biospecimens_for_order(
-                        nph_participant, order, list(order.samples)
-                    )
-                    for biospecimen in _biospecimens:
-                        biospecimens.append(biospecimen)
-            return biospecimens
+        biospecimens: Iterable[Dict[str, Any]] = []
+        if nph_participant:
+            for order in nph_participant.orders:
+                _biospecimens = self._get_biospecimens_for_order(
+                    nph_participant, order, list(order.samples)
+                )
+                for biospecimen in _biospecimens:
+                    biospecimens.append(biospecimen)
+        return biospecimens
 
 
 class NphOrderedSampleDao(UpdatableDao):
