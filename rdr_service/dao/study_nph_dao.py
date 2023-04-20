@@ -536,14 +536,13 @@ class NphOrderDao(UpdatableDao):
 
     def get_nph_biospecimens_for_participant(self, nph_participant: Participant):
         with self.session() as session:
-            participant: Participant = session.query(Participant).filter(
-                    Order.participant_id == nph_participant.id
-                )\
-                .options(joinedload(Participant.orders).joinedload(Order.samples)).first()
-
+            # participant: Participant = session.query(Participant).filter(
+            #         Order.participant_id == nph_participant.id
+            #     )\
+            #     .options(joinedload(Participant.orders).joinedload(Order.samples)).first()
             biospecimens: Iterable[Dict[str, Any]] = []
-            if participant:
-                for order in participant.orders:
+            if nph_participant:
+                for order in nph_participant.orders:
                     _biospecimens = self._get_biospecimens_for_order(
                         nph_participant, order, list(order.samples)
                     )
