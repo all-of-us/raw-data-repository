@@ -910,22 +910,15 @@ class NphStoredSampleDao(BaseDao):
     def get_biobank_status_and_lims_id(
         self, nph_participant: Participant, ordered_sample: OrderedSample
     ) -> Iterable[Tuple[str]]:
-        participant_biobank_id = nph_participant.biobank_id
-        with self.session() as session:
-            stored_samples: Iterable[StoredSample] = session.query(StoredSample)\
-                .order_by(StoredSample.id.desc())\
-                .filter(
-                    StoredSample.biobank_id == participant_biobank_id,
-                    StoredSample.sample_id == ordered_sample.nph_sample_id,
-                )\
-                .all()
-
+        filtered_stored_samples = list(
+            filter(lambda ss: str(ss.sample_id) == ordered_sample.nph_sample_id, nph_participant.stored_samples)
+        )
         return [
             {
                 "limsID": stored_sample.lims_id,
                 "biobankModified": _format_timestamp(stored_sample.biobank_modified),
                 "status": stored_sample.status.name if stored_sample.status else None,
-            } for stored_sample in stored_samples
+            } for stored_sample in filtered_stored_samples
         ]
 
 
