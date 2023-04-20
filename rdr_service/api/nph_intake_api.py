@@ -64,26 +64,25 @@ class PostIntakePayload:
         return PostIntakePayload(intake_payload)
 
     @classmethod
-    def create_ops_data_els(cls, *, participant_id: str, participant_obj: dict) -> List:
-        els_found = []
+    def create_ops_data_elements(cls, *, participant_id: str, participant_obj: dict) -> List[dict]:
+        elements_found = []
         for key, value in participant_obj['resource'].items():
             try:
-                entry = {
+                elements_found.append({
                     'created': clock.CLOCK.now(),
                     'modified': clock.CLOCK.now(),
                     'participant_id': participant_id,
                     'source_data_element': ParticipantOpsElementTypes.lookup_by_name(key.upper()),
                     'source_value': value
-                }
-                els_found.append(entry)
+                })
             except KeyError:
                 pass
-        return els_found
+        return elements_found
 
     def create_event_objs(self, *, participant_id: str, entry: dict, activity_data: ActivityData) -> List:
 
         nph_event_dao = self.event_dao_map[activity_data.name]
-        current_entry_consent_events = self.get_consent_provision_events(entry)
+        current_entry_consent_events = self.get_consent_events(entry)
         current_entry_events = current_entry_consent_events if current_entry_consent_events else [entry]
 
         current_event_objs = []
@@ -189,17 +188,22 @@ class PostIntakePayload:
 
         return event_activity.id
 
-    def get_consent_provision_events(self, entry: dict) -> List[dict]:
-        if not entry['resource'].get('provision'):
+    def get_consent_events(self, entry: dict) -> List[dict]:
+        consents = []
+        consent_module_data = entry['resource'].get('provision')
+        if not consent_module_data:
             return []
         try:
-            provisions = []
-            for provision in entry['resource']['provision']['provision']:
-                provisions.append({
-                    'opt_in': ConsentOptInTypes.lookup_by_name(provision['type'].upper()),
-                    'code': provision['purpose'][0]['code']
+            consents.append({
+                'opt_in': ConsentOptInTypes.lookup_by_name(consent_module_data.get('type').upper()),
+                'code': consent_module_data.get('purpose')[0]['code']
+            })
+            for provision in consent_module_data.get('provision'):
+                consents.append({
+                    'opt_in': ConsentOptInTypes.lookup_by_name(provision.get('type').upper()),
+                    'code': provision.get('purpose')[0]['code']
                 })
-            return provisions
+            return consents
 
         except KeyError as e:
             raise BadRequest(f'Key error on provision lookup: {e} bundle_id: {self.bundle_identifier}')
@@ -277,7 +281,7 @@ class PostIntakePayload:
                                           resource['entry']))[0]
 
             participant_id = self.extract_participant_id(participant_obj=participant_obj)
-            participant_ops_data = self.create_ops_data_els(
+            participant_ops_data = self.create_ops_data_elements(
                 participant_id=participant_id,
                 participant_obj=participant_obj
             )

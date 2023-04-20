@@ -1,6 +1,6 @@
 import json
 
-from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
+from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, ConsentOptInTypes
 from rdr_service.dao.study_nph_dao import NphParticipantDao, NphSiteDao, NphParticipantEventActivityDao, \
     NphEnrollmentEventTypeDao, NphPairingEventDao, NphDefaultBaseDao, NphActivityDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
@@ -52,6 +52,13 @@ class NphIntakeAPITest(BaseTestCase):
 
     def test_m1_detailed_consent_payload(self):
 
+        # overall consent obj
+        self.nph_data_gen.create_database_consent_event_type(
+            name='Module 1 Consent',
+            source_name='m1_consent'
+        )
+
+        # consent opt-ins
         self.nph_data_gen.create_database_consent_event_type(
             name='Module 1 GPS Consent',
             source_name='m1_consent_gps'
@@ -120,19 +127,23 @@ class NphIntakeAPITest(BaseTestCase):
         # consent events
         consent_events = self.nph_consent_event_dao.get_all()
 
-        # should have 3 consent events per participant_id
-        self.assertEqual(len(consent_events), len(all_participant_ids) * 3)
-        self.assertTrue(all(obj.event_type_id in [1, 2, 3] for obj in consent_events))
+        # should have 4 (1 main + 3 opt-ins) consent events per participant_id
+        self.assertEqual(len(consent_events), len(all_participant_ids) * 4)
+        self.assertTrue(all(obj.event_type_id in [1, 2, 3, 4] for obj in consent_events))
         self.assertTrue(all(obj.participant_id in all_participant_ids for obj in consent_events))
         self.assertTrue(all(obj.opt_in is not None for obj in consent_events))
 
+        # main consent decision (permit)
+        self.assertTrue(all(obj.opt_in == ConsentOptInTypes.PERMIT for obj in consent_events if obj.event_type_id == 1))
         # granular answers for consent opt ins
         self.assertTrue(all(obj.event_id == 2 for obj in consent_events if obj.participant_id == 100000000))
-        # deny permit permit
-        self.assertTrue([obj.opt_in.number for obj in consent_events if obj.participant_id == 100000000] == [2, 1, 1])
+        # permit deny permit permit
+        self.assertTrue([obj.opt_in.number for obj in consent_events if
+                         obj.participant_id == 100000000] == [1, 2, 1, 1])
         self.assertTrue(all(obj.event_id == 4 for obj in consent_events if obj.participant_id == 100000001))
-        # deny permit deny
-        self.assertTrue([obj.opt_in.number for obj in consent_events if obj.participant_id == 100000001] == [2, 1, 2])
+        # permit deny permit deny
+        self.assertTrue([obj.opt_in.number for obj in consent_events if
+                         obj.participant_id == 100000001] == [1, 2, 1, 2])
 
         consent_participant_event_activity = list(
             filter(lambda x: x.activity_id == consent_activity.id, participant_event_activities))
