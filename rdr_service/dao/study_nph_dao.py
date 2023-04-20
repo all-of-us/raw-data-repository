@@ -495,7 +495,7 @@ class NphOrderDao(UpdatableDao):
         for ordered_sample in ordered_samples:
             parent_study_category = nph_study_category_dao.get_parent_study_category(order.category_id)
             nph_module_id = nph_study_category_dao.get_parent_study_category(parent_study_category.id)
-            sample_processing_ts = ordered_sample.collected if not ordered_sample.parent is None else None
+            sample_processing_ts = ordered_sample.collected if ordered_sample.parent is not None else None
             collection_date_utc = _format_timestamp((ordered_sample.parent or ordered_sample).collected)
             processing_date_utc = _format_timestamp(sample_processing_ts)
             finalized_date_utc = _format_timestamp(ordered_sample.finalized) if ordered_sample.finalized else None
