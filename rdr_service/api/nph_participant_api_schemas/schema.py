@@ -1,13 +1,14 @@
 import logging
 from graphene import ObjectType, String, Int, DateTime, Field, List, Date, Schema, NonNull
 from graphene import relay
-from sqlalchemy.orm import Query, aliased
+from sqlalchemy.orm import Query, aliased, subqueryload
 from sqlalchemy import and_, func
 from sqlalchemy.dialects.mysql import JSON
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX, NPH_STUDY_ID
 from rdr_service.model.study_nph import (
     Participant as DbParticipant,
     Site as nphSite,
+    Order,
     PairingEvent,
     DeactivationEvent,
     WithdrawalEvent,
@@ -446,7 +447,7 @@ class ParticipantQuery(ObjectType):
                 ParticipantOpsDataElement,
                 ParticipantMapping.ancillary_participant_id == ParticipantOpsDataElement.participant_id
             ).outerjoin(
-                 DeactivationEvent,
+                DeactivationEvent,
                 ParticipantMapping.ancillary_participant_id == DeactivationEvent.participant_id
             ).outerjoin(
                 WithdrawalEvent,
@@ -454,6 +455,10 @@ class ParticipantQuery(ObjectType):
             ).filter(
                 pm2.id.is_(None),
                 ParticipantMapping.ancillary_study_id == NPH_STUDY_ID,
+            ).options(
+                subqueryload(DbParticipant.orders).subqueryload(Order.samples)
+            ).options(
+                subqueryload(DbParticipant.stored_samples)
             ).distinct()
 
             current_class = Participant
