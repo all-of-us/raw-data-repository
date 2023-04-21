@@ -30,7 +30,8 @@ class StudyEnrollmentTest(BaseTestCase):
         interface = EnrollmentInterface('NPH-1000')
         interface.create_study_participant(
             aou_pid=aou_pid,
-            ancillary_pid='578448930'
+            ancillary_pid='578448930',
+            event_authored_time='2015-02-07T13:28:17.239+02:00'
         )
         # Test Rex inserted correctly
         rex_dao = RexParticipantMappingDao()
