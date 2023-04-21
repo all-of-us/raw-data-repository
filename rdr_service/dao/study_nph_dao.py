@@ -446,20 +446,38 @@ class NphOrderDao(UpdatableDao):
             raise BadRequest("Finalized Site ID is missing")
 
     def _get_or_insert_module_visit_type_and_timepoint_study_categories(self, order: Namespace, session):
-        module_exist, module = self.study_category_dao.module_exist(order, session)
-        visit_exist, visit = self.study_category_dao.visit_type_exist(order, module, session)
+        module_exist, module = self.study_category_dao.module_exist(
+            order=order,
+            session=session
+        )
         if not module_exist:
-            _module = StudyCategory(name=order.module, type_label="module")
-            module: StudyCategory = self.study_category_dao.insert(_module)
-        if not visit_exist:
-            _visit_type: StudyCategory = StudyCategory(name=order.visitType, type_label="visitType")
-            visit_type: StudyCategory = self.study_category_dao.insert(_visit_type)
-            module.children.append(visit_type)
+            module = self.study_category_dao.insert_with_session(
+                obj=StudyCategory(name=order.module, type_label="module"),
+                session=session
+            )
 
-        timepoint_exist, timepoint = self.study_category_dao.timepoint_exist(order, module, session)
+        visit_exist, visit = self.study_category_dao.visit_type_exist(
+            order=order,
+            module=module,
+            session=session
+        )
+        if not visit_exist:
+            visit = self.study_category_dao.insert_with_session(
+                obj=StudyCategory(name=order.visitType, type_label="visitType"),
+                session=session
+            )
+            module.children.append(visit)
+
+        timepoint_exist, timepoint = self.study_category_dao.timepoint_exist(
+            order=order,
+            visit_type=visit,
+            session=session
+        )
         if not timepoint_exist:
-            timepoint_sc = StudyCategory(name=order.timepoint, type_label="timepoint")
-            timepoint: StudyCategory = self.study_category_dao.insert(timepoint_sc)
+            timepoint = self.study_category_dao.insert_with_session(
+                obj=StudyCategory(name=order.timepoint, type_label="timepoint"),
+                session=session
+            )
         visit.children.append(timepoint)
         return module, timepoint
 

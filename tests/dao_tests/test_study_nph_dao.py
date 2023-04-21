@@ -1,16 +1,18 @@
 from datetime import datetime, timedelta
-from zlib import crc32
-from uuid import uuid4
-from typing import Dict, Any, Tuple
-from unittest import skip
-from unittest.mock import MagicMock, patch
+from itertools import zip_longest
 import json
 from types import SimpleNamespace as Namespace
-from itertools import zip_longest
-from werkzeug.exceptions import BadRequest, NotFound
-from rdr_service.dao import database_factory
-from sqlalchemy.orm import Query
+from typing import Dict, Any, Tuple
+from uuid import uuid4
+from zlib import crc32
+
 from faker import Faker
+from sqlalchemy.orm import Query
+from unittest import skip
+from unittest.mock import MagicMock, patch
+from werkzeug.exceptions import BadRequest, NotFound
+
+from rdr_service.dao import database_factory
 
 from rdr_service.dao.study_nph_dao import (
     NphParticipantDao,
@@ -526,12 +528,9 @@ class NphOrderDaoTest(BaseTestCase):
         with FakeClock(ts):
             return self.nph_order_dao.insert(nph_order)
 
-    # @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.insert_time_point_record')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.visit_type_exist')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.module_exist')
-    # def test_insert_order(self, mock_module_exist, mock_visit_type_exist, mock_insert_time):
     def test_insert_order(self, mock_module_exist, mock_visit_type_exist):
-        # mock_insert_time.return_value = StudyCategory(name="Child Study Category", type_label="CHILD")
         mock_visit_type_exist.return_value = (True, StudyCategory(name="Parent Study Category", type_label="PARENT"))
         mock_module_exist.return_value = (True, StudyCategory(name="Child Study Category", type_label="CHILD"))
 
@@ -744,6 +743,39 @@ class NphOrderDaoTest(BaseTestCase):
         order_dao.set_order_cls(json.dumps(TEST_SAMPLE))
         order = order_dao.from_client_json(session, "10001", 1)
         order_dao._validate_model(order)
+
+    def test_timepoint_creation(self):
+        """Ensure new module/visit/timepoint records can be created from an incoming order"""
+        # Set up the order to define what module, visit, and timepoint to create
+        module_name = "module 1"
+        visit_name = "visit 1"
+        timepoint_name = "timepoint 1"
+        order = MagicMock(module=module_name, visitType=visit_name, timepoint=timepoint_name)
+
+        # Pass the order to the dao to have it create the module, visit, and timepoint
+        dao = NphOrderDao()
+        dao.insert_study_category_with_session(order=order, session=self.session)
+        self.session.commit()  # Send send anything the dao did to the DB so we can query it
+
+        # Check that the dao has the module, visit, and timepoint
+        self.assertIsNotNone(
+            self.session.query(StudyCategory).filter(
+                StudyCategory.type_label == 'module',
+                StudyCategory.name == module_name
+            ).one_or_none()
+        )
+        self.assertIsNotNone(
+            self.session.query(StudyCategory).filter(
+                StudyCategory.type_label == 'visitType',
+                StudyCategory.name == visit_name
+            ).one_or_none()
+        )
+        self.assertIsNotNone(
+            self.session.query(StudyCategory).filter(
+                StudyCategory.type_label == 'timepoint',
+                StudyCategory.name == timepoint_name
+            ).one_or_none()
+        )
 
     def tearDown(self):
         self.clear_table_after_test("nph.order")

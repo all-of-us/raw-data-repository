@@ -40,7 +40,7 @@ class StudyCategory(NphBase):
     type_label = Column(String(128))
     parent_id = Column(BigInteger, ForeignKey("study_category.id"))
     parent = relation("StudyCategory", remote_side=[id])
-    children = relation("StudyCategory", remote_side=[parent_id], uselist=True)
+    children: List['StudyCategory'] = relation("StudyCategory", remote_side=[parent_id], uselist=True)
 
 
 event.listen(StudyCategory, "before_insert", model_insert_listener)
