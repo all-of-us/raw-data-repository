@@ -279,6 +279,7 @@ class NphParticipantDaoTest(BaseTestCase):
 
     def tearDown(self):
         self.clear_table_after_test("nph.participant")
+        super().tearDown()
 
 
 class NphStudyCategoryTest(BaseTestCase):
@@ -392,6 +393,7 @@ class NphStudyCategoryTest(BaseTestCase):
 
     def tearDown(self):
         self.clear_table_after_test("nph.study_category")
+        super().tearDown()
 
 
 class NphSiteDaoTest(BaseTestCase):
@@ -467,6 +469,7 @@ class NphSiteDaoTest(BaseTestCase):
 
     def tearDown(self):
         self.clear_table_after_test("nph.site")
+        super().tearDown()
 
 
 class NphOrderDaoTest(BaseTestCase):
@@ -782,6 +785,7 @@ class NphOrderDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.site")
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
+        super().tearDown()
 
 
 class NphOrderedSampleDaoTest(BaseTestCase):
@@ -1096,6 +1100,7 @@ class NphOrderedSampleDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
         self.clear_table_after_test("nph.sample_update")
+        super().tearDown()
 
 
 class NphSampleUpdateDaoTest(BaseTestCase):
@@ -1294,6 +1299,7 @@ class NphSampleUpdateDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.site")
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
+        super().tearDown()
 
 
 class NphBiobankFileExportDaoTest(BaseTestCase):
@@ -1331,6 +1337,7 @@ class NphBiobankFileExportDaoTest(BaseTestCase):
 
     def tearDown(self):
         self.clear_table_after_test("nph.biobank_file_export")
+        super().tearDown()
 
 
 class NphSampleExportDaoTest(BaseTestCase):
@@ -1555,6 +1562,7 @@ class NphSampleExportDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.site")
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
+        super().tearDown()
 
 
 class NphIncidentDaoTest(BaseTestCase):
@@ -1717,3 +1725,4 @@ class NphIncidentDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.participant_event_activity")
         self.clear_table_after_test("nph.activity")
         self.clear_table_after_test("nph.participant")
+        super().tearDown()
