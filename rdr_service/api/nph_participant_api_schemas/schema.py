@@ -359,9 +359,6 @@ class ParticipantConnection(relay.Connection):
 
 
 class ParticipantQuery(ObjectType):
-
-    MAX_PARTICIPANTS_PER_RESPONSE = 1000
-
     class Meta:
         interfaces = (relay.Node,)
         connection_class = ParticipantConnection
@@ -377,12 +374,12 @@ class ParticipantQuery(ObjectType):
 
     @staticmethod
     def resolve_participant(root, info, nph_id=None, sort_by=None, limit=None, off_set=None, **filter_kwargs):
-        """
-        Set the value of pagination 'limit' between 10 (min), 1000 (max) & 100 (default)
-        Set the value of pagination 'off_set' between 0 (min), 1000 (max) & 0 (default)
-        """
+        # Set the value of pagination 'limit' between 1 (min), 1000 (max) & 100 (default)
         limit = min(max(limit, MIN_LIMIT), MAX_LIMIT)
+
+        # Set the value of pagination 'off_set' between 0 (min), 1000 (max) & 0 (default)
         off_set = min(max(off_set, MIN_OFFSET), MAX_OFFSET)
+
         with database_factory.get_database().session() as sessions:
             logging.info('root: %s, info: %s, kwargs: %s', root, info, filter_kwargs)
             pm2 = aliased(PairingEvent)
