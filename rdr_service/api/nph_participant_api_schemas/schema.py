@@ -6,7 +6,7 @@ from sqlalchemy import and_, func
 from sqlalchemy.dialects.mysql import JSON
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX, NPH_STUDY_ID
 from rdr_service.model.study_nph import (
-    Participant as DbParticipant,
+    Participant,
     Site as nphSite,
     Order,
     PairingEvent,
@@ -30,6 +30,7 @@ NPH_BIOBANK_PREFIX = NPH_PROD_BIOBANK_PREFIX if config.GAE_PROJECT == "all-of-us
 
 
 class SortableField(Field):
+
     def __init__(self, *args, sort_modifier=None, filter_modifier=None, **kwargs):
         super(SortableField, self).__init__(*args, **kwargs)
         self.sort_modifier = sort_modifier
@@ -80,7 +81,7 @@ class GraphQLNphBioSpecimen(ObjectType):
     visitID = Field(String)
     specimenCode = Field(String)
     timepointID = Field(String)
-    volume  = Field(String)
+    volume = Field(String)
     volumeUOM = Field(String)
     orderedSampleStatus = Field(String)
     clientID = Field(String)
@@ -94,7 +95,6 @@ class GraphQLNphBioSpecimen(ObjectType):
 
 class EventCollection(ObjectType):
     current = SortableField(Event)
-    # TODO: historical field need to sort by newest to oldest for a given aspect of a participant’s data
     historical = List(Event)
 
     @staticmethod
@@ -130,19 +130,19 @@ def _build_filter_parameters(cls):
     return result
 
 
-class Participant(ObjectType):
+class ParticipantField(ObjectType):
     # AOU
     participantNphId = SortableField(
         String,
         description='NPH participant id for the participant, sourced from NPH participant data table',
-        sort_modifier=lambda context: context.set_order_expression(DbParticipant.id),
-        filter_modifier=lambda context, value: context.add_filter(DbParticipant.id == value)
+        sort_modifier=lambda context: context.set_order_expression(Participant.id),
+        filter_modifier=lambda context, value: context.add_filter(Participant.id == value)
     )
     biobankId = SortableField(
         String,
         description='NPH Biobank id value for the participant, sourced from NPH participant data table',
-        sort_modifier=lambda context: context.set_order_expression(DbParticipant.biobank_id),
-        filter_modifier=lambda context, value: context.add_filter(DbParticipant.biobank_id == value)
+        sort_modifier=lambda context: context.set_order_expression(Participant.biobank_id),
+        filter_modifier=lambda context, value: context.add_filter(Participant.biobank_id == value)
     )
     firstName = SortableField(
         String,
@@ -331,7 +331,7 @@ class Participant(ObjectType):
 
 class ParticipantConnection(relay.Connection):
     class Meta:
-        node = Participant
+        node = ParticipantField
 
     total_count = Int()
     result_count = Int()
@@ -340,7 +340,7 @@ class ParticipantConnection(relay.Connection):
     def resolve_total_count(root, _):
         with database_factory.get_database().session() as sessions:
             logging.debug(root)
-            query = Query(DbParticipant)
+            query = Query(Participant)
             query.session = sessions
             return query.count()
 
@@ -357,7 +357,7 @@ class ParticipantQuery(ObjectType):
     participant = relay.ConnectionField(
         ParticipantConnection, nph_id=String(required=False), sort_by=String(required=False), limit=Int(required=False),
         off_set=Int(required=False),
-        **_build_filter_parameters(Participant)
+        **_build_filter_parameters(ParticipantField)
     )
 
     @staticmethod
@@ -367,7 +367,7 @@ class ParticipantQuery(ObjectType):
             pm2 = aliased(PairingEvent)
 
             consent_subquery = sessions.query(
-                DbParticipant.id.label('consent_pid'),
+                Participant.id.label('consent_pid'),
                 func.json_object(
                     'consent_json',
                     func.json_arrayagg(
@@ -380,14 +380,14 @@ class ParticipantQuery(ObjectType):
                 ).label('consent_status'),
             ).join(
                 ConsentEvent,
-                ConsentEvent.participant_id == DbParticipant.id
+                ConsentEvent.participant_id == Participant.id
             ).join(
                  ConsentEventType,
                  ConsentEventType.id == ConsentEvent.event_type_id,
-            ).group_by(DbParticipant.id).subquery()
+            ).group_by(Participant.id).subquery()
 
             enrollment_subquery = sessions.query(
-                DbParticipant.id.label('enrollment_pid'),
+                Participant.id.label('enrollment_pid'),
                 func.json_object(
                     'enrollment_json',
                     func.json_arrayagg(
@@ -398,18 +398,18 @@ class ParticipantQuery(ObjectType):
                 ).label('enrollment_status'),
             ).join(
                 EnrollmentEvent,
-                EnrollmentEvent.participant_id == DbParticipant.id
+                EnrollmentEvent.participant_id == Participant.id
             ).join(
                  EnrollmentEventType,
                  EnrollmentEventType.id == EnrollmentEvent.event_type_id,
-            ).group_by(DbParticipant.id).subquery()
+            ).group_by(Participant.id).subquery()
 
             query = sessions.query(
                 ParticipantSummaryModel,
                 Site,
                 nphSite,
                 ParticipantMapping,
-                DbParticipant,
+                Participant,
                 enrollment_subquery.c.enrollment_status,
                 consent_subquery.c.consent_status,
                 DeactivationEvent,
@@ -422,14 +422,14 @@ class ParticipantQuery(ObjectType):
                 ParticipantMapping,
                 ParticipantSummaryModel.participantId == ParticipantMapping.primary_participant_id
             ).join(
-                DbParticipant,
-                DbParticipant.id == ParticipantMapping.ancillary_participant_id
+                Participant,
+                Participant.id == ParticipantMapping.ancillary_participant_id
             ).join(
                 enrollment_subquery,
-                enrollment_subquery.c.enrollment_pid == DbParticipant.id
+                enrollment_subquery.c.enrollment_pid == Participant.id
             ).join(
                 consent_subquery,
-                consent_subquery.c.consent_pid == DbParticipant.id
+                consent_subquery.c.consent_pid == Participant.id
             ).join(
                 PairingEvent,
                 PairingEvent.participant_id == ParticipantMapping.ancillary_participant_id
@@ -456,12 +456,12 @@ class ParticipantQuery(ObjectType):
                 pm2.id.is_(None),
                 ParticipantMapping.ancillary_study_id == NPH_STUDY_ID,
             ).options(
-                subqueryload(DbParticipant.orders).subqueryload(Order.samples)
+                subqueryload(Participant.orders).subqueryload(Order.samples)
             ).options(
-                subqueryload(DbParticipant.stored_samples)
+                subqueryload(Participant.stored_samples)
             ).distinct()
 
-            current_class = Participant
+            current_field_class = ParticipantField
             query_builder = QueryBuilder(query)
             try:
                 if sort_by:
@@ -469,17 +469,17 @@ class ParticipantQuery(ObjectType):
                     sort_info = schema_field_lookup(sort_parts[0])
                     logging.info('sort by: %s', sort_parts)
                     if len(sort_parts) == 1:
-                        sort_field: SortableField = getattr(current_class, sort_info.get("field"))
+                        sort_field: SortableField = getattr(current_field_class, sort_info.get("field"))
                         sort_field.sort_modifier(query_builder)
                     else:
                         sort_parts[0] = sort_info.get("field")
                         for sort_field_name in sort_parts:
-                            sort_field: SortableField = getattr(current_class, sort_field_name)
-                            sort_field.sort(current_class, sort_info, sort_field_name, query_builder)
-                            current_class = sort_field.type
+                            sort_field: SortableField = getattr(current_field_class, sort_field_name)
+                            sort_field.sort(current_field_class, sort_info, sort_field_name, query_builder)
+                            current_field_class = sort_field.type
 
                 for field_name, value in filter_kwargs.items():
-                    field_def = getattr(Participant, field_name, None)
+                    field_def = getattr(ParticipantField, field_name, None)
                     if not field_def:
                         raise NotImplementedError(f'Unable to filter by {field_name}.')
                     if not field_def.filter_modifier:

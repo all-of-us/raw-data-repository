@@ -183,7 +183,7 @@ def mock_load_participant_data(session):
     )
 
 
-class TestQueryExecution(BaseTestCase):
+class NphParticipantAPITest(BaseTestCase):
 
     def test_client_result_participant_summary(self):
         mock_load_participant_data(self.session)
@@ -505,7 +505,7 @@ class TestQueryExecution(BaseTestCase):
         self.clear_table_after_test("nph.participant_ops_data_element")
 
 
-class TestQueryValidator(BaseTestCase):
+class NphParticipantAPITestValidator(BaseTestCase):
 
     def test_validation_error(self):
         self.assertRaises(GraphQLSyntaxError, api.validate_query, QUERY_WITH_SYNTAX_ERROR)
