@@ -31,6 +31,7 @@ MAX_LIMIT = 1000
 
 DEFAULT_OFFSET = 0
 MIN_OFFSET = 0
+MAX_OFFSET = 1000
 
 
 class SortableField(Field):
@@ -354,6 +355,9 @@ class ParticipantConnection(relay.Connection):
 
 
 class ParticipantQuery(ObjectType):
+
+    MAX_PARTICIPANTS_PER_RESPONSE = 1000
+
     class Meta:
         interfaces = (relay.Node,)
         connection_class = ParticipantConnection
