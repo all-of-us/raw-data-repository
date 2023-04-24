@@ -49,7 +49,8 @@ tool_desc = "Support tool for Curation ETL process"
 
 
 EXPORT_BATCH_SIZE = 10000
-CHUNK_SIZE=1000
+CHUNK_SIZE = 1000
+SRC_MAP_CHUNK_SIZE = 100
 
 # TODO: Rewrite the Curation ETL bash scripts into multiple Classes here.
 
@@ -211,10 +212,7 @@ class CurationExportClass(ToolBase):
                         NULL survey_start_datetime,
                         DATE(qr.authored) survey_end_date,
                         qr.authored survey_end_datetime,
-                        CASE WHEN
-                            p.participant_origin = 'vibrent' THEN       1
-                            ELSE                                        2
-                        END provider_id,
+                        0 provider_id,
                         CASE WHEN
                             qr.non_participant_author = 'CATI' THEN     42530794
                             ELSE                                        0
@@ -254,6 +252,7 @@ class CurationExportClass(ToolBase):
                 WHERE qr.questionnaire_response_id in (
                     SELECT DISTINCT sc.questionnaire_response_id
                     FROM cdm.src_clean sc
+                    WHERE sc.filter = 0
                 )
             """,
             column_name_list=[
@@ -792,7 +791,16 @@ class CurationExportClass(ToolBase):
                 chunk += 1
                 self._populate_questionnaire_answers_by_module(session, participant_id_subset, cutoff_date)
                 self._populate_src_clean(session, participant_id_subset, cutoff_date)
-            _logger.debug("Populating src tables")
+            #return
+            _logger.debug("Populating src_participant")
+            self._populate_src_participant(session)
+            chunk = 1
+            chunks = int(full_pid_list_len / SRC_MAP_CHUNK_SIZE) + 1
+            _logger.debug("Populating src_mapped")
+            for participant_id_subset in list_chunks(lst=self.pid_list, chunk_size=SRC_MAP_CHUNK_SIZE):
+                _logger.debug(f"Chunk {chunk} of {chunks}")
+                chunk += 1
+                self._populate_src_mapped(session, participant_id_subset)
             self._populate_src_tables(session)
             if not self.args.omit_measurements:
                 _logger.debug("Populating measurements")
@@ -1172,32 +1180,33 @@ class CurationExportClass(ToolBase):
                                DROP TABLE IF EXISTS cdm.tmp_vcv_concept_lk;
                             """)
 
-        # Drop columns only used for ETL purposes
-        session.execute("""ALTER TABLE cdm.care_site DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.condition_era DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.condition_occurrence DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.cost DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.death DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.device_exposure DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.dose_era DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.drug_era DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.drug_exposure DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id, DROP COLUMN id;""")
-        session.execute("""
-                            ALTER TABLE cdm.location DROP COLUMN unit_id;
-                            ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN parent_id, DROP COLUMN id;
-                            ALTER TABLE cdm.observation DROP COLUMN unit_id, DROP COLUMN meas_id;
-                            ALTER TABLE cdm.observation_period DROP COLUMN unit_id;
-                            ALTER TABLE cdm.payer_plan_period DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.person DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.procedure_occurrence DROP COLUMN unit_id;
-                            ALTER TABLE cdm.provider DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.visit_occurrence DROP COLUMN unit_id, DROP COLUMN id;
-                            ALTER TABLE cdm.metadata DROP COLUMN id;
-                                    """)
+        if drop_tables:
+            # Drop columns only used for ETL purposes
+            session.execute("""ALTER TABLE cdm.care_site DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.condition_era DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.condition_occurrence DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.cost DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.death DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.device_exposure DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.dose_era DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.drug_era DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.drug_exposure DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id, DROP COLUMN id;""")
+            session.execute("""
+                                ALTER TABLE cdm.location DROP COLUMN unit_id;
+                                ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN parent_id, DROP COLUMN id;
+                                ALTER TABLE cdm.observation DROP COLUMN unit_id, DROP COLUMN meas_id;
+                                ALTER TABLE cdm.observation_period DROP COLUMN unit_id;
+                                ALTER TABLE cdm.payer_plan_period DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.person DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.procedure_occurrence DROP COLUMN unit_id;
+                                ALTER TABLE cdm.provider DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.visit_occurrence DROP COLUMN unit_id, DROP COLUMN id;
+                                ALTER TABLE cdm.metadata DROP COLUMN id;
+                                        """)
 
     @staticmethod
-    def _populate_src_tables(session):
+    def _populate_src_participant(session):
 
         session.execute("Delete from voc.concept WHERE concept_id IN (1585549, 1585565, 1585548)")
         # Update cdm.src_clean to filter specific surveys.
@@ -1215,6 +1224,9 @@ class CurationExportClass(ToolBase):
                                 cdm.src_clean.question_ppi_code = cdm.combined_question_filter.question_ppi_code
                             SET cdm.src_clean.filter = 1
                             WHERE TRUE""")
+
+        session.execute("""CREATE INDEX src_cln_p_id ON cdm.src_clean (participant_id);
+                           CREATE INDEX src_cln_filter ON cdm.src_clean (filter)""")
 
         session.execute("""INSERT INTO cdm.src_participant
                             SELECT
@@ -1247,7 +1259,8 @@ class CurationExportClass(ToolBase):
                                     t1.latest_date_of_survey
                                 ) f1""")
 
-        session.execute("""INSERT INTO cdm.src_mapped
+    def _populate_src_mapped(self, session, pid_list):
+        session.execute(f"""INSERT INTO cdm.src_mapped
                             SELECT
                                 0                                   AS id,
                                 src_c.participant_id                AS participant_id,
@@ -1279,30 +1292,23 @@ class CurationExportClass(ToolBase):
                             FROM cdm.src_clean src_c
                             JOIN cdm.src_participant src_p
                                 ON  src_c.participant_id = src_p.participant_id
-                            LEFT JOIN voc.concept vc1
+                            LEFT JOIN voc.tmp_voc_concept vc1
                                 ON  src_c.question_ppi_code = vc1.concept_code
-                                AND vc1.vocabulary_id = 'PPI'
-                            LEFT JOIN voc.concept_relationship vcr1
+                            LEFT JOIN voc.tmp_con_rel_mapsto vcr1
                                 ON  vc1.concept_id = vcr1.concept_id_1
-                                AND vcr1.relationship_id = 'Maps to'
-                                AND vcr1.invalid_reason IS NULL
-                            LEFT JOIN voc.concept vc2
+                            LEFT JOIN voc.tmp_voc_concept_s vc2
                                 ON  vcr1.concept_id_2 = vc2.concept_id
-                                AND vc2.standard_concept = 'S'
-                                AND vc2.invalid_reason IS NULL
-                            LEFT JOIN voc.concept vc3
+                            LEFT JOIN voc.tmp_voc_concept vc3
                                 ON  src_c.value_ppi_code = vc3.concept_code
-                                AND vc3.vocabulary_id = 'PPI'
-                            LEFT JOIN voc.concept_relationship vcr2
+                            LEFT JOIN voc.tmp_con_rel_mapstoval vcr2
                                 ON  vc3.concept_id = vcr2.concept_id_1
-                                AND vcr2.relationship_id = 'Maps to value'
-                                AND vcr2.invalid_reason IS NULL
-                            LEFT JOIN voc.concept vc4
+                            LEFT JOIN voc.tmp_voc_concept_s vc4
                                 ON  vcr2.concept_id_2 = vc4.concept_id
-                                AND vc4.standard_concept = 'S'
-                                AND vc4.invalid_reason IS NULL
                             WHERE src_c.filter = 0
+                            AND src_c.participant_id IN ({",".join([str(pid) for pid in pid_list])})
                             """)
+
+    def _populate_src_tables(self, session):
         session.execute("""
                 ALTER TABLE cdm.src_mapped ADD KEY (question_ppi_code);
                 CREATE INDEX mapped_p_id_and_ppi ON cdm.src_mapped (participant_id, question_ppi_code);
