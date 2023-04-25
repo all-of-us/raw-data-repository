@@ -5,7 +5,7 @@ from rdr_service import clock
 from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.study_nph import OrderedSample
-from rdr_service.model.study_nph_sms import SmsSample, SmsBlocklist, SmsN0, SmsJobRun, SmsN1Mc1, SmsN1Mcc
+from rdr_service.model.study_nph_sms import SmsSample, SmsBlocklist, SmsN0, SmsJobRun, SmsN1Mc1
 
 
 class SmsManifestMixin:
@@ -78,9 +78,9 @@ class SmsN0Dao(BaseDao, SmsManifestMixin):
         return obj.id
 
 
-class SmsN1McacDao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
+class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
     def __init__(self):
-        super(SmsN1McacDao, self).__init__(SmsN1Mc1)
+        super(SmsN1Mc1Dao, self).__init__(SmsN1Mc1)
 
     def get_id(self, obj):
         return obj.id
@@ -100,7 +100,7 @@ class SmsN1McacDao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
 
     def source_data(self, **kwargs):
         if not kwargs.get('recipient'):
-            raise KeyError("recipient required for N1_MCAC")
+            raise KeyError("recipient required for N1_MC1")
 
         with self.session() as session:
             query = session.query(
@@ -145,12 +145,3 @@ class SmsN1McacDao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 query = query.filter(SmsSample.destination == kwargs['recipient'])
 
             return query.all()
-
-
-class SmsN1MccDao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
-    def __init__(self):
-        super(SmsN1MccDao, self).__init__(SmsN1Mcc)
-
-    def get_id(self, obj):
-        return obj.id
-

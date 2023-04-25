@@ -4,7 +4,7 @@ import os
 
 from rdr_service import api_util, clock
 from rdr_service.api_util import open_cloud_file
-from rdr_service.dao.study_nph_sms_dao import SmsSampleDao, SmsN0Dao, SmsN1McacDao
+from rdr_service.dao.study_nph_sms_dao import SmsSampleDao, SmsN0Dao, SmsN1Mc1Dao
 from rdr_service.data_gen.generators.nph import NphSmsDataGenerator
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.workflow_management.nph.sms_workflows import SmsWorkflow
@@ -113,12 +113,10 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(ingested_record.well_box_position, "D8")
         self.assertEqual(ingested_record.storage_unit_id, "SU-##########")
         self.assertEqual(ingested_record.package_id, "PKG-YYMM-######")
-        self.assertEqual(ingested_record.receiving_site, "UNC")
         self.assertEqual(ingested_record.tracking_number, "xxxxxxxxxxxx")
         self.assertEqual(ingested_record.shipment_storage_temperature, "-80C")
         self.assertEqual(ingested_record.sample_comments, "Arrived amibent")
         self.assertEqual(ingested_record.age, "32")
-        self.assertEqual(ingested_record.sex, "F")
 
     @staticmethod
     def create_data_n1_mc1_generation():
@@ -205,7 +203,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
         generation_data = {
             "job": "FILE_GENERATION",
-            "file_type": "N1_MCAC",
+            "file_type": "N1_MC1",
             "recipient": "UNC_META"
         }
         with clock.FakeClock(self.TIME_1):
@@ -223,7 +221,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(csv_rows[0]['urine_color'], '"Color 4"')
         self.assertEqual(csv_rows[0]['urine_clarity'], '"Clean"')
 
-        n1_mcac_dao = SmsN1McacDao()
+        n1_mcac_dao = SmsN1Mc1Dao()
         manifest_records = n1_mcac_dao.get_all()
         self.assertEqual(len(manifest_records), 2)
         self.assertEqual(manifest_records[0].sample_id, 10001)

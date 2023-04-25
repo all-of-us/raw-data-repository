@@ -4,7 +4,7 @@ import logging
 from protorpc import messages
 
 from rdr_service.api_util import open_cloud_file
-from rdr_service.dao.study_nph_sms_dao import SmsJobRunDao, SmsSampleDao, SmsN0Dao, SmsN1McacDao, SmsN1MccDao
+from rdr_service.dao.study_nph_sms_dao import SmsJobRunDao, SmsSampleDao, SmsN0Dao, SmsN1Mc1Dao
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.workflow_management.general_job_controller import JobController
 from rdr_service.services.ancillary_studies.nph_incident import NphIncidentDao
@@ -19,7 +19,7 @@ class SmsJobId(messages.Enum):
 class SmsFileTypes(messages.Enum):
     SAMPLE_LIST = 1
     N0 = 100
-    N1_MCAC = 101
+    N1_MC1 = 101
     N1_MCC = 102
 
 
@@ -163,10 +163,9 @@ class SmsWorkflow:
         Main method for generation jobs.
         """
         # Map a file type to a DAO
-        if self.file_type == SmsFileTypes.N1_MCAC:
-            self.file_dao = SmsN1McacDao()
-        elif self.file_type == SmsFileTypes.N1_MCC:
-            self.file_dao = SmsN1MccDao()
+        if self.file_type == SmsFileTypes.N1_MC1:
+            self.file_dao = SmsN1Mc1Dao()
+
         else:
             self.file_dao = None
 

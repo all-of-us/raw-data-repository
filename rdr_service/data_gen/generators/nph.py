@@ -5,7 +5,7 @@ from rdr_service.model.study_nph import Participant, Site, PairingEvent, Partici
     PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
     DeactivationEvent, ParticipantOpsDataElement, OrderedSample
 from rdr_service.ancillary_study_resources.nph import enums
-from rdr_service.model.study_nph_sms import SmsJobRun, SmsSample, SmsBlocklist, SmsN0, SmsN1Mc1, SmsN1Mcc
+from rdr_service.model.study_nph_sms import SmsJobRun, SmsSample, SmsBlocklist, SmsN0, SmsN1Mc1
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 TIME = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
@@ -274,11 +274,3 @@ class NphSmsDataGenerator(NphBaseGenerator):
         self._commit_to_database(obj)
         return obj
 
-    @staticmethod
-    def _sms_n1_mcc(**kwargs):
-        return SmsN1Mcc(**kwargs)
-
-    def create_database_sms_n1_mcc(self, **kwargs):
-        obj = self._sms_n1_mcc(**kwargs)
-        self._commit_to_database(obj)
-        return obj

@@ -150,7 +150,7 @@ class NphSmsGenerationTaskApi(BaseAncillaryTaskApi):
     """
         Cloud Task endpoint: Generate a manifest for NPH Sample Management System
         Expected data fields are:
-            file_type: i.e. N1_MCAC, N1_MCC, etc.
+            file_type: i.e. N1_MC1, N1_MCC, etc.
             recipient: UNC_META, etc.
     """
     def post(self):

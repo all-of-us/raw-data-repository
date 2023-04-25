@@ -1,2 +1,2 @@
-LIMS_Sample_ID,Matrix_ID,Biobank_ID,Sample_ID,Study ,Visit,Timepoint,Collection_Site,Collection_Date_Time,Sample_Type,Additive_Treatment,Quantity_mL,Manufacturer_Lot,Well_Box_Position,Storage_Unit_ID,Package_ID,Receiving_Site,Tracking_Number,Shipment_storage_temperature,Sample_Comments,Age,Sex
-00000000000,MC8888888888,N222222222,2222222222,,,,,2023-04-06T03:05:55,,EDTA,1,,D8,SU-##########,PKG-YYMM-######,UNC,xxxxxxxxxxxx,-80C,Arrived amibent,32,F
+LIMS_Sample_ID,Matrix_ID,Biobank_ID,Sample_ID,Study ,Visit,Timepoint,Collection_Site,Collection_Date_Time,Sample_Type,Additive_Treatment,Quantity_mL,Manufacturer_Lot,Well_Box_Position,Storage_Unit_ID,Package_ID,Tracking_Number,Shipment_storage_temperature,Sample_Comments,Age
+00000000000,MC8888888888,N222222222,2222222222,,,,,2023-04-06T03:05:55,,EDTA,1,,D8,SU-##########,PKG-YYMM-######,xxxxxxxxxxxx,-80C,Arrived amibent,32
