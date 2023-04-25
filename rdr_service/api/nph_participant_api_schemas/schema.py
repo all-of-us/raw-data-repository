@@ -2,9 +2,9 @@ import logging
 from graphene import ObjectType, String, Int, DateTime, Field, List, Date, Schema, NonNull
 from graphene import relay
 from sqlalchemy.orm import Query, aliased, subqueryload
-from sqlalchemy import and_, func
-from sqlalchemy.dialects.mysql import JSON
+from sqlalchemy import and_
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX, NPH_STUDY_ID
+from rdr_service.dao.study_nph_dao import NphParticipantDao
 from rdr_service.model.study_nph import (
     Participant,
     Site as nphSite,
@@ -12,11 +12,7 @@ from rdr_service.model.study_nph import (
     PairingEvent,
     DeactivationEvent,
     WithdrawalEvent,
-    EnrollmentEvent,
-    EnrollmentEventType,
     ParticipantOpsDataElement,
-    ConsentEvent,
-    ConsentEventType
 )
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping
@@ -361,50 +357,23 @@ class ParticipantQuery(ObjectType):
     )
 
     @staticmethod
-    def resolve_participant(root, info, nph_id=None, sort_by=None, limit=None, off_set=None, **filter_kwargs):
-        with database_factory.get_database().session() as sessions:
+    def resolve_participant(
+        root,
+        info,
+        nph_id=None,
+        sort_by=None,
+        limit=None,
+        off_set=None,
+        **filter_kwargs
+    ):
+        pm2 = aliased(PairingEvent)
+        nph_participant_dao = NphParticipantDao()
+        consent_subquery = nph_participant_dao.get_consents_subquery()
+        enrollment_subquery = nph_participant_dao.get_enrollment_subquery()
+
+        with database_factory.get_database().session() as session:
             logging.info('root: %s, info: %s, kwargs: %s', root, info, filter_kwargs)
-            pm2 = aliased(PairingEvent)
-
-            consent_subquery = sessions.query(
-                Participant.id.label('consent_pid'),
-                func.json_object(
-                    'consent_json',
-                    func.json_arrayagg(
-                            func.json_object(
-                                "value", ConsentEventType.source_name,
-                                "time", ConsentEvent.event_authored_time,
-                                "opt_in", ConsentEvent.opt_in,
-                            )
-                    ), type_=JSON
-                ).label('consent_status'),
-            ).join(
-                ConsentEvent,
-                ConsentEvent.participant_id == Participant.id
-            ).join(
-                 ConsentEventType,
-                 ConsentEventType.id == ConsentEvent.event_type_id,
-            ).group_by(Participant.id).subquery()
-
-            enrollment_subquery = sessions.query(
-                Participant.id.label('enrollment_pid'),
-                func.json_object(
-                    'enrollment_json',
-                    func.json_arrayagg(
-                            func.json_object(
-                                'time', EnrollmentEvent.event_authored_time,
-                                'value', EnrollmentEventType.source_name)
-                    ), type_=JSON
-                ).label('enrollment_status'),
-            ).join(
-                EnrollmentEvent,
-                EnrollmentEvent.participant_id == Participant.id
-            ).join(
-                 EnrollmentEventType,
-                 EnrollmentEventType.id == EnrollmentEvent.event_type_id,
-            ).group_by(Participant.id).subquery()
-
-            query = sessions.query(
+            query = session.query(
                 ParticipantSummaryModel,
                 Site,
                 nphSite,
@@ -468,6 +437,7 @@ class ParticipantQuery(ObjectType):
                     sort_parts = sort_by.split(':')
                     sort_info = schema_field_lookup(sort_parts[0])
                     logging.info('sort by: %s', sort_parts)
+
                     if len(sort_parts) == 1:
                         sort_field: SortableField = getattr(current_field_class, sort_info.get("field"))
                         sort_field.sort_modifier(query_builder)
@@ -486,19 +456,17 @@ class ParticipantQuery(ObjectType):
                         raise NotImplementedError(f'Filtering by {field_name} is not yet implemented.')
                     field_def.filter_modifier(query_builder, value)
 
-                if nph_id:
-                    logging.info('Fetch NPH ID: %d', nph_id)
-                    query = query.filter(ParticipantMapping.ancillary_participant_id == int(nph_id))
+                if not nph_id:
+                    query = query_builder.get_resulting_query()
+                    query = query.limit(limit).offset(off_set)
                     logging.info(query)
                     return load_participant_summary_data(query, NPH_BIOBANK_PREFIX)
 
-                query = query_builder.get_resulting_query()
-                if limit:
-                    query = query.limit(limit)
-                if off_set:
-                    query = query.offset(off_set)
+                logging.info('Fetch NPH ID: %d', nph_id)
+                query = query.filter(ParticipantMapping.ancillary_participant_id == int(nph_id))
                 logging.info(query)
                 return load_participant_summary_data(query, NPH_BIOBANK_PREFIX)
+
             except Exception as ex:
                 logging.error(ex)
                 raise ex

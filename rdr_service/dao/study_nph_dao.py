@@ -9,14 +9,15 @@ from protorpc import messages
 from werkzeug.exceptions import BadRequest, NotFound
 
 from sqlalchemy.orm import Query, aliased
-from sqlalchemy import exc
+from sqlalchemy import exc, func
+from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample,
     Activity, ParticipantEventActivity, EnrollmentEventType,
     PairingEventType, PairingEvent, ConsentEventType,
     SampleUpdate, BiobankFileExport, SampleExport,
-    StoredSample, EnrollmentEvent, Incident
+    StoredSample, EnrollmentEvent, Incident, ConsentEvent
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
@@ -70,6 +71,48 @@ class NphParticipantDao(BaseDao):
 
     def from_client_json(self):
         pass
+
+    def get_consents_subquery(self):
+        with self.session() as session:
+            return session.query(
+                Participant.id.label('consent_pid'),
+                func.json_object(
+                    'consent_json',
+                    func.json_arrayagg(
+                        func.json_object(
+                            "value", ConsentEventType.source_name,
+                            "time", ConsentEvent.event_authored_time,
+                            "opt_in", ConsentEvent.opt_in,
+                        )
+                    ), type_=JSON
+                ).label('consent_status'),
+            ).join(
+                ConsentEvent,
+                ConsentEvent.participant_id == Participant.id
+            ).join(
+                ConsentEventType,
+                ConsentEventType.id == ConsentEvent.event_type_id,
+            ).group_by(Participant.id).subquery()
+
+    def get_enrollment_subquery(self):
+        with self.session() as session:
+            return session.query(
+                Participant.id.label('enrollment_pid'),
+                func.json_object(
+                    'enrollment_json',
+                    func.json_arrayagg(
+                        func.json_object(
+                            'time', EnrollmentEvent.event_authored_time,
+                            'value', EnrollmentEventType.source_name)
+                    ), type_=JSON
+                ).label('enrollment_status'),
+            ).join(
+                EnrollmentEvent,
+                EnrollmentEvent.participant_id == Participant.id
+            ).join(
+                EnrollmentEventType,
+                EnrollmentEventType.id == EnrollmentEvent.event_type_id,
+            ).group_by(Participant.id).subquery()
 
 
 class NphStudyCategoryDao(UpdatableDao):
