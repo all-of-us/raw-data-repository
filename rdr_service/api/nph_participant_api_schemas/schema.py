@@ -393,7 +393,7 @@ class ParticipantQuery(ObjectType):
             ).join(
                 Participant,
                 Participant.id == ParticipantMapping.ancillary_participant_id
-            ).join(
+            ).outerjoin(
                 enrollment_subquery,
                 enrollment_subquery.c.enrollment_pid == Participant.id
             ).join(
@@ -407,9 +407,9 @@ class ParticipantQuery(ObjectType):
                 and_(
                     PairingEvent.participant_id == pm2.participant_id,
                     PairingEvent.event_type_id == pm2.event_type_id,
-                    PairingEvent.event_authored_time < pm2.event_authored_time
+                    PairingEvent.id < pm2.id
                 )
-            ).join(
+            ).outerjoin(
                 nphSite,
                 nphSite.id == PairingEvent.site_id
             ).outerjoin(
