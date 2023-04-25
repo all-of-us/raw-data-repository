@@ -393,12 +393,12 @@ class ParticipantQuery(ObjectType):
             ).join(
                 Participant,
                 Participant.id == ParticipantMapping.ancillary_participant_id
-            ).outerjoin(
-                enrollment_subquery,
-                enrollment_subquery.c.enrollment_pid == Participant.id
             ).join(
                 consent_subquery,
                 consent_subquery.c.consent_pid == Participant.id
+            ).outerjoin(
+                enrollment_subquery,
+                enrollment_subquery.c.enrollment_pid == Participant.id
             ).join(
                 PairingEvent,
                 PairingEvent.participant_id == ParticipantMapping.ancillary_participant_id
