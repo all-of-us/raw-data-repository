@@ -43,7 +43,7 @@ def create_nph_incident(
 
     if save_incident:
         insert_obj = nph_incident_dao.get_model_obj_from_items(kwargs.items())
-        incident: NphIncident  = nph_incident_dao.insert(insert_obj)
+        incident: NphIncident = nph_incident_dao.insert(insert_obj)
 
     if slack:
         message_data = {'text': message}

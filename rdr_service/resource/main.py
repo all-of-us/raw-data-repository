@@ -213,6 +213,15 @@ def _build_resource_app():
                       TASK_PREFIX + "UpdateParticipantSummaryForNphTaskApi",
                       endpoint="update_participant_summary_for_nph_task", methods=["POST"])
 
+    # Cloud Tasks For NPH Sample Management System
+    _api.add_resource(ancillary_study_cloud_tasks_api.NphSmsIngestionTaskApi,
+                      TASK_PREFIX + "NphSmsIngestionTaskApi",
+                      endpoint="nph_sms_ingestion_task", methods=["POST"])
+
+    _api.add_resource(ancillary_study_cloud_tasks_api.NphSmsGenerationTaskApi,
+                      TASK_PREFIX + "NphSmsGenerationTaskApi",
+                      endpoint="nph_sms_generation_task", methods=["POST"])
+
     #
     # End Ancillary Studies Cloud Task API endpoints
     #

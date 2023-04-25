@@ -201,6 +201,43 @@ PUBSUB_NOTIFICATION_BUCKETS_SANDBOX = [
     "aou-rdr-sandbox-mock-data",
 ]
 
+
+NPH_SMS_BUCKETS = {
+    "prod": {
+        "UNC_META": "prod-nph-sample-data-mcac-unc-meta",
+        "NCSU": "prod-nph-sample-data-mcac-ncsu",
+        "DUKE": "prod-nph-sample-data-mcac-duke",
+        "UNC_CLINICAL": "prod-nph-sample-data-mcac-unc-clinical",
+        "PBRC": "prod-nph-sample-data-tandam-pbrc",
+        "UCSD": "prod-nph-sample-data-mmc-ucsd"
+    },
+    "stable": {
+        "UNC_META": "stable-nph-sample-data-mcac-unc-meta",
+        "NCSU": "stable-nph-sample-data-mcac-ncsu",
+        "DUKE": "stable-nph-sample-data-mcac-duke",
+        "UNC_CLINICAL": "stable-nph-sample-data-mcac-unc-clinical",
+        "PBRC": "stable-nph-sample-data-tandam-pbrc",
+        "UCSD": "stable-nph-sample-data-mmc-ucsd"
+    },
+    "sandbox": {
+        "UNC_META": "",
+        "NCSU": "",
+        "DUKE": "",
+        "UNC_CLINICAL": "",
+        "PBRC": "",
+        "UCSD": ""
+    },
+    "test": {
+        "UNC_META": "test-bucket-unc-meta",
+        "NCSU": "test-bucket-ncsu",
+        "DUKE": "test-bucket-duke",
+        "UNC_CLINICAL": "test-bucket-unc-clinical",
+        "PBRC": "test-bucket-pbrc",
+        "UCSD": "test-bucket-ucsd"
+    }
+}
+
+
 GENOMIC_INVESTIGATION_GENOME_TYPES = ['aou_array_investigation', 'aou_wgs_investigation']
 
 # Questionnaire Codes
