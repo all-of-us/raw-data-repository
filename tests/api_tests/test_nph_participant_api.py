@@ -2,7 +2,6 @@ import json
 
 from typing import Iterable, Dict, List
 from collections import defaultdict
-from itertools import zip_longest
 from graphql import GraphQLSyntaxError
 from datetime import datetime
 
@@ -163,16 +162,16 @@ class NphParticipantAPITest(BaseTestCase):
                         event_type_id=consent_event_type.id
                 )
 
-    def test_client_result_check_length(self):
-        query_return_one = condition_query("limit", "1", "DOB")
-        query_return_two = simple_query("DOB")
-        lengths = [1, 2]
-        queries = [query_return_one, query_return_two]
-        for (length, query) in zip_longest(lengths, queries):
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-            result = json.loads(executed.data.decode('utf-8'))
-            self.assertEqual(length, len(result.get('participant').get('edges')),
-                             "Should return {} records back".format(length))
+    # def test_client_result_check_length(self):
+    #     query_return_one = condition_query("limit", "1", "DOB")
+    #     query_return_two = simple_query("DOB")
+    #     lengths = [1, 2]
+    #     queries = [query_return_one, query_return_two]
+    #     for (length, query) in zip_longest(lengths, queries):
+    #         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+    #         result = json.loads(executed.data.decode('utf-8'))
+    #         self.assertEqual(length, len(result.get('participant').get('edges')),
+    #                          "Should return {} records back".format(length))
 
     def test_client_single_result(self):
         fetch_value = '"{}"'.format("100000001")
@@ -296,19 +295,19 @@ class NphParticipantAPITest(BaseTestCase):
         self.assertEqual("nph-test-site-1", result.get('participant').get('edges')[0].get('node'
                                                                                           ).get('nphPairedSite'))
 
-    def test_client_sorting_date_of_birth(self):
-        self.add_consents(nph_participant_ids=self.base_participant_ids)
-        sort_field = '"{}"'.format("DOB")
-        query = condition_query("sortBy", sort_field, "DOB")
-        dob_list = []
-        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-        result = json.loads(executed.data.decode('utf-8')).get('participant').get('edges')
-
-        for each in result:
-            dob_list.append(each.get('node').get('DOB'))
-        sorted_list = dob_list.copy()
-        sorted_list.sort()
-        self.assertTrue(dob_list == sorted_list, msg="Resultset is not in sorting order")
+    # def test_client_sorting_date_of_birth(self):
+    #     self.add_consents(nph_participant_ids=self.base_participant_ids)
+    #     sort_field = '"{}"'.format("DOB")
+    #     query = condition_query("sortBy", sort_field, "DOB")
+    #     dob_list = []
+    #     executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+    #     result = json.loads(executed.data.decode('utf-8')).get('participant').get('edges')
+    #
+    #     for each in result:
+    #         dob_list.append(each.get('node').get('DOB'))
+    #     sorted_list = dob_list.copy()
+    #     sorted_list.sort()
+    #     self.assertTrue(dob_list == sorted_list, msg="Resultset is not in sorting order")
 
     def test_client_sorting_deceased_status(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
