@@ -35,7 +35,6 @@ MAX_LIMIT = 1000
 
 DEFAULT_OFFSET = 0
 MIN_OFFSET = 0
-MAX_OFFSET = 1000
 
 
 class SortableField(Field):
@@ -378,7 +377,7 @@ class ParticipantQuery(ObjectType):
         limit = min(max(limit, MIN_LIMIT), MAX_LIMIT)
 
         # Set the value of pagination 'off_set' between 0 (min), 1000 (max) & 0 (default)
-        off_set = min(max(off_set, MIN_OFFSET), MAX_OFFSET)
+        off_set = max(off_set, MIN_OFFSET)
 
         with database_factory.get_database().session() as sessions:
             logging.info('root: %s, info: %s, kwargs: %s', root, info, filter_kwargs)
