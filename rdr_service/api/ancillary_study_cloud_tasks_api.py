@@ -139,8 +139,8 @@ class NphSmsIngestionTaskApi(BaseAncillaryTaskApi):
 
         ingestion_data = {
             "job": "FILE_INGESTION",
-            "file_type": self.data.file_type,
-            "file_path": self.data.file_path
+            "file_type": self.data.get('file_type'),
+            "file_path": self.data.get('file_path')
         }
         workflow = SmsWorkflow(ingestion_data)
         workflow.execute_workflow()
@@ -158,8 +158,8 @@ class NphSmsGenerationTaskApi(BaseAncillaryTaskApi):
 
         generation_data = {
             "job": "FILE_GENERATION",
-            "file_type": self.data.file_type,
-            "recipient": self.data.recipient
+            "file_type": self.data.get('file_type'),
+            "recipient": self.data.get('recipient')
         }
         workflow = SmsWorkflow(generation_data)
         workflow.execute_workflow()

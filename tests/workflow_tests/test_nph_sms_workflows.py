@@ -90,8 +90,13 @@ class NphSmsWorkflowsTest(BaseTestCase):
             "file_type": "N0",
             "file_path": f"{self.test_bucket}/test_n0_2023-4-20.csv"
         }
-        workflow = SmsWorkflow(ingestion_data)
-        workflow.execute_workflow()
+        from rdr_service.resource import main as resource_main
+        self.send_post(
+            local_path='NphSmsIngestionTaskApi',
+            request_data=ingestion_data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
 
         n0_dao = SmsN0Dao()
         ingested_record = n0_dao.get(1)
@@ -207,8 +212,13 @@ class NphSmsWorkflowsTest(BaseTestCase):
             "recipient": "UNC_META"
         }
         with clock.FakeClock(self.TIME_1):
-            workflow = SmsWorkflow(generation_data)
-            workflow.execute_workflow()
+            from rdr_service.resource import main as resource_main
+            self.send_post(
+                local_path='NphSmsGenerationTaskApi',
+                request_data=generation_data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
 
         expected_csv_path = "test-bucket-unc-meta/n1_mcac_manifests/site_n1_mcac_2023-04-25T15:13:00.csv"
 
