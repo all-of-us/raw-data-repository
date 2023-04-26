@@ -70,18 +70,24 @@ def load_participant_summary_data(query, biobank_prefix):
         if not enrollment_data:
             return QuestionnaireStatus.UNSET
         return list(map(
-            lambda x: {'value': x['value'], 'time': parse_date(x['time']) if x['time'] else None},
-            enrollment_data
+            lambda x: {
+                'value': x['value'],
+                'time': parse_date(x['time']) if x['time'] else None
+            },
+            enrollment_data.get('enrollment_json')
         ))
 
     def get_consent_statuses(consent_data):
+        # should never be null
+        if not consent_data:
+            return QuestionnaireStatus.UNSET
         return list(map(
             lambda x: {
                 'value': x['value'],
                 'time': parse_date(x['time']) if x['time'] else None,
                 'opt_in': str(ConsentOptInTypes(int(x['opt_in'])))
             },
-            consent_data
+            consent_data.get('consent_json')
         ))
 
     def get_nph_biospecimens_for_participant(nph_participant: NphParticipant):
@@ -97,7 +103,7 @@ def load_participant_summary_data(query, biobank_prefix):
 
     results, records = [], query.all()
 
-    for summary, site, nph_site, mapping, nph_participant, enrollment, consents, \
+    for summary, site, nph_site, mapping, nph_participant, enrollments, consents, \
             deactivated, withdrawn, ops_data in records:
         participant_obj = {
             'participantNphId': mapping.ancillary_participant_id,
@@ -124,11 +130,11 @@ def load_participant_summary_data(query, biobank_prefix):
                 "time": deactivated.event_authored_time if deactivated else None
             },
             'nphWithdrawalStatus': {
-                "value": "Withdrawn" if withdrawn else "NULL",
+                "value": "WITHDRAWN" if withdrawn else "NULL",
                 "time": withdrawn.event_authored_time if withdrawn else None
             },
-            'nphEnrollmentStatus': get_enrollment_statuses(enrollment['enrollment_json']),
-            'nphModule1ConsentStatus': get_consent_statuses(consents['consent_json']),
+            'nphEnrollmentStatus': get_enrollment_statuses(enrollments),
+            'nphModule1ConsentStatus': get_consent_statuses(consents),
             "nphBiospecimens": get_nph_biospecimens_for_participant(nph_participant),
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
@@ -156,10 +162,11 @@ def load_participant_summary_data(query, biobank_prefix):
         participant_obj.update(
             get_values_from_obj(
                 obj=nph_site,
-                values=['externalId', 'organizationExternalId', 'awardeeExternalId']
+                values=['externalId',
+                        'organizationExternalId',
+                        'awardeeExternalId']
             ))
         results.append(participant_obj)
-
     return results
 
 

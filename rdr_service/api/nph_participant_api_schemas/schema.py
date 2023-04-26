@@ -399,7 +399,7 @@ class ParticipantQuery(ObjectType):
             ).outerjoin(
                 enrollment_subquery,
                 enrollment_subquery.c.enrollment_pid == Participant.id
-            ).join(
+            ).outerjoin(
                 PairingEvent,
                 PairingEvent.participant_id == ParticipantMapping.ancillary_participant_id
             ).outerjoin(
