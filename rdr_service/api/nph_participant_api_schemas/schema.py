@@ -16,7 +16,7 @@ from rdr_service.model.study_nph import (
 )
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping
-from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.dao import database_factory
 from rdr_service.api.nph_participant_api_schemas.util import QueryBuilder, NphParticipantData
 from rdr_service import config
@@ -143,20 +143,20 @@ class ParticipantField(ObjectType):
         String,
         name="firstName",
         description='Participant’s first name, sourced from AoU participant_summary table',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.firstName),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.firstName == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.firstName),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.firstName == value)
     )
     middleName = SortableField(
         String,
         description='Participant’s middle name, sourced from AoU participant_summary table',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.middleName),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.middleName == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.middleName),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.middleName == value)
     )
     lastName = SortableField(
         String,
         description='Participant’s last name, sourced from AoU participant_summary table',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.lastName),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.lastName == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.lastName),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.lastName == value)
     )
     # dateOfBirth = SortableField(
     #     Date,
@@ -171,16 +171,16 @@ class ParticipantField(ObjectType):
         String,
         name='nphDateOfBirth',
         description="Participant's date of birth, sourced from Aou participant_summary_table",
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.dateOfBirth),
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.dateOfBirth),
         filter_modifier=lambda context, value: context.add_filter(
-            ParticipantSummaryModel.dateOfBirth == value
+            ParticipantSummary.dateOfBirth == value
         )
     )
     zipCode = SortableField(
         String,
         description='Participant’s zip code, sourced from AoU participant_summary table',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.zipCode),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.zipCode == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.zipCode),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.zipCode == value)
     )
     phoneNumber = SortableField(
         String,
@@ -188,14 +188,14 @@ class ParticipantField(ObjectType):
             Participant’s phone number, sourced from AoU participant_summary table.
             Use login_phone_number if available, phone_number column otherwise.
         ''',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.phoneNumber),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.phoneNumber == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.phoneNumber),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.phoneNumber == value)
     )
     email = SortableField(
         String,
         description='Participant’s email address, sourced from AoU participant_summary table',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.email),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.email == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.email),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.email == value)
     )
     aianStatus = SortableField(
         String,
@@ -205,8 +205,8 @@ class ParticipantField(ObjectType):
             identifies as AIAN, “N” otherwise. This can be determined from the AoU participant_summary table’s
             aian column.
         ''',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.aian),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.aian == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.aian),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.aian == value)
     )
     siteId = SortableField(
         String,
@@ -290,10 +290,10 @@ class ParticipantField(ObjectType):
     )
     # NPH
     externalId = SortableField(String, name="nphPairedSite", description='Sourced from NPH Schema.',
-                                sort_modifier=lambda context: context.set_order_expression(nphSite.external_id))
+                               sort_modifier=lambda context: context.set_order_expression(nphSite.external_id))
     organizationExternalId = SortableField(String, name="nphPairedOrg", description='Sourced from NPH Schema.',
-                                             sort_modifier=lambda context: context.set_order_expression(
-                                                 nphSite.organization_external_id))
+                                           sort_modifier=lambda context: context.set_order_expression(
+                                               nphSite.organization_external_id))
     awardeeExternalId = SortableField(String, name="nphPairedAwardee", description='Sourced from NPH Schema.',
                                       sort_modifier=lambda context: context.set_order_expression(
                                           nphSite.awardee_external_id))
@@ -382,7 +382,7 @@ class ParticipantQuery(ObjectType):
         with database_factory.get_database().session() as session:
             logging.info('root: %s, info: %s, kwargs: %s', root, info, filter_kwargs)
             query = session.query(
-                ParticipantSummaryModel,
+                ParticipantSummary,
                 Site,
                 nphSite,
                 ParticipantMapping,
@@ -394,10 +394,10 @@ class ParticipantQuery(ObjectType):
                 ParticipantOpsDataElement
             ).join(
                 Site,
-                ParticipantSummaryModel.siteId == Site.siteId
+                ParticipantSummary.siteId == Site.siteId
             ).join(
                 ParticipantMapping,
-                ParticipantSummaryModel.participantId == ParticipantMapping.primary_participant_id
+                ParticipantSummary.participantId == ParticipantMapping.primary_participant_id
             ).join(
                 Participant,
                 Participant.id == ParticipantMapping.ancillary_participant_id
