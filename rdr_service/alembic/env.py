@@ -114,6 +114,8 @@ def include_object_fn(engine_name):
         # TODO(calbach): File an issue against alembic.
         if type_ == "foreign_key_constraint" and obj.table.schema == "metrics":
             return False
+        if type_ == "foreign_key_constraint" and engine_name == "nph":
+            return False
         if name in autogen_denied_list:
             logger.info("skipping not allowed %s", name)
             return False
