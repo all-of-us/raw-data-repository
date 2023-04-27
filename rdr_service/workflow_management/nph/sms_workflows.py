@@ -29,15 +29,6 @@ class SmsJobController(JobController):
         self.subprocess = kwargs.get("subprocess")
 
 
-class SmsFileRecipientMapping:
-
-    N1_MCAC = {
-        "UNC_META": {
-            "bucket": "test-bucket-unc-meta",
-        }
-    }
-
-
 class SmsWorkflow:
 
     def __init__(self,  workflow_def: dict):
@@ -99,8 +90,6 @@ class SmsWorkflow:
             writer.write_rows(source_data)
 
     def write_data_to_manifest_table(self, data_to_write):
-        # Todo: Implement Bulk Loading
-        # Todo: Implement Incidents
         for record in data_to_write:
             if not isinstance(record, dict):
                 record = record._asdict()
@@ -135,7 +124,6 @@ class SmsWorkflow:
                 self.process_map[self.job]()
                 controller.job_run.result = controller.run_result_enum.SUCCESS
             except KeyError:
-                # TODO: Implement Incidents
                 raise KeyError
 
     def job_ingestion(self):

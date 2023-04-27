@@ -89,7 +89,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
         bucket = "test-bucket-unc-meta"
         env_split = config.GAE_PROJECT.split('-')[-1]
         if env_split in ['prod', 'stable', 'sandbox']:
-            bucket = config.NPH_SMS_BUCKETS.get(recipient, "test-bucket")
+            bucket = config.NPH_SMS_BUCKETS.get(recipient)
 
         recipient_xfer_dict = {
             "bucket": bucket,
