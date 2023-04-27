@@ -367,6 +367,7 @@ class Incident(NphBase):
     incident_type_id = Column(Enum(IncidentType), default=IncidentType.UNSET)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    src_event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     trace_id = Column(String(128))  # Job Run Id for Tracing
 
 
