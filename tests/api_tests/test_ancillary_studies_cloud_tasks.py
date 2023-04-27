@@ -40,7 +40,6 @@ class AncillaryStudiesEnrollmentCloudTaskTest(BaseTestCase):
         self.assertEqual(event.event_type_id, 1)
         self.assertEqual(event.participant_id, 123123123)
 
-
     @mock.patch('rdr_service.dao.rex_dao.RexParticipantMappingDao.get_from_ancillary_id')
     def test_update_participant_summary_for_nph_consent(self, mock_participant_mapping):
         aou_participant = self.data_generator.create_database_participant()
@@ -93,12 +92,9 @@ class AncillaryStudiesEnrollmentCloudTaskTest(BaseTestCase):
         )
 
         ps_dao = ParticipantSummaryDao()
-
         ps = ps_dao.get_by_participant_id(aou_participant.participantId)
-
         self.assertTrue(ps.nphWithdrawal)
         self.assertEqual(parser.parse(authored_time), ps.nphWithdrawalAuthored)
-
 
     def tearDown(self):
         super().tearDown()

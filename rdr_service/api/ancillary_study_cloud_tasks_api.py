@@ -116,10 +116,10 @@ class UpdateParticipantSummaryForNphTaskApi(BaseAncillaryTaskApi):
         if event_type.lower() == "consent":
             ps.consentForNphModule1 = True
             ps.consentForNphModule1Authored = event_authored
-        elif event_type.lower()  == "withdrawal":
+        elif event_type.lower() == "withdrawal":
             ps.nphWithdrawal = True
             ps.nphWithdrawalAuthored = event_authored
-        elif event_type.lower()  == "deactivation":
+        elif event_type.lower() == "deactivation":
             ps.nphDeactivation = True
             ps.nphDeactivationAuthored = event_authored
 
