@@ -1816,7 +1816,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             if qnan:
                 ubr_disability_responses.append(qnan)
 
-        # Except for ubr_disability, other UBR categories determined only from TheBasics data
+        # Most UBR categories determined only from TheBasics data (+ lfs data for ubr_disability)
         if basics_qnan:
             # ubr_sex
             data['ubr_sex'] = ubr.ubr_sex(basics_qnan.get('BiologicalSexAtBirth_SexAtBirth', None))
@@ -1839,8 +1839,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # ubr_income
             data['ubr_income'] = ubr.ubr_income(basics_qnan.get('Income_AnnualIncome', None))
 
-        # ubr_disability() will handle cases where neither TheBasics nor lfs response exists (param is empty list)
-        data['ubr_disability'] = ubr.ubr_disability(ubr_disability_responses)
+            # PDR-1572:  Still require TheBasics before calculating ubr_disability. Otherwise we can prematurely set
+            # RBR.  lfs surveys were only supposed to be available to  participants who already completed an early
+            # TheBasics survey and had not yet seen the disability questions missing from those early versions.
+            data['ubr_disability'] = ubr.ubr_disability(ubr_disability_responses)
+
         # ubr_overall
         data['ubr_overall'] = ubr.ubr_overall(data)
 
