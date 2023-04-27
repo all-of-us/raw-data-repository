@@ -17,6 +17,7 @@ from rdr_service.api_util import (
     DV_FHIR_URL,
     DV_FULFILLMENT_URL,
     DV_ORDER_URL,
+    DV_PILOT_SOURCE_URL,
     format_json_code,
     format_json_enum,
     get_code_id,
@@ -181,6 +182,11 @@ class MailKitOrderDao(UpdatableDao):
             if delivery_date_url:
                 existing_obj.shipmentEstArrival = parse_date(
                     fhir_resource.extension.get(url=DV_FHIR_URL + "expected-delivery-date").valueDateTime)
+
+            pilot_source_url = [extension.url for extension in fhir_resource["extension"]
+                                 if extension.url == DV_PILOT_SOURCE_URL]
+            if pilot_source_url:
+                existing_obj.pilotSource = fhir_resource.extension.get(url=DV_PILOT_SOURCE_URL).valueStrin
 
             existing_obj.trackingId = fhir_resource.identifier.get(system=DV_FHIR_URL + "trackingId").value
             # USPS status
