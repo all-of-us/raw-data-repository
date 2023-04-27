@@ -81,7 +81,6 @@ class NphParticipantData:
 
     @classmethod
     def get_consent_statuses(cls, consent_data: dict) -> Optional[List[dict]]:
-        # should never be null
         if not consent_data:
             return QuestionnaireStatus.UNSET
         return list(map(
@@ -230,13 +229,6 @@ class NphParticipantData:
                     "value": ParticipantSummaryModel.questionnaireOnSocialDeterminantsOfHealth,
                     "time": ParticipantSummaryModel.questionnaireOnSocialDeterminantsOfHealthAuthored
                 },
-                # "nphDateOfBirth": {
-                #     "field": "nphDateOfBirth",
-                #     "table": ParticipantOpsDataElement,
-                #     "value": ParticipantOpsDataElement.source_data_element ==
-                #              ParticipantOpsElementTypes.lookup_by_name('BIRTHDATE') and
-                #              ParticipantOpsDataElement.source_value
-                # },
             }
             result = field_lookup.get(value, None)
             if not result:

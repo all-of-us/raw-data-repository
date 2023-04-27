@@ -167,17 +167,6 @@ class NphParticipantAPITest(BaseTestCase):
                         event_type_id=consent_event_type.id
                 )
 
-    # def test_client_result_check_length(self):
-    #     query_return_one = condition_query("limit", "1", "DOB")
-    #     query_return_two = simple_query("DOB")
-    #     lengths = [1, 2]
-    #     queries = [query_return_one, query_return_two]
-    #     for (length, query) in zip_longest(lengths, queries):
-    #         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-    #         result = json.loads(executed.data.decode('utf-8'))
-    #         self.assertEqual(length, len(result.get('participant').get('edges')),
-    #                          "Should return {} records back".format(length))
-
     def test_client_single_result(self):
         fetch_value = '"{}"'.format("100000001")
         query = condition_query("nphId", fetch_value, "participantNphId")
@@ -337,26 +326,43 @@ class NphParticipantAPITest(BaseTestCase):
         self.assertEqual(nph_participant.ancillary_participant_id,
                          int(resulting_participant_data.get('participantNphId')))
 
+    def test_nph_dob_filter_parameter(self):
+        summary = self.participant_summary_dao.get_by_participant_id(900000000)
+        rex_participants = self.rex_mapping_dao.get_all()
+        nph_participant = list(filter(lambda x: x.primary_participant_id == summary.participantId, rex_participants))[0]
+        nph_dob = '1986-01-01'
+
+        self.add_consents(nph_participant_ids=[nph_participant.ancillary_participant_id])
         self.nph_data_gen.create_database_participant_ops_data_element(
             source_data_element=ParticipantOpsElementTypes.BIRTHDATE,
             participant_id=nph_participant.ancillary_participant_id,
-            source_value='1986-01-01'
+            source_value=nph_dob
         )
-        # firstname and nphDateOfBirth filter
+        # nphDateOfBirth filter - response firstName and nphDateOfBirth
         executed = app.test_client().post(
             '/rdr/v1/nph_participant',
-            data='{participant (nphDateOfBirth: "1986-01-01" ) { edges { node { participantNphId '
-                 'firstName nphDateOfBirth } } } }'
+            data='{participant (nphDateOfBirth: "%s" ) { edges { node { participantNphId '
+                 'firstName nphDateOfBirth } } } }' %
+                 nph_dob
         )
         result = json.loads(executed.data.decode('utf-8'))
 
         result_participant_list = result.get('participant').get('edges')
         self.assertEqual(1, len(result_participant_list))
 
-        resulting_participant_data = result_participant_list[0].get('node')
-        self.assertEqual(summary.firstName, resulting_participant_data.get('firstName'))
-        self.assertEqual(nph_participant.ancillary_participant_id,
-                         int(resulting_participant_data.get('participantNphId')))
+        self.assertTrue(result_participant_list[0].get('node').get('firstName') == summary.firstName)
+        self.assertTrue(result_participant_list[0].get('node').get('nphDateOfBirth') == nph_dob)
+        self.assertTrue(result_participant_list[0].get('node').get('participantNphId') ==
+                        str(nph_participant.ancillary_participant_id))
+
+        # nphDateOfBirth filter - bad nphDateOfBirth should be no result
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (nphDateOfBirth: "1989-01-01" ) { edges { node { participantNphId '
+                 'firstName nphDateOfBirth } } } }'
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertTrue(result.get('participant').get('edges') == [])
 
     def test_nphEnrollmentStatus_fields(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
