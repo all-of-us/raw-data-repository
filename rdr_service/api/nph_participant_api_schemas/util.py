@@ -108,9 +108,7 @@ class NphParticipantData:
 
     @classmethod
     def load_participant_summary_data(cls, query, biobank_prefix: str) -> List[dict]:
-
         results, records = [], query.all()
-
         for summary, site, nph_site, mapping, nph_participant, enrollments, consents, \
                 deactivated, withdrawn, ops_data in records:
             participant_obj = {
@@ -120,7 +118,6 @@ class NphParticipantData:
                 'firstName': summary.firstName,
                 'middleName': summary.middleName,
                 'lastName': summary.lastName,
-                # 'dateOfBirth': summary.dateOfBirth,
                 'nphDateOfBirth': cls.get_value_from_ops_data(ops_data, ParticipantOpsElementTypes.BIRTHDATE),
                 'zipCode': summary.zipCode,
                 'phoneNumber': summary.phoneNumber,
@@ -181,8 +178,6 @@ class NphParticipantData:
     def schema_field_lookup(cls, value):
         try:
             field_lookup = {
-                # "DOB": {"field": "dateOfBirth", "table": ParticipantSummaryModel,
-                #         "value": ParticipantSummaryModel.dateOfBirth},
                 "aouAianStatus": {
                     "field": "aian",
                     "table": ParticipantSummaryModel,
@@ -234,9 +229,14 @@ class NphParticipantData:
                     "table": ParticipantSummaryModel,
                     "value": ParticipantSummaryModel.questionnaireOnSocialDeterminantsOfHealth,
                     "time": ParticipantSummaryModel.questionnaireOnSocialDeterminantsOfHealthAuthored
-                }
-                # "nphDateOfBirth": {"field": "dateOfBirth", "table": ParticipantSummaryModel,
-                #         "value": ParticipantSummaryModel.dateOfBirth},
+                },
+                # "nphDateOfBirth": {
+                #     "field": "nphDateOfBirth",
+                #     "table": ParticipantOpsDataElement,
+                #     "value": ParticipantOpsDataElement.source_data_element ==
+                #              ParticipantOpsElementTypes.lookup_by_name('BIRTHDATE') and
+                #              ParticipantOpsDataElement.source_value
+                # },
             }
             result = field_lookup.get(value, None)
             if not result:

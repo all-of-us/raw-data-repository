@@ -3,6 +3,8 @@ from graphene import ObjectType, String, Int, DateTime, Field, List, Schema, Non
 from graphene import relay
 from sqlalchemy.orm import Query, aliased, subqueryload
 from sqlalchemy import and_
+
+# from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX, NPH_STUDY_ID
 from rdr_service.dao.study_nph_dao import NphParticipantDao
 from rdr_service.model.study_nph import (
@@ -165,22 +167,12 @@ class ParticipantField(ObjectType):
         sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.lastName),
         filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.lastName == value)
     )
-    # dateOfBirth = SortableField(
-    #     Date,
-    #     name='DOB',
-    #     description="Participant's date of birth, sourced from Aou participant_summary_table",
-    #     sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.dateOfBirth),
-    #     filter_modifier=lambda context, value: context.add_filter(
-    #         ParticipantSummaryModel.dateOfBirth == value
-    #     )
-    # )
     nphDateOfBirth = SortableField(
         String,
         name='nphDateOfBirth',
         description="Participant's date of birth, sourced from Aou participant_summary_table",
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.dateOfBirth),
         filter_modifier=lambda context, value: context.add_filter(
-            ParticipantSummary.dateOfBirth == value
+            ParticipantOpsDataElement.source_value == value
         )
     )
     zipCode = SortableField(
@@ -311,7 +303,6 @@ class ParticipantField(ObjectType):
     nphBiospecimens = List(GraphQLNphBioSpecimen, name="nphBiospecimens", description="NPH Biospecimens")
     nphWithdrawalStatus = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
     nphDeactivationStatus = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
-    nphDateOfBirth = Field(String, name="nphDateOfBirth", description='Sourced from NPH Schema.')
     # Bio-specimen
     sample_8_5ml_ssts_1 = Field(SampleCollection, description='Sample 8.5ml SSTS1')
     sample_4ml_ssts_1 = Field(SampleCollection, description='Sample 4ml SSTS1')
@@ -391,7 +382,7 @@ class ParticipantQuery(ObjectType):
         limit = min(max(limit, MIN_LIMIT), MAX_LIMIT)
         off_set = max(off_set, MIN_OFFSET)
 
-        with database_factory.get_database().session() as session:
+        with nph_participant_dao.session() as session:
             logging.info('root: %s, info: %s, kwargs: %s', root, info, filter_kwargs)
             query = session.query(
                 ParticipantSummary,
