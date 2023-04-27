@@ -43,11 +43,7 @@ def login_phone_number_code():
     return Code(system=PPI_SYSTEM, value=LOGIN_PHONE_NUMBER_QUESTION_CODE, mapped=True, codeType=CodeType.QUESTION)
 
 
-def data_path(filename, test_dir=None, data_dir=None):
-    if not test_dir:
-        test_dir = os.path.dirname(__file__)
-    if not data_dir:
-        data_dir = 'test-data'
+def data_path(filename, test_dir=os.path.dirname(__file__), data_dir='test-data'):
     return os.path.join(test_dir, data_dir, filename)
 
 
