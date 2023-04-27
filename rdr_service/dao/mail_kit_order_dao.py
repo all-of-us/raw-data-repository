@@ -186,7 +186,7 @@ class MailKitOrderDao(UpdatableDao):
             pilot_source_url = [extension.url for extension in fhir_resource["extension"]
                                  if extension.url == DV_PILOT_SOURCE_URL]
             if pilot_source_url:
-                existing_obj.pilotSource = fhir_resource.extension.get(url=DV_PILOT_SOURCE_URL).valueStrin
+                existing_obj.pilotSource = fhir_resource.extension.get(url=DV_PILOT_SOURCE_URL).valueString
 
             existing_obj.trackingId = fhir_resource.identifier.get(system=DV_FHIR_URL + "trackingId").value
             # USPS status
