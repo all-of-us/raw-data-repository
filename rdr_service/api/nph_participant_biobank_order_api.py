@@ -18,7 +18,6 @@ class CustomEncoder(json.JSONEncoder):
 
 
 def construct_response(order):
-    # Construct Response payload
     return json.loads(json.dumps(order, indent=4, cls=CustomEncoder))
 
 
@@ -30,13 +29,17 @@ class NphOrderApi(UpdatableApi):
     def update_with_patch(self, id_, resource, expected_version):
         pass
 
+    @classmethod
+    def check_nph_participant(cls, nph_participant_id):
+        if len(nph_participant_id) < 4:
+            message = f"Invalid NPH Participant ID. Must be at least 5 characters in length. {nph_participant_id}"
+            logging.error(message)
+            return {"error": message}, 400
+
     @auth_required(RTI_AND_HEALTHPRO)
     def put(self, nph_participant_id, rdr_order_id):
+        self.check_nph_participant(nph_participant_id)
         try:
-            if len(nph_participant_id) < 4:
-                message = f"Invalid NPH Participant ID. Must be at least 5 characters in length. {nph_participant_id}"
-                logging.error(message)
-                return {"error": message}, 400
             with database_factory.get_database().session() as session:
                 self.dao.set_order_cls(request.get_data())
                 order = self.dao.order_cls
@@ -57,12 +60,9 @@ class NphOrderApi(UpdatableApi):
 
     @auth_required(RTI_AND_HEALTHPRO)
     def post(self, nph_participant_id: str):
-        if len(nph_participant_id) < 4:
-            message = f"Invalid NPH Participant ID. Must be at least 5 characters in length. {nph_participant_id}"
-            logging.error(message)
-            return {"error": message}, 400
-        with database_factory.get_database().session() as session:
-            try:
+        self.check_nph_participant(nph_participant_id)
+        try:
+            with database_factory.get_database().session() as session:
                 self.dao.set_order_cls(request.get_data())
                 order = self.dao.order_cls
                 exist, time_point_id = self.dao.get_study_category_id(session)
@@ -75,24 +75,21 @@ class NphOrderApi(UpdatableApi):
                 order.id = new_order.id
                 self.dao.insert_ordered_sample_dao_with_session(session, order)
                 return construct_response(order), 201
-            except NotFound as not_found:
-                logging.error(not_found)
-                return construct_response(order), 404
-            except BadRequest as bad_request:
-                logging.error(bad_request)
-                return construct_response(order), 400
-            except exc.SQLAlchemyError as sql:
-                logging.error(sql)
-                return construct_response(order), 400
+        except NotFound as not_found:
+            logging.error(not_found)
+            return construct_response(order), 404
+        except BadRequest as bad_request:
+            logging.error(bad_request)
+            return construct_response(order), 400
+        except exc.SQLAlchemyError as sql:
+            logging.error(sql)
+            return construct_response(order), 400
 
     @auth_required(RTI_AND_HEALTHPRO)
     def patch(self, nph_participant_id, rdr_order_id):
-        if len(nph_participant_id) < 4:
-            message = f"Invalid NPH Participant ID. Must be at least 5 characters in length. {nph_participant_id}"
-            logging.error(message)
-            return {"error": message}, 400
-        if rdr_order_id and nph_participant_id:
-            try:
+        self.check_nph_participant(nph_participant_id)
+        try:
+            if rdr_order_id and nph_participant_id:
                 with database_factory.get_database().session() as session:
                     self.dao.set_order_cls(request.get_data())
                     order = self.dao.order_cls
@@ -100,9 +97,9 @@ class NphOrderApi(UpdatableApi):
                     session.commit()
                     order.id = rdr_order_id
                     return construct_response(order), 200
-            except NotFound as not_found:
-                logging.error(not_found.description, exc_info=True)
-                return construct_response(order), 404
-            except BadRequest as bad_request:
-                logging.error(bad_request.description, exc_info=True)
-                return construct_response(order), 400
+        except NotFound as not_found:
+            logging.error(not_found.description, exc_info=True)
+            return construct_response(order), 404
+        except BadRequest as bad_request:
+            logging.error(bad_request.description, exc_info=True)
+            return construct_response(order), 400

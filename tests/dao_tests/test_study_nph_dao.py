@@ -1,16 +1,18 @@
 from datetime import datetime, timedelta
-from zlib import crc32
-from uuid import uuid4
-from typing import Dict, Any, Tuple
-from unittest import skip
-from unittest.mock import MagicMock, patch
+from itertools import zip_longest
 import json
 from types import SimpleNamespace as Namespace
-from itertools import zip_longest
-from werkzeug.exceptions import BadRequest, NotFound
-from rdr_service.dao import database_factory
-from sqlalchemy.orm import Query
+from typing import Dict, Any, Tuple
+from uuid import uuid4
+from zlib import crc32
+
 from faker import Faker
+from sqlalchemy.orm import Query
+from unittest import skip
+from unittest.mock import MagicMock, patch
+from werkzeug.exceptions import BadRequest, NotFound
+
+from rdr_service.dao import database_factory
 
 from rdr_service.dao.study_nph_dao import (
     NphParticipantDao,
@@ -258,7 +260,7 @@ class NphParticipantDaoTest(BaseTestCase):
         session = MagicMock()
         query_filter.return_value.first.return_value = response
         test_participant_dao = NphParticipantDao()
-        participant = test_participant_dao.get_participant("10001", session)
+        participant = test_participant_dao.get_participant_by_id("10001", session)
         self.assertEqual(test_data.get("id"), participant.id)
         self.assertEqual(test_data.get("name"), participant.name)
 
@@ -269,19 +271,15 @@ class NphParticipantDaoTest(BaseTestCase):
         session = MagicMock()
         query_filter.return_value.first.return_value = response
         test_participant_dao = NphParticipantDao()
-        exist = test_participant_dao.check_participant_exist("10001000000011", session)
-        self.assertTrue(exist)
+        participant = test_participant_dao.get_participant_by_id("10001000000011", session)
+        self.assertTrue(participant)
         query_filter.return_value.first.return_value = None
-        not_exist = test_participant_dao.check_participant_exist("10001", session)
-        self.assertFalse(not_exist)
-
-    def test_convert_id(self):
-        test_participant_dao = NphParticipantDao()
-        participant_id = test_participant_dao.convert_id("10001000000011")
-        self.assertEqual("1000000011", participant_id)
+        participant = test_participant_dao.get_participant_by_id("10001", session)
+        self.assertFalse(participant)
 
     def tearDown(self):
         self.clear_table_after_test("nph.participant")
+        super().tearDown()
 
 
 class NphStudyCategoryTest(BaseTestCase):
@@ -395,6 +393,7 @@ class NphStudyCategoryTest(BaseTestCase):
 
     def tearDown(self):
         self.clear_table_after_test("nph.study_category")
+        super().tearDown()
 
 
 class NphSiteDaoTest(BaseTestCase):
@@ -470,6 +469,7 @@ class NphSiteDaoTest(BaseTestCase):
 
     def tearDown(self):
         self.clear_table_after_test("nph.site")
+        super().tearDown()
 
 
 class NphOrderDaoTest(BaseTestCase):
@@ -531,12 +531,9 @@ class NphOrderDaoTest(BaseTestCase):
         with FakeClock(ts):
             return self.nph_order_dao.insert(nph_order)
 
-    # @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.insert_time_point_record')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.visit_type_exist')
     @patch('rdr_service.dao.study_nph_dao.NphStudyCategoryDao.module_exist')
-    # def test_insert_order(self, mock_module_exist, mock_visit_type_exist, mock_insert_time):
     def test_insert_order(self, mock_module_exist, mock_visit_type_exist):
-        # mock_insert_time.return_value = StudyCategory(name="Child Study Category", type_label="CHILD")
         mock_visit_type_exist.return_value = (True, StudyCategory(name="Parent Study Category", type_label="PARENT"))
         mock_module_exist.return_value = (True, StudyCategory(name="Child Study Category", type_label="CHILD"))
 
@@ -650,7 +647,7 @@ class NphOrderDaoTest(BaseTestCase):
         self.assertEqual(request.amendedReason, result.amended_reason)
         self.assertEqual("CANCELLED", result.status.upper())
 
-    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant')
+    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant_by_id')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
     def test_from_client_json(self, site_id, p_id):
         session = MagicMock()
@@ -739,7 +736,7 @@ class NphOrderDaoTest(BaseTestCase):
         order = order_dao.order_cls
         self.assertEqual(request, order)
 
-    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant')
+    @patch('rdr_service.dao.study_nph_dao.NphParticipantDao.get_participant_by_id')
     @patch('rdr_service.dao.study_nph_dao.NphSiteDao.get_id')
     def test_validate_model(self, site_id, p_id):
         session = MagicMock()
@@ -750,11 +747,45 @@ class NphOrderDaoTest(BaseTestCase):
         order = order_dao.from_client_json(session, "10001", 1)
         order_dao._validate_model(order)
 
+    def test_timepoint_creation(self):
+        """Ensure new module/visit/timepoint records can be created from an incoming order"""
+        # Set up the order to define what module, visit, and timepoint to create
+        module_name = "module 1"
+        visit_name = "visit 1"
+        timepoint_name = "timepoint 1"
+        order = MagicMock(module=module_name, visitType=visit_name, timepoint=timepoint_name)
+
+        # Pass the order to the dao to have it create the module, visit, and timepoint
+        dao = NphOrderDao()
+        dao.insert_study_category_with_session(order=order, session=self.session)
+        self.session.commit()  # Send send anything the dao did to the DB so we can query it
+
+        # Check that the dao has the module, visit, and timepoint
+        self.assertIsNotNone(
+            self.session.query(StudyCategory).filter(
+                StudyCategory.type_label == 'module',
+                StudyCategory.name == module_name
+            ).one_or_none()
+        )
+        self.assertIsNotNone(
+            self.session.query(StudyCategory).filter(
+                StudyCategory.type_label == 'visitType',
+                StudyCategory.name == visit_name
+            ).one_or_none()
+        )
+        self.assertIsNotNone(
+            self.session.query(StudyCategory).filter(
+                StudyCategory.type_label == 'timepoint',
+                StudyCategory.name == timepoint_name
+            ).one_or_none()
+        )
+
     def tearDown(self):
         self.clear_table_after_test("nph.order")
         self.clear_table_after_test("nph.site")
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
+        super().tearDown()
 
 
 class NphOrderedSampleDaoTest(BaseTestCase):
@@ -1069,6 +1100,7 @@ class NphOrderedSampleDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
         self.clear_table_after_test("nph.sample_update")
+        super().tearDown()
 
 
 class NphSampleUpdateDaoTest(BaseTestCase):
@@ -1267,6 +1299,7 @@ class NphSampleUpdateDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.site")
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
+        super().tearDown()
 
 
 class NphBiobankFileExportDaoTest(BaseTestCase):
@@ -1304,6 +1337,7 @@ class NphBiobankFileExportDaoTest(BaseTestCase):
 
     def tearDown(self):
         self.clear_table_after_test("nph.biobank_file_export")
+        super().tearDown()
 
 
 class NphSampleExportDaoTest(BaseTestCase):
@@ -1528,6 +1562,7 @@ class NphSampleExportDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.site")
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
+        super().tearDown()
 
 
 class NphIncidentDaoTest(BaseTestCase):
@@ -1690,3 +1725,4 @@ class NphIncidentDaoTest(BaseTestCase):
         self.clear_table_after_test("nph.participant_event_activity")
         self.clear_table_after_test("nph.activity")
         self.clear_table_after_test("nph.participant")
+        super().tearDown()

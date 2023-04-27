@@ -151,7 +151,7 @@ def _convert_ordered_samples_to_samples(
     return samples
 
 
-def _get_rdr_participant_summary_for_nph_partipant(nph_participant_id: int) -> Optional[RdrParticipantSummary]:
+def _get_rdr_participant_summary_for_nph_participant(nph_participant_id: int) -> Optional[RdrParticipantSummary]:
     rex_participant_mapping_dao = RexParticipantMappingDao()
     with rex_participant_mapping_dao.session() as rex_sm_session:
         rex_participant_mapping: RexParticipantMapping = (
@@ -287,7 +287,7 @@ def main():
     )
     for (client_id, nph_module_id, participant_id), orders in grouped_orders.items():
         rdr_participant_summary: RdrParticipantSummary = (
-            _get_rdr_participant_summary_for_nph_partipant(order.participant_id)
+            _get_rdr_participant_summary_for_nph_participant(order.participant_id)
         )
         participant_biobank_id = _get_nph_participant(participant_id).biobank_id
 
@@ -301,7 +301,7 @@ def main():
 
         json_object = {
             "clientID": client_id,
-            "studyID":  f"NPH Module {nph_module_id}",
+            "studyID": f"NPH Module {nph_module_id}",
             "participantID": f"{nph_biobank_prefix}{participant_biobank_id}",
             "gender": sex_at_birth,
             "ai_an_flag": "Y" if rdr_participant_summary.aian else "N",

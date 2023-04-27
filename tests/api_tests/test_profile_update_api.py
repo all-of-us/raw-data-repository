@@ -486,5 +486,6 @@ class ProfileUpdateApiTest(BaseTestCase):
 
         study_mock.assert_called_with(
             aou_pid=123123123,
-            ancillary_pid='1000578448930'
+            ancillary_pid='1000578448930',
+            event_authored_time="2015-02-07T13:28:17.239+02:00"
         )

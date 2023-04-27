@@ -59,6 +59,11 @@ def simple_query(value):
            { startCursor  endCursor hasNextPage }  edges { node { participantNphId %s } } } }''' % value
 
 
+def simple_query_with_pagination(value: str, limit: int, offset: int):
+    return ''' { participant (limit: %s, offSet: %s) {totalCount resultCount pageInfo
+           { startCursor  endCursor hasNextPage }  edges { node { participantNphId %s } } } }''' % (limit, offset, value)
+
+
 def condition_query(condition, sort_value, sort_field):
     return ''' { participant (%s: %s) {totalCount resultCount pageInfo
            { startCursor  endCursor hasNextPage }  edges { node { %s } } } }''' % (condition, sort_value, sort_field)
@@ -103,7 +108,7 @@ def mock_load_participant_data(session):
     participant_mapping_result = participant_mapping_query.all()
     if len(participant_mapping_result) < 10:
         ancillary_participant_id = 100000000
-        participants: Iterable[participant] = []
+        participants = []
         for each in participant_result:
             participant = nph_data_gen.create_database_participant(id=ancillary_participant_id)
             participants.append(participant)
@@ -205,13 +210,13 @@ class TestQueryExecution(BaseTestCase):
                              "Should return {} records back".format(length))
 
     def test_client_single_result(self):
-        fetch_value = '"{}"'.format("1000100000001")
+        fetch_value = '"{}"'.format("100000001")
         query = condition_query("nphId", fetch_value, "participantNphId")
         mock_load_participant_data(self.session)
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
         result = json.loads(executed.data.decode('utf-8'))
         self.assertEqual(1, len(result.get('participant').get('edges')), "Should return 1 record back")
-        self.assertEqual("1000100000001",
+        self.assertEqual("100000001",
                          result.get('participant').get('edges')[0].get('node').get('participantNphId'))
 
     def test_client_none_value_field(self):
@@ -272,7 +277,7 @@ class TestQueryExecution(BaseTestCase):
         )
 
     def test_client_nph_pair_site_with_id(self):
-        fetch_value = '"{}"'.format("1000100000000")
+        fetch_value = '"{}"'.format("100000000")
         query = condition_query("nphId", fetch_value, "nphPairedSite")
         mock_load_participant_data(self.session)
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
@@ -336,9 +341,7 @@ class TestQueryExecution(BaseTestCase):
 
         resulting_participant_data = result_participant_list[0].get('node')
         self.assertEqual(first_name, resulting_participant_data.get('firstName'))
-        prefix = 1000
-        nph_id = str(prefix) + str(participant_nph_id)
-        self.assertEqual(nph_id, resulting_participant_data.get('participantNphId'))
+        self.assertEqual(participant_nph_id, int(resulting_participant_data.get('participantNphId')))
 
     def test_nphEnrollmentStatus_fields(self):
         field_to_test = "nphEnrollmentStatus {value time} "
@@ -468,6 +471,26 @@ class TestQueryExecution(BaseTestCase):
                 12,
                 len(result.get("participant").get("edges")[i].get("node").get("nphBiospecimens"))
             )
+
+    def test_nph_biospecimen_for_participant_with_pagination(self):
+        mock_load_participant_data(self.session)
+        self._create_test_sample_updates()
+        field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID timepointID biobankStatus { limsID biobankModified status } } "
+        query_1 = simple_query_with_pagination(field_to_test, limit=1, offset=0)
+        result_1 = app.test_client().post('/rdr/v1/nph_participant', data=query_1)
+        result_1 = json.loads(result_1.data.decode('utf-8'))
+        self.assertEqual(1, len(result_1.get('participant').get('edges')))
+
+        query_2 = simple_query_with_pagination(field_to_test, limit=1, offset=1)
+        result_2 = app.test_client().post('/rdr/v1/nph_participant', data=query_2)
+        result_2 = json.loads(result_2.data.decode('utf-8'))
+        self.assertEqual(1, len(result_2.get('participant').get('edges')))
+        for result in [result_1, result_2]:
+            self.assertEqual(
+                12,
+                len(result.get("participant").get("edges")[0].get("node").get("nphBiospecimens"))
+            )
+
 
     def test_graphql_syntax_error(self):
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SYNTAX_ERROR)

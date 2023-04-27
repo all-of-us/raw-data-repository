@@ -319,7 +319,8 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
             study_interface = EnrollmentInterface(update_payload.ancillary_study_code)
             study_interface.create_study_participant(
                 aou_pid=update_field_list['participant_id'],
-                ancillary_pid=update_payload.ancillary_study_pid
+                ancillary_pid=update_payload.ancillary_study_pid,
+                event_authored_time=update_payload.ancillary_event_authored_time
             )
 
     @classmethod

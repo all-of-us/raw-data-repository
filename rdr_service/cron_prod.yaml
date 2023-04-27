@@ -1,9 +1,4 @@
 cron:
-- description: Validate the previous day's consent files
-  url: /offline/ValidateConsentFiles
-  schedule: every 1 hours
-  timezone: America/New_York
-  target: offline
 - description: Check for any corrections to invalid consent files
   url: /offline/CorrectConsentFiles
   schedule: 7, 14, 21, 28 of month 20:00
@@ -119,3 +114,13 @@ cron:
   timezone: America/New_York
   schedule: every day 22:15
   target: offline
+- description: NPH Biobank Nightly File Drop (Daily)
+  schedule: every day 05:30
+  target: offline
+  timezone: America/New_York
+  url: /offline/NphBiobankNightlyFileDrop
+- description: NPH Biobank Nightly Inventory File Import (Daily)
+  schedule: every day 06:00
+  target: offline
+  timezone: America/New_York
+  url: /offline/NphBiobankInventoryFileImport
