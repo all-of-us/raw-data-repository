@@ -59,6 +59,10 @@
     {
       "url": "http://joinallofus.org/fhir/carrier",
       "valueString": "sample carrier"
+    },
+    {
+      "url": "http://joinallofus.org/fhir/pilot-source",
+      "valueString": "APL14"
     }
   ],
   "id": "123",
