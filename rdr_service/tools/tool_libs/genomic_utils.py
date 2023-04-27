@@ -1259,7 +1259,7 @@ class GenomicProcessRunner(GenomicManifestBase):
             controller.generate_manifest(
                 manifest_type,
                 genome_type=genome_type,
-                pipeline_id="dragen_3.7.8"
+                pipeline_id=config.GENOMIC_UPDATED_WGS_DRAGEN
             )
 
             for manifest in controller.manifests_generated:
