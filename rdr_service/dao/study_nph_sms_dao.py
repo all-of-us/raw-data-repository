@@ -35,7 +35,7 @@ class SmsManifestSourceMixin:
 
 class SmsJobRunDao(BaseDao):
     def __init__(self):
-        super(SmsJobRunDao, self).__init__(SmsJobRun)
+        super().__init__(SmsJobRun)
 
     def get_id(self, obj):
         return obj.id
@@ -56,7 +56,7 @@ class SmsJobRunDao(BaseDao):
 
 class SmsSampleDao(BaseDao, SmsManifestMixin):
     def __init__(self):
-        super(SmsSampleDao, self).__init__(SmsSample)
+        super().__init__(SmsSample)
 
     def get_id(self, obj):
         return obj.id
@@ -64,7 +64,7 @@ class SmsSampleDao(BaseDao, SmsManifestMixin):
 
 class SmsBlocklistDao(BaseDao):
     def __init__(self):
-        super(SmsBlocklistDao, self).__init__(SmsBlocklist)
+        super().__init__(SmsBlocklist)
 
     def get_id(self, obj):
         return obj.id
@@ -72,7 +72,7 @@ class SmsBlocklistDao(BaseDao):
 
 class SmsN0Dao(BaseDao, SmsManifestMixin):
     def __init__(self):
-        super(SmsN0Dao, self).__init__(SmsN0)
+        super().__init__(SmsN0)
 
     def get_id(self, obj):
         return obj.id
@@ -80,7 +80,7 @@ class SmsN0Dao(BaseDao, SmsManifestMixin):
 
 class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
     def __init__(self):
-        super(SmsN1Mc1Dao, self).__init__(SmsN1Mc1)
+        super().__init__(SmsN1Mc1)
 
     def get_id(self, obj):
         return obj.id

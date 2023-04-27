@@ -217,9 +217,6 @@ class NphDataGenerator(NphBaseGenerator):
 
 
 class NphSmsDataGenerator(NphBaseGenerator):
-    def __init__(self):
-        super().__init__()
-
     @staticmethod
     def _sms_job_run(**kwargs):
         return SmsJobRun(**kwargs)

@@ -135,7 +135,7 @@ class NphSmsIngestionTaskApi(BaseAncillaryTaskApi):
             file_type: i.e. SAMPLE_LIST, N0, etc.
     """
     def post(self):
-        super(NphSmsIngestionTaskApi, self).post()
+        super().post()
 
         ingestion_data = {
             "job": "FILE_INGESTION",
@@ -154,7 +154,7 @@ class NphSmsGenerationTaskApi(BaseAncillaryTaskApi):
             recipient: UNC_META, etc.
     """
     def post(self):
-        super(NphSmsGenerationTaskApi, self).post()
+        super().post()
 
         generation_data = {
             "job": "FILE_GENERATION",
