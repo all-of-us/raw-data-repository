@@ -32,6 +32,7 @@ from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
     GenomicManifestFeedback
 from rdr_service.offline import genomic_pipeline
+from rdr_service.offline.genomic_pipeline import load_awn_manifest_into_raw_table
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -1250,17 +1251,22 @@ class GenomicProcessRunner(GenomicManifestBase):
 
     def run_aw3_manifest(self, job, manifest_type, genome_type):
         server_config = self.get_server_config()
-
-        # Run the AW3 Workflow
-        with GenomicJobController(job_id=job,
-                                  max_num=4000,
-                                  bq_project_id=self.gcp_env.project) as controller:
+        with GenomicJobController(job,
+                                  server_config=server_config,
+                                  max_num=4000) as controller:
             controller.bucket_name = server_config[config.DRC_BROAD_BUCKET_NAME][0]
-
             controller.generate_manifest(
-                manifest_type=manifest_type,
+                manifest_type,
                 genome_type=genome_type,
+                pipeline_id="dragen_3.7.8"
             )
+
+            for manifest in controller.manifests_generated:
+                logging.info(
+                    f"Loading AW3 Array Raw Data: {manifest['file_path']}")
+
+                # Call pipeline function to load raw
+                load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
 
     def resolve_missing_files(self, job):
         # Run the resolve_missing_files job
