@@ -33,6 +33,7 @@ from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCVa
     GenomicManifestFeedback
 from rdr_service.offline.genomics import genomic_dispatch
 from rdr_service.offline.genomics.genomic_dispatch import load_awn_manifest_into_raw_table
+
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -1258,7 +1259,7 @@ class GenomicProcessRunner(GenomicManifestBase):
             controller.generate_manifest(
                 manifest_type,
                 genome_type=genome_type,
-                pipeline_id="dragen_3.7.8"
+                pipeline_id=config.GENOMIC_UPDATED_WGS_DRAGEN
             )
 
             for manifest in controller.manifests_generated:
