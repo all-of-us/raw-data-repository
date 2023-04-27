@@ -220,12 +220,12 @@ NPH_SMS_BUCKETS = {
         "UCSD": "stable-nph-sample-data-mmc-ucsd"
     },
     "sandbox": {
-        "UNC_META": "",
-        "NCSU": "",
-        "DUKE": "",
-        "UNC_CLINICAL": "",
-        "PBRC": "",
-        "UCSD": ""
+        "UNC_META": "aou-rdr-sandbox-test-workflow",
+        "NCSU": "aou-rdr-sandbox-test-workflow",
+        "DUKE": "aou-rdr-sandbox-test-workflow",
+        "UNC_CLINICAL": "aou-rdr-sandbox-test-workflow",
+        "PBRC": "aou-rdr-sandbox-test-workflow",
+        "UCSD": "aou-rdr-sandbox-test-workflow"
     },
     "test": {
         "UNC_META": "test-bucket-unc-meta",
