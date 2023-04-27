@@ -59,6 +59,11 @@ def simple_query(value):
            { startCursor  endCursor hasNextPage }  edges { node { participantNphId %s } } } }''' % value
 
 
+def simple_query_with_pagination(value: str, limit: int, offset: int):
+    return ''' { participant (limit: %s, offSet: %s) {totalCount resultCount pageInfo
+           { startCursor  endCursor hasNextPage }  edges { node { participantNphId %s } } } }''' % (limit, offset, value)
+
+
 def condition_query(condition, sort_value, sort_field):
     return ''' { participant (%s: %s) {totalCount resultCount pageInfo
            { startCursor  endCursor hasNextPage }  edges { node { %s } } } }''' % (condition, sort_value, sort_field)
@@ -466,6 +471,26 @@ class TestQueryExecution(BaseTestCase):
                 12,
                 len(result.get("participant").get("edges")[i].get("node").get("nphBiospecimens"))
             )
+
+    def test_nph_biospecimen_for_participant_with_pagination(self):
+        mock_load_participant_data(self.session)
+        self._create_test_sample_updates()
+        field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID timepointID biobankStatus { limsID biobankModified status } } "
+        query_1 = simple_query_with_pagination(field_to_test, limit=1, offset=0)
+        result_1 = app.test_client().post('/rdr/v1/nph_participant', data=query_1)
+        result_1 = json.loads(result_1.data.decode('utf-8'))
+        self.assertEqual(1, len(result_1.get('participant').get('edges')))
+
+        query_2 = simple_query_with_pagination(field_to_test, limit=1, offset=1)
+        result_2 = app.test_client().post('/rdr/v1/nph_participant', data=query_2)
+        result_2 = json.loads(result_2.data.decode('utf-8'))
+        self.assertEqual(1, len(result_2.get('participant').get('edges')))
+        for result in [result_1, result_2]:
+            self.assertEqual(
+                12,
+                len(result.get("participant").get("edges")[0].get("node").get("nphBiospecimens"))
+            )
+
 
     def test_graphql_syntax_error(self):
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_SYNTAX_ERROR)
