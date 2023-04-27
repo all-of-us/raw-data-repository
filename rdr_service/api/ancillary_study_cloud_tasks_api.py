@@ -113,13 +113,13 @@ class UpdateParticipantSummaryForNphTaskApi(BaseAncillaryTaskApi):
             logging.info(f'{event_type} cannot be used in this task.')
             return {"success": False}
 
-        if event_type == "consent":
+        if event_type.lower() == "consent":
             ps.consentForNphModule1 = True
             ps.consentForNphModule1Authored = event_authored
-        elif event_type == "withdrawal":
+        elif event_type.lower()  == "withdrawal":
             ps.nphWithdrawal = True
             ps.nphWithdrawalAuthored = event_authored
-        elif event_type == "deactivation":
+        elif event_type.lower()  == "deactivation":
             ps.nphDeactivation = True
             ps.nphDeactivationAuthored = event_authored
 
