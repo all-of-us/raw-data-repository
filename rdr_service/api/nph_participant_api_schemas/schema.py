@@ -24,6 +24,13 @@ from rdr_service import config
 
 NPH_BIOBANK_PREFIX = NPH_PROD_BIOBANK_PREFIX if config.GAE_PROJECT == "all-of-us-rdr-prod" else NPH_TEST_BIOBANK_PREFIX
 
+DEFAULT_LIMIT = 100
+MIN_LIMIT = 1
+MAX_LIMIT = 1000
+
+DEFAULT_OFFSET = 0
+MIN_OFFSET = 0
+
 
 class SortableField(Field):
 
@@ -351,8 +358,11 @@ class ParticipantQuery(ObjectType):
         connection_class = ParticipantConnection
 
     participant = relay.ConnectionField(
-        ParticipantConnection, nph_id=String(required=False), sort_by=String(required=False), limit=Int(required=False),
-        off_set=Int(required=False),
+        ParticipantConnection,
+        nph_id=String(required=False),
+        sort_by=String(required=False),
+        limit=Int(required=False, default_value=DEFAULT_LIMIT),
+        off_set=Int(required=False, default_value=DEFAULT_OFFSET),
         **_build_filter_parameters(ParticipantField)
     )
 
@@ -370,6 +380,8 @@ class ParticipantQuery(ObjectType):
         nph_participant_dao = NphParticipantDao()
         consent_subquery = nph_participant_dao.get_consents_subquery()
         enrollment_subquery = nph_participant_dao.get_enrollment_subquery()
+        limit = min(max(limit, MIN_LIMIT), MAX_LIMIT)
+        off_set = max(off_set, MIN_OFFSET)
 
         with database_factory.get_database().session() as session:
             logging.info('root: %s, info: %s, kwargs: %s', root, info, filter_kwargs)

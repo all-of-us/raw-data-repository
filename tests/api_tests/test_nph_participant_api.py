@@ -53,6 +53,11 @@ aouOverallHealthStatus{ value time } aouLifestyleStatus{ value time } aouSDOHSta
 '''
 
 
+def simple_query_with_pagination(value: str, limit: int, offset: int):
+    return ''' { participant (limit: %s, offSet: %s) {totalCount resultCount pageInfo
+           { startCursor  endCursor hasNextPage }  edges { node { participantNphId %s } } } }''' % (limit, offset, value)
+
+
 def simple_query(value):
     return ''' { participant  {totalCount resultCount pageInfo
            { startCursor  endCursor hasNextPage }  edges { node { participantNphId %s } } } }''' % value
@@ -468,6 +473,41 @@ class NphParticipantAPITest(BaseTestCase):
         nph_dob = second_participant.get('nphDateOfBirth')
         self.assertTrue(nph_dob == 'UNSET')
 
+    def test_nph_biospecimen_for_participant(self):
+        self.add_consents(nph_participant_ids=self.base_participant_ids)
+        self._create_test_sample_updates()
+        field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID timepointID biobankStatus { limsID biobankModified status } } "
+        query = simple_query(field_to_test)
+
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, len(result.get('participant').get('edges')))
+        n_participants = len(result.get('participant').get('edges'))
+        for i in range(n_participants):
+            self.assertEqual(
+                12,
+                len(result.get("participant").get("edges")[i].get("node").get("nphBiospecimens"))
+            )
+
+    def test_nph_biospecimen_for_participant_with_pagination(self):
+        self.add_consents(nph_participant_ids=self.base_participant_ids)
+        self._create_test_sample_updates()
+        field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID timepointID biobankStatus { limsID biobankModified status } } "
+        query_1 = simple_query_with_pagination(field_to_test, limit=1, offset=0)
+        result_1 = app.test_client().post('/rdr/v1/nph_participant', data=query_1)
+        result_1 = json.loads(result_1.data.decode('utf-8'))
+        self.assertEqual(1, len(result_1.get('participant').get('edges')))
+
+        query_2 = simple_query_with_pagination(field_to_test, limit=1, offset=1)
+        result_2 = app.test_client().post('/rdr/v1/nph_participant', data=query_2)
+        result_2 = json.loads(result_2.data.decode('utf-8'))
+        self.assertEqual(1, len(result_2.get('participant').get('edges')))
+        for result in [result_1, result_2]:
+            self.assertEqual(
+                12,
+                len(result.get("participant").get("edges")[0].get("node").get("nphBiospecimens"))
+            )
+
     @staticmethod
     def _group_ordered_samples_by_participant(
         nph_participants: Iterable[NphParticipant],
@@ -505,21 +545,6 @@ class NphParticipantAPITest(BaseTestCase):
             _grouped_ordered_samples[ordered_sample.order_id].append(ordered_sample)
         grouped_ordered_samples_by_participant = self._group_ordered_samples_by_participant(nph_participants, grouped_orders, _grouped_ordered_samples)
         generate_fake_stored_samples(nph_participants, grouped_ordered_samples_by_participant)
-
-    def test_nph_biospecimen_for_participant(self):
-        self._create_test_sample_updates()
-        field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID timepointID biobankStatus { limsID biobankModified status } } "
-        query = simple_query(field_to_test)
-
-        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-        result = json.loads(executed.data.decode('utf-8'))
-        self.assertEqual(2, len(result.get('participant').get('edges')))
-        n_participants = len(result.get('participant').get('edges'))
-        for i in range(n_participants):
-            self.assertEqual(
-                12,
-                len(result.get("participant").get("edges")[i].get("node").get("nphBiospecimens"))
-            )
 
     def tearDown(self):
         super().tearDown()
