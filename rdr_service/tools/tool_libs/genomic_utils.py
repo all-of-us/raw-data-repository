@@ -31,8 +31,9 @@ from rdr_service.genomic.genomic_biobank_manifest_handler import (
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
     GenomicManifestFeedback
-from rdr_service.offline import genomic_pipeline
-from rdr_service.offline.genomic_pipeline import load_awn_manifest_into_raw_table
+from rdr_service.offline.genomics import genomic_dispatch
+from rdr_service.offline.genomics.genomic_dispatch import load_awn_manifest_into_raw_table
+
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -1179,7 +1180,7 @@ class GenomicProcessRunner(GenomicManifestBase):
         }
 
         # Call pipeline function
-        mf = genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data, project_id=self.gcp_env.project)
+        mf = genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data, project_id=self.gcp_env.project)
         task_data['manifest_file'] = mf
         _task_data = JSONObject(task_data)
 
@@ -1285,7 +1286,7 @@ class GenomicProcessRunner(GenomicManifestBase):
 
         task_data = JSONObject(task_data)
 
-        genomic_pipeline.dispatch_genomic_job_from_task(
+        genomic_dispatch.dispatch_genomic_job_from_task(
             task_data,
             project_id=self.gcp_env.project
         )
@@ -1956,7 +1957,7 @@ class LoadRawManifest(GenomicManifestBase):
 
         if manifest_list:
             for manifest_path in manifest_list:
-                genomic_pipeline.load_awn_manifest_into_raw_table(
+                genomic_dispatch.load_awn_manifest_into_raw_table(
                     file_path=manifest_path,
                     manifest_type=self.args.manifest_type.lower(),
                     project_id=self.gcp_env.project,

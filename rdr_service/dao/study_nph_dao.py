@@ -1,5 +1,7 @@
 import logging
-from typing import Tuple, Dict, List, Any, Optional
+from functools import lru_cache
+from datetime import datetime
+from typing import Tuple, Dict, List, Any, Optional, Iterator, Iterable
 import json
 from types import SimpleNamespace as Namespace
 from typing import Optional
@@ -23,6 +25,10 @@ from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
 _logger = logging.getLogger("rdr_logger")
 
 
+def _format_timestamp(timestamp: datetime) -> Optional[str]:
+    return timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') if timestamp else None
+
+
 class OrderStatus(messages.Enum):
     """A status reflecting the NPH order of the participant"""
 
@@ -38,8 +44,8 @@ class NphParticipantDao(BaseDao):
     def fetch_participant_id(obj) -> int:
         return obj.id
 
-    def get_id(self, session, nph_participant_id: str) -> int:
-        nph_participant_id = self.convert_id(nph_participant_id)
+    @staticmethod
+    def get_id(session, nph_participant_id: str) -> int:
         query = Query(Participant)
         query.session = session
         result = query.filter(Participant.id == int(nph_participant_id)).first()
@@ -48,30 +54,11 @@ class NphParticipantDao(BaseDao):
         else:
             raise NotFound(f"Participant ID not found : {nph_participant_id}")
 
-    def get_participant(self, nph_participant_id: str, session) -> Participant:
-        nph_participant_id = self.convert_id(nph_participant_id)
-        query = Query(Participant)
-        query.session = session
-        result = query.filter(Participant.id == int(nph_participant_id)).first()
-        if result:
-            return result
-        else:
-            raise NotFound(f"Participant not found : {nph_participant_id}")
-
-    def check_participant_exist(self, nph_participant_id: str, session=None) -> bool:
-        # expect the participant ID comes in with the prefix 1000.
-        nph_participant_id = self.convert_id(nph_participant_id)
-        query = Query(Participant)
-        query.session = session
-        result = query.filter(Participant.id == int(nph_participant_id)).first()
-        if result:
-            return True
-        else:
-            return False
-
     @staticmethod
-    def convert_id(nph_participant_id: str) -> str:
-        return nph_participant_id[4:]
+    def get_participant_by_id(nph_participant_id: str, session) -> Participant:
+        query = Query(Participant)
+        query.session = session
+        return query.filter(Participant.id == int(nph_participant_id)).first()
 
     def insert_participant_with_random_biobank_id(self, obj):
         return self._insert_with_random_id(
@@ -170,6 +157,17 @@ class NphStudyCategoryDao(UpdatableDao):
             if result:
                 return True, result
         return False, None
+    @lru_cache(maxsize=128, typed=False)
+    def get_study_category(self, study_category_id: int) -> StudyCategory:
+        with self.session() as session:
+            return session.query(StudyCategory).get(study_category_id)
+
+    @lru_cache(maxsize=128, typed=False)
+    def get_parent_study_category(self, study_category_id: int) -> StudyCategory:
+        with self.session() as session:
+            study_category: StudyCategory = session.query(StudyCategory).get(study_category_id)
+            parent_study_category = study_category.parent
+            return parent_study_category
 
 
 class NphSiteDao(BaseDao):
@@ -215,6 +213,21 @@ class NphSiteDao(BaseDao):
     def from_client_json(self):
         pass
 
+    def get_site_using_params(
+        self,
+        external_id: str,
+        awardee_external_id: str,
+        organization_external_id: str,
+        name: str
+    ) -> Optional[Site]:
+        with self.session() as session:
+            return session.query(Site).filter(
+                Site.name == name,
+                Site.external_id == external_id,
+                Site.awardee_external_id == awardee_external_id,
+                Site.organization_external_id == organization_external_id,
+            ).one_or_none()
+
 
 class NphOrderDao(UpdatableDao):
     def __init__(self):
@@ -229,12 +242,12 @@ class NphOrderDao(UpdatableDao):
         return obj.id
 
     def validate(self, order_id: int, nph_participant_id: str, session):
-        participant_exist = self.participant_dao.check_participant_exist(nph_participant_id, session)
+        participant = self.participant_dao.get_participant_by_id(nph_participant_id, session)
         order_exist, order = self.check_order_exist(order_id, session)
         create_site_exist = self.site_dao.site_exist(session, self.order_cls.createdInfo.site.value)
         collected_site_exist = self.site_dao.site_exist(session, self.order_cls.collectedInfo.site.value)
         finalized_site_exist = self.site_dao.site_exist(session, self.order_cls.finalizedInfo.site.value)
-        if participant_exist is not True:
+        if not participant:
             raise BadRequest(f"Participant ID does not exist: {nph_participant_id}")
         if order_exist is not True:
             raise BadRequest(f"Order ID does not exist: {order_id}")
@@ -398,7 +411,7 @@ class NphOrderDao(UpdatableDao):
             create_site = self.site_dao.get_id(session, self.order_cls.createdInfo.site.value)
             collected_site = self.site_dao.get_id(session, self.order_cls.collectedInfo.site.value)
             finalized_site = self.site_dao.get_id(session, self.order_cls.finalizedInfo.site.value)
-            participant = self.participant_dao.get_participant(nph_participant_id, session)
+            participant = self.participant_dao.get_participant_by_id(nph_participant_id, session)
         except NotFound:
             raise
         if not create_site and not collected_site and not finalized_site:
@@ -435,20 +448,38 @@ class NphOrderDao(UpdatableDao):
             raise BadRequest("Finalized Site ID is missing")
 
     def _get_or_insert_module_visit_type_and_timepoint_study_categories(self, order: Namespace, session):
-        module_exist, module = self.study_category_dao.module_exist(order, session)
-        visit_exist, visit = self.study_category_dao.visit_type_exist(order, module, session)
+        module_exist, module = self.study_category_dao.module_exist(
+            order=order,
+            session=session
+        )
         if not module_exist:
-            _module = StudyCategory(name=order.module, type_label="module")
-            module: StudyCategory = self.study_category_dao.insert(_module)
-        if not visit_exist:
-            _visit_type: StudyCategory = StudyCategory(name=order.visitType, type_label="visitType")
-            visit_type: StudyCategory = self.study_category_dao.insert(_visit_type)
-            module.children.append(visit_type)
+            module = self.study_category_dao.insert_with_session(
+                obj=StudyCategory(name=order.module, type_label="module"),
+                session=session
+            )
 
-        timepoint_exist, timepoint = self.study_category_dao.timepoint_exist(order, module, session)
+        visit_exist, visit = self.study_category_dao.visit_type_exist(
+            order=order,
+            module=module,
+            session=session
+        )
+        if not visit_exist:
+            visit = self.study_category_dao.insert_with_session(
+                obj=StudyCategory(name=order.visitType, type_label="visitType"),
+                session=session
+            )
+            module.children.append(visit)
+
+        timepoint_exist, timepoint = self.study_category_dao.timepoint_exist(
+            order=order,
+            visit_type=visit,
+            session=session
+        )
         if not timepoint_exist:
-            timepoint_sc = StudyCategory(name=order.timepoint, type_label="timepoint")
-            timepoint: StudyCategory = self.study_category_dao.insert(timepoint_sc)
+            timepoint = self.study_category_dao.insert_with_session(
+                obj=StudyCategory(name=order.timepoint, type_label="timepoint"),
+                session=session
+            )
         visit.children.append(timepoint)
         return module, timepoint
 
@@ -465,6 +496,72 @@ class NphOrderDao(UpdatableDao):
         session.commit()
         session.refresh(order)
         return order
+
+    @staticmethod
+    def _is_order_cancelled(order: Order) -> bool:
+        return order.status == "cancelled"
+
+    @staticmethod
+    def _is_ordered_sample_cancelled(ordered_sample: OrderedSample) -> bool:
+        return str(ordered_sample.status).lower() == "cancelled"
+
+    def _get_biospecimens_for_order(
+        self, nph_participant: Participant, order: Order, ordered_samples: Iterable[OrderedSample]
+    ) -> Iterator[Dict[str, Any]]:
+        nph_stored_sample_session = NphStoredSampleDao()
+        nph_study_category_dao = NphStudyCategoryDao()
+        for ordered_sample in ordered_samples:
+            parent_study_category = nph_study_category_dao.get_parent_study_category(order.category_id)
+            nph_module_id = nph_study_category_dao.get_parent_study_category(parent_study_category.id)
+            sample_processing_ts = ordered_sample.collected if ordered_sample.parent is not None else None
+            collection_date_utc = _format_timestamp((ordered_sample.parent or ordered_sample).collected)
+            processing_date_utc = _format_timestamp(sample_processing_ts)
+            finalized_date_utc = _format_timestamp(ordered_sample.finalized) if ordered_sample.finalized else None
+            sample_is_cancelled = (
+                self._is_order_cancelled(order) or
+                self._is_ordered_sample_cancelled(ordered_sample)
+            )
+            kit_id = None
+            if (ordered_sample.identifier or ordered_sample.test).startswith("ST"):
+                kit_id = order.nph_order_id
+
+            sample_status = "Cancelled" if sample_is_cancelled else "Active"
+            biospecimen_dict = {
+                "orderID": order.nph_order_id,
+                "visitID": parent_study_category.name if parent_study_category else "",
+                "studyID": f"NPH Module {nph_module_id.name}",
+                "specimenCode": (ordered_sample.identifier or ordered_sample.test),
+                "timepointID": nph_study_category_dao.get_study_category(order.category_id).name,
+                "volume": ordered_sample.volume,
+                "volumeUOM": ordered_sample.volumeUnits,
+                "orderedSampleStatus": sample_status,
+                "clientID": order.client_id,
+                "collectionDateUTC": collection_date_utc,
+                "processingDateUTC": processing_date_utc,
+                "finalizedDateUTC": finalized_date_utc,
+                "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
+                "kitID": kit_id,
+                "biobankStatus": None,
+            }
+            biobank_status_and_lims_id = (
+                nph_stored_sample_session.get_biobank_status_and_lims_id(
+                    nph_participant, ordered_sample
+                )
+            )
+            if biobank_status_and_lims_id:
+                biospecimen_dict.update({"biobankStatus": biobank_status_and_lims_id})
+            yield biospecimen_dict
+
+    def get_nph_biospecimens_for_participant(self, nph_participant: Participant):
+        biospecimens: Iterable[Dict[str, Any]] = []
+        if nph_participant:
+            for order in nph_participant.orders:
+                _biospecimens = self._get_biospecimens_for_order(
+                    nph_participant, order, list(order.samples)
+                )
+                for biospecimen in _biospecimens:
+                    biospecimens.append(biospecimen)
+        return biospecimens
 
 
 class NphOrderedSampleDao(UpdatableDao):
@@ -827,6 +924,20 @@ class NphStoredSampleDao(BaseDao):
 
     def get_id(self, obj: StoredSample):
         return obj.id
+
+    def get_biobank_status_and_lims_id(
+        self, nph_participant: Participant, ordered_sample: OrderedSample
+    ) -> Iterable[Tuple[str]]:
+        filtered_stored_samples = list(
+            filter(lambda ss: str(ss.sample_id) == ordered_sample.nph_sample_id, nph_participant.stored_samples)
+        )
+        return [
+            {
+                "limsID": stored_sample.lims_id,
+                "biobankModified": _format_timestamp(stored_sample.biobank_modified),
+                "status": stored_sample.status.name if stored_sample.status else None,
+            } for stored_sample in filtered_stored_samples
+        ]
 
 
 class NphIncidentDao(UpdatableDao):

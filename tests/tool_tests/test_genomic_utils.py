@@ -36,7 +36,7 @@ class GenomicProcessRunnerTest(GenomicUtilsTestBase):
             'cloud_task': _cloud_task
         })
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.dispatch_genomic_job_from_task')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.dispatch_genomic_job_from_task')
     def test_calculate_aw1_record_count(self, dispatch_job_mock):
         manifest = self.data_generator.create_database_genomic_manifest_file()
 
@@ -100,7 +100,7 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             fileName="test_GEN_data_manifest.csv"
         )
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.load_awn_manifest_into_raw_table')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.load_awn_manifest_into_raw_table')
     def test_load_manifest_into_raw_table(self, load_job_mock):
         test_file = "test-bucket/test_folder/test_manifest_file.csv"
 

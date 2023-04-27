@@ -11,7 +11,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
     GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
     GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState, \
-    ResultsWorkflowState, ResultsModuleType, GenomicSampleSwapCategory
+    GenomicSampleSwapCategory, GenomicLongReadPlatform
 
 
 class GenomicSet(Base):
@@ -332,28 +332,6 @@ class GenomicSetMember(Base):
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
-
-
-class GenomicResultWorkflowState(Base):
-    """
-    Used for storing results workflow state
-    """
-
-    __tablename__ = 'genomic_result_workflow_state'
-
-    id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
-    created = Column(DateTime, nullable=True)
-    modified = Column(DateTime, nullable=True)
-    genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False, index=True)
-    results_workflow_state = Column(Enum(ResultsWorkflowState), default=ResultsWorkflowState.UNSET)
-    results_workflow_state_str = Column(String(64), default="UNSET")
-    results_module = Column(Enum(ResultsModuleType), default=ResultsModuleType.UNSET, nullable=False)
-    results_module_str = Column(String(64), default="UNSET")
-    ignore_flag = Column(SmallInteger, nullable=False, default=0)
-
-
-event.listen(GenomicResultWorkflowState, "before_insert", model_insert_listener)
-event.listen(GenomicResultWorkflowState, "before_update", model_update_listener)
 
 
 class GenomicJobRun(Base):
@@ -1649,3 +1627,84 @@ class GenomicStorageUpdate(Base):
 
 event.listen(GenomicStorageUpdate, 'before_insert', model_insert_listener)
 event.listen(GenomicStorageUpdate, 'before_update', model_update_listener)
+
+
+class GenomicLongRead(Base):
+    """
+    Used for storing the member records that are being
+    sequenced in the long read pipeline
+    """
+
+    __tablename__ = "genomic_long_read"
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"), nullable=False, index=True)
+    biobank_id = Column(String(128), nullable=False, index=True)
+    sample_id = Column(String(80), nullable=True, index=True)
+    genome_type = Column(String(80), nullable=False, default='aou_long_read')
+    lr_site_id = Column(String(11), nullable=False)
+    long_read_platform = Column(Enum(GenomicLongReadPlatform), default=GenomicLongReadPlatform.UNSET)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+    long_read_set = Column(Integer, nullable=False, default=0)
+
+
+event.listen(GenomicLongRead, 'before_insert', model_insert_listener)
+event.listen(GenomicLongRead, 'before_update', model_update_listener)
+
+
+class GenomicLRRaw(Base):
+    """
+    Raw data from LR files
+    """
+    __tablename__ = 'genomic_lr_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    parent_tube_id = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+
+
+event.listen(GenomicLRRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicLRRaw, 'before_update', model_update_listener)
+
+
+class GenomicL0Raw(Base):
+    """
+    Raw data from L0 files
+    """
+    __tablename__ = 'genomic_l0_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    collection_tube_id = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    ny_flag = Column(String(255), nullable=True)
+    validation_passed = Column(String(255), nullable=True)
+    ai_an = Column(String(255), nullable=True)
+    parent_tube_id = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL0Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicL0Raw, 'before_update', model_update_listener)

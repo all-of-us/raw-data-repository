@@ -163,6 +163,12 @@ class GenomicJob(messages.Enum):
     LOAD_CVL_W4WR_TO_RAW_TABLE = 258
     LOAD_CVL_W5NF_TO_RAW_TABLE = 259
 
+    LR_LR_WORKFLOW = 300
+    LR_L0_WORKFLOW = 301
+
+    LOAD_LR_TO_RAW_TABLE = 350
+    LOAD_L0_TO_RAW_TABLE = 351
+
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
 
@@ -174,7 +180,6 @@ class GenomicJob(messages.Enum):
 
     # Datagen Manifest Workflows
     DATAGEN_MANIFEST_GENERATION = 3001
-
 
 class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions. States are not in any order. """
@@ -314,6 +319,8 @@ class GenomicManifestTypes(messages.Enum):
     CVL_W5NF = 25
     CVL_W1IL_PGX = 26
     CVL_W1IL_HDR = 27
+    LR_LR = 28
+    LR_L0 = 29
 
 
 class GenomicContaminationCategory(messages.Enum):
@@ -358,3 +365,9 @@ class GenomicSampleSwapCategory(messages.Enum):
     RESULT_NOT_READY = 1
     RESULT_READY_NOT_VIEWED = 2
     RESULT_READY_VIEWED = 3
+
+
+class GenomicLongReadPlatform(messages.Enum):
+    UNSET = 0
+    ONT = 1
+    PACBIO_CSS = 2

@@ -550,6 +550,7 @@ class GenomicQueryClass:
                     LEFT JOIN genomic_manifest_file mf ON mf.file_path = raw.file_path
                     LEFT JOIN genomic_file_processed f ON f.genomic_manifest_file_id = mf.id
                     LEFT JOIN genomic_set_member m ON m.aw1_file_processed_id = f.id
+                        AND m.ignore_flag = 0
                     LEFT JOIN genomic_incident i ON i.source_file_processed_id = f.id
                 WHERE TRUE
                     AND raw.created >= :from_date
@@ -578,6 +579,7 @@ class GenomicQueryClass:
                     LEFT JOIN genomic_manifest_file mf ON mf.file_path = raw.file_path
                     LEFT JOIN genomic_file_processed f ON f.genomic_manifest_file_id = mf.id
                     LEFT JOIN genomic_gc_validation_metrics m ON m.genomic_file_processed_id = f.id
+                        AND m.ignore_flag = 0
                     LEFT JOIN genomic_incident i ON i.source_file_processed_id = f.id
                 WHERE TRUE
                     AND raw.created >=  :from_date

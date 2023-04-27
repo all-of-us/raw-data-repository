@@ -1,12 +1,14 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Optional, Dict
-from graphene import List
+from typing import Dict
+from graphene import List as GrapheneList
 
 from sqlalchemy.orm import Query, aliased
 
-from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
+from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, ConsentOptInTypes
 from rdr_service.api_util import parse_date
+from rdr_service.model.study_nph import Participant as NphParticipant
+from rdr_service.dao.study_nph_dao import NphOrderDao
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.participant_enums import QuestionnaireStatus
 
@@ -14,10 +16,10 @@ from rdr_service.participant_enums import QuestionnaireStatus
 @dataclass
 class QueryBuilder:
     query: Query
-    order_expression: Optional = None
-    filter_expressions: List = field(default_factory=list)
+    order_expression = None
+    filter_expressions: GrapheneList = field(default_factory=list)
     references: Dict = field(default_factory=dict)
-    join_expressions: List = field(default_factory=list)
+    join_expressions: GrapheneList = field(default_factory=list)
     sort_table = None
     table = None
 
@@ -58,13 +60,27 @@ def check_field_value(value):
     return QuestionnaireStatus.UNSET
 
 
-def load_participant_summary_data(query, prefix, biobank_prefix):
+def load_participant_summary_data(query, biobank_prefix):
 
     def get_enrollment_statuses(enrollment_data):
         return list(map(
             lambda x: {'value': x['value'], 'time': parse_date(x['time']) if x['time'] else None},
             enrollment_data
         ))
+
+    def get_consent_statuses(consent_data):
+        return list(map(
+            lambda x: {
+                'value': x['value'],
+                'time': parse_date(x['time']) if x['time'] else None,
+                'opt_in': str(ConsentOptInTypes(int(x['opt_in'])))
+            },
+            consent_data
+        ))
+
+    def get_nph_biospecimens_for_participant(nph_participant: NphParticipant):
+        nph_order_dao = NphOrderDao()
+        return nph_order_dao.get_nph_biospecimens_for_participant(nph_participant)
 
     def get_value_from_ops_data(participant_ops_data, enum):
         if not participant_ops_data:
@@ -77,10 +93,10 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
     results = []
     records = query.all()
 
-    for summary, site, nph_site, mapping, nph_participant, enrollment, \
+    for summary, site, nph_site, mapping, nph_participant, enrollment, consents, \
             deactivated, withdrawn, ops_data in records:
         results.append({
-            'participantNphId': f"{prefix}{mapping.ancillary_participant_id}",
+            'participantNphId': mapping.ancillary_participant_id,
             'lastModified': summary.lastModified,
             'biobankId': f"{biobank_prefix}{nph_participant.biobank_id}",
             'firstName': summary.firstName,
@@ -100,7 +116,7 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                 "time": summary.withdrawalAuthored
             },
             'nphDeactivationStatus': {
-                "value": "Deactivate" if deactivated else "NULL",
+                "value": "DEACTIVATED" if deactivated else "NULL",
                 "time": deactivated.event_authored_time if deactivated else None
             },
             'nphWithdrawalStatus': {
@@ -108,6 +124,8 @@ def load_participant_summary_data(query, prefix, biobank_prefix):
                 "time": withdrawn.event_authored_time if withdrawn else None
             },
             'nphEnrollmentStatus': get_enrollment_statuses(enrollment['enrollment_json']),
+            'nphModule1ConsentStatus': get_consent_statuses(consents['consent_json']),
+            "nphBiospecimens": get_nph_biospecimens_for_participant(nph_participant),
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
                                  "time": summary.suspensionTime},

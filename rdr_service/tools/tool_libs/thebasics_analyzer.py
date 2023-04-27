@@ -193,7 +193,13 @@ class TheBasicsAnalyzerClass(object):
 
         # Build nested dict of question code keys/answer values
         for row in answer_list:
-            response_dict['answers'][row.question_code_value] = row.answer_value
+            ans = row.answer_value
+            if row.question_code_value in response_dict['answers']:
+                # Multi-select answer case; concatenate selections
+                prev_ans = response_dict['answers'][row.question_code_value]
+                ans = ','.join([prev_ans, ans])
+
+            response_dict['answers'][row.question_code_value] = ans
 
         response_dict['answer_count'] = len(response_dict['answers'].keys())
         response_dict['questionnaireResponseId'] = response_id

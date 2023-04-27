@@ -18,7 +18,7 @@ from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
-from rdr_service.offline import genomic_pipeline
+from rdr_service.offline.genomics import genomic_dispatch, genomic_long_read_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
     genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, \
@@ -80,7 +80,7 @@ class BaseGenomicTaskApi(Resource):
         if not task_data.get('job') in self.disallowed_jobs:
             logging.info(f'Ingesting {_type} File: {self.data.get("filename")}')
             # Call pipeline function
-            genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+            genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
         else:
             logging.warning(f'Cannot run ingestion task. {task_data.get("job")} is currently disabled.')
 
@@ -95,7 +95,7 @@ class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
         logging.info(f'Loading {self.data.get("file_type").upper()} Raw Data: {self.data.get("filename")}')
 
         # Call pipeline function
-        genomic_pipeline.load_awn_manifest_into_raw_table(self.data.get("file_path"), self.data.get("file_type"))
+        genomic_dispatch.load_awn_manifest_into_raw_table(self.data.get("file_path"), self.data.get("file_type"))
 
         self.create_cloud_record()
 
@@ -330,6 +330,48 @@ class IngestCVLManifestTaskApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
+class IngestLongReadManifestTaskApi(BaseGenomicTaskApi):
+    """
+    Cloud Task endpoint: Ingest Long Read Manifest(s).
+    """
+    def post(self):
+        super().post()
+
+        lr_manifest_map = {
+            'lr': {
+                'job': GenomicJob.LR_LR_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.LR_LR
+            },
+        }
+
+        for file_path in self.file_paths:
+            logging.info(f'Ingesting LR Manifest File: {self.data.get("filename")}')
+
+            task_type = self.data.get("file_type")
+            workflow_data = lr_manifest_map[task_type]
+
+            # Set up file/JSON
+            task_data = {
+                "job": workflow_data.get('job'),
+                "bucket": self.data["bucket_name"],
+                "file_data": {
+                    "create_feedback_record": False,
+                    "upload_date": self.data["upload_date"],
+                    "manifest_type": workflow_data.get('manifest_type'),
+                    "file_path": file_path,
+                }
+            }
+
+            logging.info(f'{task_type.upper()} task data: {task_data}')
+
+            self.execute_manifest_ingestion(task_data, task_type.upper())
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
 class IngestSamplesFromRawTaskAPI(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Ingest samples based on list
@@ -524,7 +566,7 @@ class CalculateRecordCountTaskApi(BaseGenomicTaskApi):
             logging.info(f'Calculate Record Count task data: {task_data}')
 
             # Call pipeline function
-            genomic_pipeline.dispatch_genomic_job_from_task(JSONObject(task_data))
+            genomic_dispatch.dispatch_genomic_job_from_task(JSONObject(task_data))
 
         self.create_cloud_record()
 
@@ -710,6 +752,28 @@ class GenomicGCMetricsUpsertApi(BaseGenomicTaskApi):
             data_to_upsert=payload_dict,
             existing_id=metric_id
         )
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
+class GenerateManifestApi(BaseGenomicTaskApi):
+    """
+    Cloud task endpoint: Execute manifest generation
+    """
+    def post(self):
+        super().post()
+        manifest_type = self.data.get('manifest_type')
+        generate_manifest_map = {
+            'l0': genomic_long_read_pipeline.lr_l0_manifest_workflow
+        }
+
+        run_manifest_generation = generate_manifest_map.get(manifest_type, None)
+        if not run_manifest_generation:
+            logging.warning(f'Genomics Manifest {manifest_type} is not available for generation.')
+            return {"success": False}
+
+        run_manifest_generation()
 
         logging.info('Complete.')
         return {"success": True}

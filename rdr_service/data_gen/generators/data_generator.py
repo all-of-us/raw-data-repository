@@ -16,9 +16,9 @@ from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate, Genomi
 from rdr_service.model.genomics import GenomicManifestFeedback, GenomicManifestFile, GenomicJobRun, GenomicSet, \
     GenomicSetMember, GenomicAW1Raw, GenomicAW2Raw, GenomicFileProcessed, GenomicIncident, GenomicGCValidationMetrics, \
     GenomicMemberReportState, UserEventMetrics, GenomicInformingLoop, GenomicGcDataFile, GenomicGcDataFileMissing, \
-    GenomicResultViewed, GenomicResultWorkflowState, GenomicCVLSecondSample, GenomicSampleSwap, \
+    GenomicResultViewed, GenomicCVLSecondSample, GenomicSampleSwap, \
     GenomicSampleSwapMember, GenomicCVLResultPastDue, GenomicW4WRRaw, GenomicW3SCRaw, GenomicAppointmentEvent, \
-    GenomicAppointmentEventMetrics
+    GenomicAppointmentEventMetrics, GenomicLongRead
 from rdr_service.model.hpo import HPO
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.log_position import LogPosition
@@ -772,15 +772,6 @@ class DataGenerator:
         return result_viewed
 
     @staticmethod
-    def _genomic_result_workflow_state(**kwargs):
-        return GenomicResultWorkflowState(**kwargs)
-
-    def create_database_genomic_result_workflow_state(self, **kwargs):
-        m = self._genomic_result_workflow_state(**kwargs)
-        self._commit_to_database(m)
-        return m
-
-    @staticmethod
     def _genomic_datagen_template(**kwargs):
         return GenomicDataGenCaseTemplate(**kwargs)
 
@@ -878,6 +869,15 @@ class DataGenerator:
     @staticmethod
     def _genomic_appointment_event_metric(**kwargs):
         return GenomicAppointmentEventMetrics(**kwargs)
+
+    def create_database_genomic_long_read(self, **kwargs):
+        m = self._genomic_long_read(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_long_read(**kwargs):
+        return GenomicLongRead(**kwargs)
 
     def create_withdrawn_participant(self, withdrawal_reason_justification, is_native_american=False,
                                      requests_ceremony=None, withdrawal_time=datetime.utcnow()):

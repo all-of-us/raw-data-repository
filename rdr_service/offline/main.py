@@ -23,8 +23,9 @@ from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.requests_log import RequestsLog
-from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status, \
-    antibody_study_pipeline, genomic_data_quality_pipeline, export_va_workqueue, genomic_cvl_pipeline
+from rdr_service.offline import biobank_samples_pipeline, sync_consent_files, update_ehr_status, \
+    antibody_study_pipeline, export_va_workqueue
+from rdr_service.offline.genomics import genomic_pipeline, genomic_cvl_pipeline, genomic_data_quality_pipeline
 from rdr_service.offline.ce_health_data_reconciliation_pipeline import CeHealthDataReconciliationPipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
@@ -32,7 +33,7 @@ from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
 from rdr_service.offline.import_deceased_reports import DeceasedReportImporter
 from rdr_service.offline.import_hpo_lite_pairing import HpoLitePairingImporter
 from rdr_service.offline.enrollment_check import check_enrollment
-from rdr_service.offline.genomic_pipeline import run_genomic_cron_job, interval_run_schedule
+from rdr_service.genomic.utils import check_genomic_cron_job, interval_genomic_run_schedule
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.offline.retention_eligible_import import calculate_retention_eligible_metrics
 from rdr_service.offline.participant_maint import skew_duplicate_last_modified
@@ -468,7 +469,7 @@ def transfer_hpro_consents():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('aw0_manifest_workflow')
+@check_genomic_cron_job('aw0_manifest_workflow')
 def genomic_new_participant_workflow():
     genomic_pipeline.new_participant_workflow()
     return '{"success": "true"}'
@@ -499,56 +500,56 @@ def genomic_data_manifest_workflow():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('aw2f_manifest_workflow')
+@check_genomic_cron_job('aw2f_manifest_workflow')
 def genomic_scan_feedback_records():
     genomic_pipeline.scan_and_complete_feedback_records()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('aw2f_remainder_workflow')
+@check_genomic_cron_job('aw2f_remainder_workflow')
 def genomic_aw2f_remainder_workflow():
     genomic_pipeline.send_remainder_contamination_manifests()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('a1_manifest_workflow')
+@check_genomic_cron_job('a1_manifest_workflow')
 def genomic_gem_a1_workflow():
     genomic_pipeline.gem_a1_manifest_workflow()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('a2_manifest_workflow')
+@check_genomic_cron_job('a2_manifest_workflow')
 def genomic_gem_a2_workflow():
     genomic_pipeline.gem_a2_manifest_workflow()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('a3_manifest_workflow')
+@check_genomic_cron_job('a3_manifest_workflow')
 def genomic_gem_a3_workflow():
     genomic_pipeline.gem_a3_manifest_workflow()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('update_report_state_for_consent_removal')
+@check_genomic_cron_job('update_report_state_for_consent_removal')
 def update_report_state_for_consent_removal():
     genomic_pipeline.update_report_state_for_consent_removal()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('aw3_array_manifest_workflow')
+@check_genomic_cron_job('aw3_array_manifest_workflow')
 def genomic_aw3_array_workflow():
     genomic_pipeline.aw3_array_manifest_workflow()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('aw3_wgs_manifest_workflow')
+@check_genomic_cron_job('aw3_wgs_manifest_workflow')
 def genomic_aw3_wgs_workflow():
     genomic_pipeline.aw3_wgs_manifest_workflow(
         pipeline_id=config.GENOMIC_DEPRECATED_WGS_DRAGEN
@@ -557,7 +558,7 @@ def genomic_aw3_wgs_workflow():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('aw3_wgs_updated_manifest_workflow')
+@check_genomic_cron_job('aw3_wgs_updated_manifest_workflow')
 def genomic_aw3_wgs_updated_workflow():
     genomic_pipeline.aw3_wgs_manifest_workflow(
         pipeline_id=config.GENOMIC_UPDATED_WGS_DRAGEN
@@ -566,7 +567,7 @@ def genomic_aw3_wgs_updated_workflow():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('cvl_w1il_pgx_manifest_workflow')
+@check_genomic_cron_job('cvl_w1il_pgx_manifest_workflow')
 def genomic_cvl_w1il_pgx_workflow():
     genomic_cvl_pipeline.cvl_w1il_manifest_workflow(
         cvl_site_bucket_map=config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP),
@@ -576,7 +577,7 @@ def genomic_cvl_w1il_pgx_workflow():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('cvl_w1il_hdr_manifest_workflow')
+@check_genomic_cron_job('cvl_w1il_hdr_manifest_workflow')
 def genomic_cvl_w1il_hdr_workflow():
     genomic_cvl_pipeline.cvl_w1il_manifest_workflow(
         cvl_site_bucket_map=config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP),
@@ -586,8 +587,8 @@ def genomic_cvl_w1il_hdr_workflow():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('cvl_w2w_manifest_workflow')
-@interval_run_schedule(GenomicJob.CVL_W2W_WORKFLOW, 'skip_week')
+@check_genomic_cron_job('cvl_w2w_manifest_workflow')
+@interval_genomic_run_schedule(GenomicJob.CVL_W2W_WORKFLOW, 'bi_week')
 def genomic_cvl_w2w_workflow():
     genomic_cvl_pipeline.cvl_w2w_manifest_workflow(
         cvl_site_bucket_map=config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP)
@@ -596,22 +597,22 @@ def genomic_cvl_w2w_workflow():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('cvl_w3sr_manifest_workflow')
-@interval_run_schedule(GenomicJob.CVL_W3SR_WORKFLOW, 'skip_week')
+@check_genomic_cron_job('cvl_w3sr_manifest_workflow')
+@interval_genomic_run_schedule(GenomicJob.CVL_W3SR_WORKFLOW, 'bi_week')
 def genomic_cvl_w3sr_workflow():
     genomic_cvl_pipeline.cvl_w3sr_manifest_workflow()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('genomic_aw3_array_investigation_workflow')
+@check_genomic_cron_job('genomic_aw3_array_investigation_workflow')
 def genomic_aw3_array_investigation_workflow():
     genomic_pipeline.aw3_array_investigation_workflow()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('genomic_aw3_wgs_investigation_workflow')
+@check_genomic_cron_job('genomic_aw3_wgs_investigation_workflow')
 def genomic_aw3_wgs_investigation_workflow():
     genomic_pipeline.aw3_wgs_investigation_workflow(
         pipeline_id=config.GENOMIC_DEPRECATED_WGS_DRAGEN
@@ -620,14 +621,14 @@ def genomic_aw3_wgs_investigation_workflow():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('feedback_record_reconciliation_workflow')
+@check_genomic_cron_job('feedback_record_reconciliation_workflow')
 def genomic_feedback_record_reconciliation():
     genomic_pipeline.feedback_record_reconciliation()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('missing_files_clean_up_workflow')
+@check_genomic_cron_job('missing_files_clean_up_workflow')
 def genomic_missing_files_clean_up():
     genomic_pipeline.genomic_missing_files_clean_up()
     return '{"success": "true"}'
@@ -639,86 +640,79 @@ def check_for_w1il_gror_resubmit_participants():
     genomic_cvl_pipeline.notify_email_group_of_w1il_gror_resubmit_participants(since_datetime=a_week_ago)
     return '{"success": "true"}'
 
-# Disabling job until further notice
-# @app_util.auth_required_cron
-# @run_genomic_cron_job('reconcile_raw_to_aw1_ingested_workflow')
-# def reconcile_raw_to_aw1_ingested():
-#     genomic_pipeline.reconcile_raw_to_aw1_ingested()
-#     return '{"success": "true"}'
-
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_raw_to_aw2_ingested_workflow')
+@check_genomic_cron_job('reconcile_raw_to_aw2_ingested_workflow')
 def reconcile_raw_to_aw2_ingested():
     genomic_pipeline.reconcile_raw_to_aw2_ingested()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('members_state_resolved_workflow')
+@check_genomic_cron_job('members_state_resolved_workflow')
 def genomic_members_state_resolved():
     genomic_pipeline.update_members_state_resolved_data_files()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('members_update_blocklists')
+@check_genomic_cron_job('members_update_blocklists')
 def genomic_members_update_blocklists():
     genomic_pipeline.update_members_blocklists()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_informing_loop_responses')
+@check_genomic_cron_job('reconcile_informing_loop_responses')
 def genomic_reconcile_informing_loop_responses():
     genomic_pipeline.reconcile_informing_loop_responses()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_message_broker_results_ready')
+@check_genomic_cron_job('reconcile_message_broker_results_ready')
 def genomic_reconcile_message_broker_results_ready():
     genomic_cvl_pipeline.reconcile_message_broker_results_ready()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_message_broker_results_viewed')
+@check_genomic_cron_job('reconcile_message_broker_results_viewed')
 def genomic_reconcile_message_broker_results_viewed():
     genomic_cvl_pipeline.reconcile_message_broker_results_viewed()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('retry_manifest_ingestion_failures')
+@check_genomic_cron_job('retry_manifest_ingestion_failures')
 def genomic_retry_manifest_ingestion_failures():
     genomic_pipeline.retry_manifest_ingestions()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('calculate_informing_loops_ready_weekly')
+@check_genomic_cron_job('calculate_informing_loops_ready_weekly')
 def genomic_calculate_informing_loop_ready_flags_weekly():
     genomic_cvl_pipeline.calculate_informing_loop_ready_flags()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('calculate_informing_loops_ready_daily')
+@check_genomic_cron_job('calculate_informing_loops_ready_daily')
 def genomic_calculate_informing_loop_ready_flags_daily():
     genomic_cvl_pipeline.calculate_informing_loop_ready_flags()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_pdr_data')
+@check_genomic_cron_job('reconcile_pdr_data')
 def genomic_reconcile_pdr_data():
     genomic_pipeline.reconcile_pdr_data()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_cvl_pgx_results')
+@check_genomic_cron_job('reconcile_cvl_pgx_results')
 def genomic_reconcile_cvl_pgx_results():
     genomic_cvl_pipeline.reconcile_cvl_results(
         reconcile_job_type=GenomicJob.RECONCILE_CVL_PGX_RESULTS
@@ -727,7 +721,7 @@ def genomic_reconcile_cvl_pgx_results():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_cvl_hdr_results')
+@check_genomic_cron_job('reconcile_cvl_hdr_results')
 def genomic_reconcile_cvl_hdr_results():
     genomic_cvl_pipeline.reconcile_cvl_results(
         reconcile_job_type=GenomicJob.RECONCILE_CVL_HDR_RESULTS
@@ -736,7 +730,7 @@ def genomic_reconcile_cvl_hdr_results():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_cvl_alerts')
+@check_genomic_cron_job('reconcile_cvl_alerts')
 def genomic_reconcile_cvl_alerts():
     genomic_cvl_pipeline.reconcile_cvl_results(
         reconcile_job_type=GenomicJob.RECONCILE_CVL_ALERTS
@@ -745,7 +739,7 @@ def genomic_reconcile_cvl_alerts():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_cvl_resolved')
+@check_genomic_cron_job('reconcile_cvl_resolved')
 def genomic_reconcile_cvl_resolve():
     genomic_cvl_pipeline.reconcile_cvl_results(
         reconcile_job_type=GenomicJob.RECONCILE_CVL_RESOLVE
@@ -754,49 +748,49 @@ def genomic_reconcile_cvl_resolve():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('results_pipeline_withdrawals')
+@check_genomic_cron_job('results_pipeline_withdrawals')
 def genomic_results_pipeline_withdrawals():
     genomic_pipeline.results_pipeline_withdrawals()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('gem_results_to_report_state')
+@check_genomic_cron_job('gem_results_to_report_state')
 def genomic_gem_result_reports():
     genomic_pipeline.gem_results_to_report_state()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('reconcile_appointment_events_from_metrics')
+@check_genomic_cron_job('reconcile_appointment_events_from_metrics')
 def genomic_reconcile_appointment_events():
     genomic_cvl_pipeline.reconcile_appointment_events_from_metrics()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('daily_ingestion_summary')
+@check_genomic_cron_job('daily_ingestion_summary')
 def genomic_data_quality_daily_ingestion_summary():
     genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('daily_incident_summary')
+@check_genomic_cron_job('daily_incident_summary')
 def genomic_data_quality_daily_incident_summary():
     genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS)
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('daily_validation_emails')
+@check_genomic_cron_job('daily_validation_emails')
 def genomic_data_quality_validation_emails():
     genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SEND_VALIDATION_EMAILS)
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('daily_validation_fails_resolved')
+@check_genomic_cron_job('daily_validation_fails_resolved')
 def genomic_data_quality_validation_fails_resolved():
     genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED)
     return '{"success": "true"}'
@@ -815,35 +809,35 @@ def delete_old_va_workqueue_reports():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('aw3_ready_missing_files_report')
+@check_genomic_cron_job('aw3_ready_missing_files_report')
 def genomic_aw3_ready_missing_files_report():
     genomic_pipeline.notify_aw3_ready_missing_data_files()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('notify_appointment_gror_changed')
+@check_genomic_cron_job('notify_appointment_gror_changed')
 def genomic_appointment_gror_changed():
     genomic_cvl_pipeline.notify_appointment_gror_changed()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('update_array_storage_class')
+@check_genomic_cron_job('update_array_storage_class')
 def genomic_update_array_storage_class():
     genomic_pipeline.genomic_update_storage_class(GenomicJob.UPDATE_ARRAY_STORAGE_CLASS)
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('update_wgs_storage_class')
+@check_genomic_cron_job('update_wgs_storage_class')
 def genomic_update_wgs_storage_class():
     genomic_pipeline.genomic_update_storage_class(GenomicJob.UPDATE_WGS_STORAGE_CLASS)
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('notify_gcr_outreach_escalation')
+@check_genomic_cron_job('notify_gcr_outreach_escalation')
 def genomic_notify_gcr_outreach_escalation():
     genomic_cvl_pipeline.check_gcr_appointment_escalation()
     return '{"success": "true"}'
@@ -1398,6 +1392,13 @@ def _build_pipeline_app():
         endpoint='nph_biobank_nightly_file_drop',
         view_func=nph_biobank_nightly_file_drop,
         methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'NphBiobankInventoryFileImport',
+        endpoint="nph_biobank_inventory_file_import",
+        view_func=nph_biobank_inventory_file_import,
+        methods=["GET"]
     )
 
     offline_app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])

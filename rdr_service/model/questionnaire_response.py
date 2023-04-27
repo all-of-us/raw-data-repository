@@ -48,7 +48,7 @@ class QuestionnaireResponse(Base):
     answerHash = Column('answer_hash', String(32), nullable=True)
     """@rdr_dictionary_internal_column"""
 
-    externalId = Column('external_id', String(30), nullable=True)
+    externalId = Column('external_id', String(64), nullable=True)
     """@rdr_dictionary_internal_column"""
 
     classificationType = Column('classification_type',
@@ -171,3 +171,4 @@ class QuestionnaireResponseExtension(Base):
     url = Column(String(1024))
     valueCode = Column('value_code', String(512))
     valueString = Column('value_string', String(512))
+    valueDateTime = Column('value_datetime', UTCDateTime)

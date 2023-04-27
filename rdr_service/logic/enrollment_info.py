@@ -217,15 +217,19 @@ class EnrollmentCalculation:
             if (
                 (participant_info.has_had_ehr_file_submitted or participant_info.has_had_mediated_ehr_submitted)
                 and (
-                    participant_info.consent_cohort not in (ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2)
+                    participant_info.consent_cohort != ParticipantCohort.COHORT_1
                     or participant_info.has_completed_dna_update
                 )
             ):
                 # Track the extra dates needed
                 # (definitely need the date of an ehr file, but also possibly the dna update time)
-                extra_dates_needed = [min_or_none([participant_info.earliest_ehr_file_received_time,
-                                                  participant_info.earliest_mediated_ehr_receipt_time])]
-                if participant_info.consent_cohort in [ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2]:
+                extra_dates_needed = [
+                    min_or_none([
+                        participant_info.earliest_ehr_file_received_time,
+                        participant_info.earliest_mediated_ehr_receipt_time
+                    ])
+                ]
+                if participant_info.consent_cohort == ParticipantCohort.COHORT_1:
                     extra_dates_needed.append(participant_info.dna_update_time)
 
                 enrollment.upgrade_3_1_status(

@@ -1,11 +1,10 @@
 import json
 
-from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
-from rdr_service.dao.rex_dao import RexStudyDao
+from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, ConsentOptInTypes
 from rdr_service.dao.study_nph_dao import NphParticipantDao, NphSiteDao, NphParticipantEventActivityDao, \
     NphEnrollmentEventTypeDao, NphPairingEventDao, NphDefaultBaseDao, NphActivityDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
-from rdr_service.model.study_nph import ConsentEvent, EnrollmentEvent, WithdrawalEvent, DeactivatedEvent, \
+from rdr_service.model.study_nph import ConsentEvent, EnrollmentEvent, WithdrawalEvent, DeactivationEvent, \
     ParticipantOpsDataElement
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -16,8 +15,6 @@ class NphIntakeAPITest(BaseTestCase):
         super().setUp()
         self.nph_data_gen = NphDataGenerator()
         activities = ['ENROLLMENT', 'PAIRING', 'CONSENT', 'WITHDRAWAL', 'DEACTIVATION']
-
-        self.rex_study_dao = RexStudyDao()
         self.nph_activity = NphActivityDao()
         self.nph_participant = NphParticipantDao()
         self.nph_participant_activity_dao = NphParticipantEventActivityDao()
@@ -27,14 +24,8 @@ class NphIntakeAPITest(BaseTestCase):
         self.nph_consent_event_dao = NphDefaultBaseDao(model_type=ConsentEvent)
         self.nph_enrollment_event_dao = NphDefaultBaseDao(model_type=EnrollmentEvent)
         self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
-        self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivatedEvent)
+        self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivationEvent)
         self.participant_ops_data = NphDefaultBaseDao(model_type=ParticipantOpsDataElement)
-
-        self.rex_study_dao.insert(
-            self.rex_study_dao.model_type(**{
-                'schema_name': 'nph',
-                'prefix': 1000
-            }))
 
         for activity in activities:
             self.nph_data_gen.create_database_activity(
@@ -61,6 +52,13 @@ class NphIntakeAPITest(BaseTestCase):
 
     def test_m1_detailed_consent_payload(self):
 
+        # overall consent obj
+        self.nph_data_gen.create_database_consent_event_type(
+            name='Module 1 Consent',
+            source_name='m1_consent'
+        )
+
+        # consent opt-ins
         self.nph_data_gen.create_database_consent_event_type(
             name='Module 1 GPS Consent',
             source_name='m1_consent_gps'
@@ -84,10 +82,9 @@ class NphIntakeAPITest(BaseTestCase):
 
         # response
         response = self.send_post('nph/Intake', request_data=consent_json)
-        response_participant_ids = [f'1000{obj}' for obj in all_participant_ids]
 
         self.assertEqual(len(response), len(all_participant_ids))
-        self.assertTrue(all(obj['nph_participant_id'] in response_participant_ids for obj in response))
+        self.assertTrue(all(int(obj['nph_participant_id']) in all_participant_ids for obj in response))
 
         # participant event activities
         participant_event_activities = self.nph_participant_activity_dao.get_all()
@@ -130,19 +127,23 @@ class NphIntakeAPITest(BaseTestCase):
         # consent events
         consent_events = self.nph_consent_event_dao.get_all()
 
-        # should have 3 consent events per participant_id
-        self.assertEqual(len(consent_events), len(all_participant_ids) * 3)
-        self.assertTrue(all(obj.event_type_id in [1, 2, 3] for obj in consent_events))
+        # should have 4 (1 main + 3 opt-ins) consent events per participant_id
+        self.assertEqual(len(consent_events), len(all_participant_ids) * 4)
+        self.assertTrue(all(obj.event_type_id in [1, 2, 3, 4] for obj in consent_events))
         self.assertTrue(all(obj.participant_id in all_participant_ids for obj in consent_events))
         self.assertTrue(all(obj.opt_in is not None for obj in consent_events))
 
+        # main consent decision (permit)
+        self.assertTrue(all(obj.opt_in == ConsentOptInTypes.PERMIT for obj in consent_events if obj.event_type_id == 1))
         # granular answers for consent opt ins
         self.assertTrue(all(obj.event_id == 2 for obj in consent_events if obj.participant_id == 100000000))
-        # deny permit permit
-        self.assertTrue([obj.opt_in.number for obj in consent_events if obj.participant_id == 100000000] == [2, 1, 1])
+        # permit deny permit permit
+        self.assertTrue([obj.opt_in.number for obj in consent_events if
+                         obj.participant_id == 100000000] == [1, 2, 1, 1])
         self.assertTrue(all(obj.event_id == 4 for obj in consent_events if obj.participant_id == 100000001))
-        # deny permit deny
-        self.assertTrue([obj.opt_in.number for obj in consent_events if obj.participant_id == 100000001] == [2, 1, 2])
+        # permit deny permit deny
+        self.assertTrue([obj.opt_in.number for obj in consent_events if
+                         obj.participant_id == 100000001] == [1, 2, 1, 2])
 
         consent_participant_event_activity = list(
             filter(lambda x: x.activity_id == consent_activity.id, participant_event_activities))
@@ -166,16 +167,17 @@ class NphIntakeAPITest(BaseTestCase):
         response = self.send_post('nph/Intake', request_data=consent_json)
 
         self.assertEqual(len(response), 1)
-        self.assertTrue(all(obj['nph_participant_id'] == f'1000{current_participant_id}' for obj in response))
+        self.assertTrue(all(int(obj['nph_participant_id']) == current_participant_id for obj in response))
 
         # participant event activities
         participant_event_activities = self.nph_participant_activity_dao.get_all()
 
         enrollment_activity = self.nph_activity.get(1)
         pairing_activity = self.nph_activity.get(2)
+        deactivation_activity = self.nph_activity.get(5)
 
-        # pairing and enrollment ids
-        should_have_activity_ids = [enrollment_activity.id, pairing_activity.id]
+        # pairing, enrollment, deactivation ids
+        should_have_activity_ids = [enrollment_activity.id, pairing_activity.id, deactivation_activity.id]
 
         for event in participant_event_activities:
             current_participant_events = list(
@@ -222,7 +224,6 @@ class NphIntakeAPITest(BaseTestCase):
         # other events (should be null)
         self.assertTrue(self.nph_consent_event_dao.get_all() == [])
         self.assertTrue(self.nph_withdrawal_event_dao.get_all() == [])
-        self.assertTrue(self.nph_deactivation_event_dao.get_all() == [])
 
     def test_m2_operational_payload(self):
 
@@ -234,7 +235,7 @@ class NphIntakeAPITest(BaseTestCase):
         response = self.send_post('nph/Intake', request_data=consent_json)
 
         self.assertEqual(len(response), 1)
-        self.assertTrue(all(obj['nph_participant_id'] == f'1000{current_participant_id}' for obj in response))
+        self.assertTrue(all(int(obj['nph_participant_id']) == current_participant_id for obj in response))
 
         # participant event activities
         participant_event_activities = self.nph_participant_activity_dao.get_all()
@@ -300,13 +301,13 @@ class NphIntakeAPITest(BaseTestCase):
 
     def tearDown(self):
         super().tearDown()
-        self.clear_table_after_test("rex.study")
         self.clear_table_after_test("nph.participant")
         self.clear_table_after_test("nph.activity")
         self.clear_table_after_test("nph.pairing_event")
         self.clear_table_after_test("nph.enrollment_event")
         self.clear_table_after_test("nph.consent_event")
         self.clear_table_after_test("nph.withdrawal_event")
+        self.clear_table_after_test("nph.deactivation_event")
         self.clear_table_after_test("nph.pairing_event_type")
         self.clear_table_after_test("nph.site")
         self.clear_table_after_test("nph.participant_event_activity")

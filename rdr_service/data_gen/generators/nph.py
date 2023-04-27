@@ -1,8 +1,14 @@
+from datetime import datetime
+
 from rdr_service.dao import database_factory
 from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
     PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
-    DeactivatedEvent, ParticipantOpsDataElement
+    DeactivationEvent, ParticipantOpsDataElement
 from rdr_service.ancillary_study_resources.nph import enums
+
+
+DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+TIME = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
 
 
 class NphDataGenerator:
@@ -89,7 +95,6 @@ class NphDataGenerator:
             )
             event_id = pea.id
 
-        # Todo: Add more default fields as needed
         fields = {
             "participant_id": participant_id,
             "event_id": event_id,
@@ -157,11 +162,11 @@ class NphDataGenerator:
             )
             event_id = pea.id
 
-        # Todo: Add more default fields as needed
         fields = {
+            "event_authored_time": TIME,
             "participant_id": participant_id,
             "event_id": event_id,
-            "event_type_id": 1,
+            "event_type_id": kwargs.get("event_type_id", 1),
             "opt_in": enums.ConsentOptInTypes.PERMIT,
         }
         fields.update(kwargs)
@@ -189,7 +194,7 @@ class NphDataGenerator:
 
     @staticmethod
     def _deactivated_event(**kwargs):
-        return DeactivatedEvent(**kwargs)
+        return DeactivationEvent(**kwargs)
 
     def create_database_deactivated_event(self, **kwargs):
         deactivated_event = self._deactivated_event(**kwargs)

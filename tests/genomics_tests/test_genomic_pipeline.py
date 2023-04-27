@@ -11,7 +11,7 @@ from copy import deepcopy
 from dateutil.parser import parse
 from itertools import chain
 
-from rdr_service import clock, config, storage
+from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.code_constants import (
     BIOBANK_TESTS, COHORT_1_REVIEW_CONSENT_YES_CODE, COHORT_1_REVIEW_CONSENT_NO_CODE)
@@ -30,7 +30,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicAW2RawDao,
     GenomicIncidentDao,
     GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao, GenomicAW4RawDao, GenomicAW3RawDao)
+    GenomicGcDataFileMissingDao, GenomicAW4RawDao, GenomicAW3RawDao, GenomicDefaultBaseDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -52,7 +52,7 @@ from rdr_service.model.genomics import (
     GenomicJobRun,
     GenomicGCValidationMetrics,
     GenomicSampleContamination,
-    GenomicAW3Raw)
+    GenomicAW3Raw, GenomicAW4Raw)
 from rdr_service.model.participant import Participant
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
@@ -61,7 +61,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_mappings import array_file_types_attributes
-from rdr_service.offline import genomic_pipeline
+from rdr_service.offline.genomics import genomic_pipeline, genomic_dispatch
 from rdr_service.participant_enums import (
     SampleStatus,
     Race,
@@ -71,6 +71,7 @@ from rdr_service.participant_enums import (
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
     GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus
+from tests.genomics_tests.test_genomic_utils import create_ingestion_test_file, open_genomic_set_file, write_cloud_csv
 
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -111,65 +112,6 @@ class ExpectedCsvColumns(object):
     ALL = (SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, VALIDATION_PASSED, AI_AN)
 
 
-def create_ingestion_test_file(
-    test_data_filename,
-    bucket_name,
-    folder=None,
-    include_timestamp=True,
-    include_sub_num=False,
-    extension=None
-):
-    test_data_file = open_genomic_set_file(test_data_filename)
-
-    input_filename = '{}{}{}{}'.format(
-        test_data_filename.replace('.csv', ''),
-        '_11192019' if include_timestamp else '',
-        '_1' if include_sub_num else '',
-        '.csv' if not extension else extension
-    )
-    write_cloud_csv(
-        input_filename,
-        test_data_file,
-        folder=folder,
-        bucket=bucket_name
-    )
-
-    return input_filename
-
-
-def open_genomic_set_file(test_filename):
-    with open(data_path(test_filename)) as f:
-        lines = f.readlines()
-        csv_str = ""
-        for line in lines:
-            csv_str += line
-
-        return csv_str
-
-
-def write_cloud_csv(
-    file_name,
-    contents_str,
-    bucket=None,
-    folder=None,
-):
-    bucket = _FAKE_BUCKET if bucket is None else bucket
-    if folder is None:
-        path = "/%s/%s" % (bucket, file_name)
-    else:
-        path = "/%s/%s/%s" % (bucket, folder, file_name)
-    with open_cloud_file(path, mode='wb') as cloud_file:
-        cloud_file.write(contents_str.encode("utf-8"))
-
-    # handle update time of test files
-    provider = storage.get_storage_provider()
-    n = clock.CLOCK.now()
-    ntime = time.mktime(n.timetuple())
-    os.utime(provider.get_local_path(path), (ntime, ntime))
-    return cloud_file
-
-
-# noinspection DuplicatedCode
 class GenomicPipelineTest(BaseTestCase):
     def setUp(self):
         super(GenomicPipelineTest, self).setUp()
@@ -600,8 +542,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         with clock.FakeClock(test_date):
             test_file_name = create_ingestion_test_file(test_file, bucket_name,
-                                                              folder=subfolder,
-                                                              include_sub_num=True)
+                                                        folder=subfolder,
+                                                        include_sub_num=True)
 
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
                                                 array_participants=(1, 2),
@@ -628,7 +570,7 @@ class GenomicPipelineTest(BaseTestCase):
         ])
 
         # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
         # metrics insert called via cloud task
         self.assertEqual(metric_cloud_task.call_count, 2)
@@ -700,7 +642,7 @@ class GenomicPipelineTest(BaseTestCase):
         task_data['file_data']['file_path'] = f"{bucket_name}/{subfolder}/{updated_aw2_filename}"
 
         # Simulate new file uploaded
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
         # NEW metrics insert called via cloud task
         self.assertEqual(metric_cloud_task.call_count, 4)
@@ -821,8 +763,8 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_seq)
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_gen)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data_seq)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data_gen)
 
         # metrics insert called via cloud task
         self.assertEqual(metric_cloud_task.call_count, 4)
@@ -840,9 +782,9 @@ class GenomicPipelineTest(BaseTestCase):
         # ingest AW5 files
         with clock.FakeClock(test_date):
             test_file_name_aw5_array = create_ingestion_test_file('aw5_deletion_array.csv',
-                                                                        bucket_name, folder=subfolder)
+                                                                  bucket_name, folder=subfolder)
             test_file_name_aw5_wgs = create_ingestion_test_file('aw5_deletion_wgs.csv',
-                                                                      bucket_name, folder=subfolder)
+                                                                bucket_name, folder=subfolder)
         task_data_aw5_wgs = {
             "job": GenomicJob.AW5_WGS_MANIFEST,
             "bucket": bucket_name,
@@ -872,8 +814,8 @@ class GenomicPipelineTest(BaseTestCase):
                 self.member_dao.update(member)
 
         # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_aw5_wgs)
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_aw5_array)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data_aw5_wgs)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data_aw5_array)
 
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()
@@ -1103,8 +1045,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         with clock.FakeClock(test_date):
             test_file_name = create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                                              bucket_name,
-                                                              folder=subfolder)
+                                                        bucket_name,
+                                                        folder=subfolder)
 
         self._update_test_sample_ids()
 
@@ -1124,7 +1066,7 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_stored_samples([(2, 1002)])
 
         # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # run_id = 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # run_id = 1 & 2
 
         # metrics insert called via cloud task
         self.assertEqual(metric_cloud_task.call_count, 1)
@@ -1202,7 +1144,7 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_stored_samples([(2, 1002)])
 
         # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # run_id = 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # run_id = 1 & 2
 
         # metrics insert called via cloud task
         self.assertEqual(metric_cloud_task.call_count, 1)
@@ -1293,7 +1235,7 @@ class GenomicPipelineTest(BaseTestCase):
             pipelineId=config.GENOMIC_DEPRECATED_WGS_DRAGEN
         )
         # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # run_id = 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # run_id = 1 & 2
 
         # metrics insert called via cloud task
         self.assertEqual(metric_cloud_task.call_count, 1)
@@ -2177,7 +2119,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         # Test the data was ingested OK
         for member in self.member_dao.get_all():
@@ -2247,7 +2189,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         # Test the data was ingested OK
         members = [m for m in self.member_dao.get_all() if m.id in [4, 5]]
@@ -2312,7 +2254,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         members = self.member_dao.get_members_with_non_null_sample_ids()
 
@@ -2354,7 +2296,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         # Test member was created
         new_member = self.member_dao.get_member_from_collection_tube(1, 'aou_wgs')
@@ -2366,10 +2308,10 @@ class GenomicPipelineTest(BaseTestCase):
         task_data['file_data']['file_path'] = f"{bucket_name}/{file_name}"
 
         # Call pipeline function twice
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 3 & 4
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 3 & 4
 
         # No new GenomicSetMembers should be inserted in this run
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 5 & 6
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 5 & 6
 
         members = self.member_dao.get_all()
         members.sort(key=lambda x: x.id)
@@ -2416,7 +2358,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         # Setup Test AW1F file
         gc_manifest_file = open_genomic_set_file("Genomic-AW1F-Workflow-Test-1.csv")
@@ -2442,7 +2384,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Ingest AW1F
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 3 & 4
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 3 & 4
 
         # Test db updated
         members = sorted(self.member_dao.get_all(), key=lambda x: x.id)
@@ -2733,8 +2675,8 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         sub_folder = config.GENOMIC_GEM_A2_MANIFEST_SUBFOLDER
         create_ingestion_test_file('AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv',
-                                         bucket_name, folder=sub_folder,
-                                         include_timestamp=False)
+                                   bucket_name, folder=sub_folder,
+                                   include_timestamp=False)
 
         # Run Workflow at fake time
         fake_now = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)
@@ -2909,8 +2851,8 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
         create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
+                                   bucket_name,
+                                   folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
         self._update_test_sample_ids()
 
@@ -4691,10 +4633,10 @@ class GenomicPipelineTest(BaseTestCase):
         file_name = 'AoU_DRCB_GEN_2020-07-11-00-00-00.csv'
 
         create_ingestion_test_file(file_name,
-                                         bucket_name,
-                                         folder=sub_folder,
-                                         include_timestamp=False
-                                         )
+                                   bucket_name,
+                                   folder=sub_folder,
+                                   include_timestamp=False
+                                   )
 
         # Set up file/JSON
         task_data = {
@@ -4710,7 +4652,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
         # Test AW4 manifest updated fields
         for member in self.member_dao.get_all():
@@ -4743,7 +4685,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(file_name, file_record.fileName)
 
         # Test AW4 Raw table
-        genomic_pipeline.load_awn_manifest_into_raw_table(f"{bucket_name}/{sub_folder}/{file_name}", "aw4")
+        genomic_dispatch.load_awn_manifest_into_raw_table(f"{bucket_name}/{sub_folder}/{file_name}", "aw4")
 
         aw4_dao = GenomicAW4RawDao()
         raw_records = aw4_dao.get_all()
@@ -4822,7 +4764,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
         # Test AW4 manifest updated fields
         for member in self.member_dao.get_all():
@@ -4859,9 +4801,12 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(file_name, file_record.fileName)
 
         # Test AW4 Raw table
-        genomic_pipeline.load_awn_manifest_into_raw_table(f"{bucket_name}/{sub_folder}/{file_name}", "aw4")
+        genomic_dispatch.load_awn_manifest_into_raw_table(f"{bucket_name}/{sub_folder}/{file_name}", "aw4")
 
-        aw4_dao = GenomicAW4RawDao()
+        aw4_dao = GenomicDefaultBaseDao(
+            model_type=GenomicAW4Raw
+        )
+
         raw_records = aw4_dao.get_all()
         raw_records.sort(key=lambda x: x.biobank_id)
 
@@ -4904,16 +4849,16 @@ class GenomicPipelineTest(BaseTestCase):
         file_name = 'AoU_DRCB_GEN_2020-07-11-00-00-00.csv'
 
         create_ingestion_test_file(file_name,
-                                         bucket_name,
-                                         folder=sub_folder,
-                                         include_timestamp=False
-                                         )
+                                   bucket_name,
+                                   folder=sub_folder,
+                                   include_timestamp=False
+                                   )
 
         create_ingestion_test_file(file_name,
-                                         bucket_name,
-                                         folder='AW5_array_manifest',
-                                         include_timestamp=False
-                                         )
+                                   bucket_name,
+                                   folder='AW5_array_manifest',
+                                   include_timestamp=False
+                                   )
 
         # Set up file/JSON
         task_data = {
@@ -4929,7 +4874,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
@@ -4995,8 +4940,8 @@ class GenomicPipelineTest(BaseTestCase):
         sub_folder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
         file_name = 'RDR_AoU_GEN_TestDataManifest_11192019.csv'
         create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
-                                         bucket_name,
-                                         folder=sub_folder)
+                                   bucket_name,
+                                   folder=sub_folder)
 
         # Set up file/JSON
         task_data = {
@@ -5011,7 +4956,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
         manifest_record = self.manifest_file_dao.get(1)
         feedback_record = self.manifest_feedback_dao.get(1)
 
@@ -5066,7 +5011,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         # Set up AW2 File
         aw2_bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
@@ -5265,7 +5210,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_run_id 5 & 6
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_run_id 5 & 6
 
         # NEW metrics insert called via cloud task
         self.assertEqual(cloud_task.call_count, 5)
@@ -5419,7 +5364,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         gc_manifest_file = open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-6.csv")
 
@@ -5439,7 +5384,7 @@ class GenomicPipelineTest(BaseTestCase):
                 folder=_FAKE_GENOTYPING_FOLDER,
             )
 
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
         all_incidents = self.incident_dao.get_all()
         correct_incident = list(filter(lambda x: gc_manifest_filename in x.message, all_incidents))
@@ -5465,7 +5410,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
         # Run load job
-        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
+        genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw1")
 
         # Expected columns in table
         expected_columns = [
@@ -5534,7 +5479,7 @@ class GenomicPipelineTest(BaseTestCase):
                 folder=_FAKE_GENOTYPING_FOLDER,
             )
             test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
-            genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
+            genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw1")
             time.sleep(5)
 
         biobank_id = '2'
@@ -5575,13 +5520,13 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Setup Test file
         test_file_name = create_ingestion_test_file(test_manifest,
-                                                          _FAKE_GENOMIC_CENTER_BUCKET_A,
-                                                          folder=_FAKE_BUCKET_FOLDER)
+                                                    _FAKE_GENOMIC_CENTER_BUCKET_A,
+                                                    folder=_FAKE_BUCKET_FOLDER)
 
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
 
         # Run load job
-        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw2")
+        genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw2")
 
         aw2_raw_records = self.aw2_raw_dao.get_all()
 
@@ -5639,7 +5584,7 @@ class GenomicPipelineTest(BaseTestCase):
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
 
         # Run load job
-        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw2")
+        genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw2")
 
         aw2_raw_records = self.aw2_raw_dao.get_all()
 
@@ -5710,7 +5655,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         incident_dao = GenomicIncidentDao()
 
@@ -5759,7 +5704,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         incident_dao = GenomicIncidentDao()
         incidents = incident_dao.get_all()
@@ -5792,7 +5737,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
         incident_dao = GenomicIncidentDao()
         incidents = incident_dao.get_all()
@@ -5831,8 +5776,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         with clock.FakeClock(test_date):
             test_file_name = create_ingestion_test_file(test_file, bucket_name,
-                                                              folder=subfolder,
-                                                              include_sub_num=True)
+                                                        folder=subfolder,
+                                                        include_sub_num=True)
 
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
                                                 array_participants=(1, 2),
@@ -5859,7 +5804,7 @@ class GenomicPipelineTest(BaseTestCase):
         ])
 
         # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
         current_run = list(filter(lambda x: x.jobId == job_id, self.job_run_dao.get_all()))[0]
         self.assertEqual(current_run.runResult, GenomicSubProcessResult.ERROR)
@@ -5906,7 +5851,7 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_stored_samples([(2, 1002)])
 
         # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # run_id = 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # run_id = 1 & 2
         current_run = list(filter(lambda x: x.jobId == GenomicJob.METRICS_INGESTION, self.job_run_dao.get_all()))[0]
         self.assertEqual(current_run.runResult, GenomicSubProcessResult.ERROR)
 
@@ -5942,7 +5887,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
         # Test the data was ingested OK
         files_processed = self.file_processed_dao.get_all()
@@ -5964,7 +5909,7 @@ class GenomicPipelineTest(BaseTestCase):
             folder=_FAKE_GENOTYPING_FOLDER,
         )
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
-        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
+        genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw1")
 
         raw_records = self.aw1_raw_dao.get_all()
         raw_records = [obj for obj in raw_records if obj.sample_id != ""]
@@ -6289,8 +6234,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Setup Test file
         test_file_name = create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                                          _FAKE_GENOMIC_CENTER_BUCKET_A,
-                                                          folder=_FAKE_BUCKET_FOLDER)
+                                                    _FAKE_GENOMIC_CENTER_BUCKET_A,
+                                                    folder=_FAKE_BUCKET_FOLDER)
 
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
 
@@ -6303,7 +6248,7 @@ class GenomicPipelineTest(BaseTestCase):
         )
 
         # Run load job
-        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw2")
+        genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw2")
 
         self.data_generator.create_database_genomic_file_processed(
             runId=1,
@@ -6313,7 +6258,7 @@ class GenomicPipelineTest(BaseTestCase):
             fileName=test_file_name,
         )
 
-        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw2")
+        genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw2")
 
         genomic_pipeline.reconcile_raw_to_aw2_ingested()
 
@@ -6349,10 +6294,10 @@ class GenomicPipelineTest(BaseTestCase):
             }
         }
         # Run load job
-        genomic_pipeline.load_awn_manifest_into_raw_table(f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}", "aw1")
+        genomic_dispatch.load_awn_manifest_into_raw_table(f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}", "aw1")
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         records = self.aw1_raw_dao.get_all()
         self.assertEqual(0, len(records))
@@ -6443,7 +6388,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
         # Setup AW2 investigation file
         aw2_manifest_file = open_genomic_set_file("RDR_AoU_GEN_TestDataManifestInvestigation.csv")
@@ -6479,7 +6424,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_aw2)
+        genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data_aw2)
 
         # metrics insert called via cloud task
         self.assertEqual(metric_cloud_task.call_count, 2)
@@ -6654,8 +6599,8 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_RDR
 
         create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
+                                   bucket_name,
+                                   folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
         self._update_test_sample_ids()
 

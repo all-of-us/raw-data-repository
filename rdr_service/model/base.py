@@ -23,14 +23,13 @@ from rdr_service import clock
 # see https://pythonhosted.org/dictalchemy/#using-fromdict. fromdict() does not
 # populate fields that contain lists.
 Base = declarative_base(cls=DictableModel)
-
 # MetricsBase is the parent for all models in the "metrics" DB. These are
 # collected separately for DB migration purposes.
 MetricsBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="metrics"))
-
 RexBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="rex"))
-
 NphBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="nph"))
+CdmBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="cdm"))
+VocBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="voc"))
 
 
 class ModelMixin(object):

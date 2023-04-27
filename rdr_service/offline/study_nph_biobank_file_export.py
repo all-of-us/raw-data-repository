@@ -27,6 +27,7 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao as RdrParticipantSummaryDao
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.study_nph_dao import (
+    _format_timestamp,
     NphParticipantDao,
     NphStudyCategoryDao,
     NphOrderDao,
@@ -43,10 +44,6 @@ _logger = logging.getLogger("rdr_logger")
 
 # FILE_BUFFER_SIZE_IN_BYTES = 1024 * 1024 # 1MB File Buffer
 NPH_ANCILLARY_STUDY_ID = 2
-
-
-def _format_timestamp(timestamp: datetime) -> str:
-    return timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') if timestamp else None
 
 
 def _get_nph_participant(participant_id: int) -> NphParticipant:
@@ -138,6 +135,7 @@ def _convert_ordered_samples_to_samples(
     samples = []
     for ordered_sample in ordered_samples:
         processing_timestamp = ordered_sample.collected if not ordered_sample.parent is None else None
+        sample_cancelled = ordered_cancelled or ordered_sample.status == 'cancelled'
         sample = {
             "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
             "specimenCode": (ordered_sample.identifier or ordered_sample.test),
@@ -146,14 +144,14 @@ def _convert_ordered_samples_to_samples(
             "volumeUOM": ordered_sample.volumeUnits,
             "collectionDateUTC": _format_timestamp((ordered_sample.parent or ordered_sample).collected),
             "processingDateUTC": _format_timestamp(processing_timestamp),
-            "cancelledFlag": "Y" if ordered_cancelled else "N",
+            "cancelledFlag": "Y" if sample_cancelled else "N",
             "notes": notes,
         }
         samples.append(sample)
     return samples
 
 
-def _get_rdr_participant_summary_for_nph_partipant(nph_participant_id: int) -> Optional[RdrParticipantSummary]:
+def _get_rdr_participant_summary_for_nph_participant(nph_participant_id: int) -> Optional[RdrParticipantSummary]:
     rex_participant_mapping_dao = RexParticipantMappingDao()
     with rex_participant_mapping_dao.session() as rex_sm_session:
         rex_participant_mapping: RexParticipantMapping = (
@@ -289,7 +287,7 @@ def main():
     )
     for (client_id, nph_module_id, participant_id), orders in grouped_orders.items():
         rdr_participant_summary: RdrParticipantSummary = (
-            _get_rdr_participant_summary_for_nph_partipant(order.participant_id)
+            _get_rdr_participant_summary_for_nph_participant(order.participant_id)
         )
         participant_biobank_id = _get_nph_participant(participant_id).biobank_id
 
@@ -303,7 +301,7 @@ def main():
 
         json_object = {
             "clientID": client_id,
-            "studyID":  f"NPH Module {nph_module_id}",
+            "studyID": f"NPH Module {nph_module_id}",
             "participantID": f"{nph_biobank_prefix}{participant_biobank_id}",
             "gender": sex_at_birth,
             "ai_an_flag": "Y" if rdr_participant_summary.aian else "N",

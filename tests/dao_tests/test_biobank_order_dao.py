@@ -362,6 +362,29 @@ class BiobankOrderDaoTest(BaseTestCase):
         )
         self.assertEqual(2, identifier_query.count())
 
+    def test_mayo_tracking_number_reuse(self):
+        recycled_tracking_number = '121212'
+        mayo_tracking_url = 'https://orders.mayomedicallaboratories.com/tracking-number'
+        self.data_generator.create_database_biobank_order_identifier(
+            system=mayo_tracking_url,
+            value=recycled_tracking_number
+        )
+
+        another_order = self.data_generator._biobank_order()
+        another_order.identifiers.append(self.data_generator._biobank_order_identifier(
+            system=mayo_tracking_url,
+            value=recycled_tracking_number
+        ))
+
+        self.dao.insert(another_order)
+
+        # Verify that there are two identifiers with the tracking number now
+        identifier_query = self.session.query(BiobankOrderIdentifier).filter(
+            BiobankOrderIdentifier.system == mayo_tracking_url,
+            BiobankOrderIdentifier.value == recycled_tracking_number
+        )
+        self.assertEqual(2, identifier_query.count())
+
     def test_ignored_order(self):
         ParticipantSummaryDao().insert(self.participant_summary(self.participant))
         self.dao.insert(self._make_biobank_order(ignoreFlag=1))

@@ -100,7 +100,6 @@ class ParticipantDao(UpdatableDao):
                 raise BadRequest('Can not retrieve participant from a different origin')
             return obj
 
-
     def get_id(self, obj):
         return obj.participantId
 

@@ -1,5 +1,6 @@
 import datetime
 import http.client
+import mock
 import json
 
 from rdr_service import main
@@ -7,8 +8,10 @@ from rdr_service.clock import FakeClock
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.measurements import Measurement
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id
-from rdr_service.participant_enums import UNSET_HPO_ID
+from rdr_service.participant_enums import SampleStatus, UNSET_HPO_ID
+from rdr_service.services.system_utils import DateRange
 from tests.test_data import data_path, load_measurement_json, load_measurement_json_amendment
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -565,3 +568,57 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
                 self.assertIn('PhysicalMeasurements/', ext['valueReference']['reference'])
                 count += 1
         self.assertEqual(count, 4)
+
+    @mock.patch('rdr_service.dao.participant_summary_dao.QuestionnaireResponseRepository')
+    def test_core_date_remains_unchanged(self, response_repo_mock):
+        """Newly submitted physical measurements should not update the core stored date we have for a participant"""
+
+        # Set up a participant that can be CORE after their physical measurements are in
+        generic_timestamp = datetime.datetime(2023, 1, 1)
+        summary: ParticipantSummary = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollmentFirstYesAuthored=generic_timestamp,
+            consentForGenomicsRORAuthored=generic_timestamp,
+            questionnaireOnTheBasicsAuthored=generic_timestamp,
+            questionnaireOnOverallHealthAuthored=generic_timestamp,
+            questionnaireOnLifestyleAuthored=generic_timestamp,
+            ehrReceiptTime=generic_timestamp,
+            samplesToIsolateDNA=SampleStatus.RECEIVED
+        )
+
+        self.data_generator.create_database_biobank_stored_sample(
+            biobankId=summary.biobankId,
+            test='1ED04',
+            confirmed=generic_timestamp
+        )
+        response_repo_mock.get_interest_in_sharing_ehr_ranges.return_value = [
+            DateRange(start=generic_timestamp)
+        ]
+
+        # Send the first PM
+        participant_id_str = f'P{summary.participantId}'
+        first_measurement_date_str = datetime.datetime(2023, 1, 5).isoformat()
+        measurement = load_measurement_json(participant_id_str, now=first_measurement_date_str)
+        path = f'Participant/{participant_id_str}/PhysicalMeasurements'
+        response = self.send_post(path, measurement)
+
+        # Check that the Core Stored date gets set as expected
+        summary_json = self.send_get(
+            f'ParticipantSummary?participantId={summary.participantId}'
+        )['entry'][0]['resource']
+        self.assertEqual(first_measurement_date_str, summary_json['enrollmentStatusCoreStoredSampleTime'])
+
+        # Cancel the first PM
+        path = path + "/" + response["id"]
+        cancel_info = BaseTestCase.get_restore_or_cancel_info()
+        self.send_patch(path, cancel_info)
+
+        # send another PM
+        measurement2 = load_measurement_json(participant_id_str, now=datetime.datetime(2023, 3, 11).isoformat())
+        path = "Participant/%s/PhysicalMeasurements" % participant_id_str
+        self.send_post(path, measurement2)
+
+        # Check that the Core Stored date remains the same
+        summary_json = self.send_get(
+            f'ParticipantSummary?participantId={summary.participantId}'
+        )['entry'][0]['resource']
+        self.assertEqual(first_measurement_date_str, summary_json['enrollmentStatusCoreStoredSampleTime'])

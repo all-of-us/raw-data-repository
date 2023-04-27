@@ -673,7 +673,8 @@ class ParticipantSummaryDao(UpdatableDao):
 
     @classmethod
     def _update_timestamp_value(cls, summary, field_name, new_value):
-        if new_value and getattr(summary, field_name) != new_value:
+        existing_value = getattr(summary, field_name)
+        if new_value and existing_value != new_value and existing_value is None:
             setattr(summary, field_name, new_value)
 
     def _clear_timestamp_if_set(cls, summary, field_name):
@@ -701,12 +702,18 @@ class ParticipantSummaryDao(UpdatableDao):
                 sample.confirmed for sample in confirmed_dna_sample_list
             ])
 
+        # See ROC-1572/PDR-1699.  Provide a default date to get_interest_in_sharing_ehr_ranges() if participant
+        # has SUBMITTED status for their EHR consent.  Remediates data issues w/older consent validations
+        default_ehr_date = summary.consentForElectronicHealthRecordsFirstYesAuthored \
+            if summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED else None
+
         ehr_consent_ranges = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
             participant_id=summary.participantId,
-            session=session
+            session=session,
+            default_authored_datetime=default_ehr_date
         )
 
-        dna_update_time_list = [summary.questionnaireOnDnaProgramAuthored]
+        revised_consent_time_list = []
         response_collection = QuestionnaireResponseRepository.get_responses_to_surveys(
             session=session,
             survey_codes=[PRIMARY_CONSENT_UPDATE_MODULE],
@@ -717,8 +724,8 @@ class ParticipantSummaryDao(UpdatableDao):
             for response in program_update_response_list:
                 reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE).value.lower()
                 if reconsent_answer == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
-                    dna_update_time_list.append(response.authored_datetime)
-        dna_update_time = min_or_none(dna_update_time_list)
+                    revised_consent_time_list.append(response.authored_datetime)
+        revised_consent_time = min_or_none(revised_consent_time_list)
 
         enrollment_info = EnrollmentCalculation.get_enrollment_info(
             EnrollmentDependencies(
@@ -733,7 +740,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 earliest_physical_measurements_time=earliest_physical_measurements_time,
                 earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
                 ehr_consent_date_range_list=ehr_consent_ranges,
-                dna_update_time=dna_update_time
+                dna_update_time=revised_consent_time
             )
         )
 

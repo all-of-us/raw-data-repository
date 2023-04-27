@@ -51,7 +51,11 @@ class ConsentControllerTest(BaseTestCase):
         )
         self.store_strategy = StoreResultStrategy(session=mock.MagicMock(), consent_dao=self.consent_dao_mock)
 
-    def test_new_consent_validation(self):
+    @mock.patch(
+        'rdr_service.services.consent.validation.ConsentValidationController._report_validation_errors',
+        return_value=True
+    )
+    def test_new_consent_validation(self, _):
         """The controller should find all recent participant summary consents authored and validate files for them"""
         primary_and_ehr_participant_id = 123
         cabor_participant_id = 456

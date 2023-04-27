@@ -11,11 +11,10 @@ from rdr_service.api_util import RTI, RDR
 from rdr_service.app_util import auth_required
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.config import GAE_PROJECT
-from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphIntakeDao, NphParticipantEventActivityDao, NphActivityDao, \
     NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao, NphConsentEventTypeDao, \
     NphParticipantDao
-from rdr_service.model.study_nph import WithdrawalEvent, DeactivatedEvent, ConsentEvent, EnrollmentEvent, \
+from rdr_service.model.study_nph import WithdrawalEvent, DeactivationEvent, ConsentEvent, EnrollmentEvent, \
     ParticipantOpsDataElement
 
 MAX_PAYLOAD_LENGTH = 50
@@ -31,8 +30,6 @@ class ActivityData:
 class PostIntakePayload:
 
     def __init__(self, intake_payload):
-        self.nph_prefix = RexStudyDao().get_prefix_by_schema('nph')
-        self.nph_prefix = self.nph_prefix[0]
         self.current_activities = NphActivityDao().get_all()
         self.nph_participant_dao = NphParticipantDao()
         self.nph_participant_activity_dao = NphParticipantEventActivityDao()
@@ -45,7 +42,7 @@ class PostIntakePayload:
         self.nph_consent_event_dao = NphDefaultBaseDao(model_type=ConsentEvent)
         self.nph_enrollment_event_dao = NphDefaultBaseDao(model_type=EnrollmentEvent)
         self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
-        self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivatedEvent)
+        self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivationEvent)
 
         self.participant_op_data = NphDefaultBaseDao(model_type=ParticipantOpsDataElement)
         self.bundle_identifier = None
@@ -67,26 +64,25 @@ class PostIntakePayload:
         return PostIntakePayload(intake_payload)
 
     @classmethod
-    def create_ops_data_els(cls, *, participant_id: str, participant_obj: dict) -> List:
-        els_found = []
+    def create_ops_data_elements(cls, *, participant_id: str, participant_obj: dict) -> List[dict]:
+        elements_found = []
         for key, value in participant_obj['resource'].items():
             try:
-                entry = {
+                elements_found.append({
                     'created': clock.CLOCK.now(),
                     'modified': clock.CLOCK.now(),
                     'participant_id': participant_id,
                     'source_data_element': ParticipantOpsElementTypes.lookup_by_name(key.upper()),
                     'source_value': value
-                }
-                els_found.append(entry)
+                })
             except KeyError:
                 pass
-        return els_found
+        return elements_found
 
     def create_event_objs(self, *, participant_id: str, entry: dict, activity_data: ActivityData) -> List:
 
         nph_event_dao = self.event_dao_map[activity_data.name]
-        current_entry_consent_events = self.get_consent_provision_events(entry)
+        current_entry_consent_events = self.get_consent_events(entry)
         current_entry_events = current_entry_consent_events if current_entry_consent_events else [entry]
 
         current_event_objs = []
@@ -192,17 +188,22 @@ class PostIntakePayload:
 
         return event_activity.id
 
-    def get_consent_provision_events(self, entry: dict) -> List[dict]:
-        if not entry['resource'].get('provision'):
+    def get_consent_events(self, entry: dict) -> List[dict]:
+        consents = []
+        consent_module_data = entry['resource'].get('provision')
+        if not consent_module_data:
             return []
         try:
-            provisions = []
-            for provision in entry['resource']['provision']['provision']:
-                provisions.append({
-                    'opt_in': ConsentOptInTypes.lookup_by_name(provision['type'].upper()),
-                    'code': provision['purpose'][0]['code']
+            consents.append({
+                'opt_in': ConsentOptInTypes.lookup_by_name(consent_module_data.get('type').upper()),
+                'code': consent_module_data.get('purpose')[0]['code']
+            })
+            for provision in consent_module_data.get('provision'):
+                consents.append({
+                    'opt_in': ConsentOptInTypes.lookup_by_name(provision.get('type').upper()),
+                    'code': provision.get('purpose')[0]['code']
                 })
-            return provisions
+            return consents
 
         except KeyError as e:
             raise BadRequest(f'Key error on provision lookup: {e} bundle_id: {self.bundle_identifier}')
@@ -212,14 +213,14 @@ class PostIntakePayload:
             participant_id = participant_obj['resource']['identifier'][0]['value']
             participant_str_data = participant_id.split('/')
             with self.nph_participant_dao.session() as session:
-                is_nph_participant = self.nph_participant_dao.check_participant_exist(
+                is_nph_participant = self.nph_participant_dao.get_participant_by_id(
                     participant_str_data[-1],
                     session
                 )
                 if not is_nph_participant:
                     raise NotFound(f'NPH participant {participant_str_data[-1]} not found bundle_id:'
                                    f' {self.bundle_identifier}')
-                return participant_str_data[1][4:]
+                return participant_str_data[1]
         except (KeyError, Exception) as e:
             raise BadRequest(f'Cannot parse participant information from payload: {e} bundle_id:'
                              f' {self.bundle_identifier}')
@@ -280,13 +281,13 @@ class PostIntakePayload:
                                           resource['entry']))[0]
 
             participant_id = self.extract_participant_id(participant_obj=participant_obj)
-            participant_ops_data = self.create_ops_data_els(
+            participant_ops_data = self.create_ops_data_elements(
                 participant_id=participant_id,
                 participant_obj=participant_obj
             )
 
             self.participant_response.append({
-                'nph_participant_id': f'{self.nph_prefix}{participant_id}'
+                'nph_participant_id': participant_id
             })
 
             applicable_entries = [obj for obj in resource['entry'] if obj['resource']['resourceType'].lower() in [
@@ -310,7 +311,7 @@ class PostIntakePayload:
                     activity_data=activity_data
                 )
 
-                if activity_data.name in ('consent', 'withdrawal', 'deactivate'):
+                if activity_data.name in ('consent', 'withdrawal', 'deactivation'):
                     summary_update = {
                         'event_type': activity_data.name,
                         'participant_id': participant_id,

@@ -23,7 +23,7 @@ from rdr_service import clock, code_constants, config
 from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus, \
-    ResultsWorkflowState, ResultsModuleType
+    ResultsModuleType
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
@@ -44,10 +44,10 @@ from rdr_service.model.genomics import (
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
-    GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
+    GenomicW3SCRaw, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
-    GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified)
+    GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -833,17 +833,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         member.genomicWorkflowState = new_state
         member.genomicWorkflowStateStr = new_state.name
         member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
-        self.update(member)
-
-    def update_member_results_state(self, member, new_state):
-        """
-        Sets the member's state to a new state
-        :param member:  ResultsWorkflowState
-        :param new_state:
-        """
-        member.resultsWorkflowState = new_state
-        member.resultsWorkflowStateStr = new_state.name
-        member.resultsWorkflowStateModifiedTime = clock.CLOCK.now()
         self.update(member)
 
     def get_blocklist_members_from_date(self, *, attributes, from_days=1):
@@ -2390,7 +2379,6 @@ class GenomicSchedulingDao(BaseDao):
         ).subquery()
 
         note_alias = aliased(GenomicAppointmentEvent)
-        event_alias = aliased(GenomicAppointmentEvent)
 
         with self.session() as session:
             records = session.query(
@@ -2412,12 +2400,6 @@ class GenomicSchedulingDao(BaseDao):
                     else_=False
                 ).label('note_available'),
             ).join(
-                max_event_authored_time_subquery,
-                and_(
-                    GenomicAppointmentEvent.participant_id == max_event_authored_time_subquery.c.participant_id,
-                    GenomicAppointmentEvent.module_type == max_event_authored_time_subquery.c.module_type,
-                )
-            ).join(
                 max_appointment_id_subquery,
                 and_(
                     GenomicAppointmentEvent.participant_id == max_appointment_id_subquery.c.participant_id,
@@ -2431,19 +2413,11 @@ class GenomicSchedulingDao(BaseDao):
                     note_alias.module_type == GenomicAppointmentEvent.module_type,
                     note_alias.appointment_id == max_appointment_id_subquery.c.max_appointment_id
                 )
-            ).outerjoin(
-                event_alias,
-                and_(
-                    event_alias.event_type.notlike('%note_available'),
-                    event_alias.participant_id == GenomicAppointmentEvent.participant_id,
-                    event_alias.module_type == GenomicAppointmentEvent.module_type,
-                    GenomicAppointmentEvent.event_authored_time < event_alias.event_authored_time
-                )
             ).filter(
                 and_(
                     GenomicAppointmentEvent.appointment_id == max_appointment_id_subquery.c.max_appointment_id,
-                    event_alias.id.is_(None),
-                    GenomicAppointmentEvent.event_type.notlike('%note_available')
+                    GenomicAppointmentEvent.event_authored_time ==
+                    max_event_authored_time_subquery.c.max_event_authored_time
                 )
             )
 
@@ -2457,8 +2431,7 @@ class GenomicSchedulingDao(BaseDao):
                 )
             if start_date:
                 records = records.filter(
-                    or_(GenomicAppointmentEvent.event_authored_time > start_date,
-                        note_alias.event_authored_time > start_date),
+                    GenomicAppointmentEvent.event_authored_time > start_date,
                     GenomicAppointmentEvent.event_authored_time < end_date
                 )
 
@@ -3748,45 +3721,6 @@ class GenomicCVLSecondSampleDao(BaseDao):
         pass
 
 
-class GenomicResultWorkflowStateDao(BaseDao):
-
-    def __init__(self):
-        super(GenomicResultWorkflowStateDao, self).__init__(
-            GenomicResultWorkflowState, order_by_ending=['id'])
-
-    def from_client_json(self):
-        pass
-
-    def get_id(self, obj):
-        pass
-
-    def get_by_member_id(self, member_id, module_type=None):
-        with self.session() as session:
-            records = session.query(
-                GenomicResultWorkflowState
-            ).filter(
-                GenomicResultWorkflowState.genomic_set_member_id == member_id
-            )
-            if not module_type:
-                return records.all()
-
-            records = records.filter(
-                GenomicResultWorkflowState.results_module == module_type
-            ).one_or_none()
-
-            return records
-
-    def insert_new_result_record(self, *, member_id, module_type, state=None):
-        inserted_state = ResultsWorkflowState.CVL_W1IL if not state else state
-        self.insert(GenomicResultWorkflowState(
-            genomic_set_member_id=member_id,
-            results_workflow_state=inserted_state,
-            results_workflow_state_str=inserted_state.name,
-            results_module=module_type,
-            results_module_str=module_type.name
-        ))
-
-
 class GenomicQueriesDao(BaseDao):
     def __init__(self):
         super(GenomicQueriesDao, self).__init__(
@@ -4249,6 +4183,7 @@ class GenomicQueriesDao(BaseDao):
             GenomicInformingLoop.decision_value.ilike('yes')
         )
         informing_loop_subquery = aliased(GenomicInformingLoop, informing_loop_decision_query.subquery())
+        pipeline_metrics = aliased(GenomicGCValidationMetrics)
 
         with self.session() as session:
             query = session.query(
@@ -4291,6 +4226,13 @@ class GenomicQueriesDao(BaseDao):
             ).join(
                 informing_loop_subquery,
                 informing_loop_subquery.participant_id == GenomicSetMember.participantId
+            ).outerjoin(
+                pipeline_metrics,
+                and_(
+                    pipeline_metrics.genomicSetMemberId == GenomicSetMember.id,
+                    pipeline_metrics.ignoreFlag != 1,
+                    pipeline_metrics.pipelineId < GenomicGCValidationMetrics.pipelineId
+                )
             ).filter(
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
@@ -4309,7 +4251,14 @@ class GenomicQueriesDao(BaseDao):
                 ParticipantSummary.participantOrigin != 'careevolution',
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY,
-                previous_w1il_job_field.is_(None)
+                previous_w1il_job_field.is_(None),
+                GenomicGCValidationMetrics.hfVcfPath.isnot(None),
+                GenomicGCValidationMetrics.hfVcfTbiPath.isnot(None),
+                GenomicGCValidationMetrics.hfVcfMd5Path.isnot(None),
+                GenomicGCValidationMetrics.gvcfPath.isnot(None),
+                GenomicGCValidationMetrics.gvcfMd5Path.isnot(None),
+                GenomicGCValidationMetrics.cramPath.isnot(None),
+                pipeline_metrics.id.is_(None)
             )
 
             if sample_ids:
@@ -4707,3 +4656,88 @@ class GenomicDefaultBaseDao(BaseDao, GenomicDaoMixin):
 
     def get_id(self, obj):
         pass
+
+
+class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
+
+    validate_version_match = False
+
+    def __init__(self):
+        super().__init__(GenomicLongRead, order_by_ending=["id"])
+
+    def get_id(self, obj):
+        return obj.id
+
+    @classmethod
+    def get_max_set_subquery(cls):
+        return sqlalchemy.orm.Query(
+            functions.max(GenomicLongRead.long_read_set).label('long_read_set')
+        ).subquery()
+
+    def get_max_set(self):
+        with self.session() as session:
+            return session.query(
+                self.get_max_set_subquery()
+            ).one()
+
+    def get_new_long_read_members(self, *, biobank_ids: List[str], parent_tube_ids: List[str]) -> List:
+        with self.session() as session:
+            return session.query(
+                GenomicSetMember.id.label('genomic_set_member_id'),
+                GenomicSetMember.biobankId.label('biobank_id')
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                GenomicGCValidationMetrics,
+                and_(
+                    GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
+                    GenomicGCValidationMetrics.ignoreFlag != 1
+                )
+            ).filter(
+                GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
+                GenomicSetMember.participantOrigin != 'careevolution',
+                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
+                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
+                GenomicSetMember.diversionPouchSiteFlag != 1,
+                GenomicSetMember.blockResults != 1,
+                GenomicSetMember.blockResearch != 1,
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.biobankId.in_(biobank_ids),
+                GenomicSetMember.gcManifestParentSampleId.in_(parent_tube_ids)
+            ).distinct().all()
+
+    def get_l0_records_from_max_set(self) -> List[GenomicLongRead]:
+        with self.session() as session:
+            return session.query(
+                func.concat(get_biobank_id_prefix(), GenomicLongRead.biobank_id),
+                GenomicSetMember.collectionTubeId,
+                GenomicSetMember.sexAtBirth,
+                GenomicLongRead.genome_type,
+                func.IF(GenomicSetMember.nyFlag == 1,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("N")).label('ny_flag'),
+                func.IF(GenomicSetMember.validationStatus == 1,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("N")).label('validation_passed'),
+                GenomicSetMember.ai_an,
+                GenomicSetMember.gcManifestParentSampleId.label('parent_tube_id'),
+                GenomicLongRead.lr_site_id,
+                GenomicLongRead.long_read_platform
+            ).join(
+                GenomicSetMember,
+                and_(
+                    GenomicSetMember.id == GenomicLongRead.genomic_set_member_id,
+                    GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                    GenomicSetMember.ignoreFlag != 1
+                )
+            ).filter(
+                GenomicLongRead.long_read_set ==
+                self.get_max_set_subquery().c.long_read_set
+            ).distinct().all()
+
+

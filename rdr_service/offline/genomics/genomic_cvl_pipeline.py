@@ -4,7 +4,7 @@ from rdr_service import config
 from rdr_service.genomic.genomic_cvl_reconciliation import GenomicCVLReconcile
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
-from rdr_service.offline.genomic_pipeline import load_awn_manifest_into_raw_table
+from rdr_service.offline.genomics.genomic_dispatch import load_awn_manifest_into_raw_table
 
 
 def cvl_w1il_manifest_workflow(cvl_site_bucket_map, module_type):
@@ -17,7 +17,8 @@ def cvl_w1il_manifest_workflow(cvl_site_bucket_map, module_type):
         with GenomicJobController(
             GenomicJob.CVL_W1IL_WORKFLOW,
             bucket_name=cvl_bucket_name_key,
-            cvl_site_id=site_id
+            cvl_site_id=site_id,
+            max_num=1000
         ) as controller:
             controller.generate_manifest(
                 manifest_type=manifest_type,

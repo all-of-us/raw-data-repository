@@ -289,8 +289,8 @@ class TestEnrollmentInfo(BaseTestCase):
             EnrollmentCalculation.get_enrollment_info(participant_info)
         )
 
-        # Check that BASELINE also needs the DNA update for earlier cohorts.
-        participant_info.consent_cohort = ParticipantCohort.COHORT_2
+        # Check that BASELINE also needs the DNA update for cohort 1.
+        participant_info.consent_cohort = ParticipantCohort.COHORT_1
         enrollment = EnrollmentCalculation.get_enrollment_info(participant_info)
         self.assertEqual(EnrollmentStatusV31.CORE_PARTICIPANT, enrollment.version_3_1_status)
 

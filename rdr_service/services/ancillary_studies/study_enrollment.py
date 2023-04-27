@@ -10,36 +10,34 @@ class EnrollmentInterface:
     def __init__(self, study_code):
         self.study_code = study_code
 
-    def create_study_participant(self, aou_pid, ancillary_pid, event_authored_time=None, enrollment_event=True):
-        cln_study_pid = int(ancillary_pid[4:])
-
+    def create_study_participant(self, aou_pid, ancillary_pid, event_authored_time):
         # We have to use the AoU research ID
         aou_participant_dao = ParticipantDao()
         aou_participant = aou_participant_dao.get(aou_pid)
         insert_params = {
-            'id': cln_study_pid,
+            'id': ancillary_pid,
             'research_id': aou_participant.researchId,
         }
 
         self.participant_dao.insert_participant_with_random_biobank_id(
             self.participant_dao.model_type(**insert_params))
-        self.create_rex_participant_mapping(aou_pid, cln_study_pid)
+        self.create_rex_participant_mapping(aou_pid, ancillary_pid)
 
-        if enrollment_event:
-            # Task API Payload
-            data = {
-                'study': 'nph',
-                'participant_id': cln_study_pid,
-                'activity_id': Activity.ENROLLMENT.number,
-                'event_type_id': EnrollmentEventTypes.REFERRED.number,
-                'event_authored_time': event_authored_time
-            }
-            # Call cloud task
-            if GAE_PROJECT == 'localhost':
-                pass
-            else:
-                _task = GCPCloudTask()
-                _task.execute(endpoint='insert_study_event_task', payload=data, queue='nph')
+        enrollment_data = {
+            'study': 'nph',
+            'participant_id': ancillary_pid,
+            'activity_id': Activity.ENROLLMENT.number,
+            'event_type_id': EnrollmentEventTypes.REFERRED.number,
+            'event_authored_time': event_authored_time
+        }
+
+        if GAE_PROJECT != 'localhost':
+            cloud_task = GCPCloudTask()
+            cloud_task.execute(
+                endpoint='insert_study_event_task',
+                payload=enrollment_data,
+                queue='nph'
+            )
 
     def create_rex_participant_mapping(self, aou_pid, study_pid):
         rex_dao = RexParticipantMappingDao()

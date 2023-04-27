@@ -72,6 +72,7 @@ def _convert_csv_row_to_stored_sample_object(csv_obj: Dict[str, Union[str, int]]
         "Received": StoredSampleStatus.RECEIVED,
         "Disposed": StoredSampleStatus.DISPOSED
     }
+
     def _parse_sample_id_field_to_int(sample_id):
         if search("[a-zA-Z]+", sample_id) is not None:
             sample_id_matches = findall("[0-9]+", sample_id or "")

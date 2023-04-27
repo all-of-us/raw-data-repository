@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from typing import Collection
+from typing import Collection, Any
 
 from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, PMI_SKIP_CODE,\
     STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
@@ -11,6 +11,7 @@ from rdr_service.participant_enums import QuestionnaireResponseStatus, Questionn
 from rdr_service.tools.tool_libs.curation import CurationExportClass
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.tool_test_mixin import ToolTestMixin
+from tests import test_data
 from rdr_service.clock import FakeClock
 
 TIME = datetime(2000, 1, 10)
@@ -21,6 +22,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
     def setUp(self):
         super(CurationEtlTest, self).setUp(with_consent_codes=True)
         self._setup_data()
+        self.history_dao = CdrEtlRunHistoryDao()
 
     def _setup_data(self):
         self.participant = self.data_generator.create_database_participant()
@@ -89,12 +91,27 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
         return questionnaire_response
 
+    def _exists_in_src_clean(self, column_name:str, value:Any) -> bool:
+        value_exists = self.session.query(
+            getattr(SrcClean,column_name)
+        ).filter(
+            getattr(SrcClean,column_name) == value
+        ).distinct().scalar()
+        return bool(value_exists
+                    )
     @staticmethod
-    def run_cdm_data_generation(cutoff=None, vocabulary='gs://curation-vocabulary/aou_vocab_20220201/'):
+    def run_cdm_data_generation(cutoff=None, vocabulary='gs://curation-vocabulary/aou_vocab_20220201/',
+                                participant_origin='all', participant_list_file=None, include_surveys=None,
+                                exclude_surveys=None, exclude_participants=None):
         CurationEtlTest.run_tool(CurationExportClass, tool_args={
             'command': 'cdm-data',
             'cutoff': cutoff,
-            'vocabulary': vocabulary
+            'vocabulary': vocabulary,
+            'participant_origin': participant_origin,
+            'participant_list_file': participant_list_file,
+            'include_surveys': include_surveys,
+            'exclude_surveys': exclude_surveys,
+            'exclude_participants': exclude_participants
         })
 
     @staticmethod
@@ -472,13 +489,13 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
     def test_etl_history(self):
         with FakeClock(TIME_2):
             self.run_cdm_data_generation(cutoff='2022-04-01')
-        dao = CdrEtlRunHistoryDao()
-        records = dao.get_all()
+        records = self.history_dao.get_all()
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0].cutoffDate, date(2022, 4, 1))
         self.assertEqual(records[0].startTime, TIME_2)
         self.assertEqual(records[0].endTime, TIME_2)
         self.assertEqual(records[0].vocabularyPath, 'gs://curation-vocabulary/aou_vocab_20220201/')
+        self.assertEqual(records[0].filterOptions['participant_origin'],'all')
 
         self.clear_table_after_test('cdr_etl_survey_history')
         self.clear_table_after_test('cdr_etl_run_history')
@@ -694,3 +711,184 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
                 self.assertIsNone(src_clean_answer)
             else:
                 self.assertEqual(expected_answer, src_clean_answer.value_string)
+
+    def test_participant_origin_filter(self):
+        """ Test the participant origin filter selects the intended participants"""
+        participant_ce = self.data_generator.create_database_participant(participantOrigin='careevolution')
+        self.data_generator.create_database_participant_summary(
+            participant=participant_ce,
+            dateOfBirth=datetime(1982, 1, 9),
+            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10))
+        self._setup_questionnaire_response(
+            participant_ce,
+            self.questionnaire
+        )
+
+        participant_vibrent = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        self.data_generator.create_database_participant_summary(
+            participant=participant_vibrent,
+            dateOfBirth=datetime(1982, 1, 9),
+            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10))
+        self._setup_questionnaire_response(
+            participant_vibrent,
+            self.questionnaire
+        )
+
+        self.run_cdm_data_generation(participant_origin='careevolution')
+        vibrent_ppt_exists = self._exists_in_src_clean('participant_id', participant_vibrent.participantId)
+        ce_ppt_exists = self._exists_in_src_clean('participant_id', participant_ce.participantId)
+
+        self.assertTrue(ce_ppt_exists)
+        self.assertFalse(vibrent_ppt_exists)
+
+        run_history = self.history_dao.get_last_etl_run_info(self.session)
+        self.assertEqual('careevolution', run_history.filterOptions['participant_origin'])
+
+        self.session.commit()
+
+        self.run_cdm_data_generation(participant_origin='vibrent')
+        vibrent_ppt_exists = self._exists_in_src_clean('participant_id', participant_vibrent.participantId)
+        ce_ppt_exists = self._exists_in_src_clean('participant_id', participant_ce.participantId)
+
+        self.assertFalse(ce_ppt_exists)
+        self.assertTrue(vibrent_ppt_exists)
+
+        run_history = self.history_dao.get_last_etl_run_info(self.session)
+        self.assertEqual('vibrent', run_history.filterOptions['participant_origin'])
+
+        self.session.commit()
+
+        self.run_cdm_data_generation()
+        vibrent_ppt_exists = self._exists_in_src_clean('participant_id', participant_vibrent.participantId)
+        ce_ppt_exists = self._exists_in_src_clean('participant_id', participant_ce.participantId)
+
+        self.assertTrue(ce_ppt_exists)
+        self.assertTrue(vibrent_ppt_exists)
+
+        run_history = self.history_dao.get_last_etl_run_info(self.session)
+        self.assertEqual('all', run_history.filterOptions['participant_origin'])
+
+    def test_participant_list(self):
+        pids = list(range(10000,10010))
+        for pid in pids:
+            participant = self.data_generator.create_database_participant(participantId=pid)
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                dateOfBirth=datetime(1982, 1, 9),
+                consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10))
+            self._setup_questionnaire_response(
+                participant,
+                self.questionnaire
+            )
+
+        self.run_cdm_data_generation(
+            participant_origin=None,
+            participant_list_file=test_data.data_path('test_curation_participant_list.txt')
+        )
+
+        test_participants = [10002, 10004, 10007]
+        for pid in pids:
+            pid_exists = self._exists_in_src_clean("participant_id", pid)
+            if pid in test_participants:
+                self.assertTrue(pid_exists)
+            else:
+                self.assertFalse(pid_exists)
+
+        run_history = self.history_dao.get_last_etl_run_info(self.session)
+        self.assertIn('test-data/test_curation_participant_list.txt',
+                      run_history.filterOptions['participant_list_file'])
+
+    def _create_questionnaire(self, survey_name):
+        module_code = self.data_generator.create_database_code(value=survey_name)
+        question_codes = [
+            self.data_generator.create_database_code(value=f'{survey_name}_q_code_{question_index}')
+            for question_index in range(4)
+        ]
+
+        questionnaire = self.data_generator.create_database_questionnaire_history()
+        for question_code in question_codes:
+            self.data_generator.create_database_questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                codeId=question_code.codeId
+            )
+
+        self.data_generator.create_database_questionnaire_concept(
+            questionnaireId=questionnaire.questionnaireId,
+            questionnaireVersion=questionnaire.version,
+            codeId=module_code.codeId
+        )
+
+        return questionnaire
+
+    def test_include_surveys(self):
+        survey_names = ['Q1', 'Q2', 'Q3', 'Q4']
+        for survey_name in survey_names:
+            questionnaire = self._create_questionnaire(survey_name)
+            self._setup_questionnaire_response(self.participant, questionnaire)
+
+        self.run_cdm_data_generation(include_surveys=test_data.data_path('test_curation_surveys.txt'))
+
+        survey_results = []
+        for survey_name in survey_names:
+            survey_results.append((survey_name, self._exists_in_src_clean('survey_name', survey_name)))
+
+        for result in survey_results:
+            if result[0] in ['Q1', 'Q4']:
+                self.assertFalse(result[1])
+            elif result[0] in ['Q2', 'Q3']:
+                self.assertTrue(result[1])
+
+        last_run = self.history_dao.get_last_etl_run_info(self.session)
+        self.assertEqual(['Q2', 'Q3'], last_run.filterOptions['include_surveys'])
+
+    def test_exclude_surveys(self):
+        survey_names = ['Q1', 'Q2', 'Q3', 'Q4']
+        for survey_name in survey_names:
+            questionnaire = self._create_questionnaire(survey_name)
+            self._setup_questionnaire_response(self.participant, questionnaire)
+
+        self.run_cdm_data_generation(exclude_surveys=test_data.data_path('test_curation_surveys.txt'))
+
+        survey_results = []
+        for survey_name in survey_names:
+            survey_results.append((survey_name, self._exists_in_src_clean('survey_name', survey_name)))
+
+        for result in survey_results:
+            if result[0] in ['Q1', 'Q4', 'src_clean_test']:
+                self.assertTrue(result[1], f"{result[0]} expected in src_clean but not found")
+            elif result[0] in ['Q2', 'Q3']:
+                self.assertFalse(result[1])
+
+        last_run = self.history_dao.get_last_etl_run_info(self.session)
+        self.assertEqual(['Q2', 'Q3'], last_run.filterOptions['exclude_surveys'])
+
+    def test_exclude_participants(self):
+        pids = list(range(10000,10010))
+        for pid in pids:
+            participant = self.data_generator.create_database_participant(participantId=pid)
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                dateOfBirth=datetime(1982, 1, 9),
+                consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10))
+            self._setup_questionnaire_response(
+                participant,
+                self.questionnaire
+            )
+
+        self.run_cdm_data_generation(
+            participant_origin='all',
+            exclude_participants=test_data.data_path('test_curation_participant_list.txt')
+        )
+
+        excluded_participants = [10002, 10004, 10007]
+        for pid in pids:
+            pid_exists = self._exists_in_src_clean("participant_id", pid)
+            if pid in excluded_participants:
+                self.assertFalse(pid_exists)
+            else:
+                self.assertTrue(pid_exists)
+
+        run_history = self.history_dao.get_last_etl_run_info(self.session)
+        self.assertIn('test-data/test_curation_participant_list.txt',
+                         run_history.filterOptions['participant_exclude_file'])

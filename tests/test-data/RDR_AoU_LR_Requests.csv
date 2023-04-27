@@ -1,0 +1,4 @@
+biobank_id,genome_type,parent_tube_id,lr_site_id,long_read_platform
+T1,aou_long_read,111111111111,bcm,pacbio_css
+T2,aou_long_read,211111111111,bcm,pacbio_css
+T3,aou_long_read,311111111111,bcm,pacbio_css

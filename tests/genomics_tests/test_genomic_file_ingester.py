@@ -5,7 +5,7 @@ from rdr_service.dao.genomics_dao import GenomicSetMemberDao
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob
-from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
+from tests.genomics_tests.test_genomic_utils import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
 
