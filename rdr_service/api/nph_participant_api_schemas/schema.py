@@ -1,8 +1,10 @@
 import logging
-from graphene import ObjectType, String, Int, DateTime, Field, List, Date, Schema, NonNull
+from graphene import ObjectType, String, Int, DateTime, Field, List, Schema, NonNull
 from graphene import relay
 from sqlalchemy.orm import Query, aliased, subqueryload
 from sqlalchemy import and_
+
+from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX, NPH_STUDY_ID
 from rdr_service.dao.study_nph_dao import NphParticipantDao
 from rdr_service.model.study_nph import (
@@ -16,10 +18,9 @@ from rdr_service.model.study_nph import (
 )
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping
-from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.dao import database_factory
-from rdr_service.api.nph_participant_api_schemas.util import QueryBuilder, load_participant_summary_data, \
-    schema_field_lookup
+from rdr_service.api.nph_participant_api_schemas.util import QueryBuilder, NphParticipantData
 from rdr_service import config
 
 NPH_BIOBANK_PREFIX = NPH_PROD_BIOBANK_PREFIX if config.GAE_PROJECT == "all-of-us-rdr-prod" else NPH_TEST_BIOBANK_PREFIX
@@ -151,35 +152,36 @@ class ParticipantField(ObjectType):
         String,
         name="firstName",
         description='Participant’s first name, sourced from AoU participant_summary table',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.firstName),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.firstName == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.firstName),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.firstName == value)
     )
     middleName = SortableField(
         String,
         description='Participant’s middle name, sourced from AoU participant_summary table',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.middleName),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.middleName == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.middleName),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.middleName == value)
     )
     lastName = SortableField(
         String,
         description='Participant’s last name, sourced from AoU participant_summary table',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.lastName),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.lastName == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.lastName),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.lastName == value)
     )
-    dateOfBirth = SortableField(
-        Date,
-        name='DOB',
+    nphDateOfBirth = SortableField(
+        String,
+        name='nphDateOfBirth',
         description="Participant's date of birth, sourced from Aou participant_summary_table",
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.dateOfBirth),
         filter_modifier=lambda context, value: context.add_filter(
-            ParticipantSummaryModel.dateOfBirth == value
+            and_(ParticipantOpsDataElement.source_data_element == ParticipantOpsElementTypes.lookup_by_name(
+                'BIRTHDATE'),
+                 ParticipantOpsDataElement.source_value == value)
         )
     )
     zipCode = SortableField(
         String,
         description='Participant’s zip code, sourced from AoU participant_summary table',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.zipCode),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.zipCode == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.zipCode),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.zipCode == value)
     )
     phoneNumber = SortableField(
         String,
@@ -187,14 +189,14 @@ class ParticipantField(ObjectType):
             Participant’s phone number, sourced from AoU participant_summary table.
             Use login_phone_number if available, phone_number column otherwise.
         ''',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.phoneNumber),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.phoneNumber == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.phoneNumber),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.phoneNumber == value)
     )
     email = SortableField(
         String,
         description='Participant’s email address, sourced from AoU participant_summary table',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.email),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.email == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.email),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.email == value)
     )
     aianStatus = SortableField(
         String,
@@ -204,8 +206,8 @@ class ParticipantField(ObjectType):
             identifies as AIAN, “N” otherwise. This can be determined from the AoU participant_summary table’s
             aian column.
         ''',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummaryModel.aian),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummaryModel.aian == value)
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.aian),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.aian == value)
     )
     siteId = SortableField(
         String,
@@ -289,10 +291,10 @@ class ParticipantField(ObjectType):
     )
     # NPH
     externalId = SortableField(String, name="nphPairedSite", description='Sourced from NPH Schema.',
-                                sort_modifier=lambda context: context.set_order_expression(nphSite.external_id))
+                               sort_modifier=lambda context: context.set_order_expression(nphSite.external_id))
     organizationExternalId = SortableField(String, name="nphPairedOrg", description='Sourced from NPH Schema.',
-                                             sort_modifier=lambda context: context.set_order_expression(
-                                                 nphSite.organization_external_id))
+                                           sort_modifier=lambda context: context.set_order_expression(
+                                               nphSite.organization_external_id))
     awardeeExternalId = SortableField(String, name="nphPairedAwardee", description='Sourced from NPH Schema.',
                                       sort_modifier=lambda context: context.set_order_expression(
                                           nphSite.awardee_external_id))
@@ -303,7 +305,6 @@ class ParticipantField(ObjectType):
     nphBiospecimens = List(GraphQLNphBioSpecimen, name="nphBiospecimens", description="NPH Biospecimens")
     nphWithdrawalStatus = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
     nphDeactivationStatus = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
-    nphDateOfBirth = Field(String, name="nphDateOfBirth", description='Sourced from NPH Schema.')
     # Bio-specimen
     sample_8_5ml_ssts_1 = Field(SampleCollection, description='Sample 8.5ml SSTS1')
     sample_4ml_ssts_1 = Field(SampleCollection, description='Sample 4ml SSTS1')
@@ -383,10 +384,10 @@ class ParticipantQuery(ObjectType):
         limit = min(max(limit, MIN_LIMIT), MAX_LIMIT)
         off_set = max(off_set, MIN_OFFSET)
 
-        with database_factory.get_database().session() as session:
+        with nph_participant_dao.session() as session:
             logging.info('root: %s, info: %s, kwargs: %s', root, info, filter_kwargs)
             query = session.query(
-                ParticipantSummaryModel,
+                ParticipantSummary,
                 Site,
                 nphSite,
                 ParticipantMapping,
@@ -398,10 +399,10 @@ class ParticipantQuery(ObjectType):
                 ParticipantOpsDataElement
             ).join(
                 Site,
-                ParticipantSummaryModel.siteId == Site.siteId
+                ParticipantSummary.siteId == Site.siteId
             ).join(
                 ParticipantMapping,
-                ParticipantSummaryModel.participantId == ParticipantMapping.primary_participant_id
+                ParticipantSummary.participantId == ParticipantMapping.primary_participant_id
             ).join(
                 Participant,
                 Participant.id == ParticipantMapping.ancillary_participant_id
@@ -447,7 +448,7 @@ class ParticipantQuery(ObjectType):
             try:
                 if sort_by:
                     sort_parts = sort_by.split(':')
-                    sort_info = schema_field_lookup(sort_parts[0])
+                    sort_info = NphParticipantData.schema_field_lookup(sort_parts[0])
                     logging.info('sort by: %s', sort_parts)
 
                     if len(sort_parts) == 1:
@@ -472,12 +473,12 @@ class ParticipantQuery(ObjectType):
                     query = query_builder.get_resulting_query()
                     query = query.limit(limit).offset(off_set)
                     logging.info(query)
-                    return load_participant_summary_data(query, NPH_BIOBANK_PREFIX)
+                    return NphParticipantData.load_participant_summary_data(query, NPH_BIOBANK_PREFIX)
 
                 logging.info('Fetch NPH ID: %d', nph_id)
                 query = query.filter(ParticipantMapping.ancillary_participant_id == int(nph_id))
                 logging.info(query)
-                return load_participant_summary_data(query, NPH_BIOBANK_PREFIX)
+                return NphParticipantData.load_participant_summary_data(query, NPH_BIOBANK_PREFIX)
 
             except Exception as ex:
                 logging.error(ex)

@@ -2,7 +2,6 @@ import json
 
 from typing import Iterable, Dict, List
 from collections import defaultdict
-from itertools import zip_longest
 from graphql import GraphQLSyntaxError
 from datetime import datetime
 
@@ -168,17 +167,6 @@ class NphParticipantAPITest(BaseTestCase):
                         event_type_id=consent_event_type.id
                 )
 
-    def test_client_result_check_length(self):
-        query_return_one = condition_query("limit", "1", "DOB")
-        query_return_two = simple_query("DOB")
-        lengths = [1, 2]
-        queries = [query_return_one, query_return_two]
-        for (length, query) in zip_longest(lengths, queries):
-            executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-            result = json.loads(executed.data.decode('utf-8'))
-            self.assertEqual(length, len(result.get('participant').get('edges')),
-                             "Should return {} records back".format(length))
-
     def test_client_single_result(self):
         fetch_value = '"{}"'.format("100000001")
         query = condition_query("nphId", fetch_value, "participantNphId")
@@ -301,20 +289,6 @@ class NphParticipantAPITest(BaseTestCase):
         self.assertEqual("nph-test-site-1", result.get('participant').get('edges')[0].get('node'
                                                                                           ).get('nphPairedSite'))
 
-    def test_client_sorting_date_of_birth(self):
-        self.add_consents(nph_participant_ids=self.base_participant_ids)
-        sort_field = '"{}"'.format("DOB")
-        query = condition_query("sortBy", sort_field, "DOB")
-        dob_list = []
-        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-        result = json.loads(executed.data.decode('utf-8')).get('participant').get('edges')
-
-        for each in result:
-            dob_list.append(each.get('node').get('DOB'))
-        sorted_list = dob_list.copy()
-        sorted_list.sort()
-        self.assertTrue(dob_list == sorted_list, msg="Resultset is not in sorting order")
-
     def test_client_sorting_deceased_status(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
         sort_field = '"{}"'.format("aouDeceasedStatus:time")
@@ -331,11 +305,12 @@ class NphParticipantAPITest(BaseTestCase):
         sorted_list.sort()
         self.assertTrue(deceased_list == sorted_list, msg="Resultset is not in sorting order")
 
-    def test_client_filter_parameter(self):
+    def test_client_filter_parameters(self):
         summary = self.participant_summary_dao.get_by_participant_id(900000000)
         rex_participants = self.rex_mapping_dao.get_all()
         nph_participant = list(filter(lambda x: x.primary_participant_id == summary.participantId, rex_participants))[0]
         self.add_consents(nph_participant_ids=[nph_participant.ancillary_participant_id])
+        # firstname filter
         executed = app.test_client().post(
             '/rdr/v1/nph_participant',
             data='{participant (firstName: "%s") { edges { node { participantNphId firstName } } } }' %
@@ -350,6 +325,44 @@ class NphParticipantAPITest(BaseTestCase):
         self.assertEqual(summary.firstName, resulting_participant_data.get('firstName'))
         self.assertEqual(nph_participant.ancillary_participant_id,
                          int(resulting_participant_data.get('participantNphId')))
+
+    def test_nph_dob_filter_parameter(self):
+        summary = self.participant_summary_dao.get_by_participant_id(900000000)
+        rex_participants = self.rex_mapping_dao.get_all()
+        nph_participant = list(filter(lambda x: x.primary_participant_id == summary.participantId, rex_participants))[0]
+        nph_dob = '1986-01-01'
+
+        self.add_consents(nph_participant_ids=[nph_participant.ancillary_participant_id])
+        self.nph_data_gen.create_database_participant_ops_data_element(
+            source_data_element=ParticipantOpsElementTypes.BIRTHDATE,
+            participant_id=nph_participant.ancillary_participant_id,
+            source_value=nph_dob
+        )
+        # nphDateOfBirth filter - response firstName and nphDateOfBirth
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (nphDateOfBirth: "%s" ) { edges { node { participantNphId '
+                 'firstName nphDateOfBirth } } } }' %
+                 nph_dob
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+
+        result_participant_list = result.get('participant').get('edges')
+        self.assertEqual(1, len(result_participant_list))
+
+        self.assertTrue(result_participant_list[0].get('node').get('firstName') == summary.firstName)
+        self.assertTrue(result_participant_list[0].get('node').get('nphDateOfBirth') == nph_dob)
+        self.assertTrue(result_participant_list[0].get('node').get('participantNphId') ==
+                        str(nph_participant.ancillary_participant_id))
+
+        # nphDateOfBirth filter - bad nphDateOfBirth should be no result
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (nphDateOfBirth: "1989-01-01" ) { edges { node { participantNphId '
+                 'firstName nphDateOfBirth } } } }'
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertTrue(result.get('participant').get('edges') == [])
 
     def test_nphEnrollmentStatus_fields(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
