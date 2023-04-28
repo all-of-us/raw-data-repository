@@ -3487,7 +3487,7 @@ class GenomicPipelineTest(BaseTestCase):
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_aw3_wgs_manifest_generation(self, cloud_task):
-        pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+        pipeline_id = config.GENOMIC_UPDATED_WGS_DRAGEN
 
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
@@ -3504,7 +3504,7 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
 
         create_ingestion_test_file(
-            'RDR_AoU_SEQ_TestDataManifest.csv',
+            'RDR_AoU_SEQ_NewPipelineDataManifest.csv',
             bucket_name,
             folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
         )
@@ -3541,14 +3541,14 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test sequencing file (required for AW3 WGS)
         sequencing_test_files = (
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_1.cram',
-            f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
+            f'dragen_3.7.8/test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
+            f'dragen_3.7.8/test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+            f'dragen_3.7.8/test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+            f'dragen_3.7.8/test_data_folder/RDR_2_1002_10002_1.cram',
+            f'dragen_3.7.8/test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
+            f'dragen_3.7.8/test_data_folder/RDR_2_1002_10002_1.cram.crai',
+            f'dragen_3.7.8/test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
+            f'dragen_3.7.8/test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
             # f'test_data_folder/dragen/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
         )
         test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
@@ -3567,7 +3567,7 @@ class GenomicPipelineTest(BaseTestCase):
                     'bucket_name': bucket_name,
                     'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
                     'file_name': f,
-                    'file_type': '.'.join(f.split('.')[1:]),
+                    'file_type': '.'.join(f.split('.')[3:]),
                     'identifier_type': 'sample_id',
                     'identifier_value': '1002',
                 }

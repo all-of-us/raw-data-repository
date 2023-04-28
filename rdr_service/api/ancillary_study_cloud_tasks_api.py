@@ -101,22 +101,25 @@ class UpdateParticipantSummaryForNphTaskApi(BaseAncillaryTaskApi):
         rex_dao = RexParticipantMappingDao()
         ps_dao = ParticipantSummaryDao()
 
-        # Lookup AoU PID from NPH PID
         participant_mapping = rex_dao.get_from_ancillary_id(AOU_STUDY_ID, NPH_STUDY_ID, self.data.get("participant_id"))
         aou_pid = participant_mapping.primary_participant_id
-
         ps: ParticipantSummary = ps_dao.get_by_participant_id(aou_pid)
 
         event_type = self.data.get("event_type")
         event_authored = self.data.get("event_authored_time")
+        update_types = ('consent', 'withdrawal', 'deactivation')
 
-        if event_type == "consent":
+        if event_type and event_type not in update_types:
+            logging.info(f'{event_type} cannot be used in this task.')
+            return {"success": False}
+
+        if event_type.lower() == "consent":
             ps.consentForNphModule1 = True
             ps.consentForNphModule1Authored = event_authored
-        elif event_type == "withdrawal":
+        elif event_type.lower() == "withdrawal":
             ps.nphWithdrawal = True
             ps.nphWithdrawalAuthored = event_authored
-        elif event_type == "deactivate":
+        elif event_type.lower() == "deactivation":
             ps.nphDeactivation = True
             ps.nphDeactivationAuthored = event_authored
 

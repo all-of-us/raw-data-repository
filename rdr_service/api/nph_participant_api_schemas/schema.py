@@ -4,7 +4,6 @@ from graphene import relay
 from sqlalchemy.orm import Query, aliased, subqueryload
 from sqlalchemy import and_
 
-# from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX, NPH_STUDY_ID
 from rdr_service.dao.study_nph_dao import NphParticipantDao
