@@ -6,12 +6,13 @@ import os
 from datetime import datetime
 import logging
 import pytz
+import sqlalchemy.orm.session
 from sqlalchemy import and_, case, insert, or_, text, not_
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql.functions import coalesce, concat
-from typing import Type, List
+from typing import Type, List, Callable
 
 from rdr_service import config
 from rdr_service import api_util
@@ -50,7 +51,6 @@ tool_desc = "Support tool for Curation ETL process"
 
 EXPORT_BATCH_SIZE = 10000
 CHUNK_SIZE = 1000
-SRC_MAP_CHUNK_SIZE = 100
 
 # TODO: Rewrite the Curation ETL bash scripts into multiple Classes here.
 
@@ -80,6 +80,7 @@ class CurationExportClass(ToolBase):
         self.include_surveys: List[str] = []
         self.exclude_surveys: List[str] = []
         self.exclude_pid_list: List[int] = []
+        self.cutoff_date = None
 
     @classmethod
     def _render_export_select(cls, export_sql, column_name_list):
@@ -160,15 +161,17 @@ class CurationExportClass(ToolBase):
         export_sql = self._render_export_select(
             export_sql=f"""
                 SELECT
-                  participant_id, questionnaire_response_id, semantic_version,
+                  qr.participant_id, questionnaire_response_id, semantic_version,
                   CASE {' '.join(external_id_to_month_cases)}
-                  END AS 'cope_month'
+                  END AS 'cope_month',
+                  p.participant_origin
                 FROM questionnaire_history qh
                 INNER JOIN questionnaire_response qr ON qr.questionnaire_id = qh.questionnaire_id
                     AND qr.questionnaire_version = qh.version
+                JOIN participant p on qr.participant_id = p.participant_id
                 WHERE qh.external_id IN ({','.join(cope_external_id_flat_list)})
             """,
-            column_name_list=['participant_id', 'questionnaire_response_id', 'semantic_version', 'cope_month']
+            column_name_list=['participant_id', 'questionnaire_response_id', 'semantic_version', 'cope_month', 'src_id']
         )
         export_name = 'cope_survey_semantic_version_map'
         cloud_file = f'gs://{self.args.export_path}/{export_name}.csv'
@@ -240,7 +243,8 @@ class CurationExportClass(ToolBase):
                         '' validated_survey_source_value,
                         NULL survey_version_number,
                         '' visit_occurrence_id,
-                        '' response_visit_occurrence_id
+                        '' response_visit_occurrence_id,
+                        p.participant_origin src_id
                 FROM questionnaire_response qr
                 INNER JOIN questionnaire_concept qc
                     ON qc.questionnaire_id = qr.questionnaire_id AND qc.questionnaire_version = qr.questionnaire_version
@@ -279,7 +283,8 @@ class CurationExportClass(ToolBase):
                 'validated_survey_source_value',
                 'survey_version_number',
                 'visit_occurrence_id',
-                'response_visit_occurrence_id'
+                'response_visit_occurrence_id',
+                'src_id'
             ]
         )
         export_name = 'survey_conduct'
@@ -474,7 +479,8 @@ class CurationExportClass(ToolBase):
                     else_=''
                 )
             ),
-            SrcClean.filter: literal_column('0')
+            SrcClean.filter: literal_column('0'),
+            SrcClean.src_id: Participant.participantOrigin
         }
 
         questionnaire_answers_select = session.query(*column_map.values()).select_from(
@@ -694,16 +700,16 @@ class CurationExportClass(ToolBase):
         result = query.order_by(Participant.participantId).all()
         self.pid_list = [pid[0] for pid in result]
 
+
     def populate_cdm_database(self):
         """ Generates the src_clean table which is used to populate the rest of the ETL tables """
-        cutoff_date = None
         surveys_file_name = None
         include_flag = False
         filter_options = {}
 
         if self.args.cutoff:
             cutoff_date = api_util.parse_date(self.args.cutoff, '%Y-%m-%d')
-            cutoff_date = cutoff_date.replace(tzinfo=pytz.UTC)
+            self.cutoff_date = cutoff_date.replace(tzinfo=pytz.UTC)
             _logger.info(f"populating cdm data with cutoff date {self.args.cutoff}...")
         else:
             _logger.info("populating cdm data without cutoff date")
@@ -770,7 +776,7 @@ class CurationExportClass(ToolBase):
                 "parameter vocabulary must be set, example: gs://curation-vocabulary/aou_vocab_20220201/")
 
         with self.get_session() as session:
-            etl_history = self.cdr_etl_run_history_dao.create_etl_history_record(session, cutoff_date,
+            etl_history = self.cdr_etl_run_history_dao.create_etl_history_record(session, self.cutoff_date,
                                                                                  self.args.vocabulary, filter_options)
         # Create cdm tables
         self._initialize_cdm()
@@ -779,39 +785,26 @@ class CurationExportClass(ToolBase):
         with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
             if not self.args.participant_list_file:
                 _logger.debug("Selecting participant IDs")
-                self._select_participant_ids(session, self.args.participant_origin, cutoff_date)
+                self._select_participant_ids(session, self.args.participant_origin, self.cutoff_date)
 
+            _logger.debug(f"Populating with {len(self.pid_list)} PIDs")
             _logger.debug("Populating src_clean")
-            full_pid_list_len = len(self.pid_list)
-            _logger.debug(f"Populating with {full_pid_list_len} PIDs")
-            chunk = 1
-            chunks = int(full_pid_list_len/CHUNK_SIZE) + 1
-            for participant_id_subset in list_chunks(lst=self.pid_list, chunk_size=CHUNK_SIZE):
-                _logger.debug(f"Chunk {chunk} of {chunks}")
-                chunk += 1
-                self._populate_questionnaire_answers_by_module(session, participant_id_subset, cutoff_date)
-                self._populate_src_clean(session, participant_id_subset, cutoff_date)
-            #return
+            self.run_function_on_pids(self._build_src_clean, session, "src_clean")
+
+            self._finalize_src_clean(session)
+
+            self.run_function_on_pids(self._filter_question, session, "filtering src_clean")
             _logger.debug("Populating src_participant")
-            self._populate_src_participant(session)
-            chunk = 1
-            chunks = int(full_pid_list_len / SRC_MAP_CHUNK_SIZE) + 1
-            _logger.debug("Populating src_mapped")
-            for participant_id_subset in list_chunks(lst=self.pid_list, chunk_size=SRC_MAP_CHUNK_SIZE):
-                _logger.debug(f"Chunk {chunk} of {chunks}")
-                chunk += 1
-                self._populate_src_mapped(session, participant_id_subset)
+            self.run_function_on_pids(self._populate_src_participant, session, "src_participant")
+            self.run_function_on_pids(self._populate_src_mapped, session, "src_mapped")
+
             self._populate_src_tables(session)
             if not self.args.omit_measurements:
                 _logger.debug("Populating measurements")
-                self._populate_measurements(session, cutoff_date)
+                self._populate_measurements(session, self.cutoff_date)
             if not self.args.omit_surveys:
                 _logger.debug("Populating observation survey data")
-                chunk = 1
-                for participant_id_subset in list_chunks(lst=self.pid_list, chunk_size=CHUNK_SIZE):
-                    _logger.debug(f"Chunk {chunk} of {chunks}")
-                    chunk += 1
-                    self._populate_observation_surveys(session, participant_id_subset)
+                self.run_function_on_pids(self._populate_observation_surveys, session, "observation survey data")
                 self._populate_questionnaire_response_additional_info(session)
             _logger.debug("Finalizing ETL")
             self._finalize_cdm(session)
@@ -822,6 +815,20 @@ class CurationExportClass(ToolBase):
             self.cdr_etl_run_history_dao.update_etl_end_time(session, etl_history.id)
 
         return 0
+
+    def _build_src_clean(self, session:sqlalchemy.orm.session.Session, participant_id_subset:List[int]):
+        self._populate_questionnaire_answers_by_module(session, participant_id_subset, self.cutoff_date)
+        self._populate_src_clean(session, participant_id_subset, self.cutoff_date)
+
+    def run_function_on_pids(self, _func: Callable, session: sqlalchemy.orm.session.Session, description: str,
+                             chunk_size=1000):
+        chunk = 1
+        full_pid_list_len = len(self.pid_list)
+        chunks = int(full_pid_list_len / chunk_size) + 1
+        for participant_id_subset in list_chunks(lst=self.pid_list, chunk_size=chunk_size):
+            _logger.debug(f"{description}: Chunk {chunk} of {chunks}")
+            chunk += 1
+            _func(session, participant_id_subset)
 
     def manage_etl_exclude_code(self):
         if not self.args.operation or self.args.operation not in ['add', 'remove']:
@@ -868,52 +875,54 @@ class CurationExportClass(ToolBase):
 
     def _initialize_cdm(self):
         with self.get_session(database_name='cdm', alembic=True) as session:  # using alembic to get CREATE permission
-            self._create_tables(session, [QuestionnaireAnswersByModule,
-                                          SrcClean,
-                                          Note,
-                                          DrugExposure,
-                                          DeviceExposure,
-                                          Cost,
-                                          FactRelationship,
-                                          ConditionEra,
-                                          DrugEra,
-                                          DoseEra,
-                                          Metadata,
-                                          NoteNlp,
-                                          VisitDetail,
-                                          Location,
-                                          CareSite,
-                                          Provider,
-                                          Person,
-                                          Death,
-                                          ObservationPeriod,
-                                          PayerPlanPeriod,
-                                          VisitOccurrence,
-                                          ConditionOccurrence,
-                                          ProcedureOccurrence,
-                                          Observation,
-                                          Measurement,
-                                          SrcParticipant,
-                                          SrcMapped,
-                                          SrcPersonLocation,
-                                          SrcGender,
-                                          SrcRace,
-                                          SrcEthnicity,
-                                          SrcMeas,
-                                          MeasurementCodeMap,
-                                          MeasurementValueCodeMap,
-                                          SrcMeasMapped,
-                                          SrcVisits,
-                                          TempObsTarget,
-                                          TempObsEndUnion,
-                                          TempObsEndUnionPart,
-                                          TempObsEnd,
-                                          TempObs,
-                                          TempFactRelSd,
-                                          PidRidMapping,
-                                          QuestionnaireResponseAdditionalInfo])
+            self._create_tables(session, [
+                QuestionnaireAnswersByModule,
+                SrcClean,
+                SrcParticipant,
+                Note,
+                DrugExposure,
+                DeviceExposure,
+                Cost,
+                FactRelationship,
+                ConditionEra,
+                DrugEra,
+                DoseEra,
+                Metadata,
+                NoteNlp,
+                VisitDetail,
+                Location,
+                CareSite,
+                Provider,
+                Person,
+                Death,
+                ObservationPeriod,
+                PayerPlanPeriod,
+                VisitOccurrence,
+                ConditionOccurrence,
+                ProcedureOccurrence,
+                Observation,
+                Measurement,
+                SrcMapped,
+                SrcPersonLocation,
+                SrcGender,
+                SrcRace,
+                SrcEthnicity,
+                SrcMeas,
+                MeasurementCodeMap,
+                MeasurementValueCodeMap,
+                SrcMeasMapped,
+                SrcVisits,
+                TempObsTarget,
+                TempObsEndUnion,
+                TempObsEndUnionPart,
+                TempObsEnd,
+                TempObs,
+                TempFactRelSd,
+                PidRidMapping,
+                QuestionnaireResponseAdditionalInfo
+            ])
 
-    def _finalize_cdm(self, session, drop_tables:bool=False):
+    def _finalize_cdm(self, session, drop_tables: bool = False, drop_columns: bool = True):
         # -- In patient surveys data only organs transplantation information
         # -- fits the procedure_occurrence table.
         session.execute("""INSERT INTO cdm.procedure_occurrence
@@ -932,7 +941,8 @@ class CurationExportClass(ToolBase):
                                 stcm.source_code                            AS procedure_source_value,
                                 COALESCE(stcm.source_concept_id, 0)         AS procedure_source_concept_id,
                                 NULL                                        AS modifier_source_value,
-                                'procedure'                                 AS unit_id
+                                'procedure'                                 AS unit_id,
+                                src_m1.src_id                               AS src_id
                             FROM cdm.src_mapped src_m1
                             INNER JOIN cdm.source_to_concept_map stcm
                                 ON src_m1.value_ppi_code = stcm.source_code
@@ -1143,12 +1153,14 @@ class CurationExportClass(ToolBase):
         session.execute("""INSERT INTO cdm.observation_period
                             SELECT
                                 NULL                                    AS observation_period_id,
-                                person_id                               AS person_id,
+                                temp_obs.person_id                               AS person_id,
                                 MIN(observation_start_date)             AS observation_period_start_date,
                                 observation_end_date                    AS observation_period_end_date,
                                 44814725                                AS period_type_concept_id,         -- 44814725, Period inferred by algorithm
-                                'observ_period'                       AS unit_id
+                                'observ_period'                       AS unit_id,
+                                p.src_id                              AS src_id
                             FROM cdm.temp_obs
+                            JOIN person p on temp_obs.person_id = p.id
                             GROUP BY
                                 person_id,
                                 observation_end_date
@@ -1158,7 +1170,7 @@ class CurationExportClass(ToolBase):
 
 
         session.execute("""INSERT INTO cdm.pid_rid_mapping
-                            SELECT DISTINCT sc.participant_id, sc.research_id, sc.external_id
+                            SELECT DISTINCT sc.participant_id, sc.research_id, sc.external_id, sc.src_id
                             FROM cdm.src_clean sc join cdm.person p on sc.participant_id=p.person_id
                                     """)
         if drop_tables:
@@ -1180,7 +1192,7 @@ class CurationExportClass(ToolBase):
                                DROP TABLE IF EXISTS cdm.tmp_vcv_concept_lk;
                             """)
 
-        if drop_tables:
+        if drop_columns:
             # Drop columns only used for ETL purposes
             session.execute("""ALTER TABLE cdm.care_site DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.condition_era DROP COLUMN unit_id, DROP COLUMN id;
@@ -1206,7 +1218,7 @@ class CurationExportClass(ToolBase):
                                         """)
 
     @staticmethod
-    def _populate_src_participant(session):
+    def _finalize_src_clean(session):
 
         session.execute("Delete from voc.concept WHERE concept_id IN (1585549, 1585565, 1585548)")
         # Update cdm.src_clean to filter specific surveys.
@@ -1219,36 +1231,46 @@ class CurationExportClass(ToolBase):
 
         # Update cdm.src_clean to filter specific survey questions.
         session.execute("UPDATE combined_question_filter SET question_ppi_code = REPLACE(question_ppi_code, '\r', '')")
-        session.execute("""UPDATE cdm.src_clean
-                            INNER JOIN cdm.combined_question_filter ON
-                                cdm.src_clean.question_ppi_code = cdm.combined_question_filter.question_ppi_code
-                            SET cdm.src_clean.filter = 1
-                            WHERE TRUE""")
-
         session.execute("""CREATE INDEX src_cln_p_id ON cdm.src_clean (participant_id);
                            CREATE INDEX src_cln_filter ON cdm.src_clean (filter)""")
 
-        session.execute("""INSERT INTO cdm.src_participant
+    @staticmethod
+    def _filter_question(session, pid_list):
+        session.execute(f"""UPDATE cdm.src_clean
+                            INNER JOIN cdm.combined_question_filter ON
+                                cdm.src_clean.question_ppi_code = cdm.combined_question_filter.question_ppi_code
+                            SET cdm.src_clean.filter = 1
+                            WHERE cdm.src_clean.participant_id IN ({",".join([str(pid) for pid in pid_list])})""")
+
+
+    @staticmethod
+    def _populate_src_participant(session, pid_list):
+        session.execute(f"""INSERT INTO cdm.src_participant
                             SELECT
                                 f1.participant_id,
                                 f1.latest_date_of_survey,
-                                f1.date_of_birth
+                                f1.date_of_birth,
+                                f1.src_id
                             FROM
                                 (SELECT
                                     t1.participant_id           AS participant_id,
                                     t1.latest_date_of_survey    AS latest_date_of_survey,
-                                    MAX(DATE(t2.value_date))    AS date_of_birth
+                                    MAX(DATE(t2.value_date))    AS date_of_birth,
+                                    t1.src_id                   AS src_id
                                 FROM
                                     (
                                     SELECT
                                         src_c.participant_id        AS participant_id,
-                                        MAX(src_c.date_of_survey)   AS latest_date_of_survey
+                                        MAX(src_c.date_of_survey)   AS latest_date_of_survey,
+                                        src_c.src_id                AS src_id
                                     FROM cdm.src_clean src_c
                                     WHERE
                                         src_c.question_ppi_code = 'PIIBirthInformation_BirthDate'
                                         AND src_c.value_date IS NOT NULL
+                                        AND src_c.participant_id IN ({",".join([str(pid) for pid in pid_list])})
                                     GROUP BY
-                                        src_c.participant_id
+                                        src_c.participant_id,
+                                        src_c.src_id
                                     ) t1
                                 INNER JOIN cdm.src_clean t2
                                     ON t1.participant_id = t2.participant_id
@@ -1256,10 +1278,12 @@ class CurationExportClass(ToolBase):
                                     AND t2.question_ppi_code = 'PIIBirthInformation_BirthDate'
                                 GROUP BY
                                     t1.participant_id,
-                                    t1.latest_date_of_survey
+                                    t1.latest_date_of_survey,
+                                    t1.src_id
                                 ) f1""")
 
-    def _populate_src_mapped(self, session, pid_list):
+    @staticmethod
+    def _populate_src_mapped(session, pid_list):
         session.execute(f"""INSERT INTO cdm.src_mapped
                             SELECT
                                 0                                   AS id,
@@ -1288,7 +1312,8 @@ class CurationExportClass(ToolBase):
                                 src_c.value_string                  AS value_string,
                                 src_c.questionnaire_response_id     AS questionnaire_response_id,
                                 src_c.unit_id                       AS unit_id,
-                                src_c.is_invalid                    as is_invalid
+                                src_c.is_invalid                    as is_invalid,
+                                src_c.src_id                        AS src_id
                             FROM cdm.src_clean src_c
                             JOIN cdm.src_participant src_p
                                 ON  src_c.participant_id = src_p.participant_id
@@ -1304,8 +1329,8 @@ class CurationExportClass(ToolBase):
                                 ON  vc3.concept_id = vcr2.concept_id_1
                             LEFT JOIN voc.tmp_voc_concept_s vc4
                                 ON  vcr2.concept_id_2 = vc4.concept_id
-                            WHERE src_c.filter = 0
-                            AND src_c.participant_id IN ({",".join([str(pid) for pid in pid_list])})
+                            WHERE src_c.participant_id IN ({",".join([str(pid) for pid in pid_list])})
+                            AND src_c.filter = 0
                             """)
 
     def _populate_src_tables(self, session):
@@ -1529,7 +1554,8 @@ class CurationExportClass(ToolBase):
                                 COALESCE(r.race_source_concept_id, 0)       AS race_source_concept_id,
                                 e.ppi_code                                  AS ethnicity_source_value,
                                 COALESCE(e.ethnicity_source_concept_id, 0) AS ethnicity_source_concept_id,
-                                'person'                                    AS unit_id
+                                'person'                                    AS unit_id,
+                                b.src_id                                    AS src_id
                             FROM cdm.src_mapped src_m
                             INNER JOIN cdm.src_participant b
                                 ON src_m.participant_id = b.participant_id
@@ -1571,7 +1597,8 @@ class CurationExportClass(ToolBase):
                                 LEFT(meas.value_string, 1024)   AS value_string,
                                 meas.measurement_id             AS measurement_id,
                                 pm.physical_measurements_id     AS physical_measurements_id,
-                                meas.parent_id                  AS parent_id
+                                meas.parent_id                  AS parent_id,
+                                pm.origin                       AS src_id
                             FROM rdr.measurement meas
                             INNER JOIN rdr.physical_measurements pm
                                 ON meas.physical_measurements_id = pm.physical_measurements_id
@@ -1646,7 +1673,8 @@ class CurationExportClass(ToolBase):
                                 COALESCE(tmp2.vcv_concept_id, 0)            AS vcv_concept_id,
                                 meas.measurement_id                         AS measurement_id,
                                 meas.physical_measurements_id               AS physical_measurements_id,
-                                meas.parent_id                              AS parent_id
+                                meas.parent_id                              AS parent_id,
+                                meas.src_id                                 AS src_id
                             FROM cdm.src_meas meas
                             LEFT JOIN cdm.tmp_cv_concept_lk tmp1
                                 ON meas.code_value = tmp1.code_value
@@ -1678,7 +1706,8 @@ class CurationExportClass(ToolBase):
                                 NULL                                    AS location_id,
                                 site.site_id                            AS care_site_source_value,
                                 NULL                                    AS place_of_service_source_value,
-                                'care_site'                             AS unit_id
+                                'care_site'                             AS unit_id,
+                                ''                                      AS src_id
                             FROM rdr.site site
                             """)
         session.execute("""SET @row_number = 0;
@@ -1695,12 +1724,14 @@ class CurationExportClass(ToolBase):
                                 src_meas.participant_id                 AS person_id,
                                 MIN(src_meas.measurement_time)          AS visit_start_datetime,
                                 MAX(src_meas.measurement_time)          AS visit_end_datetime,
-                                src_meas.finalized_site_id              AS care_site_id
+                                src_meas.finalized_site_id              AS care_site_id,
+                                src_meas.src_id                         AS src_id
                             FROM cdm.src_meas src_meas
                             GROUP BY
                                 src_meas.physical_measurements_id,
                                 src_meas.participant_id,
-                                src_meas.finalized_site_id
+                                src_meas.finalized_site_id,
+                                src_meas.src_id
                         """)
         session.execute("""SET @row_number = 0;
                             INSERT INTO cdm.visit_occurrence
@@ -1723,10 +1754,10 @@ class CurationExportClass(ToolBase):
                                 0                                       AS discharge_to_concept_id,
                                 NULL                                    AS discharge_to_source_value,
                                 NULL                                    AS preceding_visit_occurrence_id,
-                                'vis.meas'                              AS unit_id
+                                'vis.meas'                              AS unit_id,
+                                src.src_id                              AS src_id
                             FROM cdm.tmp_visits_src src
                         """)
-
 
         # unit: observ.meas - observations from measurement table
         session.execute("""
@@ -1754,7 +1785,8 @@ class CurationExportClass(ToolBase):
                                 meas.value_code_value                   AS value_source_value,
                                 NULL                                    AS questionnaire_response_id,
                                 meas.measurement_id                     AS meas_id,
-                                'observ.meas'                           AS unit_id
+                                'observ.meas'                           AS unit_id,
+                                meas.src_id                             AS src_id
                             FROM cdm.src_meas_mapped meas
                             WHERE
                                 meas.cv_domain_id = 'Observation'
@@ -1802,7 +1834,8 @@ class CurationExportClass(ToolBase):
                                           WHEN meas.value_code_value IS NOT NULL
                                               THEN 'meas.value'
                                           ELSE 'meas.empty'
-                                      END                                     AS unit_id
+                                      END                                     AS unit_id,
+                                      meas.src_id                             AS src_id
                                   FROM cdm.src_meas_mapped meas
                                   WHERE
                                       meas.cv_domain_id = 'Measurement' OR meas.cv_domain_id IS NULL
@@ -1843,7 +1876,8 @@ class CurationExportClass(ToolBase):
                                  27                              AS domain_concept_id_2,     -- Observation
                                  cdm_obs.observation_id          AS fact_id_2,
                                  581411                          AS relationship_concept_id, -- Measurement to Observation
-                                 'observ.meas1'                  AS unit_id
+                                 'observ.meas1'                  AS unit_id,
+                                 cdm_obs.src_id                  AS src_id
                              FROM cdm.observation cdm_obs
                              INNER JOIN rdr.measurement_to_qualifier mtq
                                  ON mtq.qualifier_id = cdm_obs.meas_id
@@ -1856,7 +1890,8 @@ class CurationExportClass(ToolBase):
                                  21                              AS domain_concept_id_2,     -- Measurement
                                  mtq.measurement_id              AS fact_id_2,
                                  581410                          AS relationship_concept_id, -- Observation to Measurement
-                                 'observ.meas2'                  AS unit_id
+                                 'observ.meas2'                  AS unit_id,
+                                 cdm_obs.src_id                  AS src_id
                              FROM cdm.observation cdm_obs
                              INNER JOIN rdr.measurement_to_qualifier mtq
                                  ON mtq.qualifier_id = cdm_obs.meas_id
@@ -1883,7 +1918,8 @@ class CurationExportClass(ToolBase):
                                      ELSE 0
                                  END                                                         AS diastolic_blood_pressure_ind,
                                  m.person_id                                                 AS person_id,
-                                 m.parent_id                                                 AS parent_id
+                                 m.parent_id                                                 AS parent_id,
+                                 m.src_id                                                    AS src_id
 
                              FROM cdm.measurement m
                              WHERE
@@ -1913,7 +1949,8 @@ class CurationExportClass(ToolBase):
                                    WHEN tmp1.systolic_blood_pressure_ind = 2 THEN 'syst.diast.second1'
                                    WHEN tmp1.systolic_blood_pressure_ind = 3 THEN 'syst.diast.third1'
                                    WHEN tmp1.systolic_blood_pressure_ind = 4 THEN 'syst.diast.mean1'
-                                 END                         AS unit_id
+                                 END                         AS unit_id,
+                                 tmp1.src_id                 AS src_id
                              FROM cdm.tmp_fact_rel_sd tmp1
                              INNER JOIN cdm.tmp_fact_rel_sd tmp2
                                  ON tmp1.person_id = tmp2.person_id
@@ -1938,7 +1975,8 @@ class CurationExportClass(ToolBase):
                                    WHEN tmp1.systolic_blood_pressure_ind = 2 THEN 'syst.diast.second2'
                                    WHEN tmp1.systolic_blood_pressure_ind = 3 THEN 'syst.diast.third2'
                                    WHEN tmp1.systolic_blood_pressure_ind = 4 THEN 'syst.diast.mean2'
-                                 END                         AS unit_id
+                                 END                         AS unit_id,
+                                 tmp1.src_id                 AS src_id
                              FROM cdm.tmp_fact_rel_sd tmp1
                              INNER JOIN cdm.tmp_fact_rel_sd tmp2
                                  ON tmp1.person_id = tmp2.person_id
@@ -1958,7 +1996,8 @@ class CurationExportClass(ToolBase):
                                  21                              AS domain_concept_id_2,     -- Measurement
                                  cdm_meas.parent_id              AS fact_id_2,
                                  581437                          AS relationship_concept_id, -- 581437, Child to Parent Measurement
-                                 'meas.meas1'                    AS unit_id
+                                 'meas.meas1'                    AS unit_id,
+                                 cdm_meas.src_id                 AS src_id
                              FROM cdm.measurement cdm_meas
                              WHERE cdm_meas.parent_id IS NOT NULL
                                      """)
@@ -1970,11 +2009,11 @@ class CurationExportClass(ToolBase):
                                  21                              AS domain_concept_id_2,     -- Measurement
                                  cdm_meas.measurement_id         AS fact_id_2,
                                  581436                          AS relationship_concept_id, -- 581436, Parent to Child Measurement
-                                 'meas.meas2'                    AS unit_id
+                                 'meas.meas2'                    AS unit_id,
+                                 cdm_meas.src_id                 AS src_id
                              FROM cdm.measurement cdm_meas
                              WHERE cdm_meas.parent_id IS NOT NULL
                                      """)
-
 
     def _populate_observation_surveys(self, session, pid_list:List[int]):
         # -- units: observ.code, observ.str, observ.num, observ.bool
@@ -1983,7 +2022,6 @@ class CurationExportClass(ToolBase):
         # -- 2) patient's observations from measurements
         # -- First part we fill from 'src_mapped', second -
         # -- from 'src_meas_mapped'
-
 
         session.execute(f"""INSERT INTO cdm.observation
                             SELECT
@@ -2026,7 +2064,8 @@ class CurationExportClass(ToolBase):
                                     WHEN src_m.value_number IS NOT NULL         THEN 'observ.num'
                                     WHEN src_m.value_boolean IS NOT NULL        THEN 'observ.bool'
                                     WHEN src_m.is_invalid                       THEN 'observ.invalid'
-                                END                                         AS unit_id
+                                END                                         AS unit_id,
+                                src_m.src_id                                AS src_id
                             FROM cdm.src_mapped src_m
                             WHERE src_m.question_ppi_code is not null
                             AND src_m.participant_id IN ({",".join([str(pid) for pid in pid_list])})
@@ -2043,30 +2082,35 @@ class CurationExportClass(ToolBase):
 
         session.execute("""INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
                             0 AS id,
-                            qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, qr.non_participant_author as value
-                            from rdr.questionnaire_response qr, (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+                            qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, qr.non_participant_author as value,
+                            p.participant_origin src_id
+                            from rdr.questionnaire_response qr
+                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
+                            JOIN rdr.participant p ON qr.participant_id = p.participant_id
                             where qr.non_participant_author is not null and qr.questionnaire_response_id=qri.questionnaire_response_id
                                     """)
         session.execute("""INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
                             0 AS id,
-                            qr.questionnaire_response_id, 'LANGUAGE' as type, qr.language as value
-                            from rdr.questionnaire_response qr, (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+                            qr.questionnaire_response_id, 'LANGUAGE' as type, qr.language as value, p.participant_origin src_id
+                            from rdr.questionnaire_response qr
+                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
+                            JOIN rdr.participant p ON qr.participant_id = p.participant_id
                             where qr.language is not null and qr.questionnaire_response_id=qri.questionnaire_response_id
                                     """)
         session.execute("""INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
                             0 AS id,
-                            qr.questionnaire_response_id, 'CODE' as type, c.value as value
-                            from rdr.questionnaire_response qr,  rdr.questionnaire_concept qc, rdr.code c,
-                                 (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+                            qr.questionnaire_response_id, 'CODE' as type, c.value as value, p.participant_origin src_id
+                            from rdr.questionnaire_response qr
+                            JOIN rdr.questionnaire_concept qc ON qr.questionnaire_id = qc.questionnaire_id AND qr.questionnaire_version = qc.questionnaire_version
+                            JOIN rdr.code c ON qc.code_id = c.code_id
+                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
+                            JOIN rdr.participant p ON qr.participant_id = p.participant_id
                             where qr.questionnaire_id=qc.questionnaire_id
                             and qc.code_id=c.code_id
                             and qr.questionnaire_response_id=qri.questionnaire_response_id
                                     """)
         # Reset ISOLATION level to previous setting (assuming here that it was MySql's default)
         session.execute("""SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ""")
-
-
-
 
 
 def add_additional_arguments(parser):
@@ -2101,7 +2145,6 @@ def add_additional_arguments(parser):
                             action="store_true", default=False)
     cdm_parser.add_argument("--exclude-participants", help="Path to a file containing a list of PIDs to exclude",
                             type=str, default=None)
-
 
     manage_code_parser = subparsers.add_parser('exclude-code')
     manage_code_parser.add_argument("--operation", help="operation type for exclude code command: add or remove",

@@ -1,3 +1,4 @@
+# These models are only used for unit tests.
 from sqlalchemy import (
     Column, Integer, String, Date, DateTime
 )
@@ -47,3 +48,25 @@ class SourceToConceptMap(CdmBase):
     valid_end_date              = Column(DateTime)
     invalid_reason              = Column(String(1))
     priority                    = Column(Integer)
+
+class TempConceptRelationshipMapsTo(VocBase):
+    __tablename__ = "tmp_con_rel_mapsto"
+    id = Column(Integer, primary_key=True)
+    concept_id_1 = Column(Integer)
+    concept_id_2 = Column(Integer)
+
+class TempConceptRelationshipMapsToValue(VocBase):
+    __tablename__ = "tmp_con_rel_mapstoval"
+    id = Column(Integer, primary_key=True)
+    concept_id_1 = Column(Integer)
+    concept_id_2 = Column(Integer)
+
+
+class TempVocConcept(VocBase):
+    __tablename__ = "tmp_voc_concept"
+    concept_id = Column(Integer, primary_key=True)
+    concept_code = Column(String(100))
+
+class TempVocConceptS(VocBase):
+    __tablename__ = "tmp_voc_concept_s"
+    concept_id = Column(Integer, primary_key=True)

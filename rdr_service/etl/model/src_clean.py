@@ -1,4 +1,3 @@
-
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, Index, String, SmallInteger, Integer, Date, Float
 from sqlalchemy.dialects.mysql import DECIMAL, TINYINT, TEXT
 
@@ -19,7 +18,7 @@ class QuestionnaireAnswersByModule(CdmBase):
         participant_id,
         survey,
         question_code_id
-    ), )
+    ),)
 
 
 class SrcClean(CdmBase):
@@ -43,7 +42,8 @@ class SrcClean(CdmBase):
     unit_id = Column(String(50))
     filter = Column(SmallInteger)
     is_invalid = Column(Boolean)
-    __table_args__ = (Index('idx_src_clean_participant_id', participant_id), )
+    src_id = Column(String(50))
+    __table_args__ = (Index('idx_src_clean_participant_id', participant_id),)
 
 
 class Location(CdmBase):
@@ -57,6 +57,7 @@ class Location(CdmBase):
     county = Column(String(255))
     location_source_value = Column(String(255))
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class CareSite(CdmBase):
@@ -69,6 +70,7 @@ class CareSite(CdmBase):
     care_site_source_value = Column(String(50), nullable=False)
     place_of_service_source_value = Column(String(50))
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class Provider(CdmBase):
@@ -88,6 +90,7 @@ class Provider(CdmBase):
     gender_source_value = Column(String(50))
     gender_source_concept_id = Column(BigInteger, nullable=False)
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class Person(CdmBase):
@@ -112,6 +115,7 @@ class Person(CdmBase):
     ethnicity_source_value = Column(String(50))
     ethnicity_source_concept_id = Column(BigInteger, nullable=False)
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class Death(CdmBase):
@@ -125,6 +129,7 @@ class Death(CdmBase):
     cause_source_value = Column(String(50))
     cause_source_concept_id = Column(BigInteger, nullable=False)
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class ObservationPeriod(CdmBase):
@@ -135,6 +140,7 @@ class ObservationPeriod(CdmBase):
     observation_period_end_date = Column(Date, nullable=False)
     period_type_concept_id = Column(BigInteger, nullable=False)
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class PayerPlanPeriod(CdmBase):
@@ -157,6 +163,7 @@ class PayerPlanPeriod(CdmBase):
     stop_reason_source_value = Column(String(50))
     stop_reason_source_concept_id = Column(BigInteger)
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class VisitOccurrence(CdmBase):
@@ -180,6 +187,7 @@ class VisitOccurrence(CdmBase):
     discharge_to_source_value = Column(String(50))
     preceding_visit_occurrence_id = Column(BigInteger)
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class ConditionOccurrence(CdmBase):
@@ -202,6 +210,7 @@ class ConditionOccurrence(CdmBase):
     condition_source_concept_id = Column(BigInteger, nullable=False)
     condition_status_source_value = Column(String(50))
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class ProcedureOccurrence(CdmBase):
@@ -221,6 +230,7 @@ class ProcedureOccurrence(CdmBase):
     procedure_source_concept_id = Column(BigInteger, nullable=False)
     modifier_source_value = Column(String(50))
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class Observation(CdmBase):
@@ -250,6 +260,7 @@ class Observation(CdmBase):
     meas_id = Column(BigInteger)
     # --
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class Measurement(CdmBase):
@@ -279,6 +290,7 @@ class Measurement(CdmBase):
     parent_id = Column(BigInteger)
     # --
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class Note(CdmBase):
@@ -349,6 +361,7 @@ class DeviceExposure(CdmBase):
     device_source_value = Column(String(50), nullable=False)
     device_source_concept_id = Column(BigInteger)
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class Cost(CdmBase):
@@ -377,6 +390,7 @@ class Cost(CdmBase):
     drg_concept_id = Column(BigInteger)
     drg_source_value = Column(String(50))
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class FactRelationship(CdmBase):
@@ -388,6 +402,7 @@ class FactRelationship(CdmBase):
     fact_id_2 = Column(BigInteger, nullable=False)
     relationship_concept_id = Column(BigInteger, nullable=False)
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class ConditionEra(CdmBase):
@@ -400,6 +415,7 @@ class ConditionEra(CdmBase):
     condition_era_end_date = Column(Date, nullable=False)
     condition_occurrence_count = Column(Integer)
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class DrugEra(CdmBase):
@@ -413,6 +429,7 @@ class DrugEra(CdmBase):
     drug_exposure_count = Column(Integer)
     gap_days = Column(Integer)
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class DoseEra(CdmBase):
@@ -426,6 +443,7 @@ class DoseEra(CdmBase):
     dose_era_start_date = Column(Date, nullable=False)
     dose_era_end_date = Column(Date, nullable=False)
     unit_id = Column(String(50), nullable=False)
+    src_id = Column(String(50))
 
 
 class Metadata(CdmBase):
@@ -438,6 +456,7 @@ class Metadata(CdmBase):
     value_as_concept_id = Column(BigInteger)
     metadata_date = Column(Date)
     metadata_datetime = Column(DateTime)
+    src_id = Column(String(50))
 
 
 class NoteNlp(CdmBase):
@@ -456,6 +475,7 @@ class NoteNlp(CdmBase):
     term_exists = Column(String(256))
     term_temporal = Column(String(256))
     term_modifiers = Column(String(256))
+    src_id = Column(String(50))
 
 
 class VisitDetail(CdmBase):
@@ -479,12 +499,15 @@ class VisitDetail(CdmBase):
     preceding_visit_detail_id = Column(BigInteger)
     visit_detail_parent_id = Column(BigInteger)
     visit_occurrence_id = Column(BigInteger, nullable=False)
+    src_id = Column(String(50))
+
 
 class SrcParticipant(CdmBase):
     __tablename__ = "src_participant"
     participant_id = Column(BigInteger, primary_key=True)
     latest_date_of_survey = Column(DateTime)
     date_of_birth = Column(Date)
+    src_id = Column(String(50))
 
 
 class SrcMapped(CdmBase):
@@ -513,6 +536,8 @@ class SrcMapped(CdmBase):
     questionnaire_response_id = Column(BigInteger)
     unit_id = Column(String(50))
     is_invalid = Column(TINYINT(1))
+    src_id = Column(String(50))
+
 
 class SrcPersonLocation(CdmBase):
     """ Address is taken as answer to address-related questions during last survey. """
@@ -526,6 +551,7 @@ class SrcPersonLocation(CdmBase):
     state = Column(String(255))
     location_id = Column(BigInteger)
 
+
 class SrcGender(CdmBase):
     """ Contains gender information from patient surveys. """
     __tablename__ = "src_gender"
@@ -533,6 +559,7 @@ class SrcGender(CdmBase):
     ppi_code = Column(String(255))
     gender_source_concept_id = Column(BigInteger)
     gender_target_concept_id = Column(BigInteger)
+
 
 class SrcRace(CdmBase):
     """ Contains racial information from patient surveys. """
@@ -542,6 +569,7 @@ class SrcRace(CdmBase):
     race_source_concept_id = Column(BigInteger)
     race_target_concept_id = Column(BigInteger)
 
+
 class SrcEthnicity(CdmBase):
     """ Contains ethnicity information from patient surveys. """
     __tablename__ = "src_ethnicity"
@@ -549,6 +577,7 @@ class SrcEthnicity(CdmBase):
     ppi_code = Column(String(255))
     ethnicity_source_concept_id = Column(BigInteger)
     ethnicity_target_concept_id = Column(BigInteger)
+
 
 class SrcMeas(CdmBase):
     """ Contains information about physical measurements of patient, which is necessary for filling OMOP CDM tables."""
@@ -565,6 +594,8 @@ class SrcMeas(CdmBase):
     measurement_id = Column(BigInteger)
     physical_measurements_id = Column(Integer, nullable=False)
     parent_id = Column(BigInteger)
+    src_id = Column(String(50))
+
 
 class MeasurementCodeMap(CdmBase):
     """ Maps measurements code values to standard concept_ids. """
@@ -574,6 +605,7 @@ class MeasurementCodeMap(CdmBase):
     cv_concept_id = Column(BigInteger)
     cv_domain_id = Column(String(50))
 
+
 class MeasurementValueCodeMap(CdmBase):
     """ Maps measurement results value_code_value to standard concept_ids. """
     __tablename__ = "tmp_vcv_concept_lk"
@@ -581,6 +613,7 @@ class MeasurementValueCodeMap(CdmBase):
     vcv_source_concept_id = Column(BigInteger)
     vcv_concept_id = Column(BigInteger)
     vcv_domain_id = Column(String(50))
+
 
 class SrcMeasMapped(CdmBase):
     """ Joins altogether patient measurements information in source and cdm codes from 'tmp_cv_concept_lk' and
@@ -604,6 +637,8 @@ class SrcMeasMapped(CdmBase):
     measurement_id = Column(BigInteger)
     physical_measurements_id = Column(Integer, nullable=False)
     parent_id = Column(BigInteger)
+    src_id = Column(String(50))
+
 
 class SrcVisits(CdmBase):
     __tablename__ = "tmp_visits_src"
@@ -612,6 +647,8 @@ class SrcVisits(CdmBase):
     visit_start_datetime = Column(DateTime, nullable=False)
     visit_end_datetime = Column(DateTime, nullable=False)
     care_site_id = Column(BigInteger)
+    src_id = Column(String(50))
+
 
 class TempObsTarget(CdmBase):
     """ tmp_obs_target contains dates of all person's clinical events """
@@ -620,6 +657,7 @@ class TempObsTarget(CdmBase):
     person_id = Column(BigInteger)
     start_date = Column(Date)
     end_date = Column(Date)
+
 
 class TempObsEndUnion(CdmBase):
     """ In 'temp_obs_end_union' we number observations from 'tmp_obs_target' by start_date.
@@ -635,6 +673,7 @@ class TempObsEndUnion(CdmBase):
     event_type = Column(Integer)
     start_ordinal = Column(Integer)
 
+
 class TempObsEndUnionPart(CdmBase):
     __tablename__ = "temp_obs_end_union_part"
     id = Column(BigInteger, primary_key=True)
@@ -644,6 +683,7 @@ class TempObsEndUnionPart(CdmBase):
     start_ordinal = Column(Integer)
     overall_ord = Column(Integer)
 
+
 class TempObsEnd(CdmBase):
     __tablename__ = "temp_obs_end"
     id = Column(BigInteger, primary_key=True)
@@ -652,12 +692,14 @@ class TempObsEnd(CdmBase):
     start_ordinal = Column(Integer)
     overall_ord = Column(Integer)
 
+
 class TempObs(CdmBase):
     __tablename__ = "temp_obs"
     id = Column(BigInteger, primary_key=True)
     person_id = Column(BigInteger)
     observation_start_date = Column(Date)
     observation_end_date = Column(Date)
+
 
 class TempFactRelSd(CdmBase):
     """ tmp_fact_rel_sd contains blood pressure measurements """
@@ -668,12 +710,16 @@ class TempFactRelSd(CdmBase):
     diastolic_blood_pressure_ind = Column(Integer, nullable=False)
     person_id = Column(BigInteger, nullable=False)
     parent_id = Column(BigInteger)
+    src_id = Column(String(50))
+
 
 class PidRidMapping(CdmBase):
     __tablename__ = "pid_rid_mapping"
     person_id = Column(BigInteger, primary_key=True)
     research_id = Column(BigInteger)
     external_id = Column(BigInteger)
+    src_id = Column(String(50))
+
 
 class QuestionnaireResponseAdditionalInfo(CdmBase):
     __tablename__ = "questionnaire_response_additional_info"
@@ -681,4 +727,4 @@ class QuestionnaireResponseAdditionalInfo(CdmBase):
     questionnaire_response_id = Column(BigInteger)
     type = Column(String(255))
     value = Column(String(255))
-
+    src_id = Column(String(50))

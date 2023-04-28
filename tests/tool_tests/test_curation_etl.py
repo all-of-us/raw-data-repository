@@ -1,13 +1,18 @@
 from datetime import datetime, date
 from typing import Collection, Any
+import json
 
 from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, PMI_SKIP_CODE,\
-    STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
-from rdr_service.etl.model.src_clean import SrcClean
+    STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE
+from rdr_service.etl.model.src_clean import SrcClean, Observation, PidRidMapping, Person, Measurement
 from rdr_service.model.code import Code
+from rdr_service.model.measurements import PhysicalMeasurements
+from rdr_service.model.measurements import Measurement as RdrMeasurement
 from rdr_service.model.participant import Participant
+from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.dao.curation_etl_dao import CdrEtlRunHistoryDao, CdrEtlSurveyHistoryDao
-from rdr_service.participant_enums import QuestionnaireResponseStatus, QuestionnaireResponseClassificationType
+from rdr_service.participant_enums import QuestionnaireResponseStatus, QuestionnaireResponseClassificationType, \
+    PhysicalMeasurementsCollectType, OriginMeasurementUnit
 from rdr_service.tools.tool_libs.curation import CurationExportClass
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.tool_test_mixin import ToolTestMixin
@@ -102,7 +107,8 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
     @staticmethod
     def run_cdm_data_generation(cutoff=None, vocabulary='gs://curation-vocabulary/aou_vocab_20220201/',
                                 participant_origin='all', participant_list_file=None, include_surveys=None,
-                                exclude_surveys=None, exclude_participants=None):
+                                exclude_surveys=None, exclude_participants=None, omit_surveys=False,
+                                omit_measurements=False):
         CurationEtlTest.run_tool(CurationExportClass, tool_args={
             'command': 'cdm-data',
             'cutoff': cutoff,
@@ -111,7 +117,9 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             'participant_list_file': participant_list_file,
             'include_surveys': include_surveys,
             'exclude_surveys': exclude_surveys,
-            'exclude_participants': exclude_participants
+            'exclude_participants': exclude_participants,
+            'omit_surveys': omit_surveys,
+            'omit_measurements': omit_measurements
         })
 
     @staticmethod
@@ -180,7 +188,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             for question_index in range(4)
         ]
         consent_question_codes += self.session.query(Code).filter(Code.value.in_([
-            STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE
+            STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE
         ])).all()
 
         consent_questionnaire = self.data_generator.create_database_questionnaire_history()
@@ -892,3 +900,113 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         run_history = self.history_dao.get_last_etl_run_info(self.session)
         self.assertIn('test-data/test_curation_participant_list.txt',
                          run_history.filterOptions['participant_exclude_file'])
+
+    def test_survey_src_id(self):
+        consent_questionnaire = self._create_consent_questionnaire()
+
+        participant = self.data_generator.create_database_participant(participantOrigin='test_portal')
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            dateOfBirth=datetime(1982, 1, 9),
+            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10)
+        )
+        self._setup_questionnaire_response(
+            participant,
+            self.questionnaire
+        )
+        self._setup_questionnaire_response(
+            participant,
+            consent_questionnaire,
+            indexed_answers=[
+                (6, 'valueDate', datetime(1982, 1, 9))
+                # Assuming the 6th question is the date of birth
+            ],
+            authored=datetime(2020, 5, 1)
+        )
+
+        self.run_cdm_data_generation(
+            participant_origin='all',
+        )
+
+        obs_src_id = self.session.query(
+            Observation.src_id
+        ).filter(
+            Observation.person_id == participant.participantId
+        ).first()[0]
+
+        prm_src_id = self.session.query(
+            PidRidMapping.src_id
+        ).filter(
+            PidRidMapping.person_id == participant.participantId
+        ).first()[0]
+
+        person_src_id = self.session.query(
+            Person.src_id
+        ).filter(
+            Person.person_id == participant.participantId
+        ).first()[0]
+
+        self.assertEqual('test_portal', obs_src_id)
+        self.assertEqual('test_portal', prm_src_id)
+        self.assertEqual('test_portal', person_src_id)
+
+    def test_pm_src_id(self):
+        pm_dao = PhysicalMeasurementsDao()
+        consent_questionnaire = self._create_consent_questionnaire()
+        participant = self.data_generator.create_database_participant(participantOrigin='test_portal')
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            dateOfBirth=datetime(1982, 1, 9),
+            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10)
+        )
+        self._setup_questionnaire_response(
+            participant,
+            consent_questionnaire,
+            indexed_answers=[
+                (6, 'valueDate', datetime(1982, 1, 9))
+                # Assuming the 6th question is the date of birth
+            ],
+            authored=datetime(2020, 5, 1)
+        )
+
+        with open(test_data.data_path("measurements-as-fhir.json")) as measurements_file:
+            json_text = measurements_file.read() % {
+                "participant_id": participant.participantId,
+                "authored_time": datetime.now().isoformat(),
+            }
+            resource = json.loads(json_text)  # deserialize to validate
+        pm_data = {
+            "physicalMeasurementsId": 1,
+            "participantId": participant.participantId,
+            "createdSiteId": 1,
+            "finalizedSiteId": 2,
+            "origin": 'hpro',
+            "collectType": PhysicalMeasurementsCollectType.SITE,
+            "originMeasurementUnit": OriginMeasurementUnit.UNSET
+        }
+        record: PhysicalMeasurements = PhysicalMeasurements(**pm_data)
+        pm_dao.store_record_fhir_doc(record, resource)
+        pm_record: PhysicalMeasurements = pm_dao.insert(record)
+
+        test_meas = RdrMeasurement(
+            measurementId=10001,
+            physicalMeasurementsId=pm_record.physicalMeasurementsId,
+            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+            codeValue="arm-circumference",
+            measurementTime=datetime.now(),
+            valueDecimal=32.0,
+            valueUnit="cm",
+        )
+        self.session.add(test_meas)
+        self.session.commit()
+        self.run_cdm_data_generation(
+            participant_origin='all',
+        )
+
+        meas_src_id = self.session.query(
+            Measurement.src_id
+        ).filter(
+            Measurement.person_id == participant.participantId
+        ).first()[0]
+
+        self.assertEqual('hpro', meas_src_id)

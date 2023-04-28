@@ -662,9 +662,10 @@ class ParticipantDaoTest(BaseTestCase):
             )
 
         expected_union = "(SELECT participant.participant_id AS p_id, 'r_id' AS id_source, " \
-                         "participant.research_id AS id_value \nFROM participant " \
-                         "UNION SELECT participant.participant_id AS p_id, 'vibrent_id' " \
-                         "AS id_source, participant.external_id AS id_value \nFROM participant)"
+                         "participant.research_id AS id_value, participant.participant_origin AS src_id "\
+                         "\nFROM participant UNION SELECT participant.participant_id AS p_id, 'vibrent_id' " \
+                         "AS id_source, participant.external_id AS id_value, participant.participant_origin AS src_id "\
+                         "\nFROM participant)"
 
         only_sql = self.dao.get_participant_id_mapping(is_sql=True)
         self.assertIn(expected_union, only_sql)
