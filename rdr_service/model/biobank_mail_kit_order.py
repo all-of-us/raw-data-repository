@@ -167,6 +167,7 @@ class BiobankMailKitOrder(Base):
 
     isTestSample = Column("is_test_sample", Boolean, default=False)
 
+    pilotSource = Column("pilot_source", String(256), nullable=True)
 
     associatedHpoId = Column("associated_hpo_id", Integer, ForeignKey(HPO.hpoId))
     """

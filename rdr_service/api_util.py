@@ -42,6 +42,7 @@ DV_FHIR_URL = "http://joinallofus.org/fhir/"
 DV_BARCODE_URL = DV_FHIR_URL + "barcode"
 DV_ORDER_URL = DV_FHIR_URL + "order-type"
 DV_FULFILLMENT_URL = DV_FHIR_URL + "fulfillment-status"
+DV_PILOT_SOURCE_URL = DV_FHIR_URL + "pilot-source"
 HIERARCHY_CONTENT_SYSTEM_PREFIX = 'http://all-of-us.org/fhir/sites/'
 
 

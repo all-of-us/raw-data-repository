@@ -341,6 +341,7 @@ class MailKitOrderApiTestPostSupplyDelivery(MailKitOrderApiTestBase):
 
         orders = self.get_orders()
         self.assertEqual(1, len(orders))
+        self.assertEqual(orders[0].pilotSource, 'APL13')
 
     @mock.patch("rdr_service.dao.mail_kit_order_dao.get_code_id")
     def test_biobank_address_received(self, patched_code_id):
@@ -509,3 +510,4 @@ class MailKitOrderApiTestPutSupplyDelivery(MailKitOrderApiTestBase):
 
         orders = self.get_orders()
         self.assertEqual(1, len(orders))
+        self.assertEqual(orders[0].pilotSource, 'APL14')
