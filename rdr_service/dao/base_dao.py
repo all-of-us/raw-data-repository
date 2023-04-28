@@ -581,16 +581,17 @@ class BaseDao(object):
             raise NotImplementedError()
 
     def from_client_json(self):
-        """Subclasses must implement this to parse API request bodies into model objects.
+        """Implement this to parse API request bodies into model objects.
+        Not all models will have request bodies
 
-    Subclass args:
-      resource: JSON object.
-      participant_id: For subclasses which are children of participants only, the numeric ID.
-      client_id: An informative string ID of the caller (who is creating/modifying the resource).
-      id_: For updates, ID of the model to modify.
-      expected_version: For updates, require this to match the existing model's version.
-    """
-        raise NotImplementedError()
+        Subclass args:
+          resource: JSON object.
+          participant_id: For subclasses which are children of participants only, the numeric ID.
+          client_id: An informative string ID of the caller (who is creating/modifying the resource).
+          id_: For updates, ID of the model to modify.
+          expected_version: For updates, require this to match the existing model's version.
+        """
+        pass
 
     def get_model_obj_from_items(self, data_items):
         """

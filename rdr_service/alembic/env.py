@@ -111,7 +111,6 @@ def include_object_fn(engine_name):
         # Workaround what appears to be an alembic bug for multi-schema foreign
         # keys. This should still generate the initial foreign key contraint, but
         # stops repeated create/destroys of the constraint on subsequent runs.
-        # TODO(calbach): File an issue against alembic.
         if type_ == "foreign_key_constraint" and obj.table.schema == "metrics":
             return False
         if type_ == "foreign_key_constraint" and engine_name == "nph":

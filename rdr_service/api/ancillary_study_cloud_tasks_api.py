@@ -10,6 +10,7 @@ from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.config import NPH_STUDY_ID, AOU_STUDY_ID
+from rdr_service.workflow_management.nph.sms_workflows import SmsWorkflow
 
 
 class BaseAncillaryTaskApi(Resource):
@@ -127,3 +128,42 @@ class UpdateParticipantSummaryForNphTaskApi(BaseAncillaryTaskApi):
 
         logging.info('Complete.')
         return {"success": True}
+
+
+class NphSmsIngestionTaskApi(BaseAncillaryTaskApi):
+    """
+        Cloud Task endpoint: Ingests a manifest for NPH Sample Management System
+        Expected data fields are:
+            file_path: bucket-name/prefix/manifest_file.csv
+            file_type: i.e. SAMPLE_LIST, N0, etc.
+    """
+    def post(self):
+        super().post()
+
+        ingestion_data = {
+            "job": "FILE_INGESTION",
+            "file_type": self.data.get('file_type'),
+            "file_path": self.data.get('file_path')
+        }
+        workflow = SmsWorkflow(ingestion_data)
+        workflow.execute_workflow()
+
+
+class NphSmsGenerationTaskApi(BaseAncillaryTaskApi):
+    """
+        Cloud Task endpoint: Generate a manifest for NPH Sample Management System
+        Expected data fields are:
+            file_type: i.e. N1_MC1, etc.
+            recipient: UNC_META, etc.
+    """
+    def post(self):
+        super().post()
+
+        generation_data = {
+            "job": "FILE_GENERATION",
+            "file_type": self.data.get('file_type'),
+            "recipient": self.data.get('recipient')
+        }
+        workflow = SmsWorkflow(generation_data)
+        workflow.execute_workflow()
+

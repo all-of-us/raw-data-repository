@@ -73,6 +73,7 @@ from rdr_service.model.curation_etl import CdrEtlRunHistory, CdrEtlSurveyHistory
 from rdr_service.model.profile_update import ProfileUpdate
 
 from rdr_service.model.study_nph import Participant
+from rdr_service.model.study_nph_sms import SmsSample, SmsJobRun
 from rdr_service.model.rex import Study
 from rdr_service.etl.model.etl_vocabulary import Concept, ConceptRelationship, CombinedQuestionFilter,\
     CombinedSurveyFilter, SourceToConceptMap

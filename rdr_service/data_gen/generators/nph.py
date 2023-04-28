@@ -3,24 +3,29 @@ from datetime import datetime
 from rdr_service.dao import database_factory
 from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
     PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
-    DeactivationEvent, ParticipantOpsDataElement
+    DeactivationEvent, ParticipantOpsDataElement, OrderedSample
 from rdr_service.ancillary_study_resources.nph import enums
-
+from rdr_service.model.study_nph_sms import SmsJobRun, SmsSample, SmsBlocklist, SmsN0, SmsN1Mc1
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 TIME = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
 
 
-class NphDataGenerator:
+class NphBaseGenerator:
     def __init__(self):
         self.session = database_factory.get_database().make_session()
-        self._next_unique_participant_id = 100000000
-        self._next_unique_biobank_id = 1100000000
-        self._next_unique_research_id = 10000
 
     def _commit_to_database(self, model):
         self.session.add(model)
         self.session.commit()
+
+
+class NphDataGenerator(NphBaseGenerator):
+    def __init__(self):
+        super().__init__()
+        self._next_unique_participant_id = 100000000
+        self._next_unique_biobank_id = 1100000000
+        self._next_unique_research_id = 10000
 
     def unique_participant_id(self):
         next_participant_id = self._next_unique_participant_id
@@ -209,3 +214,60 @@ class NphDataGenerator:
         ops_data_element = self._ops_data_element(**kwargs)
         self._commit_to_database(ops_data_element)
         return ops_data_element
+
+
+class NphSmsDataGenerator(NphBaseGenerator):
+    @staticmethod
+    def _sms_job_run(**kwargs):
+        return SmsJobRun(**kwargs)
+
+    def create_database_sms_job_run(self, **kwargs):
+        obj = self._sms_job_run(**kwargs)
+        self._commit_to_database(obj)
+        return obj
+
+    @staticmethod
+    def _ordered_sample(**kwargs):
+        return OrderedSample(**kwargs)
+
+    def create_database_ordered_sample(self, **kwargs):
+        obj = self._ordered_sample(**kwargs)
+        self._commit_to_database(obj)
+        return obj
+
+    @staticmethod
+    def _sms_sample(**kwargs):
+        return SmsSample(**kwargs)
+
+    def create_database_sms_sample(self, **kwargs):
+        obj = self._sms_sample(**kwargs)
+        self._commit_to_database(obj)
+        return obj
+
+    @staticmethod
+    def _sms_blocklist(**kwargs):
+        return SmsBlocklist(**kwargs)
+
+    def create_database_sms_blocklist(self, **kwargs):
+        obj = self._sms_blocklist(**kwargs)
+        self._commit_to_database(obj)
+        return obj
+
+    @staticmethod
+    def _sms_n0(**kwargs):
+        return SmsN0(**kwargs)
+
+    def create_database_sms_n0(self, **kwargs):
+        obj = self._sms_n0(**kwargs)
+        self._commit_to_database(obj)
+        return obj
+
+    @staticmethod
+    def _sms_n1_mcac(**kwargs):
+        return SmsN1Mc1(**kwargs)
+
+    def create_database_sms_n1_mcac(self, **kwargs):
+        obj = self._sms_n1_mcac(**kwargs)
+        self._commit_to_database(obj)
+        return obj
+
