@@ -1,6 +1,5 @@
-from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, List
 from graphene import List as GrapheneList
 
 from sqlalchemy.orm import Query, aliased
@@ -45,12 +44,10 @@ class QueryBuilder:
 
     def get_resulting_query(self):
         resulting_query = self.query
-
         for table, expr in self.join_expressions:
             resulting_query = resulting_query.join(table, expr)
         for expr in self.filter_expressions:
             resulting_query = resulting_query.filter(expr)
-
         return resulting_query.order_by(self.order_expression)
 
 
@@ -62,24 +59,38 @@ def check_field_value(value):
 
 def load_participant_summary_data(query, biobank_prefix):
 
+    nph_order_dao = NphOrderDao()
+
+    def get_values_from_obj(obj, values: List) -> dict:
+        if not nph_site:
+            return {k: QuestionnaireStatus.UNSET for k in values}
+        return {k: getattr(obj, nph_order_dao.camel_to_snake(k)) for k in values}
+
     def get_enrollment_statuses(enrollment_data):
+        if not enrollment_data:
+            return QuestionnaireStatus.UNSET
         return list(map(
-            lambda x: {'value': x['value'], 'time': parse_date(x['time']) if x['time'] else None},
-            enrollment_data
+            lambda x: {
+                'value': x['value'],
+                'time': parse_date(x['time']) if x['time'] else None
+            },
+            enrollment_data.get('enrollment_json')
         ))
 
     def get_consent_statuses(consent_data):
+        # should never be null
+        if not consent_data:
+            return QuestionnaireStatus.UNSET
         return list(map(
             lambda x: {
                 'value': x['value'],
                 'time': parse_date(x['time']) if x['time'] else None,
                 'opt_in': str(ConsentOptInTypes(int(x['opt_in'])))
             },
-            consent_data
+            consent_data.get('consent_json')
         ))
 
     def get_nph_biospecimens_for_participant(nph_participant: NphParticipant):
-        nph_order_dao = NphOrderDao()
         return nph_order_dao.get_nph_biospecimens_for_participant(nph_participant)
 
     def get_value_from_ops_data(participant_ops_data, enum):
@@ -90,12 +101,11 @@ def load_participant_summary_data(query, biobank_prefix):
             return QuestionnaireStatus.UNSET
         return current_ops_value[0].source_value
 
-    results = []
-    records = query.all()
+    results, records = [], query.all()
 
-    for summary, site, nph_site, mapping, nph_participant, enrollment, consents, \
+    for summary, site, nph_site, mapping, nph_participant, enrollments, consents, \
             deactivated, withdrawn, ops_data in records:
-        results.append({
+        participant_obj = {
             'participantNphId': mapping.ancillary_participant_id,
             'lastModified': summary.lastModified,
             'biobankId': f"{biobank_prefix}{nph_participant.biobank_id}",
@@ -120,11 +130,11 @@ def load_participant_summary_data(query, biobank_prefix):
                 "time": deactivated.event_authored_time if deactivated else None
             },
             'nphWithdrawalStatus': {
-                "value": "Withdrawn" if withdrawn else "NULL",
+                "value": "WITHDRAWN" if withdrawn else "NULL",
                 "time": withdrawn.event_authored_time if withdrawn else None
             },
-            'nphEnrollmentStatus': get_enrollment_statuses(enrollment['enrollment_json']),
-            'nphModule1ConsentStatus': get_consent_statuses(consents['consent_json']),
+            'nphEnrollmentStatus': get_enrollment_statuses(enrollments),
+            'nphModule1ConsentStatus': get_consent_statuses(consents),
             "nphBiospecimens": get_nph_biospecimens_for_participant(nph_participant),
             'aianStatus': summary.aian,
             'suspensionStatus': {"value": check_field_value(summary.suspensionStatus),
@@ -144,15 +154,19 @@ def load_participant_summary_data(query, biobank_prefix):
                 "time": summary.questionnaireOnLifestyleAuthored
             },
             'siteId': site.googleGroup,
-            'externalId': nph_site.external_id,
-            'organizationExternalId': nph_site.organization_external_id,
-            'awardeeExternalId': nph_site.awardee_external_id,
             'questionnaireOnSocialDeterminantsOfHealth': {
                 "value": check_field_value(summary.questionnaireOnSocialDeterminantsOfHealth),
-                 "time": summary.questionnaireOnSocialDeterminantsOfHealthAuthored
+                "time": summary.questionnaireOnSocialDeterminantsOfHealthAuthored
             }
-        })
-
+        }
+        participant_obj.update(
+            get_values_from_obj(
+                obj=nph_site,
+                values=['externalId',
+                        'organizationExternalId',
+                        'awardeeExternalId']
+            ))
+        results.append(participant_obj)
     return results
 
 
@@ -193,47 +207,6 @@ def schema_field_lookup(value):
         return result
     except KeyError as err:
         raise err
-
-
-def load_participant_data(query):
-    # query.session = sessions
-
-    results = []
-    for participants in query.all():
-        samples_data = defaultdict(lambda: {
-            'stored': {
-                'parent': {
-                    'current': None
-                },
-                'child': {
-                    'current': None
-                }
-            }
-        })
-        for parent_sample in participants.samples:
-            data_struct = samples_data[f'sample{parent_sample.test}']['stored']
-            data_struct['parent']['current'] = {
-                'value': parent_sample.status,
-                'time': parent_sample.time
-            }
-
-            if len(parent_sample.children) == 1:
-                child = parent_sample.children[0]
-                data_struct['child']['current'] = {
-                    'value': child.status,
-                    'time': child.time
-                }
-
-        results.append(
-            {
-                'participantNphId': participants.participantId,
-                'lastModified': participants.lastModified,
-                'biobankId': participants.biobankId,
-                **samples_data
-            }
-        )
-
-    return []
 
 
 def validation_error_message(errors):
