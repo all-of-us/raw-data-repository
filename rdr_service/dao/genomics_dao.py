@@ -1701,8 +1701,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
     def get_bulk_metrics_for_process_update(self, *, member_ids: List[int], pipeline_id: str):
         with self.session() as session:
             records = session.query(
-                GenomicGCValidationMetrics.id,
-                GenomicGCValidationMetrics.processingCount
+                GenomicGCValidationMetrics.id
             ).filter(
                 GenomicGCValidationMetrics.genomicSetMemberId.in_(member_ids),
                 GenomicGCValidationMetrics.ignoreFlag != 1,
@@ -3879,43 +3878,50 @@ class GenomicQueriesDao(BaseDao):
                 idat_red_path,
                 and_(
                     idat_red_path.file_type == 'Red.idat',
-                    idat_red_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
+                    idat_red_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    idat_red_path.ignore_flag != 1
                 )
             ).join(
                 idat_green_path,
                 and_(
                     idat_green_path.file_type == 'Grn.idat',
-                    idat_green_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
+                    idat_green_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    idat_green_path.ignore_flag != 1
                 )
             ).join(
                 idat_red_md5_path,
                 and_(
                     idat_red_md5_path.file_type == 'Red.idat.md5sum',
-                    idat_red_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
+                    idat_red_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    idat_red_md5_path.ignore_flag != 1
                 )
             ).join(
                 idat_green_md5_path,
                 and_(
                     idat_green_md5_path.file_type == 'Grn.idat.md5sum',
-                    idat_green_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
+                    idat_green_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    idat_green_md5_path.ignore_flag != 1
                 )
             ).join(
                 vcf_path,
                 and_(
                     vcf_path.file_type == 'vcf.gz',
-                    vcf_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
+                    vcf_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    vcf_path.ignore_flag != 1
                 )
             ).join(
                 vcf_tbi_path,
                 and_(
                     vcf_tbi_path.file_type == 'vcf.gz.tbi',
-                    vcf_tbi_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
+                    vcf_tbi_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    vcf_tbi_path.ignore_flag != 1
                 )
             ).join(
                 vcf_md5_path,
                 and_(
                     vcf_md5_path.file_type == 'vcf.gz.md5sum',
-                    vcf_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
+                    vcf_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    vcf_md5_path.ignore_flag != 1
                 )
             ).outerjoin(
                 GenomicAW3Raw,
@@ -3937,21 +3943,21 @@ class GenomicQueriesDao(BaseDao):
             )
             return aw3_rows.distinct().all()
 
-    def get_aw3_wgs_records(self, **kwargs):
+    def get_aw3_wgs_records(self, **kwargs) -> sqlalchemy.orm.query.Query:
         # should be only wgs genome but query also
         # used for wgs investigation workflow
 
         def invoke_file_path_filter(*, file_type_attr):
             return getattr(file_type_attr, file_path_method)('%dragen_%')
 
-        genome_type = kwargs.get('genome_type', config.GENOME_TYPE_WGS)
-        pipeline_id = kwargs.get('pipeline_id')
+        genome_type: str = kwargs.get('genome_type', config.GENOME_TYPE_WGS)
+        pipeline_id: str = kwargs.get('pipeline_id')
 
         if not pipeline_id:
             return []
 
         # only updated dragen version files will be placed in 'dragen_v' subfolder
-        file_path_method = 'contains' if pipeline_id == config.GENOMIC_UPDATED_WGS_DRAGEN else 'notlike'
+        file_path_method: str = 'contains' if pipeline_id == config.GENOMIC_UPDATED_WGS_DRAGEN else 'notlike'
 
         hard_filtered_vcf_gz = aliased(GenomicGcDataFile)
         hard_filtered_vcf_gz_tbi = aliased(GenomicGcDataFile)
@@ -3964,6 +3970,18 @@ class GenomicQueriesDao(BaseDao):
         array_check = aliased(GenomicSetMember)
 
         with self.session() as session:
+
+            current_processed_count: sqlalchemy.orm.Query = session.query(
+                GenomicAW3Raw.sample_id,
+                func.count(GenomicAW3Raw.sample_id).label('processed_count')
+            ).filter(
+                and_(
+                    GenomicAW3Raw.genome_type == genome_type,
+                    GenomicAW3Raw.ignore_flag != 1,
+                    GenomicAW3Raw.pipeline_id == pipeline_id,
+                )
+            ).group_by(GenomicAW3Raw.sample_id).subquery()
+
             aw3_rows = session.query(
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                 GenomicSetMember.sampleId,
@@ -3998,7 +4016,12 @@ class GenomicQueriesDao(BaseDao):
                     sqlalchemy.sql.expression.literal("False")),
                 GenomicSetMember.blockResearchReason,
                 GenomicGCValidationMetrics.pipelineId,
-                (GenomicGCValidationMetrics.processingCount + 1).label('processingCount')
+                sqlalchemy.case(
+                    [
+                        (current_processed_count.c.processed_count.is_(None), 1)
+                    ],
+                    else_=current_processed_count.c.processed_count + 1
+                ).label('processingCount')
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
@@ -4080,13 +4103,8 @@ class GenomicQueriesDao(BaseDao):
                     hard_filtered_gvcf_gz_md5_sum.ignore_flag != 1
                 )
             ).outerjoin(
-                GenomicAW3Raw,
-                and_(
-                    GenomicAW3Raw.sample_id == GenomicSetMember.sampleId,
-                    GenomicAW3Raw.genome_type == genome_type,
-                    GenomicAW3Raw.ignore_flag != 1,
-                    GenomicAW3Raw.pipeline_id == pipeline_id,
-                )
+                current_processed_count,
+                current_processed_count.c.sample_id == GenomicSetMember.sampleId
             ).filter(
                 or_(
                     and_(
@@ -4098,7 +4116,6 @@ class GenomicQueriesDao(BaseDao):
                         GenomicGCValidationMetrics.ignoreFlag != 1,
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                        GenomicAW3Raw.id.is_(None),
                         GenomicGCValidationMetrics.pipelineId == pipeline_id
                     ),
                     GenomicGCValidationMetrics.aw3ReadyFlag == 1

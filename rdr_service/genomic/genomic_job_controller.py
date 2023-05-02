@@ -1855,7 +1855,6 @@ class GenomicJobController:
                     'aw3ReadyFlag': 0,
                     'aw3ManifestJobRunID': self.job_run.id,
                     'aw3ManifestFileId': manifest_id,
-                    'processingCount': metric.processingCount + 1
                 }
                 metrics_to_update.append(metric_dict)
 
