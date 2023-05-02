@@ -5,7 +5,7 @@ cron:
   schedule: every day 1:15
   target: offline
 - description: NPH Biobank Nightly File Drop (Daily)
-  schedule: every day 05:30
+  schedule: every day 01:30
   target: offline
   timezone: America/New_York
   url: /offline/NphBiobankNightlyFileDrop
