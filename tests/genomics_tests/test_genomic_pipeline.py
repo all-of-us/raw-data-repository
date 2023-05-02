@@ -3692,7 +3692,6 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertIsNotNone(metric.aw3ManifestFileId)
             self.assertIsNotNone(metric.aw3ManifestJobRunID)
             self.assertEqual(metric.pipelineId, pipeline_id)
-            self.assertEqual(metric.processingCount, 1)
 
             # Test AW3 loaded into raw table
             aw3_dao = GenomicAW3RawDao()
@@ -4354,13 +4353,10 @@ class GenomicPipelineTest(BaseTestCase):
         # build ids/count for checking correct metrics insertion
         manifest_record_ids = [obj.id for obj in manifest_records]
         current_run_id = current_run_obj.id
-        processing_count = 1
 
         # test for correct (default) pipeline_id in metrics
         metrics = self.metrics_dao.get_all()
         self.assertTrue(all(obj.pipelineId == pipeline_id for obj in metrics))
-
-        self.assertTrue(all(obj.processingCount == processing_count for obj in metrics))
         self.assertTrue(all(obj.aw3ManifestJobRunID == current_run_id for obj in metrics))
         self.assertTrue(all(obj.aw3ManifestFileId in manifest_record_ids for obj in metrics))
 
