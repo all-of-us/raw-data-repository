@@ -143,17 +143,16 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                     # function so we match up with the PDR table column/field names (in case they were also mapped)
                     mapped_field, _ = pdr_schema.make_bq_field_name(ans.question_code)
                     if mapped_field not in pdr_field_list:
-                        logging.debug("""questionnaireResponseID {0} contains previously unrecognized question code {1}
+                        logging.info("""questionnaireResponseID {0} contains previously unrecognized question code {1}
                                 for module {2}
                             """.format(qr.questionnaire_response_id, ans.question_code, module_id))
 
-                    # Handle multi-select question codes (such as ethnicity or gender identity response options) where
-                    # user provided more than one answer and concatenate into comma-separated list.  This mirrors
-                    # GROUP_CONCAT SQL logic from the deprecated sp_get_questionnaire_answers proc
+                    # Handle multi-select question codes (can have multiple questionnaire_response_answer results)
+                    # Mirrors GROUP_CONCAT SQL logic.  Note (see PDR-1785):  If a single questionnaire response
+                    # contains duplicate question/answer values, don't concatenate duplicate answers
                     if mapped_field in pdr_field_list and ans_dict[mapped_field]:
-                        # If answer value coalesced to null, skip those (found during testing in lower environments)
-                        if ans.answer:
-                            prev_answer = ans_dict[mapped_field]
+                        prev_answer = ans_dict[mapped_field]
+                        if ans.answer and ans.answer not in prev_answer:
                             ans_dict[mapped_field] = ",".join([prev_answer, ans.answer])
                     else:
                         ans_dict[mapped_field] = ans.answer
