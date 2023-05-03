@@ -486,6 +486,35 @@ class NphParticipantAPITest(BaseTestCase):
         nph_dob = second_participant.get('nphDateOfBirth')
         self.assertTrue(nph_dob == 'UNSET')
 
+    def test_optional_field_returns_correctly(self):
+        self.add_consents(nph_participant_ids=[self.base_participant_ids[0]])
+        summary_with_site = self.participant_summary_dao.get_by_participant_id(900000000)
+
+        field_to_test = "siteId"
+        query = simple_query(field_to_test)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(1, len(result.get('participant').get('edges')))
+
+        current_participant = result.get('participant').get('edges')[0].get('node')
+        self.assertTrue(current_participant.get('participantNphId') == str(self.base_participant_ids[0]))
+        aou_site = current_participant.get('siteId')
+        self.assertTrue(aou_site is not None)
+        self.assertTrue(aou_site == 'hpo-site-monroeville')
+
+        # remove site from participant summary - re-call route
+        summary_with_site.siteId = None
+        self.participant_summary_dao.update(summary_with_site)
+
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+
+        self.assertEqual(1, len(result.get('participant').get('edges')))
+        current_participant = result.get('participant').get('edges')[0].get('node')
+        self.assertTrue(current_participant.get('participantNphId') == str(self.base_participant_ids[0]))
+        aou_site = current_participant.get('siteId')
+        self.assertTrue(aou_site == 'UNSET')
+
     def test_nph_biospecimen_for_participant(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
         self._create_test_sample_updates()
