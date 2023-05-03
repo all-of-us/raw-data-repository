@@ -397,7 +397,7 @@ class ParticipantQuery(ObjectType):
                 DeactivationEvent,
                 WithdrawalEvent,
                 ParticipantOpsDataElement
-            ).join(
+            ).outerjoin(
                 Site,
                 ParticipantSummary.siteId == Site.siteId
             ).join(
