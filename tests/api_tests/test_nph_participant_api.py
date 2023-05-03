@@ -168,6 +168,7 @@ class NphParticipantAPITest(BaseTestCase):
                 )
 
     def test_client_single_result(self):
+        self.add_consents(nph_participant_ids=[self.base_participant_ids[1]])
         fetch_value = '"{}"'.format("100000001")
         query = condition_query("nphId", fetch_value, "participantNphId")
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
@@ -178,6 +179,7 @@ class NphParticipantAPITest(BaseTestCase):
                          result.get('participant').get('edges')[0].get('node').get('participantNphId'))
 
     def test_client_none_value_field(self):
+        self.add_consents(nph_participant_ids=self.base_participant_ids)
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_NONE_VALUE)
         result = json.loads(executed.data.decode('utf-8'))
 
@@ -610,6 +612,7 @@ class NphParticipantAPITest(BaseTestCase):
         self.clear_table_after_test("nph.enrollment_event")
         self.clear_table_after_test("nph.enrollment_event_type")
         self.clear_table_after_test("nph.participant_ops_data_element")
+        self.clear_table_after_test("nph.consent_event")
 
 
 class NphParticipantAPITestValidation(BaseTestCase):
