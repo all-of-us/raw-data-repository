@@ -115,7 +115,7 @@ event.listen(SmsN0, "before_update", model_update_listener)
 
 class SmsN1Mc1(NphBase):
     # Records from N1_MC1 manifest. Sourced from RDR
-    __tablename__ = "sms_n1_mcac"
+    __tablename__ = "sms_n1_mc1"
 
     id = Column("id", BigInteger, primary_key=True)
     created = Column(UTCDateTime)
