@@ -528,10 +528,12 @@ class NphParticipantAPITest(BaseTestCase):
         self.assertEqual(2, len(result.get('participant').get('edges')))
         n_participants = len(result.get('participant').get('edges'))
         for i in range(n_participants):
-            self.assertEqual(
-                12,
-                len(result.get("participant").get("edges")[i].get("node").get("nphBiospecimens"))
+            biospecimens: Iterable[Dict[str, str]] = (
+                result.get("participant").get("edges")[i].get("node").get("nphBiospecimens")
             )
+            self.assertEqual(12, len(biospecimens))
+            for biospecimen in biospecimens:
+                self.assertIsNotNone(biospecimen.get("biobankStatus")[0].get("status"))
 
     def test_nph_biospecimen_for_participant_with_pagination(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
@@ -547,10 +549,12 @@ class NphParticipantAPITest(BaseTestCase):
         result_2 = json.loads(result_2.data.decode('utf-8'))
         self.assertEqual(1, len(result_2.get('participant').get('edges')))
         for result in [result_1, result_2]:
-            self.assertEqual(
-                12,
-                len(result.get("participant").get("edges")[0].get("node").get("nphBiospecimens"))
+            biospecimens: Iterable[Dict[str, str]] = (
+                result.get("participant").get("edges")[0].get("node").get("nphBiospecimens")
             )
+            self.assertEqual(12, len(biospecimens))
+            for biospecimen in biospecimens:
+                self.assertIsNotNone(biospecimen.get("biobankStatus")[0].get("status"))
 
     @staticmethod
     def _group_ordered_samples_by_participant(
