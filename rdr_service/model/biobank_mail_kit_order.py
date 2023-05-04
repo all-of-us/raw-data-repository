@@ -12,6 +12,9 @@ from rdr_service.participant_enums import OrderShipmentStatus, OrderShipmentTrac
 
 
 class BiobankMailKitOrder(Base):
+    # WARNING: any time this table is modified, check to see if the history table should be modified as well
+    # (especially when adding or removing columns)
+
     # mapping a user_info.clientID (from config) to a system identifier
     ID_SYSTEM = {
         'vibrent': "http://vibrenthealth.com",
