@@ -4,9 +4,10 @@ from protorpc import messages
 class StoredSampleStatus(messages.Enum):
     """Status of NPH StoredSample"""
 
-    RECEIVED = 0
-    SHIPPED = 1
-    DISPOSED = 2
+    UNSET = 0
+    RECEIVED = 1
+    SHIPPED = 2
+    DISPOSED = 3
 
 
 class IncidentStatus(messages.Enum):

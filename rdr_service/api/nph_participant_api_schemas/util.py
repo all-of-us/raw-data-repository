@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from graphene import List as GrapheneList
 
 from sqlalchemy.orm import Query, aliased
@@ -62,10 +62,19 @@ class NphParticipantData:
         return QuestionnaireStatus.UNSET
 
     @classmethod
-    def get_values_from_obj(cls, obj, values: List) -> dict:
+    def get_values_from_obj(cls, obj, values: Union[set, dict]) -> dict:
+
+        def check_conversion(attr) -> str:
+            if not hasattr(obj, cls.nph_order_dao().camel_to_snake(attr)):
+                return attr
+            return cls.nph_order_dao().camel_to_snake(attr)
+
         if not obj:
             return {k: QuestionnaireStatus.UNSET for k in values}
-        return {k: getattr(obj, cls.nph_order_dao().camel_to_snake(k)) for k in values}
+
+        if type(values) is set:
+            return {k: getattr(obj, check_conversion(k)) for k in values}
+        return {k: getattr(obj, check_conversion(v)) for k, v in values.items()}
 
     @classmethod
     def get_enrollment_statuses(cls, enrollment_data: dict) -> Optional[List[dict]]:
@@ -157,7 +166,6 @@ class NphParticipantData:
                     "value": cls.check_field_value(summary.questionnaireOnLifestyle),
                     "time": summary.questionnaireOnLifestyleAuthored
                 },
-                'siteId': site.googleGroup,
                 'questionnaireOnSocialDeterminantsOfHealth': {
                     "value": cls.check_field_value(summary.questionnaireOnSocialDeterminantsOfHealth),
                     "time": summary.questionnaireOnSocialDeterminantsOfHealthAuthored
@@ -165,10 +173,15 @@ class NphParticipantData:
             }
             participant_obj.update(
                 cls.get_values_from_obj(
+                    obj=site,
+                    values={'siteId': 'googleGroup'}
+                ))
+            participant_obj.update(
+                cls.get_values_from_obj(
                     obj=nph_site,
-                    values=['externalId',
+                    values={'externalId',
                             'organizationExternalId',
-                            'awardeeExternalId']
+                            'awardeeExternalId'}
                 ))
             results.append(participant_obj)
         return results

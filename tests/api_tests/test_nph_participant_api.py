@@ -168,6 +168,7 @@ class NphParticipantAPITest(BaseTestCase):
                 )
 
     def test_client_single_result(self):
+        self.add_consents(nph_participant_ids=[self.base_participant_ids[1]])
         fetch_value = '"{}"'.format("100000001")
         query = condition_query("nphId", fetch_value, "participantNphId")
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
@@ -178,6 +179,7 @@ class NphParticipantAPITest(BaseTestCase):
                          result.get('participant').get('edges')[0].get('node').get('participantNphId'))
 
     def test_client_none_value_field(self):
+        self.add_consents(nph_participant_ids=self.base_participant_ids)
         executed = app.test_client().post('/rdr/v1/nph_participant', data=QUERY_WITH_NONE_VALUE)
         result = json.loads(executed.data.decode('utf-8'))
 
@@ -486,6 +488,35 @@ class NphParticipantAPITest(BaseTestCase):
         nph_dob = second_participant.get('nphDateOfBirth')
         self.assertTrue(nph_dob == 'UNSET')
 
+    def test_optional_field_returns_correctly(self):
+        self.add_consents(nph_participant_ids=[self.base_participant_ids[0]])
+        summary_with_site = self.participant_summary_dao.get_by_participant_id(900000000)
+
+        field_to_test = "siteId"
+        query = simple_query(field_to_test)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(1, len(result.get('participant').get('edges')))
+
+        current_participant = result.get('participant').get('edges')[0].get('node')
+        self.assertTrue(current_participant.get('participantNphId') == str(self.base_participant_ids[0]))
+        aou_site = current_participant.get('siteId')
+        self.assertTrue(aou_site is not None)
+        self.assertTrue(aou_site == 'hpo-site-monroeville')
+
+        # remove site from participant summary - re-call route
+        summary_with_site.siteId = None
+        self.participant_summary_dao.update(summary_with_site)
+
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+
+        self.assertEqual(1, len(result.get('participant').get('edges')))
+        current_participant = result.get('participant').get('edges')[0].get('node')
+        self.assertTrue(current_participant.get('participantNphId') == str(self.base_participant_ids[0]))
+        aou_site = current_participant.get('siteId')
+        self.assertTrue(aou_site == 'UNSET')
+
     def test_nph_biospecimen_for_participant(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
         self._create_test_sample_updates()
@@ -497,10 +528,12 @@ class NphParticipantAPITest(BaseTestCase):
         self.assertEqual(2, len(result.get('participant').get('edges')))
         n_participants = len(result.get('participant').get('edges'))
         for i in range(n_participants):
-            self.assertEqual(
-                12,
-                len(result.get("participant").get("edges")[i].get("node").get("nphBiospecimens"))
+            biospecimens: Iterable[Dict[str, str]] = (
+                result.get("participant").get("edges")[i].get("node").get("nphBiospecimens")
             )
+            self.assertEqual(12, len(biospecimens))
+            for biospecimen in biospecimens:
+                self.assertIsNotNone(biospecimen.get("biobankStatus")[0].get("status"))
 
     def test_nph_biospecimen_for_participant_with_pagination(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
@@ -516,10 +549,12 @@ class NphParticipantAPITest(BaseTestCase):
         result_2 = json.loads(result_2.data.decode('utf-8'))
         self.assertEqual(1, len(result_2.get('participant').get('edges')))
         for result in [result_1, result_2]:
-            self.assertEqual(
-                12,
-                len(result.get("participant").get("edges")[0].get("node").get("nphBiospecimens"))
+            biospecimens: Iterable[Dict[str, str]] = (
+                result.get("participant").get("edges")[0].get("node").get("nphBiospecimens")
             )
+            self.assertEqual(12, len(biospecimens))
+            for biospecimen in biospecimens:
+                self.assertIsNotNone(biospecimen.get("biobankStatus")[0].get("status"))
 
     @staticmethod
     def _group_ordered_samples_by_participant(
@@ -581,6 +616,7 @@ class NphParticipantAPITest(BaseTestCase):
         self.clear_table_after_test("nph.enrollment_event")
         self.clear_table_after_test("nph.enrollment_event_type")
         self.clear_table_after_test("nph.participant_ops_data_element")
+        self.clear_table_after_test("nph.consent_event")
 
 
 class NphParticipantAPITestValidation(BaseTestCase):

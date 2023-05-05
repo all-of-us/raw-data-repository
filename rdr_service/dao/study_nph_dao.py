@@ -972,7 +972,11 @@ class NphStoredSampleDao(BaseDao):
         self, nph_participant: Participant, ordered_sample: OrderedSample
     ) -> Iterable[Tuple[str]]:
         filtered_stored_samples = list(
-            filter(lambda ss: str(ss.sample_id) == ordered_sample.nph_sample_id, nph_participant.stored_samples)
+            filter(
+                lambda ss: str(ss.sample_id) == ordered_sample.aliquot_id \
+                    or str(ss.sample_id) == ordered_sample.nph_sample_id,
+                nph_participant.stored_samples
+            )
         )
         return [
             {
