@@ -4049,7 +4049,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         self.overwrite_test_user_roles([PTC])
 
-        response = self.send_post(f'Participant/{prefix_pid}/Summary', {})
+        response = self.send_post(f'Participant/{prefix_pid}/Summary', {
+            'email': self.faker.email()
+        })
         self.assertIsNotNone(response)
         self.assertEqual(response['participantId'], prefix_pid)
 
@@ -4062,7 +4064,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
         participant_summary = self.ps_dao.get_by_participant_id(pid)
         self.assertIsNone(participant_summary)
 
-        response = self.send_post(f'Participant/{prefix_pid}/Summary', {})
+        response = self.send_post(f'Participant/{prefix_pid}/Summary', {
+            'loginPhoneNumber': self.faker.phone_number()
+        })
         self.assertIsNotNone(response)
 
         participant_summary = self.ps_dao.get_by_participant_id(pid)
@@ -4128,7 +4132,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         prefix_pid = participant_one["participantId"]
         pid = prefix_pid.split('P')[1]
-        post_payload = {}
+        post_payload = { 'email': self.faker.email() }
 
         has_summary = self.ps_dao.get_by_participant_id(pid)
         self.assertIsNone(has_summary)
