@@ -813,6 +813,16 @@ class GenomicPipelineTest(BaseTestCase):
                 member.genomeType += "_investigation"
                 self.member_dao.update(member)
 
+        # Get current WGS metrics
+        all_metrics = self.metrics_dao.get_all()
+        current_wgs_metrics = list(filter(lambda x: x.limsId in ['10001', '10002'], all_metrics))
+        self.assertTrue(len(current_wgs_metrics), len(['10001', '10002']))
+
+        # Update metrics to new pipeline id for defaulting to updated metric
+        for wgs_metric in current_wgs_metrics:
+            wgs_metric.pipelineId = config.GENOMIC_UPDATED_WGS_DRAGEN
+            self.metrics_dao.upsert(wgs_metric)
+
         # Execute from cloud task
         genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data_aw5_wgs)
         genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data_aw5_array)
@@ -822,7 +832,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(len(gc_metrics), 4)
         for metrics_record in gc_metrics:
             self.assertIn(metrics_record.limsId, ['10001', '10002', '10003', '10004'])
-            if metrics_record.limsId == '10001':
+            if metrics_record.limsId == '10001':  # WGS
                 self.assertEqual(metrics_record.hfVcfDeleted, 1)
                 self.assertEqual(metrics_record.hfVcfTbiDeleted, 1)
                 self.assertEqual(metrics_record.hfVcfMd5Deleted, 1)
@@ -832,7 +842,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(metrics_record.cramDeleted, 1)
                 self.assertEqual(metrics_record.cramMd5Deleted, 1)
                 self.assertEqual(metrics_record.craiDeleted, 1)
-            elif metrics_record.limsId == '10002':
+            elif metrics_record.limsId == '10002':  # WGS
                 self.assertEqual(metrics_record.hfVcfDeleted, 1)
                 self.assertEqual(metrics_record.hfVcfTbiDeleted, 0)
                 self.assertEqual(metrics_record.hfVcfMd5Deleted, 1)
@@ -842,7 +852,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(metrics_record.cramDeleted, 1)
                 self.assertEqual(metrics_record.cramMd5Deleted, 0)
                 self.assertEqual(metrics_record.craiDeleted, 1)
-            elif metrics_record.limsId == '10003':
+            elif metrics_record.limsId == '10003':  # ARRAY
                 self.assertEqual(metrics_record.idatRedDeleted, 1)
                 self.assertEqual(metrics_record.idatGreenDeleted, 1)
                 self.assertEqual(metrics_record.idatRedMd5Deleted, 1)
@@ -850,7 +860,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(metrics_record.vcfDeleted, 1)
                 self.assertEqual(metrics_record.vcfMd5Deleted, 1)
                 self.assertEqual(metrics_record.vcfTbiDeleted, 1)
-            elif metrics_record.limsId == '10004':
+            elif metrics_record.limsId == '10004':  # ARRAY
                 self.assertEqual(metrics_record.idatRedDeleted, 1)
                 self.assertEqual(metrics_record.idatGreenDeleted, 1)
                 self.assertEqual(metrics_record.idatRedMd5Deleted, 0)
