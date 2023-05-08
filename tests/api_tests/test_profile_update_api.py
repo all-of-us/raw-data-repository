@@ -489,3 +489,27 @@ class ProfileUpdateApiTest(BaseTestCase):
             ancillary_pid='1000578448930',
             event_authored_time="2015-02-07T13:28:17.239+02:00"
         )
+
+    def test_setting_login_phone(self):
+        self.send_post(
+            'Patient',
+            request_data={
+                'id': 'P123123123',
+                'telecom': [
+                    {
+                        'system': 'phone',
+                        'value': '1234567890',
+                        'extension': [
+                            {
+                                'url': 'https://pmi-fhir-ig.github.io/pmi-fhir-ig/StructureDefinition/pmi-verified',
+                                'valueBoolean': True
+                            }
+                        ]
+                    }
+                ]
+            }
+        )
+        self.update_mock.assert_called_with(
+            participant_id=123123123,
+            login_phone_number='1234567890'
+        )
