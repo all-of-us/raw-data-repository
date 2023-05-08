@@ -178,3 +178,7 @@ def drop_table_history_table(table, op):
     )
 
     op.execute(sql)
+
+
+class InvalidDataState(ValueError):
+    ...

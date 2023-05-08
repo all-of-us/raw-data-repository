@@ -513,3 +513,27 @@ class ProfileUpdateApiTest(BaseTestCase):
             participant_id=123123123,
             login_phone_number='1234567890'
         )
+
+
+class ProfileUpdateIntegrationTest(BaseTestCase):
+    def test_error_when_removing_login(self):
+        """
+        Ensure the API gracefully handles a request trying to clear any "login" data
+        (leaving a summary without an email or phone number)
+        """
+        summary = self.data_generator.create_database_participant_summary(
+            email='test@foo.com'
+        )
+        self.send_post(
+            'Patient',
+            request_data={
+                'id': f'P{summary.participantId}',
+                'telecom': [
+                    {
+                        'system': 'email',
+                        'value': ''
+                    }
+                ]
+            },
+            expected_status=400
+        )

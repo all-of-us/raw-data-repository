@@ -431,9 +431,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
         participant_summary_one.email = self.fake.email()
         self.ps_dao.update(participant_summary_one)
 
-        participant_summary_two = self.data_generator \
-            .create_database_participant_summary(participant=participant_two)
-
         one_real_email_result = self.send_post("ParticipantSummary/CheckLogin",
                                                {"email": participant_summary_one.email})
         one_real_phone_result = self.send_post("ParticipantSummary/CheckLogin",
@@ -442,14 +439,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
                                                {"email": participant_summary_one.email,
                                                 "login_phone_number": participant_summary_one.loginPhoneNumber})
 
-        two_real_email_result = self.send_post("ParticipantSummary/CheckLogin",
-                                               {"email": participant_summary_two.email})
-        two_real_phone_result = self.send_post("ParticipantSummary/CheckLogin",
-                                               {"login_phone_number": participant_summary_two.loginPhoneNumber})
-        two_real_combo_result = self.send_post("ParticipantSummary/CheckLogin",
-                                               {"email": participant_summary_two.email,
-                                                "login_phone_number": participant_summary_two.loginPhoneNumber})
-
         self.assertEqual(len(one_real_email_result), 1)
         self.assertEqual(len(one_real_phone_result), 1)
         self.assertEqual(len(one_real_combo_result), 1)
@@ -457,14 +446,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(one_real_email_result['status'], 'IN_USE')
         self.assertEqual(one_real_phone_result['status'], 'IN_USE')
         self.assertEqual(one_real_combo_result['status'], 'IN_USE')
-
-        self.assertEqual(len(two_real_email_result), 1)
-        self.assertEqual(len(two_real_phone_result), 1)
-        self.assertEqual(len(two_real_combo_result), 1)
-
-        self.assertEqual(two_real_email_result['status'], 'NOT_IN_USE')
-        self.assertEqual(two_real_phone_result['status'], 'NOT_IN_USE')
-        self.assertEqual(two_real_combo_result['status'], 'NOT_IN_USE')
 
         fake_email = self.fake.email()
         fake_phone = '123-456-7890'
@@ -536,6 +517,27 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         self.assertEqual(null_email_result.json['message'],
                          'Missing email or login_phone_number in request')
+
+    def test_check_login_with_none(self):
+        """Make sure the CheckLogin API gives NOT_IN_USE when checking None"""
+
+        no_email_response = self.send_post(
+            "ParticipantSummary/CheckLogin",
+            {"email": None}
+        )
+        self.assertEqual('NOT_IN_USE', no_email_response['status'])
+
+        no_phone_response = self.send_post(
+            "ParticipantSummary/CheckLogin",
+            {"login_phone_number": None}
+        )
+        self.assertEqual('NOT_IN_USE', no_phone_response['status'])
+
+        null_combo_response = self.send_post(
+            "ParticipantSummary/CheckLogin",
+            {"email": None, "login_phone_number": None}
+        )
+        self.assertEqual('NOT_IN_USE', null_combo_response['status'])
 
     def test_invalid_filters_return(self):
         num_summary = 10
@@ -4049,7 +4051,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         self.overwrite_test_user_roles([PTC])
 
-        response = self.send_post(f'Participant/{prefix_pid}/Summary', {})
+        response = self.send_post(f'Participant/{prefix_pid}/Summary', {
+            'email': self.faker.email()
+        })
         self.assertIsNotNone(response)
         self.assertEqual(response['participantId'], prefix_pid)
 
@@ -4062,7 +4066,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
         participant_summary = self.ps_dao.get_by_participant_id(pid)
         self.assertIsNone(participant_summary)
 
-        response = self.send_post(f'Participant/{prefix_pid}/Summary', {})
+        response = self.send_post(f'Participant/{prefix_pid}/Summary', {
+            'loginPhoneNumber': self.faker.phone_number()
+        })
         self.assertIsNotNone(response)
 
         participant_summary = self.ps_dao.get_by_participant_id(pid)
@@ -4082,6 +4088,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         post_payload = {
             "participantId": 12344543,
             "biobankId": 12344543,
+            "email": self.faker.email()
         }
 
         response = self.send_post(f'Participant/{prefix_pid}/Summary', post_payload)
@@ -4128,7 +4135,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         prefix_pid = participant_one["participantId"]
         pid = prefix_pid.split('P')[1]
-        post_payload = {}
+        post_payload = { 'email': self.faker.email() }
 
         has_summary = self.ps_dao.get_by_participant_id(pid)
         self.assertIsNone(has_summary)

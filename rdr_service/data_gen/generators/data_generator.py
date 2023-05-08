@@ -332,6 +332,10 @@ class DataGenerator:
                 if f'{questionnaire_field}Authored' not in defaults:
                     defaults[f'{questionnaire_field}Authored'] = datetime.now()
 
+        if not (defaults.get('email') or defaults.get('loginPhoneNumber')):
+            # Set a default email if no login data is set
+            defaults['email'] = self.faker.email()
+
         return ParticipantSummary(**defaults)
 
     def create_database_consent_file(self, **kwargs):
