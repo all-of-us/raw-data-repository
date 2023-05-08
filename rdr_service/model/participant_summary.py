@@ -20,7 +20,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import expression
 
-from rdr_service.model.base import Base, model_insert_listener, model_update_listener
+from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import (
     EhrStatus,
@@ -1646,6 +1646,15 @@ Index(
 Index("participant_summary_last_modified", ParticipantSummary.hpoId, ParticipantSummary.lastModified)
 Index("participant_summary_email", ParticipantSummary.email)
 Index("participant_summary_login_phone_number", ParticipantSummary.loginPhoneNumber)
+
+
+def validate_participant_summary(_, __, summary: ParticipantSummary):
+    if not summary.email and not summary.loginPhoneNumber:
+        raise InvalidDataState('Participant summary missing an email or phone number')
+
+
+event.listen(ParticipantSummary, "before_insert", validate_participant_summary)
+event.listen(ParticipantSummary, "before_update", validate_participant_summary)
 
 
 class ParticipantGenderAnswers(Base):

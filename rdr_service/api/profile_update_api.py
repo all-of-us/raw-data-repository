@@ -1,5 +1,7 @@
+import logging
 
 from flask_restful import Resource
+from werkzeug.exceptions import BadRequest
 
 from rdr_service.api.base_api import ApiUtilMixin
 from rdr_service.api_util import PTC
@@ -9,6 +11,7 @@ from rdr_service.model.utils import from_client_participant_id
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.patient import Patient as FhirPatient
 from rdr_service.repository.profile_update_repository import ProfileUpdateRepository
 from rdr_service.services.ancillary_studies.study_enrollment import EnrollmentInterface
+from rdr_service.model.base import InvalidDataState
 
 
 class PatientPayload:
@@ -312,7 +315,11 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
         if update_payload.has_language_update:
             update_field_list['preferred_language'] = update_payload.preferred_language
 
-        ParticipantSummaryDao.update_profile_data(**update_field_list)
+        try:
+            ParticipantSummaryDao.update_profile_data(**update_field_list)
+        except InvalidDataState:
+            logging.error('Data error encountered', exc_info=True)
+            raise BadRequest('Invalid data state encountered. Please verify request data.')
 
         # Handle Ancillary Study Enrollment
         if update_payload.has_ancillary_identifier:

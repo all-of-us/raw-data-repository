@@ -489,3 +489,27 @@ class ProfileUpdateApiTest(BaseTestCase):
             ancillary_pid='1000578448930',
             event_authored_time="2015-02-07T13:28:17.239+02:00"
         )
+
+
+class ProfileUpdateIntegrationTest(BaseTestCase):
+    def test_error_when_removing_login(self):
+        """
+        Ensure the API gracefully handles a request trying to clear any "login" data
+        (leaving a summary without an email or phone number)
+        """
+        summary = self.data_generator.create_database_participant_summary(
+            email='test@foo.com'
+        )
+        self.send_post(
+            'Patient',
+            request_data={
+                'id': f'P{summary.participantId}',
+                'telecom': [
+                    {
+                        'system': 'email',
+                        'value': ''
+                    }
+                ]
+            },
+            expected_status=400
+        )
