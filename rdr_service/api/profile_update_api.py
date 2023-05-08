@@ -317,9 +317,9 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
 
         try:
             ParticipantSummaryDao.update_profile_data(**update_field_list)
-        except InvalidDataState:
+        except InvalidDataState as exc:
             logging.error('Data error encountered', exc_info=True)
-            raise BadRequest('Invalid data state encountered. Please verify request data.')
+            raise BadRequest('Invalid data state encountered. Please verify request data.') from exc
 
         # Handle Ancillary Study Enrollment
         if update_payload.has_ancillary_identifier:
