@@ -151,6 +151,9 @@ done
 echo "Nulling out empty string fields..."
 mysql -v -v -v -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < etl/set_empty_strings_to_null.sql
 
+echo "Generating voc intermediate tables..."
+mysql -v -v -v -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < etl/voc_temp_tables.sql
+
 if [ "${GENERATE_SQL_DUMP}" ]
 then
     echo "Generating dump for cdm database.."

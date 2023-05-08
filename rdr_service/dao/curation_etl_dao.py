@@ -35,7 +35,8 @@ class CdrEtlRunHistoryDao(UpdatableDao):
             CdrEtlRunHistory.cutoffDate,
             CdrEtlRunHistory.startTime,
             CdrEtlRunHistory.endTime,
-            CdrEtlRunHistory.filterOptions
+            CdrEtlRunHistory.filterOptions,
+            literal('').label('src_id')
         ).order_by(CdrEtlRunHistory.id.desc()).limit(1)
 
         if is_sql:
@@ -102,6 +103,7 @@ class CdrEtlSurveyHistoryDao(BaseDao):
                     (CdrEtlSurveyHistory.codeType == CdrEtlCodeType.QUESTION, 'QUESTION'),
                     (CdrEtlSurveyHistory.codeType == CdrEtlCodeType.ANSWER, 'ANSWER')
                 ], ).label('codeType'),
+            literal('').label('src_id')
         ).filter(CdrEtlSurveyHistory.etlRunId == etl_run_info.id)
 
         if is_sql:

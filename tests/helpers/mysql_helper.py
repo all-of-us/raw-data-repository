@@ -303,6 +303,7 @@ def _setup_consent_codes():
         session.add(create_code("Name", "PIIName_First", CodeType.QUESTION, topic))
         session.add(create_code("Name", "PIIName_Middle", CodeType.QUESTION, topic))
         session.add(create_code("Name", "PIIName_Last", CodeType.QUESTION, topic))
+        session.add(create_code("Birth Date", "PIIBirthInformation_BirthDate", CodeType.QUESTION, topic))
 
         session.add(create_code("Email Address", "ConsentPII_EmailAddress", CodeType.QUESTION, module))
 
