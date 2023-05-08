@@ -536,3 +536,4 @@ class ProfileUpdateIntegrationTest(BaseTestCase):
                 ]
             },
             expected_status=400
+        )
