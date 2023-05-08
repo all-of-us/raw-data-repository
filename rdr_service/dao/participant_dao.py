@@ -560,11 +560,13 @@ class ParticipantDao(UpdatableDao):
                     Participant.participantId.label('p_id'),
                     literal('r_id'),
                     Participant.researchId.label('id_value'),
+                    Participant.participantOrigin.label('src_id')
                 ).union(
                     session.query(
                         Participant.participantId.label('p_id'),
                         literal('vibrent_id'),
                         Participant.externalId.label('id_value'),
+                        Participant.participantOrigin.label('src_id')
                     )).filter(
                     Participant.researchId.isnot(None),
                     Participant.externalId.isnot(None)
