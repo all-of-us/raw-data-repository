@@ -1440,6 +1440,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 'middle_name': 'middleName',
                 'last_name': 'lastName',
                 'phone_number': 'phoneNumber',
+                'login_phone_number': 'loginPhoneNumber',
                 'email': 'email',
                 'birthdate': 'dateOfBirth',
                 'address_line1': 'streetAddress',

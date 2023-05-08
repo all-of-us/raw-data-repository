@@ -6,6 +6,7 @@ from rdr_service.api_util import PTC
 from rdr_service.app_util import auth_required
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.utils import from_client_participant_id
+from rdr_service.lib_fhir.fhirclient_4_0_0.models.contactpoint import ContactPoint
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.patient import Patient as FhirPatient
 from rdr_service.repository.profile_update_repository import ProfileUpdateRepository
 from rdr_service.services.ancillary_studies.study_enrollment import EnrollmentInterface
@@ -91,13 +92,46 @@ class PatientPayload:
         if not self._fhir_patient.telecom:
             return False
 
-        return any([telecom_object.system == 'phone' for telecom_object in self._fhir_patient.telecom])
+        return any([
+            telecom_object.system == 'phone' and not self._is_verified(telecom_object)
+            for telecom_object in self._fhir_patient.telecom
+        ])
 
     @property
     def phone_number(self):
         for telecom_object in self._fhir_patient.telecom:
-            if telecom_object.system == 'phone':
+            if telecom_object.system == 'phone' and not self._is_verified(telecom_object):
                 return telecom_object.value or None
+
+    @property
+    def has_login_phone_number_update(self):
+        """
+        Login phone number looks the same as a phone number, but it's verified.
+        """
+        if not self._fhir_patient.telecom:
+            return False
+
+        return any([
+            telecom_object.system == 'phone' and self._is_verified(telecom_object)
+            for telecom_object in self._fhir_patient.telecom
+        ])
+
+    @property
+    def login_phone_number(self):
+        for telecom_object in self._fhir_patient.telecom:
+            if telecom_object.system == 'phone' and self._is_verified(telecom_object):
+                return telecom_object.value or None
+
+    @classmethod
+    def _is_verified(cls, contact_point: ContactPoint):
+        """
+        Given a ContactPoint (such as an email address or phone number),
+        return whether it is verified (defaulting to False).
+        """
+        return any([
+            'pmi-verified' in extension.url and getattr(extension, 'valueBoolean', False)
+            for extension in contact_point.extension or []
+        ])
 
     @property
     def has_email_update(self):
@@ -295,6 +329,8 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
             update_field_list['last_name'] = update_payload.last_name
         if update_payload.has_phone_number_update:
             update_field_list['phone_number'] = update_payload.phone_number
+        if update_payload.has_login_phone_number_update:
+            update_field_list['login_phone_number'] = update_payload.login_phone_number
         if update_payload.has_email_update:
             update_field_list['email'] = update_payload.email
         if update_payload.has_birthdate_update:
