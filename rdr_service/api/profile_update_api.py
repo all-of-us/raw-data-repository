@@ -130,7 +130,7 @@ class PatientPayload:
         """
         return any([
             'pmi-verified' in extension.url and getattr(extension, 'valueBoolean', False)
-            for extension in contact_point.extension
+            for extension in contact_point.extension or []
         ])
 
     @property
