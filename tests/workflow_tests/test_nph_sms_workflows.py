@@ -114,7 +114,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(ingested_record.sample_type, "")
         self.assertEqual(ingested_record.additive_treatment, "EDTA")
         self.assertEqual(ingested_record.quantity_ml, "1")
-        self.assertEqual(ingested_record.manufacturer_lot, "")
+        self.assertEqual(ingested_record.manufacturer_lot, "256837")
         self.assertEqual(ingested_record.well_box_position, "D8")
         self.assertEqual(ingested_record.storage_unit_id, "SU-##########")
         self.assertEqual(ingested_record.package_id, "PKG-YYMM-######")
@@ -180,6 +180,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             sample_type="Urine",
             additive_treatment="test-treatment",
             quantity_ml="120",
+            manufacturer_lot='256837',
             age="22",
             biobank_id="test",
         )
@@ -199,6 +200,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             sample_type="Stool",
             additive_treatment="test-treatment",
             quantity_ml="120",
+            manufacturer_lot='256838',
             age="22",
             biobank_id="test",
         )
@@ -220,7 +222,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        expected_csv_path = "test-bucket-unc-meta/n1_mcac_manifests/UNC_META_n1_mcac_2023-04-25T15:13:00.csv"
+        expected_csv_path = "test-bucket-unc-meta/n1_mcac_manifests/UNC_META_n1_2023-04-25T15:13:00.csv"
 
         with open_cloud_file(expected_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file)
@@ -230,6 +232,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(csv_rows[0]['matrix_id'], "1111")
         self.assertEqual(csv_rows[0]['urine_color'], '"Color 4"')
         self.assertEqual(csv_rows[0]['urine_clarity'], '"Clean"')
+        self.assertEqual(csv_rows[0]['manufacturer_lot'], '256837')
 
         n1_mcac_dao = SmsN1Mc1Dao()
         manifest_records = n1_mcac_dao.get_all()
@@ -240,17 +243,19 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[0].diet, "LMT")
         self.assertEqual(manifest_records[0].collection_site, "UNC")
         self.assertEqual(manifest_records[0].collection_date_time, api_util.parse_date("2023-04-20T15:54:33"))
-        self.assertEqual(csv_rows[0]['urine_color'], '"Color 4"')
-        self.assertEqual(csv_rows[0]['urine_clarity'], '"Clean"')
+        self.assertEqual(manifest_records[0].urine_color, '"Color 4"')
+        self.assertEqual(manifest_records[0].urine_clarity, '"Clean"')
+        self.assertEqual(manifest_records[0].manufacturer_lot, '256837')
 
         self.assertEqual(manifest_records[1].sample_id, 10002)
         self.assertEqual(manifest_records[1].matrix_id, "1112")
         self.assertEqual(manifest_records[1].bmi, "28")
         self.assertEqual(manifest_records[1].diet, "LMT")
         self.assertEqual(manifest_records[1].collection_site, "UNC")
+        self.assertEqual(manifest_records[1].manufacturer_lot, '256838')
         self.assertEqual(manifest_records[1].collection_date_time, api_util.parse_date("2023-04-20T15:54:33"))
-        self.assertEqual(csv_rows[1]['bowel_movement'], '"I had normal formed stool, and my stool looks like Type 3 and/or 4"')
-        self.assertEqual(csv_rows[1]['bowel_movement_quality'], '"I tend to have normal formed stool - Type 3 and 4"')
+        self.assertEqual(manifest_records[1].bowel_movement, '"I had normal formed stool, and my stool looks like Type 3 and/or 4"')
+        self.assertEqual(manifest_records[1].bowel_movement_quality, '"I tend to have normal formed stool - Type 3 and 4"')
 
 
 

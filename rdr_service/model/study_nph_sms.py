@@ -145,6 +145,7 @@ class SmsN1Mc1(NphBase):
     well_box_position = Column(String(32))
     destination = Column(String(16))
     tracking_number = Column(String(32))
+    manufacturer_lot = Column(String(32))
     sample_comments = Column(String(1024))
     ethnicity = Column(String(1024))
     race = Column(String(1024))
