@@ -1,4 +1,5 @@
 import logging
+from typing import Dict, Any
 
 from flask import request
 from flask_restful import Resource
@@ -6,6 +7,7 @@ from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.study_nph_dao import NphConsentEventDao, NphPairingEventDao, NphEnrollmentEventDao, \
     NphParticipantEventActivityDao
+from rdr_service.services.ancillary_studies.nph_incident import create_nph_incident
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -167,3 +169,26 @@ class NphSmsGenerationTaskApi(BaseAncillaryTaskApi):
         workflow = SmsWorkflow(generation_data)
         workflow.execute_workflow()
 
+
+class InsertNphIncidentTaskApi(BaseAncillaryTaskApi):
+
+    """
+    Cloud Task endpoint: Inserts an incident into a Nph Incident table
+    Mandatory Fields are:
+        dev_note: i.e. "Created a New Incident"
+        message: i.e. "A New Incident"
+        notification_date: i.e. "2023-02-07T13:28:17.239+02:00"
+    Optional Fields are:
+        event_id
+        participant_id
+        src_event_id
+        trace_id
+    """
+    def post(self):
+        super(InsertNphIncidentTaskApi, self).post()
+        log_msg = f'Insert a new incident with {self.data} for ' \
+                  f'PID: {self.data.get("participant_id")}'
+        logging.info(log_msg)
+        json_payload: Dict[str, Any] = self.data
+        create_nph_incident(save_incident=True, slack=True, **json_payload)
+        return {"success": True}

@@ -222,6 +222,11 @@ def _build_resource_app():
                       TASK_PREFIX + "NphSmsGenerationTaskApi",
                       endpoint="nph_sms_generation_task", methods=["POST"])
 
+    # Cloud Task for NPH Incidents
+    _api.add_resource(ancillary_study_cloud_tasks_api.InsertNphIncidentTaskApi,
+                      TASK_PREFIX + "InsertNphIncidentTaskApi",
+                      endpoint="insert_nph_incident_task", methods=["POST"])
+
     #
     # End Ancillary Studies Cloud Task API endpoints
     #

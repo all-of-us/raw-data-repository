@@ -1,11 +1,18 @@
 import mock
+from typing import Dict, Any, Optional
+from datetime import datetime
+from uuid import uuid4
 from dateutil import parser
+from http.client import INTERNAL_SERVER_ERROR, OK
 
 from rdr_service.dao.study_nph_dao import NphEnrollmentEventDao
 from rdr_service.dao.rex_dao import ParticipantMapping
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
 from tests.helpers.unittest_base import BaseTestCase
+
+from rdr_service.dao.study_nph_dao import NphIncidentDao
+from rdr_service.model.study_nph import Incident
 
 
 class AncillaryStudiesEnrollmentCloudTaskTest(BaseTestCase):
@@ -105,3 +112,101 @@ class AncillaryStudiesEnrollmentCloudTaskTest(BaseTestCase):
         self.clear_table_after_test("nph.enrollment_event_type")
         self.clear_table_after_test("nph.participant_event_activity")
         self.clear_table_after_test("nph.enrollment_event")
+
+
+class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
+
+    DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+    TIME = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.nph_incident_dao = NphIncidentDao()
+        self.nph_data_generator = NphDataGenerator()
+
+    def _get_nph_incident_task_payload(self) -> Dict[str, Any]:
+        participant_obj_params = {
+            "ignore_flag": 0,
+            "disable_flag": 0,
+            "disable_reason": "N/A",
+            "biobank_id": 1E7,
+            "research_id": 1E7
+        }
+        nph_participant = self.nph_data_generator.create_database_participant(**participant_obj_params)
+        nph_activity_obj_params = {
+            "ignore_flag": 0,
+            "name": "sample activity",
+            "rdr_note": "sample rdr note",
+            "rule_codes": None,
+        }
+        nph_activity = self.nph_data_generator.create_database_activity(**nph_activity_obj_params)
+
+        nph_participant_event_activity_obj_params = {
+            "ignore_flag": 0,
+            "participant_id": nph_participant.id,
+            "activity_id": nph_activity.id,
+            "resource": None,
+        }
+        nph_participant_event_activity = (
+            self.nph_data_generator.create_database_participant_event_activity(
+                **nph_participant_event_activity_obj_params
+            )
+        )
+        notification_ts = datetime.now().strftime(self.DATETIME_FORMAT)
+        mock_trace_id = str(uuid4())
+        mock_dev_note = ''.join(self.fake.random_letters(length=1024))
+        mock_message = ''.join(self.fake.random_letters(length=1024))
+        nph_incident_kwargs = {
+            "dev_note": mock_dev_note,
+            "message": mock_message,
+            "notification_date": notification_ts,
+            "participant_id": nph_participant.id,
+            "event_id": nph_participant_event_activity.id,
+            "trace_id": mock_trace_id,
+        }
+        return nph_incident_kwargs
+
+    def test_insert_nph_incident_task_returns_500(self):
+        nph_incident_kwargs = {
+            "dev_note": "dev_note",
+            "message": "mock_message",
+            "participant_id": 1,
+            "event_id": 1,
+            "trace_id": 1234,
+        }
+        from rdr_service.resource import main as resource_main
+        response = self.send_post(
+            local_path='InsertNphIncidentTaskApi',
+            request_data=nph_incident_kwargs,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+            expected_status=INTERNAL_SERVER_ERROR
+        )
+        self.assertEqual(response.status_code, INTERNAL_SERVER_ERROR)
+
+    @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
+    def test_insert_nph_incident_task_returns_200(self, mock_send_message_to_webhook: mock.Mock):
+        mock_send_message_to_webhook.return_value = True
+        nph_incident_kwargs = self._get_nph_incident_task_payload()
+        from rdr_service.resource import main as resource_main
+        response = self.send_post(
+            local_path='InsertNphIncidentTaskApi',
+            request_data=nph_incident_kwargs,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+            expected_status=OK
+        )
+
+        nph_incident_message = nph_incident_kwargs.get("message")
+        nph_incident: Optional[Incident] = (
+            self.nph_incident_dao.get_by_message(message=nph_incident_message)
+        )
+        self.assertEqual(nph_incident.message, nph_incident_message)
+        self.assertEqual(nph_incident.notification_sent_flag, 1)
+        self.assertEqual(response, {'success': True})
+
+    def tearDown(self):
+        self.clear_table_after_test("nph.incident")
+        self.clear_table_after_test("nph.participant_event_activity")
+        self.clear_table_after_test("nph.activity")
+        self.clear_table_after_test("nph.participant")

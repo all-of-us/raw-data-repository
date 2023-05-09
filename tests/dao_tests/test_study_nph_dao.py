@@ -1656,6 +1656,7 @@ class NphIncidentDaoTest(BaseTestCase):
             "incident_type_str": str(IncidentType.UNSET),
             "incident_type_id": IncidentType.UNSET,
             "participant_id": nph_participant.id,
+            "src_event_id": None,
             "event_id": nph_participant_event_activity.id,
             "trace_id": mock_trace_id,
         }
