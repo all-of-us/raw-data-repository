@@ -93,7 +93,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
 
         recipient_xfer_dict = {
             "bucket": bucket,
-            "file_name": f"n1_mcac_manifests/{recipient}_n1_mcac_{clock.CLOCK.now().isoformat()}.csv"
+            "file_name": f"n1_mcac_manifests/{recipient}_n1_{clock.CLOCK.now().isoformat()}.csv"
         }
 
         return recipient_xfer_dict
@@ -123,6 +123,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsN0.well_box_position,
                 SmsSample.destination,
                 SmsN0.tracking_number,
+                SmsN0.manufacturer_lot,
                 SmsN0.sample_comments,
                 SmsSample.ethnicity,
                 SmsSample.race,
