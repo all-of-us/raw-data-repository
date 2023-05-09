@@ -3,7 +3,6 @@ from typing import Dict, Any
 
 from flask import request
 from flask_restful import Resource
-from werkzeug.exceptions import BadRequest
 from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.study_nph_dao import NphConsentEventDao, NphPairingEventDao, NphEnrollmentEventDao, \
@@ -185,44 +184,11 @@ class InsertNphIncidentTaskApi(BaseAncillaryTaskApi):
         src_event_id
         trace_id
     """
-
-    MANDATORY_FIELDS = [
-        "dev_note",
-        "message",
-        "notification_date",
-    ]
-
-    OPTIONAL_FIELDS = [
-        "event_id"
-        "participant_id",
-        "src_event_id",
-        "trace_id",
-    ]
-
-    ALL_FIELDS = set(MANDATORY_FIELDS + OPTIONAL_FIELDS)
-
-    """
-    Cloud Task endpoint: Inserts an incident into incident table
-    Expected data fields are:
-        study: i.e. 'nph'
-        activity_id: i.e. 1
-        participant_id: i.e. NPH PID
-        event_type_ie: i.e. 1
-        event_authored_time: i.e. "2023-02-07T13:28:17.239+02:00"
-    """
     def post(self):
         super(InsertNphIncidentTaskApi, self).post()
         log_msg = f'Insert a new incident with {self.data} for ' \
                   f'PID: {self.data.get("participant_id")}'
         logging.info(log_msg)
         json_payload: Dict[str, Any] = self.data
-        payload_is_valid = self._validate_payload(json_payload)
-        if not payload_is_valid:
-            raise BadRequest(f"Request must include all the fields in {self.MANDATORY_FIELDS}")
         create_nph_incident(save_incident=True, slack=True, **json_payload)
         return {"success": True}
-
-    def _validate_payload(self, payload: Dict[str, Any]) -> bool:
-        all_mandatory_fields_exist = all(field in payload for field in self.MANDATORY_FIELDS)
-        only_allowed_fields_exist = any(key not in self.ALL_FIELDS for key in payload)
-        return all_mandatory_fields_exist and only_allowed_fields_exist

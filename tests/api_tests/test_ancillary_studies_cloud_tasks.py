@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 from uuid import uuid4
 from dateutil import parser
-from http.client import BAD_REQUEST, OK
+from http.client import INTERNAL_SERVER_ERROR, OK
 
 from rdr_service.dao.study_nph_dao import NphEnrollmentEventDao
 from rdr_service.dao.rex_dao import ParticipantMapping
@@ -166,7 +166,7 @@ class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
         }
         return nph_incident_kwargs
 
-    def test_insert_nph_incident_task_returns_400(self):
+    def test_insert_nph_incident_task_returns_500(self):
         nph_incident_kwargs = {
             "dev_note": "dev_note",
             "message": "mock_message",
@@ -180,9 +180,9 @@ class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
             request_data=nph_incident_kwargs,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
-            expected_status=BAD_REQUEST
+            expected_status=INTERNAL_SERVER_ERROR
         )
-        self.assertEqual(response.status_code, BAD_REQUEST)
+        self.assertEqual(response.status_code, INTERNAL_SERVER_ERROR)
 
     @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
     def test_insert_nph_incident_task_returns_200(self, mock_send_message_to_webhook: mock.Mock):
