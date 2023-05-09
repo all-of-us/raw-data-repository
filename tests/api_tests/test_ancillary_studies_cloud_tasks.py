@@ -2,7 +2,6 @@ import mock
 from typing import Dict, Any, Optional
 from datetime import datetime
 from uuid import uuid4
-from faker import Faker
 from dateutil import parser
 from http.client import BAD_REQUEST, OK
 
@@ -12,15 +11,9 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
 from tests.helpers.unittest_base import BaseTestCase
 
-from rdr_service.clock import FakeClock
-from rdr_service.dao.study_nph_dao import (
-    NphParticipantDao, NphActivityDao,
-    NphParticipantEventActivityDao,
-    NphIncidentDao,
-)
-from rdr_service.model.study_nph import (
-    Participant, Activity, ParticipantEventActivity, Incident
-)
+from rdr_service.dao.study_nph_dao import NphIncidentDao
+from rdr_service.model.study_nph import Incident
+
 
 class AncillaryStudiesEnrollmentCloudTaskTest(BaseTestCase):
     def setUp(self):
@@ -128,26 +121,8 @@ class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        self.nph_participant_dao = NphParticipantDao()
-        self.nph_activity_dao = NphActivityDao()
-        self.nph_participant_event_activity_dao = NphParticipantEventActivityDao()
         self.nph_incident_dao = NphIncidentDao()
-        self.faker = Faker()
-
-    def _create_nph_participant(self, participant_obj: Dict[str, Any]) -> Participant:
-        nph_participant = Participant(**participant_obj)
-        with FakeClock(self.TIME):
-            return self.nph_participant_dao.insert(nph_participant)
-
-    def _create_nph_activity(self, activity_obj: Dict[str, Any]) -> Activity:
-        nph_activity = Activity(**activity_obj)
-        with FakeClock(self.TIME):
-            return self.nph_activity_dao.insert(nph_activity)
-
-    def _create_nph_participant_event_activity(self, obj: Dict[str, Any]) -> ParticipantEventActivity:
-        nph_participant_event_activity = ParticipantEventActivity(**obj)
-        with FakeClock(self.TIME):
-            return self.nph_participant_event_activity_dao.insert(nph_participant_event_activity)
+        self.nph_data_generator = NphDataGenerator()
 
     def _get_nph_incident_task_payload(self) -> Dict[str, Any]:
         participant_obj_params = {
@@ -157,14 +132,14 @@ class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
             "biobank_id": 1E7,
             "research_id": 1E7
         }
-        nph_participant = self._create_nph_participant(participant_obj_params)
+        nph_participant = self.nph_data_generator.create_database_participant(**participant_obj_params)
         nph_activity_obj_params = {
             "ignore_flag": 0,
             "name": "sample activity",
             "rdr_note": "sample rdr note",
             "rule_codes": None,
         }
-        nph_activity = self._create_nph_activity(nph_activity_obj_params)
+        nph_activity = self.nph_data_generator.create_database_activity(**nph_activity_obj_params)
 
         nph_participant_event_activity_obj_params = {
             "ignore_flag": 0,
@@ -173,12 +148,14 @@ class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
             "resource": None,
         }
         nph_participant_event_activity = (
-            self._create_nph_participant_event_activity(nph_participant_event_activity_obj_params)
+            self.nph_data_generator.create_database_participant_event_activity(
+                **nph_participant_event_activity_obj_params
+            )
         )
         notification_ts = datetime.now().strftime(self.DATETIME_FORMAT)
         mock_trace_id = str(uuid4())
-        mock_dev_note = ''.join(self.faker.random_letters(length=1024))
-        mock_message = ''.join(self.faker.random_letters(length=1024))
+        mock_dev_note = ''.join(self.fake.random_letters(length=1024))
+        mock_message = ''.join(self.fake.random_letters(length=1024))
         nph_incident_kwargs = {
             "dev_note": mock_dev_note,
             "message": mock_message,
