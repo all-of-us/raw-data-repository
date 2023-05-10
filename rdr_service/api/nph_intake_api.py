@@ -243,8 +243,8 @@ class PostIntakePayload:
     def handle_data_inserts(self, **kwargs):
 
         # insert participant ops data elements
-        if kwargs.get('participant_ops_data'):
-            self.participant_op_data.insert_bulk(kwargs.get('participant_ops_data'))
+        if kwargs.get('all_participant_ops_data'):
+            self.participant_op_data.insert_bulk(kwargs.get('all_participant_ops_data'))
 
         # insert participant activity events
         if kwargs.get('participant_event_objs'):
@@ -273,7 +273,7 @@ class PostIntakePayload:
 
         self.event_dao_map = self.build_event_dao_map()
 
-        participant_event_objs, all_event_objs, summary_updates = [], [], []
+        participant_event_objs, all_event_objs, all_participant_ops_data, summary_updates = [], [], [], []
 
         for resource in self.intake_payload:
             self.bundle_identifier = resource['identifier']['value']
@@ -281,9 +281,12 @@ class PostIntakePayload:
                                           resource['entry']))[0]
 
             participant_id = self.extract_participant_id(participant_obj=participant_obj)
-            participant_ops_data = self.create_ops_data_elements(
-                participant_id=participant_id,
-                participant_obj=participant_obj
+
+            all_participant_ops_data.extend(
+                self.create_ops_data_elements(
+                    participant_id=participant_id,
+                    participant_obj=participant_obj
+                )
             )
 
             self.participant_response.append({
@@ -324,7 +327,7 @@ class PostIntakePayload:
         self.handle_data_inserts(
             participant_event_objs=participant_event_objs,
             all_event_objs=all_event_objs,
-            participant_ops_data=participant_ops_data
+            all_participant_ops_data=all_participant_ops_data
         )
 
         if GAE_PROJECT != 'localhost' and summary_updates:

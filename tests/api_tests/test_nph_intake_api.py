@@ -230,12 +230,12 @@ class NphIntakeAPITest(BaseTestCase):
         with open(data_path('nph_m2_operational_multi.json')) as f:
             consent_json = json.load(f)
 
-        current_participant_id = 100000001
+        current_participant_ids = [100000000, 100000001]
 
         response = self.send_post('nph/Intake', request_data=consent_json)
 
-        self.assertEqual(len(response), 1)
-        self.assertTrue(all(int(obj['nph_participant_id']) == current_participant_id for obj in response))
+        self.assertEqual(len(response), 2)
+        self.assertTrue(all(int(obj['nph_participant_id']) in current_participant_ids for obj in response))
 
         # participant event activities
         participant_event_activities = self.nph_participant_activity_dao.get_all()
@@ -265,7 +265,7 @@ class NphIntakeAPITest(BaseTestCase):
 
         self.assertEqual(len(enrollment_events), 1)
         self.assertTrue(all(obj.event_type_id == 1 for obj in enrollment_events))
-        self.assertTrue(all(obj.participant_id == current_participant_id for obj in enrollment_events))
+        self.assertTrue(all(obj.participant_id == current_participant_ids[1] for obj in enrollment_events))
 
         enrollment_participant_event_activity = list(
             filter(lambda x: x.activity_id == enrollment_activity.id, participant_event_activities))
@@ -277,7 +277,7 @@ class NphIntakeAPITest(BaseTestCase):
         withdrawal_events = self.nph_withdrawal_event_dao.get_all()
 
         self.assertEqual(len(withdrawal_events), 1)
-        self.assertTrue(all(obj.participant_id == current_participant_id for obj in withdrawal_events))
+        self.assertTrue(all(obj.participant_id == current_participant_ids[1] for obj in withdrawal_events))
 
         withdrawal_participant_event_activity = list(
             filter(lambda x: x.activity_id == withdrawal_activity.id, participant_event_activities))
@@ -285,14 +285,16 @@ class NphIntakeAPITest(BaseTestCase):
 
         self.assertTrue(all(obj.event_id in withdrawal_participant_event_activity_ids for obj in withdrawal_events))
 
-        # check date of birth was added from Patient resourceType
+        # check date of birth was added from Patient resourceType - should be TWO records
         all_ops_data = self.participant_ops_data.get_all()
-        self.assertTrue(len(all_ops_data), 1)
+        self.assertTrue(len(all_ops_data), 2)
 
-        ops_data_record = self.participant_ops_data.get(1)
-        self.assertTrue(ops_data_record.participant_id == current_participant_id)
-        self.assertTrue(ops_data_record.source_value == '1988-02-02')
-        self.assertTrue(ops_data_record.source_data_element == ParticipantOpsElementTypes.lookup_by_name('BIRTHDATE'))
+        self.assertTrue(
+            all(ops_data_record.participant_id in current_participant_ids for ops_data_record in all_ops_data))
+        self.assertTrue(
+            all(ops_data_record.source_value in ['1988-02-02', '1988-02-03'] for ops_data_record in all_ops_data))
+        self.assertTrue(all(ops_data_record.source_data_element == ParticipantOpsElementTypes.lookup_by_name(
+            'BIRTHDATE') for ops_data_record in all_ops_data))
 
         # other events (should be null)
         self.assertTrue(self.nph_consent_event_dao.get_all() == [])
