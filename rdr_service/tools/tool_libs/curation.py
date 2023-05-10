@@ -12,7 +12,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql.functions import coalesce, concat
-from typing import Type, List, Callable
+from typing import Type, List, Callable, Union
 
 from rdr_service import config
 from rdr_service import api_util
@@ -81,6 +81,8 @@ class CurationExportClass(ToolBase):
         self.exclude_surveys: List[str] = []
         self.exclude_pid_list: List[int] = []
         self.cutoff_date = None
+        self.include_in_person_pm: bool = True
+        self.include_remote_pm: bool = True
 
     @classmethod
     def _render_export_select(cls, export_sql, column_name_list):
@@ -770,6 +772,18 @@ class CurationExportClass(ToolBase):
         if self.args.omit_measurements:
             filter_options["omit_measurements"] = True
 
+        if self.args.exclude_in_person_pm:
+            self.include_in_person_pm = False
+            filter_options["in_person_pm"] = False
+        else:
+            filter_options["in_person_pm"] = True
+
+        if self.args.exclude_remote_pm:
+            self.include_remote_pm = False
+            filter_options["remote_pm"] = False
+        else:
+            filter_options["remote_pm"] = True
+
         # save ETL running info into ETL history table
         if not self.args.vocabulary:
             raise NameError(
@@ -801,7 +815,8 @@ class CurationExportClass(ToolBase):
             self._populate_src_tables(session)
             if not self.args.omit_measurements:
                 _logger.debug("Populating measurements")
-                self._populate_measurements(session, self.cutoff_date)
+                self._populate_measurements(session, self.cutoff_date, self.include_in_person_pm,
+                                            self.include_remote_pm)
             if not self.args.omit_surveys:
                 _logger.debug("Populating observation survey data")
                 self.run_function_on_pids(self._populate_observation_surveys, session, "observation survey data")
@@ -1580,10 +1595,19 @@ class CurationExportClass(ToolBase):
                             """)
 
     @staticmethod
-    def _populate_measurements(session, cutoff_date:datetime):
+    def _populate_measurements(session, cutoff_date: Union[None, datetime], include_onsite: bool = True,
+                               include_remote: bool = True):
         cutoff_filter = ''
         if cutoff_date:
             cutoff_filter = f"AND pm.finalized < '{cutoff_date.strftime('%Y-%m-%d')}'"
+
+        if include_onsite and include_remote:
+            collect_type_filter = ""
+        elif include_onsite:
+            collect_type_filter = "AND (pm.collect_type <> 2 OR pm.collect_type IS NULL)"
+        elif include_remote:
+            collect_type_filter = "AND pm.collect_type = 2"
+
         session.execute(f"""INSERT INTO cdm.src_meas
                             SELECT
                                 0                               AS id,
@@ -1598,12 +1622,13 @@ class CurationExportClass(ToolBase):
                                 meas.measurement_id             AS measurement_id,
                                 pm.physical_measurements_id     AS physical_measurements_id,
                                 meas.parent_id                  AS parent_id,
-                                pm.origin                       AS src_id
+                                pm.origin                       AS src_id,
+                                pm.collect_type                 AS collect_type
                             FROM rdr.measurement meas
                             INNER JOIN rdr.physical_measurements pm
                                 ON meas.physical_measurements_id = pm.physical_measurements_id
                                 AND pm.final = 1
-                                AND (pm.collect_type <> 2 OR pm.collect_type IS NULL)
+                                {collect_type_filter}
                                 AND (pm.status <> 2 OR pm.status IS NULL) {cutoff_filter}
                             INNER JOIN cdm.person pe
                                 ON pe.person_id = pm.participant_id
@@ -1674,7 +1699,8 @@ class CurationExportClass(ToolBase):
                                 meas.measurement_id                         AS measurement_id,
                                 meas.physical_measurements_id               AS physical_measurements_id,
                                 meas.parent_id                              AS parent_id,
-                                meas.src_id                                 AS src_id
+                                meas.src_id                                 AS src_id,
+                                meas.collect_type                           AS collect_type
                             FROM cdm.src_meas meas
                             LEFT JOIN cdm.tmp_cv_concept_lk tmp1
                                 ON meas.code_value = tmp1.code_value
@@ -1806,7 +1832,8 @@ class CurationExportClass(ToolBase):
                                       DATE(meas.measurement_time)             AS measurement_date,
                                       meas.measurement_time                   AS measurement_datetime,
                                       NULL                                    AS measurement_time,
-                                      44818701                                AS measurement_type_concept_id, -- 44818701, From physical examination
+                                      IF(meas.collect_type <> 2 OR meas.collect_type IS NULL, 44818701, 32865)
+                                                                              AS measurement_type_concept_id, -- 44818701, From physical examination. 32865, Patient self-report
                                       0                                       AS operator_concept_id,
                                       meas.value_decimal                      AS value_as_number,
                                       meas.vcv_concept_id                     AS value_as_concept_id,
@@ -2145,6 +2172,10 @@ def add_additional_arguments(parser):
                             action="store_true", default=False)
     cdm_parser.add_argument("--exclude-participants", help="Path to a file containing a list of PIDs to exclude",
                             type=str, default=None)
+    cdm_parser.add_argument("--exclude-in-person-pm", help="Excludes in-person physical measurements",
+                            action="store_true", default=False)
+    cdm_parser.add_argument("--exclude-remote-pm", help="Excludes remote physical measurements",
+                            action="store_true", default=False)
 
     manage_code_parser = subparsers.add_parser('exclude-code')
     manage_code_parser.add_argument("--operation", help="operation type for exclude code command: add or remove",

@@ -1,6 +1,6 @@
 from datetime import datetime, date
 from typing import Collection, Any
-import json
+from decimal import Decimal
 
 from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, PMI_SKIP_CODE,\
     STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE
@@ -28,6 +28,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         super(CurationEtlTest, self).setUp(with_consent_codes=True)
         self._setup_data()
         self.history_dao = CdrEtlRunHistoryDao()
+        self.pm_dao = PhysicalMeasurementsDao()
 
     def _setup_data(self):
         self.participant = self.data_generator.create_database_participant()
@@ -108,7 +109,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
     def run_cdm_data_generation(cutoff=None, vocabulary='gs://curation-vocabulary/aou_vocab_20220201/',
                                 participant_origin='all', participant_list_file=None, include_surveys=None,
                                 exclude_surveys=None, exclude_participants=None, omit_surveys=False,
-                                omit_measurements=False):
+                                omit_measurements=False, exclude_in_person_pm=False, exclude_remote_pm=False):
         CurationEtlTest.run_tool(CurationExportClass, tool_args={
             'command': 'cdm-data',
             'cutoff': cutoff,
@@ -119,7 +120,9 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             'exclude_surveys': exclude_surveys,
             'exclude_participants': exclude_participants,
             'omit_surveys': omit_surveys,
-            'omit_measurements': omit_measurements
+            'omit_measurements': omit_measurements,
+            "exclude_in_person_pm": exclude_in_person_pm,
+            "exclude_remote_pm": exclude_remote_pm
         })
 
     @staticmethod
@@ -950,8 +953,87 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertEqual('test_portal', prm_src_id)
         self.assertEqual('test_portal', person_src_id)
 
+    def _setup_pm(self, participant_id: int):
+        """ Creates in-person and remote physical measurements for a participant_id"""
+        resource = {"entry": [
+            {"resource":
+                 {"date": datetime.now().isoformat()}
+             }
+        ]}
+
+        in_person_pm_data = {
+            "physicalMeasurementsId": 1,
+            "participantId": participant_id,
+            "createdSiteId": 1,
+            "finalizedSiteId": 2,
+            "origin": 'hpro',
+            "collectType": PhysicalMeasurementsCollectType.SITE,
+            "originMeasurementUnit": OriginMeasurementUnit.UNSET
+        }
+
+        record: PhysicalMeasurements = PhysicalMeasurements(**in_person_pm_data)
+        self.pm_dao.store_record_fhir_doc(record, resource)
+        pm_record: PhysicalMeasurements = self.pm_dao.insert(record)
+
+        meas_in_person_height = RdrMeasurement(
+            measurementId=10001,
+            physicalMeasurementsId=pm_record.physicalMeasurementsId,
+            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+            codeValue="height",
+            measurementTime=datetime.now(),
+            valueDecimal=162.0,
+            valueUnit="cm",
+        )
+        meas_in_person_weight = RdrMeasurement(
+            measurementId=10002,
+            physicalMeasurementsId=pm_record.physicalMeasurementsId,
+            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+            codeValue="weight",
+            measurementTime=datetime.now(),
+            valueDecimal=63.0,
+            valueUnit="kg",
+        )
+        self.session.add(meas_in_person_weight)
+        self.session.add(meas_in_person_height)
+
+        remote_pm_data = {
+            "physicalMeasurementsId": 2,
+            "participantId": participant_id,
+            "createdSiteId": 1,
+            "finalizedSiteId": 2,
+            "origin": 'test-portal',
+            "collectType": PhysicalMeasurementsCollectType.SELF_REPORTED,
+            "originMeasurementUnit": OriginMeasurementUnit.UNSET
+        }
+
+        record: PhysicalMeasurements = PhysicalMeasurements(**remote_pm_data)
+        self.pm_dao.store_record_fhir_doc(record, resource)
+        pm_record: PhysicalMeasurements = self.pm_dao.insert(record)
+
+        meas_remote_height = RdrMeasurement(
+            measurementId=10005,
+            physicalMeasurementsId=pm_record.physicalMeasurementsId,
+            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+            codeValue="height",
+            measurementTime=datetime.now(),
+            valueDecimal=165.0,
+            valueUnit="cm",
+        )
+        meas_remote_weight = RdrMeasurement(
+            measurementId=10006,
+            physicalMeasurementsId=pm_record.physicalMeasurementsId,
+            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+            codeValue="weight",
+            measurementTime=datetime.now(),
+            valueDecimal=62.0,
+            valueUnit="kg",
+        )
+
+        self.session.add(meas_remote_weight)
+        self.session.add(meas_remote_height)
+        self.session.commit()
+
     def test_pm_src_id(self):
-        pm_dao = PhysicalMeasurementsDao()
         consent_questionnaire = self._create_consent_questionnaire()
         participant = self.data_generator.create_database_participant(participantOrigin='test_portal')
         self.data_generator.create_database_participant_summary(
@@ -969,44 +1051,104 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             authored=datetime(2020, 5, 1)
         )
 
-        with open(test_data.data_path("measurements-as-fhir.json")) as measurements_file:
-            json_text = measurements_file.read() % {
-                "participant_id": participant.participantId,
-                "authored_time": datetime.now().isoformat(),
-            }
-            resource = json.loads(json_text)  # deserialize to validate
-        pm_data = {
-            "physicalMeasurementsId": 1,
-            "participantId": participant.participantId,
-            "createdSiteId": 1,
-            "finalizedSiteId": 2,
-            "origin": 'hpro',
-            "collectType": PhysicalMeasurementsCollectType.SITE,
-            "originMeasurementUnit": OriginMeasurementUnit.UNSET
-        }
-        record: PhysicalMeasurements = PhysicalMeasurements(**pm_data)
-        pm_dao.store_record_fhir_doc(record, resource)
-        pm_record: PhysicalMeasurements = pm_dao.insert(record)
+        self._setup_pm(participant.participantId)
 
-        test_meas = RdrMeasurement(
-            measurementId=10001,
-            physicalMeasurementsId=pm_record.physicalMeasurementsId,
-            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
-            codeValue="arm-circumference",
-            measurementTime=datetime.now(),
-            valueDecimal=32.0,
-            valueUnit="cm",
-        )
-        self.session.add(test_meas)
-        self.session.commit()
         self.run_cdm_data_generation(
             participant_origin='all',
         )
 
-        meas_src_id = self.session.query(
+        inperson_src_id = self.session.query(
             Measurement.src_id
         ).filter(
-            Measurement.person_id == participant.participantId
+            Measurement.person_id == participant.participantId,
+            Measurement.measurement_type_concept_id == 44818701
         ).first()[0]
 
-        self.assertEqual('hpro', meas_src_id)
+        remote_src_id = self.session.query(
+            Measurement.src_id
+        ).filter(
+            Measurement.person_id == participant.participantId,
+            Measurement.measurement_type_concept_id == 32865
+        ).first()[0]
+
+        self.assertEqual('hpro', inperson_src_id)
+        self.assertEqual('test-portal', remote_src_id)
+
+    def test_include_physical_measurements(self):
+        consent_questionnaire = self._create_consent_questionnaire()
+        participant = self.data_generator.create_database_participant(participantOrigin='test_portal')
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            dateOfBirth=datetime(1982, 1, 9),
+            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10)
+        )
+        self._setup_questionnaire_response(
+            participant,
+            consent_questionnaire,
+            indexed_answers=[
+                (6, 'valueDate', datetime(1982, 1, 9))
+                # Assuming the 6th question is the date of birth
+            ],
+            authored=datetime(2020, 5, 1)
+        )
+        self._setup_pm(participant.participantId)
+        in_person_height = (44818701, 'height', Decimal('162.000000'), 'cm')
+        in_person_weight = (44818701, 'weight', Decimal('63.000000'), 'kg')
+        remote_height = (32865, 'height', Decimal('165.000000'), 'cm')
+        remote_weight = (32865, 'weight', Decimal('62.000000'), 'kg')
+
+        self.run_cdm_data_generation(
+            participant_origin='all',
+            exclude_in_person_pm=False,
+            exclude_remote_pm=False
+        )
+
+        measurements = self.session.query(Measurement.measurement_type_concept_id,
+                                          Measurement.measurement_source_value,
+                                          Measurement.value_as_number,
+                                          Measurement.unit_source_value).all()
+
+        # Check if in-person and remote measurements are in table
+        self.assertIn(in_person_height, measurements)
+        self.assertIn(in_person_weight, measurements)
+        self.assertIn(remote_height, measurements)
+        self.assertIn(remote_weight, measurements)
+
+        self.session.commit()
+
+        self.run_cdm_data_generation(
+            participant_origin='all',
+            exclude_in_person_pm=True,
+            exclude_remote_pm=False
+        )
+
+        measurements = self.session.query(Measurement.measurement_type_concept_id,
+                                          Measurement.measurement_source_value,
+                                          Measurement.value_as_number,
+                                          Measurement.unit_source_value).all()
+
+        # Only remote measurements should be present
+        self.assertNotIn(in_person_height, measurements)
+        self.assertNotIn(in_person_weight, measurements)
+        self.assertIn(remote_height, measurements)
+        self.assertIn(remote_weight, measurements)
+
+        self.session.commit()
+
+        self.run_cdm_data_generation(
+            participant_origin='all',
+            exclude_in_person_pm=False,
+            exclude_remote_pm=True
+        )
+
+        measurements = self.session.query(Measurement.measurement_type_concept_id,
+                                          Measurement.measurement_source_value,
+                                          Measurement.value_as_number,
+                                          Measurement.unit_source_value).all()
+
+        # Only in-person measurements should be present
+        self.assertIn(in_person_height, measurements)
+        self.assertIn(in_person_weight, measurements)
+        self.assertNotIn(remote_height, measurements)
+        self.assertNotIn(remote_weight, measurements)
+
