@@ -22,6 +22,10 @@
     {
       "url": "extension-url",
       "valueString": "test string"
+    },
+    {
+      "url": "datetime-extension",
+      "valueDateTime": "2023-05-10T10:00:01.123-09:00"
     }
   ],
   "group": {
