@@ -380,12 +380,11 @@ class NphParticipantAPITest(BaseTestCase):
 
         result_participant_list = result.get('participant').get('edges')
         self.assertEqual(1, len(result_participant_list))
-        self.assertTrue(
-            result_participant_list[0].get('node').get('biobankId') == f'T{current_nph_participant.biobank_id}'
+        self.assertEqual(
+            result_participant_list[0].get('node').get('biobankId'), f'T{current_nph_participant.biobank_id}'
         )
-        self.assertTrue(
-            result_participant_list[0].get('node').get('participantNphId') ==
-            str(current_nph_participant.id)
+        self.assertEqual(
+            result_participant_list[0].get('node').get('participantNphId'), str(current_nph_participant.id)
         )
 
         # biobankId w/o prefix filter - response biobankId nphParticipantId
@@ -398,12 +397,11 @@ class NphParticipantAPITest(BaseTestCase):
 
         result_participant_list = result.get('participant').get('edges')
         self.assertEqual(1, len(result_participant_list))
-        self.assertTrue(
-            result_participant_list[0].get('node').get('biobankId') == f'T{current_nph_participant.biobank_id}'
+        self.assertEqual(
+            result_participant_list[0].get('node').get('biobankId'), f'T{current_nph_participant.biobank_id}'
         )
-        self.assertTrue(
-            result_participant_list[0].get('node').get('participantNphId') ==
-            str(current_nph_participant.id)
+        self.assertEqual(
+            result_participant_list[0].get('node').get('participantNphId'), str(current_nph_participant.id)
         )
 
         # fake biobankId w prefix filter - should be no response
@@ -412,7 +410,7 @@ class NphParticipantAPITest(BaseTestCase):
             data='{participant (biobankId: "%s" ) { edges { node { participantNphId biobankId } } } }' % '21212121212'
         )
         result = json.loads(executed.data.decode('utf-8'))
-        self.assertTrue(result.get('participant').get('edges') == [])
+        self.assertEqual(result.get('participant').get('edges'), [])
 
     def test_nphEnrollmentStatus_fields(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
