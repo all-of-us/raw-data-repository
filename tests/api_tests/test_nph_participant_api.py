@@ -366,6 +366,54 @@ class NphParticipantAPITest(BaseTestCase):
         result = json.loads(executed.data.decode('utf-8'))
         self.assertTrue(result.get('participant').get('edges') == [])
 
+    def test_nph_prefix_strip_filter_parameter(self):
+        self.add_consents(nph_participant_ids=self.base_participant_ids)
+        current_nph_participant = self.nph_participant_dao.get(self.base_participant_ids[0])
+
+        # biobankId w/ prefix filter - response biobankId nphParticipantId
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (biobankId: "%s" ) { edges { node { participantNphId biobankId } } } }' %
+                 f'T{current_nph_participant.biobank_id}'
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+
+        result_participant_list = result.get('participant').get('edges')
+        self.assertEqual(1, len(result_participant_list))
+        self.assertTrue(
+            result_participant_list[0].get('node').get('biobankId') == f'T{current_nph_participant.biobank_id}'
+        )
+        self.assertTrue(
+            result_participant_list[0].get('node').get('participantNphId') ==
+            str(current_nph_participant.id)
+        )
+
+        # biobankId w/o prefix filter - response biobankId nphParticipantId
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (biobankId: "%s" ) { edges { node { participantNphId biobankId } } } }' %
+                 current_nph_participant.biobank_id
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+
+        result_participant_list = result.get('participant').get('edges')
+        self.assertEqual(1, len(result_participant_list))
+        self.assertTrue(
+            result_participant_list[0].get('node').get('biobankId') == f'T{current_nph_participant.biobank_id}'
+        )
+        self.assertTrue(
+            result_participant_list[0].get('node').get('participantNphId') ==
+            str(current_nph_participant.id)
+        )
+
+        # fake biobankId w prefix filter - should be no response
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (biobankId: "%s" ) { edges { node { participantNphId biobankId } } } }' % '21212121212'
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertTrue(result.get('participant').get('edges') == [])
+
     def test_nphEnrollmentStatus_fields(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
         self.nph_data_gen.create_database_enrollment_event(
