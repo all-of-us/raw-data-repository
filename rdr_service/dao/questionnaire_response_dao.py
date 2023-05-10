@@ -16,7 +16,7 @@ from werkzeug.exceptions import BadRequest
 from rdr_service import singletons
 from rdr_service.api_util import dispatch_task
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
-from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
+from rdr_service.lib_fhir.fhirclient_1_0_6.models import fhirdate, questionnaireresponse as fhir_questionnaireresponse
 from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME, \
     PARTICIPANT_COHORT_3_START_TIME, Race, get_all_races_from_codes
 from rdr_service.app_util import get_account_origin_id, is_self_request
@@ -1266,6 +1266,10 @@ class QuestionnaireResponseDao(BaseDao):
         fhir_fields = fhir_extension.__dict__
         filtered_values = {}
         for name, value in fhir_fields.items():
+            # Get date value from FHIRDate object
+            if isinstance(value, fhirdate.FHIRDate):
+                value = value.date
+
             if value is not None and (name == 'url' or name.startswith('value')):
                 filtered_values[name] = value
 

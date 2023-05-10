@@ -606,6 +606,11 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             QuestionnaireResponseExtension.questionnaireResponseId == questionnaire_response_id
         ).one()
         self.assertEqual('code_value', code_extension.valueCode)
+        datetime_extension: QuestionnaireResponseExtension = self.session.query(QuestionnaireResponseExtension).filter(
+            QuestionnaireResponseExtension.url == 'datetime-extension',
+            QuestionnaireResponseExtension.questionnaireResponseId == questionnaire_response_id
+        ).one()
+        self.assertEqual(datetime.datetime(2023, 5, 10, 19, 0, 1), datetime_extension.valueDateTime)
 
         #  sending an update response with history reference
         with open(data_path('questionnaire_response4.json')) as fd:
