@@ -134,6 +134,10 @@ def _build_filter_parameters(cls):
     return result
 
 
+def _strip_prefix(value: str, pos: int = 0) -> str:
+    return value[1:] if not value[pos].isnumeric() else value
+
+
 class ParticipantField(ObjectType):
     # AOU
     participantNphId = SortableField(
@@ -146,7 +150,8 @@ class ParticipantField(ObjectType):
         String,
         description='NPH Biobank id value for the participant, sourced from NPH participant data table',
         sort_modifier=lambda context: context.set_order_expression(Participant.biobank_id),
-        filter_modifier=lambda context, value: context.add_filter(Participant.biobank_id == value)
+        filter_modifier=lambda context, value: context.add_filter(
+            Participant.biobank_id == _strip_prefix(value))
     )
     firstName = SortableField(
         String,
