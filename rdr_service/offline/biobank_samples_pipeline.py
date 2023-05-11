@@ -17,9 +17,10 @@ from rdr_service import config
 from rdr_service.api_util import list_blobs
 from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES,\
     WITHDRAWAL_CEREMONY_NO, WITHDRAWAL_CEREMONY_QUESTION_CODE
-from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
-    BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN
+from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, \
+    BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN, RDR_SLACK_WEBHOOKS
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.database_utils import MYSQL_ISO_DATE_FORMAT, parse_datetime, replace_isodate
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
@@ -34,6 +35,7 @@ from rdr_service.model.site import Site
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, WithdrawalStatus
+from rdr_service.services.slack_utils import SlackMessageHandler
 
 # Format for dates in output filenames for the reconciliation report.
 _FILENAME_DATE_FORMAT = "%Y-%m-%d"
@@ -796,3 +798,52 @@ def in_past_n_days(result, now, n_days, ordered_before=None):
     if max_time:
         return (now - max_time).days <= n_days
     return False
+
+
+# DA-3543: Ordered DNA samples where order was finalized at least a week ago, but haven't been acknowledged by biobank
+# Intended for weekly check/alerts. Orders from more than 30 days ago will not be included in the alerts
+MISSING_STORED_SAMPLES_SQL = """
+                select p.participant_id, p.biobank_id, bo.biobank_order_id, bos.finalized,
+                     GROUP_CONCAT(bos.test) as missing_samples
+                from biobank_order bo
+                join participant p on bo.participant_id = p.participant_id
+                join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
+                left join biobank_stored_sample bss on p.biobank_id = bss.biobank_id
+                     and bss.test = bos.test
+                     and bss.biobank_order_identifier IN (
+                           select `value` from biobank_order_identifier where biobank_order_id = bo.biobank_order_id
+                    )
+                where bo.order_status != :cancelled
+                      and bos.finalized is not null
+                      and DATE(bos.finalized)
+                           BETWEEN DATE(DATE_SUB(now(), INTERVAL 30 DAY)) AND DATE(DATE_SUB(now(), INTERVAL 7 DAY))
+                      and bo.order_origin IN :origin_filters
+                      and bos.test IN :dna_tests
+                      and bss.biobank_stored_sample_id is null
+                group by p.participant_id, p.biobank_id, bo.biobank_order_id, bos.finalized
+
+        """
+def missing_samples_check():
+    dna_tests = config.getSettingList(config.DNA_SAMPLE_TEST_CODES)
+    slack_config = config.getSettingJson(RDR_SLACK_WEBHOOKS, {})
+    webhook_url = slack_config.get('rdr_biobank_missing_samples_webhook', None)
+    # May expand what types of orders we monitor in the future, so use a list for WHERE IN clause
+    origin_filters = ['hpro']
+    dao = BiobankOrderDao()
+    with dao.session() as session:
+        results = session.execute(
+            MISSING_STORED_SAMPLES_SQL,
+            {"cancelled": int(BiobankOrderStatus.CANCELLED), "dna_tests": dna_tests, "origin_filters": origin_filters}
+        )
+
+        if results.rowcount > 0:
+            alert_msg = 'DNA samples ordered at least a week ago but still not reported by biobank:\n'
+            for rec in results:
+                alert_msg += f'Biobank ID: A{rec.biobank_id}, order: {rec.biobank_order_id}, ' + \
+                             f'finalized: {rec.finalized}, missing ordered DNA samples: {rec.missing_samples}\n'
+            # Send Slack notification if slack webhook configured, and log error as backup indication
+            if webhook_url:
+                slack_handler = SlackMessageHandler(webhook_url=webhook_url)
+                slack_handler.send_message_to_webhook(message_data={'text': alert_msg})
+
+            logging.error(alert_msg)
