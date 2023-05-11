@@ -81,7 +81,6 @@ class RetentionEligibility:
             or self._is_less_than_18_months_ago(self._participant.fam_med_history_response_timestamp)
             or self._is_less_than_18_months_ago(self._participant.sdoh_response_timestamp)
             or self._is_less_than_18_months_ago(self._participant.latest_cope_response_timestamp)
-
             or self._is_less_than_18_months_ago(self._participant.remote_pm_response_timestamp)
             or self._is_less_than_18_months_ago(self._participant.life_func_response_timestamp)
             or (
