@@ -15,7 +15,9 @@ from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
-from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from rdr_service.model.biobank_order import (
+    BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample, BiobankOrderStatus
+)
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.model.participant import Participant
@@ -535,3 +537,114 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
 
         self.assertIsNotNone(cumulative_report_params)
         self.assertEqual(datetime(2021, 8, 1), cumulative_report_params['n_days_ago'])
+
+    def test_overdue_dna_sample(self):
+        self.temporarily_override_config_setting(config.RDR_SLACK_WEBHOOKS, {
+            'rdr_biobank_missing_samples_webhook': 'fakewh12345'
+        })
+        participant = self.data_generator.create_database_participant()
+        # Biobank order/samples finalized 7 or more days ago (since today's date)
+        today = datetime.utcnow().replace(microsecond=0)
+        order_ts = today - timedelta(days=8)
+        order = self.data_generator.create_database_biobank_order(
+            participantId=participant.participantId,
+            orderOrigin='hpro',
+            orderStatus=BiobankOrderStatus.UNSET,
+            finalizedTime=order_ts
+        )
+        order_identifier = self.data_generator.create_database_biobank_order_identifier(
+            value='1234ABC',
+            biobankOrderId=order.biobankOrderId
+        )
+        # Create DNA and non-DNA ordered samples, but only non-DNA test has a stored sample record
+        dna_ordered_sample = self.data_generator.create_database_biobank_ordered_sample(
+            biobankOrderId=order.biobankOrderId,
+            test='1ED04',
+            collected=order_ts,
+            processed=order_ts,
+            finalized=order_ts
+        )
+        non_dna_ordered_sample = self.data_generator.create_database_biobank_ordered_sample(
+            biobankOrderId=order.biobankOrderId,
+            test='1UR10',
+            collected=order_ts,
+            processed=order_ts,
+            finalized=order_ts
+        )
+        self.data_generator.create_database_biobank_stored_sample(
+            biobankId=participant.biobankId,
+            biobankOrderIdentifier=order_identifier.value,
+            test=non_dna_ordered_sample.test,
+            status=SampleStatus.RECEIVED
+        )
+        # Expect notification that the DNA sample is overdue/missing
+        expected_notification_substrings = [
+            f'Biobank ID: A{participant.biobankId}, order: {order.biobankOrderId}, ',
+            f'finalized: {dna_ordered_sample.finalized}, missing ordered DNA samples: {dna_ordered_sample.test}'
+        ]
+        with mock.patch('rdr_service.offline.biobank_samples_pipeline.logging') as mock_logging, \
+             mock.patch('rdr_service.services.slack_utils.SlackMessageHandler.send_message_to_webhook') as mock_slack:
+            biobank_samples_pipeline.missing_samples_check()
+            error_log_call = mock_logging.error.call_args
+            slack_webhook_args = mock_slack.call_args
+            self.assertIsNotNone(error_log_call, 'An error log should have been made')
+            self.assertIsNotNone(slack_webhook_args, 'A slack notification should have been made')
+            for msg_str in expected_notification_substrings:
+                self.assertIn(msg_str, error_log_call.args[0])
+                self.assertIn(msg_str, slack_webhook_args.kwargs['message_data']['text'])
+
+    def test_cancelled_order_sample_not_overdue(self):
+        participant = self.data_generator.create_database_participant()
+        today = datetime.utcnow().replace(microsecond=0)
+        order_ts = today - timedelta(days=9)
+        # If order is cancelled, missing samples check should not generate any notification
+        order = self.data_generator.create_database_biobank_order(
+            participantId=participant.participantId,
+            orderOrigin='hpro',
+            orderStatus=BiobankOrderStatus.CANCELLED,
+            finalizedTime=order_ts
+        )
+        self.data_generator.create_database_biobank_order_identifier(
+            value='1234ABC',
+            biobankOrderId=order.biobankOrderId
+        )
+        self.data_generator.create_database_biobank_ordered_sample(
+            biobankOrderId=order.biobankOrderId,
+            test='1ED04',
+            collected=order_ts,
+            processed=order_ts,
+            finalized=order_ts
+        )
+
+        with mock.patch('rdr_service.offline.biobank_samples_pipeline.logging') as mock_logging:
+            biobank_samples_pipeline.missing_samples_check()
+            error_log_call = mock_logging.error.call_args
+            self.assertIsNone(error_log_call, "Missing sample notification not expected for cancelled orders")
+
+    def test_missing_sample_not_yet_overdue(self):
+        participant = self.data_generator.create_database_participant()
+        today = datetime.utcnow().replace(microsecond=0)
+        order_ts = today - timedelta(days=6)
+        # Should not be notified of missing samples if less than 7 days since order was finalized
+        order = self.data_generator.create_database_biobank_order(
+            participantId=participant.participantId,
+            orderOrigin='hpro',
+            orderStatus=BiobankOrderStatus.UNSET,
+            finalizedTime=order_ts
+        )
+        self.data_generator.create_database_biobank_order_identifier(
+            value='1234ABC',
+            biobankOrderId=order.biobankOrderId
+        )
+        self.data_generator.create_database_biobank_ordered_sample(
+            biobankOrderId=order.biobankOrderId,
+            test='1ED04',
+            collected=order_ts,
+            processed=order_ts,
+            finalized=order_ts
+        )
+
+        with mock.patch('rdr_service.offline.biobank_samples_pipeline.logging') as mock_logging:
+            biobank_samples_pipeline.missing_samples_check()
+            error_log_call = mock_logging.error.call_args
+            self.assertIsNone(error_log_call, "Missing sample notification not expected for orders under a week old")
