@@ -923,6 +923,10 @@ class GenomicFileIngester:
             return GenomicSubProcessResult.ERROR
 
     def _ingest_aw5_manifest(self, rows):
+        metric_pipeline_id_map = {
+            GenomicJob.AW5_WGS_MANIFEST: config.GENOMIC_UPDATED_WGS_DRAGEN
+        }
+
         try:
             for row in rows:
                 row_copy = self._clean_row_keys(row)
@@ -937,14 +941,17 @@ class GenomicFileIngester:
                                     f'{biobank_id} and sample_id: {sample_id}, skipping...')
                     continue
 
-                existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
-                if existing_metrics_obj is not None:
-                    metric_id = existing_metrics_obj.id
-                else:
+                existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(
+                    member_id=member.id,
+                    pipeline_id=metric_pipeline_id_map.get(self.job_id, None)
+                )
+
+                if not existing_metrics_obj:
                     logging.warning(f'Can not find metrics record for member id: '
                                     f'{member.id}, skipping...')
                     continue
 
+                metric_id = existing_metrics_obj.id
                 self.metrics_dao.update_gc_validation_metrics_deleted_flags_from_dict(row_copy, metric_id)
 
             return GenomicSubProcessResult.SUCCESS
