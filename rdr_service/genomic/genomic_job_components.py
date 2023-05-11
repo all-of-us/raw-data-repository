@@ -292,7 +292,7 @@ class GenomicFileIngester:
             ingestion_map = {
                 GenomicJob.AW1_MANIFEST: self._ingest_aw1_manifest,
                 GenomicJob.AW1F_MANIFEST: self._ingest_aw1_manifest,
-                GenomicJob.METRICS_INGESTION: self._process_gc_metrics_data_for_insert,
+                GenomicJob.METRICS_INGESTION: self._ingest_aw2_manifest,
                 GenomicJob.GEM_A2_MANIFEST: self._ingest_gem_a2_manifest,
                 GenomicJob.GEM_METRICS_INGEST: self._ingest_gem_metrics_manifest,
                 GenomicJob.AW4_ARRAY_WORKFLOW: self._ingest_aw4_manifest,
@@ -1272,7 +1272,7 @@ class GenomicFileIngester:
 
         return row_obj
 
-    def _process_gc_metrics_data_for_insert(self, rows):
+    def _ingest_aw2_manifest(self, rows):
         """ Since input files vary in column names,
         this standardizes the field-names before passing to the bulk inserter
         :param rows:
