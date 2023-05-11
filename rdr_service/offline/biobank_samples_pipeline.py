@@ -802,7 +802,7 @@ def in_past_n_days(result, now, n_days, ordered_before=None):
 
 # DA-3543: Ordered DNA samples where order was finalized at least a week ago, but haven't been acknowledged by biobank
 # Intended for weekly check/alerts. Orders from more than 30 days ago will not be included in the alerts
-MISSING_STORED_SAMPLES_SQL = f"""
+MISSING_STORED_SAMPLES_SQL = """
                 select p.participant_id, p.biobank_id, bo.biobank_order_id, bos.finalized,
                      GROUP_CONCAT(bos.test) as missing_samples
                 from biobank_order bo

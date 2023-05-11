@@ -578,7 +578,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             status=SampleStatus.RECEIVED
         )
         # Expect notification that the DNA sample is overdue/missing
-        expected_notification_substrings = [
+        expected_msg_substrings = [
             f'Biobank ID: A{participant.biobankId}, order: {order.biobankOrderId}, ',
             f'finalized: {dna_ordered_sample.finalized}, missing ordered DNA samples: {dna_ordered_sample.test}'
         ]
@@ -589,7 +589,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             slack_webhook_args = mock_slack.call_args
             self.assertIsNotNone(error_log_call, 'An error log should have been made')
             self.assertIsNotNone(slack_webhook_args, 'A slack notification should have been made')
-            for msg_str in expected_notification_substrings:
+            for msg_str in expected_msg_substrings:
                 self.assertIn(msg_str, error_log_call.args[0])
                 self.assertIn(msg_str, slack_webhook_args.kwargs['message_data']['text'])
 
