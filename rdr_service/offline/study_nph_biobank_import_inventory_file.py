@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from io import StringIO
 from typing import Dict, Union, Any, Iterator, Iterable
 from csv import DictReader
-from re import findall, search
 from google.cloud._helpers import UTC
 
 from rdr_service import config
@@ -73,19 +72,12 @@ def _convert_csv_row_to_stored_sample_object(csv_obj: Dict[str, Union[str, int]]
         "Disposed": StoredSampleStatus.DISPOSED
     }
 
-    def _parse_sample_id_field_to_int(sample_id):
-        if search("[a-zA-Z]+", sample_id) is not None:
-            sample_id_matches = findall("[0-9]+", sample_id or "")
-            if len(sample_id_matches) > 0:
-                return int(sample_id_matches[0])
-        return int(sample_id)
-
     biobank_modified_ts = datetime.strptime(csv_obj["MOD_DATE"], NPH_INVENTORY_PROCESS_DATETIME_FORMAT)
     biobank_id = int(csv_obj["BIOBANK_ID"][1:])
     stored_sample_obj = {
         "biobank_modified": biobank_modified_ts,
         "biobank_id": biobank_id,
-        "sample_id": _parse_sample_id_field_to_int(csv_obj["SAMPLE_ID"]),
+        "sample_id": csv_obj["SAMPLE_ID"],
         "lims_id": csv_obj["LIMS_SAMPLE_ID"],
         "status": stored_sample_status.get(csv_obj["STATUS"]),
         "disposition": stored_sample_status.get(csv_obj["DISPOSITION"])

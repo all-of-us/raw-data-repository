@@ -339,7 +339,7 @@ class StoredSample(NphBase):
     biobank_modified = Column(UTCDateTime)
     biobank_id = Column(BigInteger, ForeignKey("participant.biobank_id"))
     ignore_flag = Column(TINYINT, default=0)
-    sample_id = Column(BigInteger, index=True)
+    sample_id = Column(String(32), index=True)
     lims_id = Column(String(64))
     status = Column(Enum(StoredSampleStatus), default=StoredSampleStatus.SHIPPED)
     disposition = Column(String(256))
