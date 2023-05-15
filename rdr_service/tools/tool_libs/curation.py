@@ -707,11 +707,11 @@ class CurationExportClass(ToolBase):
         # Populates death table from deceased_report
         self._set_rdr_model_schema([DeceasedReport])
         column_map = {
-            Death.id: literal("0"),
+            Death.id: literal("0"),  # Auto-increment column, database will use next sequence number
             Death.person_id: DeceasedReport.participantId,
             Death.death_date: DeceasedReport.dateOfDeath,
             Death.death_datetime: DeceasedReport.dateOfDeath.label('date_of_death_datetime'),
-            Death.death_type_concept_id: literal("32809"),
+            Death.death_type_concept_id: literal("32809"),  # 32809 is the Case Report Form concept id
             Death.cause_concept_id: literal(None),
             Death.cause_source_value: literal(None),
             Death.cause_source_concept_id: literal(None),
@@ -720,8 +720,8 @@ class CurationExportClass(ToolBase):
         deceased_select = session.query(*column_map.values()).select_from(
             DeceasedReport
         ).join(
-         Person,
-         DeceasedReport.participantId == Person.person_id
+            Person,
+            DeceasedReport.participantId == Person.person_id
         ).filter(
             DeceasedReport.status == DeceasedReportStatus.APPROVED
         )

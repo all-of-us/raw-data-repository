@@ -1155,7 +1155,6 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertNotIn(remote_height, measurements)
         self.assertNotIn(remote_weight, measurements)
 
-
     def test_death_table(self):
         # Create API User for DeceasedReport
         api_user = ApiUser(id=1, username='test', system='test')
@@ -1226,5 +1225,3 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertTrue(_exists_in_death_table(pids[0]))
         self.assertFalse(_exists_in_death_table(pids[1]))
         self.assertFalse(_exists_in_death_table(pids[2]))
-
-
