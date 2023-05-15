@@ -594,6 +594,7 @@ class SrcMeas(CdmBase):
     physical_measurements_id = Column(Integer, nullable=False)
     parent_id = Column(BigInteger)
     src_id = Column(String(50))
+    collect_type = Column(Integer)
 
 
 class MeasurementCodeMap(CdmBase):
@@ -637,6 +638,7 @@ class SrcMeasMapped(CdmBase):
     physical_measurements_id = Column(Integer, nullable=False)
     parent_id = Column(BigInteger)
     src_id = Column(String(50))
+    collect_type = Column(Integer)
 
 
 class SrcVisits(CdmBase):
