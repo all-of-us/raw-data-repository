@@ -374,33 +374,6 @@ class GenomicFileIngester:
             _type='resolved'
         )
 
-    @staticmethod
-    def get_aw1_manifest_column_mappings():
-        return {
-            'packageId': 'packageid',
-            'sampleId': 'sampleid',
-            'gcManifestBoxStorageUnitId': 'boxstorageunitid',
-            'gcManifestBoxPlateId': 'boxid/plateid',
-            'gcManifestWellPosition': 'wellposition',
-            'gcManifestParentSampleId': 'parentsampleid',
-            'collectionTubeId': 'collectiontubeid',
-            'gcManifestMatrixId': 'matrixid',
-            'gcManifestTreatments': 'treatments',
-            'gcManifestQuantity_ul': 'quantity(ul)',
-            'gcManifestTotalConcentration_ng_per_ul': 'totalconcentration(ng/ul)',
-            'gcManifestTotalDNA_ng': 'totaldna(ng)',
-            'gcManifestVisitDescription': 'visitdescription',
-            'gcManifestSampleSource': 'samplesource',
-            'gcManifestStudy': 'study',
-            'gcManifestTrackingNumber': 'trackingnumber',
-            'gcManifestContact': 'contact',
-            'gcManifestEmail': 'email',
-            'gcManifestStudyPI': 'studypi',
-            'gcManifestTestName': 'genometype',
-            'gcManifestFailureMode': 'failuremode',
-            'gcManifestFailureDescription': 'failuremodedesc',
-        }
-
     def load_raw_awn_file(self, raw_dao, **kwargs):
         """
         Loads raw models with raw data from manifests file
@@ -455,47 +428,6 @@ class GenomicFileIngester:
             # insert last batch if needed
             with dao.session() as session:
                 session.bulk_save_objects(batch)
-
-        return GenomicSubProcessResult.SUCCESS
-
-    def ingest_single_aw1_row_for_member(self, member):
-        # Open file and pull row based on member.biobankId
-        with self.controller.storage_provider.open(self.target_file, 'r') as aw1_file:
-            reader = csv.DictReader(aw1_file, delimiter=',')
-            row = [r for r in reader if r['BIOBANK_ID'][1:] == str(member.biobankId)][0]
-
-            # Alter field names to remove spaces and change to lower case
-            row = self.clean_row_keys(row)
-
-        ingested_before = member.reconcileGCManifestJobRunId is not None
-
-        # Write AW1 data to genomic_set_member table
-        gc_manifest_column_mappings = self.get_aw1_manifest_column_mappings()
-
-        # Set attributes from file
-        for key in gc_manifest_column_mappings.keys():
-            try:
-                member.__setattr__(key, row[gc_manifest_column_mappings[key]])
-            except KeyError:
-                member.__setattr__(key, None)
-
-        # Set other fields not in AW1 file
-        member.reconcileGCManifestJobRunId = self.job_run_id
-        member.aw1FileProcessedId = self.file_obj.id
-        member.gcSite = self._get_site_from_aw1()
-
-        # Only update the member's genomicWorkflowState if it was AW0
-        if member.genomicWorkflowState == GenomicWorkflowState.AW0:
-            member.genomicWorkflowState = GenomicWorkflowState.AW1
-            member.genomicWorkflowStateStr = GenomicWorkflowState.AW1.name
-            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
-
-        # Update member in DB
-        self.member_dao.update(member)
-
-        # Update AW1 manifest record count
-        if not ingested_before and not self.controller.bypass_record_count:
-            self.increment_manifest_file_record_count_from_id()
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -1444,13 +1376,6 @@ class GenomicFileIngester:
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
-
-    def _get_site_from_aw1(self):
-        """
-        Returns the Genomic Center's site ID from the AW1 filename
-        :return: GC site ID string
-        """
-        return self.file_obj.fileName.split('/')[-1].split("_")[0].lower()
 
     @classmethod
     def validate_collection_tube_id(cls, collection_tube_id, bid):

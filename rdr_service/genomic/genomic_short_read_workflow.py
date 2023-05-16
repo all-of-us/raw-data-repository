@@ -1,4 +1,3 @@
-import csv
 import logging
 
 from rdr_service import clock
@@ -18,6 +17,7 @@ class BaseShortReadWorkflow:
     def __init__(self, genomic_job_controller, file_obj):
         self.genomic_job_controller = genomic_job_controller
         self.file_obj = file_obj
+        self.member_dao = GenomicSetMemberDao()
 
 
 class GenomicAW1Workflow(BaseShortReadWorkflow):
@@ -55,50 +55,6 @@ class GenomicAW1Workflow(BaseShortReadWorkflow):
         :return: GC site ID string
         """
         return self.file_obj.fileName.split('/')[-1].split("_")[0].lower()
-
-    def ingest_single_aw1_row_for_member(self, member):
-        member_dao = GenomicSetMemberDao()
-
-        from rdr_service.genomic.genomic_job_components import GenomicFileIngester
-
-        # Open file and pull row based on member.biobankId
-        with self.genomic_job_controller.storage_provider.open(self.file_obj.file_path[1:], 'r') as aw1_file:
-            reader = csv.DictReader(aw1_file, delimiter=',')
-            row = [r for r in reader if r['BIOBANK_ID'][1:] == str(member.biobankId)][0]
-
-            # Alter field names to remove spaces and change to lower case
-            row = GenomicFileIngester.clean_row_keys(row)
-
-        ingested_before = member.reconcileGCManifestJobRunId is not None
-
-        # Write AW1 data to genomic_set_member table
-        gc_manifest_column_mappings = self.get_aw1_manifest_column_mappings()
-
-        # Set attributes from file
-        for key in gc_manifest_column_mappings.keys():
-            try:
-                member.__setattr__(key, row[gc_manifest_column_mappings[key]])
-            except KeyError:
-                member.__setattr__(key, None)
-
-        # Set other fields not in AW1 file
-        member.reconcileGCManifestJobRunId = self.genomic_job_controller.job_run.id
-        member.aw1FileProcessedId = self.file_obj.id
-        member.gcSite = self._get_site_from_aw1()
-
-        # Only update the member's genomicWorkflowState if it was AW0
-        if member.genomicWorkflowState == GenomicWorkflowState.AW0:
-            member.genomicWorkflowState = GenomicWorkflowState.AW1
-            member.genomicWorkflowStateStr = GenomicWorkflowState.AW1.name
-            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
-
-        # Update member in DB
-        member_dao.update(member)
-        # Update AW1 manifest record count
-        if not ingested_before and not self.genomic_job_controller.bypass_record_count:
-            GenomicFileIngester.increment_manifest_file_record_count_from_id(self.file_obj)
-
-        return GenomicSubProcessResult.SUCCESS
 
     def _process_aw1_attribute_data(self, aw1_data, member):
         """
@@ -264,7 +220,6 @@ class GenomicAW1Workflow(BaseShortReadWorkflow):
         :param rows:
         :return: result code
         """
-        member_dao = GenomicSetMemberDao()
         sample_dao = BiobankStoredSampleDao()
         _states = [GenomicWorkflowState.AW0, GenomicWorkflowState.EXTRACT_REQUESTED]
         _site = self._get_site_from_aw1()
@@ -280,7 +235,7 @@ class GenomicAW1Workflow(BaseShortReadWorkflow):
                 continue
 
             # Check if this sample has a control sample parent tube
-            control_sample_parent = member_dao.get_control_sample_parent(
+            control_sample_parent = self.member_dao.get_control_sample_parent(
                 row_copy['genometype'],
                 int(row_copy['parentsampleid'])
             )
@@ -298,7 +253,7 @@ class GenomicAW1Workflow(BaseShortReadWorkflow):
 
                 # Check if the control sample member exists for this GC, BID, collection tube, and sample ID
                 # Since the Biobank is reusing the sample and collection tube IDs (which are supposed to be unique)
-                cntrl_sample_member = member_dao.get_control_sample_for_gc_and_genome_type(
+                cntrl_sample_member = self.member_dao.get_control_sample_for_gc_and_genome_type(
                     _site,
                     row_copy['genometype'],
                     row_copy['biobankid'],
@@ -315,14 +270,14 @@ class GenomicAW1Workflow(BaseShortReadWorkflow):
             # Find the existing GenomicSetMember
             if self.genomic_job_controller.job_id == GenomicJob.AW1F_MANIFEST:
                 # Set the member based on collection tube ID will null sample
-                member = member_dao.get_member_from_collection_tube(
+                member = self.member_dao.get_member_from_collection_tube(
                     row_copy['collectiontubeid'],
                     row_copy['genometype'],
                     state=GenomicWorkflowState.AW1
                 )
             else:
                 # Set the member based on collection tube ID will null sample
-                member = member_dao.get_member_from_collection_tube_with_null_sample_id(
+                member = self.member_dao.get_member_from_collection_tube_with_null_sample_id(
                     row_copy['collectiontubeid'],
                     row_copy['genometype'])
 
@@ -334,7 +289,7 @@ class GenomicAW1Workflow(BaseShortReadWorkflow):
                 # Strip biobank prefix if it's there
                 if bid[0] in [get_biobank_id_prefix(), 'T']:
                     bid = bid[1:]
-                member = member_dao.get_member_from_biobank_id_in_state(
+                member = self.member_dao.get_member_from_biobank_id_in_state(
                     bid,
                     row_copy['genometype'],
                     _states
@@ -344,7 +299,7 @@ class GenomicAW1Workflow(BaseShortReadWorkflow):
                     if GenomicFileIngester.validate_collection_tube_id(row_copy['collectiontubeid'], bid):
                         if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS]:
                             if member.collectionTubeId:
-                                with member_dao.session() as session:
+                                with self.member_dao.session() as session:
                                     session.add(GenomicSampleContamination(
                                         sampleId=member.collectionTubeId,
                                         failedInJob=self.genomic_job_controller.job_id
@@ -378,6 +333,9 @@ class GenomicAW1Workflow(BaseShortReadWorkflow):
             # Process the attribute data
             member_changed, member = self._process_aw1_attribute_data(row_copy, member)
             if member_changed:
-                member_dao.update(member)
+                self.member_dao.update(member)
 
         return GenomicSubProcessResult.SUCCESS
+
+class GenomicAW2Workflow(BaseShortReadWorkflow):
+    pass

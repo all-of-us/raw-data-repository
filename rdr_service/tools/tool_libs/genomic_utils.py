@@ -1598,108 +1598,6 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
 
         return 0
 
-
-class IngestionClass(GenomicManifestBase):
-    """
-    Perform a targeted ingestion of AW1 or AW2 data
-    for an arbitrary set of participants based on genomic_set_member.id
-    """
-
-    def __init__(self, args, gcp_env: GCPEnvConfigObject):
-        super(IngestionClass, self).__init__(args, gcp_env)
-        self.gen_enum = None
-        self.gen_job_name = None
-
-    def run(self):
-        self.gen_enum = GenomicJob.__dict__[self.args.job]
-        self.gen_job_name = self.gen_enum.name
-
-        # Validate arguments
-        if self.args.cloud_task and self.gen_job_name not in self.genomic_cloud_tasks.keys():
-            _logger.error(f'{self.gen_job_name} is not able to run in cloud task.')
-            return 1
-
-        if not self.args.csv and not self.args.member_ids:
-            _logger.error('Either --csv or --member_ids must be provided.')
-            return 1
-
-        if self.args.csv and self.args.member_ids:
-            _logger.error('Arguments --csv and --member_ids may not be used together.')
-            return 1
-
-        if self.args.csv:
-            # Validate csv file exists
-            if not os.path.exists(self.args.csv):
-                _logger.error(f'File {self.args.csv} was not found.')
-                return 1
-
-        # Make list of member_ids from CSV or argument
-        member_ids = []
-        if self.args.member_ids:
-            for member_id in self.args.member_ids.split(','):
-                member_ids.append(member_id.strip())
-        elif self.args.csv:
-            with open(self.args.csv, encoding='utf-8-sig') as h:
-                lines = h.readlines()
-                for line in lines:
-                    member_ids.append(line.strip())
-
-        if member_ids:
-            # Activate the SQL Proxy
-            self.gcp_env.activate_sql_proxy()
-            self.dao = GenomicSetMemberDao()
-            server_config = self.get_server_config()
-            bucket_name = None
-
-            if self.args.manifest_file:
-                _logger.info(f'Manifest file supplied: {self.args.manifest_file}')
-                # Get bucket and filename from argument
-                bucket_name = self.args.manifest_file.split('/')[0]
-
-            message = 'AW1' if self.gen_job_name == 'AW1_MANIFEST' else 'AW2'
-            _logger.info(f"Ingesting {message} data for ids.")
-
-            if self.args.cloud_task:
-                payload = {
-                    "job": self.args.job,
-                    "server_config": server_config,
-                    "member_ids": member_ids
-                }
-                return self.execute_in_cloud_task(
-                    endpoint=self.genomic_cloud_tasks[self.gen_job_name]['samples']['endpoint'],
-                    payload=payload,
-                    queue=self.genomic_task_queue,
-                )
-
-            with GenomicJobController(self.gen_enum,
-                                      bq_project_id=self.gcp_env.project,
-                                      server_config=server_config if self.args.use_raw else None,
-                                      storage_provider=self.gscp if bucket_name else None
-                                      ) as controller:
-                controller.bypass_record_count = self.args.bypass_record_count
-
-                if self.args.use_raw:
-                    results = controller.ingest_member_ids_from_awn_raw_table(member_ids, self.args.allow_older)
-                    logging.info(results)
-
-                if bucket_name:
-                    controller.skip_updates = True
-                    for member_id in member_ids:
-                        self.run_ingestion_for_member_id(controller, member_id, bucket_name)
-
-    def run_ingestion_for_member_id(self, controller, member_id, bucket_name):
-        # Use a Controller to run the job
-        try:
-            controller.bucket_name = bucket_name
-            member = self.dao.get(member_id)
-            controller.ingest_awn_data_for_member(f"/{self.args.manifest_file}", member)
-            return 0
-
-        except Exception as e:  # pylint: disable=broad-except
-            _logger.error(e)
-            return 1
-
-
 class CompareIngestionAW2Class(GenomicManifestBase):
     """
     Performs a comparison on AW2 file counts and counts in database
@@ -2469,9 +2367,6 @@ def get_process_for_run(args, gcp_env):
         },
         'contamination-category': {
             'process': CalculateContaminationCategoryClass(args, gcp_env)
-        },
-        'sample-ingestion': {
-            'process': IngestionClass(args, gcp_env)
         },
         'compare-ingestion': {
             'process': CompareIngestionAW2Class(args, gcp_env)

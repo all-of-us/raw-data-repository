@@ -240,38 +240,6 @@ class GenomicJobController:
         ids = self.manifest_feedback_dao.get_contamination_remainder_feedback_ids()
         return self.manifest_feedback_dao.get_feedback_records_from_ids(ids)
 
-    def ingest_awn_data_for_member(self, file_path, member):
-        """
-        Executed from genomic tools. Ingests data for a single GenomicSetMember
-        Currently supports AW1 and AW2
-        :param file_path:
-        :param member:
-        :return:
-        """
-        print(f"Ingesting member ID {member.id} data for file: {file_path}")
-
-        # Get max file-processed ID for filename
-        file_processed = self.file_processed_dao.get_max_file_processed_for_filepath(file_path)
-
-        if file_processed is not None:
-            # Use ingester to ingest 1 row from file
-            self.ingester = GenomicFileIngester(job_id=self.job_id,
-                                                job_run_id=self.job_run.id,
-                                                _controller=self,
-                                                target_file=file_path[1:])  # strip leading "/"
-
-            self.ingester.file_obj = file_processed
-            self.job_result = GenomicSubProcessResult.SUCCESS
-
-            if self.job_id == GenomicJob.AW1_MANIFEST:
-                self.job_result = self.ingester.ingest_single_aw1_row_for_member(member)
-
-            if self.job_id == GenomicJob.METRICS_INGESTION:
-                self.job_result = self.ingester.ingest_single_aw2_row_for_member(member)
-
-        else:
-            print(f'No file processed IDs for {file_path}')
-
     def ingest_gc_metrics(self):
         """
         Uses ingester to ingest files.
