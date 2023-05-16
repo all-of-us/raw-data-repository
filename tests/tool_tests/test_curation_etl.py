@@ -4,15 +4,17 @@ from decimal import Decimal
 
 from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, PMI_SKIP_CODE,\
     STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE
-from rdr_service.etl.model.src_clean import SrcClean, Observation, PidRidMapping, Person, Measurement
+from rdr_service.etl.model.src_clean import SrcClean, Observation, PidRidMapping, Person, Measurement, Death
 from rdr_service.model.code import Code
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.measurements import Measurement as RdrMeasurement
 from rdr_service.model.participant import Participant
+from rdr_service.model.deceased_report import DeceasedReport
+from rdr_service.model.api_user import ApiUser
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.dao.curation_etl_dao import CdrEtlRunHistoryDao, CdrEtlSurveyHistoryDao
 from rdr_service.participant_enums import QuestionnaireResponseStatus, QuestionnaireResponseClassificationType, \
-    PhysicalMeasurementsCollectType, OriginMeasurementUnit
+    PhysicalMeasurementsCollectType, OriginMeasurementUnit, DeceasedNotification, DeceasedReportStatus
 from rdr_service.tools.tool_libs.curation import CurationExportClass
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.tool_test_mixin import ToolTestMixin
@@ -105,6 +107,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         ).distinct().scalar()
         return bool(value_exists
                     )
+
     @staticmethod
     def run_cdm_data_generation(cutoff=None, vocabulary='gs://curation-vocabulary/aou_vocab_20220201/',
                                 participant_origin='all', participant_list_file=None, include_surveys=None,
@@ -1152,3 +1155,73 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertNotIn(remote_height, measurements)
         self.assertNotIn(remote_weight, measurements)
 
+    def test_death_table(self):
+        # Create API User for DeceasedReport
+        api_user = ApiUser(id=1, username='test', system='test')
+        self.session.add(api_user)
+
+        pids = list(range(10000, 10010))
+        consent_questionnaire = self._create_consent_questionnaire()
+        for pid in pids:
+            participant = self.data_generator.create_database_participant(participantId=pid)
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                dateOfBirth=datetime(1982, 1, 9),
+                consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10)
+            )
+            self._setup_questionnaire_response(
+                participant,
+                consent_questionnaire,
+                indexed_answers=[
+                    (6, 'valueDate', datetime(1982, 1, 9))
+                    # Assuming the 6th question is the date of birth
+                ],
+                authored=datetime(2020, 5, 1)
+            )
+
+        # Only approved deceased reports should be in Death
+        deceased_reports = [
+            DeceasedReport(
+                participantId=pids[0],
+                dateOfDeath=date(2023, 2, 1),
+                status=DeceasedReportStatus.APPROVED,
+                notification=DeceasedNotification.EHR,
+                authorId=1,
+                authored=datetime(2023, 3, 1)
+            ),
+            DeceasedReport(
+                participantId=pids[1],
+                dateOfDeath=date(2023, 2, 1),
+                status=DeceasedReportStatus.PENDING,
+                notification=DeceasedNotification.EHR,
+                authorId=1,
+                authored=datetime(2023, 3, 1)
+            ),
+            DeceasedReport(
+                participantId=pids[2],
+                dateOfDeath=date(2023, 2, 1),
+                status=DeceasedReportStatus.DENIED,
+                notification=DeceasedNotification.EHR,
+                authorId=1,
+                authored=datetime(2023, 3, 1)
+            )
+        ]
+
+        for deceased_report in deceased_reports:
+            self.session.add(deceased_report)
+        self.session.commit()
+
+        self.run_cdm_data_generation(
+            participant_origin='all',
+        )
+
+        def _exists_in_death_table(participant_id: int) -> bool:
+            return bool(self.session.query(
+                Death.person_id
+            ).filter(
+                Death.person_id == participant_id
+            ).distinct().scalar())
+
+        self.assertTrue(_exists_in_death_table(pids[0]))
+        self.assertFalse(_exists_in_death_table(pids[1]))
+        self.assertFalse(_exists_in_death_table(pids[2]))

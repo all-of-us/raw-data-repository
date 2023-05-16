@@ -7,7 +7,7 @@ from datetime import datetime
 import logging
 import pytz
 import sqlalchemy.orm.session
-from sqlalchemy import and_, case, insert, or_, text, not_
+from sqlalchemy import and_, case, insert, or_, text, not_, literal
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import literal_column
@@ -34,8 +34,9 @@ from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireH
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseClassificationType
 from rdr_service.model.curation_etl import CdrExcludedCode
+from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus, CdrEtlCodeType,\
-    QuestionnaireStatus
+    QuestionnaireStatus, DeceasedReportStatus
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 from rdr_service.dao.curation_etl_dao import CdrEtlRunHistoryDao, CdrEtlSurveyHistoryDao, CdrExcludedCodeDao
@@ -702,6 +703,30 @@ class CurationExportClass(ToolBase):
         result = query.order_by(Participant.participantId).all()
         self.pid_list = [pid[0] for pid in result]
 
+    def _populate_death_table(self, session: sqlalchemy.orm.session):
+        # Populates death table from deceased_report
+        self._set_rdr_model_schema([DeceasedReport])
+        column_map = {
+            Death.id: literal("0"),  # Auto-increment column, database will use next sequence number
+            Death.person_id: DeceasedReport.participantId,
+            Death.death_date: DeceasedReport.dateOfDeath,
+            Death.death_datetime: DeceasedReport.dateOfDeath.label('date_of_death_datetime'),
+            Death.death_type_concept_id: literal("32809"),  # 32809 is the Case Report Form concept id
+            Death.cause_concept_id: literal(None),
+            Death.cause_source_value: literal(None),
+            Death.cause_source_concept_id: literal(None),
+            Death.src_id: literal("healthpro")
+        }
+        deceased_select = session.query(*column_map.values()).select_from(
+            DeceasedReport
+        ).join(
+            Person,
+            DeceasedReport.participantId == Person.person_id
+        ).filter(
+            DeceasedReport.status == DeceasedReportStatus.APPROVED
+        )
+        insert_query = insert(Death).from_select(column_map.keys(), deceased_select)
+        session.execute(insert_query)
 
     def populate_cdm_database(self):
         """ Generates the src_clean table which is used to populate the rest of the ETL tables """
@@ -821,6 +846,7 @@ class CurationExportClass(ToolBase):
                 _logger.debug("Populating observation survey data")
                 self.run_function_on_pids(self._populate_observation_surveys, session, "observation survey data")
                 self._populate_questionnaire_response_additional_info(session)
+            self._populate_death_table(session)
             _logger.debug("Finalizing ETL")
             self._finalize_cdm(session)
 
@@ -1213,7 +1239,6 @@ class CurationExportClass(ToolBase):
                                 ALTER TABLE cdm.condition_era DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.condition_occurrence DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.cost DROP COLUMN unit_id, DROP COLUMN id;
-                                ALTER TABLE cdm.death DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.device_exposure DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.dose_era DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.drug_era DROP COLUMN unit_id, DROP COLUMN id;
@@ -1230,6 +1255,7 @@ class CurationExportClass(ToolBase):
                                 ALTER TABLE cdm.provider DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.visit_occurrence DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.metadata DROP COLUMN id;
+                                ALTER TABLE cdm.death DROP COLUMN id;
                                         """)
 
     @staticmethod
