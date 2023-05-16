@@ -147,6 +147,11 @@ def biobank_monthly_reconciliation_report():
     logging.info("Generated monthly reconciliation report.")
     return json.dumps({"monthly-reconciliation-report": "generated"})
 
+@app_util.auth_required_cron
+def biobank_missing_samples_check():
+    biobank_samples_pipeline.missing_samples_check()
+    return '{"success": "true"}'
+
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
@@ -899,6 +904,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "MonthlyReconciliationReport",
         endpoint="monthlyReconciliationReport",
         view_func=biobank_monthly_reconciliation_report,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "BiobankMissingSamplesCheck",
+        endpoint="biobankMissingSamplesCheck",
+        view_func=biobank_missing_samples_check,
         methods=["GET"],
     )
 

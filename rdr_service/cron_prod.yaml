@@ -124,3 +124,8 @@ cron:
   target: offline
   timezone: America/New_York
   url: /offline/NphBiobankInventoryFileImport
+- description: Weekly Biobank missing sample check
+  url: /offline/BiobankMissingSamplesCheck
+  schedule: every Monday 09:00
+  timezone: America/New_York
+  target: offline

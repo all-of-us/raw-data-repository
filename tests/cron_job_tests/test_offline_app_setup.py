@@ -75,3 +75,7 @@ class OfflineAppTest(BaseTestCase):
         self.send_cron_request('GenomicAW3ArrayWorkflow')
         pipeline_mock.aw3_array_manifest_workflow.assert_called()
 
+    @mock.patch('rdr_service.offline.main.biobank_samples_pipeline.missing_samples_check')
+    def test_biobank_missing_samples_check_route(self, mock_checker):
+        self.send_cron_request('BiobankMissingSamplesCheck')
+        mock_checker.assert_called()
