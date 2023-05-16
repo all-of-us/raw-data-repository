@@ -1895,7 +1895,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    result.sync_status in (int(ConsentSyncStatus.NEEDS_CORRECTING), int(ConsentSyncStatus.OBSOLETE))):
                 status = BQModuleStatusEnum.SUBMITTED_INVALID
 
-        elif consent_authored > pdf_validation_start_date:
+        elif consent_authored and consent_authored > pdf_validation_start_date:
             # No consent_file (consent_response) record yet to match to the questionnaire_response_id
             status = BQModuleStatusEnum.SUBMITTED_NOT_VALIDATED
 
