@@ -694,13 +694,10 @@ class ParticipantSummaryDao(UpdatableDao):
 
         earliest_biobank_received_dna_time = None
         if summary.samplesToIsolateDNA == SampleStatus.RECEIVED:
-            confirmed_dna_sample_list = BiobankStoredSampleDao.load_confirmed_dna_samples(
+            earliest_biobank_received_dna_time = BiobankStoredSampleDao.get_earliest_confirmed_dna_sample_timestamp(
                 session=session,
                 biobank_id=summary.biobankId
             )
-            earliest_biobank_received_dna_time = min_or_none([
-                sample.confirmed for sample in confirmed_dna_sample_list
-            ])
 
         # See ROC-1572/PDR-1699.  Provide a default date to get_interest_in_sharing_ehr_ranges() if participant
         # has SUBMITTED status for their EHR consent.  Remediates data issues w/older consent validations

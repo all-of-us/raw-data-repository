@@ -1,79 +1,27 @@
-import logging
 import datetime
+import logging
 
 from dateutil.parser import parse
-from rdr_service.clock import CLOCK
+
 from rdr_service.app_util import nonprod
-from rdr_service.storage import GoogleCloudStorageCSVReader
-from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
+from rdr_service.clock import CLOCK
+from rdr_service.code_constants import (
+    COHORT_1_REVIEW_CONSENT_YES_CODE, COPE_MODULE, COPE_NOV_MODULE, COPE_DEC_MODULE, COPE_FEB_MODULE,
+    COPE_VACCINE_MINUTE_1_MODULE_CODE, COPE_VACCINE_MINUTE_2_MODULE_CODE, COPE_VACCINE_MINUTE_3_MODULE_CODE,
+    COPE_VACCINE_MINUTE_4_MODULE_CODE, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE
+)
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
-from rdr_service.participant_enums import RetentionType, RetentionStatus
+from rdr_service.participant_enums import DeceasedStatus, RetentionType, RetentionStatus, WithdrawalStatus
+from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
+from rdr_service.services.retention_calculation import Consent, RetentionEligibility, RetentionEligibilityDependencies
+from rdr_service.storage import GoogleCloudStorageCSVReader
+
 
 _BATCH_SIZE = 1000
-
-# Note: depreciated to switch to using GoogleCloudStorageCSVReader version.
-# def import_retention_eligible_metrics_file(task_data):
-#     """
-#     Import PTSC retention eligible metric file from bucket.
-#     :param task_data: Cloud function event dict.
-#     """
-#     csv_file_cloud_path = task_data["file_path"]
-#     upload_date = task_data["upload_date"]
-#     dao = RetentionEligibleMetricsDao()
-#
-#     # Copy bucket file to local temp file.
-#     logging.info(f"Opening gs://{csv_file_cloud_path}.")
-#     tmp_file = tempfile.NamedTemporaryFile(prefix='ptsc_')
-#     with GoogleCloudStorageProvider().open(csv_file_cloud_path, 'rt') as csv_file:
-#         while True:
-#             chunk = csv_file.read(_CHUNK_SIZE)
-#             tmp_file.write(chunk)
-#             if not chunk or len(chunk) < _CHUNK_SIZE:
-#                 break
-#     tmp_file.seek(0)
-#
-#     header = tmp_file.readline().decode('utf-8')
-#     missing_cols = set(RetentionEligibleMetricCsvColumns.ALL) - set(header.split(','))
-#     if missing_cols:
-#         raise DataError(f"CSV is missing columns {missing_cols}, had columns {header}.")
-#
-#     strio = io.StringIO()
-#     strio.write(header + '\n')
-#     batch_count = upsert_count = 0
-#     records = list()
-#
-#     with dao.session() as session:
-#         while True:
-#             # Create a mini-csv file with a _BATCH_SIZE number of records in the StringIO obj.
-#             line = tmp_file.readline().decode('utf-8')
-#             if line:
-#                 strio.write(line + '\n')
-#                 batch_count += 1
-#
-#             if batch_count == _BATCH_SIZE or not line:
-#                 strio.seek(0)
-#                 csv_reader = csv.DictReader(strio, delimiter=",")
-#                 for row in csv_reader:
-#                     if not row[RetentionEligibleMetricCsvColumns.PARTICIPANT_ID]:
-#                         continue
-#                     record = _create_retention_eligible_metrics_obj_from_row(row, upload_date)
-#                     records.append(record)
-#                 upsert_count += dao.upsert_all_with_session(session, records)
-#                 if not line:
-#                     break
-#                 # reset for next batch, re-use objects.
-#                 batch_count = 0
-#                 records.clear()
-#                 strio.seek(0)
-#                 strio.truncate(0)
-#                 strio.write(header + '\n')
-#
-#     tmp_file.close()
-#
-#     logging.info(f"Updating participant summary retention eligible flags for {upsert_count} participants...")
-#     ParticipantSummaryDao().bulk_update_retention_eligible_flags(upload_date)
-#     logging.info(f"Import and update completed for gs://{csv_file_cloud_path}")
 
 
 def import_retention_eligible_metrics_file(task_data):
@@ -96,6 +44,8 @@ def import_retention_eligible_metrics_file(task_data):
             if not row[RetentionEligibleMetricCsvColumns.PARTICIPANT_ID]:
                 continue
             record = _create_retention_eligible_metrics_obj_from_row(row, upload_date)
+
+
             records.append(record)
             batch_count += 1
 
@@ -263,7 +213,7 @@ def _parse_field(parser_func, field_str):
     return parser_func(field_str) if field_str not in ('', 'NULL') else None
 
 
-def _create_retention_eligible_metrics_obj_from_row(row, upload_date):
+def _create_retention_eligible_metrics_obj_from_row(row, upload_date) -> RetentionEligibleMetrics:
     retention_eligible = _parse_field(int, row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE])
     eligible_time = _parse_field(parse, row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE_TIME])
     last_active_eligible_activity_time = _parse_field(parse, row[RetentionEligibleMetricCsvColumns
@@ -290,6 +240,98 @@ def _create_retention_eligible_metrics_obj_from_row(row, upload_date):
         retentionEligibleStatus=RetentionStatus.ELIGIBLE if retention_eligible else RetentionStatus.NOT_ELIGIBLE,
         retentionType=retention_type
     )
+
+
+def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics):
+    """Fill in the rdr eligibility calculations for comparison"""
+    session = None  # todo
+    summary: ParticipantSummary = ParticipantSummaryDao().get_with_session(
+        session=session,
+        obj_id=metrics_data.participantId
+    )
+
+    dependencies = RetentionEligibilityDependencies(
+        primary_consent=Consent(
+            is_consent_provided=True,
+            authored_timestamp=summary.consentForStudyEnrollmentFirstYesAuthored
+        ),
+        first_ehr_consent=_get_earliest_intent_for_ehr_datetime(session=session, participant_id=summary.participantId),
+        is_deceased=summary.deceasedStatus == DeceasedStatus.APPROVED,
+        is_withdrawn=summary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
+        dna_samples_timestamp=BiobankStoredSampleDao.get_earliest_confirmed_dna_sample_timestamp(
+            session=session,
+            biobank_id=summary.biobankId
+        ),
+        consent_cohort=summary.consentCohort,
+        has_uploaded_ehr_file=summary.wasEhrDataAvailable,
+        latest_ehr_upload_timestamp=summary.ehrUpdateTime,
+        basics_response_timestamp=summary.questionnaireOnTheBasicsAuthored,
+        overallhealth_response_timestamp=summary.questionnaireOnOverallHealthAuthored,
+        lifestyle_response_timestamp=summary.questionnaireOnLifestyleAuthored,
+        healthcare_access_response_timestamp=summary.questionnaireOnHealthcareAccessAuthored,
+        family_health_response_timestamp=summary.questionnaireOnFamilyHealthAuthored,
+        medical_history_response_timestamp=summary.questionnaireOnMedicalHistoryAuthored,
+        fam_med_history_response_timestamp=summary.questionnaireOnPersonalAndFamilyHealthHistoryAuthored,
+        sdoh_response_timestamp=summary.questionnaireOnSocialDeterminantsOfHealthTime,
+        latest_cope_response_timestamp=_aggregate_response_timestamps(
+            session=session,
+            participant_id=summary.participantId,
+            survey_code_list=[
+                COPE_MODULE, COPE_NOV_MODULE, COPE_DEC_MODULE, COPE_FEB_MODULE, COPE_VACCINE_MINUTE_1_MODULE_CODE,
+                COPE_VACCINE_MINUTE_2_MODULE_CODE, COPE_VACCINE_MINUTE_3_MODULE_CODE, COPE_VACCINE_MINUTE_4_MODULE_CODE
+            ],
+            aggregate_function=max  # Get the latest COPE or vaccine response
+        ),
+        remote_pm_response_timestamp=summary.selfReportedPhysicalMeasurementsAuthored,
+        life_func_response_timestamp=summary.questionnaireOnLifeFunctioningAuthored,
+        reconsent_response_timestamp=_aggregate_response_timestamps(
+            session=session,
+            participant_id=summary.participantId,
+            survey_code_list=[PRIMARY_CONSENT_UPDATE_MODULE],
+            aggregate_function=min  # Get the earliest cohort 1 reconsent response
+        ),
+        gror_response_timestamp=summary.consentForGenomicsRORAuthored
+    )
+    retention_data = RetentionEligibility(dependencies)
+
+    metrics_data.rdr_retention_eligible = retention_data.is_eligible
+    metrics_data.rdr_retention_eligible_time = retention_data.retention_eligible_date
+    metrics_data.rdr_last_retention_activity_time = retention_data.last_active_retention_date
+    metrics_data.rdr_is_actively_retained = retention_data.is_actively_retained
+    metrics_data.rdr_is_passively_retained = retention_data.is_passively_retained
+
+
+def _get_earliest_intent_for_ehr_datetime(session, participant_id) -> datetime:
+    date_range_list = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
+        participant_id=participant_id,
+        session=session
+    )
+    if not date_range_list:
+        return None
+
+    return min(date_range.start for date_range in date_range_list)
+
+
+def _aggregate_response_timestamps(session, participant_id, survey_code_list, aggregate_function) -> datetime:
+    """Process all the responses to the given modules, and return a single datetime"""
+    revised_consent_time_list = []
+    response_collection = QuestionnaireResponseRepository.get_responses_to_surveys(
+        session=session,
+        survey_codes=survey_code_list,
+        participant_ids=[participant_id]
+    )
+    if participant_id in response_collection:
+        program_update_response_list = response_collection[participant_id].responses.values()
+        for response in program_update_response_list:
+            reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE).value.lower()
+            if reconsent_answer == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
+                revised_consent_time_list.append(response.authored_datetime)
+
+    if not revised_consent_time_list:
+        return None
+
+    # Process the dates (excluding any that might be None)
+    return aggregate_function(timestamp for timestamp in revised_consent_time_list if timestamp)
 
 
 class RetentionEligibleMetricCsvColumns(object):

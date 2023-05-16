@@ -1,3 +1,5 @@
+from datetime import datetime
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -6,6 +8,7 @@ from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrder
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.site import Site
+from rdr_service.services.system_utils import min_or_none
 
 
 class BiobankStoredSampleDao(BaseDao):
@@ -51,3 +54,11 @@ class BiobankStoredSampleDao(BaseDao):
             BiobankStoredSample.confirmed.isnot(None),
             BiobankStoredSample.test.in_(config.getSettingList(config.DNA_SAMPLE_TEST_CODES))
         ).all()
+
+    @classmethod
+    def get_earliest_confirmed_dna_sample_timestamp(cls, session, biobank_id) -> Optional[datetime]:
+        confirmed_dna_sample_list = BiobankStoredSampleDao.load_confirmed_dna_samples(
+            session=session,
+            biobank_id=biobank_id
+        )
+        return min_or_none(sample.confirmed for sample in confirmed_dna_sample_list)

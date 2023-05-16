@@ -27,6 +27,13 @@ class RetentionEligibleMetrics(Base):
     retentionEligibleStatus = Column("retention_eligible_status", Enum(RetentionStatus))
     retentionType = Column("retention_type", Enum(RetentionType), default=RetentionType.UNSET)
 
+    # Retention metrics calculated by the RDR, tracking data points concurrently in order to compare to Vibrent data
+    rdr_retention_eligible = Column(Boolean)
+    rdr_retention_eligible_time = Column(UTCDateTime6)
+    rdr_last_retention_activity_time = Column(UTCDateTime6)
+    rdr_is_actively_retained = Column(Boolean)
+    rdr_is_passively_retained = Column(Boolean)
+
 
 event.listen(RetentionEligibleMetrics, "before_insert", model_insert_listener)
 event.listen(RetentionEligibleMetrics, "before_update", model_update_listener)
