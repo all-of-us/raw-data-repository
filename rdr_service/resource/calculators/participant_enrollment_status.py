@@ -3,7 +3,7 @@
 # file 'LICENSE', which is part of this source code package.
 #
 import datetime
-
+#pylint: disable=unused-import
 from rdr_service.code_constants import (
     CONSENT_PERMISSION_YES_CODE,
     CONSENT_PERMISSION_NO_CODE,
@@ -232,11 +232,13 @@ class EnrollmentStatusCalculator:
             if self._ehr_event_found is True and ev.event == ParticipantEventEnum.DVEHRSharing:
                 continue
             if ev.event in [ParticipantEventEnum.EHRConsentPII, ParticipantEventEnum.DVEHRSharing]:
+                # PDR-1795: RDR was updated to not downgrade on revocation/expiration of EHR consent.  Removing to match
                 # See if we need to reset the info object. Do not reset if 'DVEHRSHARING_CONSENT_CODE_NOT_SURE'.
-                if ev.answer in [CONSENT_PERMISSION_NO_CODE, DVEHRSHARING_CONSENT_CODE_NO, EHR_CONSENT_EXPIRED_YES]:
-                    self._ehr_consented = None  # Reset any saved info.
-                    info = EnrollmentStatusInfo()
-                    continue
+                # if (ev.answer in [CONSENT_PERMISSION_NO_CODE, DVEHRSHARING_CONSENT_CODE_NO, EHR_CONSENT_EXPIRED_YES]):
+                #    self._ehr_consented = None  # Reset any saved info.
+                #    info = EnrollmentStatusInfo()
+                #   continue
+
                 # See if we should set the consent info.
                 if info.calculated is False and \
                         ev.answer in [CONSENT_PERMISSION_YES_CODE, DVEHRSHARING_CONSENT_CODE_YES]:

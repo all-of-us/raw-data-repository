@@ -222,10 +222,15 @@ class ParticipantResourceClass(object):
                     pid_dict = res.get_data()
                     rdr_status = pid_dict.get('enrollment_status_legacy_v2', None)
                     pdr_status = pid_dict.get('enrollment_status', None)
+                    rdr_core_time = pid_dict.get('enrollment_core_stored', None)
+                    pdr_core_time = pid_dict.get('enrl_core_participant_time', None)
                     if not rdr_status and pdr_status == 'REGISTERED':
                         pass
                     elif rdr_status != pdr_status:
-                        self.qc_error_list.append(f'P{pid} RDR {rdr_status} / PDR {pdr_status}')
+                        print(f'P{pid} RDR {rdr_status} / PDR {pdr_status}')
+                        # self.qc_error_list.append(f'P{pid} RDR {rdr_status} / PDR {pdr_status}')
+                    elif rdr_status == 'CORE_PARTICIPANT' and rdr_core_time != pdr_core_time:
+                        print(f'P{pid} RDR {rdr_core_time} / PDR {pdr_core_time}')
 
             if not self.args.no_modules and not self.args.qc:
                 mod_bqgen = BQPDRQuestionnaireResponseGenerator()
@@ -290,13 +295,15 @@ class ParticipantResourceClass(object):
                 # reset for next batch
                 batch = list()
                 count = 0
-                if not self.args.debug:
+                if not self.args.debug and not self.args.qc:
                     print_progress_bar(
                         batch_count, batch_total, prefix="{0}/{1}:".format(batch_count, batch_total), suffix="complete"
                     )
 
                 # Collect the garbage after so long to prevent hitting open file limit.
                 if batch_count % 250 == 0:
+                    if self.args.qc:
+                        print(f'({batch_count * 250} pids processed)')
                     gc.collect()
 
         # send last batch if needed.
@@ -312,7 +319,7 @@ class ParticipantResourceClass(object):
                 task.execute('rebuild_participants_task', payload=payload, in_seconds=30,
                                     queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
-            if not self.args.debug:
+            if not self.args.debug and not self.args.qc:
                 print_progress_bar(
                     batch_count, batch_total, prefix="{0}/{1}:".format(batch_count, batch_total), suffix="complete"
                 )
@@ -348,8 +355,12 @@ class ParticipantResourceClass(object):
                     _logger.error(f'PID {pid} not found.')
 
             if not self.args.debug:
-                print_progress_bar(
-                    count, total_pids, prefix="{0}/{1}:".format(count, total_pids), suffix="complete"
+                if self.args.qc:
+                    if count % 250 == 0:
+                        print(f'({count} pids processed)')
+                else:
+                    print_progress_bar(
+                        count, total_pids, prefix="{0}/{1}:".format(count, total_pids), suffix="complete"
                 )
 
         if errors > 0:
