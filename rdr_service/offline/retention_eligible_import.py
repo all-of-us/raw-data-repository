@@ -44,7 +44,7 @@ def import_retention_eligible_metrics_file(task_data):
             if not row[RetentionEligibleMetricCsvColumns.PARTICIPANT_ID]:
                 continue
             record = _create_retention_eligible_metrics_obj_from_row(row, upload_date)
-
+            _supplement_with_rdr_calculations(record)
 
             records.append(record)
             batch_count += 1
