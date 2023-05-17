@@ -302,8 +302,8 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         self._submit_ehrconsent_expired(p_id, response_time=self.TIME_2)
         ps_json = self.make_bq_participant_summary(p_id)
         self.assertIsNotNone(ps_json)
-        # downgrade FULLY_CONSENTED to PARTICIPANT
-        self.assertEqual(ps_json['enrollment_status'], 'PARTICIPANT')
+        # PDR-1795:  Need to match RDR and not downgrade.  FULLY_CONSENTED means "ever consented to EHR"
+        self.assertEqual(ps_json['enrollment_status'], 'FULLY_CONSENTED')
 
     def test_ehr_consent_expired_for_core_participant(self):
         self._set_up_participant_data(fake_time=self.TIME_1)

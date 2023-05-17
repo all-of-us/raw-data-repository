@@ -492,6 +492,8 @@ class TheBasicsAnalyzerClass(object):
 
                     if responses:
                         self.process_participant_responses(pid, responses, session)
+                    else:
+                        _logger.info(f'No TheBasics questionnaire_response records found for participant {pid}')
 
                     processed_pid_count += 1
                     if not self.args.verbose:
