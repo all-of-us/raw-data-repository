@@ -18,7 +18,7 @@ import sqlalchemy
 from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_long_read_workflow import GenomicLongReadWorkFlow
-from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow
+from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow
 from rdr_service.genomic_enums import ResultsModuleType
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -54,7 +54,6 @@ from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicSetDao,
     GenomicJobRunDao,
-    GenomicManifestFeedbackDao,
     GenomicManifestFileDao,
     GenomicAW1RawDao,
     GenomicAW2RawDao,
@@ -80,20 +79,17 @@ from rdr_service.config import (
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
     GENOME_TYPE_ARRAY,
-    GENOME_TYPE_ARRAY_INVESTIGATION,
     GENOME_TYPE_WGS,
-    GENOME_TYPE_WGS_INVESTIGATION,
     GENOMIC_AW3_ARRAY_SUBFOLDER,
     GENOMIC_AW3_WGS_SUBFOLDER,
     BIOBANK_AW2F_SUBFOLDER,
     CVL_W1IL_HDR_MANIFEST_SUBFOLDER,
     CVL_W1IL_PGX_MANIFEST_SUBFOLDER,
     CVL_W2W_MANIFEST_SUBFOLDER,
-    CVL_W3SR_MANIFEST_SUBFOLDER, LR_L0_MANIFEST_SUBFOLDER
+    CVL_W3SR_MANIFEST_SUBFOLDER,
+    LR_L0_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
-from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes, \
-    genome_center_datafile_prefix_map, wgs_metrics_manifest_mapping
 from sqlalchemy.orm import aliased
 
 
@@ -132,7 +128,6 @@ class GenomicFileIngester:
         self.file_processed_dao = GenomicFileProcessedDao()
         self.member_dao = GenomicSetMemberDao()
         self.job_run_dao = GenomicJobRunDao()
-        self.feedback_dao = GenomicManifestFeedbackDao()
         self.incident_dao = GenomicIncidentDao()
         self.user_metrics_dao = UserEventMetricsDao()
         self.set_dao = None
@@ -290,15 +285,13 @@ class GenomicFileIngester:
         logging.info(f'Ingesting data from {self.file_obj.fileName}')
         logging.info("Validating file.")
 
-        aw1_workflow = GenomicAW1Workflow(
-            genomic_job_controller=self.controller,
-            file_obj=self.file_obj
-        )
+        workflow_map = {
+            GenomicJob.AW1_MANIFEST: GenomicAW1Workflow,
+            GenomicJob.AW1F_MANIFEST: GenomicAW1Workflow,
+            GenomicJob.METRICS_INGESTION: GenomicAW2Workflow
+        }
 
-        ingestion_map = {
-            GenomicJob.AW1_MANIFEST: aw1_workflow.ingest_aw1_manifest,
-            GenomicJob.AW1F_MANIFEST: aw1_workflow.ingest_aw1_manifest,
-            GenomicJob.METRICS_INGESTION: self._ingest_aw2_manifest,
+        current_ingestion_map = {
             GenomicJob.GEM_A2_MANIFEST: self._ingest_gem_a2_manifest,
             GenomicJob.GEM_METRICS_INGEST: self._ingest_gem_metrics_manifest,
             GenomicJob.AW4_ARRAY_WORKFLOW: self._ingest_aw4_manifest,
@@ -314,7 +307,16 @@ class GenomicFileIngester:
             GenomicJob.CVL_W4WR_WORKFLOW: self._ingest_cvl_w4wr_manifest,
             GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
             GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_lr_manifest
-        }[self.job_id]
+        }
+
+        current_ingestion_workflow = current_ingestion_map.get(self.job_id)
+        if not current_ingestion_workflow:
+            current_workflow = workflow_map.get(self.job_id)(file_ingester=self)
+            current_ingestion_workflow = getattr(
+                current_workflow,
+                [attrs for attrs in dir(current_workflow)
+                 if ('ingest' and 'manifest') in attrs][0]
+            )
 
         self.file_validator.valid_schema = None
 
@@ -326,17 +328,15 @@ class GenomicFileIngester:
         if validation_result != GenomicSubProcessResult.SUCCESS:
             # delete raw records
             if self.job_id == GenomicJob.AW1_MANIFEST:
-                raw_dao = GenomicAW1RawDao()
-                raw_dao.delete_from_filepath(file_obj.filePath)
+                GenomicAW1RawDao().delete_from_filepath(file_obj.filePath)
             if self.job_id == GenomicJob.METRICS_INGESTION:
-                raw_dao = GenomicAW2RawDao()
-                raw_dao.delete_from_filepath(file_obj.filePath)
+                GenomicAW2RawDao().delete_from_filepath(file_obj.filePath)
             return validation_result
 
         try:
             ingestions = self._set_data_ingest_iterations(data_to_ingest['rows'])
             for row in ingestions:
-                ingestion_map(row)
+                current_ingestion_workflow(row)
             self._set_manifest_file_resolved()
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
@@ -431,49 +431,6 @@ class GenomicFileIngester:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def ingest_single_aw2_row_for_member(self, member: GenomicSetMember) -> GenomicSubProcessResult:
-        # Open file and pull row based on member.biobankId
-        with self.controller.storage_provider.open(self.target_file, 'r') as aw1_file:
-            reader = csv.DictReader(aw1_file, delimiter=',')
-            row = [r for r in reader if r['Biobank ID'] == str(member.biobankId)][0]
-
-            # Alter field names to remove spaces and change to lower case
-            row = self.clean_row_keys(row)
-
-        if row['genometype'] in (GENOME_TYPE_WGS, GENOME_TYPE_WGS_INVESTIGATION):
-            row = self._set_metrics_wgs_data_file_paths(row)
-        elif row['genometype'] in (GENOME_TYPE_ARRAY, GENOME_TYPE_ARRAY_INVESTIGATION):
-            row = self._set_metrics_array_data_file_paths(row)
-        row = self.prep_aw2_row_attributes(row, member)
-
-        if row == GenomicSubProcessResult.ERROR:
-            return GenomicSubProcessResult.ERROR
-
-        # check whether metrics object exists for that member
-        existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
-
-        if existing_metrics_obj is not None:
-            metric_id = existing_metrics_obj.id
-        else:
-            metric_id = None
-
-        self.metrics_dao.upsert_gc_validation_metrics_from_dict(row, metric_id)
-        self.update_member_for_aw2(member)
-
-        # Update member in DB
-        self.member_dao.update(member)
-        self._update_member_state_after_aw2(member)
-
-        # Update AW1 manifest feedback record count
-        if existing_metrics_obj is None and not self.controller.bypass_record_count:
-            # For feedback manifest loop
-            # Get the genomic_manifest_file
-            manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
-            if manifest_file is not None:
-                self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
-
-        return GenomicSubProcessResult.SUCCESS
-
     @classmethod
     def increment_manifest_file_record_count_from_id(cls, file_obj):
         """
@@ -484,87 +441,6 @@ class GenomicFileIngester:
 
         with GenomicManifestFileDao().session() as s:
             s.merge(manifest_file)
-
-    def prep_aw2_row_attributes(self, row: dict, member: GenomicSetMember):
-        """
-        Set contamination, contamination category,
-        call rate, member_id, and file_id on AW2 row dictionary
-        :param member:
-        :param row:
-        :return: row dictionary or ERROR code
-        """
-
-        row['member_id'] = member.id
-        row['file_id'] = self.file_obj.id
-
-        # handle mapped reads in case they are longer than field length
-        if 'mappedreadspct' in row.keys():
-            if len(row['mappedreadspct']) > 10:
-                row['mappedreadspct'] = row['mappedreadspct'][0:10]
-
-        # Set default values in case they upload "" and processing status of "fail"
-        row['contamination_category'] = GenomicContaminationCategory.UNSET
-        row['contamination_category_str'] = "UNSET"
-
-        # Truncate call rate
-        try:
-            row['callrate'] = row['callrate'][:10]
-        except KeyError:
-            pass
-        # Convert blank alignedq30bases to none
-        try:
-            if row['alignedq30bases'] == '':
-                row['alignedq30bases'] = None
-        except KeyError:
-            pass
-        # Validate and clean contamination data
-        try:
-            row['contamination'] = float(row['contamination'])
-            # Percentages shouldn't be less than 0
-            if row['contamination'] < 0:
-                row['contamination'] = 0
-        except ValueError:
-            if row['processingstatus'].lower() != 'pass':
-                return row
-            _message = f'{self.job_id.name}: Contamination must be a number for sample_id: {row["sampleid"]}'
-            self.controller.create_incident(source_job_run_id=self.job_run_id,
-                                            source_file_processed_id=self.file_obj.id,
-                                            code=GenomicIncidentCode.DATA_VALIDATION_FAILED.name,
-                                            message=_message,
-                                            biobank_id=member.biobankId,
-                                            sample_id=row['sampleid'],
-                                            )
-
-            return GenomicSubProcessResult.ERROR
-
-        # Calculate contamination_category
-        contamination_value = float(row['contamination'])
-        category = self.calculate_contamination_category(
-            member.collectionTubeId,
-            contamination_value,
-            member
-        )
-        row['contamination_category'] = category
-        row['contamination_category_str'] = category.name
-
-        return row
-
-    def update_member_for_aw2(self, member: GenomicSetMember):
-        """
-        Updates the aw2FileProcessedId and possibly the genomicWorkflowState
-        of a GenomicSetMember after AW2 data has been ingested
-        :param member:
-        """
-
-        member.aw2FileProcessedId = self.file_obj.id
-
-        # Only update the state if it was AW1
-        if member.genomicWorkflowState == GenomicWorkflowState.AW1:
-            member.genomicWorkflowState = GenomicWorkflowState.AW2
-            member.genomicWorkflowStateStr = GenomicWorkflowState.AW2.name
-            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
-
-        self.member_dao.update(member)
 
     def _ingest_gem_a2_manifest(self, rows):
         """
@@ -1031,96 +907,6 @@ class GenomicFileIngester:
 
         return row_obj
 
-    def _ingest_aw2_manifest(self, rows):
-        """ Since input files vary in column names,
-        this standardizes the field-names before passing to the bulk inserter
-        :param rows:
-        :return result code
-        """
-        members_to_update = []
-        for row in rows:
-            row_copy = self.clean_row_keys(row)
-            member = self.member_dao.get_member_from_sample_id(
-                int(row_copy['sampleid']),
-            )
-
-            if not member:
-                bid = row_copy['biobankid']
-                if bid[0] in [get_biobank_id_prefix(), 'T']:
-                    bid = bid[1:]
-                _message = f"{self.job_id.name}: Cannot find genomic set member for bid, sample_id: " \
-                           f"{row_copy['biobankid']}, {row_copy['sampleid']}"
-                self.controller.create_incident(source_job_run_id=self.job_run_id,
-                                                source_file_processed_id=self.file_obj.id,
-                                                code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
-                                                message=_message,
-                                                biobank_id=bid,
-                                                sample_id=row_copy['sampleid'],
-                                                )
-                continue
-
-            row_copy = self.prep_aw2_row_attributes(row_copy, member)
-            if row_copy == GenomicSubProcessResult.ERROR:
-                continue
-
-            # METRICS actions
-            pipeline_id = None
-            if row_copy['genometype'] in (GENOME_TYPE_ARRAY, GENOME_TYPE_ARRAY_INVESTIGATION):
-                row_copy = self._set_metrics_array_data_file_paths(row_copy)
-                pipeline_id = row_copy.get('pipelineid')
-
-            elif row_copy['genometype'] in (GENOME_TYPE_WGS, GENOME_TYPE_WGS_INVESTIGATION):
-                row_copy = self._set_metrics_wgs_data_file_paths(row_copy)
-                pipeline_id = row_copy.get('pipelineid')
-                # default and add to row dict deprecated version if no pipeline_id in manifest row
-                if not pipeline_id:
-                    row_copy['pipelineid'] = pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
-
-            existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(
-                member_id=member.id,
-                pipeline_id=pipeline_id
-            )
-            metric_id = None if not existing_metrics_obj else existing_metrics_obj.id
-
-            # Member Replating (conditional) based on existing metric record
-            if not metric_id:
-                if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS] and row_copy['contamination_category'] in [
-                    GenomicContaminationCategory.EXTRACT_WGS,
-                        GenomicContaminationCategory.EXTRACT_BOTH]:
-                    self.insert_member_for_replating(member, row_copy['contamination_category'])
-
-            # convert enum to int for json payload
-            row_copy['contamination_category'] = int(row_copy['contamination_category'])
-            self.controller.execute_cloud_task({
-                'metric_id': metric_id,
-                'payload_dict': row_copy,
-            }, 'genomic_gc_metrics_upsert')
-
-            # MANIFEST/FEEDBACK actions
-            manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
-            if manifest_file is not None and metric_id is None:
-                self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
-
-            # MEMBER actions
-            self.update_member_for_aw2(member)
-            member_dict = {
-                'id': member.id
-            }
-            if row_copy['genometype'] == GENOME_TYPE_ARRAY:
-                member_dict['genomicWorkflowState'] = int(GenomicWorkflowState.GEM_READY)
-                member_dict['genomicWorkflowStateStr'] = str(GenomicWorkflowState.GEM_READY)
-                member_dict['genomicWorkflowStateModifiedTime'] = clock.CLOCK.now()
-            elif row_copy['genometype'] == GENOME_TYPE_WGS:
-                member_dict['genomicWorkflowState'] = int(GenomicWorkflowState.CVL_READY)
-                member_dict['genomicWorkflowStateStr'] = str(GenomicWorkflowState.CVL_READY)
-                member_dict['genomicWorkflowStateModifiedTime'] = clock.CLOCK.now()
-            members_to_update.append(member_dict)
-
-        if members_to_update:
-            self.member_dao.bulk_update(members_to_update)
-
-        return GenomicSubProcessResult.SUCCESS
-
     def copy_member_for_replating(
         self,
         member,
@@ -1160,13 +946,16 @@ class GenomicFileIngester:
 
         self.member_dao.insert(new_member)
 
-    def insert_member_for_replating(self, member, category):
+    @classmethod
+    def insert_member_for_replating(cls, member_id, category):
         """
         Inserts a new member record for replating.
-        :param member: GenomicSetMember
+        :param member_id: GenomicSetMember.id
         :param category: GenomicContaminationCategory
         :return:
         """
+        member_dao = GenomicSetMemberDao()
+        member = member_dao.get(member_id)
         new_member_wgs = GenomicSetMember(
             biobankId=member.biobankId,
             genomicSetId=member.genomicSetId,
@@ -1189,9 +978,9 @@ class GenomicFileIngester:
         if category == GenomicContaminationCategory.EXTRACT_BOTH:
             new_member_array = deepcopy(new_member_wgs)
             new_member_array.genomeType = GENOME_TYPE_ARRAY
-            self.member_dao.insert(new_member_array)
+            member_dao.insert(new_member_array)
 
-        self.member_dao.insert(new_member_wgs)
+        member_dao.insert(new_member_wgs)
 
     def _base_cvl_ingestion(self, **kwargs):
         row_copy = self.clean_row_keys(kwargs.get('row'))
@@ -1417,15 +1206,8 @@ class GenomicFileIngester:
             GenomicSampleContamination.id.is_(None),
             BiobankStoredSample.test.in_(['1ED04', '1ED10', '1SAL2'])
         )
-
         exists_query = session.query(query.exists())
         return exists_query.scalar()
-
-    def _record_sample_as_contaminated(self, session, sample_id):
-        session.add(GenomicSampleContamination(
-            sampleId=sample_id,
-            failedInJob=self.job_id
-        ))
 
     def calculate_contamination_category(self, sample_id, raw_contamination, member: GenomicSetMember):
         """
@@ -1437,94 +1219,30 @@ class GenomicFileIngester:
         """
         ps_dao = ParticipantSummaryDao()
         ps = ps_dao.get(member.participantId)
-
         contamination_category = GenomicContaminationCategory.UNSET
-
         # No Extract if contamination <1%
         if raw_contamination < 0.01:
             contamination_category = GenomicContaminationCategory.NO_EXTRACT
-
         # Only extract WGS if contamination between 1 and 3 % inclusive AND ROR
         elif (0.01 <= raw_contamination <= 0.03) and ps.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED:
             contamination_category = GenomicContaminationCategory.EXTRACT_WGS
-
         # No Extract if contamination between 1 and 3 % inclusive and GROR is not Yes
         elif (0.01 <= raw_contamination <= 0.03) and ps.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED:
             contamination_category = GenomicContaminationCategory.NO_EXTRACT
-
         # Extract Both if contamination > 3%
         elif raw_contamination > 0.03:
             contamination_category = GenomicContaminationCategory.EXTRACT_BOTH
-
-        with ps_dao.session() as session:
-            if raw_contamination >= 0.01:
+        if raw_contamination >= 0.01:
+            with ParticipantSummaryDao().session() as session:
                 # Record in the contamination table, regardless of GROR consent
-                self._record_sample_as_contaminated(session, sample_id)
-
+                session.add(GenomicSampleContamination(
+                    sampleId=sample_id,
+                    failedInJob=self.job_id
+                ))
             if contamination_category != GenomicContaminationCategory.NO_EXTRACT and \
-                not self._participant_has_potentially_clean_samples(session, member.biobankId):
+                    not self._participant_has_potentially_clean_samples(session, member.biobankId):
                 contamination_category = GenomicContaminationCategory.TERMINAL_NO_EXTRACT
-
         return contamination_category
-
-    def _set_metrics_array_data_file_paths(self, row: dict) -> dict:
-        gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP, {})
-        site_id = self.file_obj.fileName.split('_')[0].lower()
-        gc_bucket_name = gc_site_bucket_map.get(site_id)
-        gc_bucket = config.getSetting(gc_bucket_name, None)
-        if not gc_bucket:
-            return row
-
-        for file_def in array_file_types_attributes:
-            if file_def['required']:
-                if 'idat' in file_def["file_type"]:
-                    file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}' + \
-                                f'_{file_def["file_type"]}'
-                else:
-                    file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}.' + \
-                                f'{file_def["file_type"]}'
-                row[file_def['file_path_attribute']] = file_path
-
-        return row
-
-    def _set_metrics_wgs_data_file_paths(self, row: dict) -> dict:
-        # IF file_paths in manifest ELSE move on
-        required_wgs_file_paths = list(filter(lambda x: x['required'] is True, wgs_file_types_attributes))
-
-        row_paths = {k: v for k, v in row.items() if 'path' in k and v is not None}
-        if len(required_wgs_file_paths) == len(row_paths):
-            # model attributes are different that manifest columns for certain values in map
-            for manifest_file_key, model_attribute in wgs_metrics_manifest_mapping.items():
-                path_value = row_paths.get(self.clean_row_keys(manifest_file_key))
-                row[model_attribute] = f'gs://{path_value}' if 'gs://' not in path_value else path_value
-            return row
-
-        gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP, {})
-        site_id = self.file_obj.fileName.split('_')[0].lower()
-        gc_bucket_name = gc_site_bucket_map.get(site_id)
-        gc_bucket = config.getSetting(gc_bucket_name, None)
-        if not gc_bucket:
-            return row
-
-        for file_def in required_wgs_file_paths:
-            if file_def['required']:
-                file_path = f'gs://{gc_bucket}/{genome_center_datafile_prefix_map[site_id][file_def["file_type"]]}/' + \
-                            f'{site_id.upper()}_{row["biobankid"]}_{row["sampleid"]}_{row["limsid"]}_1.' + \
-                            f'{file_def["file_type"]}'
-                row[file_def['file_path_attribute']] = file_path
-        return row
-
-    def _update_member_state_after_aw2(self, member: GenomicSetMember):
-        if member.genomeType == 'aou_array':
-            ready_signal = 'gem-ready'
-        elif member.genomeType == 'aou_wgs':
-            ready_signal = 'cvl-ready'
-        else:
-            # Don't update state for investigation genome types
-            return
-        next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal=ready_signal)
-        if next_state and next_state != member.genomicWorkflowState:
-            self.member_dao.update_member_workflow_state(member, next_state)
 
 
 class GenomicFileValidator:
@@ -1886,6 +1604,10 @@ class GenomicFileValidator:
             )
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
+        # Adding temporary bypass rule for manifest ingestion validation DA-3072
+        if self.job_id in [GenomicJob.METRICS_INGESTION]:
+            return GenomicSubProcessResult.SUCCESS
+
         # validates values in fields if specified for job
         values_validation_failed, message = self.validate_values(data_to_validate)
         if values_validation_failed:
@@ -2140,7 +1862,9 @@ class GenomicFileValidator:
 
     def validate_values(self, data):
         is_invalid, message = False, None
-        cleaned_fieldnames = [self._clean_field_name(fieldname) for fieldname in data['fieldnames']]
+        cleaned_fieldnames = [
+            self._clean_field_name(fieldname) for fieldname in data['fieldnames']
+        ]
 
         try:
             if self.genome_type:
@@ -2174,10 +1898,6 @@ class GenomicFileValidator:
         :param fields: the data from the CSV file; dictionary per row.
         :return: boolean; True if valid structure, False if not.
         """
-
-        # Adding temporary bypass rule for manifest ingestion validation DA-3072
-        if self.job_id in [GenomicJob.METRICS_INGESTION]:
-            return True, None, None, self.valid_schema
 
         missing_fields, extra_fields = None, None
 

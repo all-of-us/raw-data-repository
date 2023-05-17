@@ -1999,7 +1999,7 @@ class BackFillReplates(GenomicManifestBase):
 
         for existing_record in existing_records:
             if not self.args.dryrun:
-                ingester.insert_member_for_replating(existing_record.GenomicSetMember,
+                ingester.insert_member_for_replating(existing_record.GenomicSetMember.id,
                                                      existing_record.contaminationCategory)
             else:
                 _logger.info(f'Would create member based on id: {existing_record.GenomicSetMember.id}')
