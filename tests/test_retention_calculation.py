@@ -1,6 +1,7 @@
 from datetime import datetime
 import mock
 
+from rdr_service import config
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.offline.retention_eligible_import import _supplement_with_rdr_calculations
 from rdr_service.services.retention_calculation import RetentionEligibilityDependencies
@@ -18,6 +19,11 @@ class RetentionCalculationIntegrationTest(BaseTestCase):
         self.addCleanup(retention_calc_patch.stop)
 
     def test_get_earliest_dna_sample(self):
+        self.temporarily_override_config_setting(
+            key=config.DNA_SAMPLE_TEST_CODES,
+            value=['1ED04', '1SAL2']
+        )
+
         first_dna_sample_timestamp = datetime(2020, 3, 4)
         for test, timestamp in [
             ('not_dna', datetime(2019, 1, 19)),
