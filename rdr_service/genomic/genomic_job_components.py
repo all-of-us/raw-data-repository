@@ -1226,8 +1226,8 @@ class GenomicFileIngester:
         # Extract Both if contamination > 3%
         elif raw_contamination > 0.03:
             contamination_category = GenomicContaminationCategory.EXTRACT_BOTH
-        if raw_contamination >= 0.01:
-            with ParticipantSummaryDao().session() as session:
+        with ps_dao.session() as session:
+            if raw_contamination >= 0.01:
                 # Record in the contamination table, regardless of GROR consent
                 session.add(GenomicSampleContamination(
                     sampleId=sample_id,

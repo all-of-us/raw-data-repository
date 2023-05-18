@@ -1725,7 +1725,8 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
     def get_bulk_metrics_for_process_update(self, *, member_ids: List[int], pipeline_id: str):
         with self.session() as session:
             records = session.query(
-                GenomicGCValidationMetrics.id
+                GenomicGCValidationMetrics.id,
+                GenomicGCValidationMetrics.genomicSetMemberId
             ).filter(
                 GenomicGCValidationMetrics.genomicSetMemberId.in_(member_ids),
                 GenomicGCValidationMetrics.ignoreFlag != 1,

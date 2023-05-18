@@ -6,8 +6,7 @@ from rdr_service import clock, config
 from rdr_service.config import GENOMIC_INVESTIGATION_GENOME_TYPES, GENOME_TYPE_ARRAY, GENOME_TYPE_WGS, \
     GENOME_TYPE_WGS_INVESTIGATION
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicManifestFeedbackDao
-from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.genomics_dao import GenomicManifestFeedbackDao
 from rdr_service.genomic.genomic_mappings import array_file_types_attributes, wgs_file_types_attributes, \
     genome_center_datafile_prefix_map, wgs_metrics_manifest_mapping
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -160,25 +159,20 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
         return member
 
     def create_investigation_member_record_from_aw1(self, aw1_data):
-        member_dao = GenomicSetMemberDao()
-        set_dao = GenomicSetDao()
         new_set = GenomicSet(
             genomicSetName=f"investigation_{self.file_ingester.controller.job_run.id}",
             genomicSetCriteria="investigation genome type",
             genomicSetVersion=1,
         )
 
-        set_dao.insert(new_set)
-        participant_dao = ParticipantDao()
-
+        self.file_ingester.set_dao.insert(new_set)
         # Get IDs
         biobank_id = aw1_data['biobankid']
-
         # Strip biobank prefix if it's there
         if biobank_id[0] in [get_biobank_id_prefix(), 'T']:
             biobank_id = biobank_id[1:]
 
-        participant = participant_dao.get_by_biobank_id(biobank_id)
+        participant = self.file_ingester.participant_dao.get_by_biobank_id(biobank_id)
 
         # Create new genomic_set_member
         new_member = GenomicSetMember(
@@ -195,9 +189,8 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
             genomicWorkflowState=GenomicWorkflowState.AW1,
             genomicWorkflowStateStr=GenomicWorkflowState.AW1.name,
         )
-
         _, member = self._process_aw1_attribute_data(aw1_data, new_member)
-        member_dao.insert(member)
+        self.file_ingester.member_dao.insert(member)
 
     def create_new_member_from_aw1_control_sample(self, aw1_data: dict) -> GenomicSetMember:
         """
@@ -206,9 +199,8 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
         :param aw1_data: dict from aw1 row
         :return:  GenomicSetMember
         """
-        member_dao = GenomicSetMemberDao()
         # Writing new genomic_set_member based on AW1 data
-        max_set_id = member_dao.get_collection_tube_max_set_id()[0]
+        max_set_id = self.file_ingester.member_dao.get_collection_tube_max_set_id()[0]
         # Insert new member with biobank_id and collection tube ID from AW1
         new_member_obj = GenomicSetMember(
             genomicSetId=max_set_id,
@@ -225,7 +217,7 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
         new_member_obj = self._set_member_attributes_from_aw1(aw1_data, new_member_obj)
         new_member_obj = self._set_rdr_member_attributes_for_aw1(aw1_data, new_member_obj)
 
-        return member_dao.insert(new_member_obj)
+        return  self.file_ingester.member_dao.insert(new_member_obj)
 
     def run_ingestion(self, rows: List[OrderedDict]) -> str:
         """
@@ -539,10 +531,10 @@ class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
             )
 
             # MEMBER REPLATING actions - (conditional) based on existing metric record
-            existing_metrics_obj: List[GenomicGCValidationMetrics] = list(
-                filter(lambda x: x.genomic_set_member_id == row_member.id, exisiting_metrics)
+            existing_metric_obj: List[GenomicGCValidationMetrics] = list(
+                filter(lambda x: x.genomicSetMemberId == row_member.id, exisiting_metrics)
             )
-            metric_id = None if not existing_metrics_obj else existing_metrics_obj[0].id
+            metric_id = None if not existing_metric_obj else existing_metric_obj[0].id
             if not metric_id:
                 if row_member.genomeType in [
                     GENOME_TYPE_ARRAY,
