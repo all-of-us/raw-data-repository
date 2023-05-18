@@ -312,11 +312,7 @@ class GenomicFileIngester:
         current_ingestion_workflow = current_ingestion_map.get(self.job_id)
         if not current_ingestion_workflow:
             current_workflow = workflow_map.get(self.job_id)(file_ingester=self)
-            current_ingestion_workflow = getattr(
-                current_workflow,
-                [attrs for attrs in dir(current_workflow)
-                 if ('ingest' and 'manifest') in attrs][0]
-            )
+            current_ingestion_workflow = current_workflow.run_ingestion
 
         self.file_validator.valid_schema = None
 
@@ -946,16 +942,14 @@ class GenomicFileIngester:
 
         self.member_dao.insert(new_member)
 
-    @classmethod
-    def insert_member_for_replating(cls, member_id, category):
+    def insert_member_for_replating(self, member_id, category):
         """
         Inserts a new member record for replating.
         :param member_id: GenomicSetMember.id
         :param category: GenomicContaminationCategory
         :return:
         """
-        member_dao = GenomicSetMemberDao()
-        member = member_dao.get(member_id)
+        member = self.member_dao.get(member_id)
         new_member_wgs = GenomicSetMember(
             biobankId=member.biobankId,
             genomicSetId=member.genomicSetId,
@@ -978,9 +972,9 @@ class GenomicFileIngester:
         if category == GenomicContaminationCategory.EXTRACT_BOTH:
             new_member_array = deepcopy(new_member_wgs)
             new_member_array.genomeType = GENOME_TYPE_ARRAY
-            member_dao.insert(new_member_array)
+            self.member_dao.insert(new_member_array)
 
-        member_dao.insert(new_member_wgs)
+        self.member_dao.insert(new_member_wgs)
 
     def _base_cvl_ingestion(self, **kwargs):
         row_copy = self.clean_row_keys(kwargs.get('row'))

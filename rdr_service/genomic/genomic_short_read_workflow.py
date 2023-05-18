@@ -1,4 +1,5 @@
 import logging
+from abc import ABC, abstractmethod
 from typing import List, OrderedDict
 
 from rdr_service import clock, config
@@ -15,26 +16,17 @@ from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicSamp
     GenomicGCValidationMetrics
 
 
-class BaseShortReadWorkflow:
+class BaseGenomicShortReadWorkflow(ABC):
 
     def __init__(self, file_ingester):
         self.file_ingester = file_ingester
 
-    @classmethod
-    def clean_row_keys(cls, val) -> dict:
-        def str_clean(str_val):
-            return str_val.lower() \
-                .replace(' ', '') \
-                .replace('_', '')
-
-        if type(val) is str or 'quoted_name' in val.__class__.__name__.lower():
-            return str_clean(val)
-        elif 'dict' in val.__class__.__name__.lower():
-            return dict(zip([str_clean(key)
-                             for key in val], val.values()))
+    @abstractmethod
+    def run_ingestion(self, rows: List[OrderedDict]) -> str:
+        ...
 
 
-class GenomicAW1Workflow(BaseShortReadWorkflow):
+class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
 
     @classmethod
     def get_aw1_manifest_column_mappings(cls):
@@ -226,7 +218,7 @@ class GenomicAW1Workflow(BaseShortReadWorkflow):
 
         return member_dao.insert(new_member_obj)
 
-    def ingest_aw1_manifest(self, rows: List[OrderedDict]) -> str:
+    def run_ingestion(self, rows: List[OrderedDict]) -> str:
         """
         AW1 ingestion method: Updates the GenomicSetMember with AW1 data
         If the row is determined to be a control sample,
@@ -239,7 +231,7 @@ class GenomicAW1Workflow(BaseShortReadWorkflow):
         gc_site = self._get_site_from_aw1()
 
         for row in rows:
-            row_copy = self.clean_row_keys(row)
+            row_copy = self.file_ingester.clean_row_keys(row)
 
             row_copy['site_id'] = gc_site
             # Skip rows if biobank_id is an empty string (row is empty well)
@@ -350,7 +342,7 @@ class GenomicAW1Workflow(BaseShortReadWorkflow):
         return GenomicSubProcessResult.SUCCESS
 
 
-class GenomicAW2Workflow(BaseShortReadWorkflow):
+class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
 
     def prep_aw2_row_attributes(self, *, row: dict, member: GenomicSetMember) -> dict:
         """
@@ -368,7 +360,7 @@ class GenomicAW2Workflow(BaseShortReadWorkflow):
             row['mappedreadspct'] = row['mappedreadspct'][0:10]
 
         # Set default values in case they upload "" and processing status of "fail"
-        row['contamination_category'] = int(GenomicContaminationCategory.UNSET)
+        row['contamination_category'] = GenomicContaminationCategory.UNSET
         row['contamination_category_str'] = "UNSET"
         # Truncate call rate
         try:
@@ -407,18 +399,19 @@ class GenomicAW2Workflow(BaseShortReadWorkflow):
             contamination_value,
             member
         )
-        row['contamination_category'] = int(category)
+        row['contamination_category'] = category
         row['contamination_category_str'] = category.name
         return row
 
-    def ingest_aw2_manifest(self, rows: List[OrderedDict]) -> str:
+    def run_ingestion(self, rows: List[OrderedDict]) -> str:
         """ Since input files vary in column names,
         this standardizes the field-names before passing to the bulk inserter
         :param rows:
         :return result code
         """
         feedback_dao = GenomicManifestFeedbackDao()
-        members_to_update, metrics_to_update, cleaned_rows = [], [], [self.clean_row_keys(row) for row in rows]
+        members_to_update, cleaned_rows = [], [self.file_ingester.clean_row_keys(row) for row in
+                                               rows]
 
         # All members connected to manifest via sample_ids
         members: List[GenomicSetMember] = self.file_ingester.member_dao.get_member_subset_for_metrics_from_sample_ids(
@@ -474,11 +467,11 @@ class GenomicAW2Workflow(BaseShortReadWorkflow):
             members_to_update.append(member_dict)
 
             # METRIC actions
-            row_copy = self.prep_aw2_row_attributes(
+            prepped_row = self.prep_aw2_row_attributes(
                 row=row,
                 member=row_member
             )
-            if row_copy == GenomicSubProcessResult.ERROR:
+            if prepped_row == GenomicSubProcessResult.ERROR:
                 continue
 
             # MEMBER REPLATING actions - (conditional) based on existing metric record
@@ -486,33 +479,32 @@ class GenomicAW2Workflow(BaseShortReadWorkflow):
                 filter(lambda x: x.genomic_set_member_id == row_member.id, exisiting_metrics)
             )
             metric_id = None if not existing_metrics_obj else existing_metrics_obj[0].id
-            row_copy['metric_id'] = metric_id
-            metrics_to_update.append(row_copy)
-
             if not metric_id:
                 if row_member.genomeType in [
                     GENOME_TYPE_ARRAY,
                     GENOME_TYPE_WGS
-                ] and row_copy[
+                ] and prepped_row[
                     'contamination_category'] in [
                     GenomicContaminationCategory.EXTRACT_WGS,
                     GenomicContaminationCategory.EXTRACT_BOTH
                 ]:
                     self.file_ingester.insert_member_for_replating(
                         row_member.id,
-                        row_copy['contamination_category']
+                        prepped_row['contamination_category']
                     )
+
+            # UPSERT cloud task for current metric
+            prepped_row['contamination_category'] = int(prepped_row['contamination_category'])
+            self.file_ingester.controller.execute_cloud_task({
+                'metric_id': metric_id,
+                'payload_dict': prepped_row,
+            }, 'genomic_gc_metrics_upsert')
 
             # MANIFEST/FEEDBACK actions - (conditional) based on existing manifest record
             manifest_file = self.file_ingester.file_processed_dao.get(row_member.aw1FileProcessedId)
             if manifest_file and not metric_id:
                 feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
 
-        # Upsert for all metrics via cloud task
-        self.file_ingester.controller.execute_cloud_task({
-            'metric_id': metric_id,
-            'payload_dict': row_copy,
-        }, 'genomic_gc_metrics_upsert')
         # Update for ALL members
         self.file_ingester.member_dao.bulk_update(members_to_update)
 
