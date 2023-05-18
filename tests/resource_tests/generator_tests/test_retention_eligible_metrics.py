@@ -40,7 +40,7 @@ class RetentionMetricGeneratorTest(BaseTestCase):
         # Test that the number of fields in the DAO model has not changed.
         # This test is to make sure the resource model is updated when the SA model has been changed.
         column_count = len(RetentionEligibleMetrics.__table__.columns)
-        self.assertEqual(column_count, 12)
+        self.assertEqual(column_count, 17)
 
         self.session.add(self.rem)
         self.session.commit()
