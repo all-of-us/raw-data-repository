@@ -8,6 +8,8 @@ from rdr_service.config import GENOMIC_INVESTIGATION_GENOME_TYPES, GENOME_TYPE_A
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicManifestFeedbackDao
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.genomic.genomic_mappings import array_file_types_attributes, wgs_file_types_attributes, \
+    genome_center_datafile_prefix_map, wgs_metrics_manifest_mapping
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.genomic_enums import GenomicWorkflowState, GenomicSubProcessResult, GenomicIncidentCode, GenomicJob, \
     GenomicSetMemberStatus, GenomicContaminationCategory
@@ -25,8 +27,15 @@ class BaseGenomicShortReadWorkflow(ABC):
     def run_ingestion(self, rows: List[OrderedDict]) -> str:
         ...
 
+    @abstractmethod
+    def get_gc_data(self):
+        ...
+
 
 class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
+
+    def get_gc_data(self):
+        ...
 
     @classmethod
     def get_aw1_manifest_column_mappings(cls):
@@ -344,6 +353,56 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
 
 class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
 
+    def get_gc_data(self):
+        gc_site_bucket_map = config.getSettingJson(config.GENOMIC_GC_SITE_BUCKET_MAP, {})
+        site_id = self.file_ingester.file_obj.fileName.split('_')[0].lower()
+        gc_bucket_name = gc_site_bucket_map.get(site_id)
+        config.getSetting(gc_bucket_name, None)
+        return site_id, config.getSetting(gc_bucket_name, None)
+
+    def set_metrics_data_file_paths(self, genome_type: str, row: dict) -> dict:
+        site_id, gc_bucket = self.get_gc_data()
+        if not gc_bucket:
+            return row
+
+        data_file_paths_map = {
+            config.GENOME_TYPE_ARRAY: {
+                'attributes': array_file_types_attributes
+            },
+            config.GENOME_TYPE_WGS: {
+                'attributes': wgs_file_types_attributes,
+                'mappings': wgs_metrics_manifest_mapping
+            }
+        }[genome_type]
+
+        row_paths = {k: v for k, v in row.items() if 'path' in k and v is not None}
+        required_file_paths = list(filter(lambda x: x['required'] is True, data_file_paths_map.get('attributes')))
+
+        # If file paths in manifest then grep from manifest and return (should only apply to WGS @ this time)
+        if (len(required_file_paths) == len(row_paths)) and data_file_paths_map.get('mappings'):
+            # model attributes are different that manifest columns for certain values in map
+            for manifest_file_key, model_attribute in data_file_paths_map.get('mappings').items():
+                path_value = row_paths.get(self.file_ingester.clean_row_keys(manifest_file_key))
+                row[model_attribute] = f'gs://{path_value}' if 'gs://' not in path_value else path_value
+            return row
+
+        # If file paths not defined them define implicitly
+        for file_def in required_file_paths:
+            if genome_type == config.GENOME_TYPE_ARRAY:
+                if 'idat' in file_def["file_type"]:
+                    file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}' + \
+                                f'_{file_def["file_type"]}'
+                else:
+                    file_path = f'gs://{gc_bucket}/Genotyping_sample_raw_data/{row["chipwellbarcode"]}.' + \
+                                f'{file_def["file_type"]}'
+                row[file_def['file_path_attribute']] = file_path
+            elif genome_type == config.GENOME_TYPE_WGS:
+                file_path = f'gs://{gc_bucket}/{genome_center_datafile_prefix_map[site_id][file_def["file_type"]]}/' + \
+                            f'{site_id.upper()}_{row["biobankid"]}_{row["sampleid"]}_{row["limsid"]}_1.' + \
+                            f'{file_def["file_type"]}'
+                row[file_def['file_path_attribute']] = file_path
+        return row
+
     def prep_aw2_row_attributes(self, *, row: dict, member: GenomicSetMember) -> dict:
         """
         Set contamination, contamination category,
@@ -439,9 +498,8 @@ class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
             if not row_member:
                 if biobank_id[0] in [get_biobank_id_prefix(), 'T']:
                     biobank_id = biobank_id[1:]
-                message = f"{self.file_ingester.controller.job_id.name}: Cannot find genomic set member " \
-                          f"for bid, " \
-                          f"sample_id: " \
+                message = f"{self.file_ingester.controller.job_id.name}: Cannot find genomic set member for " \
+                          f"biobank_id, sample_id: " \
                           f"{biobank_id}, {sample_id}"
                 self.file_ingester.controller.create_incident(
                     source_job_run_id=self.file_ingester.controller.job_run.id,
@@ -473,6 +531,12 @@ class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
             )
             if prepped_row == GenomicSubProcessResult.ERROR:
                 continue
+            prepped_row['pipelineid'] = pipeline_id
+            # set metric file paths
+            prepped_row = self.set_metrics_data_file_paths(
+                genome_type=row['genometype'],
+                row=prepped_row
+            )
 
             # MEMBER REPLATING actions - (conditional) based on existing metric record
             existing_metrics_obj: List[GenomicGCValidationMetrics] = list(
@@ -505,7 +569,7 @@ class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
             if manifest_file and not metric_id:
                 feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
 
-        # Update for ALL members
+        # BULK Update for ALL members
         self.file_ingester.member_dao.bulk_update(members_to_update)
 
         return GenomicSubProcessResult.SUCCESS

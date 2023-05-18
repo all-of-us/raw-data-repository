@@ -1598,10 +1598,6 @@ class GenomicFileValidator:
             )
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
-        # Adding temporary bypass rule for manifest ingestion validation DA-3072
-        if self.job_id in [GenomicJob.METRICS_INGESTION]:
-            return GenomicSubProcessResult.SUCCESS
-
         # validates values in fields if specified for job
         values_validation_failed, message = self.validate_values(data_to_validate)
         if values_validation_failed:
@@ -1892,6 +1888,10 @@ class GenomicFileValidator:
         :param fields: the data from the CSV file; dictionary per row.
         :return: boolean; True if valid structure, False if not.
         """
+
+        # Adding temporary bypass rule for manifest ingestion validation DA-3072
+        if self.job_id in [GenomicJob.METRICS_INGESTION]:
+            return True, None, None, self.valid_schema
 
         missing_fields, extra_fields = None, None
 
