@@ -6,7 +6,8 @@ from rdr_service import clock, config
 from rdr_service.config import GENOMIC_INVESTIGATION_GENOME_TYPES, GENOME_TYPE_ARRAY, GENOME_TYPE_WGS, \
     GENOME_TYPE_WGS_INVESTIGATION
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-from rdr_service.dao.genomics_dao import GenomicManifestFeedbackDao
+from rdr_service.dao.genomics_dao import GenomicManifestFeedbackDao, GenomicSetDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.genomic.genomic_mappings import array_file_types_attributes, wgs_file_types_attributes, \
     genome_center_datafile_prefix_map, wgs_metrics_manifest_mapping
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -158,25 +159,31 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
 
         return member
 
-    def create_investigation_member_record_from_aw1(self, aw1_data):
+    def create_new_investigation_genomic_set(self):
+        set_dao = GenomicSetDao()
         new_set = GenomicSet(
             genomicSetName=f"investigation_{self.file_ingester.controller.job_run.id}",
             genomicSetCriteria="investigation genome type",
             genomicSetVersion=1,
         )
+        with set_dao.session() as session:
+            session.add(new_set)
+        return new_set
 
-        self.file_ingester.set_dao.insert(new_set)
+    def create_investigation_member_record_from_aw1(self, aw1_data):
+        if not self.file_ingester.investigation_set_id:
+            new_set = self.create_new_investigation_genomic_set()
+            self.file_ingester.investigation_set_id = new_set.id
         # Get IDs
         biobank_id = aw1_data['biobankid']
         # Strip biobank prefix if it's there
         if biobank_id[0] in [get_biobank_id_prefix(), 'T']:
             biobank_id = biobank_id[1:]
 
-        participant = self.file_ingester.participant_dao.get_by_biobank_id(biobank_id)
-
+        participant = ParticipantDao().get_by_biobank_id(biobank_id)
         # Create new genomic_set_member
         new_member = GenomicSetMember(
-            genomicSetId=new_set.id,
+            genomicSetId=self.file_ingester.investigation_set_id,
             biobankId=biobank_id,
             participantId=participant.participantId,
             reconcileGCManifestJobRunId=self.file_ingester.controller.job_run.id,
@@ -217,7 +224,7 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
         new_member_obj = self._set_member_attributes_from_aw1(aw1_data, new_member_obj)
         new_member_obj = self._set_rdr_member_attributes_for_aw1(aw1_data, new_member_obj)
 
-        return  self.file_ingester.member_dao.insert(new_member_obj)
+        return self.file_ingester.member_dao.insert(new_member_obj)
 
     def run_ingestion(self, rows: List[OrderedDict]) -> str:
         """
@@ -361,7 +368,14 @@ class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
             config.GENOME_TYPE_ARRAY: {
                 'attributes': array_file_types_attributes
             },
+            config.GENOME_TYPE_ARRAY_INVESTIGATION: {
+                'attributes': array_file_types_attributes
+            },
             config.GENOME_TYPE_WGS: {
+                'attributes': wgs_file_types_attributes,
+                'mappings': wgs_metrics_manifest_mapping
+            },
+            config.GENOME_TYPE_WGS_INVESTIGATION: {
                 'attributes': wgs_file_types_attributes,
                 'mappings': wgs_metrics_manifest_mapping
             }
@@ -507,6 +521,7 @@ class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
             row_member = row_member[0]
             current_state = GenomicWorkflowState.GEM_READY \
                 if row['genometype'] == GENOME_TYPE_ARRAY else GenomicWorkflowState.CVL_READY
+
             member_dict = {
                 'id': row_member.id,
                 'aw2FileProcessedId': self.file_ingester.file_obj.id,

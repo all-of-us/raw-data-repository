@@ -531,7 +531,8 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.biobankId,
                 GenomicSetMember.collectionTubeId,
                 GenomicSetMember.participantId,
-                GenomicSetMember.aw1FileProcessedId
+                GenomicSetMember.aw1FileProcessedId,
+                GenomicSetMember.genomicWorkflowState
             ).filter(
                 GenomicSetMember.sampleId.in_(sample_ids),
                 GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),

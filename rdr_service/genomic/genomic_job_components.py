@@ -117,7 +117,6 @@ class GenomicFileIngester:
         self.sub_folder_name = sub_folder
         self.investigation_set_id = None
         self.participant_dao = None
-
         # Sub Components
         self.file_validator = GenomicFileValidator(
             job_id=self.job_id,
@@ -130,7 +129,6 @@ class GenomicFileIngester:
         self.job_run_dao = GenomicJobRunDao()
         self.incident_dao = GenomicIncidentDao()
         self.user_metrics_dao = UserEventMetricsDao()
-        self.set_dao = None
         self.cvl_second_sample_dao = None
 
     def generate_file_processing_queue(self):
@@ -335,7 +333,9 @@ class GenomicFileIngester:
                 current_ingestion_workflow(row)
             self._set_manifest_file_resolved()
             return GenomicSubProcessResult.SUCCESS
-        except RuntimeError:
+        # pylint: disable=broad-except
+        except Exception as e:
+            logging.warning(f'Exception occurred on manifest ingestion workflow: {e}')
             return GenomicSubProcessResult.ERROR
 
     def _set_data_ingest_iterations(self, data_rows: List[dict]):
