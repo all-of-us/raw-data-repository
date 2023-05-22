@@ -17,7 +17,8 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
         response_params.update(**kwargs)
         return self.data_generator.create_database_questionnaire_response(**response_params)
 
-    def test_duplicates_are_marked(self):
+    @mock.patch('rdr_service.services.response_duplication_detector.submit_pipeline_pubsub_msg')
+    def test_duplicates_are_marked(self, mock_pub_sub):
         """
         Any responses found to be a duplicate of another should have DUPLICATE classification
         (except the most recent one)
@@ -66,6 +67,15 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
         self.assertEqual(duplicate_of_one.classificationType, QuestionnaireResponseClassificationType.DUPLICATE)
         self.assertNotEqual(last_duplicate_of_one.classificationType, QuestionnaireResponseClassificationType.DUPLICATE)
         self.assertNotEqual(two.classificationType, QuestionnaireResponseClassificationType.DUPLICATE)
+
+        # Check that the pubsub delete event was generated for the responses marked as duplicate responses
+        self.assertEqual(mock_pub_sub.call_count, 1)
+        mock_pub_sub_args = mock_pub_sub.call_args.kwargs
+        self.assertEqual(mock_pub_sub_args['action'], 'delete')
+        self.assertEqual(mock_pub_sub_args['table'], 'questionnaire_response')
+        self.assertEqual(mock_pub_sub_args['pk_columns'], ['questionnaire_response_id'])
+        self.assertEqual(mock_pub_sub_args['pk_values'], [str(one.questionnaireResponseId),
+                                                          str(duplicate_of_one.questionnaireResponseId)])
 
     @mock.patch('rdr_service.services.response_duplication_detector.logging')
     def test_duplicates_are_not_reprocessed(self, mock_logging):

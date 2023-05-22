@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
 from time import sleep
-import logging
+import logging, os
 from sqlalchemy import and_, func, update
 from sqlalchemy.orm import aliased
 from typing import Type
 
 from rdr_service.config import GAE_PROJECT
+from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.database_factory import get_database
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseClassificationType
@@ -79,12 +80,18 @@ class ResponseDuplicationDetector:
         :param session:  A get_database().session() object
         :param project:  project name
         """
-        # TODO:  Update to programmatically request deletion of PDR PostgreSQL records via pub/sub in the new
-        # RDR-PDR pipeline.  Currently, corresponding records already populated over in PDR database(s) must be manually
-        # deleted after this cleanup has run.  Can search the warning message logged in the flag_duplicate_responses()
-        # method to get the pk_id values and run similar DELETE statements to the one here for the RDR
-        # bigquery_sync table
 
+        # For new RDR-PDR pipeline:  generate PDR delete record events for the marked duplicates.  Allow calls
+        # during unittests for mocks/param validation.  submit_pipeline_pubmsg_msg will enforce project restrictions
+        if project != 'localhost' or os.environ['UNITTEST_FLAG'] == "1":
+            submit_pipeline_pubsub_msg(table='questionnaire_response',
+                                       action='delete', pk_columns=['questionnaire_response_id'],
+                                       pk_values=duplicate_responses)
+
+            logging.info(f'Sent PubSub notifications to mark {len(duplicate_responses)} records for deletion.')
+
+        # TODO: Once the new pipeline is fully operational, the following code can be deleted:
+        task = GCPCloudTask()
         if not session:
             raise RuntimeError('Must supply an active session object to perform database operations')
 
@@ -107,7 +114,7 @@ class ResponseDuplicationDetector:
                     ).group_by(QuestionnaireResponse.participantId
                     ).all()
         pid_list = [{'pid': p.participantId} for p in participants]
-        task = GCPCloudTask()
+
         for batch in list_chunks(pid_list, 100):
             # Just want to rebuild the participant summary data (not the full modules), to remove remaining references
             # to the newly flagged duplicate responses from the participant summary / participant_module nested data

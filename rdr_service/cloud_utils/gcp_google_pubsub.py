@@ -105,7 +105,7 @@ def log_pipeline_error(msg: str, response_only=False):
     return resp
 
 def submit_pipeline_pubsub_msg(database: str = 'rdr', table: str = None, action: str = 'None',
-                               pk_columns : List[str] = None, pk_values: List = None, project=GAE_PROJECT):
+                               pk_columns: List[str] = None, pk_values: List = None, project=GAE_PROJECT):
     """
     Publish database table updates to the 'data-pipeline' pub-sub topic by submitting a pub/sub message.
     # Note: We want this function to succeed/fail without raising any exceptions.
