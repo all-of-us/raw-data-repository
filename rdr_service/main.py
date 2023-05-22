@@ -391,6 +391,7 @@ api.add_resource(
 api.add_resource(
     NphIntakeAPI,
     API_PREFIX + 'nph/Intake',
+    API_PREFIX + 'nph/Intake/FHIR',
     endpoint='nph.intake',
     methods=['POST']
 )

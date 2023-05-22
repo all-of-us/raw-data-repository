@@ -81,7 +81,7 @@ class NphIntakeAPITest(BaseTestCase):
         all_participant_ids = [obj.id for obj in all_participant_ids]
 
         # response
-        response = self.send_post('nph/Intake', request_data=consent_json)
+        response = self.send_post('nph/Intake/FHIR', request_data=consent_json)
 
         self.assertEqual(len(response), len(all_participant_ids))
         self.assertTrue(all(int(obj['nph_participant_id']) in all_participant_ids for obj in response))
@@ -164,7 +164,7 @@ class NphIntakeAPITest(BaseTestCase):
         current_participant_id = 100000000
 
         # response
-        response = self.send_post('nph/Intake', request_data=consent_json)
+        response = self.send_post('nph/Intake/FHIR', request_data=consent_json)
 
         self.assertEqual(len(response), 1)
         self.assertTrue(all(int(obj['nph_participant_id']) == current_participant_id for obj in response))
@@ -232,7 +232,7 @@ class NphIntakeAPITest(BaseTestCase):
 
         current_participant_ids = [100000000, 100000001]
 
-        response = self.send_post('nph/Intake', request_data=consent_json)
+        response = self.send_post('nph/Intake/FHIR', request_data=consent_json)
 
         self.assertEqual(len(response), 2)
         self.assertTrue(all(int(obj['nph_participant_id']) in current_participant_ids for obj in response))
