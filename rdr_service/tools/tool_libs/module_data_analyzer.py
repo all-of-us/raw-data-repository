@@ -1,6 +1,6 @@
 #! /bin/env python
 #
-# Tool for analyzing participant TheBasics responses to identify partials/duplicates vs. full surveys
+# Tool for analyzing participant module responses for a specified module
 #
 
 import datetime
@@ -170,7 +170,7 @@ class ModuleDataAnalyzer(ToolBase):
 
     def output_response_history(self, pid, response_list):
         """
-        Write formatted details of the participant's TheBasics data to stdout
+        Write formatted details of the participant's module data to stdout
         """
 
         last_answers = None
@@ -222,7 +222,7 @@ class ModuleDataAnalyzer(ToolBase):
         look for any that should be marked with a specific QuestionnaireResponseClassificationType value, such as
         DUPLICATE or NO_ANSWER_VALUES.  Requires comparing adjacent responses to find subset/superset DUPLICATE cases
         :param pid:   Participant ID
-        :param response_list:  List of dicts with summary details about each of the participant's TheBasics responses
+        :param response_list:  List of dicts with summary details about each of the participant's module responses
         """
         if not len(response_list):
             print(f'No data for participant {pid}')
@@ -340,17 +340,17 @@ class ModuleDataAnalyzer(ToolBase):
             # Default duplicate_of and reason fields to None/empty string, may be revised in next inspection step
             result_details.append({'questionnaire_response_id': response_dict.get('questionnaireResponseId', None),
                                    'authored': response_dict.get('authored', None),
-                                   'current_classification': \
+                                   'current_classification':
                                        str(response_dict.get('classificationType',
                                                              QuestionnaireResponseClassificationType.COMPLETE)),
                                    'answer_hash': response_dict.get('answerHash', None),
                                    'external_id': response_dict.get('externalId', None),
-                                   'payload_type': QuestionnaireResponseClassificationType.COMPLETE if full_survey \
+                                   'payload_type': QuestionnaireResponseClassificationType.COMPLETE if full_survey
                                        else QuestionnaireResponseClassificationType.PROFILE_UPDATE,
                                    'answers': response_dict.get('answers', None),
                                    'duplicate_of': None,
                                    'reason': '',
-                                   })
+            })
             has_partial = has_partial or not full_survey
 
         self.inspect_responses(pid, result_details)
