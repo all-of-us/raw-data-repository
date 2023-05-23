@@ -82,7 +82,7 @@ class ResponseDuplicationDetector:
         """
 
         # For new RDR-PDR pipeline:  generate PDR delete record events for the marked duplicates.  Allow calls
-        # during unittests for mocks/param validation.  submit_pipeline_pubmsg_msg will enforce project restrictions
+        # during unittests for mocks/param validation.  submit_pipeline_pubsub_msg() will enforce project restrictions
         if project != 'localhost' or os.environ['UNITTEST_FLAG'] == "1":
             submit_pipeline_pubsub_msg(table='questionnaire_response',
                                        action='delete', pk_columns=['questionnaire_response_id'],

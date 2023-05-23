@@ -736,12 +736,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 if (module_name == 'EHRConsentPII'
                         and row.classificationType == QuestionnaireResponseClassificationType.PARTIAL):
                     continue
-                # Non-consent modules or modules with no explicit consent question configured default to SUBMITTED
-                if module_name not in _consent_module_question_map or not _consent_module_question_map[module_name]:
-                    module_status = BQModuleStatusEnum.SUBMITTED
-                else:
-                    # Consent modules with an explicit consent question start as UNSET
+
+                # Consent modules with a configured consent question start in UNSET status pending answer evaluation
+                if module_name in _consent_module_question_map and _consent_module_question_map[module_name]:
                     module_status = BQModuleStatusEnum.UNSET
+                else:
+                    # Other modules (PPI, consents like ConsentPII w/o explicit consent questions) default to SUBMITTED
+                    module_status = BQModuleStatusEnum.SUBMITTED
 
                 module_data = {
                     'module': module_name,
@@ -767,13 +768,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'classification_type': module_data['classification_type'],
                     'classification_type_id': module_data['classification_type_id']
                 }
-                # check if this is a module with consents.
+                # check if this is a module with consents, build related consent data record
                 if module_name in _consent_module_question_map:
                     qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                     if qnans:
                         qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
                         consent_answer_value, module_status = self._find_consent_response(qnan, module_name)
-                        # TODO: Deprecating the consent nested records in favor of the participant module records
+                        # TODO: Deprecating the consent nested records in the new pipeline
                         consent = {
                             'consent': consent_answer_value,
                             'consent_id': self._lookup_code_id(consent_answer_value, ro_session),
@@ -787,31 +788,21 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                             'questionnaire_response_id': row.questionnaireResponseId
                         }
 
-                        if consent_answer_value is None:
-                            consent['consent'] = module_name
-                            consent['consent_id'] = self._lookup_code_id(module_name, ro_session)
-                            # Consents without an explicit consent question given an implicit "yes"
-                            if module_name in _consent_module_question_map \
-                                   and _consent_module_question_map[module_name] is None:
-                                consent['consent_value'] = module_data['consent_value'] = 'ConsentPermission_Yes'
-                                consent['consent_value_id'] = module_data['consent_value_id'] = \
-                                    self._lookup_code_id('ConsentPermission_Yes', ro_session)
-                        else:
-                            if module_status == BQModuleStatusEnum.UNSET:
-                                logging.warning("""
-                                    No consent answer for module {0}.  Defaulting status to SUBMITTED_UNSET
-                                    (pid {1}, response {2})
-                                    """.format(module_name, p_id, row.questionnaireResponseId))
+                        if module_status == BQModuleStatusEnum.UNSET:
+                            logging.warning("""
+                                No consent answer for module {0}.  Defaulting status to SUBMITTED_UNSET
+                                (pid {1}, response {2})
+                                """.format(module_name, p_id, row.questionnaireResponseId))
 
-                            consent['consent_value'] = module_data['consent_value'] = consent_answer_value
-                            if consent_answer_value:
-                                consent['consent_value_id'] = module_data['consent_value_id'] = \
-                                    self._lookup_code_id(consent_answer_value, ro_session)
-                            if module_name in _consent_expired_question_map:
-                                consent['consent_expired'] = module_data['consent_expired'] = \
-                                    qnan.get(_consent_expired_question_map[module_name] or 'None', None)
-                            # TODO: Should we have also have a 'consent_expired_id', if so what would the integer
-                            #  value be (there is only a question code_id in the code table, no answer code_id)?
+                        consent['consent_value'] = module_data['consent_value'] = consent_answer_value
+                        if consent_answer_value:
+                            consent['consent_value_id'] = module_data['consent_value_id'] = \
+                                self._lookup_code_id(consent_answer_value, ro_session)
+                        if module_name in _consent_expired_question_map:
+                            consent['consent_expired'] = module_data['consent_expired'] = \
+                                qnan.get(_consent_expired_question_map[module_name] or 'None', None)
+                        # TODO: Should we have also have a 'consent_expired_id', if so what would the integer
+                        #  value be (there is only a question code_id in the code table, no answer code_id)?
 
                         # DA-3278 : "Yes" EHR consents now have module_status determined by consent PDF validation state
                         # Make sure once a participant has a SUBMITTED EHR module_status in their history, that sticks.
@@ -1665,9 +1656,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                   answer_code:  answer code string value
                   consent_status:  BQModuleStatusEnum
         """
-        # If a module doesn't have defined consent questions that determine status, it defaults to SUBMITTED status
         if module in _consent_module_question_map and _consent_module_question_map[module] is None:
-            return None, BQModuleStatusEnum.SUBMITTED
+            # Defaults when a consent like ConsentPII doesn't have explicit consent question (implied "yes")
+            return 'ConsentPermission_Yes', BQModuleStatusEnum.SUBMITTED
 
         answer_code = None
 
