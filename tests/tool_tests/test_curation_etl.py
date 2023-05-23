@@ -2,10 +2,17 @@ from datetime import datetime, date
 from typing import Collection, Any
 from decimal import Decimal
 
-from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, PMI_SKIP_CODE,\
-    STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE
-from rdr_service.etl.model.src_clean import SrcClean, Observation, PidRidMapping, Person, Measurement, Death
+from rdr_service import clock
+from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, \
+    PMI_SKIP_CODE, \
+    STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE, \
+    CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, EHR_CONSENT_QUESTION_CODE
+from rdr_service.dao.consent_dao import ConsentDao
+from rdr_service.etl.model.src_clean import SrcClean, Observation, PidRidMapping, Person, Measurement, Death, \
+    EHRConsentStatus
 from rdr_service.model.code import Code
+from rdr_service.model.consent_file import ConsentFile
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.measurements import Measurement as RdrMeasurement
 from rdr_service.model.participant import Participant
@@ -812,12 +819,17 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertIn('test-data/test_curation_participant_list.txt',
                       run_history.filterOptions['participant_list_file'])
 
-    def _create_questionnaire(self, survey_name):
+    def _create_questionnaire(self, survey_name, question_code_list=None):
         module_code = self.data_generator.create_database_code(value=survey_name)
         question_codes = [
             self.data_generator.create_database_code(value=f'{survey_name}_q_code_{question_index}')
             for question_index in range(4)
         ]
+
+        if question_code_list:
+            question_codes += self.session.query(Code).filter(Code.value.in_([
+                question_code_list
+            ])).all()
 
         questionnaire = self.data_generator.create_database_questionnaire_history()
         for question_code in question_codes:
@@ -1225,3 +1237,110 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertTrue(_exists_in_death_table(pids[0]))
         self.assertFalse(_exists_in_death_table(pids[1]))
         self.assertFalse(_exists_in_death_table(pids[2]))
+
+    def test_ehr_consent_table(self):
+        consent_dao = ConsentDao()
+        self.data_generator.create_database_code(value=EHR_CONSENT_QUESTION_CODE)
+        ehr_consent = self._create_questionnaire(CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
+                                                        [EHR_CONSENT_QUESTION_CODE])
+        ehr_yes = self.data_generator.create_database_code(value="Yes")
+        ehr_no = self.data_generator.create_database_code(value="No")
+
+        questionnaire_response_ids = []
+        submission_date = datetime(2023, 4, 29, 0, 0)
+
+        for pid in range(10000,10006):
+            participant = self.data_generator.create_database_participant(participantId=pid,
+                                                                          researchId=pid+100)
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                dateOfBirth=datetime(1982, 1, 9),
+                consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10)
+            )
+            if pid == 10000:
+                self._setup_questionnaire_response(
+                    participant,
+                    ehr_consent,
+                    indexed_answers=[
+                        (4, 'valueCodeId', ehr_no.codeId)
+                    ],
+                    authored=submission_date
+                )
+            else:
+                qr = self._setup_questionnaire_response(
+                    participant,
+                    ehr_consent,
+                    indexed_answers=[
+                        (4, 'valueCodeId', ehr_yes.codeId)
+                    ],
+                    authored=submission_date
+                )
+                questionnaire_response_ids.append(qr.questionnaireResponseId)
+
+
+        consent_responses = [
+            ConsentResponse(
+                id=2,
+                questionnaire_response_id=questionnaire_response_ids[1], # PID 10002
+            ),
+            ConsentResponse(
+                id=3,
+                questionnaire_response_id=questionnaire_response_ids[2], # PID 10003
+            ),
+            ConsentResponse(
+                id=4,
+                questionnaire_response_id=questionnaire_response_ids[3], # PID 10004
+            ),
+            ConsentResponse(
+                id=5,
+                questionnaire_response_id=questionnaire_response_ids[4], # PID 10005
+            )
+        ]
+        for consent_response in consent_responses:
+            self.session.add(consent_response)
+        self.session.commit()
+
+        with clock.FakeClock(datetime(2023, 5, 2)):
+            consent_dao.insert(ConsentFile(
+                    consent_response_id=2, # PID 10002
+                    sync_status=2
+                ))
+
+        with clock.FakeClock(datetime(2023, 4, 30)):
+            consent_files = [
+                ConsentFile(
+                    consent_response_id=3, # PID 10003
+                    sync_status=2
+                ),
+                ConsentFile(
+                    consent_response_id=4, # PID 10004
+                    sync_status=1
+                ),
+            ]
+            for consent_file in consent_files:
+                consent_dao.insert(consent_file)
+
+
+        self.run_cdm_data_generation(
+            participant_origin='all',
+            cutoff='2023-05-01'
+        )
+
+        expected_results = [
+            (10000, 10100, 'SUBMITTED_NO', submission_date), # Submitted No answer
+            (10001, 10101, 'SUBMITTED', submission_date), # Submitted Yes before validation implemented
+            (10002, 10102, 'SUBMITTED_NOT_VALIDATED', submission_date), # Submitted Yes, not validated before cutoff date
+            (10003, 10103, 'SUBMITTED', submission_date), # Submitted Yes, valid consent
+            (10004, 10104, 'SUBMITTED_INVALID', submission_date), # Submitted Yes, invalid consent
+            (10005, 10105, 'SUBMITTED_NOT_VALIDATED', submission_date) # Submitted yes, Consent Response exists, Consent file does not, not yet validated
+        ]
+
+        consent_table = self.session.query(
+            EHRConsentStatus.person_id,
+            EHRConsentStatus.research_id,
+            EHRConsentStatus.consent_for_electronic_health_records,
+            EHRConsentStatus.consent_for_electronic_health_records_authored
+        ).all()
+
+        for result in expected_results:
+            self.assertIn(result, consent_table)
