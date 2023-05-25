@@ -1081,7 +1081,6 @@ class GenomicGCValidationMetrics(Base):
 
     pipelineId = Column('pipeline_id', String(255), nullable=True, index=True)
 
-    processingCount = Column('processing_count', SmallInteger, nullable=False, default=0)
     aw3ReadyFlag = Column('aw3_ready_flag', SmallInteger, nullable=False, default=0)
     aw3ManifestJobRunID = Column('aw3_manifest_job_run_id', Integer, ForeignKey('genomic_job_run.id'))
     aw3ManifestFileId = Column('aw3_manifest_file_id', Integer, ForeignKey("genomic_manifest_file.id"))

@@ -466,7 +466,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.sampleId == sample_id,
                 GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
             )
-
             if genome_type:
                 member = member.filter(
                     GenomicSetMember.genomeType == genome_type
@@ -517,6 +516,32 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             return session.query(GenomicSetMember).filter(
                 GenomicSetMember.id.in_(member_ids)
             ).all()
+
+    def get_member_subset_for_metrics_from_sample_ids(self, sample_ids: List[int], genome_type=None):
+        """
+        :param sample_ids:
+        :param genome_type:
+        :return:
+        """
+        with self.session() as session:
+            members = session.query(
+                GenomicSetMember.id,
+                GenomicSetMember.sampleId,
+                GenomicSetMember.genomeType,
+                GenomicSetMember.biobankId,
+                GenomicSetMember.collectionTubeId,
+                GenomicSetMember.participantId,
+                GenomicSetMember.aw1FileProcessedId,
+                GenomicSetMember.genomicWorkflowState
+            ).filter(
+                GenomicSetMember.sampleId.in_(sample_ids),
+                GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
+            )
+            if genome_type:
+                members = members.filter(
+                    GenomicSetMember.genomeType == genome_type
+                )
+            return members.all()
 
     def get_members_with_non_null_sample_ids(self):
         """
@@ -1701,7 +1726,8 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
     def get_bulk_metrics_for_process_update(self, *, member_ids: List[int], pipeline_id: str):
         with self.session() as session:
             records = session.query(
-                GenomicGCValidationMetrics.id
+                GenomicGCValidationMetrics.id,
+                GenomicGCValidationMetrics.genomicSetMemberId
             ).filter(
                 GenomicGCValidationMetrics.genomicSetMemberId.in_(member_ids),
                 GenomicGCValidationMetrics.ignoreFlag != 1,

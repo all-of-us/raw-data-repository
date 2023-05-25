@@ -10,6 +10,11 @@ from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPL
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.etl.model.src_clean import SrcClean, Observation, PidRidMapping, Person, Measurement, Death, \
     EHRConsentStatus
+from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, PMI_SKIP_CODE,\
+    STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE,\
+    WEAR_CONSENT_QUESTION_CODE, WEAR_YES_ANSWER_CODE, WEAR_CONSENT_MODULE
+from rdr_service.etl.model.src_clean import SrcClean, Observation, PidRidMapping, Person, Measurement, Death, \
+    WearConsent
 from rdr_service.model.code import Code
 from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.consent_response import ConsentResponse
@@ -30,6 +35,9 @@ from rdr_service.clock import FakeClock
 
 TIME = datetime(2000, 1, 10)
 TIME_2 = datetime(2022, 5, 10)
+
+
+WEAR_NO_ANSWER_CODE = "wear_no"
 
 
 class CurationEtlTest(ToolTestMixin, BaseTestCase):
@@ -1344,3 +1352,69 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
         for result in expected_results:
             self.assertIn(result, consent_table)
+
+    def test_wear_consent_table(self):
+        wear_yes_code = self.data_generator.create_database_code(value=WEAR_YES_ANSWER_CODE)
+        wear_no_code = self.data_generator.create_database_code(value=WEAR_NO_ANSWER_CODE)
+        self.data_generator.create_database_code(value=WEAR_CONSENT_QUESTION_CODE)
+
+        participant = self.data_generator.create_database_participant(participantOrigin='test_portal')
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            dateOfBirth=datetime(1982, 1, 9),
+            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10)
+        )
+
+        wear_questionnaire = self._create_questionnaire(WEAR_CONSENT_MODULE, [WEAR_CONSENT_QUESTION_CODE])
+
+        self._setup_questionnaire_response(
+            participant,
+            wear_questionnaire,
+            indexed_answers=[
+                (4, 'valueCodeId', wear_yes_code.codeId)
+            ],
+            authored=datetime(2020, 5, 1)
+        )
+        self._setup_questionnaire_response(
+            participant,
+            wear_questionnaire,
+            indexed_answers=[
+                (4, 'valueCodeId', wear_no_code.codeId)
+            ],
+            authored=datetime(2020, 6, 1)
+        )
+        self._setup_questionnaire_response(
+            participant,
+            wear_questionnaire,
+            indexed_answers=[
+                (4, 'valueCodeId', wear_yes_code.codeId)
+            ],
+            authored=datetime(2020, 7, 1)
+        )
+        self._setup_questionnaire_response(
+            participant,
+            wear_questionnaire,
+            indexed_answers=[
+                (4, 'valueCodeId', wear_no_code.codeId)
+            ],
+            authored=datetime(2020, 8, 1)
+        )
+
+        self.run_cdm_data_generation(
+            participant_origin='all',
+            cutoff='2020-07-15'
+        )
+
+        wear_table = self.session.query(
+            WearConsent.person_id,
+            WearConsent.authored,
+            WearConsent.consent_status
+        ).all()
+
+        self.assertIn((participant.participantId, datetime(2020, 5, 1), WEAR_YES_ANSWER_CODE), wear_table)
+        self.assertIn((participant.participantId, datetime(2020, 6, 1), WEAR_NO_ANSWER_CODE), wear_table)
+        self.assertIn((participant.participantId, datetime(2020, 7, 1), WEAR_YES_ANSWER_CODE), wear_table)
+        # Wear consent after cutoff date shouldn't be present.
+        self.assertNotIn((participant.participantId, datetime(2020, 8, 1), WEAR_NO_ANSWER_CODE), wear_table)
+
+

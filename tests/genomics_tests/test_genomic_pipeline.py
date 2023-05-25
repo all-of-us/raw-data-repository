@@ -2248,7 +2248,7 @@ class GenomicPipelineTest(BaseTestCase):
                 folder=_FAKE_GENOTYPING_FOLDER,
             )
 
-        # Get   subfolder, and filename from argument
+        # Get subfolder, and filename from argument
         file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
 
         # Set up file/JSON
@@ -5749,8 +5749,8 @@ class GenomicPipelineTest(BaseTestCase):
         incidents = incident_dao.get_all()
 
         for i, incident in enumerate(incidents):
-            message = f'{GenomicJob.METRICS_INGESTION.name}: Cannot find genomic set member for bid, sample_id: ' \
-                      f'T{i+1}, ' \
+            message = f'{GenomicJob.METRICS_INGESTION.name}: Cannot find genomic set member for biobank_id, sample_id: ' \
+                      f'{i+1}, ' \
                       f'100{i+1}'
             self.assertIsNotNone(incident.message)
             self.assertEqual(message, incident.message)
@@ -6453,8 +6453,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         members = self.member_dao.get_members_from_member_ids([4, 5])
         for member in members:
-            self.assertEqual(GenomicWorkflowState.AW2, member.genomicWorkflowState)
-            self.assertEqual(GenomicWorkflowState.AW2.name, member.genomicWorkflowStateStr)
+            self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
+            self.assertEqual(GenomicWorkflowState.CVL_READY.name, member.genomicWorkflowStateStr)
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_gc_metrics_array_data(self, metric_cloud_task):

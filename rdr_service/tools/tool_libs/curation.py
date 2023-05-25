@@ -18,7 +18,8 @@ from rdr_service import config
 from rdr_service import api_util
 from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, PMI_SKIP_CODE, \
     EMPLOYMENT_ZIPCODE_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, \
-    ZIPCODE_QUESTION_CODE, CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, EHR_CONSENT_QUESTION_CODE
+    ZIPCODE_QUESTION_CODE, CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, EHR_CONSENT_QUESTION_CODE, \
+    WEAR_CONSENT_QUESTION_CODE, WEAR_CONSENT_MODULE
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean, Location, CareSite, Provider, \
     Person, Death, ObservationPeriod, PayerPlanPeriod, VisitOccurrence, ConditionOccurrence, ProcedureOccurrence, \
@@ -26,14 +27,15 @@ from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcCle
     DoseEra, Metadata, NoteNlp, VisitDetail, SrcParticipant, SrcMapped, SrcPersonLocation, SrcGender, SrcRace, \
     SrcEthnicity, SrcMeas, MeasurementCodeMap, MeasurementValueCodeMap, SrcMeasMapped, SrcVisits, TempObsTarget, \
     TempObsEndUnion, TempObsEndUnionPart, TempObsEnd, TempObs, TempFactRelSd, PidRidMapping, \
-    QuestionnaireResponseAdditionalInfo, EHRConsentStatus
+    QuestionnaireResponseAdditionalInfo, EHRConsentStatus, WearConsent
 from rdr_service.model.code import Code
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
 from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion, \
+    Questionnaire
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseClassificationType
 from rdr_service.model.curation_etl import CdrExcludedCode
@@ -67,7 +69,7 @@ class CurationExportClass(ToolBase):
               'device_exposure', 'dose_era', 'drug_era', 'drug_exposure', 'fact_relationship',
               'location', 'measurement', 'observation_period', 'payer_plan_period', 'visit_detail',
               'person', 'procedure_occurrence', 'provider', 'visit_occurrence', 'metadata', 'note_nlp',
-              'questionnaire_response_additional_info', 'consent']
+              'questionnaire_response_additional_info', 'consent', 'wear_consent']
 
     # Observation takes a while and ends up timing the client out. The server will continue to process and the client
     # will print out a message describing how to continue to track it, but for now it crashes the script so it has
@@ -731,6 +733,67 @@ class CurationExportClass(ToolBase):
         insert_query = insert(Death).from_select(column_map.keys(), deceased_select)
         session.execute(insert_query)
 
+    def _populate_wear_consent(self, session):
+        self._set_rdr_model_schema([Participant, Code, Questionnaire, QuestionnaireResponse,
+                                    QuestionnaireResponseAnswer, QuestionnaireQuestion,
+                                    QuestionnaireConcept])
+        question_code = aliased(Code)
+        answer_code = aliased(Code)
+        column_map = {
+            WearConsent.person_id: Participant.participantId,
+            WearConsent.research_id: Participant.researchId,
+            WearConsent.authored: QuestionnaireResponse.authored,
+            WearConsent.consent_status: answer_code.value,
+            WearConsent.src_id: Participant.participantOrigin
+        }
+
+        wear_consent_select = session.query(
+            *column_map.values()
+        ).select_from(
+            Participant
+        ).join(
+            QuestionnaireResponse,
+            QuestionnaireResponse.participantId == Participant.participantId
+        ).join(
+            QuestionnaireResponseAnswer,
+            QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
+        ).join(
+            QuestionnaireQuestion,
+            QuestionnaireResponseAnswer.questionId == QuestionnaireQuestion.questionnaireQuestionId
+        ).join(
+            question_code,
+            QuestionnaireQuestion.codeId == question_code.codeId
+        ).outerjoin(
+            answer_code,
+            QuestionnaireResponseAnswer.valueCodeId == answer_code.codeId
+        ).join(
+            Questionnaire,
+            QuestionnaireResponse.questionnaireId == Questionnaire.questionnaireId
+        ).join(
+            QuestionnaireConcept,
+            and_(Questionnaire.questionnaireId == QuestionnaireConcept.questionnaireId,
+            Questionnaire.version == QuestionnaireConcept.questionnaireVersion)
+        ).join(
+            Code,
+            QuestionnaireConcept.codeId == Code.codeId
+        ).filter(
+            answer_code.value is not None,
+            Code.value == WEAR_CONSENT_MODULE,
+            question_code.value == WEAR_CONSENT_QUESTION_CODE,
+            Participant.participantId.in_(self.pid_list)
+        ).order_by(
+            Participant.participantId,
+            QuestionnaireResponse.authored
+        )
+
+        if self.cutoff_date:
+            wear_consent_select = wear_consent_select.filter(
+                QuestionnaireResponse.authored < self.cutoff_date
+            )
+
+        insert_query = insert(WearConsent).from_select(column_map.keys(), wear_consent_select)
+        session.execute(insert_query)
+
     def populate_cdm_database(self):
         """ Generates the src_clean table which is used to populate the rest of the ETL tables """
         surveys_file_name = None
@@ -851,6 +914,7 @@ class CurationExportClass(ToolBase):
                 self._populate_questionnaire_response_additional_info(session)
             self._populate_death_table(session)
             self._populate_ehr_consent(session)
+            self._populate_wear_consent(session)
             _logger.debug("Finalizing ETL")
             self._finalize_cdm(session)
 
@@ -965,7 +1029,9 @@ class CurationExportClass(ToolBase):
                 TempFactRelSd,
                 PidRidMapping,
                 QuestionnaireResponseAdditionalInfo,
-                EHRConsentStatus
+                EHRConsentStatus,
+                QuestionnaireResponseAdditionalInfo,
+                WearConsent
             ])
 
     def _finalize_cdm(self, session, drop_tables: bool = False, drop_columns: bool = True):
@@ -1262,6 +1328,7 @@ class CurationExportClass(ToolBase):
                                 ALTER TABLE cdm.metadata DROP COLUMN id;
                                 ALTER TABLE cdm.death DROP COLUMN id;
                                 ALTER TABLE cdm.consent DROP COLUMN id;
+                                ALTER TABLE cdm.wear_consent DROP COLUMN id;
                                         """)
 
     @staticmethod
