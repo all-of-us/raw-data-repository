@@ -729,3 +729,12 @@ class QuestionnaireResponseAdditionalInfo(CdmBase):
     type = Column(String(255))
     value = Column(String(255))
     src_id = Column(String(50))
+
+class WearConsent(CdmBase):
+    __tablename__ = "wear_consent"
+    id = Column(BigInteger, primary_key=True)
+    person_id = Column(BigInteger)
+    research_id = Column(BigInteger)
+    authored = Column(DateTime)
+    consent_status = Column(String(50))
+    src_id = Column(String(50))
