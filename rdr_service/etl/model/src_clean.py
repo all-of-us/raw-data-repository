@@ -730,6 +730,15 @@ class QuestionnaireResponseAdditionalInfo(CdmBase):
     value = Column(String(255))
     src_id = Column(String(50))
 
+class EHRConsentStatus(CdmBase):
+    __tablename__ = "consent"
+    id = Column(BigInteger, primary_key=True)
+    person_id = Column(BigInteger)
+    research_id = Column(BigInteger)
+    consent_for_electronic_health_records = Column(String(50))
+    consent_for_electronic_health_records_authored = Column(DateTime)
+    src_id = Column(String(50))
+
 class WearConsent(CdmBase):
     __tablename__ = "wear_consent"
     id = Column(BigInteger, primary_key=True)
