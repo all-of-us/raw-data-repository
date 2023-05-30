@@ -182,11 +182,9 @@ class PostIntakePayload(ABC):
     def iterate_payload(self):
 
         self.event_dao_map = self.build_event_dao_map()
-
         participant_event_objs, all_event_objs, all_participant_ops_data, summary_updates = [], [], [], []
 
         for resource in self.intake_payload:
-
             self.bundle_identifier = resource['identifier']['value']
             participant_obj = list(filter(lambda x: x['resource']['resourceType'].lower() == 'patient',
                                           resource['entry']))[0]
@@ -235,20 +233,20 @@ class PostIntakePayload(ABC):
 
                 all_event_objs.extend(event_objs)
 
-            self.handle_data_inserts(
-                participant_event_objs=participant_event_objs,
-                all_event_objs=all_event_objs,
-                all_participant_ops_data=all_participant_ops_data
-            )
+        self.handle_data_inserts(
+            participant_event_objs=participant_event_objs,
+            all_event_objs=all_event_objs,
+            all_participant_ops_data=all_participant_ops_data
+        )
 
-            if GAE_PROJECT != 'localhost' and summary_updates:
-                cloud_task = GCPCloudTask()
-                for summary_update in summary_updates:
-                    cloud_task.execute(
-                        endpoint='update_participant_summary_for_nph_task',
-                        payload=summary_update,
-                        queue='nph'
-                    )
+        if GAE_PROJECT != 'localhost' and summary_updates:
+            cloud_task = GCPCloudTask()
+            for summary_update in summary_updates:
+                cloud_task.execute(
+                    endpoint='update_participant_summary_for_nph_task',
+                    payload=summary_update,
+                    queue='nph'
+                )
 
 
 class PostIntakePayloadFHIR(PostIntakePayload):
@@ -371,7 +369,30 @@ class PostIntakePayloadFHIR(PostIntakePayload):
 
 
 class PostIntakePayloadJSON(PostIntakePayload):
-    pass
+
+    @abstractmethod
+    def create_ops_data_elements(self, *, participant_id: str, participant_obj: dict) -> List[dict]:
+        ...
+
+    @abstractmethod
+    def get_site_id(self, entry: dict) -> Optional[int]:
+        ...
+
+    @abstractmethod
+    def extract_participant_id(self, participant_obj) -> Optional[str]:
+        ...
+
+    @abstractmethod
+    def extract_activity_data(self, entry: dict) -> ActivityData:
+        ...
+
+    @abstractmethod
+    def extract_authored_time(self, entry: dict) -> str:
+        ...
+
+    @abstractmethod
+    def get_consent_events(self, entry: dict) -> List[dict]:
+        ...
 
 
 class NphIntakeAPI(BaseApi):
@@ -391,7 +412,8 @@ class NphIntakeAPI(BaseApi):
             raise BadRequest(f'Payload bundle(s) length is limited to {MAX_PAYLOAD_LENGTH}')
 
         if 'FHIR' in request.path:
-            post_intake_api = PostIntakePayloadFHIR.create_post_intake(intake_payload=intake_payload
+            post_intake_api = PostIntakePayloadFHIR.create_post_intake(
+                intake_payload=intake_payload
             )
         else:
             post_intake_api = PostIntakePayloadJSON.create_post_intake(
