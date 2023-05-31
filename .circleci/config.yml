@@ -35,7 +35,7 @@ commands:
           name: Check Licenses
           command : |
             export PYTHONPATH=$PYTHONPATH:`pwd`
-            python ./ci/check_licenses.py --root ./venv/lib/python3.11/site-packages \
+            python3.11 ./ci/check_licenses.py --root ./venv/lib/python3.11/site-packages \
                             --licenses_file ci/license_allowed_list.txt --exceptions_file ci/license_exceptions.txt
       - run:
           name: Launch Flask Unittest Service
