@@ -50,6 +50,7 @@ class NphIntakeAPITest(BaseTestCase):
                 organization_external_id="nph-test-org"
             )
 
+    # FHIR payloads
     def test_m1_detailed_consent_payload(self):
 
         # overall consent obj
@@ -225,9 +226,9 @@ class NphIntakeAPITest(BaseTestCase):
         self.assertTrue(self.nph_consent_event_dao.get_all() == [])
         self.assertTrue(self.nph_withdrawal_event_dao.get_all() == [])
 
-    def test_m2_operational_payload(self):
+    def test_m1_2_operational_payload(self):
 
-        with open(data_path('nph_m2_operational_multi.json')) as f:
+        with open(data_path('nph_m1_2_operational_multi.json')) as f:
             consent_json = json.load(f)
 
         current_participant_ids = [100000000, 100000001]
@@ -300,6 +301,13 @@ class NphIntakeAPITest(BaseTestCase):
         self.assertTrue(self.nph_consent_event_dao.get_all() == [])
         self.assertTrue(self.nph_pairing_event_dao.get_all() == [])
         self.assertTrue(self.nph_deactivation_event_dao.get_all() == [])
+
+    # JSON payloads
+    def test_m1_operational_json_payload(self):
+        pass
+
+    def test_m2_operational_json_payload(self):
+        pass
 
     def tearDown(self):
         super().tearDown()

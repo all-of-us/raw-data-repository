@@ -252,7 +252,6 @@ class PostIntakePayload(ABC):
 class PostIntakePayloadFHIR(PostIntakePayload):
 
     # FHIR specific abstract methods
-
     def create_ops_data_elements(self, *, participant_id: str, participant_obj: dict) -> List[dict]:
         elements_found = []
         for key, value in participant_obj['resource'].items():
