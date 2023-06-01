@@ -44,7 +44,7 @@ class SmsIngestManifestFunction(FunctionPubSubHandler):
 
         object_id = self.event.attributes.objectId.lower()
 
-        if object_id.endswith("_test_sample_list.csv"):
+        if "pull_lists" in object_id:
             file_type = "SAMPLE_LIST"
         else:
             file_type = "N0"
