@@ -26,7 +26,7 @@
 					"FileName": "Contsent_12.pdf",
 					"Module1Tissue": "Deny",
 					"Module1ConsentRecontact": "Permit",
-					"ParticipantSignedDate": "2023-01-01T00:00:00-04:00",
+					"ParticipantSignedDate": "2023-01-01T00:00:00-04:00"
 				},
 				"Pairing": {
 					"Site": "nph-site-nphxyz",
@@ -55,7 +55,7 @@
 					"FileName": null,
 					"Module1Tissue": null,
 					"Module1ConsentRecontact": null,
-					"ParticipantSignedDate": null,
+					"ParticipantSignedDate": null
 				},
 				"Pairing": {
 					"Site": "nph-site-nphxyz",
@@ -84,7 +84,7 @@
 					"FileName": null,
 					"Module1Tissue": null,
 					"Module1ConsentRecontact": null,
-					"ParticipantSignedDate": null,
+					"ParticipantSignedDate": null
 				},
 				"Pairing": {
 					"Site": "nph-site-nphxyz",

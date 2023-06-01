@@ -51,6 +51,12 @@ class PostIntakePayload(ABC):
 
         self.participant_response = []
         self.intake_payload = intake_payload
+        self.applicable_entries = [
+            'consent',
+            'encounter',
+            'pairing',
+            'enrollmentstatus'
+        ]
 
     @classmethod
     def create_post_intake(cls, *, intake_payload):
@@ -63,6 +69,11 @@ class PostIntakePayload(ABC):
             event_dao_map[f'{activity.name.lower()}'] = event_dao_instance_items[
                 f'nph_{activity.name.lower()}_event_dao']
         return event_dao_map
+
+    def validate_payload_length(self):
+        self.intake_payload = [self.intake_payload] if type(self.intake_payload) is not list else self.intake_payload
+        if len(self.intake_payload) > MAX_PAYLOAD_LENGTH:
+            raise BadRequest(f'Payload bundle(s) length is limited to {MAX_PAYLOAD_LENGTH}')
 
     @abstractmethod
     def create_ops_data_elements(self, *, participant_id: str, participant_obj: dict) -> List[dict]:
@@ -86,6 +97,10 @@ class PostIntakePayload(ABC):
 
     @abstractmethod
     def get_consent_events(self, entry: dict) -> List[dict]:
+        ...
+
+    @abstractmethod
+    def get_bundle_identifier(self, entry: dict) -> int:
         ...
 
     def get_event_type_id(self, *, activity_name: str, activity_source: str) -> Optional[int]:
@@ -181,11 +196,15 @@ class PostIntakePayload(ABC):
 
     def iterate_payload(self):
 
+        self.validate_payload_length()
+
         self.event_dao_map = self.build_event_dao_map()
         participant_event_objs, all_event_objs, all_participant_ops_data, summary_updates = [], [], [], []
 
         for resource in self.intake_payload:
-            self.bundle_identifier = resource['identifier']['value']
+            self.bundle_identifier = self.get_bundle_identifier(resource)
+
+            # fhir
             participant_obj = list(filter(lambda x: x['resource']['resourceType'].lower() == 'patient',
                                           resource['entry']))[0]
 
@@ -198,15 +217,17 @@ class PostIntakePayload(ABC):
                 )
             )
 
-            self.participant_response.append({
-                'nph_participant_id': participant_id
-            })
+            self.participant_response.append({'nph_participant_id': participant_id})
 
-            applicable_entries = [obj for obj in resource['entry'] if obj['resource']['resourceType'].lower() in [
-                'consent', 'encounter']]
+            # fhir + json
+            applicable_entries = [
+                obj for obj in resource['entry'] if obj['resource']['resourceType'].lower() in self.applicable_entries
+            ]
 
             for entry in applicable_entries:
                 activity_data = self.extract_activity_data(entry)
+
+                # fhir
                 entry['bundle_identifier'] = self.bundle_identifier
 
                 participant_event_objs.append({
@@ -249,9 +270,12 @@ class PostIntakePayload(ABC):
                 )
 
 
+# FHIR specific payloads
 class PostIntakePayloadFHIR(PostIntakePayload):
 
-    # FHIR specific abstract methods
+    def get_bundle_identifier(self, entry: dict) -> int:
+        return entry['identifier']['value']
+
     def create_ops_data_elements(self, *, participant_id: str, participant_obj: dict) -> List[dict]:
         elements_found = []
         for key, value in participant_obj['resource'].items():
@@ -367,29 +391,27 @@ class PostIntakePayloadFHIR(PostIntakePayload):
             raise BadRequest(f'KeyError on authored time lookup: {e} bundle_id: {self.bundle_identifier}')
 
 
+# Custom JSON specific payloads
 class PostIntakePayloadJSON(PostIntakePayload):
 
-    @abstractmethod
+    def get_bundle_identifier(self, entry: dict) -> int:
+        ...
+
     def create_ops_data_elements(self, *, participant_id: str, participant_obj: dict) -> List[dict]:
         ...
 
-    @abstractmethod
     def get_site_id(self, entry: dict) -> Optional[int]:
         ...
 
-    @abstractmethod
     def extract_participant_id(self, participant_obj) -> Optional[str]:
         ...
 
-    @abstractmethod
     def extract_activity_data(self, entry: dict) -> ActivityData:
         ...
 
-    @abstractmethod
     def extract_authored_time(self, entry: dict) -> str:
         ...
 
-    @abstractmethod
     def get_consent_events(self, entry: dict) -> List[dict]:
         ...
 
@@ -400,24 +422,20 @@ class NphIntakeAPI(BaseApi):
 
     @auth_required([RTI, RDR])
     def post(self):
-        intake_payload = request.get_json(force=True)
-        intake_payload = [intake_payload] if type(intake_payload) is not list else intake_payload
-
         # Adding request log here so if exception is raised
         # per validation fail the payload is stored
         log_api_request(log=request.log_record)
 
-        if len(intake_payload) > MAX_PAYLOAD_LENGTH:
-            raise BadRequest(f'Payload bundle(s) length is limited to {MAX_PAYLOAD_LENGTH}')
+        intake_payload = request.get_json(force=True)
 
-        if 'FHIR' in request.path:
-            post_intake_api = PostIntakePayloadFHIR.create_post_intake(
-                intake_payload=intake_payload
-            )
-        else:
-            post_intake_api = PostIntakePayloadJSON.create_post_intake(
-                intake_payload=intake_payload
-            )
+        post_map = {
+            'fhir': PostIntakePayloadFHIR,
+            'json': PostIntakePayloadJSON
+        }['fhir' if 'fhir' in request.path.lower() else 'json']
 
+        post_intake_api = post_map.create_post_intake(
+            intake_payload=intake_payload
+        )
         post_intake_api.iterate_payload()
+
         return self._make_response(post_intake_api.participant_response)

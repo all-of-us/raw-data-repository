@@ -303,11 +303,23 @@ class NphIntakeAPITest(BaseTestCase):
         self.assertTrue(self.nph_deactivation_event_dao.get_all() == [])
 
     # JSON payloads
-    def test_m1_operational_json_payload(self):
-        pass
-
-    def test_m2_operational_json_payload(self):
-        pass
+    # def test_m1_operational_json_payload(self):
+    #
+    #     with open(data_path("nph_m1_operational_multi_non_fhir.json")) as f:
+    #         consent_json = json.load(f)
+    #
+    #     current_participant_ids = [100000000, 100000001]
+    #
+    #     response = self.send_post('nph/Intake', request_data=consent_json)
+    #
+    # def test_m2_operational_json_payload(self):
+    #
+    #     with open(data_path("nph_m2_operational_multi_non_fhir.json")) as f:
+    #         consent_json = json.load(f)
+    #
+    #     current_participant_ids = [100000000, 100000001]
+    #
+    #     response = self.send_post('nph/Intake', request_data=consent_json)
 
     def tearDown(self):
         super().tearDown()
