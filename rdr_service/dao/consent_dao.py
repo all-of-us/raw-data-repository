@@ -59,7 +59,8 @@ class ConsentDao(BaseDao):
                     ConsentFile.participant_id == QuestionnaireResponse.participantId
                 )
             ).filter(
-                ConsentFile.id.is_(None)
+                ConsentFile.id.is_(None),
+                ConsentResponse.type.notin_([ConsentType.WEAR])  # TODO: remove this when WEAR file parsing is done
             ).options(
                 joinedload(ConsentResponse.response)
             )
