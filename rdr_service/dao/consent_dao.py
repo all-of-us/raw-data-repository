@@ -2,7 +2,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Collection, Dict, List, Optional
 
-from sqlalchemy import and_, or_, not_
+from sqlalchemy import and_, not_, or_
 from sqlalchemy.orm import aliased, joinedload, Session
 
 from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
@@ -47,6 +47,8 @@ class ConsentDao(BaseDao):
         """
         consent_batch_limit = 500
 
+        # A ConsentResponse will need to be validated if there are not yet any ConsentFile objects
+        # that are of the same type and for the same participant.
         consent_responses = (
             session.query(ConsentResponse)
             .join(QuestionnaireResponse)
@@ -70,40 +72,7 @@ class ConsentDao(BaseDao):
             ).options(
                 joinedload(ConsentResponse.response)
             )
-        ).order_by(QuestionnaireResponse.authored.desc()).limit(consent_batch_limit)
-        consent_responses = consent_responses.all()
-
-        # match_by_id_date = '2023-01-01'  # Arbitrary date after ConsentFiles began referencing ConsentResponses directly
-        # old_files = aliased(ConsentFile)
-        # new_files = aliased(ConsentFile)
-        # consent_responses = (
-        #     session.query(ConsentResponse)
-        #     .join(QuestionnaireResponse)
-        #     .outerjoin(
-        #         old_files,
-        #         and_(
-        #             QuestionnaireResponse.authored < match_by_id_date,
-        #             old_files.type == ConsentResponse.type,
-        #             old_files.participant_id == QuestionnaireResponse.participantId
-        #         )
-        #     ).outerjoin(
-        #         new_files,
-        #         and_(  # Get newer ConsentFiles specifically meant for the ConsentResponse (rather than by type)
-        #             QuestionnaireResponse.authored >= match_by_id_date,
-        #             new_files.consent_response_id == ConsentResponse.id
-        #         )
-        #     ).filter(
-        #         old_files.id.is_(None),
-        #         new_files.id.is_(None),
-        #         ConsentResponse.type.in_([ConsentType.EHR]),
-        #         QuestionnaireResponse.participantId.in_([
-        #             897357328
-        #         ])
-        #     ).options(
-        #         joinedload(ConsentResponse.response)
-        #     )
-        # ).limit(consent_batch_limit)
-        # consent_responses = consent_responses.all()
+        ).limit(consent_batch_limit).all()
 
         grouped_results = defaultdict(list)
         for consent_response in consent_responses:
