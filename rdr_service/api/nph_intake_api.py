@@ -28,6 +28,14 @@ class ActivityData:
     source: str
 
 
+@dataclass
+class EntryObjData:
+    participant_event_objs: List
+    all_event_objs: List
+    all_participant_ops_data: List
+    summary_updates: List
+
+
 class PostIntakePayload(ABC):
 
     def __init__(self, intake_payload):
@@ -51,6 +59,7 @@ class PostIntakePayload(ABC):
 
         self.participant_response = []
         self.intake_payload = intake_payload
+        # fhir + json
         self.applicable_entries = [
             'consent',
             'encounter',
@@ -70,7 +79,7 @@ class PostIntakePayload(ABC):
                 f'nph_{activity.name.lower()}_event_dao']
         return event_dao_map
 
-    def validate_payload_length(self):
+    def validate_payload_length(self) -> None:
         self.intake_payload = [self.intake_payload] if type(self.intake_payload) is not list else self.intake_payload
         if len(self.intake_payload) > MAX_PAYLOAD_LENGTH:
             raise BadRequest(f'Payload bundle(s) length is limited to {MAX_PAYLOAD_LENGTH}')
@@ -88,7 +97,7 @@ class PostIntakePayload(ABC):
         ...
 
     @abstractmethod
-    def extract_activity_data(self, entry: dict) -> ActivityData:
+    def extract_activity_data(self, entry: dict, activity_name: str = None) -> ActivityData:
         ...
 
     @abstractmethod
@@ -101,6 +110,10 @@ class PostIntakePayload(ABC):
 
     @abstractmethod
     def get_bundle_identifier(self, entry: dict) -> int:
+        ...
+
+    @abstractmethod
+    def iterate_entries(self) -> EntryObjData:
         ...
 
     def get_event_type_id(self, *, activity_name: str, activity_source: str) -> Optional[int]:
@@ -194,75 +207,21 @@ class PostIntakePayload(ABC):
                 if dao_event_objs:
                     dao.insert_bulk(dao_event_objs)
 
-    def iterate_payload(self):
+    def handle_data_from_payload(self):
 
         self.validate_payload_length()
-
         self.event_dao_map = self.build_event_dao_map()
-        participant_event_objs, all_event_objs, all_participant_ops_data, summary_updates = [], [], [], []
-
-        for resource in self.intake_payload:
-            self.bundle_identifier = self.get_bundle_identifier(resource)
-
-            # fhir
-            participant_obj = list(filter(lambda x: x['resource']['resourceType'].lower() == 'patient',
-                                          resource['entry']))[0]
-
-            participant_id = self.extract_participant_id(participant_obj=participant_obj)
-
-            all_participant_ops_data.extend(
-                self.create_ops_data_elements(
-                    participant_id=participant_id,
-                    participant_obj=participant_obj
-                )
-            )
-
-            self.participant_response.append({'nph_participant_id': participant_id})
-
-            # fhir + json
-            applicable_entries = [
-                obj for obj in resource['entry'] if obj['resource']['resourceType'].lower() in self.applicable_entries
-            ]
-
-            for entry in applicable_entries:
-                activity_data = self.extract_activity_data(entry)
-
-                # fhir
-                entry['bundle_identifier'] = self.bundle_identifier
-
-                participant_event_objs.append({
-                    'created': clock.CLOCK.now(),
-                    'modified': clock.CLOCK.now(),
-                    'participant_id': participant_id,
-                    'activity_id': activity_data.id,
-                    'resource': entry
-                })
-
-                event_objs = self.create_event_objs(
-                    participant_id=participant_id,
-                    entry=entry,
-                    activity_data=activity_data
-                )
-
-                if activity_data.name in ('consent', 'withdrawal', 'deactivation'):
-                    summary_update = {
-                        'event_type': activity_data.name,
-                        'participant_id': participant_id,
-                        'event_authored_time': event_objs[0]['event_authored_time']
-                    }
-                    summary_updates.append(summary_update)
-
-                all_event_objs.extend(event_objs)
+        entry_obj = self.iterate_entries()
 
         self.handle_data_inserts(
-            participant_event_objs=participant_event_objs,
-            all_event_objs=all_event_objs,
-            all_participant_ops_data=all_participant_ops_data
+            participant_event_objs=entry_obj.participant_event_objs,
+            all_event_objs=entry_obj.all_event_objs,
+            all_participant_ops_data=entry_obj.all_participant_ops_data
         )
 
-        if GAE_PROJECT != 'localhost' and summary_updates:
+        if GAE_PROJECT != 'localhost' and entry_obj.summary_updates:
             cloud_task = GCPCloudTask()
-            for summary_update in summary_updates:
+            for summary_update in entry_obj.summary_updates:
                 cloud_task.execute(
                     endpoint='update_participant_summary_for_nph_task',
                     payload=summary_update,
@@ -291,7 +250,7 @@ class PostIntakePayloadFHIR(PostIntakePayload):
                 pass
         return elements_found
 
-    def extract_activity_data(self, entry: dict):
+    def extract_activity_data(self, entry: dict, activity_name: str = None):
         activity_name, activity_source = None, None
 
         try:
@@ -390,30 +349,226 @@ class PostIntakePayloadFHIR(PostIntakePayload):
         except KeyError as e:
             raise BadRequest(f'KeyError on authored time lookup: {e} bundle_id: {self.bundle_identifier}')
 
+    def iterate_entries(self) -> EntryObjData:
+        participant_event_objs, all_event_objs, all_participant_ops_data, summary_updates = [], [], [], []
+
+        for resource in self.intake_payload:
+            self.bundle_identifier = self.get_bundle_identifier(resource)
+
+            participant_obj = list(filter(lambda x: x['resource']['resourceType'].lower() == 'patient',
+                                          resource['entry']))[0]
+            participant_id = self.extract_participant_id(participant_obj=participant_obj)
+
+            all_participant_ops_data.extend(
+                self.create_ops_data_elements(
+                    participant_id=participant_id,
+                    participant_obj=participant_obj
+                )
+            )
+
+            self.participant_response.append({'nph_participant_id': participant_id})
+
+            # fhir + json
+            applicable_entries = [
+                obj for obj in resource['entry'] if obj['resource']['resourceType'].lower() in self.applicable_entries
+            ]
+
+            for entry in applicable_entries:
+                activity_data = self.extract_activity_data(entry)
+
+                # fhir
+                entry['bundle_identifier'] = self.bundle_identifier
+
+                participant_event_objs.append({
+                    'created': clock.CLOCK.now(),
+                    'modified': clock.CLOCK.now(),
+                    'participant_id': participant_id,
+                    'activity_id': activity_data.id,
+                    'resource': entry
+                })
+
+                event_objs = self.create_event_objs(
+                    participant_id=participant_id,
+                    entry=entry,
+                    activity_data=activity_data
+                )
+
+                if activity_data.name in ('consent', 'withdrawal', 'deactivation'):
+                    summary_update = {
+                        'event_type': activity_data.name,
+                        'participant_id': participant_id,
+                        'event_authored_time': event_objs[0]['event_authored_time']
+                    }
+                    summary_updates.append(summary_update)
+
+                all_event_objs.extend(event_objs)
+
+        return EntryObjData(
+            participant_event_objs=participant_event_objs,
+            all_event_objs=all_event_objs,
+            all_participant_ops_data=all_participant_ops_data,
+            summary_updates=summary_updates
+        )
+
 
 # Custom JSON specific payloads
 class PostIntakePayloadJSON(PostIntakePayload):
 
-    def get_bundle_identifier(self, entry: dict) -> int:
-        ...
+    def __init__(self, intake_payload):
+        super().__init__(intake_payload)
+
+        self.current_module = None
+
+    def get_bundle_identifier(self, entry: dict) -> str:
+        return entry['info'].get('ListId')
 
     def create_ops_data_elements(self, *, participant_id: str, participant_obj: dict) -> List[dict]:
-        ...
+        # sigh have to maintain this
+        elements_found, enum_mapping = [], {
+            'DOB': 'Birthdate'
+        }
+        for key, value in participant_obj.items():
+            try:
+                elements_found.append({
+                    'created': clock.CLOCK.now(),
+                    'modified': clock.CLOCK.now(),
+                    'participant_id': participant_id,
+                    'source_data_element': ParticipantOpsElementTypes.lookup_by_name(enum_mapping[key.upper()].upper()),
+                    'source_value': value
+                })
+            except KeyError:
+                pass
+        return elements_found
 
     def get_site_id(self, entry: dict) -> Optional[int]:
         ...
 
-    def extract_participant_id(self, participant_obj) -> Optional[str]:
-        ...
+    def extract_participant_id(self, participant_obj: dict) -> Optional[str]:
+        try:
+            participant_id = participant_obj.get('NPHId', None)
+            with self.nph_participant_dao.session() as session:
+                is_nph_participant = self.nph_participant_dao.get_participant_by_id(
+                    participant_id,
+                    session
+                )
+                if not is_nph_participant:
+                    raise NotFound(f'NPH participant {participant_id} not found bundle_id:'
+                                   f' {self.bundle_identifier}')
+                return participant_id
+        except (KeyError, Exception) as e:
+            raise BadRequest(f'Cannot parse participant information from payload: {e} bundle_id:'
+                             f' {self.bundle_identifier}')
 
-    def extract_activity_data(self, entry: dict) -> ActivityData:
-        ...
+    def extract_activity_data(self, entry: List[dict], activity_name: str = None) -> List[ActivityData]:
+        # activity_source = None
+        # activity_entries = [entry] if type(entry) is not list else entry
+        current_entry_activity_data = []
+
+        try:
+            current_activity = list(filter(lambda x: x.name.lower() == activity_name,
+                                           self.current_activities))
+            if not current_activity:
+                raise BadRequest(f'Cannot reconcile activity type bundle_id: {self.bundle_identifier}')
+
+            # activity_source_map = {
+            #     'enrollment': 'Status',
+            #     'pairing': 'Site'
+            # }
+            #
+            # for activity in activity_entries:
+            #     current_entry_activity_data.append(
+            #         ActivityData(
+            #             id=current_activity[0].id,
+            #             name=activity_name,
+            #             source=activity_source
+            #         )
+            #     )
+            # if entry['resource'].get('class'):
+            #     activity_name = activity_source = entry['resource']['class']['code']
+            #
+            #
+            # if entry['resource'].get('serviceType'):
+            #     activity_source = entry['resource']['serviceType']['coding'][0]['code']
+
+            return current_entry_activity_data
+
+        except KeyError as e:
+            return BadRequest(f'Key error on activity lookup: {e} bundle_id: {self.bundle_identifier}')
 
     def extract_authored_time(self, entry: dict) -> str:
         ...
 
     def get_consent_events(self, entry: dict) -> List[dict]:
         ...
+
+    def iterate_entries(self):
+        participant_event_objs, all_event_objs, all_participant_ops_data, summary_updates = [], [], [], []
+
+        for resource in self.intake_payload:
+            self.bundle_identifier = self.get_bundle_identifier(resource)
+            participants = resource['info'].get('Participants')
+
+            for participant_obj in participants:
+
+                self.current_module = participant_obj.get('Module')
+                if not self.current_module:
+                    return BadRequest(f'Key error on module lookup: bundle_id: {self.bundle_identifier}')
+
+                participant_id = self.extract_participant_id(participant_obj=participant_obj)
+
+                all_participant_ops_data.extend(
+                    self.create_ops_data_elements(
+                        participant_id=participant_id,
+                        participant_obj=participant_obj
+                    )
+                )
+
+                self.participant_response.append({'nph_participant_id': participant_id})
+
+                applicable_entries: dict = {k.lower(): v for k, v in participant_obj.items()
+                                            if k.lower() in self.applicable_entries}
+
+                for key, entry in applicable_entries.items():
+                    activity_name = key.lower().replace('status', '')
+                    # should be list of activity_data
+                    activity_data_list = self.extract_activity_data(
+                        entry=entry,
+                        activity_name=activity_name
+                    )
+                    for activity_data in activity_data_list:
+                        # fhir
+                        entry['bundle_identifier'] = self.bundle_identifier
+
+                        participant_event_objs.append({
+                            'created': clock.CLOCK.now(),
+                            'modified': clock.CLOCK.now(),
+                            'participant_id': participant_id,
+                            'activity_id': activity_data.id,
+                            'resource': entry
+                        })
+
+                        event_objs = self.create_event_objs(
+                            participant_id=participant_id,
+                            entry=entry,
+                            activity_data=activity_data
+                        )
+
+                        if activity_data.name in ('consent', 'withdrawal', 'deactivation'):
+                            summary_update = {
+                                'event_type': activity_data.name,
+                                'participant_id': participant_id,
+                                'event_authored_time': event_objs[0]['event_authored_time']
+                            }
+                            summary_updates.append(summary_update)
+
+                        all_event_objs.extend(event_objs)
+
+        return EntryObjData(
+            participant_event_objs=participant_event_objs,
+            all_event_objs=all_event_objs,
+            all_participant_ops_data=all_participant_ops_data,
+            summary_updates=summary_updates
+        )
 
 
 class NphIntakeAPI(BaseApi):
@@ -425,7 +580,6 @@ class NphIntakeAPI(BaseApi):
         # Adding request log here so if exception is raised
         # per validation fail the payload is stored
         log_api_request(log=request.log_record)
-
         intake_payload = request.get_json(force=True)
 
         post_map = {
@@ -436,6 +590,5 @@ class NphIntakeAPI(BaseApi):
         post_intake_api = post_map.create_post_intake(
             intake_payload=intake_payload
         )
-        post_intake_api.iterate_payload()
-
+        post_intake_api.handle_data_from_payload()
         return self._make_response(post_intake_api.participant_response)

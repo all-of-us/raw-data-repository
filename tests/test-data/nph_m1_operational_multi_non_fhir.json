@@ -2,13 +2,13 @@
 	"info": {
 		"ListId": "1212AS",
 		"CreatedDate": "2023-01-01T00:00:00-04:00",
-		"TotalNumberofParticipants": 3,
+		"TotalNumberofParticipants": 2,
 		"Participants": [
 			{
 				"Id": 2,
 				"NPHId": "100000000",
 				"Module": "Module1",
-				"DOB": "string",
+				"DOB": "2022-01-01",
 				"EnrollmentStatus": [
 					{
 						"StatusId": 1,
@@ -35,43 +35,14 @@
 			},
 			{
 				"Id": 3,
-				"NPHId": "29999999999991",
+				"NPHId": "100000001",
 				"Module": "Module1",
-				"DOB": "string",
+				"DOB": "2022-01-01",
 				"EnrollmentStatus": [
 					{
 						"StatusId": 1,
 						"Status": "refusedConsent",
 						"Reason": null,
-						"Date": "2023-01-01T00:00:00-04:00",
-						"Current": "true"
-					}
-				],
-				"Consent": {
-					"Version": 1,
-					"SignedName": null,
-					"StaffName": null,
-					"StaffSignedDate": null,
-					"FileName": null,
-					"Module1Tissue": null,
-					"Module1ConsentRecontact": null,
-					"ParticipantSignedDate": null
-				},
-				"Pairing": {
-					"Site": "nph-site-nphxyz",
-					"Date": "2023-01-01T00:00:00-04:00"
-				}
-			},
-			{
-				"Id": 4,
-				"NPHId": "39999999999991",
-				"Module": "Module1",
-				"DOB": "string",
-				"EnrollmentStatus": [
-					{
-						"StatusId": 1,
-						"Status": "eligibilityFailed",
-						"Reason": "There should be a reason here!",
 						"Date": "2023-01-01T00:00:00-04:00",
 						"Current": "true"
 					}
