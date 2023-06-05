@@ -403,10 +403,10 @@ class UpdatableApi(BaseApi):
                 raise BadRequest("If-Match is missing for PUT request")
             expected_version = self.parse_etag(etag)
         m = self._get_model_to_update(resource, id_, expected_version, participant_id)
-        m = self._do_update(m)
+        m_with_pk = self._do_update(m)
 
         # Support RDR to PDR pipeline
-        submit_pipeline_pubsub_msg_from_model(m, self.dao.get_connection_database_name())
+        submit_pipeline_pubsub_msg_from_model(m_with_pk, self.dao.get_connection_database_name())
 
         # TODO: Delete this block after RDR to PDR pipeline is in production.
         if participant_id or (m and hasattr(m, 'participantId')):
