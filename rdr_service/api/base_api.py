@@ -381,7 +381,7 @@ class UpdatableApi(BaseApi):
             return result, 200
 
     def _do_update(self, m):
-        self.dao.update(m)
+        return self.dao.update(m)
 
     def put(self, id_, participant_id=None, skip_etag=False, resource=None):
         """
@@ -403,7 +403,7 @@ class UpdatableApi(BaseApi):
                 raise BadRequest("If-Match is missing for PUT request")
             expected_version = self.parse_etag(etag)
         m = self._get_model_to_update(resource, id_, expected_version, participant_id)
-        self._do_update(m)
+        m = self._do_update(m)
 
         # Support RDR to PDR pipeline
         submit_pipeline_pubsub_msg_from_model(m, self.dao.get_connection_database_name())
