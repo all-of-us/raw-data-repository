@@ -115,6 +115,13 @@ class Question:
             answer_value=value
         )
 
+    def answer_less_than(self, value) -> Condition:
+        return _HasAnsweredQuestionWith(
+            question_code=self.question_code,
+            comparison=_Comparison.LESS_THAN,
+            answer_value=value
+        )
+
     def has_option_selected(self, option_value) -> Condition:
         return _HasSelectedOption(
             question_code=self.question_code,
@@ -127,6 +134,7 @@ class _Comparison(Enum):
 
     EQUALS = auto()
     GREATER_THAN = auto()
+    LESS_THAN = auto()
 
 
 class InAnySurvey(Condition):
@@ -270,10 +278,14 @@ class _HasAnsweredQuestionWith(Condition):
             self._passes = answer and answer.value == self.expected_answer_value
         elif self.comparison == _Comparison.GREATER_THAN:
             self._passes = answer and answer.value > self.expected_answer_value
+        elif self.comparison == _Comparison.LESS_THAN:
+            self._passes = answer and answer.value < self.expected_answer_value
 
     def __str__(self):
         if self.comparison == _Comparison.GREATER_THAN:
             return f"[{self.question_code}] > {self.expected_answer_value}"
+        elif self.comparison == _Comparison.LESS_THAN:
+            return f"[{self.question_code}] < {self.expected_answer_value}"
         else:
             return f"[{self.question_code}] = '{self.expected_answer_value}'"
 
@@ -439,7 +451,7 @@ class _ConstraintParser(_BaseParser):
     def _read_comparison(self, comparison_char):
         if comparison_char == '=':
             self._next_expected_chars = [' ', "'"]
-        elif comparison_char == '>':
+        elif comparison_char in ['<', '>']:
             self._next_expected_chars = [' ']
         else:
             raise Exception(f'unrecognized comparison char "{comparison_char}"')
@@ -469,6 +481,8 @@ class _ConstraintParser(_BaseParser):
 
         if self._comparison_operation == '>':
             condition = Question(question_code).answer_greater_than(answer_code)
+        elif self._comparison_operation == '<':
+            condition = Question(question_code).answer_less_than(answer_code)
         else:
             condition = Question(question_code).is_answered_with(answer_code)
 
