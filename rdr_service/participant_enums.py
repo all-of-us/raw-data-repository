@@ -168,15 +168,14 @@ class EnrollmentStatusV30(messages.Enum):
     CORE_PARTICIPANT = 5
 
 
-class EnrollmentStatusV31(messages.Enum):
-    """A status reflecting how fully enrolled a participant is according to the 3.1 data glossary"""
+class EnrollmentStatusV32(messages.Enum):
+    """A status reflecting how fully enrolled a participant is according to the 3.2 data glossary"""
 
     PARTICIPANT = 1
     PARTICIPANT_PLUS_EHR = 2
-    PARTICIPANT_PLUS_BASICS = 3
+    ENROLLED_PARTICIPANT = 3
     CORE_MINUS_PM = 4
     CORE_PARTICIPANT = 5
-    BASELINE_PARTICIPANT = 6
 
 
 class DigitalHealthSharingStatusV31(messages.Enum):
