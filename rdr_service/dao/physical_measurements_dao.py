@@ -279,6 +279,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
         existing_measurements = (
             session.query(PhysicalMeasurements).filter(PhysicalMeasurements.participantId == obj.participantId).all()
         )
+
+        self.update_measurement_core_data_flag(obj)
+
+        # Find any matching measurements and return them instead if the one being inserted matches
         if existing_measurements:
             new_dict = self._measurements_as_dict(obj)
             for measurements in existing_measurements:
@@ -286,9 +290,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
                     # If there are already measurements that look exactly like this, return them
                     # without inserting new measurements.
                     return measurements
-        PhysicalMeasurementsDao.set_measurement_ids(obj)
 
-        self.update_measurement_core_data_flag(obj)
+        PhysicalMeasurementsDao.set_measurement_ids(obj)
 
         inserted_obj = super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
         if not is_amendment:  # Amendments aren't expected to have site ID extensions.
