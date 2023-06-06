@@ -104,14 +104,12 @@ class NphParticipantData:
             consent_data.get('consent_json')
         ))
 
-    # edit
     @classmethod
     def update_nph_participant_biospeciman_samples(cls,
                                                    order_samples: dict,
                                                    order_biobank_samples: dict
                                                    ) -> Union[Optional[str], Any]:
-        # remove
-        # current_dict = cls.nph_order_dao().get_nph_biospecimens_for_participant(nph_participant)
+
         if not order_samples:
             return 'NULL'
 
