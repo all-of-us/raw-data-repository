@@ -986,14 +986,17 @@ class PhysicalMeasurementsDao(UpdatableDao):
         """
         Analyzes the physical measurement data to determine if the Core Data flag should be set to True
         """
+        height_codes = ['height', '8302-2']
+        weight_codes = ['weight', '29463-7', 'pre-pregnancy-weight']
+
         has_height = False
         has_weight = False
         for measurement in measurement_collection.measurements:
             # Measurement should count if there is a value recorded, or if there are modifications/qualifiers
             is_valid_value = measurement.valueDecimal is not None or measurement.qualifiers
-            if measurement.codeValue == 'height':
+            if measurement.codeValue in height_codes:
                 has_height = is_valid_value
-            elif measurement.codeValue == 'weight':
+            elif measurement.codeValue in weight_codes:
                 has_weight = is_valid_value
 
         measurement_collection.meetsCoreDataRequirements = has_weight and has_height
