@@ -222,7 +222,7 @@ class NphParticipantData:
                     "field": "enrollmentStatus",
                     "table": ParticipantSummaryModel,
                     "value": ParticipantSummaryModel.enrollmentStatus,
-                    "time": ParticipantSummaryModel.enrollmentStatusParticipantV3_1Time
+                    "time": ParticipantSummaryModel.enrollmentStatusParticipantV3_2Time
                 },
                 "aouOverallHealthStatus": {
                     "field": "questionnaireOnHealthcareAccess",

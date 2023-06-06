@@ -61,7 +61,7 @@ participant_summary_default_values = {
     "recontactMethod": "UNSET",
     "enrollmentStatus": "INTERESTED",
     "enrollmentStatusV3_0": "PARTICIPANT",
-    "enrollmentStatusV3_1": "PARTICIPANT",
+    "enrollmentStatusV3_2": "PARTICIPANT",
     "samplesToIsolateDNA": "UNSET",
     "numBaselineSamplesArrived": 0,
     "numCompletedPPIModules": 1,
@@ -338,7 +338,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "cohort2PilotFlag": "UNSET",
                 "patientStatus": patient_statuses or [],
                 "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-                "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00",
+                "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
             }
         )
 
@@ -1764,7 +1764,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "dateOfBirth": datetime.date(1978, 10, 9),
             "CABoRSignature": "signature.pdf",
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
         }
 
         self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
@@ -1878,7 +1878,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.send_consent(participant_id_1, authored=datetime.datetime(2015, 11, 8))
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("UNSET", ps_1["consentForElectronicHealthRecords"])
-        self.assertEqual(None, ps_1.get("enrollmentStatusParticipantPlusEhrV3_1Time"))
+        self.assertEqual(None, ps_1.get("enrollmentStatusParticipantPlusEhrV3_2Time"))
 
         self._submit_consent_questionnaire_response(
             participant_id_1, questionnaire_id, "NOPE",
@@ -1886,7 +1886,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("SUBMITTED_NO_CONSENT", ps_1["consentForElectronicHealthRecords"])
-        self.assertEqual(None, ps_1.get("enrollmentStatusParticipantPlusEhrV3_1Time"))
+        self.assertEqual(None, ps_1.get("enrollmentStatusParticipantPlusEhrV3_2Time"))
 
         # DA-2732:  Make sure the test assigns a more recent timestamp for the YES response.  An identical authored
         # time for both YES/NO responses will not guarantee the consent status changes
@@ -1895,7 +1895,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("SUBMITTED_NOT_VALIDATED", ps_1["consentForElectronicHealthRecords"])
-        self.assertEqual(TIME_2.isoformat(), ps_1.get("enrollmentStatusParticipantPlusEhrV3_1Time"))
+        self.assertEqual(TIME_2.isoformat(), ps_1.get("enrollmentStatusParticipantPlusEhrV3_2Time"))
 
     def _submit_dvehr_consent_questionnaire_response(
         self, participant_id, questionnaire_id, dvehr_consent_answer, time=TIME_1, authored=None
@@ -1987,13 +1987,13 @@ class ParticipantSummaryApiTest(BaseTestCase):
         with FakeClock(TIME_6):
             self.send_consent(participant_id_1)
 
-        # submit dv consent only, the enrollmentStatusParticipantPlusEhrV3_1Time should be TIME_1
+        # submit dv consent only, the enrollmentStatusParticipantPlusEhrV3_2Time should be TIME_1
         self._submit_dvehr_consent_questionnaire_response(
             participant_id_1, questionnaire_id_1, DVEHRSHARING_CONSENT_CODE_YES, time=TIME_1
         )
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
-        self.assertEqual(TIME_1.isoformat(), ps_1.get("enrollmentStatusParticipantPlusEhrV3_1Time"))
+        self.assertEqual(TIME_1.isoformat(), ps_1.get("enrollmentStatusParticipantPlusEhrV3_2Time"))
         self.assertEqual("SUBMITTED", ps_1["consentForDvElectronicHealthRecordsSharing"])
         self.assertEqual(TIME_1.isoformat(), ps_1["consentForDvElectronicHealthRecordsSharingTime"])
 
@@ -2003,8 +2003,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
-        # the enrollmentStatusParticipantPlusEhrV3_1Time should still be TIME_1
-        self.assertEqual(TIME_1.isoformat(), ps_1.get("enrollmentStatusParticipantPlusEhrV3_1Time"))
+        # the enrollmentStatusParticipantPlusEhrV3_2Time should still be TIME_1
+        self.assertEqual(TIME_1.isoformat(), ps_1.get("enrollmentStatusParticipantPlusEhrV3_2Time"))
 
     def test_dv_consent_after_ehr_consent(self):
         questionnaire_id_1 = self.create_questionnaire("dv_ehr_share_consent_questionnaire.json")
@@ -2021,8 +2021,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
-        # the enrollmentStatusParticipantPlusEhrV3_1Time should still be TIME_1
-        self.assertEqual(TIME_1.isoformat(), ps_1.get("enrollmentStatusParticipantPlusEhrV3_1Time"))
+        # the enrollmentStatusParticipantPlusEhrV3_2Time should still be TIME_1
+        self.assertEqual(TIME_1.isoformat(), ps_1.get("enrollmentStatusParticipantPlusEhrV3_2Time"))
 
         # submit dv consent after ehr consent at TIME_2
         self._submit_dvehr_consent_questionnaire_response(
@@ -2030,8 +2030,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
-        # the enrollmentStatusParticipantPlusEhrV3_1Time should still be TIME_1
-        self.assertEqual(TIME_1.isoformat(), ps_1.get("enrollmentStatusParticipantPlusEhrV3_1Time"))
+        # the enrollmentStatusParticipantPlusEhrV3_2Time should still be TIME_1
+        self.assertEqual(TIME_1.isoformat(), ps_1.get("enrollmentStatusParticipantPlusEhrV3_2Time"))
 
     def test_dv_consent_withdraw_ehr_consent(self):
         questionnaire_id_1 = self.create_questionnaire("dv_ehr_share_consent_questionnaire.json")
@@ -2079,7 +2079,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         status_history = self.session.query(EnrollmentStatusHistory).filter(
             EnrollmentStatusHistory.participant_id == from_client_participant_id(participant_id_str),
-            EnrollmentStatusHistory.version == '3.1'
+            EnrollmentStatusHistory.version == '3.2'
         ).one()
         self.assertEqual('PARTICIPANT_PLUS_EHR', status_history.status)
         self.assertEqual(ehr_consent_datetime, status_history.timestamp)
@@ -2803,7 +2803,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", ps_1["sampleStatus2ED10"])
         self.assertEqual("RECEIVED", ps_1["sampleStatus1SAL2"])
         self.assertEqual("RECEIVED", ps_1["samplesToIsolateDNA"])
-        self.assertEqual("PARTICIPANT", ps_1["enrollmentStatusV3_1"])
+        self.assertEqual("PARTICIPANT", ps_1["enrollmentStatusV3_2"])
         self.assertEqual("UNSET", ps_1["clinicPhysicalMeasurementsStatus"])
         self.assertIsNone(ps_1.get("clinicPhysicalMeasurementsTime"))
         self.assertEqual("GenderIdentity_Man", ps_1["genderIdentity"])
@@ -2841,7 +2841,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", ps_2["sampleStatus2ED10"])
         self.assertEqual("UNSET", ps_2["samplesToIsolateDNA"])
-        self.assertEqual("PARTICIPANT_PLUS_EHR", ps_2["enrollmentStatusV3_1"])
+        self.assertEqual("PARTICIPANT_PLUS_EHR", ps_2["enrollmentStatusV3_2"])
         self.assertEqual("COMPLETED", ps_2["clinicPhysicalMeasurementsStatus"])
         self.assertEqual(TIME_2.isoformat(), ps_2["clinicPhysicalMeasurementsTime"])
         self.assertEqual("GenderIdentity_Woman", ps_2["genderIdentity"])
@@ -2880,7 +2880,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("RECEIVED", ps_3["sampleStatus2ED10"])
         self.assertEqual(TIME_1.isoformat(), ps_3["sampleStatus2ED10Time"])
         self.assertEqual("RECEIVED", ps_3["samplesToIsolateDNA"])
-        self.assertEqual("CORE_PARTICIPANT", ps_3["enrollmentStatusV3_1"])
+        self.assertEqual("CORE_PARTICIPANT", ps_3["enrollmentStatusV3_2"])
         self.assertEqual("COMPLETED", ps_3["clinicPhysicalMeasurementsStatus"])
         self.assertEqual(TIME_2.isoformat(), ps_3["clinicPhysicalMeasurementsTime"])
         self.assertEqual("GenderIdentity_NonBinary", ps_3["genderIdentity"])
@@ -2942,9 +2942,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&consentForCABoR=SUBMITTED", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=UNSET", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=COMPLETED", [[ps_2, ps_3]])
-            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_1=PARTICIPANT", [[ps_1]])
-            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_1=PARTICIPANT_PLUS_EHR", [[ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_1=CORE_PARTICIPANT", [[ps_3]])
+            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=PARTICIPANT", [[ps_1]])
+            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=PARTICIPANT_PLUS_EHR", [[ps_2]])
+            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=CORE_PARTICIPANT", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NOT_WITHDRAWN", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
@@ -3008,7 +3008,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", new_ps_2["sampleStatus1ED10"])
         self.assertEqual("UNSET", new_ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", new_ps_2["samplesToIsolateDNA"])
-        self.assertEqual("PARTICIPANT_PLUS_EHR", new_ps_2["enrollmentStatusV3_1"])
+        self.assertEqual("PARTICIPANT_PLUS_EHR", new_ps_2["enrollmentStatusV3_2"])
         self.assertEqual("UNSET", new_ps_2["clinicPhysicalMeasurementsStatus"])
         self.assertEqual("SUBMITTED", new_ps_2["consentForStudyEnrollment"])
         self.assertIsNotNone(new_ps_2["consentForStudyEnrollmentAuthored"])
@@ -3814,7 +3814,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         # Check that the new fields are hidden
         api_response = self.send_get(f'Participant/P{summary.participantId}/Summary')
-        self.assertNotIn('enrollmentStatusV3_1', api_response)
+        self.assertNotIn('enrollmentStatusV3_2', api_response)
         self.assertNotIn('healthDataStreamSharingStatusV3_1', api_response)
 
         # Make sure 3.0 fields are still there

@@ -621,7 +621,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         summary.email = self.fake.email()
         summary.enrollmentStatus = participant_enums.EnrollmentStatus.MEMBER
         summary.enrollmentStatusV3_0 = participant_enums.EnrollmentStatusV30.PARTICIPANT_PLUS_EHR
-        summary.enrollmentStatusV3_1 = participant_enums.EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
+        summary.enrollmentStatusV3_2 = participant_enums.EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
 
         return summary
 

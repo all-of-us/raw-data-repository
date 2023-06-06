@@ -58,7 +58,7 @@ from rdr_service.participant_enums import (
     EhrStatus,
     EnrollmentStatus,
     EnrollmentStatusV30,
-    EnrollmentStatusV31,
+    EnrollmentStatusV32,
     DeceasedStatus,
     ConsentExpireStatus,
     GenderIdentity,
@@ -744,7 +744,7 @@ class ParticipantSummaryDao(UpdatableDao):
         # Update enrollment status if it is upgrading
         legacy_dates = enrollment_info.version_legacy_dates
         version_3_0_dates = enrollment_info.version_3_0_dates
-        version_3_1_dates = enrollment_info.version_3_1_dates
+        version_3_2_dates = enrollment_info.version_3_2_dates
         status_rank_map = {  # Re-orders the status values so we can quickly see if the current status is higher
             EnrollmentStatus.INTERESTED: 0,
             EnrollmentStatus.MEMBER: 1,
@@ -778,15 +778,15 @@ class ParticipantSummaryDao(UpdatableDao):
                 )
             )
 
-        if allow_downgrade or summary.enrollmentStatusV3_1 < enrollment_info.version_3_1_status:
-            summary.enrollmentStatusV3_1 = enrollment_info.version_3_1_status
+        if allow_downgrade or summary.enrollmentStatusV3_2 < enrollment_info.version_3_2_status:
+            summary.enrollmentStatusV3_2 = enrollment_info.version_3_2_status
             summary.lastModified = clock.CLOCK.now()
             session.add(
                 EnrollmentStatusHistory(
                     participant_id=summary.participantId,
-                    version='3.1',
-                    status=str(summary.enrollmentStatusV3_1),
-                    timestamp=version_3_1_dates[summary.enrollmentStatusV3_1]
+                    version='3.2',
+                    status=str(summary.enrollmentStatusV3_2),
+                    timestamp=version_3_2_dates[summary.enrollmentStatusV3_2]
                 )
             )
 
@@ -849,59 +849,50 @@ class ParticipantSummaryDao(UpdatableDao):
         elif allow_downgrade:
             self._clear_timestamp_if_set(summary, 'enrollmentStatusCoreV3_0Time')
 
-        if EnrollmentStatusV31.PARTICIPANT in version_3_1_dates:
+        if EnrollmentStatusV32.PARTICIPANT in version_3_2_dates:
             self._update_timestamp_value(
                 summary,
-                'enrollmentStatusParticipantV3_1Time',
-                version_3_1_dates[EnrollmentStatusV31.PARTICIPANT]
+                'enrollmentStatusParticipantV3_2Time',
+                version_3_2_dates[EnrollmentStatusV32.PARTICIPANT]
             )
         elif allow_downgrade:
-            self._clear_timestamp_if_set(summary, 'enrollmentStatusParticipantV3_1Time')
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusParticipantV3_2Time')
 
-        if EnrollmentStatusV31.PARTICIPANT_PLUS_EHR in version_3_1_dates:
+        if EnrollmentStatusV32.PARTICIPANT_PLUS_EHR in version_3_2_dates:
             self._update_timestamp_value(
                 summary,
-                'enrollmentStatusParticipantPlusEhrV3_1Time',
-                version_3_1_dates[EnrollmentStatusV31.PARTICIPANT_PLUS_EHR]
+                'enrollmentStatusParticipantPlusEhrV3_2Time',
+                version_3_2_dates[EnrollmentStatusV32.PARTICIPANT_PLUS_EHR]
             )
         elif allow_downgrade:
-            self._clear_timestamp_if_set(summary, 'enrollmentStatusParticipantPlusEhrV3_1Time')
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusParticipantPlusEhrV3_2Time')
 
-        if EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS in version_3_1_dates:
+        if EnrollmentStatusV32.ENROLLED_PARTICIPANT in version_3_2_dates:
             self._update_timestamp_value(
                 summary,
-                'enrollmentStatusParticipantPlusBasicsV3_1Time',
-                version_3_1_dates[EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS]
+                'enrollmentStatusEnrolledParticipantV3_2Time',
+                version_3_2_dates[EnrollmentStatusV32.ENROLLED_PARTICIPANT]
             )
         elif allow_downgrade:
-            self._clear_timestamp_if_set(summary, 'enrollmentStatusParticipantPlusBasicsV3_1Time')
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusEnrolledParticipantV3_2Time')
 
-        if EnrollmentStatusV31.CORE_MINUS_PM in version_3_1_dates:
+        if EnrollmentStatusV32.CORE_MINUS_PM in version_3_2_dates:
             self._update_timestamp_value(
                 summary,
-                'enrollmentStatusCoreMinusPmV3_1Time',
-                version_3_1_dates[EnrollmentStatusV31.CORE_MINUS_PM]
+                'enrollmentStatusCoreMinusPmV3_2Time',
+                version_3_2_dates[EnrollmentStatusV32.CORE_MINUS_PM]
             )
         elif allow_downgrade:
-            self._clear_timestamp_if_set(summary, 'enrollmentStatusCoreMinusPmV3_1Time')
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusCoreMinusPmV3_2Time')
 
-        if EnrollmentStatusV31.CORE_PARTICIPANT in version_3_1_dates:
+        if EnrollmentStatusV32.CORE_PARTICIPANT in version_3_2_dates:
             self._update_timestamp_value(
                 summary,
-                'enrollmentStatusCoreV3_1Time',
-                version_3_1_dates[EnrollmentStatusV31.CORE_PARTICIPANT]
+                'enrollmentStatusCoreV3_2Time',
+                version_3_2_dates[EnrollmentStatusV32.CORE_PARTICIPANT]
             )
         elif allow_downgrade:
-            self._clear_timestamp_if_set(summary, 'enrollmentStatusCoreV3_1Time')
-
-        if EnrollmentStatusV31.BASELINE_PARTICIPANT in version_3_1_dates:
-            self._update_timestamp_value(
-                summary,
-                'enrollmentStatusParticipantPlusBaselineV3_1Time',
-                version_3_1_dates[EnrollmentStatusV31.BASELINE_PARTICIPANT]
-            )
-        elif allow_downgrade:
-            self._clear_timestamp_if_set(summary, 'enrollmentStatusParticipantPlusBaselineV3_1Time')
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusCoreV3_2Time')
 
         # Legacy code for setting CoreOrdered date field
         consent = (
@@ -1262,16 +1253,15 @@ class ParticipantSummaryDao(UpdatableDao):
             result["physicalMeasurementsFinalizedSite"] = "UNSET"
             result["physicalMeasurementsCollectType"] = str(PhysicalMeasurementsCollectType.SELF_REPORTED)
 
-        # Check to see if we should hide 3.0 and 3.1 fields
+        # Check to see if we should hide 3.0 and 3.2 fields
         if not config.getSettingJson(config.ENABLE_ENROLLMENT_STATUS_3, default=False):
-            del result['enrollmentStatusV3_1']
+            del result['enrollmentStatusV3_2']
             for field_name in [
-                'enrollmentStatusParticipantV3_1Time',
-                'enrollmentStatusParticipantPlusEhrV3_1Time',
-                'enrollmentStatusParticipantPlusBasicsV3_1Time',
-                'enrollmentStatusCoreMinusPmV3_1Time',
-                'enrollmentStatusCoreV3_1Time',
-                'enrollmentStatusParticipantPlusBaselineV3_1Time'
+                'enrollmentStatusParticipantV3_2Time',
+                'enrollmentStatusParticipantPlusEhrV3_2Time',
+                'enrollmentStatusEnrolledParticipantV3_2Time',
+                'enrollmentStatusCoreMinusPmV3_2Time',
+                'enrollmentStatusCoreV3_2Time'
             ]:
                 if field_name in result:
                     del result[field_name]

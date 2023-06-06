@@ -152,8 +152,7 @@ def create_rebuild_tasks_for_participants(participant_id_list, batch_size, proje
             ParticipantSummary.isEhrDataAvailable,
             ParticipantSummary.wasEhrDataAvailable,
             # These may also be updated/recalculated in the course of processing the EHR status update ingestion
-            ParticipantSummary.enrollmentStatusV3_1,
-            ParticipantSummary.enrollmentStatusParticipantPlusBaselineV3_1Time,
+            ParticipantSummary.enrollmentStatusV3_2,
             ParticipantSummary.healthDataStreamSharingStatusV3_1,
             ParticipantSummary.healthDataStreamSharingStatusV3_1Time
         ).filter(
