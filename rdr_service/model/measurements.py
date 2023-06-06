@@ -1,3 +1,5 @@
+from typing import List
+
 from sqlalchemy import BIGINT, Boolean, Column, Float, ForeignKey, Integer, String, Table, Text, UnicodeText
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.orm import relationship
@@ -51,7 +53,7 @@ class PhysicalMeasurements(Base):
     """The datetime at which the physical measurements were cancelled"""
     reason = Column("reason", UnicodeText)
     """If measurements are edited or cancelled, user notes to detail change"""
-    measurements = relationship("Measurement", cascade="all, delete-orphan")
+    measurements: List['Measurement'] = relationship("Measurement", cascade="all, delete-orphan")
     origin = Column("origin", String(255))
     collectType = Column("collect_type", Enum(PhysicalMeasurementsCollectType),
                          default=PhysicalMeasurementsCollectType.UNSET)
@@ -61,6 +63,11 @@ class PhysicalMeasurements(Base):
                                      ForeignKey("questionnaire_response.questionnaire_response_id"), nullable=True)
     resource = Column("resource", JSON, nullable=True)
     """Original resource value; whole payload request that was sent"""
+    meetsCoreDataRequirements = Column('meets_core_data_reqs', Boolean)
+    """
+    Indicates whether the measurement satisfies the requirements for Core Data
+    (provides both height and weight values, or a modification for any value not provided)
+    ."""
 
 
 class Measurement(Base):

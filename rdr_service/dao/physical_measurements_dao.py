@@ -250,6 +250,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
     def insert_remote_pm_with_session(self, session, obj):
         self.set_measurement_ids(obj)
         self.set_self_reported_pm_resource_json(obj)
+        self.update_measurement_core_data_flag(obj)
         self._update_participant_summary(session, obj, is_amendment=False, is_self_reported=True)
         return super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
 
@@ -286,6 +287,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
                     # without inserting new measurements.
                     return measurements
         PhysicalMeasurementsDao.set_measurement_ids(obj)
+
+        self.update_measurement_core_data_flag(obj)
 
         inserted_obj = super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
         if not is_amendment:  # Amendments aren't expected to have site ID extensions.
@@ -974,3 +977,20 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
         record = self.store_record_fhir_doc(record, doc)
         return record
+
+    @classmethod
+    def update_measurement_core_data_flag(cls, measurement_collection: PhysicalMeasurements):
+        """
+        Analyzes the physical measurement data to determine if the Core Data flag should be set to True
+        """
+        has_height = False
+        has_weight = False
+        for measurement in measurement_collection.measurements:
+            # Measurement should count if there is a value recorded, or if there are modifications/qualifiers
+            is_valid_value = measurement.valueDecimal is not None or measurement.qualifiers
+            if measurement.codeValue == 'height':
+                has_height = is_valid_value
+            elif measurement.codeValue == 'weight':
+                has_weight = is_valid_value
+
+        measurement_collection.meetsCoreDataRequirements = has_weight and has_height
