@@ -66,7 +66,6 @@ event.listen(Site, "before_insert", model_insert_listener)
 event.listen(Site, "before_update", model_update_listener)
 
 
-# darryl
 class Order(NphBase):
     __tablename__ = "order"
 
@@ -145,7 +144,6 @@ class StoredSample(NphBase):
 
 event.listen(StoredSample, "before_insert", model_insert_listener)
 event.listen(StoredSample, "before_update", model_update_listener)
-# darryl
 
 
 class Activity(NphBase):
