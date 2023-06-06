@@ -366,6 +366,24 @@ class ParticipantSummary(Base):
     enrollmentStatusCoreV3_2Time = Column("enrollment_status_core_v_3_2_time", UTCDateTime)
     """UTC time the participant has reached the 'CORE_PARTICIPANT' enrollment status defined by the 3.2 data glossary"""
 
+    hasCoreData = Column(
+        "has_core_data",
+        Boolean,
+        nullable=False,
+        server_default=expression.false()
+    )
+    """
+    A true or false value that indicates whether the RDR has all data points defined as requirements
+    for Core Data are collected for the participant.
+    Distinct from enrollments statuses because requirements for Core Data are not entirely driven to completion
+    by participant actions (e.g. a participant can provide a dna sample, but for Core Data that sample needs
+    to be sequenced).
+    """
+
+    hasCoreDataTime = Column("has_core_data_time", UTCDateTime)
+    """
+    UTC time the participant has completed the Core Data requirements defined by the 3.2 data glossary
+    """
 
     consentCohort = Column("consent_cohort", Enum(ParticipantCohort), default=ParticipantCohort.UNSET)
     """

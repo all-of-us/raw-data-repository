@@ -25,6 +25,9 @@ class EnrollmentInfo:
     version_3_2_status: EnrollmentStatusV32 = None
     version_3_2_dates: dict = field(default_factory=dict)
 
+    has_core_data: bool = False
+    core_data_time: datetime = None
+
     def upgrade_legacy_status(self, status: EnrollmentStatus, achieved_date: datetime):
         self.version_legacy_status = status
         self.version_legacy_dates[status] = achieved_date
@@ -61,6 +64,9 @@ class EnrollmentDependencies:
     earliest_ehr_file_received_time: datetime
     earliest_mediated_ehr_receipt_time: datetime
     earliest_physical_measurements_time: datetime
+
+    earliest_core_physical_measurement_time: datetime  # Earliest physical measurement that meets core data reqs
+    wgs_sequencing_time: datetime
 
     @property
     def first_ehr_consent_date(self):
@@ -123,6 +129,8 @@ class EnrollmentCalculation:
         cls._set_legacy_status(enrollment, participant_info)
         cls._set_v30_status(enrollment, participant_info)
         cls._set_v32_status(enrollment, participant_info)
+
+        cls._set_core_data_fields(enrollment, participant_info)
 
         return enrollment
 
@@ -214,6 +222,11 @@ class EnrollmentCalculation:
             )
 
         return enrollment
+
+    @classmethod
+    def _set_core_data_fields(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):
+        if not participant_info.ever_expressed_interest_in_sharing_ehr:
+            return  # Core Data requires EHR consent (or interest in sharing)
 
     @classmethod
     def _meets_requirements_for_core_minus_pm(cls, participant_info: EnrollmentDependencies):
