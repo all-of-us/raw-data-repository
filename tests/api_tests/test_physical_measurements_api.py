@@ -9,7 +9,6 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.measurements import Measurement
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import SampleStatus, UNSET_HPO_ID
 from rdr_service.services.system_utils import DateRange
