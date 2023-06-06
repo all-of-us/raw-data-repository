@@ -1,7 +1,7 @@
 import logging
 from graphene import ObjectType, String, Int, DateTime, Field, List, Schema, NonNull
 from graphene import relay
-from sqlalchemy.orm import Query, aliased, subqueryload
+from sqlalchemy.orm import Query, aliased
 from sqlalchemy import and_
 
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
@@ -10,7 +10,6 @@ from rdr_service.dao.study_nph_dao import NphParticipantDao
 from rdr_service.model.study_nph import (
     Participant,
     Site as nphSite,
-    Order,
     PairingEvent,
     DeactivationEvent,
     WithdrawalEvent,
@@ -448,16 +447,7 @@ class ParticipantQuery(ObjectType):
             ).filter(
                 pm2.id.is_(None),
                 ParticipantMapping.ancillary_study_id == NPH_STUDY_ID,
-            )
-
-            # remove
-            query = query.options(
-                subqueryload(Participant.orders).subqueryload(Order.samples)
-            ).options(
-                subqueryload(Participant.stored_samples)
-            )
-
-            query = query.distinct()
+            ).distinct()
 
             current_field_class = ParticipantField
             query_builder = QueryBuilder(query)
