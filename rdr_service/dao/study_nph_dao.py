@@ -117,7 +117,8 @@ class NphParticipantDao(BaseDao):
 
     def get_orders_samples_subquery(self):
         parent_study_category = aliased(StudyCategory)
-        # parent_study_category_module = aliased(StudyCategory)
+        parent_study_category_module = aliased(StudyCategory)
+
         with self.session() as session:
             return session.query(
                 Participant.id.label('orders_samples_pid'),
@@ -127,7 +128,7 @@ class NphParticipantDao(BaseDao):
                         func.json_object(
                             'orderID', Order.nph_order_id,
                             'visitID', parent_study_category.name,
-                            # 'studyID', parent_study_category_module.name,
+                            'studyID', parent_study_category_module.name,
                             'timepointID', StudyCategory.name,
                             'clientID', Order.client_id,
                             'specimenCode', OrderedSample.identifier,
@@ -198,6 +199,9 @@ class NphParticipantDao(BaseDao):
             ).outerjoin(
                 parent_study_category,
                 parent_study_category.id == StudyCategory.parent_id
+            ).outerjoin(
+                parent_study_category_module,
+                parent_study_category_module.id == parent_study_category.parent_id
             ).outerjoin(
                 StoredSample,
                 or_(
