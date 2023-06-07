@@ -119,7 +119,7 @@ class PubSubTest(BaseTestCase):
 
         # Test Pub/Sub messages successfully sent.
         self.assertTrue(mock_pub_func.called)
-        # We now get two extra calls due to participant enrollment re-calculations after biobank order is submitted.1898
+        # We now get two extra calls due to participant enrollment re-calculations after biobank order is submitted.
         self.assertEqual(mock_pub_func.call_count, 5)
 
     @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
@@ -147,10 +147,11 @@ class PubSubTest(BaseTestCase):
         self.assertIn('measurement', parents)
 
         self.assertTrue(mock_pub_func.called)
-        self.assertEqual(mock_pub_func.call_count, 2)
+        # We now get two extra calls due to participant enrollment re-calculations after PM is submitted.
+        self.assertEqual(mock_pub_func.call_count, 4)
 
     @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
-    def test_pubsub_from_model(self, mock_pub_func):
+    def test_participant_enrollment_update_pubsub(self, mock_pub_func):
         """ Test for Pub/Sub event messages when participant enrollment status is re-calculated. """
         mock_pub_func.return_value = {'messageIds': ['123']}
 
