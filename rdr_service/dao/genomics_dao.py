@@ -1121,14 +1121,24 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             )
             return record.first()
 
+    @classmethod
+    def get_member_by_participant_id_with_session(
+        cls, session, participant_id, genome_type=config.GENOME_TYPE_ARRAY
+    ) -> GenomicSetMember:
+        return session.query(
+            GenomicSetMember
+        ).filter(
+            GenomicSetMember.participantId == participant_id,
+            GenomicSetMember.genomeType == genome_type
+        ).first()
+
     def get_member_by_participant_id(self, participant_id, genome_type=config.GENOME_TYPE_ARRAY):
         with self.session() as session:
-            return session.query(
-                    GenomicSetMember
-                ).filter(
-                  GenomicSetMember.participantId == participant_id,
-                  GenomicSetMember.genomeType == genome_type
-            ).first()
+            return self.get_member_by_participant_id_with_session(
+                session=session,
+                participant_id=participant_id,
+                genome_type=genome_type
+            )
 
     def get_record_from_attr(self, *, attr, value):
         with self.session() as session:

@@ -2881,6 +2881,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(TIME_1.isoformat(), ps_3["sampleStatus2ED10Time"])
         self.assertEqual("RECEIVED", ps_3["samplesToIsolateDNA"])
         self.assertEqual("CORE_PARTICIPANT", ps_3["enrollmentStatusV3_2"])
+        self.assertFalse(ps_3["hasCoreData"])
+        self.assertIsNone(ps_3.get("hasCoreDataTime"))
         self.assertEqual("COMPLETED", ps_3["clinicPhysicalMeasurementsStatus"])
         self.assertEqual(TIME_2.isoformat(), ps_3["clinicPhysicalMeasurementsTime"])
         self.assertEqual("GenderIdentity_NonBinary", ps_3["genderIdentity"])
@@ -3816,6 +3818,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         api_response = self.send_get(f'Participant/P{summary.participantId}/Summary')
         self.assertNotIn('enrollmentStatusV3_2', api_response)
         self.assertNotIn('healthDataStreamSharingStatusV3_1', api_response)
+        self.assertNotIn('hasCoreData', api_response)
+        self.assertNotIn('hasCoreDataTime', api_response)
 
         # Make sure 3.0 fields are still there
         self.assertIn('enrollmentStatusV3_0', api_response)

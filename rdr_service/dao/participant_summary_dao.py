@@ -32,17 +32,19 @@ from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
+from rdr_service.dao.genomics_dao import GenomicJobRunDao, GenomicSetMemberDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_incentives_dao import ParticipantIncentivesDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
+from rdr_service.genomic_enums import GenomicQcStatus
 from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentDependencies
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
+from rdr_service.model.genomics import GenomicJobRun
 from rdr_service.model.enrollment_status_history import EnrollmentStatusHistory
-from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.model.participant_summary import (
     ParticipantGenderAnswers,
     ParticipantRaceAnswers,
@@ -52,6 +54,7 @@ from rdr_service.model.participant_summary import (
 )
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.participant import Participant
+from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.model.utils import get_property_type, to_client_participant_id
 from rdr_service.participant_enums import (
     BiobankOrderStatus,
@@ -687,10 +690,17 @@ class ParticipantSummaryDao(UpdatableDao):
         If allow_downgrade flag is set (e.g., when called by backfill tool), V3.* statuses will be recalculated
         from scratch and may revert from a higher enrollment status (such as BASELINE_PARTICIPANT) to a lower status
         """
+        from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
+
         earliest_physical_measurements_time = min_or_none([
             summary.clinicPhysicalMeasurementsFinalizedTime,
             summary.selfReportedPhysicalMeasurementsAuthored
         ])
+
+        core_measurements = PhysicalMeasurementsDao.get_core_measurements_for_participant(
+            session=session,
+            participant_id=summary.participantId
+        )
 
         earliest_biobank_received_dna_time = None
         if summary.samplesToIsolateDNA == SampleStatus.RECEIVED:
@@ -724,6 +734,20 @@ class ParticipantSummaryDao(UpdatableDao):
                     revised_consent_time_list.append(response.authored_datetime)
         revised_consent_time = min_or_none(revised_consent_time_list)
 
+        wgs_sequencing_time = None
+        genomic_set_member = GenomicSetMemberDao.get_member_by_participant_id_with_session(
+            session=session,
+            participant_id=summary.participantId,
+            genome_type=config.GENOME_TYPE_WGS
+        )
+        if genomic_set_member and genomic_set_member.qcStatus == GenomicQcStatus.PASS:
+            # Determine when the job ran to get the rough date of the pass
+            aw4_job_run: GenomicJobRun = GenomicJobRunDao.get_with_session(
+                session=session,
+                obj_id=genomic_set_member.aw4ManifestJobRunID
+            )
+            wgs_sequencing_time = aw4_job_run.startTime
+
         enrollment_info = EnrollmentCalculation.get_enrollment_info(
             EnrollmentDependencies(
                 consent_cohort=summary.consentCohort,
@@ -737,7 +761,9 @@ class ParticipantSummaryDao(UpdatableDao):
                 earliest_physical_measurements_time=earliest_physical_measurements_time,
                 earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
                 ehr_consent_date_range_list=ehr_consent_ranges,
-                dna_update_time=revised_consent_time
+                dna_update_time=revised_consent_time,
+                earliest_core_physical_measurement_time=min_or_none(meas.finalized for meas in core_measurements),
+                wgs_sequencing_time=wgs_sequencing_time
             )
         )
 
@@ -787,6 +813,19 @@ class ParticipantSummaryDao(UpdatableDao):
                     version='3.2',
                     status=str(summary.enrollmentStatusV3_2),
                     timestamp=version_3_2_dates[summary.enrollmentStatusV3_2]
+                )
+            )
+
+        if summary.hasCoreData != enrollment_info.has_core_data and (enrollment_info.has_core_data or allow_downgrade):
+            # Set hasCoreData to True if they have it now,
+            # or remove it if they no longer do and we're allowing downgrades
+            summary.hasCoreData = enrollment_info.has_core_data
+            session.add(
+                EnrollmentStatusHistory(
+                    participant_id=summary.participantId,
+                    version='core_data',
+                    status="True",
+                    timestamp=enrollment_info.core_data_time
                 )
             )
 
@@ -893,6 +932,15 @@ class ParticipantSummaryDao(UpdatableDao):
             )
         elif allow_downgrade:
             self._clear_timestamp_if_set(summary, 'enrollmentStatusCoreV3_2Time')
+
+        if enrollment_info.core_data_time is not None:
+            self._update_timestamp_value(
+                summary,
+                'hasCoreDataTime',
+                enrollment_info.core_data_time
+            )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'hasCoreDataTime')
 
         # Legacy code for setting CoreOrdered date field
         consent = (
@@ -1261,7 +1309,9 @@ class ParticipantSummaryDao(UpdatableDao):
                 'enrollmentStatusParticipantPlusEhrV3_2Time',
                 'enrollmentStatusEnrolledParticipantV3_2Time',
                 'enrollmentStatusCoreMinusPmV3_2Time',
-                'enrollmentStatusCoreV3_2Time'
+                'enrollmentStatusCoreV3_2Time',
+                'hasCoreData',
+                'hasCoreDataTime'
             ]:
                 if field_name in result:
                     del result[field_name]

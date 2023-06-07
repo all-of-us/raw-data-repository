@@ -244,6 +244,52 @@ class TestEnrollmentInfo(BaseTestCase):
             EnrollmentCalculation.get_enrollment_info(participant_info)
         )
 
+    def test_core_status_does_not_mean_core_data(self):
+        """
+        A participant that reaches CORE status doesn't also get the Core Data flag set (yet)
+        """
+        participant_info = self._build_participant_info(
+            consent_cohort=ParticipantCohort.COHORT_2,
+            primary_authored_time=datetime(2018, 1, 17),
+            ehr_consent_ranges=[
+                DateRange(start=datetime(2018, 1, 17), end=datetime(2018, 4, 13))
+            ],
+            basics_time=datetime(2018, 1, 17),
+            overall_health_time=datetime(2018, 1, 17),
+            lifestyle_time=datetime(2018, 1, 17),
+            biobank_received_dna_sample_time=datetime(2018, 2, 21),
+            physical_measurements_time=datetime(2018, 3, 1)
+        )
+
+        enrollment_status = EnrollmentCalculation.get_enrollment_info(participant_info)
+        self.assertEqual(EnrollmentStatusV32.CORE_PARTICIPANT, enrollment_status.version_3_2_status)
+        self.assertFalse(enrollment_status.has_core_data)
+
+    def test_achieving_core_data(self):
+        """
+        A participant that reaches CORE status doesn't also get the Core Data flag set (yet)
+        """
+        wgs_processed_time = datetime(2018, 5, 10)
+        participant_info = self._build_participant_info(
+            consent_cohort=ParticipantCohort.COHORT_2,
+            primary_authored_time=datetime(2018, 1, 17),
+            ehr_consent_ranges=[
+                DateRange(start=datetime(2018, 1, 17), end=datetime(2018, 4, 13))
+            ],
+            basics_time=datetime(2018, 1, 17),
+            overall_health_time=datetime(2018, 1, 17),
+            lifestyle_time=datetime(2018, 1, 17),
+            biobank_received_dna_sample_time=datetime(2018, 2, 21),
+            physical_measurements_time=datetime(2018, 3, 1),
+            earliest_core_pm_time=datetime(2018, 3, 1),
+            wgs_sequencing_time=wgs_processed_time,
+            ehr_file_submitted_time=datetime(2018, 4, 7)
+        )
+
+        enrollment_status = EnrollmentCalculation.get_enrollment_info(participant_info)
+        self.assertTrue(enrollment_status.has_core_data)
+        self.assertEqual(wgs_processed_time, enrollment_status.core_data_time)
+
     @classmethod
     def _build_expected_enrollment_info(cls, legacy_data, v30_data, v32_data):
         enrollment = EnrollmentInfo()
@@ -270,7 +316,9 @@ class TestEnrollmentInfo(BaseTestCase):
         ehr_file_submitted_time=None,
         earliest_mediated_ehr_receipt_time=None,
         dna_update_time=None,
-        current_enrollment: EnrollmentInfo = None
+        current_enrollment: EnrollmentInfo = None,
+        earliest_core_pm_time: datetime = None,
+        wgs_sequencing_time: datetime = None
     ):
         if not ehr_consent_ranges:
             ehr_consent_ranges = []
@@ -293,7 +341,9 @@ class TestEnrollmentInfo(BaseTestCase):
             earliest_physical_measurements_time=physical_measurements_time,
             dna_update_time=dna_update_time,
             earliest_ehr_file_received_time=ehr_file_submitted_time,
-            earliest_mediated_ehr_receipt_time=earliest_mediated_ehr_receipt_time
+            earliest_mediated_ehr_receipt_time=earliest_mediated_ehr_receipt_time,
+            earliest_core_physical_measurement_time=earliest_core_pm_time,
+            wgs_sequencing_time=wgs_sequencing_time
         )
 
     @classmethod

@@ -225,8 +225,23 @@ class EnrollmentCalculation:
 
     @classmethod
     def _set_core_data_fields(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):
-        if not participant_info.ever_expressed_interest_in_sharing_ehr:
-            return  # Core Data requires EHR consent (or interest in sharing)
+        required_timestamp_list = [
+            participant_info.first_ehr_consent_date,
+            participant_info.basics_authored_time,
+            participant_info.overall_health_authored_time,
+            participant_info.lifestyle_authored_time,
+            participant_info.earliest_core_physical_measurement_time,
+            participant_info.wgs_sequencing_time,
+            participant_info.earliest_ehr_file_received_time
+        ]
+        if participant_info.consent_cohort == ParticipantCohort.COHORT_1:
+            required_timestamp_list.append(participant_info.dna_update_time)
+
+        if any(required_time is None for required_time in required_timestamp_list):
+            return  # If any required timestamps are missing, leave Core Data flag as False
+
+        enrollment.has_core_data = True  # All timestamps are present, so Core Data requirements are met
+        enrollment.core_data_time = max(required_timestamp_list)
 
     @classmethod
     def _meets_requirements_for_core_minus_pm(cls, participant_info: EnrollmentDependencies):
