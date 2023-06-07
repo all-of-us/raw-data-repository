@@ -383,6 +383,8 @@ class ParticipantQuery(ObjectType):
         **filter_kwargs
     ):
         pm2 = aliased(PairingEvent)
+        participant_date_of_birth = aliased(ParticipantOpsDataElement)
+
         nph_participant_dao = NphParticipantDao()
         consent_subquery = nph_participant_dao.get_consents_subquery()
         enrollment_subquery = nph_participant_dao.get_enrollment_subquery()
@@ -434,6 +436,15 @@ class ParticipantQuery(ObjectType):
                 ParticipantOpsDataElement,
                 ParticipantMapping.ancillary_participant_id == ParticipantOpsDataElement.participant_id
             ).outerjoin(
+                participant_date_of_birth,
+                and_(
+                    ParticipantOpsDataElement.participant_id == participant_date_of_birth.participant_id,
+                    ParticipantOpsDataElement.source_data_element == ParticipantOpsElementTypes.BIRTHDATE,
+                    ParticipantOpsDataElement.source_value.isnot(None),
+                    ParticipantOpsDataElement.ignore_flag != 1,
+                    ParticipantOpsDataElement.id < participant_date_of_birth.id
+                )
+            ).outerjoin(
                 DeactivationEvent,
                 ParticipantMapping.ancillary_participant_id == DeactivationEvent.participant_id
             ).outerjoin(
@@ -441,6 +452,7 @@ class ParticipantQuery(ObjectType):
                 ParticipantMapping.ancillary_participant_id == WithdrawalEvent.participant_id
             ).filter(
                 pm2.id.is_(None),
+                participant_date_of_birth.id.is_(None),
                 ParticipantMapping.ancillary_study_id == NPH_STUDY_ID,
             ).options(
                 subqueryload(Participant.orders).subqueryload(Order.samples)
