@@ -208,7 +208,8 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             finalizedSiteId=2,
             collectType=PhysicalMeasurementsCollectType.SITE,
             originMeasurementUnit=OriginMeasurementUnit.UNSET,
-            origin='hpro'
+            origin='hpro',
+            meetsCoreDataRequirements=False
         )
 
         doc = json.loads(self._with_id(self.measurement_json, "1"))
