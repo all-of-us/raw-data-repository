@@ -267,10 +267,10 @@ def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableM
     # Submit a pipeline Pub/Sub event for this model record, if the primary key data looks valid
     if not pk_columns:
         log_pipeline_error(f'Empty pk_columns list after inspection of {database}.{tablename}',
-                           response_only=os.environ["UNITTEST_FLAG"] != "1")
+                           response_only=os.environ.get("UNITTEST_FLAG", '0') != "1")
     elif not pk_values:
         log_pipeline_error(f'Empty pk_values list for pubsub upsert message for {database}.{tablename}',
-                           response_only=os.environ["UNITTEST_FLAG"] != "1")
+                           response_only=os.environ.get("UNITTEST_FLAG", '0') != "1")
     else:
         # Temporary/forced logging to profile pipeline activity during unittests (logging level must be ERROR)
         # log_pipeline_error(f'pipeline: pubsub {database}.{tablename}, pk_cols {pk_columns}, pk_values {pk_values}',

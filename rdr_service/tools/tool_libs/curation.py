@@ -18,7 +18,8 @@ from rdr_service import config
 from rdr_service import api_util
 from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, PMI_SKIP_CODE, \
     EMPLOYMENT_ZIPCODE_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, \
-    ZIPCODE_QUESTION_CODE, WEAR_CONSENT_QUESTION_CODE, WEAR_CONSENT_MODULE
+    ZIPCODE_QUESTION_CODE, CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, EHR_CONSENT_QUESTION_CODE, \
+    WEAR_CONSENT_QUESTION_CODE, WEAR_CONSENT_MODULE
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean, Location, CareSite, Provider, \
     Person, Death, ObservationPeriod, PayerPlanPeriod, VisitOccurrence, ConditionOccurrence, ProcedureOccurrence, \
@@ -26,8 +27,10 @@ from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcCle
     DoseEra, Metadata, NoteNlp, VisitDetail, SrcParticipant, SrcMapped, SrcPersonLocation, SrcGender, SrcRace, \
     SrcEthnicity, SrcMeas, MeasurementCodeMap, MeasurementValueCodeMap, SrcMeasMapped, SrcVisits, TempObsTarget, \
     TempObsEndUnion, TempObsEndUnionPart, TempObsEnd, TempObs, TempFactRelSd, PidRidMapping, \
-    QuestionnaireResponseAdditionalInfo, WearConsent
+    QuestionnaireResponseAdditionalInfo, EHRConsentStatus, WearConsent
 from rdr_service.model.code import Code
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -66,7 +69,7 @@ class CurationExportClass(ToolBase):
               'device_exposure', 'dose_era', 'drug_era', 'drug_exposure', 'fact_relationship',
               'location', 'measurement', 'observation_period', 'payer_plan_period', 'visit_detail',
               'person', 'procedure_occurrence', 'provider', 'visit_occurrence', 'metadata', 'note_nlp',
-              'questionnaire_response_additional_info', 'wear_consent']
+              'questionnaire_response_additional_info', 'consent', 'wear_consent']
 
     # Observation takes a while and ends up timing the client out. The server will continue to process and the client
     # will print out a message describing how to continue to track it, but for now it crashes the script so it has
@@ -910,6 +913,7 @@ class CurationExportClass(ToolBase):
                 self.run_function_on_pids(self._populate_observation_surveys, session, "observation survey data")
                 self._populate_questionnaire_response_additional_info(session)
             self._populate_death_table(session)
+            self._populate_ehr_consent(session)
             self._populate_wear_consent(session)
             _logger.debug("Finalizing ETL")
             self._finalize_cdm(session)
@@ -1024,6 +1028,8 @@ class CurationExportClass(ToolBase):
                 TempObs,
                 TempFactRelSd,
                 PidRidMapping,
+                QuestionnaireResponseAdditionalInfo,
+                EHRConsentStatus,
                 QuestionnaireResponseAdditionalInfo,
                 WearConsent
             ])
@@ -1321,6 +1327,7 @@ class CurationExportClass(ToolBase):
                                 ALTER TABLE cdm.visit_occurrence DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.metadata DROP COLUMN id;
                                 ALTER TABLE cdm.death DROP COLUMN id;
+                                ALTER TABLE cdm.consent DROP COLUMN id;
                                 ALTER TABLE cdm.wear_consent DROP COLUMN id;
                                         """)
 
@@ -2230,6 +2237,53 @@ class CurationExportClass(ToolBase):
                                     """)
         # Reset ISOLATION level to previous setting (assuming here that it was MySql's default)
         session.execute("""SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ""")
+
+    def _populate_ehr_consent(self, session):
+        self._set_rdr_model_schema([ConsentFile, ConsentResponse])
+        if self.cutoff_date:
+            case_cutoff = (and_(SrcClean.value_ppi_code == 'Yes', ConsentFile.created > self.cutoff_date),
+                 'SUBMITTED_NOT_VALIDATED')
+        else:
+            case_cutoff = (text("False"), 'NOT_REACHED') # Noop case statement when cutoff date is not used
+
+        column_map = {
+            EHRConsentStatus.person_id: SrcClean.participant_id,
+            EHRConsentStatus.research_id: SrcClean.research_id,
+            EHRConsentStatus.consent_for_electronic_health_records: case([
+                (SrcClean.value_ppi_code == 'No', 'SUBMITTED_NO'),
+                (and_(SrcClean.value_ppi_code == 'Yes', ConsentResponse.created.is_(None)), 'SUBMITTED'),
+                # Consents submitted before validation was implemented
+                (and_(SrcClean.value_ppi_code == 'Yes', ConsentResponse.created.isnot(None),
+                      ConsentFile.created.is_(None)), 'SUBMITTED_NOT_VALIDATED'),
+                # If ConsentFile hasn't been created then the consent has not been validated
+                case_cutoff,  # If ConsentFile was created after cutoff date then status at the cutoff is unvalidated
+                (and_(SrcClean.value_ppi_code == 'Yes',
+                      ConsentFile.sync_status.in_((ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE))),
+                 # Only validated consents will be synced
+                 'SUBMITTED'),
+                (and_(SrcClean.value_ppi_code == 'Yes', ConsentFile.sync_status.notin_(
+                    (ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE))), 'SUBMITTED_INVALID')
+            ]),
+            EHRConsentStatus.consent_for_electronic_health_records_authored: SrcClean.date_of_survey,
+            EHRConsentStatus.src_id: SrcClean.src_id
+        }
+        ehr_consent_select = session.query(
+            *column_map.values()
+        ).select_from(
+            SrcClean
+        ).outerjoin(
+            ConsentResponse,
+            SrcClean.questionnaire_response_id == ConsentResponse.questionnaire_response_id
+        ).outerjoin(
+            ConsentFile,
+            ConsentResponse.id == ConsentFile.consent_response_id
+        ).filter(
+            SrcClean.survey_name == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
+            SrcClean.question_ppi_code == EHR_CONSENT_QUESTION_CODE
+        )
+
+        ehr_insert = insert(EHRConsentStatus).from_select(column_map.keys(), ehr_consent_select)
+        session.execute(ehr_insert)
 
 
 def add_additional_arguments(parser):

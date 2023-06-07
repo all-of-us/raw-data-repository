@@ -76,8 +76,10 @@ class SmsWorkflow:
 
     def validate_columns(self, fieldnames, dao):
         """ Simple check for column names in the model """
+        unstored_columns = ['blank']
+        expected_columns = dao.model_type.__table__.columns.keys() + unstored_columns
         for column_name in fieldnames:
-            if column_name not in dao.model_type.__table__.columns.keys():
+            if column_name not in expected_columns:
                 raise AttributeError(f"{self.file_path}: {column_name} column mismatch for "
                                      f"expected file type: {self.file_type.name}")
 

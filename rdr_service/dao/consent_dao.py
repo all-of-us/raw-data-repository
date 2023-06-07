@@ -2,7 +2,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Collection, Dict, List, Optional
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, not_, or_
 from sqlalchemy.orm import aliased, joinedload, Session
 
 from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
@@ -52,6 +52,7 @@ class ConsentDao(BaseDao):
         consent_responses = (
             session.query(ConsentResponse)
             .join(QuestionnaireResponse)
+            .join(Participant)
             .outerjoin(
                 ConsentFile,
                 and_(
@@ -59,7 +60,15 @@ class ConsentDao(BaseDao):
                     ConsentFile.participant_id == QuestionnaireResponse.participantId
                 )
             ).filter(
-                ConsentFile.id.is_(None)
+                ConsentFile.id.is_(None),
+
+                # TODO: remove this when WEAR file parsing is done
+                not_(
+                    and_(
+                        ConsentResponse.type.in_([ConsentType.WEAR]),
+                        Participant.participantOrigin == 'vibrent'
+                    )
+                )
             ).options(
                 joinedload(ConsentResponse.response)
             )
