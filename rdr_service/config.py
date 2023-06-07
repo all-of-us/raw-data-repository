@@ -229,11 +229,6 @@ NPH_SMS_BUCKETS = {
     },
     "test": {
         "UNC_META": "test-bucket-unc-meta",
-        "NCSU": "test-bucket-ncsu",
-        "DUKE": "test-bucket-duke",
-        "UNC_CLINICAL": "test-bucket-unc-clinical",
-        "PBRC": "test-bucket-pbrc",
-        "UCSD": "test-bucket-ucsd"
     }
 }
 

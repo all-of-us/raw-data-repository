@@ -1,11 +1,13 @@
 import csv
 import datetime
 import os
+from unittest import mock
 
 from rdr_service import api_util, clock
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.study_nph_sms_dao import SmsSampleDao, SmsN0Dao, SmsN1Mc1Dao, SmsJobRunDao
 from rdr_service.data_gen.generators.nph import NphSmsDataGenerator
+from rdr_service.workflow_management.nph.sms_pipeline import n1_generation
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.workflow_management.nph.sms_workflows import SmsWorkflow
 from tests.test_data import data_path
@@ -304,5 +306,14 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[1].bowel_movement, '"I had normal formed stool, and my stool looks like Type 3 and/or 4"')
         self.assertEqual(manifest_records[1].bowel_movement_quality, '"I tend to have normal formed stool - Type 3 and 4"')
 
-
+    @mock.patch('rdr_service.workflow_management.nph.sms_pipeline.GCPCloudTask.execute')
+    def test_sms_pipeline_n1_function(self, task_mock):
+        data = {
+            "file_type": "N1_MC1",
+            "recipient": "UNC_META"
+        }
+        n1_generation()
+        task_mock.assert_called_with('/resource/task/NphSmsGenerationTaskApi',
+                                     payload=data,
+                                     queue='nph')
 
