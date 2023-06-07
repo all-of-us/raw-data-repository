@@ -22,6 +22,8 @@ def n1_generation():
             "file_type": "N1_MC1",
             "recipient": destination
         }
+        api_route = API_ROUTE_PREFIX + "NphSmsGenerationTaskApi"
+        logging.info(f"API ROUTE: {api_route}")
 
         _task = GCPCloudTask()
-        _task.execute(API_ROUTE_PREFIX + "NphSmsGenerationTaskApi", payload=data, queue=TASK_QUEUE)
+        _task.execute(api_route, payload=data, queue=TASK_QUEUE)
