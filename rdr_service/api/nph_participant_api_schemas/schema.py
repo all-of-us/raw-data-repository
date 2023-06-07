@@ -445,7 +445,7 @@ class ParticipantQuery(ObjectType):
                 and_(
                     ParticipantOpsDataElement.participant_id == participant_dob.participant_id,
                     ParticipantOpsDataElement.id < participant_dob.id,
-                    ParticipantOpsDataElement.ignore_flag != 1
+                    participant_dob.ignore_flag != 1
                 )
             ).outerjoin(
                 DeactivationEvent,
