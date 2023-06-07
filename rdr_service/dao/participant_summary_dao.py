@@ -26,6 +26,7 @@ from rdr_service.api_util import (
     parse_json_enum
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
+from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
 from rdr_service.code_constants import BIOBANK_TESTS, COHORT_1_REVIEW_CONSENT_YES_CODE, ORIGINATING_SOURCES,\
     PMI_SKIP_CODE, PPI_SYSTEM, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE, UNSET
 from rdr_service.dao.base_dao import UpdatableDao
@@ -913,6 +914,9 @@ class ParticipantSummaryDao(UpdatableDao):
                       and summary.consentForDvElectronicHealthRecordsSharing == QuestionnaireStatus.SUBMITTED
         )
         summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
+
+        # Support RDR to PDR pipeline
+        submit_pipeline_pubsub_msg_from_model(summary, self.get_connection_database_name())
 
     def calculate_enrollment_status(
         self, consent, num_completed_baseline_ppi_modules, physical_measurements_status,
