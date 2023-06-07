@@ -9,7 +9,7 @@ from collections import OrderedDict
 from dateutil import parser, tz
 from dateutil.parser import ParserError
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import func, desc, exc
+from sqlalchemy import func, desc, exc, inspect
 from werkzeug.exceptions import NotFound
 
 from rdr_service import config
@@ -478,35 +478,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :return: dict
 
         """
-        # TODO: Workaround for PDR-106 is to pull needed EHR fields from participant_summary. LIMITED USE CASE ONLY
-        # Goal is to eliminate dependencies on participant_summary, which may go away someday.
-        # Long term solution may mean creating a participant_profile table for these outlier fields that are managed
-        # outside of the RDR API, and query that table instead.
-        ps = ro_session.query(ParticipantSummary.ehrStatus,
-                              ParticipantSummary.ehrReceiptTime,
-                              ParticipantSummary.ehrUpdateTime,
-                              ParticipantSummary.isEhrDataAvailable,
-                              ParticipantSummary.consentForStudyEnrollmentAuthored,
-                              ParticipantSummary.enrollmentStatus,  # legacy status mapped to EnrollmentStatusV2 in PDR
-                              ParticipantSummary.enrollmentStatusMemberTime,
-                              ParticipantSummary.enrollmentStatusCoreMinusPMTime,
-                              ParticipantSummary.enrollmentStatusCoreOrderedSampleTime,
-                              ParticipantSummary.enrollmentStatusCoreStoredSampleTime,
-                              ParticipantSummary.enrollmentStatusV3_0,
-                              ParticipantSummary.enrollmentStatusParticipantV3_0Time,
-                              ParticipantSummary.enrollmentStatusParticipantPlusEhrV3_0Time,
-                              ParticipantSummary.enrollmentStatusPmbEligibleV3_0Time,
-                              ParticipantSummary.enrollmentStatusCoreMinusPmV3_0Time,
-                              ParticipantSummary.enrollmentStatusCoreV3_0Time,
-                              ParticipantSummary.enrollmentStatusV3_1,
-                              ParticipantSummary.enrollmentStatusParticipantV3_1Time,
-                              ParticipantSummary.enrollmentStatusParticipantPlusEhrV3_1Time,
-                              ParticipantSummary.enrollmentStatusParticipantPlusBasicsV3_1Time,
-                              ParticipantSummary.enrollmentStatusCoreMinusPmV3_1Time,
-                              ParticipantSummary.enrollmentStatusCoreV3_1Time,
-                              ParticipantSummary.enrollmentStatusParticipantPlusBaselineV3_1Time,
-                              ParticipantSummary.healthDataStreamSharingStatusV3_1,
-                              ParticipantSummary.healthDataStreamSharingStatusV3_1Time
+        # Goal 1.5.1:  Customize the generator to recognize columns based on current version of the model
+        ps_col_names = [col.name for col in inspect(ParticipantSummary).mapper.columns]
+        has_enrollment_v3_1 = 'enrollment_status_v_3_1' in ps_col_names
+
+        ps = ro_session.query(ParticipantSummary
         ).select_from(
             Participant
         ).join(
@@ -523,7 +499,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             data[key] = str(EnrollmentStatusV2.REGISTERED)
             data[key + '_id'] = int(EnrollmentStatusV2.REGISTERED)
 
-        if not ps.enrollmentStatus:
+        if not ps:
             logging.debug(f'No participant_summary record found for {p_id}')
         else:
             enrollment_v2 = EnrollmentStatusV2(int(ps.enrollmentStatus))
@@ -541,7 +517,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 # New alias field added in RDR 1.83.1 for DA-1781.  Add for PDR/RDR consistency, retain old ehr_status
                 # (and ehr_status_id) fields for PDR backwards compatibility
                 'was_ehr_data_available': int(ehr_status),
-                # Brand new field as of RDR 1.83.1/DA-1781; convert boolean to integer for our BQ data dict
                 'is_ehr_data_available': int(ps.isEhrDataAvailable),
                 # TODO:  Move out of _calculate_enrollment_status() after Goal 1 / PEO QC
                 # 'enrollment_status': str(enrollment_v2)
@@ -557,18 +532,27 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'enrollment_status_v3_0_pmb_eligible_time': ps.enrollmentStatusPmbEligibleV3_0Time,
                 'enrollment_status_v3_0_core_minus_pm_time': ps.enrollmentStatusCoreMinusPmV3_0Time,
                 'enrollment_status_v3_0_core_time': ps.enrollmentStatusCoreV3_0Time,
-                'enrollment_status_v3_1': str(ps.enrollmentStatusV3_1),
-                'enrollment_status_v3_1_id': int(ps.enrollmentStatusV3_1),
-                'enrollment_status_v3_1_participant_time': ps.enrollmentStatusParticipantV3_1Time,
-                'enrollment_status_v3_1_participant_plus_ehr_time': ps.enrollmentStatusParticipantPlusEhrV3_1Time,
-                'enrollment_status_v3_1_participant_plus_basics_time': ps.enrollmentStatusParticipantPlusBasicsV3_1Time,
-                'enrollment_status_v3_1_core_minus_pm_time': ps.enrollmentStatusCoreMinusPmV3_1Time,
-                'enrollment_status_v3_1_core_time': ps.enrollmentStatusCoreV3_1Time,
-                'enrollment_status_v3_1_participant_plus_baseline_time': \
-                    ps.enrollmentStatusParticipantPlusBaselineV3_1Time,
-                'health_datastream_sharing_status_v3_1': str(ps.healthDataStreamSharingStatusV3_1),
-                'health_datastream_sharing_status_v3_1_id': int(ps.healthDataStreamSharingStatusV3_1),
-                'health_datastream_sharing_status_v3_1_time': ps.healthDataStreamSharingStatusV3_1Time
+                # PDR-1479: Confirm if old columns still exist; if not assign null.  Not making updates to existing
+                # RDR-to-PDR pipeline schemas.  New fields/values will come through the new pipeline
+                'enrollment_status_v3_1': str(ps.enrollmentStatusV3_1) if has_enrollment_v3_1 else None,
+                'enrollment_status_v3_1_id': int(ps.enrollmentStatusV3_1) if has_enrollment_v3_1 else None,
+                'enrollment_status_v3_1_participant_time': ps.enrollmentStatusParticipantV3_1Time \
+                    if has_enrollment_v3_1 else None,
+                'enrollment_status_v3_1_participant_plus_ehr_time': ps.enrollmentStatusParticipantPlusEhrV3_1Time
+                    if has_enrollment_v3_1 else None,
+                'enrollment_status_v3_1_participant_plus_basics_time': ps.enrollmentStatusParticipantPlusBasicsV3_1Time\
+                    if has_enrollment_v3_1 else None,
+                'enrollment_status_v3_1_core_minus_pm_time': ps.enrollmentStatusCoreMinusPmV3_1Time \
+                    if has_enrollment_v3_1 else None,
+                'enrollment_status_v3_1_core_time': ps.enrollmentStatusCoreV3_1Time if has_enrollment_v3_1 else None,
+                'enrollment_status_v3_1_participant_plus_baseline_time':
+                    ps.enrollmentStatusParticipantPlusBaselineV3_1Time if has_enrollment_v3_1 else None,
+                'health_datastream_sharing_status_v3_1': str(ps.healthDataStreamSharingStatusV3_1) \
+                    if has_enrollment_v3_1 else None,
+                'health_datastream_sharing_status_v3_1_id': int(ps.healthDataStreamSharingStatusV3_1)
+                    if has_enrollment_v3_1 in ps_col_names else None,
+                'health_datastream_sharing_status_v3_1_time': ps.healthDataStreamSharingStatusV3_1Time \
+                    if has_enrollment_v3_1 in ps_col_names else None
             }
             # Note:  None of the columns in the participant_ehr_receipt table are nullable
             pehr_results = ro_session.query(ParticipantEhrReceipt.id,
@@ -774,10 +758,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     if qnans:
                         qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
                         consent_answer_value, module_status = self._find_consent_response(qnan, module_name)
+                        consent_code_id = self._lookup_code_id(consent_answer_value, ro_session)
                         # TODO: Deprecating the consent nested records in the new pipeline
                         consent = {
-                            'consent': consent_answer_value,
-                            'consent_id': self._lookup_code_id(consent_answer_value, ro_session),
+                            # Default to empty string/0 to avoid non-null constraint in NiFi BQ-to-PostgreSQL pipeline
+                            'consent': consent_answer_value if consent_answer_value else '',
+                            'consent_id': consent_code_id if consent_code_id else 0,
                             'consent_date': parser.parse(qnan['authored']).date() if qnan['authored'] else None,
                             'consent_module': module_name,
                             'consent_module_authored': row.authored,
