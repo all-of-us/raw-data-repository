@@ -1,5 +1,6 @@
 
 import sqlalchemy as sa
+from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.base import Base
 from rdr_service.model.utils import UTCDateTime
@@ -12,3 +13,5 @@ class EnrollmentStatusHistory(Base):
     version = sa.Column(sa.String(16))
     status = sa.Column(sa.String(64))
     timestamp = sa.Column(UTCDateTime)
+    dependencies_snapshot = sa.Column(JSON)
+    """Snapshot of the values used when updating the enrollment status values"""
