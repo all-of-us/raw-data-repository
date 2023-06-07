@@ -124,7 +124,7 @@ class SmsWorkflow:
 
             try:
                 self.process_map[self.job]()
-                controller.job_run.result = controller.run_result_enum.SUCCESS
+                controller.job_run_result = controller.run_result_enum.SUCCESS
             except KeyError:
                 raise KeyError
 
@@ -142,6 +142,13 @@ class SmsWorkflow:
             self.file_dao = None
 
         if self.file_dao:
+            # look up if any rows exist already for the file
+            records = self.file_dao.get_from_filepath(self.file_path)
+
+            if records:
+                logging.warning(f'File already ingested: {self.file_path}')
+                return
+
             data_to_ingest = self.read_data_from_cloud_manifest(self.file_path)
 
             self.validate_columns(data_to_ingest["fieldnames"], self.file_dao)

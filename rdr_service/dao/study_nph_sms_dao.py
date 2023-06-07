@@ -1,3 +1,4 @@
+from operator import and_
 from typing import List, Dict
 from sqlalchemy import func
 
@@ -12,6 +13,18 @@ class SmsManifestMixin:
     def insert_bulk(self, batch: List[Dict]) -> None:
         with self.session() as session:
             session.bulk_insert_mappings(self.model_type, batch)
+
+    def get_from_filepath(self, filepath) -> List:
+        if not hasattr(self.model_type, 'file_path'):
+            return []
+
+        with self.session() as session:
+            return session.query(
+                self.model_type
+            ).filter(
+                self.model_type.file_path == filepath,
+                self.model_type.ignore_flag == 0,
+            ).all()
 
 
 class SmsManifestSourceMixin:
@@ -141,8 +154,18 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             ).outerjoin(
                 OrderedSample,
                 SmsSample.sample_id == OrderedSample.nph_sample_id
+            ).outerjoin(
+                SmsBlocklist,
+                and_(
+                    SmsSample.sample_id == SmsBlocklist.identifier_value,
+                    SmsBlocklist.identifier_type == "sample_id"
+                )
             )
             if kwargs.get("recipient"):
                 query = query.filter(SmsSample.destination == kwargs['recipient'])
+
+            query = query.filter(
+                SmsBlocklist.id.is_(None)
+            )
 
             return query.all()

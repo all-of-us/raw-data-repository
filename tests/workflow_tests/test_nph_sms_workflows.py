@@ -4,7 +4,7 @@ import os
 
 from rdr_service import api_util, clock
 from rdr_service.api_util import open_cloud_file
-from rdr_service.dao.study_nph_sms_dao import SmsSampleDao, SmsN0Dao, SmsN1Mc1Dao
+from rdr_service.dao.study_nph_sms_dao import SmsSampleDao, SmsN0Dao, SmsN1Mc1Dao, SmsJobRunDao
 from rdr_service.data_gen.generators.nph import NphSmsDataGenerator
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.workflow_management.nph.sms_workflows import SmsWorkflow
@@ -61,6 +61,12 @@ class NphSmsWorkflowsTest(BaseTestCase):
         workflow = SmsWorkflow(ingestion_data)
         workflow.execute_workflow()
 
+        # Check job run
+        run_dao = SmsJobRunDao()
+        job_run = run_dao.get(1)
+
+        self.assertEqual(job_run.result, 'SUCCESS')
+
         sample_dao = SmsSampleDao()
         ingested_record = sample_dao.get(1)
 
@@ -79,6 +85,11 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(ingested_record.race, "Native Hawaiian or other Pacific Islander")
         self.assertEqual(ingested_record.ethnicity, "Black, African American or African")
         self.assertEqual(ingested_record.destination, "UNC_META")
+
+        # Attempt ingestion again to ensure we don't ingest duplicates
+        workflow.execute_workflow()
+        all_samples = sample_dao.get_all()
+        self.assertEqual(len(all_samples), 3)
 
     def test_n0_ingestion(self):
 
@@ -163,6 +174,17 @@ class NphSmsWorkflowsTest(BaseTestCase):
             lims_sample_id="000200",
             destination="UNC_META"
         )
+        sms_datagen.create_database_sms_sample(
+            ethnicity="test",
+            race="test",
+            bmi="28",
+            diet="LMT",
+            sex_at_birth="M",
+            sample_identifier="test",
+            sample_id=10003,
+            lims_sample_id="000200",
+            destination="UNC_META"
+        )
 
         sms_datagen.create_database_sms_n0(
             sample_id=10001,
@@ -203,6 +225,31 @@ class NphSmsWorkflowsTest(BaseTestCase):
             manufacturer_lot='256838',
             age="22",
             biobank_id="test",
+        )
+        sms_datagen.create_database_sms_n0(
+            sample_id=10003,
+            matrix_id=1111,
+            package_id="test",
+            storage_unit_id="test",
+            well_box_position="test",
+            tracking_number="test",
+            sample_comments="test",
+            study="test",
+            visit="1",
+            timepoint="LMT",
+            collection_site="UNC",
+            collection_date_time="2023-04-20T15:54:33",
+            sample_type="Urine",
+            additive_treatment="test-treatment",
+            quantity_ml="120",
+            manufacturer_lot='256837',
+            age="22",
+            biobank_id="test",
+        )
+
+        sms_datagen.create_database_sms_blocklist(
+            identifier_value=10003,
+            identifier_type='sample_id'
         )
 
     def test_n1_mc1_generation(self):

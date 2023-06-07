@@ -46,8 +46,11 @@ class SmsIngestManifestFunction(FunctionPubSubHandler):
 
         if "pull_lists" in object_id:
             file_type = "SAMPLE_LIST"
-        else:
+        elif "n0_manifest" in object_id:
             file_type = "N0"
+        else:
+            _logger.info(f"{object_id} not configured for ingestion")
+            return
 
         _logger.info(f"Event payload: {self.event}")
 
