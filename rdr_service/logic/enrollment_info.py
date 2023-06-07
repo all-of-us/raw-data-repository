@@ -8,7 +8,7 @@ from rdr_service.participant_enums import (
     EnrollmentStatusV32,
     ParticipantCohort
 )
-from rdr_service.services.system_utils import DateRange, min_or_none
+from rdr_service.services.system_utils import DateRange
 
 
 @dataclass
