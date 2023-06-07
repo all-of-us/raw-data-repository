@@ -1566,7 +1566,7 @@ class ParticipantSummary(Base):
         Boolean
     )
     """ A flag indicating whether the identity of a participant was verified remotely.
-    Unset if no remote identity verification has occurred, set to 1/True when the participant is verified remotely,
+    Unset if no remote identity verification has occurred, set to 1/True when the participant is verified remotely, \
     and set to 0/False if not.  """
 
     remoteIdVerifiedOn = Column("remote_id_verified_on", Date)
