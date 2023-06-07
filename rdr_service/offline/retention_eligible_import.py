@@ -314,7 +314,10 @@ def _get_earliest_intent_for_ehr_datetime(session, participant_id) -> datetime:
     if not date_range_list:
         return None
 
-    return min(date_range.start for date_range in date_range_list)
+    return Consent(
+        is_consent_provided=True,
+        authored_timestamp=min(date_range.start for date_range in date_range_list)
+    )
 
 
 def _aggregate_response_timestamps(session, participant_id, survey_code_list, aggregate_function) -> datetime:
@@ -328,8 +331,8 @@ def _aggregate_response_timestamps(session, participant_id, survey_code_list, ag
     if participant_id in response_collection:
         program_update_response_list = response_collection[participant_id].responses.values()
         for response in program_update_response_list:
-            reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE).value.lower()
-            if reconsent_answer == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
+            reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE)
+            if reconsent_answer and reconsent_answer.value.lower() == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
                 revised_consent_time_list.append(response.authored_datetime)
 
     if not revised_consent_time_list:
