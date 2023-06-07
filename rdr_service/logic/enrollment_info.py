@@ -115,6 +115,9 @@ class EnrollmentDependencies:
     def submitted_physical_measurements(self):
         return self.earliest_physical_measurements_time is not None
 
+    def to_json_dict(self):
+        return {field_name: str(value) for field_name, value in self.__dict__.items()}
+
 
 class EnrollmentCalculation:
     @classmethod
