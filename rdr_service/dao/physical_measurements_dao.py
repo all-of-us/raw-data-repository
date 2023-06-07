@@ -1,10 +1,9 @@
 import json
 import logging
-from typing import List
 
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import observation as fhir_observation
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
-from sqlalchemy.orm import Session, subqueryload
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm.attributes import flag_modified
 from werkzeug.exceptions import BadRequest
 
@@ -280,6 +279,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
         existing_measurements = (
             session.query(PhysicalMeasurements).filter(PhysicalMeasurements.participantId == obj.participantId).all()
         )
+
+        self.update_measurement_core_data_flag(obj)
+
+        # Find any matching measurements and return them instead if the one being inserted matches
         if existing_measurements:
             new_dict = self._measurements_as_dict(obj)
             for measurements in existing_measurements:
@@ -287,9 +290,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
                     # If there are already measurements that look exactly like this, return them
                     # without inserting new measurements.
                     return measurements
-        PhysicalMeasurementsDao.set_measurement_ids(obj)
 
-        self.update_measurement_core_data_flag(obj)
+        PhysicalMeasurementsDao.set_measurement_ids(obj)
 
         inserted_obj = super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
         if not is_amendment:  # Amendments aren't expected to have site ID extensions.
@@ -984,21 +986,17 @@ class PhysicalMeasurementsDao(UpdatableDao):
         """
         Analyzes the physical measurement data to determine if the Core Data flag should be set to True
         """
+        height_codes = ['height', '8302-2']
+        weight_codes = ['weight', '29463-7', 'pre-pregnancy-weight']
+
         has_height = False
         has_weight = False
         for measurement in measurement_collection.measurements:
             # Measurement should count if there is a value recorded, or if there are modifications/qualifiers
             is_valid_value = measurement.valueDecimal is not None or measurement.qualifiers
-            if measurement.codeValue == 'height':
+            if measurement.codeValue in height_codes:
                 has_height = is_valid_value
-            elif measurement.codeValue == 'weight':
+            elif measurement.codeValue in weight_codes:
                 has_weight = is_valid_value
 
         measurement_collection.meetsCoreDataRequirements = has_weight and has_height
-
-    @classmethod
-    def get_core_measurements_for_participant(cls, session, participant_id) -> List[PhysicalMeasurements]:
-        return session.query(PhysicalMeasurements).filter(
-            PhysicalMeasurements.participantId == participant_id,
-            PhysicalMeasurements.meetsCoreDataRequirements
-        ).all()
