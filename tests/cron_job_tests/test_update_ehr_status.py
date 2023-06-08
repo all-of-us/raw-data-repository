@@ -393,8 +393,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
                 True,
                 seconds_first_upload_time,
                 second_view_data.latest_upload_time,
-                enrollment_status_v_3_2=EnrollmentStatusV32.CORE_PARTICIPANT,
-                enrollment_status_v_3_2_time=seconds_first_upload_time
+                enrollment_status_v_3_2=EnrollmentStatusV32.CORE_PARTICIPANT
             ),
             self.build_expected_patch_data(
                 third_pid,
