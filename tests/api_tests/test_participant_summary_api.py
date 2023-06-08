@@ -166,7 +166,8 @@ participant_summary_default_values = {
     "idVerificationOrigin": "UNSET",
     "consentForNphModule1": False,
     "nphWithdrawal": False,
-    "nphDeactivation": False
+    "nphDeactivation": False,
+    "hasCoreData": False
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
