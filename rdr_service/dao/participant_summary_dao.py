@@ -743,7 +743,8 @@ class ParticipantSummaryDao(UpdatableDao):
         )
         if genomic_set_member and genomic_set_member.qcStatus == GenomicQcStatus.PASS:
             # Determine when the job ran to get the rough date of the pass
-            aw4_job_run: GenomicJobRun = GenomicJobRunDao.get_with_session(
+            genomic_job_dao = GenomicJobRunDao()
+            aw4_job_run: GenomicJobRun = genomic_job_dao.get_with_session(
                 session=session,
                 obj_id=genomic_set_member.aw4ManifestJobRunID
             )
