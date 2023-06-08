@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import List
 
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import observation as fhir_observation
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
@@ -1000,3 +1001,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 has_weight = is_valid_value
 
         measurement_collection.meetsCoreDataRequirements = has_weight and has_height
+
+    @classmethod
+    def get_core_measurements_for_participant(cls, session, participant_id) -> List[PhysicalMeasurements]:
+        return session.query(PhysicalMeasurements).filter(
+            PhysicalMeasurements.participantId == participant_id,
+            PhysicalMeasurements.meetsCoreDataRequirements
+        ).all()
