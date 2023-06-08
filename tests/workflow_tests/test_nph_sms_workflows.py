@@ -286,6 +286,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         n1_mcac_dao = SmsN1Mc1Dao()
         manifest_records = n1_mcac_dao.get_all()
         self.assertEqual(len(manifest_records), 2)
+        self.assertEqual(manifest_records[0].file_path, expected_csv_path)
         self.assertEqual(manifest_records[0].sample_id, 10001)
         self.assertEqual(manifest_records[0].matrix_id, "1111")
         self.assertEqual(manifest_records[0].bmi, "28")
@@ -296,6 +297,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[0].urine_clarity, '"Clean"')
         self.assertEqual(manifest_records[0].manufacturer_lot, '256837')
 
+        self.assertEqual(manifest_records[0].file_path, expected_csv_path)
         self.assertEqual(manifest_records[1].sample_id, 10002)
         self.assertEqual(manifest_records[1].matrix_id, "1112")
         self.assertEqual(manifest_records[1].bmi, "28")
@@ -313,7 +315,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             "recipient": "UNC_META"
         }
         n1_generation()
-        task_mock.assert_called_with('/resource/task/NphSmsGenerationTaskApi',
+        task_mock.assert_called_with('nph_sms_generation_task',
                                      payload=data,
                                      queue='nph')
 

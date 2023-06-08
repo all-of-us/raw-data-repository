@@ -86,6 +86,7 @@ class SmsWorkflow:
     def export_data_to_cloud(self, source_data):
         # Use SQL exporter
         exporter = SqlExporter(self.file_transfer_def['bucket'])
+        self.file_path = f"{self.file_transfer_def['bucket']}/{self.file_transfer_def['file_name']}"
 
         with exporter.open_cloud_writer(self.file_transfer_def['file_name']) as writer:
             writer.write_header(source_data[0].keys())

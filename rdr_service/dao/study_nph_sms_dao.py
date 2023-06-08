@@ -160,12 +160,19 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                     SmsSample.sample_id == SmsBlocklist.identifier_value,
                     SmsBlocklist.identifier_type == "sample_id"
                 )
+            ).outerjoin(
+                SmsN1Mc1,
+                and_(
+                    SmsSample.sample_id == SmsN1Mc1.sample_id,
+                    SmsN1Mc1.ignore_flag == 0
+                )
             )
             if kwargs.get("recipient"):
                 query = query.filter(SmsSample.destination == kwargs['recipient'])
 
             query = query.filter(
-                SmsBlocklist.id.is_(None)
+                SmsBlocklist.id.is_(None),
+                SmsN1Mc1.id.is_(None)
             )
 
             return query.all()
