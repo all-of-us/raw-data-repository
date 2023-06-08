@@ -444,8 +444,9 @@ class ParticipantQuery(ObjectType):
                 participant_dob,
                 and_(
                     ParticipantOpsDataElement.participant_id == participant_dob.participant_id,
+                    ParticipantOpsDataElement.source_data_element == ParticipantOpsElementTypes.BIRTHDATE,
+                    ParticipantOpsDataElement.source_value.isnot(None),
                     ParticipantOpsDataElement.id < participant_dob.id,
-                    participant_dob.ignore_flag != 1
                 )
             ).outerjoin(
                 DeactivationEvent,
