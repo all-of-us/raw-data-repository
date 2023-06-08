@@ -256,7 +256,7 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics):
                 is_consent_provided=True,
                 authored_timestamp=summary.consentForStudyEnrollmentFirstYesAuthored
             ),
-            first_ehr_consent=_get_earliest_intent_for_ehr_datetime(
+            first_ehr_consent=_get_earliest_intent_for_ehr(
                 session=session,
                 participant_id=summary.participantId
             ),
@@ -306,7 +306,7 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics):
         metrics_data.rdr_is_passively_retained = retention_data.is_passively_retained
 
 
-def _get_earliest_intent_for_ehr_datetime(session, participant_id) -> datetime:
+def _get_earliest_intent_for_ehr(session, participant_id) -> Consent:
     date_range_list = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
         participant_id=participant_id,
         session=session
