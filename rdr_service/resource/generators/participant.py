@@ -491,13 +491,17 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             Participant.participantId == p_id
         ).first()
 
-        # For PDR, start with REGISTERED as the default enrollment status (all versions).  This identifies participants
+        # For PDR, start with REGISTERED as the default enrollment status.  This identifies participants
         # who have not yet consented / should not have a participant_summary record
         data = {}
         # TODO:  add enrollment_status / enrollment_status_id after Goal 1 QC (move from _calculate_enrollment_status)
-        for key in ['enrollment_status_v2', 'enrollment_status_v3_0', 'enrollment_status_v3_1']:
+        for key in ['enrollment_status_v2', 'enrollment_status_v3_0']:
             data[key] = str(EnrollmentStatusV2.REGISTERED)
             data[key + '_id'] = int(EnrollmentStatusV2.REGISTERED)
+
+        # PDR-1479:  Deprecating V3.1; leave PDR values as None if columns no longer exist in participant_summary
+        data['enrollment_status_v3_1'] = str(EnrollmentStatusV2.REGISTERED) if has_enrollment_v3_1 else None
+        data['enrollment_status_v3_1_id'] = int(EnrollmentStatusV2.REGISTERED) if has_enrollment_v3_1 else None
 
         if not ps:
             logging.debug(f'No participant_summary record found for {p_id}')
@@ -532,8 +536,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'enrollment_status_v3_0_pmb_eligible_time': ps.enrollmentStatusPmbEligibleV3_0Time,
                 'enrollment_status_v3_0_core_minus_pm_time': ps.enrollmentStatusCoreMinusPmV3_0Time,
                 'enrollment_status_v3_0_core_time': ps.enrollmentStatusCoreV3_0Time,
-                # PDR-1479: Confirm if old columns still exist; if not assign null.  Not making updates to existing
-                # RDR-to-PDR pipeline schemas.  New fields/values will come through the new pipeline
+                # PDR-1479: Deprecating V3.1; leave PDR values as None if columns no longer exist in participant_summary
                 'enrollment_status_v3_1': str(ps.enrollmentStatusV3_1) if has_enrollment_v3_1 else None,
                 'enrollment_status_v3_1_id': int(ps.enrollmentStatusV3_1) if has_enrollment_v3_1 else None,
                 'enrollment_status_v3_1_participant_time': ps.enrollmentStatusParticipantV3_1Time \
