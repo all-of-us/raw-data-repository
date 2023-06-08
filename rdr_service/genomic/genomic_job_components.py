@@ -553,7 +553,8 @@ class GenomicFileIngester:
                     endpoint='update_enrollment_status',
                     payload={
                         'participant_id': member.participantId
-                    }
+                    },
+                    task_queue='resource-tasks'
                 )
 
             return GenomicSubProcessResult.SUCCESS
