@@ -541,7 +541,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'enrollment_status_v3_1_id': int(ps.enrollmentStatusV3_1) if has_enrollment_v3_1 else None,
                 'enrollment_status_v3_1_participant_time': ps.enrollmentStatusParticipantV3_1Time \
                     if has_enrollment_v3_1 else None,
-                'enrollment_status_v3_1_participant_plus_ehr_time': ps.enrollmentStatusParticipantPlusEhrV3_1Time
+                'enrollment_status_v3_1_participant_plus_ehr_time': ps.enrollmentStatusParticipantPlusEhrV3_1Time \
                     if has_enrollment_v3_1 else None,
                 'enrollment_status_v3_1_participant_plus_basics_time': ps.enrollmentStatusParticipantPlusBasicsV3_1Time\
                     if has_enrollment_v3_1 else None,
@@ -552,7 +552,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     ps.enrollmentStatusParticipantPlusBaselineV3_1Time if has_enrollment_v3_1 else None,
                 'health_datastream_sharing_status_v3_1': str(ps.healthDataStreamSharingStatusV3_1) \
                     if has_enrollment_v3_1 else None,
-                'health_datastream_sharing_status_v3_1_id': int(ps.healthDataStreamSharingStatusV3_1)
+                'health_datastream_sharing_status_v3_1_id': int(ps.healthDataStreamSharingStatusV3_1) \
                     if has_enrollment_v3_1 in ps_col_names else None,
                 'health_datastream_sharing_status_v3_1_time': ps.healthDataStreamSharingStatusV3_1Time \
                     if has_enrollment_v3_1 in ps_col_names else None
