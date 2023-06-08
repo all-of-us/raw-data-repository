@@ -321,7 +321,8 @@ class DataGenerator:
             "wasParticipantMediatedEhrAvailable": False,
             "consentForNphModule1": False,
             "nphWithdrawal": False,
-            "nphDeactivation": False
+            "nphDeactivation": False,
+            "hasCoreData": False
         }
 
         defaults.update(kwargs)
