@@ -735,20 +735,10 @@ class ParticipantSummaryDao(UpdatableDao):
                     revised_consent_time_list.append(response.authored_datetime)
         revised_consent_time = min_or_none(revised_consent_time_list)
 
-        wgs_sequencing_time = None
-        genomic_set_member = GenomicSetMemberDao.get_member_by_participant_id_with_session(
+        wgs_sequencing_time = GenomicSetMemberDao.get_wgs_pass_date(
             session=session,
-            participant_id=summary.participantId,
-            genome_type=config.GENOME_TYPE_WGS
+            participant_id=summary.participantId
         )
-        if genomic_set_member and genomic_set_member.qcStatus == GenomicQcStatus.PASS:
-            # Determine when the job ran to get the rough date of the pass
-            genomic_job_dao = GenomicJobRunDao()
-            aw4_job_run: GenomicJobRun = genomic_job_dao.get_with_session(
-                session=session,
-                obj_id=genomic_set_member.aw4ManifestJobRunID
-            )
-            wgs_sequencing_time = aw4_job_run.startTime
 
         enrollment_info = EnrollmentCalculation.get_enrollment_info(
             EnrollmentDependencies(

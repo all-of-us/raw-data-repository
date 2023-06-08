@@ -1,6 +1,7 @@
 import collections
 import logging
 import os
+from typing import Optional
 
 import pytz
 import sqlalchemy
@@ -1330,6 +1331,26 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                     GenomicSetMember.sampleId.in_(sample_list)
                 )
             return members.all()
+
+    @classmethod
+    def get_wgs_pass_date(cls, session, participant_id) -> Optional[datetime]:
+        aw4_job_run = session.query(
+            GenomicJobRun.startTime
+        ).select_from(
+            GenomicSetMember
+        ).join(
+            GenomicJobRun,
+            GenomicJobRun.jobId == GenomicSetMember.aw4ManifestJobRunID
+        ).filter(
+            GenomicSetMember.participantId == participant_id,
+            GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+            GenomicSetMember.qcStatus == GenomicQcStatus.PASS
+        ).first()
+
+        if aw4_job_run:
+            return aw4_job_run.startTime
+
+        return None
 
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
