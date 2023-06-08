@@ -15,6 +15,7 @@ from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_up
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
     bq_institutional_affiliations_batch_update, bq_researcher_batch_update, bq_audit_batch_update
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.offline import retention_eligible_import
 from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
@@ -378,3 +379,19 @@ class ValidateDateOfBirthApi(Resource):
             participant_id=task_data['participant_id'],
             date_of_birth=date_of_birth
         )
+
+
+class UpdateEnrollmentStatus(Resource):
+    @task_auth_required
+    @returns_success
+    def post(self):
+        task_data = request.get_json(force=True)
+        participant_id = task_data['participant_id']
+
+        dao = ParticipantSummaryDao()
+        with dao.session() as session:
+            summary = dao.get_with_session(session=session, obj_id=participant_id)
+            dao.update_enrollment_status(
+                summary=summary,
+                session=session
+            )
