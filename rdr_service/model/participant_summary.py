@@ -26,7 +26,7 @@ from rdr_service.participant_enums import (
     EhrStatus,
     EnrollmentStatus,
     EnrollmentStatusV30,
-    EnrollmentStatusV31,
+    EnrollmentStatusV32,
     DigitalHealthSharingStatusV31,
     GenderIdentity,
     OrderStatus,
@@ -74,7 +74,7 @@ WITHDRAWN_PARTICIPANT_FIELDS = [
     "consentForElectronicHealthRecordsAuthored",
     "enrollmentStatus",
     "enrollmentStatusV3_0",
-    "enrollmentStatusV3_1"
+    "enrollmentStatusV3_2"
 ]
 
 # The period of time for which withdrawn participants will still be returned in results for
@@ -333,45 +333,55 @@ class ParticipantSummary(Base):
     enrollmentStatusCoreV3_0Time = Column("enrollment_status_core_v_3_0_time", UTCDateTime)
     """UTC time the participant has reached the 'CORE_PARTICIPANT' enrollment status defined by the 3.0 data glossary"""
 
-    enrollmentStatusV3_1 = Column(
-        "enrollment_status_v_3_1",
-        Enum(EnrollmentStatusV31),
-        default=EnrollmentStatusV31.PARTICIPANT
+    enrollmentStatusV3_2 = Column(
+        "enrollment_status_v_3_2",
+        Enum(EnrollmentStatusV32),
+        default=EnrollmentStatusV32.PARTICIPANT
     )
-    """Participant's current enrollment status as defined by the 3.1 data glossary"""
+    """Participant's current enrollment status as defined by the 3.2 data glossary"""
 
-    enrollmentStatusParticipantV3_1Time = Column("enrollment_status_participant_v_3_1_time", UTCDateTime)
-    """UTC time the participant has reached the 'PARTICIPANT' enrollment status defined by the 3.1 data glossary"""
+    enrollmentStatusParticipantV3_2Time = Column("enrollment_status_participant_v_3_2_time", UTCDateTime)
+    """UTC time the participant has reached the 'PARTICIPANT' enrollment status defined by the 3.2 data glossary"""
 
-    enrollmentStatusParticipantPlusEhrV3_1Time = Column(
-        "enrollment_status_participant_plus_ehr_v_3_1_time",
+    enrollmentStatusParticipantPlusEhrV3_2Time = Column(
+        "enrollment_status_participant_plus_ehr_v_3_2_time",
         UTCDateTime
     )
     """
-    UTC time the participant has reached the 'PARTICIPANT_PLUS_EHR' enrollment status defined by the 3.1 data glossary
+    UTC time the participant has reached the 'PARTICIPANT_PLUS_EHR' enrollment status defined by the 3.2 data glossary
     """
 
-    enrollmentStatusParticipantPlusBasicsV3_1Time = Column(
-        "enrollment_status_participant_plus_basics_v_3_1_time",
+    enrollmentStatusEnrolledParticipantV3_2Time = Column(
+        "enrollment_status_enrolled_participant_v_3_2_time",
         UTCDateTime
     )
     """
-    UTC time the participant has reached the 'PARTICIPANT_PLUS_BASICS'
-    enrollment status defined by the 3.1 data glossary
+    UTC time the participant has reached the 'ENROLLED_PARTICIPANT'
+    enrollment status defined by the 3.2 data glossary
     """
 
-    enrollmentStatusCoreMinusPmV3_1Time = Column("enrollment_status_core_minus_pm_v_3_1_time", UTCDateTime)
-    """UTC time the participant has reached the 'CORE_MINUS_PM' enrollment status defined by the 3.1 data glossary"""
+    enrollmentStatusCoreMinusPmV3_2Time = Column("enrollment_status_core_minus_pm_v_3_2_time", UTCDateTime)
+    """UTC time the participant has reached the 'CORE_MINUS_PM' enrollment status defined by the 3.2 data glossary"""
 
-    enrollmentStatusCoreV3_1Time = Column("enrollment_status_core_v_3_1_time", UTCDateTime)
-    """UTC time the participant has reached the 'CORE_PARTICIPANT' enrollment status defined by the 3.1 data glossary"""
+    enrollmentStatusCoreV3_2Time = Column("enrollment_status_core_v_3_2_time", UTCDateTime)
+    """UTC time the participant has reached the 'CORE_PARTICIPANT' enrollment status defined by the 3.2 data glossary"""
 
-    enrollmentStatusParticipantPlusBaselineV3_1Time = Column(
-        "enrollment_status_participant_plus_baseline_v_3_1_time",
-        UTCDateTime
+    hasCoreData = Column(
+        "has_core_data",
+        Boolean,
+        server_default=expression.false()
     )
     """
-    UTC time the participant has reached the 'BASELINE_PARTICIPANT' enrollment status defined by the 3.1 data glossary
+    A true or false value that indicates whether the RDR has all data points defined as requirements
+    for Core Data are collected for the participant.
+    Distinct from enrollments statuses because requirements for Core Data are not entirely driven to completion
+    by participant actions (e.g. a participant can provide a dna sample, but for Core Data that sample needs
+    to be sequenced).
+    """
+
+    hasCoreDataTime = Column("has_core_data_time", UTCDateTime)
+    """
+    UTC time the participant has completed the Core Data requirements defined by the 3.2 data glossary
     """
 
     consentCohort = Column("consent_cohort", Enum(ParticipantCohort), default=ParticipantCohort.UNSET)

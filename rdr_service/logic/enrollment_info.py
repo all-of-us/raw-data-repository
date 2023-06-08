@@ -5,10 +5,10 @@ from typing import List, Optional
 from rdr_service.participant_enums import (
     EnrollmentStatus,
     EnrollmentStatusV30,
-    EnrollmentStatusV31,
+    EnrollmentStatusV32,
     ParticipantCohort
 )
-from rdr_service.services.system_utils import DateRange, min_or_none
+from rdr_service.services.system_utils import DateRange
 
 
 @dataclass
@@ -22,8 +22,11 @@ class EnrollmentInfo:
     version_3_0_status: EnrollmentStatusV30 = None
     version_3_0_dates: dict = field(default_factory=dict)
 
-    version_3_1_status: EnrollmentStatusV31 = None
-    version_3_1_dates: dict = field(default_factory=dict)
+    version_3_2_status: EnrollmentStatusV32 = None
+    version_3_2_dates: dict = field(default_factory=dict)
+
+    has_core_data: bool = False
+    core_data_time: datetime = None
 
     def upgrade_legacy_status(self, status: EnrollmentStatus, achieved_date: datetime):
         self.version_legacy_status = status
@@ -33,9 +36,9 @@ class EnrollmentInfo:
         self.version_3_0_status = status
         self.version_3_0_dates[status] = achieved_date
 
-    def upgrade_3_1_status(self, status: EnrollmentStatusV31, achieved_date: datetime):
-        self.version_3_1_status = status
-        self.version_3_1_dates[status] = achieved_date
+    def upgrade_3_2_status(self, status: EnrollmentStatusV32, achieved_date: datetime):
+        self.version_3_2_status = status
+        self.version_3_2_dates[status] = achieved_date
 
 
 @dataclass
@@ -61,6 +64,9 @@ class EnrollmentDependencies:
     earliest_ehr_file_received_time: datetime
     earliest_mediated_ehr_receipt_time: datetime
     earliest_physical_measurements_time: datetime
+
+    earliest_core_physical_measurement_time: datetime  # Earliest physical measurement that meets core data reqs
+    wgs_sequencing_time: datetime
 
     @property
     def first_ehr_consent_date(self):
@@ -118,11 +124,13 @@ class EnrollmentCalculation:
         enrollment = EnrollmentInfo()
         enrollment.upgrade_legacy_status(EnrollmentStatus.INTERESTED, participant_info.primary_consent_authored_time)
         enrollment.upgrade_3_0_status(EnrollmentStatusV30.PARTICIPANT, participant_info.primary_consent_authored_time)
-        enrollment.upgrade_3_1_status(EnrollmentStatusV31.PARTICIPANT, participant_info.primary_consent_authored_time)
+        enrollment.upgrade_3_2_status(EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time)
 
         cls._set_legacy_status(enrollment, participant_info)
         cls._set_v30_status(enrollment, participant_info)
-        cls._set_v31_status(enrollment, participant_info)
+        cls._set_v32_status(enrollment, participant_info)
+
+        cls._set_core_data_fields(enrollment, participant_info)
 
         return enrollment
 
@@ -182,16 +190,16 @@ class EnrollmentCalculation:
             )
 
     @classmethod
-    def _set_v31_status(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):
+    def _set_v32_status(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):
         if not participant_info.ever_expressed_interest_in_sharing_ehr:
             return  # stop here without ehr interest, any more upgrades to the enrollment status require it
 
-        enrollment.upgrade_3_1_status(EnrollmentStatusV31.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date)
+        enrollment.upgrade_3_2_status(EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date)
 
         if not participant_info.has_completed_the_basics_survey:
             return  # stop here without TheBasics, any more upgrades to the enrollment status require it
 
-        # Upgrading 3.1 to PLUS_BASICS requires TheBasics and a GROR response
+        # Upgrading 3.2 to ENROLLED_PARTICIPANT requires TheBasics and a GROR response
         if participant_info.has_completed_gror_survey:
             matching_date = cls._get_requirements_met_date([
                 participant_info.first_ehr_consent_date,
@@ -199,48 +207,41 @@ class EnrollmentCalculation:
                 participant_info.gror_authored_time
             ])
             if matching_date:
-                enrollment.upgrade_3_1_status(EnrollmentStatusV31.PARTICIPANT_PLUS_BASICS, matching_date)
+                enrollment.upgrade_3_2_status(EnrollmentStatusV32.ENROLLED_PARTICIPANT, matching_date)
 
         if cls._meets_requirements_for_core_minus_pm(participant_info):
-            enrollment.upgrade_3_1_status(
-                EnrollmentStatusV31.CORE_MINUS_PM,
+            enrollment.upgrade_3_2_status(
+                EnrollmentStatusV32.CORE_MINUS_PM,
                 max(cls._get_dates_needed_for_core_minus_pm(participant_info))
             )
 
         if cls._meets_requirements_for_core(participant_info):
-            enrollment.upgrade_3_1_status(
-                EnrollmentStatusV31.CORE_PARTICIPANT,
+            enrollment.upgrade_3_2_status(
+                EnrollmentStatusV32.CORE_PARTICIPANT,
                 max(cls._get_dates_needed_for_core(participant_info))
             )
 
-            # Check to see if the participant also meets BASELINE requirements
-            if (
-                (participant_info.has_had_ehr_file_submitted or participant_info.has_had_mediated_ehr_submitted)
-                and (
-                    participant_info.consent_cohort != ParticipantCohort.COHORT_1
-                    or participant_info.has_completed_dna_update
-                )
-            ):
-                # Track the extra dates needed
-                # (definitely need the date of an ehr file, but also possibly the dna update time)
-                extra_dates_needed = [
-                    min_or_none([
-                        participant_info.earliest_ehr_file_received_time,
-                        participant_info.earliest_mediated_ehr_receipt_time
-                    ])
-                ]
-                if participant_info.consent_cohort == ParticipantCohort.COHORT_1:
-                    extra_dates_needed.append(participant_info.dna_update_time)
-
-                enrollment.upgrade_3_1_status(
-                    EnrollmentStatusV31.BASELINE_PARTICIPANT,
-                    max([
-                        *cls._get_dates_needed_for_core(participant_info),
-                        *extra_dates_needed
-                    ])
-                )
-
         return enrollment
+
+    @classmethod
+    def _set_core_data_fields(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):
+        required_timestamp_list = [
+            participant_info.first_ehr_consent_date,
+            participant_info.basics_authored_time,
+            participant_info.overall_health_authored_time,
+            participant_info.lifestyle_authored_time,
+            participant_info.earliest_core_physical_measurement_time,
+            participant_info.wgs_sequencing_time,
+            participant_info.earliest_ehr_file_received_time
+        ]
+        if participant_info.consent_cohort == ParticipantCohort.COHORT_1:
+            required_timestamp_list.append(participant_info.dna_update_time)
+
+        if any(required_time is None for required_time in required_timestamp_list):
+            return  # If any required timestamps are missing, leave Core Data flag as False
+
+        enrollment.has_core_data = True  # All timestamps are present, so Core Data requirements are met
+        enrollment.core_data_time = max(required_timestamp_list)
 
     @classmethod
     def _meets_requirements_for_core_minus_pm(cls, participant_info: EnrollmentDependencies):
