@@ -31,8 +31,10 @@ from rdr_service.api_util import (
     open_cloud_file,
     copy_cloud_file,
     delete_cloud_file,
+    dispatch_task,
     list_blobs,
-    get_blob)
+    get_blob
+)
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
@@ -547,6 +549,13 @@ class GenomicFileIngester:
                     self.metrics_dao.upsert(metrics)
 
                 self.member_dao.update(member)
+
+                dispatch_task(
+                    endpoint='update_enrollment_status',
+                    payload={
+                        'participant_id': member.participantId
+                    }
+                )
 
             return GenomicSubProcessResult.SUCCESS
 
