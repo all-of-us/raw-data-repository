@@ -18,6 +18,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         super(NphSmsWorkflowsTest, self).__init__(*args, **kwargs)
         self.test_bucket = "test-bucket"
         self.TIME_1 = datetime.datetime(2023, 4, 25, 15, 13)
+        self.TIME_2 = datetime.datetime(2023, 4, 26, 15, 13)
 
     def setUp(self, *args, **kwargs) -> None:
         super(NphSmsWorkflowsTest, self).setUp(*args, **kwargs)
@@ -307,6 +308,22 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[1].collection_date_time, api_util.parse_date("2023-04-20T15:54:33"))
         self.assertEqual(manifest_records[1].bowel_movement, '"I had normal formed stool, and my stool looks like Type 3 and/or 4"')
         self.assertEqual(manifest_records[1].bowel_movement_quality, '"I tend to have normal formed stool - Type 3 and 4"')
+
+        # Test Ignore and rerun
+        with n1_mcac_dao.session() as session:
+            manifest_records[0].ignore_flag = 1
+            session.merge(manifest_records[0])
+
+        with clock.FakeClock(self.TIME_2):
+            from rdr_service.resource import main as resource_main
+            self.send_post(
+                local_path='NphSmsGenerationTaskApi',
+                request_data=generation_data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+        manifest_records = n1_mcac_dao.get_all()
+        self.assertEqual(len(manifest_records), 3)
 
     @mock.patch('rdr_service.workflow_management.nph.sms_pipeline.GCPCloudTask.execute')
     def test_sms_pipeline_n1_function(self, task_mock):
