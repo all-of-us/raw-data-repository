@@ -33,18 +33,16 @@ from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
-from rdr_service.dao.genomics_dao import GenomicJobRunDao, GenomicSetMemberDao
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_incentives_dao import ParticipantIncentivesDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
-from rdr_service.genomic_enums import GenomicQcStatus
 from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentDependencies
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
-from rdr_service.model.genomics import GenomicJobRun
 from rdr_service.model.enrollment_status_history import EnrollmentStatusHistory
 from rdr_service.model.participant_summary import (
     ParticipantGenderAnswers,
