@@ -267,8 +267,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
     @staticmethod
     def build_expected_patch_data(participant_id, ehr_status: EhrStatus, is_ehr_available,
                                   first_ehr_time, latest_ehr_time,
-                                  enrollment_status_v_3_2=EnrollmentStatusV32.PARTICIPANT,
-                                  enrollment_status_v_3_2_time=None):
+                                  enrollment_status_v_3_2=EnrollmentStatusV32.PARTICIPANT):
 
         # Additional Goal 1 data elements that will be part of the patch update upon receipt of EHR
         was_ehr_available = (is_ehr_available or first_ehr_time is not None)
