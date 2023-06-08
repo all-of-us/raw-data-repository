@@ -1,7 +1,6 @@
 import logging
-from graphene import ObjectType, String, Int, DateTime, Field, List, Schema, NonNull
-from graphene import relay
-from sqlalchemy.orm import Query, aliased, subqueryload
+from graphene import ObjectType, String, Int, DateTime, Field, List, Schema, NonNull, relay
+from sqlalchemy.orm import Query, aliased
 from sqlalchemy import and_
 
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
@@ -10,7 +9,6 @@ from rdr_service.dao.study_nph_dao import NphParticipantDao
 from rdr_service.model.study_nph import (
     Participant,
     Site as nphSite,
-    Order,
     PairingEvent,
     DeactivationEvent,
     WithdrawalEvent,
@@ -63,7 +61,6 @@ class Event(ObjectType):
         if value.upper() == 'VALUE':
             return context.set_order_expression(sort_info.get('value'))
         raise ValueError(f"{value} : Invalid Key -- Event Object Type")
-
 
 class GraphQLConsentEvent(Event):
     """ NPH ConsentEvent """
@@ -388,6 +385,8 @@ class ParticipantQuery(ObjectType):
         nph_participant_dao = NphParticipantDao()
         consent_subquery = nph_participant_dao.get_consents_subquery()
         enrollment_subquery = nph_participant_dao.get_enrollment_subquery()
+        orders_samples_subquery = nph_participant_dao.get_orders_samples_subquery()
+
         limit = min(max(limit, MIN_LIMIT), MAX_LIMIT)
         off_set = max(off_set, MIN_OFFSET)
 
@@ -401,6 +400,8 @@ class ParticipantQuery(ObjectType):
                 Participant,
                 enrollment_subquery.c.enrollment_status,
                 consent_subquery.c.consent_status,
+                orders_samples_subquery.c.orders_sample_status,
+                orders_samples_subquery.c.orders_sample_biobank_status,
                 DeactivationEvent,
                 WithdrawalEvent,
                 ParticipantOpsDataElement
@@ -419,6 +420,9 @@ class ParticipantQuery(ObjectType):
             ).outerjoin(
                 enrollment_subquery,
                 enrollment_subquery.c.enrollment_pid == Participant.id
+            ).outerjoin(
+                orders_samples_subquery,
+                orders_samples_subquery.c.orders_samples_pid == Participant.id
             ).outerjoin(
                 PairingEvent,
                 PairingEvent.participant_id == ParticipantMapping.ancillary_participant_id
@@ -458,10 +462,6 @@ class ParticipantQuery(ObjectType):
                 pm2.id.is_(None),
                 participant_dob.id.is_(None),
                 ParticipantMapping.ancillary_study_id == NPH_STUDY_ID,
-            ).options(
-                subqueryload(Participant.orders).subqueryload(Order.samples)
-            ).options(
-                subqueryload(Participant.stored_samples)
             ).distinct()
 
             current_field_class = ParticipantField
@@ -494,12 +494,12 @@ class ParticipantQuery(ObjectType):
                     query = query_builder.get_resulting_query()
                     query = query.limit(limit).offset(off_set)
                     logging.info(query)
-                    return NphParticipantData.load_participant_summary_data(query, NPH_BIOBANK_PREFIX)
+                    return NphParticipantData.load_nph_participant_data(query, NPH_BIOBANK_PREFIX)
 
                 logging.info('Fetch NPH ID: %d', nph_id)
                 query = query.filter(ParticipantMapping.ancillary_participant_id == int(nph_id))
                 logging.info(query)
-                return NphParticipantData.load_participant_summary_data(query, NPH_BIOBANK_PREFIX)
+                return NphParticipantData.load_nph_participant_data(query, NPH_BIOBANK_PREFIX)
 
             except Exception as ex:
                 logging.error(ex)

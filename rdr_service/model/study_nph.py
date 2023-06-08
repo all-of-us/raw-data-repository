@@ -123,8 +123,27 @@ class OrderedSample(NphBase):
     supplemental_fields = Column(JSON, nullable=True)
     parent = relation("OrderedSample", remote_side=[id])
     children: List['OrderedSample'] = relation("OrderedSample", remote_side=[parent_sample_id], uselist=True)
-
     order = relationship(Order, back_populates='samples')
+
+
+class StoredSample(NphBase):
+    __tablename__ = "stored_sample"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    biobank_modified = Column(UTCDateTime)
+    biobank_id = Column(BigInteger, ForeignKey("participant.biobank_id"))
+    ignore_flag = Column(TINYINT, default=0)
+    sample_id = Column(String(32), index=True)
+    lims_id = Column(String(64))
+    status = Column(Enum(StoredSampleStatus), default=StoredSampleStatus.SHIPPED)
+    disposition = Column(String(256))
+    participant = relationship(Participant, back_populates="stored_samples")
+
+
+event.listen(StoredSample, "before_insert", model_insert_listener)
+event.listen(StoredSample, "before_update", model_update_listener)
 
 
 class Activity(NphBase):
@@ -328,26 +347,6 @@ class SampleExport(NphBase):
     ignore_flag = Column(TINYINT, default=0)
     export_id = Column(BigInteger, ForeignKey("biobank_file_export.id"))
     sample_update_id = Column(BigInteger, ForeignKey("sample_update.id"))
-
-
-class StoredSample(NphBase):
-    __tablename__ = "stored_sample"
-
-    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime)
-    modified = Column(UTCDateTime)
-    biobank_modified = Column(UTCDateTime)
-    biobank_id = Column(BigInteger, ForeignKey("participant.biobank_id"))
-    ignore_flag = Column(TINYINT, default=0)
-    sample_id = Column(String(32), index=True)
-    lims_id = Column(String(64))
-    status = Column(Enum(StoredSampleStatus), default=StoredSampleStatus.SHIPPED)
-    disposition = Column(String(256))
-    participant = relationship(Participant, back_populates="stored_samples")
-
-
-event.listen(StoredSample, "before_insert", model_insert_listener)
-event.listen(StoredSample, "before_update", model_update_listener)
 
 
 class Incident(NphBase):
