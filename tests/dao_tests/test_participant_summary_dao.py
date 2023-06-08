@@ -510,7 +510,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         summary.selfReportedPhysicalMeasurementsStatus = SelfReportedPhysicalMeasurementsStatus.COMPLETED
         summary.selfReportedPhysicalMeasurementsAuthored = datetime.datetime(2019, 7, 12)
         self.dao.update_enrollment_status(summary, session=mock.MagicMock())
-        self.assertEqual(EnrollmentStatusV31.CORE_PARTICIPANT, summary.enrollmentStatusV3_2)
+        self.assertEqual(EnrollmentStatusV32.CORE_PARTICIPANT, summary.enrollmentStatusV3_2)
 
     def testDowngradeCoreMinusPm(self):
         """Check that a participant that has achieved CORE_MINUS_PM status isn't downgraded from it"""
