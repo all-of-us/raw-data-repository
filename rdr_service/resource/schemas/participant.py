@@ -11,10 +11,23 @@ from rdr_service.participant_enums import (QuestionnaireStatus, ParticipantCohor
     SuspensionStatus, QuestionnaireResponseStatus, QuestionnaireResponseClassificationType,
     DeceasedStatus, ParticipantCohortPilotFlag, WithdrawalAIANCeremonyStatus, BiobankOrderStatus,
     SampleCollectionMethod, PhysicalMeasurementsCollectType, OriginMeasurementUnit,
-    EnrollmentStatusV30, EnrollmentStatusV31, DigitalHealthSharingStatusV31)
+    EnrollmentStatusV30, DigitalHealthSharingStatusV31)
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
+
+
+# Defining this enum class here so it can be safely removed from the RDR participant_enums file.  This schemas file
+# will eventually be superseded by the new RDR-to-PDR pipeline and removed from the RDR codebase
+class EnrollmentStatusV31(Enum):
+    """A status reflecting how fully enrolled a participant is according to the 3.1 data glossary"""
+
+    PARTICIPANT = 1
+    PARTICIPANT_PLUS_EHR = 2
+    PARTICIPANT_PLUS_BASICS = 3
+    CORE_MINUS_PM = 4
+    CORE_PARTICIPANT = 5
+    BASELINE_PARTICIPANT = 6
 
 class SexualOrientationEnum(Enum):
     SexualOrientation_None = 1
@@ -386,7 +399,8 @@ class ParticipantSchema(Schema):
     enrollment_status_v3_0_pmb_eligible_time = fields.DateTime()
     enrollment_status_v3_0_core_minus_pm_time = fields.DateTime()
     enrollment_status_v3_0_core_time = fields.DateTime()
-    # RDR v3.1 Enrollment Status Calculations
+    # Deprecated RDR v3.1 Enrollment Status Calculations.  Schema is not changing (new V3.2 data will be part of new
+    # # RDR-to-PDR pipeline only) but the existing pipeline will still generate records with these fields / null values
     enrollment_status_v3_1 = fields.EnumString(enum=EnrollmentStatusV31)
     enrollment_status_v3_1_id = fields.EnumInteger(enum=EnrollmentStatusV31)
     enrollment_status_v3_1_participant_time = fields.DateTime()
