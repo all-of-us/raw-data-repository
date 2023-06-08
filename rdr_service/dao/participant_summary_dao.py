@@ -375,6 +375,7 @@ class ParticipantSummaryDao(UpdatableDao):
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
             "participantOrigin": participant.participantOrigin,
             "isEhrDataAvailable": False,
+            "hasCoreData": False
         }
         default_attrs.update(payload_attrs)
 
