@@ -26,4 +26,4 @@ def n1_generation():
         logging.info(f"API ROUTE: {api_route}")
 
         _task = GCPCloudTask()
-        _task.execute(api_route, payload=data, queue=TASK_QUEUE)
+        _task.execute("nph_sms_generation_task", payload=data, queue=TASK_QUEUE)
