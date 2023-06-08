@@ -739,24 +739,23 @@ class ParticipantSummaryDao(UpdatableDao):
             participant_id=summary.participantId
         )
 
-        enrollment_info = EnrollmentCalculation.get_enrollment_info(
-            EnrollmentDependencies(
-                consent_cohort=summary.consentCohort,
-                primary_consent_authored_time=summary.consentForStudyEnrollmentFirstYesAuthored,
-                gror_authored_time=summary.consentForGenomicsRORAuthored,
-                basics_authored_time=summary.questionnaireOnTheBasicsAuthored,
-                overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
-                lifestyle_authored_time=summary.questionnaireOnLifestyleAuthored,
-                earliest_ehr_file_received_time=summary.ehrReceiptTime,
-                earliest_mediated_ehr_receipt_time=summary.firstParticipantMediatedEhrReceiptTime,
-                earliest_physical_measurements_time=earliest_physical_measurements_time,
-                earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
-                ehr_consent_date_range_list=ehr_consent_ranges,
-                dna_update_time=revised_consent_time,
-                earliest_core_physical_measurement_time=min_or_none(meas.finalized for meas in core_measurements),
-                wgs_sequencing_time=wgs_sequencing_time
-            )
+        enrollment_dependencies = EnrollmentDependencies(
+            consent_cohort=summary.consentCohort,
+            primary_consent_authored_time=summary.consentForStudyEnrollmentFirstYesAuthored,
+            gror_authored_time=summary.consentForGenomicsRORAuthored,
+            basics_authored_time=summary.questionnaireOnTheBasicsAuthored,
+            overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
+            lifestyle_authored_time=summary.questionnaireOnLifestyleAuthored,
+            earliest_ehr_file_received_time=summary.ehrReceiptTime,
+            earliest_mediated_ehr_receipt_time=summary.firstParticipantMediatedEhrReceiptTime,
+            earliest_physical_measurements_time=earliest_physical_measurements_time,
+            earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
+            ehr_consent_date_range_list=ehr_consent_ranges,
+            dna_update_time=revised_consent_time,
+            earliest_core_physical_measurement_time=min_or_none(meas.finalized for meas in core_measurements),
+            wgs_sequencing_time=wgs_sequencing_time
         )
+        enrollment_info = EnrollmentCalculation.get_enrollment_info(enrollment_dependencies)
 
         # Update enrollment status if it is upgrading
         legacy_dates = enrollment_info.version_legacy_dates
@@ -779,7 +778,8 @@ class ParticipantSummaryDao(UpdatableDao):
                     participant_id=summary.participantId,
                     version='legacy',
                     status=str(summary.enrollmentStatus),
-                    timestamp=legacy_dates[summary.enrollmentStatus]
+                    timestamp=legacy_dates[summary.enrollmentStatus],
+                    dependencies_snapshot=enrollment_dependencies.to_json_dict()
                 )
             )
 
@@ -791,7 +791,8 @@ class ParticipantSummaryDao(UpdatableDao):
                     participant_id=summary.participantId,
                     version='3.0',
                     status=str(summary.enrollmentStatusV3_0),
-                    timestamp=version_3_0_dates[summary.enrollmentStatusV3_0]
+                    timestamp=version_3_0_dates[summary.enrollmentStatusV3_0],
+                    dependencies_snapshot=enrollment_dependencies.to_json_dict()
                 )
             )
 
@@ -803,7 +804,8 @@ class ParticipantSummaryDao(UpdatableDao):
                     participant_id=summary.participantId,
                     version='3.2',
                     status=str(summary.enrollmentStatusV3_2),
-                    timestamp=version_3_2_dates[summary.enrollmentStatusV3_2]
+                    timestamp=version_3_2_dates[summary.enrollmentStatusV3_2],
+                    dependencies_snapshot=enrollment_dependencies.to_json_dict()
                 )
             )
 
@@ -816,7 +818,8 @@ class ParticipantSummaryDao(UpdatableDao):
                     participant_id=summary.participantId,
                     version='core_data',
                     status="True",
-                    timestamp=enrollment_info.core_data_time
+                    timestamp=enrollment_info.core_data_time,
+                    dependencies_snapshot=enrollment_dependencies.to_json_dict()
                 )
             )
 
