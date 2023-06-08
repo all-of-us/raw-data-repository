@@ -369,7 +369,6 @@ class ParticipantSummary(Base):
     hasCoreData = Column(
         "has_core_data",
         Boolean,
-        nullable=False,
         server_default=expression.false()
     )
     """

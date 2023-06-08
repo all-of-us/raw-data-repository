@@ -36,7 +36,7 @@ def downgrade(engine_name):
 
 
 def upgrade_rdr():
-    op.add_column('participant_summary', sa.Column('has_core_data', sa.Boolean(), server_default=sa.text('false'), nullable=False))
+    op.add_column('participant_summary', sa.Column('has_core_data', sa.Boolean(), server_default=sa.text('false'), nullable=True))
     op.add_column('participant_summary', sa.Column('has_core_data_time', rdr_service.model.utils.UTCDateTime(), nullable=True))
 
 
