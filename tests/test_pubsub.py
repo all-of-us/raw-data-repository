@@ -119,7 +119,8 @@ class PubSubTest(BaseTestCase):
 
         # Test Pub/Sub messages successfully sent.
         self.assertTrue(mock_pub_func.called)
-        self.assertEqual(mock_pub_func.call_count, 3)
+        # We now get two extra calls due to participant enrollment re-calculations after biobank order is submitted.
+        self.assertEqual(mock_pub_func.call_count, 5)
 
     @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
     def test_pubsub_from_model(self, mock_pub_func):
@@ -146,4 +147,25 @@ class PubSubTest(BaseTestCase):
         self.assertIn('measurement', parents)
 
         self.assertTrue(mock_pub_func.called)
-        self.assertEqual(mock_pub_func.call_count, 2)
+        # We now get two extra calls due to participant enrollment re-calculations after PM is submitted.
+        self.assertEqual(mock_pub_func.call_count, 4)
+
+    @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
+    def test_participant_enrollment_update_pubsub(self, mock_pub_func):
+        """ Test for Pub/Sub event messages when participant enrollment status is re-calculated. """
+        mock_pub_func.return_value = {'messageIds': ['123']}
+
+        dao = ParticipantSummaryDao()
+
+        participant_summary = self.participant_summary(self.participant)
+
+        self.summary_dao.insert(participant_summary)
+
+        self.assertFalse(mock_pub_func.called)
+        self.assertEqual(mock_pub_func.call_count, 0)
+
+        with dao.session() as session:
+            self.summary_dao.update_enrollment_status(participant_summary, session)
+
+        self.assertTrue(mock_pub_func.called)
+        self.assertEqual(mock_pub_func.call_count, 1)

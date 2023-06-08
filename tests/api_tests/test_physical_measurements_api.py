@@ -70,6 +70,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.assertIsNone(physical_measurements.createdUsername)
         self.assertEqual(physical_measurements.finalizedSiteId, 2)
         self.assertIsNone(physical_measurements.finalizedUsername)
+        self.assertTrue(physical_measurements.meetsCoreDataRequirements)  # Default json has height and weight
 
         em1 = Measurement(
             measurementId=pm_id * 1000,

@@ -383,6 +383,8 @@ class ParticipantQuery(ObjectType):
         **filter_kwargs
     ):
         pm2 = aliased(PairingEvent)
+        participant_dob = aliased(ParticipantOpsDataElement)
+
         nph_participant_dao = NphParticipantDao()
         consent_subquery = nph_participant_dao.get_consents_subquery()
         enrollment_subquery = nph_participant_dao.get_enrollment_subquery()
@@ -432,7 +434,20 @@ class ParticipantQuery(ObjectType):
                 nphSite.id == PairingEvent.site_id
             ).outerjoin(
                 ParticipantOpsDataElement,
-                ParticipantMapping.ancillary_participant_id == ParticipantOpsDataElement.participant_id
+                and_(
+                    ParticipantMapping.ancillary_participant_id == ParticipantOpsDataElement.participant_id,
+                    ParticipantOpsDataElement.source_data_element == ParticipantOpsElementTypes.BIRTHDATE,
+                    ParticipantOpsDataElement.source_value.isnot(None),
+                    ParticipantOpsDataElement.ignore_flag != 1
+                )
+            ).outerjoin(
+                participant_dob,
+                and_(
+                    ParticipantOpsDataElement.participant_id == participant_dob.participant_id,
+                    ParticipantOpsDataElement.source_data_element == ParticipantOpsElementTypes.BIRTHDATE,
+                    ParticipantOpsDataElement.source_value.isnot(None),
+                    ParticipantOpsDataElement.id < participant_dob.id,
+                )
             ).outerjoin(
                 DeactivationEvent,
                 ParticipantMapping.ancillary_participant_id == DeactivationEvent.participant_id
@@ -441,6 +456,7 @@ class ParticipantQuery(ObjectType):
                 ParticipantMapping.ancillary_participant_id == WithdrawalEvent.participant_id
             ).filter(
                 pm2.id.is_(None),
+                participant_dob.id.is_(None),
                 ParticipantMapping.ancillary_study_id == NPH_STUDY_ID,
             ).options(
                 subqueryload(Participant.orders).subqueryload(Order.samples)
