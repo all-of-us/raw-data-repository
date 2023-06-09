@@ -57,6 +57,7 @@ from rdr_service.services.response_duplication_detector import ResponseDuplicati
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.offline.study_nph_biobank_file_export import main as study_nph_biobank_file_export_job
 from rdr_service.offline.study_nph_biobank_import_inventory_file import main as study_nph_biobank_inventory_import_job
+from rdr_service.workflow_management.nph.sms_pipeline import n1_generation
 
 
 def _alert_on_exceptions(func):
@@ -860,6 +861,12 @@ def nph_biobank_inventory_file_import():
     return '{"success": "true"}'
 
 
+@app_util.auth_required_cron
+def nph_sms_n1_generation():
+    n1_generation()
+    return '{"success": "true"}'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
@@ -1410,6 +1417,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'NphBiobankInventoryFileImport',
         endpoint="nph_biobank_inventory_file_import",
         view_func=nph_biobank_inventory_file_import,
+        methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'NphSmsN1Generation',
+        endpoint="nph_sms_n1_generation",
+        view_func=nph_sms_n1_generation,
         methods=["GET"]
     )
 

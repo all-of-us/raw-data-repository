@@ -269,4 +269,9 @@ cron:
   schedule: every 1 hours
   timezone: America/New_York
   target: offline
+- description: NPH SMS Generate N1
+  url: /offline/NphSmsN1Generation
+  schedule: every day 01:15
+  timezone: America/New_York
+  target: offline
 
