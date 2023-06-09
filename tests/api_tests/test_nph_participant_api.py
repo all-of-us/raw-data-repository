@@ -534,6 +534,23 @@ class NphParticipantAPITest(BaseTestCase):
         nph_dob = second_participant.get('nphDateOfBirth')
         self.assertTrue(nph_dob == 'UNSET')
 
+        # add another dob on same participant_id should be updated data returned on first_participant
+        self.nph_data_gen.create_database_participant_ops_data_element(
+            source_data_element=ParticipantOpsElementTypes.BIRTHDATE,
+            participant_id=100000000,
+            source_value='1988-01-01'
+        )
+
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, len(result.get('participant').get('edges')))
+
+        first_participant = result.get('participant').get('edges')[0].get('node')
+        self.assertTrue(first_participant.get('participantNphId') == str(self.base_participant_ids[0]))
+        nph_dob = first_participant.get('nphDateOfBirth')
+        self.assertTrue(nph_dob is not None)
+        self.assertTrue(nph_dob == '1988-01-01')
+
     def test_optional_field_returns_correctly(self):
         self.add_consents(nph_participant_ids=[self.base_participant_ids[0]])
         summary_with_site = self.participant_summary_dao.get_by_participant_id(900000000)

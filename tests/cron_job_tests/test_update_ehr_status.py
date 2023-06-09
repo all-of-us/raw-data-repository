@@ -15,7 +15,7 @@ from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.offline import update_ehr_status
-from rdr_service.participant_enums import EhrStatus, EnrollmentStatusV31, DigitalHealthSharingStatusV31
+from rdr_service.participant_enums import EhrStatus, EnrollmentStatusV32, DigitalHealthSharingStatusV31
 from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
 
@@ -267,8 +267,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
     @staticmethod
     def build_expected_patch_data(participant_id, ehr_status: EhrStatus, is_ehr_available,
                                   first_ehr_time, latest_ehr_time,
-                                  enrollment_status_v_3_1=EnrollmentStatusV31.PARTICIPANT,
-                                  enrollment_status_v_3_1_time=None):
+                                  enrollment_status_v_3_2=EnrollmentStatusV32.PARTICIPANT):
 
         # Additional Goal 1 data elements that will be part of the patch update upon receipt of EHR
         was_ehr_available = (is_ehr_available or first_ehr_time is not None)
@@ -290,9 +289,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
                 'ehr_status_id': int(ehr_status),
                 'ehr_receipt': first_ehr_time,
                 'ehr_update': latest_ehr_time,
-                'enrollment_status_v3_1': str(enrollment_status_v_3_1),
-                'enrollment_status_v3_1_id': int(enrollment_status_v_3_1),
-                'enrollment_status_v3_1_participant_plus_baseline_time': enrollment_status_v_3_1_time,
+                'enrollment_status_v3_2': str(enrollment_status_v_3_2),
+                'enrollment_status_v3_2_id': int(enrollment_status_v_3_2),
                 'health_datastream_sharing_status_v3_1': str(health_datastream_status),
                 'health_datastream_sharing_status_v3_1_id': int(health_datastream_status),
                 'health_datastream_sharing_status_v3_1_time': health_datastream_status_time
@@ -342,7 +340,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             isEhrDataAvailable=True,
             ehrReceiptTime=first_upload_datetime,
             ehrUpdateTime=first_upload_datetime,
-            enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT_PLUS_EHR,
+            enrollmentStatusV3_2=EnrollmentStatusV32.PARTICIPANT_PLUS_EHR,
         ).participantId
         first_view_data = self.EhrUpdatePidRow(first_pid, first_upload_datetime)
         self.data_generator.create_database_participant_ehr_receipt(
@@ -359,8 +357,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             ehrReceiptTime=seconds_first_upload_time,
             ehrUpdateTime=seconds_first_upload_time,
             # set up to validate patch data / population of the timestamp for reaching BASELINE
-            enrollmentStatusV3_1=EnrollmentStatusV31.BASELINE_PARTICIPANT,
-            enrollmentStatusParticipantPlusBaselineV3_1Time=seconds_first_upload_time
+            enrollmentStatusV3_2=EnrollmentStatusV32.CORE_PARTICIPANT,
+            enrollmentStatusCoreV3_2Time=seconds_first_upload_time
         ).participantId
         second_view_data = self.EhrUpdatePidRow(second_pid, datetime.datetime(2020, 3, 12, 10))
         self.data_generator.create_database_participant_ehr_receipt(
@@ -371,7 +369,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
 
         # initialize data for the third scenario (new participant appears in the view)
         third_pid = self.data_generator.create_database_participant_summary(
-            enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
+            enrollmentStatusV3_2=EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
         ).participantId
         third_view_data = self.EhrUpdatePidRow(third_pid, datetime.datetime(2020, 3, 14, 10))
 
@@ -382,7 +380,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             isEhrDataAvailable=True,
             ehrReceiptTime=fourth_upload_time,
             ehrUpdateTime=fourth_upload_time,
-            enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
+            enrollmentStatusV3_2=EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
         ).participantId
 
         mock_summary_job.return_value.__iter__.return_value = [[first_view_data, second_view_data, third_view_data]]
@@ -395,8 +393,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
                 True,
                 seconds_first_upload_time,
                 second_view_data.latest_upload_time,
-                enrollment_status_v_3_1=EnrollmentStatusV31.BASELINE_PARTICIPANT,
-                enrollment_status_v_3_1_time=seconds_first_upload_time
+                enrollment_status_v_3_2=EnrollmentStatusV32.CORE_PARTICIPANT
             ),
             self.build_expected_patch_data(
                 third_pid,
@@ -404,7 +401,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
                 True,
                 third_view_data.latest_upload_time,
                 third_view_data.latest_upload_time,
-                enrollment_status_v_3_1=EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
+                enrollment_status_v_3_2=EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
             ),
             self.build_expected_patch_data(
                 fourth_pid,
@@ -412,7 +409,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
                 False,
                 fourth_upload_time,
                 fourth_upload_time,
-                enrollment_status_v_3_1=EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
+                enrollment_status_v_3_2=EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
             )
         ], mock_rebuild_tasks)
 

@@ -187,7 +187,7 @@ class ParticipantDaoTest(BaseTestCase):
         summary = self.participant_summary(p)
         summary.enrollmentStatus = participant_enums.EnrollmentStatus.INTERESTED
         summary.enrollmentStatusV3_0 = participant_enums.EnrollmentStatusV30.PARTICIPANT
-        summary.enrollmentStatusV3_1 = participant_enums.EnrollmentStatusV31.PARTICIPANT
+        summary.enrollmentStatusV3_2 = participant_enums.EnrollmentStatusV32.PARTICIPANT
         self.participant_summary_dao.insert(summary)
 
         # lastModified, hpoId, version is updated on p after being passed in

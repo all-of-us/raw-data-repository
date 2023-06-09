@@ -21,7 +21,7 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import (
     EnrollmentStatus,
     EnrollmentStatusV30,
-    EnrollmentStatusV31,
+    EnrollmentStatusV32,
     PhysicalMeasurementsStatus,
     QuestionnaireStatus,
     SampleStatus,
@@ -69,7 +69,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         )
         self.ascending_biobank_id_query = Query([], OrderBy("biobankId", True), 2, None)
         self.descending_biobank_id_query = Query([], OrderBy("biobankId", False), 2, None)
-        self.enrollment_status_order_query = Query([], OrderBy("enrollmentStatusV3_1", True), 2, None)
+        self.enrollment_status_order_query = Query([], OrderBy("enrollmentStatusV3_2", True), 2, None)
         self.hpo_id_order_query = Query([], OrderBy("hpoId", True), 2, None)
         self.first_name_order_query = Query([], OrderBy("firstName", True), 2, None)
 
@@ -121,7 +121,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         summary = self.participant_summary(participant)
         summary.enrollmentStatus = EnrollmentStatus.INTERESTED
         summary.enrollmentStatusV3_0 = EnrollmentStatusV30.PARTICIPANT
-        summary.enrollmentStatusV3_1 = EnrollmentStatusV31.PARTICIPANT
+        summary.enrollmentStatusV3_2 = EnrollmentStatusV32.PARTICIPANT
         if first_name:
             summary.firstName = first_name
         if last_name:
@@ -212,18 +212,18 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         ps_2.lastName = "Aardvark"
         ps_2.firstName = "Bob"
         ps_2.dateOfBirth = datetime.date(1978, 10, 10)
-        ps_2.enrollmentStatusV3_1 = EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
+        ps_2.enrollmentStatusV3_2 = EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
         self.dao.update(ps_2)
 
         ps_3.lastName = "Jones"
         ps_3.firstName = "Bob"
         ps_3.dateOfBirth = datetime.date(1978, 10, 10)
         ps_3.hpoId = PITT_HPO_ID
-        ps_3.enrollmentStatusV3_1 = EnrollmentStatusV31.PARTICIPANT_PLUS_EHR
+        ps_3.enrollmentStatusV3_2 = EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
         self.dao.update(ps_3)
 
         ps_4.lastName = "Jones"
-        ps_4.enrollmentStatusV3_1 = EnrollmentStatusV31.CORE_PARTICIPANT
+        ps_4.enrollmentStatusV3_2 = EnrollmentStatusV32.CORE_PARTICIPANT
         self.dao.update(ps_4)
 
         self.assert_results(self.no_filter_query, [ps_2, ps_4])
@@ -444,11 +444,11 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
             enrollmentStatus=EnrollmentStatus.INTERESTED,
             enrollmentStatusV3_0=EnrollmentStatusV30.PARTICIPANT,
-            enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT
+            enrollmentStatusV3_2=EnrollmentStatusV32.PARTICIPANT
         )
         self.dao.update_enrollment_status(summary, session=mock.MagicMock())
-        self.assertEqual(EnrollmentStatusV31.PARTICIPANT_PLUS_EHR, summary.enrollmentStatusV3_1)
-        self.assertEqual(ehr_consent_authored_time, summary.enrollmentStatusParticipantPlusEhrV3_1Time)
+        self.assertEqual(EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, summary.enrollmentStatusV3_2)
+        self.assertEqual(ehr_consent_authored_time, summary.enrollmentStatusParticipantPlusEhrV3_2Time)
 
         sample_time = datetime.datetime(2019, 3, 1)
         self.received_samples_mock.return_value = sample_time
@@ -468,17 +468,17 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             selfReportedPhysicalMeasurementsStatus=SelfReportedPhysicalMeasurementsStatus.UNSET,
             enrollmentStatus=EnrollmentStatus.MEMBER,
             enrollmentStatusV3_0=EnrollmentStatusV30.PARTICIPANT,
-            enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT
+            enrollmentStatusV3_2=EnrollmentStatusV32.PARTICIPANT
         )
         self.dao.update_enrollment_status(summary, session=mock.MagicMock())
-        self.assertEqual(EnrollmentStatusV31.CORE_MINUS_PM, summary.enrollmentStatusV3_1)
-        self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPmV3_1Time)
+        self.assertEqual(EnrollmentStatusV32.CORE_MINUS_PM, summary.enrollmentStatusV3_2)
+        self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPmV3_2Time)
 
         summary.clinicPhysicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
         summary.clinicPhysicalMeasurementsFinalizedTime = datetime.datetime(2022, 7, 12)
         self.dao.update_enrollment_status(summary, session=mock.MagicMock())
-        self.assertEqual(EnrollmentStatusV31.CORE_PARTICIPANT, summary.enrollmentStatusV3_1)
-        self.assertEqual(summary.clinicPhysicalMeasurementsFinalizedTime, summary.enrollmentStatusCoreV3_1Time)
+        self.assertEqual(EnrollmentStatusV32.CORE_PARTICIPANT, summary.enrollmentStatusV3_2)
+        self.assertEqual(summary.clinicPhysicalMeasurementsFinalizedTime, summary.enrollmentStatusCoreV3_2Time)
 
     def testUpdateEnrollmentStatusSelfReportedPm(self):
         ehr_consent_authored_time = datetime.datetime(2018, 3, 1)
@@ -502,15 +502,15 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             questionnaireOnLifestyleAuthored=ehr_consent_authored_time,
             questionnaireOnOverallHealthAuthored=ehr_consent_authored_time,
             enrollmentStatusV3_0=EnrollmentStatusV30.PARTICIPANT,
-            enrollmentStatusV3_1=EnrollmentStatusV31.PARTICIPANT
+            enrollmentStatusV3_2=EnrollmentStatusV32.PARTICIPANT
         )
         self.dao.update_enrollment_status(summary, session=mock.MagicMock())
-        self.assertEqual(EnrollmentStatusV31.CORE_MINUS_PM, summary.enrollmentStatusV3_1)
+        self.assertEqual(EnrollmentStatusV32.CORE_MINUS_PM, summary.enrollmentStatusV3_2)
 
         summary.selfReportedPhysicalMeasurementsStatus = SelfReportedPhysicalMeasurementsStatus.COMPLETED
         summary.selfReportedPhysicalMeasurementsAuthored = datetime.datetime(2019, 7, 12)
         self.dao.update_enrollment_status(summary, session=mock.MagicMock())
-        self.assertEqual(EnrollmentStatusV31.CORE_PARTICIPANT, summary.enrollmentStatusV3_1)
+        self.assertEqual(EnrollmentStatusV32.CORE_PARTICIPANT, summary.enrollmentStatusV3_2)
 
     def testDowngradeCoreMinusPm(self):
         """Check that a participant that has achieved CORE_MINUS_PM status isn't downgraded from it"""
@@ -528,20 +528,20 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             enrollmentStatusCoreMinusPMTime=sample_time,
             enrollmentStatus=EnrollmentStatus.CORE_MINUS_PM,
             enrollmentStatusV3_0=EnrollmentStatusV30.CORE_MINUS_PM,
-            enrollmentStatusV3_1=EnrollmentStatusV31.CORE_MINUS_PM
+            enrollmentStatusV3_2=EnrollmentStatusV32.CORE_MINUS_PM
         )
         self.dao.update_enrollment_status(summary, session=mock.MagicMock())
-        self.assertEqual(EnrollmentStatusV31.CORE_MINUS_PM, summary.enrollmentStatusV3_1)
+        self.assertEqual(EnrollmentStatusV32.CORE_MINUS_PM, summary.enrollmentStatusV3_2)
 
     def testCoreStatusRemains(self):
         status_time = datetime.datetime(2020, 6, 1)
         participant_summary = self.data_generator._participant_summary_with_defaults(
-            enrollmentStatusV3_1=EnrollmentStatusV31.CORE_PARTICIPANT,
-            enrollmentStatusCoreV3_1Time=status_time
+            enrollmentStatusV3_2=EnrollmentStatusV32.CORE_PARTICIPANT,
+            enrollmentStatusCoreV3_2Time=status_time
         )
         self.dao.update_enrollment_status(participant_summary, session=mock.MagicMock())
-        self.assertEqual(EnrollmentStatusV31.CORE_PARTICIPANT, participant_summary.enrollmentStatusV3_1)
-        self.assertEqual(status_time, participant_summary.enrollmentStatusCoreV3_1Time)
+        self.assertEqual(EnrollmentStatusV32.CORE_PARTICIPANT, participant_summary.enrollmentStatusV3_2)
+        self.assertEqual(status_time, participant_summary.enrollmentStatusCoreV3_2Time)
 
     def testUpdateEnrollmentStatusLastModified(self):
         """DA-631: enrollment_status update should update last_modified."""
@@ -552,7 +552,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
 
         def reset_summary():
             # change summary so enrollment status will be changed from INTERESTED to MEMBER.
-            summary.enrollmentStatusV3_1 = EnrollmentStatusV31.PARTICIPANT
+            summary.enrollmentStatusV3_2 = EnrollmentStatusV32.PARTICIPANT
             summary.lastModified = test_dt
             summary.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED
             summary.consentForElectronicHealthRecords = QuestionnaireStatus.SUBMITTED
@@ -574,7 +574,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         summary = self.dao.get(participant.participantId)
 
         # Test that status has changed and lastModified is also different
-        self.assertEqual(EnrollmentStatusV31.PARTICIPANT_PLUS_EHR, summary.enrollmentStatusV3_1)
+        self.assertEqual(EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, summary.enrollmentStatusV3_2)
         self.assertNotEqual(test_dt, summary.lastModified)
 
         ## Test Step 2: Validate that update_enrollment_status() changes the lastModified property.
@@ -586,7 +586,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         # update_enrollment_status() does not touch the db, it only modifies object properties.
         self.dao.update_enrollment_status(summary, session=mock.MagicMock())
 
-        self.assertEqual(EnrollmentStatusV31.PARTICIPANT_PLUS_EHR, summary.enrollmentStatusV3_1)
+        self.assertEqual(EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, summary.enrollmentStatusV3_2)
         self.assertNotEqual(test_dt, summary.lastModified)
 
     def testNumberDistinctVisitsCounts(self):

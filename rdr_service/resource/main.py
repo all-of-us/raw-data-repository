@@ -244,6 +244,13 @@ def _build_resource_app():
                       TASK_PREFIX + 'ValidateDateOfBirth',
                       endpoint='check_date_of_birth', methods=['POST'])
 
+    _api.add_resource(
+        cloud_tasks_api.UpdateEnrollmentStatus,
+        TASK_PREFIX + 'UpdateEnrollmentStatus',
+        endpoint='update_enrollment_status',
+        methods=['POST']
+    )
+
     _app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
     _app.add_url_rule('/_ah/stop', endpoint='stop', view_func=flask_stop, methods=["GET"])
 

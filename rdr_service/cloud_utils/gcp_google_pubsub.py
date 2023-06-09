@@ -126,7 +126,7 @@ def submit_pipeline_pubsub_msg(database: str = 'rdr', table: str = None, action:
     validated_pk_values = _validate_pk_values(pk_values, expected_len=len(pk_columns)) or []
     if not len(validated_pk_values):
         log_pipeline_error(f'pipeline: {table} pk_values {pk_values} for pk_columns {pk_columns} failed validation',
-                           response_only=os.environ["UNITTEST_FLAG"] != "1")
+                           response_only=os.environ.get("UNITTEST_FLAG", '0') != "1")
     # If project is not allowed or is localhost, return error message
     if project not in allowed_projects:
         return log_pipeline_error(f'pipeline: project {project} not allowed.', True)
