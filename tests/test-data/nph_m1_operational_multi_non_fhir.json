@@ -18,16 +18,18 @@
 						"Current": "true"
 					}
 				],
-				"Consent": {
-					"Version": 1,
-					"SignedName": "Amir",
-					"StaffName": "Ellie",
-					"StaffSignedDate": "2023-01-01T00:00:00-04:00",
-					"FileName": "Contsent_12.pdf",
-					"Module1Tissue": "Deny",
-					"Module1ConsentRecontact": "Permit",
-					"ParticipantSignedDate": "2023-01-01T00:00:00-04:00"
-				},
+				"Consent": [
+					{
+						"Version": 1,
+						"SignedName": "Amir",
+						"StaffName": "Ellie",
+						"StaffSignedDate": "2022-02-02T00:00:00-04:00",
+						"FileName": "Contsent_v1.pdf",
+						"Module1Tissue": "Deny",
+						"Module1ConsentRecontact": "Permit",
+						"ParticipantSignedDate": "2022-02-02T00:00:00-04:00"
+					}
+				],
 				"Pairing": {
 					"Site": "nph-site-nphxyz",
 					"Date": "2023-01-01T00:00:00-04:00"
@@ -47,16 +49,18 @@
 						"Current": "true"
 					}
 				],
-				"Consent": {
-					"Version": 1,
-					"SignedName": null,
-					"StaffName": null,
-					"StaffSignedDate": null,
-					"FileName": null,
-					"Module1Tissue": null,
-					"Module1ConsentRecontact": null,
-					"ParticipantSignedDate": null
-				},
+				"Consent": [
+					{
+						"Version": 1,
+						"SignedName": null,
+						"StaffName": null,
+						"StaffSignedDate": null,
+						"FileName": null,
+						"Module1Tissue": null,
+						"Module1ConsentRecontact": null,
+						"ParticipantSignedDate": null
+					}
+				],
 				"Pairing": {
 					"Site": "nph-site-nphxyz",
 					"Date": "2023-01-01T00:00:00-04:00"

@@ -368,7 +368,6 @@ class PostIntakePayloadFHIR(PostIntakePayload):
 
             self.participant_response.append({'nph_participant_id': participant_id})
 
-            # fhir + json
             applicable_entries = [
                 obj for obj in resource['entry'] if obj['resource']['resourceType'].lower() in self.applicable_entries
             ]
@@ -460,8 +459,6 @@ class PostIntakePayloadJSON(PostIntakePayload):
                              f' {self.bundle_identifier}')
 
     def extract_activity_data(self, entry: List[dict], activity_name: str = None) -> List[ActivityData]:
-        # activity_source = None
-        # activity_entries = [entry] if type(entry) is not list else entry
         current_entry_activity_data = []
 
         try:
@@ -471,25 +468,17 @@ class PostIntakePayloadJSON(PostIntakePayload):
                 raise BadRequest(f'Cannot reconcile activity type bundle_id: {self.bundle_identifier}')
 
             # activity_source_map = {
-            #     'enrollment': 'Status',
-            #     'pairing': 'Site'
-            # }
-            #
-            # for activity in activity_entries:
+            #     'enrollment': 'Status'
+            # }[activity_name]
+
+            # for _ in activity_entries:
             #     current_entry_activity_data.append(
             #         ActivityData(
             #             id=current_activity[0].id,
             #             name=activity_name,
-            #             source=activity_source
+            #             source=f'{self.current_module}_{activity_source_map}'.lower()
             #         )
             #     )
-            # if entry['resource'].get('class'):
-            #     activity_name = activity_source = entry['resource']['class']['code']
-            #
-            #
-            # if entry['resource'].get('serviceType'):
-            #     activity_source = entry['resource']['serviceType']['coding'][0]['code']
-
             return current_entry_activity_data
 
         except KeyError as e:
@@ -529,6 +518,7 @@ class PostIntakePayloadJSON(PostIntakePayload):
                                             if k.lower() in self.applicable_entries}
 
                 for key, entry in applicable_entries.items():
+                    # activity_entries = [entry] if type(entry) is not list else entry
                     activity_name = key.lower().replace('status', '')
                     # should be list of activity_data
                     activity_data_list = self.extract_activity_data(
