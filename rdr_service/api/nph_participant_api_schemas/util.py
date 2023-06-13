@@ -111,14 +111,16 @@ class NphParticipantData:
                                                    ) -> Union[Optional[str], Any]:
 
         if not order_samples:
-            return 'NULL'
+            return []
 
         order_samples = order_samples.get('orders_sample_json')
         for sample in order_samples:
+            sample['biobankStatus'] = []
+            if not order_biobank_samples:
+                continue
+
             stored_samples = list(filter(lambda x: x.get('orderSampleID') == sample.get('sampleID'),
                                          order_biobank_samples.get('orders_sample_biobank_json')))
-            if not stored_samples:
-                continue
 
             sample['biobankStatus'] = [
                 {

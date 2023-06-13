@@ -86,6 +86,7 @@ class SmsWorkflow:
     def export_data_to_cloud(self, source_data):
         # Use SQL exporter
         exporter = SqlExporter(self.file_transfer_def['bucket'])
+        self.file_path = f"{self.file_transfer_def['bucket']}/{self.file_transfer_def['file_name']}"
 
         with exporter.open_cloud_writer(self.file_transfer_def['file_name']) as writer:
             writer.write_header(source_data[0].keys())
@@ -124,7 +125,7 @@ class SmsWorkflow:
 
             try:
                 self.process_map[self.job]()
-                controller.job_run.result = controller.run_result_enum.SUCCESS
+                controller.job_run_result = controller.run_result_enum.SUCCESS
             except KeyError:
                 raise KeyError
 
@@ -142,6 +143,13 @@ class SmsWorkflow:
             self.file_dao = None
 
         if self.file_dao:
+            # look up if any rows exist already for the file
+            records = self.file_dao.get_from_filepath(self.file_path)
+
+            if records:
+                logging.warning(f'File already ingested: {self.file_path}')
+                return
+
             data_to_ingest = self.read_data_from_cloud_manifest(self.file_path)
 
             self.validate_columns(data_to_ingest["fieldnames"], self.file_dao)

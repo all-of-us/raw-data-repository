@@ -3,7 +3,7 @@ from datetime import datetime
 from rdr_service.dao import database_factory
 from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
     PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
-    DeactivationEvent, ParticipantOpsDataElement, OrderedSample
+    DeactivationEvent, ParticipantOpsDataElement, OrderedSample, StoredSample, Order, StudyCategory
 from rdr_service.ancillary_study_resources.nph import enums
 from rdr_service.model.study_nph_sms import SmsJobRun, SmsSample, SmsBlocklist, SmsN0, SmsN1Mc1
 
@@ -227,11 +227,38 @@ class NphSmsDataGenerator(NphBaseGenerator):
         return obj
 
     @staticmethod
+    def _order(**kwargs):
+        return Order(**kwargs)
+
+    def create_database_order(self, **kwargs):
+        obj = self._order(**kwargs)
+        self._commit_to_database(obj)
+        return obj
+
+    @staticmethod
+    def _study_category(**kwargs):
+        return StudyCategory(**kwargs)
+
+    def create_database_study_category(self, **kwargs):
+        obj = self._study_category(**kwargs)
+        self._commit_to_database(obj)
+        return obj
+
+    @staticmethod
     def _ordered_sample(**kwargs):
         return OrderedSample(**kwargs)
 
     def create_database_ordered_sample(self, **kwargs):
         obj = self._ordered_sample(**kwargs)
+        self._commit_to_database(obj)
+        return obj
+
+    @staticmethod
+    def _stored_sample(**kwargs):
+        return StoredSample(**kwargs)
+
+    def create_database_stored_sample(self, **kwargs):
+        obj = self._stored_sample(**kwargs)
         self._commit_to_database(obj)
         return obj
 

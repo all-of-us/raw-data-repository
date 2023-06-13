@@ -189,7 +189,8 @@ class GenFakeOrderedSample:
             return "mL"
         return ""
 
-    def create_nph_ordered_sample(self, order_id: int, parent_sample_id: Optional[int] = None) -> OrderedSample:
+    def create_nph_ordered_sample(self, order_id: int, parent_sample_id: Optional[int] = None, aliquot: bool = True)\
+        -> OrderedSample:
         specimen_identifiers = [
             "SSTS1",
             "LHPSTP1",
@@ -218,7 +219,7 @@ class GenFakeOrderedSample:
         finalized_dt = self.faker.date_between_dates(collected_dt, collected_dt + timedelta(days=2))
         collected = datetime(day=collected_dt.day, month=collected_dt.month, year=collected_dt.year)
         finalized = datetime(day=finalized_dt.day, month=finalized_dt.month, year=finalized_dt.year)
-        aliquot_id = str(self.faker.random_int(1, 10E5))
+        aliquot_id = str(self.faker.random_int(1, 10E5)) if aliquot else None
         identifier = choice(specimen_identifiers)
         container = ''.join(self.faker.random_letters(length=128))
         volume = ''.join([str(self.faker.random_int(1, 99)), volume_units])
@@ -245,12 +246,14 @@ class GenFakeOrderedSample:
             session.commit()
             return nph_ordered_sample
 
-    def create_nph_ordered_sample_with_parent_sample_id(self, order_id: int) -> Tuple[OrderedSample, OrderedSample]:
+    def create_nph_ordered_sample_with_parent_sample_id(self, order_id: int, aliquot: bool = True)\
+        -> Tuple[OrderedSample, OrderedSample]:
         parent_ordered_sample = self.create_nph_ordered_sample(order_id=order_id)
         child_ordered_sample = (
             self.create_nph_ordered_sample(
                     order_id=order_id,
-                    parent_sample_id=parent_ordered_sample.id
+                    parent_sample_id=parent_ordered_sample.id,
+                    aliquot=aliquot
                 )
         )
         return parent_ordered_sample, child_ordered_sample
@@ -485,9 +488,12 @@ def generate_fake_ordered_samples(
 ) -> Iterable[OrderedSample]:
     gen_fake_ordered_samples = GenFakeOrderedSample()
     for fake_order in fake_orders:
+        aliquot = True
         for _ in range(3):
+            aliquot = not aliquot
             gen_fake_ordered_samples.create_nph_ordered_sample_with_parent_sample_id(
-                order_id=fake_order.id
+                order_id=fake_order.id,
+                aliquot=aliquot
             )
     nph_ordered_sample_dao = NphOrderedSampleDao()
     return list(nph_ordered_sample_dao.get_all())
@@ -511,9 +517,10 @@ def generate_fake_stored_samples(
     gen_fake_stored_sample = GenFakeStoredSample()
     for fake_participant in fake_participants:
         for ordered_sample in grouped_ordered_samples[fake_participant.id]:
+            sample_id = ordered_sample.aliquot_id if ordered_sample.aliquot_id else ordered_sample.nph_sample_id
             stored_samples.append(
                 gen_fake_stored_sample.create_nph_stored_sample(
-                    nph_participant=fake_participant, sample_id=ordered_sample.nph_sample_id
+                    nph_participant=fake_participant, sample_id=sample_id
                 )
             )
     return stored_samples

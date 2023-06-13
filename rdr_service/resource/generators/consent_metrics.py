@@ -68,7 +68,9 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                              or rec.consentForElectronicHealthRecordsAuthored,
             ConsentType.CABOR: rec.consentForCABoRAuthored,
             ConsentType.GROR: rec.consentForGenomicsRORAuthored,
-            ConsentType.PRIMARY_UPDATE: rec.consentForStudyEnrollmentAuthored
+            ConsentType.PRIMARY_UPDATE: rec.consentForStudyEnrollmentAuthored,
+            ConsentType.ETM: rec.consentForEtMAuthored,
+
         }
         default_authored = consent_authored_values.get(rec.type, None)
         consent_authored_values[rec.type] = rec.questionnaire_response_authored or default_authored
@@ -165,7 +167,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
         return False
 
     @classmethod
-    def is_valid_dob(cls, consent_authored : datetime, dob: date) -> bool:
+    def is_valid_dob(cls, consent_authored: datetime, dob: date) -> bool:
         """
         Verifies if a date of birth (date object) value is valid / in range relative to when participant consented
         :param consent_authored:  Primary consent authored (datetime)
@@ -217,6 +219,8 @@ class ConsentMetricGenerator(generators.BaseGenerator):
             """
             if (
                 resource['sync_status'] != str(ConsentSyncStatus.NEEDS_CORRECTING)
+                # Don't check pairing details against ETM or WEAR consents.
+                or resource['consent_type'] in ['ETM', 'WEAR']
                 # participant_id extracted from resource data is a string with leading 'P'; convert to int
                 or (self.pairing_at_consent(int(resource.get('participant_id')[1:]), authored) != 'VA'
                     and resource.get('hpo') != 'VA')
@@ -379,6 +383,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                                   ParticipantSummary.consentForElectronicHealthRecordsFirstYesAuthored,
                                   ParticipantSummary.consentForElectronicHealthRecordsAuthored,
                                   ParticipantSummary.consentForGenomicsRORAuthored,
+                                  ParticipantSummary.consentForEtMAuthored,
                                   Participant.participantOrigin,
                                   Participant.isGhostId,
                                   Participant.isTestParticipant,
@@ -559,7 +564,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         consent = ConsentType(rsc_data.get('consent_type'))
         error_details = {
             'Participant': rsc_data.get('participant_id'), 'Consent Type': str(consent),
-            'Authored On': authored[consent].strftime("%Y-%m-%dT%H:%M:%S") if authored else '',
+            'Authored On': authored[consent].strftime("%Y-%m-%dT%H:%M:%S") if authored[consent] else '(undetermined)',
             'Error Detected': METRICS_ERROR_TYPES[err_key], 'DRC Tracking ID': rec.id,
         }
         # All but 'missing file' reports will contain details on the file that failed validation
@@ -638,9 +643,10 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
                 continue
 
             # ConsentMetric resource generator provides data dict used in reporting.
-            rsc_data = self.make_resource(rec.id, consent_validation_rec=rec).get_data()
-            if rsc_data.get('ignore', False) or rsc_data.get('test_participant', False):
-                continue
+            if not rec.isTestParticipant:
+                rsc_data = self.make_resource(rec.id, consent_validation_rec=rec).get_data()
+                if rsc_data.get('ignore', False) or rsc_data.get('test_participant', False):
+                    continue
 
             # Generate a report entry for any validation error that was detected for this consent
             for err_key in METRICS_ERROR_TYPES.keys():
@@ -670,8 +676,11 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
             # ~ any() construct will produce results where no related consent_error_report records exist
             # TODO:  Revise if/when permanent method for tracking outstanding DOB issues is implemented, update
             # query to combine those with the NEEDS_CORRECTING consent_file records
-            query = session.query(ConsentFile.id).filter(ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING,
-                                                         ~ConsentFile.consent_error_report.any())
+            query = session.query(ConsentFile.id
+                ).join(Participant).filter(Participant.isGhostId.isnot(True),
+                                           Participant.isTestParticipant.isnot(True),
+                                           ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING,
+                                           ~ConsentFile.consent_error_report.any())
             results = query.all()
             if results:
                 unreported_error_ids = [r.id for r in results]
