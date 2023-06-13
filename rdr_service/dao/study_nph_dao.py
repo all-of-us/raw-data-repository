@@ -189,12 +189,11 @@ class NphParticipantDao(BaseDao):
                             ),
                             'kitID', case(
                                 [
-                                    (OrderedSample.identifier.startswith("ST"), Order.nph_order_id),
-                                    (OrderedSample.test.startswith("ST"), Order.nph_order_id),
+                                    (OrderedSample.identifier.ilike("ST%"), Order.nph_order_id),
+                                    (OrderedSample.test.ilike("ST%"), Order.nph_order_id),
                                 ],
                                 else_=None
-                            ),
-                            'biobankStatus', None
+                            )
                         )
                     ), type_=JSON
                 ).label('orders_sample_status'),
