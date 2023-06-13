@@ -15,10 +15,11 @@ from rdr_service.dao.study_nph_dao import NphParticipantDao, NphDefaultBaseDao
 from rdr_service.model.study_nph import (
     ConsentEventType, Participant as NphParticipant, Site as NphSite, OrderedSample, Order
 )
+from rdr_service.model.study_nph_enums import StoredSampleStatus
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.main import app
 from tests.helpers.unittest_base import BaseTestCase
-from rdr_service.data_gen.generators.nph import NphDataGenerator
+from rdr_service.data_gen.generators.nph import NphDataGenerator, NphSmsDataGenerator
 import rdr_service.api.nph_participant_api as api
 from rdr_service import config, clock
 from rdr_service.data_gen.generators.study_nph import (
@@ -72,6 +73,7 @@ class NphParticipantAPITest(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.nph_data_gen = NphDataGenerator()
+        self.sms_data_gen = NphSmsDataGenerator()
         self.rex_study_dao = RexStudyDao()
         self.rex_mapping_dao = RexParticipantMappingDao()
         self.participant_summary_dao = ParticipantSummaryDao()
@@ -597,6 +599,64 @@ class NphParticipantAPITest(BaseTestCase):
             self.assertEqual(12, len(biospecimens))
             for biospecimen in biospecimens:
                 self.assertIsNotNone(biospecimen.get("biobankStatus")[0].get("status"))
+
+    def test_nph_biospecimen_duplicate_stored_samples(self):
+        self.add_consents(nph_participant_ids=self.base_participant_ids)
+        # Create test orders, ordered samples, and stored samples
+        category = self.sms_data_gen.create_database_study_category(
+            type_label="Test",
+        )
+
+        order = self.sms_data_gen.create_database_order(
+            nph_order_id="100",
+            participant_id=100000000,
+            notes="Test",
+            category_id=category.id
+
+        )
+        self.sms_data_gen.create_database_ordered_sample(
+            order_id=order.id,
+            aliquot_id="1234",
+        )
+        self.sms_data_gen.create_database_ordered_sample(
+            order_id=order.id,
+            aliquot_id="5678",
+        )
+        for _ in range(5):
+            self.sms_data_gen.create_database_stored_sample(
+                biobank_id=1100000000,
+                sample_id="1234",
+                lims_id="142857"
+            )
+        for _ in range(5):
+            self.sms_data_gen.create_database_stored_sample(
+                biobank_id=1100000000,
+                sample_id="5678",
+                lims_id="857142"
+            )
+        # Add another status
+        self.sms_data_gen.create_database_stored_sample(
+            biobank_id=1100000000,
+            sample_id="5678",
+            lims_id="857142",
+            status=StoredSampleStatus.DISPOSED
+        )
+        # Call api
+        gql_query = """
+            { participant (nphId: "100000000") {totalCount resultCount pageInfo
+           { startCursor  endCursor hasNextPage }  edges { node { nphBiospecimens { sampleID biobankStatus { limsID } } } } } }
+        """
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=gql_query)
+        result = json.loads(executed.data.decode('utf-8'))
+
+        participant = result.get('participant').get('edges')[0].get('node')
+
+        self.assertEqual(2, len(participant.get('nphBiospecimens')))
+        for specimen in participant.get('nphBiospecimens'):
+            if specimen['sampleID'] == '1234':
+                self.assertEqual(1, len(specimen.get('biobankStatus')))
+            if specimen['sampleID'] == '5678':
+                self.assertEqual(2, len(specimen.get('biobankStatus')))
 
     def test_nph_biospecimen_for_participant_with_pagination(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)

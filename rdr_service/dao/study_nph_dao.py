@@ -8,7 +8,7 @@ from protorpc import messages
 from werkzeug.exceptions import BadRequest, NotFound
 
 from sqlalchemy.orm import Query, aliased
-from sqlalchemy import exc, func, case, or_
+from sqlalchemy import exc, func, case, and_
 from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.study_nph import (
@@ -116,8 +116,37 @@ class NphParticipantDao(BaseDao):
     def get_orders_samples_subquery(self):
         parent_study_category = aliased(StudyCategory)
         parent_study_category_module = aliased(StudyCategory)
+        stored_sample_alias = aliased(StoredSample)
 
         with self.session() as session:
+            stored_samples_subquery = session.query(
+                Participant.id.label('stored_sample_pid'),
+                func.json_object(
+                    'orders_sample_biobank_json',
+                    func.json_arrayagg(
+                        func.json_object(
+                            'limsID', StoredSample.lims_id,
+                            'biobankModified', StoredSample.biobank_modified,
+                            'status', StoredSample.status,
+                            'orderSampleID', StoredSample.sample_id
+                        )
+                    ), type_=JSON
+                ).label('orders_sample_biobank_status')
+            ).join(
+                StoredSample,
+                StoredSample.biobank_id == Participant.biobank_id
+            ).outerjoin(
+                stored_sample_alias,
+                and_(
+                    StoredSample.biobank_id == stored_sample_alias.biobank_id,
+                    stored_sample_alias.sample_id == StoredSample.sample_id,
+                    stored_sample_alias.status == StoredSample.status,
+                    StoredSample.id < stored_sample_alias.id
+                )
+            ).filter(
+                stored_sample_alias.id.is_(None)
+            ).group_by(Participant.id).subquery()
+
             return session.query(
                 Participant.id.label('orders_samples_pid'),
                 func.json_object(
@@ -169,22 +198,7 @@ class NphParticipantDao(BaseDao):
                         )
                     ), type_=JSON
                 ).label('orders_sample_status'),
-                func.json_object(
-                    'orders_sample_biobank_json',
-                    func.json_arrayagg(
-                        func.json_object(
-                            'limsID', StoredSample.lims_id,
-                            'biobankModified', StoredSample.biobank_modified,
-                            'status', StoredSample.status,
-                            'orderSampleID', case(
-                                [
-                                    (OrderedSample.aliquot_id.isnot(None), OrderedSample.aliquot_id),
-                                ],
-                                else_=OrderedSample.nph_sample_id
-                            )
-                        )
-                    ), type_=JSON
-                ).label('orders_sample_biobank_status')
+                stored_samples_subquery.c.orders_sample_biobank_status
             ).join(
                 Order,
                 Order.participant_id == Participant.id
@@ -201,11 +215,8 @@ class NphParticipantDao(BaseDao):
                 parent_study_category_module,
                 parent_study_category_module.id == parent_study_category.parent_id
             ).outerjoin(
-                StoredSample,
-                or_(
-                    StoredSample.sample_id == OrderedSample.aliquot_id,
-                    StoredSample.sample_id == OrderedSample.nph_sample_id
-                )
+                stored_samples_subquery,
+                stored_samples_subquery.c.stored_sample_pid == Participant.id
             ).group_by(Participant.id).subquery()
 
 
