@@ -14,7 +14,7 @@ import sqlalchemy as sa
 import rdr_service.model.utils
 from sqlalchemy.dialects import mysql
 
-from rdr_service.model.study_nph_enums import IncidentStatus, IncidentType
+from rdr_service.ancillary_study_resources.nph.enums import IncidentStatus, IncidentType
 
 # revision identifiers, used by Alembic.
 revision = 'c595aaa99385'

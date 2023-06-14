@@ -21,8 +21,7 @@ from rdr_service.participant_enums import MetricSetType, MetricsKey, GenderIdent
 from rdr_service.model.base import add_table_history_table, drop_table_history_table
 from rdr_service.model.code import CodeType
 from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
-from rdr_service.model.study_nph_enums import StoredSampleStatus
-
+from rdr_service.ancillary_study_resources.nph.enums import StoredSampleStatus
 
 # revision identifiers, used by Alembic.
 revision = '769abb4ef39a'

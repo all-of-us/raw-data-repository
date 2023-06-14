@@ -15,9 +15,9 @@ from rdr_service.model.study_nph import (
     SampleUpdate,
     BiobankFileExport,
     SampleExport,
-    StoredSample,
-    StoredSampleStatus
+    StoredSample
 )
+from rdr_service.ancillary_study_resources.nph.enums import StoredSampleStatus
 from rdr_service.dao.rex_dao import RexStudyDao, RexParticipantMappingDao
 from rdr_service.dao.participant_dao import ParticipantDao as RdrParticipantDao
 from rdr_service.dao.study_nph_dao import (

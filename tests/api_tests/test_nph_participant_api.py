@@ -5,7 +5,7 @@ from collections import defaultdict
 from graphql import GraphQLSyntaxError
 from datetime import datetime
 
-from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
+from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, StoredSampleStatus
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.rex_dao import RexStudyDao, RexParticipantMappingDao
@@ -15,7 +15,6 @@ from rdr_service.dao.study_nph_dao import NphParticipantDao, NphDefaultBaseDao
 from rdr_service.model.study_nph import (
     ConsentEventType, Participant as NphParticipant, Site as NphSite, OrderedSample, Order
 )
-from rdr_service.model.study_nph_enums import StoredSampleStatus
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.main import app
 from tests.helpers.unittest_base import BaseTestCase
