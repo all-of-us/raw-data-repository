@@ -293,6 +293,7 @@ class WithdrawalEvent(NphBase):
     event_authored_time = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    module = Column(Enum(ModuleType), nullable=False)
 
 
 event.listen(WithdrawalEvent, "before_insert", model_insert_listener)
@@ -309,6 +310,7 @@ class DeactivationEvent(NphBase):
     event_authored_time = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    module = Column(Enum(ModuleType), nullable=False)
 
 
 event.listen(DeactivationEvent, "before_insert", model_insert_listener)
