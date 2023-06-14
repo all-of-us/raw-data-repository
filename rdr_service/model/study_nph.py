@@ -5,7 +5,7 @@ from sqlalchemy.dialects.mysql import TINYINT, JSON
 from sqlalchemy.orm import relation, relationship
 
 from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, ParticipantOpsElementTypes, \
-    StoredSampleStatus, IncidentStatus, IncidentType
+    StoredSampleStatus, IncidentStatus, IncidentType, DietType, DietStatus, ModuleType
 from rdr_service.model.base import NphBase, model_insert_listener, model_update_listener
 from rdr_service.model.utils import UTCDateTime, Enum
 
@@ -315,22 +315,24 @@ event.listen(DeactivationEvent, "before_insert", model_insert_listener)
 event.listen(DeactivationEvent, "before_update", model_update_listener)
 
 
-# class DietEvent(NphBase):
-#     __tablename__ = "deactivation_event"
-#
-#     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-#     created = Column(UTCDateTime)
-#     modified = Column(UTCDateTime)
-#     ignore_flag = Column(TINYINT, default=0)
-#     event_authored_time = Column(UTCDateTime)
-#     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-#     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-#     external_id = Column(String(32))
-#     diet_name
-#
-#
-# event.listen(DeactivationEvent, "before_insert", model_insert_listener)
-# event.listen(DeactivationEvent, "before_update", model_update_listener)
+class DietEvent(NphBase):
+    __tablename__ = "diet_event"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    event_authored_time = Column(UTCDateTime)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    external_id = Column(String(32))
+    module = Column(Enum(ModuleType), nullable=False)
+    diet_name = Column(Enum(DietType), nullable=False)
+    status = Column(Enum(DietStatus), nullable=False)
+
+
+event.listen(DietEvent, "before_insert", model_insert_listener)
+event.listen(DietEvent, "before_update", model_update_listener)
 
 
 class SampleUpdate(NphBase):

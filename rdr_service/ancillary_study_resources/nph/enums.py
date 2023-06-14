@@ -47,6 +47,7 @@ class ParticipantOpsElementTypes(messages.Enum):
 
 class StoredSampleStatus(messages.Enum):
     """Status of NPH StoredSample"""
+
     UNSET = 0
     RECEIVED = 1
     SHIPPED = 2
@@ -54,7 +55,7 @@ class StoredSampleStatus(messages.Enum):
 
 
 class ModuleType(messages.Enum):
-    UNSET = 0
+
     MODULE_1 = 1
     MODULE_2 = 2
     MODULE_3 = 3
@@ -68,4 +69,21 @@ class IncidentStatus(messages.Enum):
 
 
 class IncidentType(messages.Enum):
+
     UNSET = 0
+
+
+class DietType(messages.Enum):
+
+    BLUE = 1
+    ORANGE = 2
+    PURPLE = 3
+    LMT = 4
+
+
+class DietStatus(messages.Enum):
+
+    STARTED = 1
+    COMPLETED = 2
+    DISCONTINUED = 3
+
