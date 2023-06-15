@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import mock
 import pytz
 from typing import Optional
@@ -214,7 +214,7 @@ class RetentionEligibleImportTest(BaseTestCase):
             samplesToIsolateDNA=1
         )
 
-        retention_window = datetime.timedelta(days=100)
+        retention_window = timedelta(days=100)
         in_eighteen_month = datetime.now() - retention_window
         ps3 = self.data_generator.create_database_participant_summary(
             consentForStudyEnrollmentAuthored=TIME_1,
