@@ -1,10 +1,12 @@
 
 from sqlalchemy.orm import Session
 
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.participant_enums import RetentionType
+from rdr_service.resource import generators
 
 
 class RetentionEligibleMetricsDao(UpdatableDao):
@@ -17,7 +19,7 @@ class RetentionEligibleMetricsDao(UpdatableDao):
         """
         Used to check the db for existing metrics objects for a participant. If a metrics object exists, then its
         id is returned as the first value. The second parameter is used to indicate whether the database has the
-        same values, or if an operation is needed to bring the new data into the database.
+        same values, returning True if an upsert is needed to bring the new data into the database.
         """
 
         db_result = session.query(RetentionEligibleMetrics).filter(
@@ -46,10 +48,17 @@ class RetentionEligibleMetricsDao(UpdatableDao):
         Rebuild Retention Eligible Metrics resource records
         :param pids: List of participant ids.
         """
-        task = GCPCloudTask()
-        params = {'batch': pids}
-        task.execute('batch_rebuild_retention_eligible_task', queue='resource-tasks', payload=params,
-                     in_seconds=30, project_id='all-of-us-rdr-prod')
+        # Rebuild participant for BigQuery
+        if GAE_PROJECT == 'localhost':
+            res_gen = generators.RetentionEligibleMetricGenerator()
+            for pid in pids:
+                res = res_gen.make_resource(pid)
+                res.save()
+        else:
+            task = GCPCloudTask()
+            params = {'batch': pids}
+            task.execute('batch_rebuild_retention_eligible_task', queue='resource-tasks', payload=params,
+                         in_seconds=30)
 
     def upsert_all_with_session(self, session, retention_eligible_metrics_records):
         update_queue = list()
