@@ -1,11 +1,9 @@
 
 from sqlalchemy.orm import Session
 
-from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
-from rdr_service.resource import generators
 from rdr_service.participant_enums import RetentionType
 
 
