@@ -15,7 +15,6 @@ def nph_participant():
     Return nph_participant information for all records or a subset based
     on the awardee parameter.
     """
-
     try:
         query = request.get_data().decode('utf8')
         validate_error = validate_query(query)

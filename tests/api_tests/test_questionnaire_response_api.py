@@ -1,9 +1,10 @@
 import datetime
-from dateutil.parser import parse
 import http.client
 import json
 import mock
 import pytz
+
+from dateutil.parser import parse
 from sqlalchemy import or_
 from sqlalchemy.orm.session import make_transient
 
@@ -23,6 +24,7 @@ from rdr_service.model.code import Code
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
+from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.participant_summary import ParticipantSummary, WithdrawalStatus
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
@@ -254,6 +256,11 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
                          )
         self.assertEqual(response["entry"][0]["resource"]["entry"][1]['resource']['effectiveDateTime'],
                          '2022-06-01T18:23:57')
+
+        measurement: PhysicalMeasurements = self.session.query(PhysicalMeasurements).filter(
+            PhysicalMeasurements.participantId == from_client_participant_id(participant_id)
+        ).one()
+        self.assertTrue(measurement.meetsCoreDataRequirements)
 
     def test_remote_pm_metric_response(self):
         participant_id = self.create_participant()
@@ -736,7 +743,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -886,7 +893,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -973,7 +980,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1027,7 +1034,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1167,7 +1174,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1344,7 +1351,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1388,7 +1395,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1815,7 +1822,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_1Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
         })
         self.assertJsonResponseMatches(expected, summary)
 

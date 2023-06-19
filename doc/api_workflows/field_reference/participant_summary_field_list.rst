@@ -9,7 +9,6 @@ Participant Summary Field List
                       incomeId, clinicPhysicalMeasurementsCreatedSiteId, clinicPhysicalMeasurementsFinalizedSiteId,
                       organizationId, siteId, biospecimenSourceSiteId, biospecimenCollectedSiteId,
                       biospecimenProcessedSiteId, biospecimenFinalizedSiteId, participant, enrollmentSiteId,
-                      enrollmentStatusV3_1, enrollmentStatusParticipantV3_1Time,
-                      enrollmentStatusParticipantPlusEhrV3_1Time, enrollmentStatusParticipantPlusBasicsV3_1Time,
-                      enrollmentStatusCoreMinusPmV3_1Time, enrollmentStatusCoreV3_1Time,
-                      enrollmentStatusParticipantPlusBaselineV3_1Time
+                      enrollmentStatusV3_2, enrollmentStatusParticipantV3_2Time,
+                      enrollmentStatusParticipantPlusEhrV3_2Time, enrollmentStatusEnrolledParticipantV3_2Time,
+                      enrollmentStatusCoreMinusPmV3_2Time, enrollmentStatusCoreV3_2Time

@@ -1,3 +1,4 @@
+from operator import and_
 from typing import List, Dict
 from sqlalchemy import func
 
@@ -12,6 +13,18 @@ class SmsManifestMixin:
     def insert_bulk(self, batch: List[Dict]) -> None:
         with self.session() as session:
             session.bulk_insert_mappings(self.model_type, batch)
+
+    def get_from_filepath(self, filepath) -> List:
+        if not hasattr(self.model_type, 'file_path'):
+            return []
+
+        with self.session() as session:
+            return session.query(
+                self.model_type
+            ).filter(
+                self.model_type.file_path == filepath,
+                self.model_type.ignore_flag == 0,
+            ).all()
 
 
 class SmsManifestSourceMixin:
@@ -89,7 +102,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
         bucket = "test-bucket-unc-meta"
         env_split = config.GAE_PROJECT.split('-')[-1]
         if env_split in ['prod', 'stable', 'sandbox']:
-            bucket = config.NPH_SMS_BUCKETS.get(recipient)
+            bucket = config.NPH_SMS_BUCKETS.get(env_split).get(recipient)
 
         recipient_xfer_dict = {
             "bucket": bucket,
@@ -141,8 +154,25 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             ).outerjoin(
                 OrderedSample,
                 SmsSample.sample_id == OrderedSample.nph_sample_id
+            ).outerjoin(
+                SmsBlocklist,
+                and_(
+                    SmsSample.sample_id == SmsBlocklist.identifier_value,
+                    SmsBlocklist.identifier_type == "sample_id"
+                )
+            ).outerjoin(
+                SmsN1Mc1,
+                and_(
+                    SmsSample.sample_id == SmsN1Mc1.sample_id,
+                    SmsN1Mc1.ignore_flag == 0
+                )
             )
             if kwargs.get("recipient"):
                 query = query.filter(SmsSample.destination == kwargs['recipient'])
+
+            query = query.filter(
+                SmsBlocklist.id.is_(None),
+                SmsN1Mc1.id.is_(None)
+            )
 
             return query.all()

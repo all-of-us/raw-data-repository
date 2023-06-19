@@ -1,6 +1,7 @@
 import collections
 import logging
 import os
+from typing import Optional
 
 import pytz
 import sqlalchemy
@@ -1121,14 +1122,24 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             )
             return record.first()
 
+    @classmethod
+    def get_member_by_participant_id_with_session(
+        cls, session, participant_id, genome_type=config.GENOME_TYPE_ARRAY
+    ) -> GenomicSetMember:
+        return session.query(
+            GenomicSetMember
+        ).filter(
+            GenomicSetMember.participantId == participant_id,
+            GenomicSetMember.genomeType == genome_type
+        ).first()
+
     def get_member_by_participant_id(self, participant_id, genome_type=config.GENOME_TYPE_ARRAY):
         with self.session() as session:
-            return session.query(
-                    GenomicSetMember
-                ).filter(
-                  GenomicSetMember.participantId == participant_id,
-                  GenomicSetMember.genomeType == genome_type
-            ).first()
+            return self.get_member_by_participant_id_with_session(
+                session=session,
+                participant_id=participant_id,
+                genome_type=genome_type
+            )
 
     def get_record_from_attr(self, *, attr, value):
         with self.session() as session:
@@ -1320,6 +1331,26 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                     GenomicSetMember.sampleId.in_(sample_list)
                 )
             return members.all()
+
+    @classmethod
+    def get_wgs_pass_date(cls, session, participant_id) -> Optional[datetime]:
+        aw4_job_run = session.query(
+            GenomicJobRun.startTime
+        ).select_from(
+            GenomicSetMember
+        ).join(
+            GenomicJobRun,
+            GenomicJobRun.jobId == GenomicSetMember.aw4ManifestJobRunID
+        ).filter(
+            GenomicSetMember.participantId == participant_id,
+            GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+            GenomicSetMember.qcStatus == GenomicQcStatus.PASS
+        ).first()
+
+        if aw4_job_run:
+            return aw4_job_run.startTime
+
+        return None
 
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):

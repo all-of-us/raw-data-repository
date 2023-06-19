@@ -1,11 +1,13 @@
 import csv
 import datetime
 import os
+from unittest import mock
 
 from rdr_service import api_util, clock
 from rdr_service.api_util import open_cloud_file
-from rdr_service.dao.study_nph_sms_dao import SmsSampleDao, SmsN0Dao, SmsN1Mc1Dao
+from rdr_service.dao.study_nph_sms_dao import SmsSampleDao, SmsN0Dao, SmsN1Mc1Dao, SmsJobRunDao
 from rdr_service.data_gen.generators.nph import NphSmsDataGenerator
+from rdr_service.workflow_management.nph.sms_pipeline import n1_generation
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.workflow_management.nph.sms_workflows import SmsWorkflow
 from tests.test_data import data_path
@@ -16,6 +18,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         super(NphSmsWorkflowsTest, self).__init__(*args, **kwargs)
         self.test_bucket = "test-bucket"
         self.TIME_1 = datetime.datetime(2023, 4, 25, 15, 13)
+        self.TIME_2 = datetime.datetime(2023, 4, 26, 15, 13)
 
     def setUp(self, *args, **kwargs) -> None:
         super(NphSmsWorkflowsTest, self).setUp(*args, **kwargs)
@@ -61,6 +64,12 @@ class NphSmsWorkflowsTest(BaseTestCase):
         workflow = SmsWorkflow(ingestion_data)
         workflow.execute_workflow()
 
+        # Check job run
+        run_dao = SmsJobRunDao()
+        job_run = run_dao.get(1)
+
+        self.assertEqual(job_run.result, 'SUCCESS')
+
         sample_dao = SmsSampleDao()
         ingested_record = sample_dao.get(1)
 
@@ -79,6 +88,11 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(ingested_record.race, "Native Hawaiian or other Pacific Islander")
         self.assertEqual(ingested_record.ethnicity, "Black, African American or African")
         self.assertEqual(ingested_record.destination, "UNC_META")
+
+        # Attempt ingestion again to ensure we don't ingest duplicates
+        workflow.execute_workflow()
+        all_samples = sample_dao.get_all()
+        self.assertEqual(len(all_samples), 3)
 
     def test_n0_ingestion(self):
 
@@ -163,6 +177,17 @@ class NphSmsWorkflowsTest(BaseTestCase):
             lims_sample_id="000200",
             destination="UNC_META"
         )
+        sms_datagen.create_database_sms_sample(
+            ethnicity="test",
+            race="test",
+            bmi="28",
+            diet="LMT",
+            sex_at_birth="M",
+            sample_identifier="test",
+            sample_id=10003,
+            lims_sample_id="000200",
+            destination="UNC_META"
+        )
 
         sms_datagen.create_database_sms_n0(
             sample_id=10001,
@@ -204,6 +229,31 @@ class NphSmsWorkflowsTest(BaseTestCase):
             age="22",
             biobank_id="test",
         )
+        sms_datagen.create_database_sms_n0(
+            sample_id=10003,
+            matrix_id=1111,
+            package_id="test",
+            storage_unit_id="test",
+            well_box_position="test",
+            tracking_number="test",
+            sample_comments="test",
+            study="test",
+            visit="1",
+            timepoint="LMT",
+            collection_site="UNC",
+            collection_date_time="2023-04-20T15:54:33",
+            sample_type="Urine",
+            additive_treatment="test-treatment",
+            quantity_ml="120",
+            manufacturer_lot='256837',
+            age="22",
+            biobank_id="test",
+        )
+
+        sms_datagen.create_database_sms_blocklist(
+            identifier_value=10003,
+            identifier_type='sample_id'
+        )
 
     def test_n1_mc1_generation(self):
         self.create_data_n1_mc1_generation()
@@ -237,6 +287,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         n1_mcac_dao = SmsN1Mc1Dao()
         manifest_records = n1_mcac_dao.get_all()
         self.assertEqual(len(manifest_records), 2)
+        self.assertEqual(manifest_records[0].file_path, expected_csv_path)
         self.assertEqual(manifest_records[0].sample_id, 10001)
         self.assertEqual(manifest_records[0].matrix_id, "1111")
         self.assertEqual(manifest_records[0].bmi, "28")
@@ -247,6 +298,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[0].urine_clarity, '"Clean"')
         self.assertEqual(manifest_records[0].manufacturer_lot, '256837')
 
+        self.assertEqual(manifest_records[0].file_path, expected_csv_path)
         self.assertEqual(manifest_records[1].sample_id, 10002)
         self.assertEqual(manifest_records[1].matrix_id, "1112")
         self.assertEqual(manifest_records[1].bmi, "28")
@@ -257,5 +309,30 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[1].bowel_movement, '"I had normal formed stool, and my stool looks like Type 3 and/or 4"')
         self.assertEqual(manifest_records[1].bowel_movement_quality, '"I tend to have normal formed stool - Type 3 and 4"')
 
+        # Test Ignore and rerun
+        with n1_mcac_dao.session() as session:
+            manifest_records[0].ignore_flag = 1
+            session.merge(manifest_records[0])
 
+        with clock.FakeClock(self.TIME_2):
+            from rdr_service.resource import main as resource_main
+            self.send_post(
+                local_path='NphSmsGenerationTaskApi',
+                request_data=generation_data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+        manifest_records = n1_mcac_dao.get_all()
+        self.assertEqual(len(manifest_records), 3)
+
+    @mock.patch('rdr_service.workflow_management.nph.sms_pipeline.GCPCloudTask.execute')
+    def test_sms_pipeline_n1_function(self, task_mock):
+        data = {
+            "file_type": "N1_MC1",
+            "recipient": "UNC_META"
+        }
+        n1_generation()
+        task_mock.assert_called_with('nph_sms_generation_task',
+                                     payload=data,
+                                     queue='nph')
 

@@ -639,7 +639,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             retentionEligibleStatus=None,
             wasEhrDataAvailable=False,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
-            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
             healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
             aian=0
         )
@@ -1273,7 +1273,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             retentionEligibleStatus=None,
             wasEhrDataAvailable=False,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
-            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
             healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
             aian=0
         )
@@ -1353,7 +1353,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             retentionEligibleStatus=None,
             wasEhrDataAvailable=False,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
-            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
             healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
             aian=0
         )
@@ -1440,7 +1440,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             retentionEligibleStatus=None,
             wasEhrDataAvailable=False,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
-            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
             healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
             aian=0
         )
@@ -1517,7 +1517,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             retentionEligibleStatus=None,
             wasEhrDataAvailable=False,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
-            enrollmentStatusParticipantV3_1Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
             healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
             aian=0
         )

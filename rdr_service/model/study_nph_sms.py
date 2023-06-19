@@ -52,6 +52,7 @@ class SmsSample(NphBase):
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT, default=0)
     ignore_reason = Column(String(1024))
+    file_path = Column(String(255), index=True)
     job_run_id = Column(BigInteger, ForeignKey("sms_job_run.id"))
 
     # File Fields
@@ -94,7 +95,7 @@ class SmsN0(NphBase):
     study = Column(String(64))
     visit = Column(String(64))
     timepoint = Column(String(64))
-    collection_site = Column(String(16))
+    collection_site = Column(String(512))
     collection_date_time = Column(UTCDateTime)
     sample_type = Column(String(32))
     additive_treatment = Column(String(16))
@@ -133,7 +134,7 @@ class SmsN1Mc1(NphBase):
     study = Column(String(64))
     visit = Column(String(64))
     timepoint = Column(String(64))
-    collection_site = Column(String(16))
+    collection_site = Column(String(512))
     collection_date_time = Column(UTCDateTime)
     sample_type = Column(String(32))
     additive_treatment = Column(String(16))
