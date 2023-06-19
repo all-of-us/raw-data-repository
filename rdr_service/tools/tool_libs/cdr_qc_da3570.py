@@ -221,7 +221,9 @@ class CDRQc(ToolBase):
         """
         Return finalized(/authored) date of the last completed self-reported remote PM record before the cutoff date
         """
-        self_reported_pm_authored, self_reported_pm_qr_id = self.completed_module(pid, 'pm_height_weight', session)
+        # questionnaire_response authored value returned is unused; pm_measurements() returns a finalized date from
+        # the related PM record
+        _, self_reported_pm_qr_id = self.completed_module(pid, 'pm_height_weight', session)
         return self.pm_measurements(pid, session, qr_id=self_reported_pm_qr_id)
 
     def get_pid_baseline_ppi_module_details(self, pid, details_dict, session):
@@ -337,7 +339,7 @@ class CDRQc(ToolBase):
                         self.collect_pid_activity_details(pid, details, session)
                     self.write_to_csv(details[pid])
 
-                print(f'{chunks*100} of {len(all_pids)}...', end="")
+                print(f'{min(chunks*100, len(all_pids))} of {len(all_pids)} pids processed...', end="")
                 chunks += 1
         print('\n')
 def add_additional_arguments(parser):
