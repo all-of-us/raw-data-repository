@@ -377,13 +377,13 @@ def add_additional_arguments(parser):
     parser.add_argument('--from-file', dest='from_file', required=True, help="File with participant ids to qc")
 
     parser.add_argument('--output', required=False,
-                        help="Output file for CSV data.  Default is cdr_qc.csv")
+                        help="Output file for CSV data.  Default is cdr_qc_check.csv")
 
     parser.add_argument('--append', default=False, action="store_true",
-                        help="Keep existing contents of --from-file if it exists and append new results")
+                        help="Keep existing contents of --output file if it exists and append new results")
 
     parser.add_argument('--verbose', default=False, action='store_true',
-                        help="Print verbose/formatted output to stdout")
+                        help="Print verbose/formatted output to stdout (in addition to csv file creation")
 
 def run():
     return cli_run(tool_cmd, tool_desc, CDRQcCheck, parser_hook=add_additional_arguments, replica=True)
