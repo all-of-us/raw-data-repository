@@ -14,19 +14,20 @@ from rdr_service.model.questionnaire_response import (
     QuestionnaireResponse, QuestionnaireResponseClassificationType, QuestionnaireResponseAnswer
 )
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
-from rdr_service.services.system_utils import list_chunks
+from rdr_service.services.system_utils import list_chunks, print_progress_bar
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
-tool_cmd = 'cdr-qc'
-tool_desc = 'Report details on participants before a CDR extract.  See DA-3570'
+tool_cmd = 'cdr-qc-check'
+tool_desc = 'Report activity details on participants before a CDR extract.  See DA-3570'
 
-class CDRQc(ToolBase):
+class CDRQcCheck(ToolBase):
 
     # Default cutoff date filter
     cutoff_date = datetime.today().date()
     cutoff_sql_filter = datetime(cutoff_date.year, cutoff_date.month, cutoff_date.day, tzinfo=timezone.utc)
     basics_profile_update_codes = []
-    csv_out_file = 'cdr_qc.csv'
+    csv_out_file = 'cdr_qc_check.csv'
+    # Column headers based on criteria in the DA-3570 ticket
     csv_headers = [
         'Participant ID', 'Origin', 'Research ID', 'Consented before cutoff', 'Primary Consent',
         'COMPLETE TheBasics before cutoff', 'TheBasics answers',
@@ -36,19 +37,25 @@ class CDRQc(ToolBase):
         'Withdrawal Status', 'Withdrawal Authored or Time', 'Is Test', 'Date made Test',
         'Is Ghost', 'Date made Ghost'
     ]
+    participants_not_found = []
 
     def init_csv(self):
-        # Create the csv output file and initialize with the header row
+        """
+        Create a new CSV output file and initialize with the header row
+        """
         with open(self.csv_out_file, "w") as f:
             writer = csv.writer(f, delimiter=',')
             writer.writerow(i for i in self.csv_headers)
 
     def write_to_csv(self, pid_dict):
-        if not pid_dict:
-            return
+        """
+        Write a single participant row to the CSV output file
+        """
         pid_row = pid_dict['pid_details']
         primary_consent = pid_row.consentForStudyEnrollmentFirstYesAuthored
         consented_before_cutoff = primary_consent.date() < self.cutoff_date
+        # Believe that withdrawalAuthored may not always be populated for administrative (vs. participant-initiated)
+        # withdrawals, so account for cases where withdrawalTime exists without a withdrawalAuthored
         withdrawal_datetime = pid_row.withdrawalAuthored if pid_row.withdrawalAuthored else pid_row.withdrawalTime
 
         csv_row = [pid_row.participantId, pid_row.participantOrigin, pid_row.researchId,
@@ -76,7 +83,10 @@ class CDRQc(ToolBase):
             writer.writerow(c for c in csv_row)
 
     def set_basics_profile_update_codes(self, session):
-        """ Generate a list of code_id values for TheBasics profile update question code strings """
+        """
+        Generate a list of code_id values for TheBasics profile update question code strings
+        Used when verifying if a TheBasics response contained "valid" answer data to qualify as a full survey
+        """
         codes = session.query(Code.codeId).filter(Code.value.in_(BASICS_PROFILE_UPDATE_QUESTION_CODES)).all()
         self.basics_profile_update_codes = [c.codeId for c in codes]
 
@@ -94,7 +104,7 @@ class CDRQc(ToolBase):
 
     def date_made_test(self, pid, session):
         """
-        Find the earliest participant_history version where is_test_participant = 1 or hpo_id = 21
+        Find the earliest participant_history version where is_test_participant = 1 or hpo_id = 21 (TEST hpo)
         Return lastModified datetime associated with the version
         """
         result = session.query(
@@ -113,10 +123,8 @@ class CDRQc(ToolBase):
 
     def date_made_ghost(self, pid, session):
         """
-        Find the earliest participant_history verion date where is_ghost_id is not null
-        Return date_added_ghost if a value exists, else lastModified from the row.  The lastModified timestamp
-        in the participant/participant_history table may not have been updated to match date_added_ghost when the
-        is_ghost_id column value was updated
+        Find the earliest participant_history verion date where isGhostId is not null
+        Return dateAddedGhost if a value exists, else lastModified from the row.
         """
         result = session.query(
             ParticipantHistory
@@ -127,6 +135,8 @@ class CDRQc(ToolBase):
             )
         ).order_by(ParticipantHistory.version).first()
 
+        # Does not appear that lastModified was always updated when the ghost flag was set for a participant, so use the
+        # dateAddedGhost value if it's available
         if result:
             return result.dateAddedGhost if result.dateAddedGhost is not None else result.lastModified
 
@@ -135,7 +145,7 @@ class CDRQc(ToolBase):
     def completed_module(self, pid, module_name, session):
         """
         Determine if Participant has a COMPLETE QuestionnaireResponseClassificationType survey response payload authored
-        before the cutoff date. Return most recent authored and questionnaire_response_id for a qualifying response
+        before the cutoff date. Return most recent authored and questionnairResponseId for a qualifying response
         """
         row = session.query(
             QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored
@@ -244,9 +254,10 @@ class CDRQc(ToolBase):
     def get_participant_summary_details(self, pid_list, session):
         """
          Select participant/participant_summary fields related to DA-3570 data points
-         Return a dictionary:
+         Return a dictionary with a key for each pid in the pid_list:
              {
-                <int_pid key> : { pid_details: <result row from SELECT > }
+                <int_pid key> : { pid_details: <result row from SELECT > },
+                ...
              }
         """
         details = {}
@@ -280,12 +291,12 @@ class CDRQc(ToolBase):
     def collect_pid_activity_details(self, pid, details, session):
         """
         After initial ParticipantSummary/Participant data is retrieved, collect and calculate remaining data points
-        from DA-3570 for PM measurements, baseline PPI module responses, and Test/Ghost settings
+        from DA-3570 for baseline PPI module responses, PM data, and Test/Ghost settings
         """
         self.get_pid_baseline_ppi_module_details(pid, details, session)
 
         pid_details = details[pid]['pid_details']
-        # Determine Test/Ghost status and dates (if set)
+        # Determine Test/Ghost status and dates, for pids that have been explicitly flagged as Test or Ghost
         if pid_details.hpoId == 21 or pid_details.isTestParticipant:
             details[pid]['is_test'] = True
             details[pid]['made_test'] = self.date_made_test(pid, session)
@@ -305,32 +316,41 @@ class CDRQc(ToolBase):
         details[pid]['last_self_reported_pm_date'] = completed_remote_pm if completed_remote_pm else "N"
 
     def run(self):
-        super(CDRQc, self).run()
+        super(CDRQcCheck, self).run()
 
         if self.args.cutoff:
             self.cutoff_date = self.args.cutoff.date()
             self.cutoff_sql_filter = datetime(self.cutoff_date.year, self.cutoff_date.month, self.cutoff_date.day,
                                               tzinfo=timezone.utc)
+        if self.args.output:
+            self.csv_out_file = self.args.output
 
-        if not self.args.append or not os.path.isfile(self.args.from_file):
+        if not os.path.isfile(self.args.from_file):
+            raise ValueError(f'{self.args.from_file} file does not exist')
+
+        if not self.args.append or not os.path.isfile(self.csv_out_file):
             self.init_csv()
+            if self.args.append:
+                logger.warning(f'Append specified for {self.csv_out_file} but existing file not found.  Append ignored')
+
         dao = ParticipantSummaryDao()
-
-        # For testing:  supply specific pid lists
-        # all_pids = [453188462, 106613862, 985341216, 995585549, 100002184]
-        # all_pids = [709728033, 280839812, 100002184, 995585549, 259014990]
-
-        all_pids = self.get_int_ids_from_file(self.args.from_file)
-        chunks = 1
+        # For testing:  supply specific pid lists and comment out assignment from self.get_int_ids_from_file()
+        # pids_for_qc = [453188462, 106613862, 985341216, 995585549, 100002184]
+        pids_for_qc = self.get_int_ids_from_file(self.args.from_file)
+        chunks_processed = 0
+        batch_size = 250
         with dao.session() as session:
             # Generate the list of code_ids for the profile update question codes in TheBasics.  Used when assessing
-            # completeness of TheBasics questionnaire responses
+            # validity of TheBasics questionnaire responses
             self.set_basics_profile_update_codes(session)
-            for pid_list in list_chunks(all_pids, 100):
+            for pid_list in list_chunks(pids_for_qc, batch_size):
+                if not self.args.verbose:
+                    print_progress_bar(chunks_processed * batch_size, len(pids_for_qc))
                 details = self.get_participant_summary_details(pid_list, session)
                 for pid in pid_list:
                     if pid not in details or not details[pid]:
                         logger.error(f'No participant_summary record with matching filters for P{pid}')
+                        self.participants_not_found.append(pid)
                         continue
                     # Add key/default value pairs for additional data points to the pid-specific dictionary
                     self.set_defaults_for_pid(pid, details)
@@ -339,9 +359,14 @@ class CDRQc(ToolBase):
                         self.collect_pid_activity_details(pid, details, session)
                     self.write_to_csv(details[pid])
 
-                print(f'{min(chunks*100, len(all_pids))} of {len(all_pids)} pids processed...', end="")
-                chunks += 1
+                chunks_processed += 1
+
         print('\n')
+        if len(self.participants_not_found):
+            logger.error(
+                f'No output for pids: {self.participants_not_found}, no matching participant_summary records found'
+            )
+
 def add_additional_arguments(parser):
     parser.add_argument('--cutoff', required=False, type=lambda s: datetime.strptime(s, '%Y-%m-%d'),
                         help="Cutoff date in YYYY-MM-DD format.  Default is today's date")
@@ -351,6 +376,9 @@ def add_additional_arguments(parser):
 
     parser.add_argument('--from-file', dest='from_file', required=True, help="File with participant ids to qc")
 
+    parser.add_argument('--output', required=False,
+                        help="Output file for CSV data.  Default is cdr_qc.csv")
+
     parser.add_argument('--append', default=False, action="store_true",
                         help="Keep existing contents of --from-file if it exists and append new results")
 
@@ -358,4 +386,4 @@ def add_additional_arguments(parser):
                         help="Print verbose/formatted output to stdout")
 
 def run():
-    return cli_run(tool_cmd, tool_desc, CDRQc, parser_hook=add_additional_arguments, replica=True)
+    return cli_run(tool_cmd, tool_desc, CDRQcCheck, parser_hook=add_additional_arguments, replica=True)
