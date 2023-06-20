@@ -6,7 +6,7 @@ version: 2.1
 
 job_defaults: &job_defaults
   docker:
-    - image: cimg/base:2021.05-18.04
+    - image: cimg/base:2022.09
       environment:
         RDR_UNITTEST_SQL_SERVER_PORT: 3306
         CIRCLECI_FLAG: 1
@@ -35,7 +35,7 @@ commands:
           name: Check Licenses
           command : |
             export PYTHONPATH=$PYTHONPATH:`pwd`
-            python3.7 ./ci/check_licenses.py --root ./venv/lib/python3.7/site-packages \
+            python3.11 ./ci/check_licenses.py --root ./venv/lib/python3.11/site-packages \
                             --licenses_file ci/license_allowed_list.txt --exceptions_file ci/license_exceptions.txt
       - run:
           name: Launch Flask Unittest Service

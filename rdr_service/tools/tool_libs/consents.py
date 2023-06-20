@@ -302,7 +302,7 @@ class ConsentTool(ToolBase):
                     elif field_name == 'sync_status':
                         value = ConsentSyncStatus(int(value))
                     elif isinstance(field_definition.expression.type, Boolean):
-                        value = (value == '1')
+                        value = value == '1'
                     elif isinstance(field_definition.expression.type, Integer):
                         value = int(value)
 

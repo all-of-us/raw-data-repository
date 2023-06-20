@@ -472,7 +472,7 @@ class PDRGeneratorTestMixin:
 
         items = list(filter(lambda x: x[item_key] == item_value, item_list))
         if sort_key:
-            items = sorted(items, key=(lambda s: s[sort_key]))
+            items = sorted(items, key=lambda s: s[sort_key])
         return items
 
 
