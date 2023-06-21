@@ -28,7 +28,6 @@ commands:
   unittest-app-steps:
     steps:
       - checkout
-      - gcp-cli/setup
       - run:
           name: Setup Python Environment
           command: ./ci/setup_python_env.sh
@@ -83,6 +82,7 @@ jobs:
   job_run_unittests:
     <<: *job_defaults
     steps:
+      - gcp-cli/setup
       - unittest-app-steps
 
   job_deploy_to_test:
