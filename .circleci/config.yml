@@ -4,9 +4,6 @@ version: 2.1
 # To see the list of pre-built images that CircleCI provides for most common languages see
 # https://circleci.com/docs/2.0/circleci-images/
 
-orbs:
-  gcp-cli: circleci/gcp-cli@2.4.1
-
 job_defaults: &job_defaults
   docker:
     - image: cimg/base:2021.05-18.04
@@ -82,7 +79,6 @@ jobs:
   job_run_unittests:
     <<: *job_defaults
     steps:
-      - gcp-cli/setup
       - unittest-app-steps
 
   job_deploy_to_test:
