@@ -4,6 +4,9 @@ version: 2.1
 # To see the list of pre-built images that CircleCI provides for most common languages see
 # https://circleci.com/docs/2.0/circleci-images/
 
+orbs:
+  gcp-cli: circleci/gcp-cli@2.4.1
+
 job_defaults: &job_defaults
   docker:
     - image: cimg/base:2021.05-18.04
@@ -25,6 +28,7 @@ commands:
   unittest-app-steps:
     steps:
       - checkout
+      - gcp-cli/setup
       - run:
           name: Setup Python Environment
           command: ./ci/setup_python_env.sh
