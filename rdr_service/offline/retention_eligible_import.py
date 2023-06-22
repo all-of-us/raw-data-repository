@@ -1,5 +1,6 @@
 import datetime
 import logging
+from typing import Optional
 
 from dateutil.parser import parse
 
@@ -44,10 +45,17 @@ def import_retention_eligible_metrics_file(task_data):
             if not row[RetentionEligibleMetricCsvColumns.PARTICIPANT_ID]:
                 continue
             record = _create_retention_eligible_metrics_obj_from_row(row, upload_date)
-            _supplement_with_rdr_calculations(record)
 
-            records.append(record)
-            batch_count += 1
+            existing_id, needs_update = RetentionEligibleMetricsDao.find_metric_with_session(
+                session=session,
+                metrics_obj=record
+            )
+            if existing_id:
+                record.id = existing_id
+            if needs_update:
+                _supplement_with_rdr_calculations(metrics_data=record, session=session)
+                records.append(record)
+                batch_count += 1
 
             if batch_count == _BATCH_SIZE:
                 upsert_count += dao.upsert_all_with_session(session, records)
@@ -242,71 +250,75 @@ def _create_retention_eligible_metrics_obj_from_row(row, upload_date) -> Retenti
     )
 
 
-def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics):
+def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, session):
     """Fill in the rdr eligibility calculations for comparison"""
     summary_dao = ParticipantSummaryDao()
-    with summary_dao.session() as session:
-        summary: ParticipantSummary = summary_dao.get_with_session(
+
+    summary: ParticipantSummary = summary_dao.get_with_session(
+        session=session,
+        obj_id=metrics_data.participantId
+    )
+
+    if not summary:
+        logging.error(f'no summary for P{metrics_data.participantId}')
+        return
+
+    dependencies = RetentionEligibilityDependencies(
+        primary_consent=Consent(
+            is_consent_provided=True,
+            authored_timestamp=summary.consentForStudyEnrollmentFirstYesAuthored
+        ),
+        first_ehr_consent=_get_earliest_intent_for_ehr(
             session=session,
-            obj_id=metrics_data.participantId
-        )
+            participant_id=summary.participantId
+        ),
+        is_deceased=summary.deceasedStatus == DeceasedStatus.APPROVED,
+        is_withdrawn=summary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
+        dna_samples_timestamp=BiobankStoredSampleDao.get_earliest_confirmed_dna_sample_timestamp(
+            session=session,
+            biobank_id=summary.biobankId
+        ),
+        consent_cohort=summary.consentCohort,
+        has_uploaded_ehr_file=summary.wasEhrDataAvailable,
+        latest_ehr_upload_timestamp=summary.ehrUpdateTime,
+        basics_response_timestamp=summary.questionnaireOnTheBasicsAuthored,
+        overallhealth_response_timestamp=summary.questionnaireOnOverallHealthAuthored,
+        lifestyle_response_timestamp=summary.questionnaireOnLifestyleAuthored,
+        healthcare_access_response_timestamp=summary.questionnaireOnHealthcareAccessAuthored,
+        family_health_response_timestamp=summary.questionnaireOnFamilyHealthAuthored,
+        medical_history_response_timestamp=summary.questionnaireOnMedicalHistoryAuthored,
+        fam_med_history_response_timestamp=summary.questionnaireOnPersonalAndFamilyHealthHistoryAuthored,
+        sdoh_response_timestamp=summary.questionnaireOnSocialDeterminantsOfHealthTime,
+        latest_cope_response_timestamp=_aggregate_response_timestamps(
+            session=session,
+            participant_id=summary.participantId,
+            survey_code_list=[
+                COPE_MODULE, COPE_NOV_MODULE, COPE_DEC_MODULE, COPE_FEB_MODULE, COPE_VACCINE_MINUTE_1_MODULE_CODE,
+                COPE_VACCINE_MINUTE_2_MODULE_CODE, COPE_VACCINE_MINUTE_3_MODULE_CODE,
+                COPE_VACCINE_MINUTE_4_MODULE_CODE
+            ],
+            aggregate_function=max  # Get the latest COPE or vaccine response
+        ),
+        remote_pm_response_timestamp=summary.selfReportedPhysicalMeasurementsAuthored,
+        life_func_response_timestamp=summary.questionnaireOnLifeFunctioningAuthored,
+        reconsent_response_timestamp=_aggregate_response_timestamps(
+            session=session,
+            participant_id=summary.participantId,
+            survey_code_list=[PRIMARY_CONSENT_UPDATE_MODULE],
+            aggregate_function=min  # Get the earliest cohort 1 reconsent response
+        ),
+        gror_response_timestamp=summary.consentForGenomicsRORAuthored
+    )
+    retention_data = RetentionEligibility(dependencies)
 
-        dependencies = RetentionEligibilityDependencies(
-            primary_consent=Consent(
-                is_consent_provided=True,
-                authored_timestamp=summary.consentForStudyEnrollmentFirstYesAuthored
-            ),
-            first_ehr_consent=_get_earliest_intent_for_ehr(
-                session=session,
-                participant_id=summary.participantId
-            ),
-            is_deceased=summary.deceasedStatus == DeceasedStatus.APPROVED,
-            is_withdrawn=summary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
-            dna_samples_timestamp=BiobankStoredSampleDao.get_earliest_confirmed_dna_sample_timestamp(
-                session=session,
-                biobank_id=summary.biobankId
-            ),
-            consent_cohort=summary.consentCohort,
-            has_uploaded_ehr_file=summary.wasEhrDataAvailable,
-            latest_ehr_upload_timestamp=summary.ehrUpdateTime,
-            basics_response_timestamp=summary.questionnaireOnTheBasicsAuthored,
-            overallhealth_response_timestamp=summary.questionnaireOnOverallHealthAuthored,
-            lifestyle_response_timestamp=summary.questionnaireOnLifestyleAuthored,
-            healthcare_access_response_timestamp=summary.questionnaireOnHealthcareAccessAuthored,
-            family_health_response_timestamp=summary.questionnaireOnFamilyHealthAuthored,
-            medical_history_response_timestamp=summary.questionnaireOnMedicalHistoryAuthored,
-            fam_med_history_response_timestamp=summary.questionnaireOnPersonalAndFamilyHealthHistoryAuthored,
-            sdoh_response_timestamp=summary.questionnaireOnSocialDeterminantsOfHealthTime,
-            latest_cope_response_timestamp=_aggregate_response_timestamps(
-                session=session,
-                participant_id=summary.participantId,
-                survey_code_list=[
-                    COPE_MODULE, COPE_NOV_MODULE, COPE_DEC_MODULE, COPE_FEB_MODULE, COPE_VACCINE_MINUTE_1_MODULE_CODE,
-                    COPE_VACCINE_MINUTE_2_MODULE_CODE, COPE_VACCINE_MINUTE_3_MODULE_CODE,
-                    COPE_VACCINE_MINUTE_4_MODULE_CODE
-                ],
-                aggregate_function=max  # Get the latest COPE or vaccine response
-            ),
-            remote_pm_response_timestamp=summary.selfReportedPhysicalMeasurementsAuthored,
-            life_func_response_timestamp=summary.questionnaireOnLifeFunctioningAuthored,
-            reconsent_response_timestamp=_aggregate_response_timestamps(
-                session=session,
-                participant_id=summary.participantId,
-                survey_code_list=[PRIMARY_CONSENT_UPDATE_MODULE],
-                aggregate_function=min  # Get the earliest cohort 1 reconsent response
-            ),
-            gror_response_timestamp=summary.consentForGenomicsRORAuthored
-        )
-        retention_data = RetentionEligibility(dependencies)
-
-        metrics_data.rdr_retention_eligible = retention_data.is_eligible
-        metrics_data.rdr_retention_eligible_time = retention_data.retention_eligible_date
-        metrics_data.rdr_last_retention_activity_time = retention_data.last_active_retention_date
-        metrics_data.rdr_is_actively_retained = retention_data.is_actively_retained
-        metrics_data.rdr_is_passively_retained = retention_data.is_passively_retained
+    metrics_data.rdr_retention_eligible = retention_data.is_eligible
+    metrics_data.rdr_retention_eligible_time = retention_data.retention_eligible_date
+    metrics_data.rdr_last_retention_activity_time = retention_data.last_active_retention_date
+    metrics_data.rdr_is_actively_retained = retention_data.is_actively_retained
+    metrics_data.rdr_is_passively_retained = retention_data.is_passively_retained
 
 
-def _get_earliest_intent_for_ehr(session, participant_id) -> Consent:
+def _get_earliest_intent_for_ehr(session, participant_id) -> Optional[Consent]:
     date_range_list = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
         participant_id=participant_id,
         session=session
