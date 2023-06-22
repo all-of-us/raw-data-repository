@@ -1858,15 +1858,24 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
 
         bh_questionnaire_id = self.create_questionnaire("questionnaire_bhp.json")
         bh_resource = self._load_response_json("questionnaire_bhp_resp.json", bh_questionnaire_id, participant_id)
-        self.send_post(_questionnaire_response_url(participant_id), bh_resource)
+        bh_resource['authored'] = TIME_2.isoformat()
+
 
         eh_questionnaire_id = self.create_questionnaire("questionnaire_ehhwb.json")
         eh_resource = self._load_response_json("questionnaire_ehhwb_resp.json", eh_questionnaire_id, participant_id)
-        self.send_post(_questionnaire_response_url(participant_id), eh_resource)
+        eh_resource['authored'] = TIME_2.isoformat()
+
+        with FakeClock(TIME_3):
+            self.send_post(_questionnaire_response_url(participant_id), bh_resource)
+            self.send_post(_questionnaire_response_url(participant_id), eh_resource)
 
         summary = self.send_get(f"Participant/{participant_id}/Summary")
         self.assertEqual("SUBMITTED", summary['questionnaireOnBehavioralHealthAndPersonality'])
         self.assertEqual("SUBMITTED", summary['questionnaireOnEmotionalHealthHistoryAndWellBeing'])
+        self.assertEqual(TIME_2.isoformat(), summary['questionnaireOnBehavioralHealthAndPersonalityAuthored'])
+        self.assertEqual(TIME_2.isoformat(), summary['questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored'])
+        self.assertEqual(TIME_3.isoformat(), summary['questionnaireOnBehavioralHealthAndPersonalityTime'])
+        self.assertEqual(TIME_3.isoformat(), summary['questionnaireOnEmotionalHealthHistoryAndWellBeingTime'])
 
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
