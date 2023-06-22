@@ -9,7 +9,7 @@ from rdr_service.domain_model.response import Response
 from rdr_service.model.code import Code
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
-from rdr_service.services.response_validation.validation import ResponseValidator
+from rdr_service.services.response_validation.validation import BranchParsingError, ResponseValidator
 from rdr_service.services.slack_utils import SlackMessageHandler
 
 
@@ -30,7 +30,10 @@ class ResponseValidationController:
         )
         for participant_id, participant_responses in response_list.items():
             for response in participant_responses.responses.values():
-                self._check_response(response, participant_id=participant_id)
+                try:
+                    self._check_response(response, participant_id=participant_id)
+                except BranchParsingError:
+                    logging.error(f'Error parsing branching logic for {response.survey_code}', exc_info=True)
 
         self._send_error_message()
 
