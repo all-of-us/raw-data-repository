@@ -1,6 +1,6 @@
 # Configuration for offline pipeline service. Should be kept in sync with test.yaml.
 
-runtime: python37
+runtime: python311
 service: offline
 entrypoint: gunicorn -c rdr_service/services/gunicorn_config.py --timeout 18000 --max-requests 10 --max-requests-jitter 3 rdr_service.offline.main:app
 

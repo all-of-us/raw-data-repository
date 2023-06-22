@@ -1,6 +1,6 @@
 # Configuration for resource service.
 
-runtime: python37
+runtime: python311
 service: resource
 entrypoint: gunicorn -c rdr_service/services/gunicorn_config.py --timeout 600 rdr_service.resource.main:app
 
