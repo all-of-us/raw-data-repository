@@ -1,0 +1,51 @@
+{
+  "status": "published",
+  "group": {
+    "concept": [
+      {
+        "code": "ehhwb",
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+      }
+    ],
+    "title": "Emotional Health History and Well Being",
+    "linkId": "root_group",
+    "required": true,
+    "question": [
+      {
+        "concept": [
+          {
+            "code": "worryanxiety",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "option": [
+          {
+            "code": "ehhwb_6",
+            "display": "Yes",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          },
+          {
+            "code": "ehhwb_7",
+            "display": "No",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "linkId": "6303",
+        "text": "In your life, was there a period of 6 months or longer when you had problems with worry and anxiety?",
+        "repeats": false,
+        "type": "choice"
+      }
+    ],
+    "text": "Emotional Health History and Well Being",
+    "repeats": false
+  },
+  "resourceType": "Questionnaire",
+  "version": "1",
+  "date": "2023-06-22T05:04:47Z",
+  "identifier": [
+    {
+      "value": "Vibrent_FORM_ID_XYZ2"
+    }
+  ],
+  "id": "656"
+}

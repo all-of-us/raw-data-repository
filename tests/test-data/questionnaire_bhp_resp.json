@@ -1,0 +1,38 @@
+{
+  "status": "completed",
+  "id": "107251069",
+  "authored": "2023-06-22T21:21:12Z",
+  "subject": {
+    "reference": "Patient/{participant_id}"
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+      "valueCode": "en"
+    }
+  ],
+  "resourceType": "QuestionnaireResponse",
+  "questionnaire": {
+    "reference": "Questionnaire/{questionnaire_id}"
+  },
+  "group": {
+    "linkId": "root_group",
+    "title": "Behavioral Health and Personality",
+    "question": [
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "asrs_1",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "Never"
+            }
+          }
+        ],
+        "linkId": "6302",
+        "text": "How often do you have trouble wrapping up the final details of a project, once the challenging parts have been done?"
+      }
+    ],
+    "text": "Behavioral Health and Personality"
+  }
+}
