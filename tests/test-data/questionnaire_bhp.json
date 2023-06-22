@@ -1,0 +1,51 @@
+{
+  "status": "published",
+  "group": {
+    "concept": [
+      {
+        "code": "bhp",
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+      }
+    ],
+    "title": "Behavioral Health and Personality",
+    "linkId": "root_group",
+    "required": true,
+    "question": [
+      {
+        "concept": [
+          {
+            "code": "asrs_1",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "option": [
+          {
+            "code": "bhp_61",
+            "display": "Never",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          },
+          {
+            "code": "bhp_89",
+            "display": "Rarely",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "linkId": "6252",
+        "text": "How often do you have trouble wrapping up the final details of a project, once the challenging parts have been done?",
+        "repeats": false,
+        "type": "choice"
+      }
+    ],
+    "text": "Behavioral Health and Personality",
+    "repeats": false
+  },
+  "resourceType": "Questionnaire",
+  "version": "1",
+  "date": "2023-06-22T05:04:47Z",
+  "identifier": [
+    {
+      "value": "Vibrent_FORM_ID_XYZ"
+    }
+  ],
+  "id": "655"
+}

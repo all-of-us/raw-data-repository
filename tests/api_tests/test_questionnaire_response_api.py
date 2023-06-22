@@ -1851,6 +1851,23 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(summary['consentForEtMTime'], TIME_3.isoformat())
         self.assertEqual(summary['consentForEtMAuthored'], TIME_3.isoformat())
 
+    def test_behavioral_emotional_health_questionnaires(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id)
+
+        bh_questionnaire_id = self.create_questionnaire("questionnaire_bhp.json")
+        bh_resource = self._load_response_json("questionnaire_bhp_resp.json", bh_questionnaire_id, participant_id)
+        self.send_post(_questionnaire_response_url(participant_id), bh_resource)
+
+        eh_questionnaire_id = self.create_questionnaire("questionnaire_ehhwb.json")
+        eh_resource = self._load_response_json("questionnaire_ehhwb_resp.json", eh_questionnaire_id, participant_id)
+        self.send_post(_questionnaire_response_url(participant_id), eh_resource)
+
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual("SUBMITTED", summary['questionnaireOnBehavioralHealthAndPersonality'])
+        self.assertEqual("SUBMITTED", summary['questionnaireOnEmotionalHealthHistoryAndWellBeing'])
+
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
         with open(data_path(template_file_name)) as fd:

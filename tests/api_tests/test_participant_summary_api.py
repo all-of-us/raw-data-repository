@@ -167,7 +167,9 @@ participant_summary_default_values = {
     "consentForNphModule1": False,
     "nphWithdrawal": False,
     "nphDeactivation": False,
-    "hasCoreData": False
+    "hasCoreData": False,
+    "questionnaireOnEmotionalHealthHistoryAndWellBeing": "UNSET",
+    "questionnaireOnBehavioralHealthAndPersonality": "UNSET"
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
