@@ -1619,6 +1619,31 @@ class ParticipantSummary(Base):
     lastModified = Column("last_modified", UTCDateTime6)
     """UTC timestamp of the last time the participant summary was modified"""
 
+    questionnaireOnEmotionalHealthHistoryAndWellBeing = Column("questionnaire_on_emotional_health",
+                                                               Enum(QuestionnaireStatus),
+                                                               default=QuestionnaireStatus.UNSET)
+    """
+    The status of Emotional Health History and Well Being survey
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+    questionnaireOnEmotionalHealthHistoryAndWellBeingTime = Column("questionnaire_on_emotional_health_time",
+                                                                   UTCDateTime)
+    "UTC timestamp of time Emotional Health survey was received by RDR"
+    questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored = Column("questionnaire_on_emotional_health_authored",
+                                                                       UTCDateTime)
+    "UTC timestamp of time Emotional Health survey was authored by participant"
+
+    questionnaireOnBehavioralHealthAndPersonality = Column("questionnaire_on_behavioral_health",
+                                                           Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
+    """
+    The status of Behavioral Health and Personality survey
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+    questionnaireOnBehavioralHealthAndPersonalityTime = Column("questionnaire_on_behavioral_health_time", UTCDateTime)
+    "UTC timestamp of time Behavioral Health survey was received by RDR"
+    questionnaireOnBehavioralHealthAndPersonalityAuthored = Column("questionnaire_on_behavioral_health_authored",
+                                                                   UTCDateTime)
+    "UTC timestamp of time Behavioral Health survey was authored by participant"
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)
 Index("participant_summary_ln_dob", ParticipantSummary.lastName, ParticipantSummary.dateOfBirth)

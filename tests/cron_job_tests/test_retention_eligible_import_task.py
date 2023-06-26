@@ -1,109 +1,182 @@
-import datetime
+from datetime import datetime, timedelta
+import mock
 import pytz
+from typing import Optional
 
-from tests import test_data
-from rdr_service.api_util import open_cloud_file
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.offline import retention_eligible_import
-from rdr_service import clock
 from rdr_service.participant_enums import RetentionStatus, RetentionType
 from tests.helpers.unittest_base import BaseTestCase
 
-_FAKE_RETENTION_ELIGIBLE_BUCKET = "rdr_fake_retention_eligible_bucket"
-TIME_1 = datetime.datetime(2020, 4, 1)
+TIME_1 = datetime(2020, 4, 1)
 
 
 class RetentionEligibleImportTest(BaseTestCase):
-    def setUp(self):
-        super(RetentionEligibleImportTest, self).setUp()
 
-    def test_retention_eligible_import(self):
+    @mock.patch('rdr_service.offline.retention_eligible_import.GoogleCloudStorageCSVReader')
+    def test_retention_eligible_import(self, csv_reader):
         ps1 = self.data_generator.create_database_participant_summary()
         ps2 = self.data_generator.create_database_participant_summary()
         ps3 = self.data_generator.create_database_participant_summary()
         ps4 = self.data_generator.create_database_participant_summary()
-        ps5 = self.data_generator.create_database_participant_summary()
 
-        participant_ids = [ps1.participantId, ps2.participantId, ps3.participantId, ps4.participantId]
+        csv_reader.return_value = [
+            self._build_csv_row(
+                participant_id=ps1.participantId,
+                retention_eligible='1',
+                retention_eligible_date='2020-02-20',
+                actively_retained='1',
+                last_active_retention_activity_date='2020-02-10',
+                passively_retained='0'
+            ),
+            self._build_csv_row(
+                participant_id=ps2.participantId,
+                retention_eligible='1',
+                retention_eligible_date='2020-02-20',
+                actively_retained='0',
+                last_active_retention_activity_date='2020-02-10',
+                passively_retained='1'
+            ),
+            self._build_csv_row(
+                participant_id=ps3.participantId,
+                retention_eligible='1',
+                retention_eligible_date='2020-02-20',
+                actively_retained='1',
+                last_active_retention_activity_date='2020-02-10',
+                passively_retained='1'
+            ),
+            self._build_csv_row(
+                participant_id=ps4.participantId,
+                retention_eligible='0',
+                retention_eligible_date='NULL',
+                actively_retained='0',
+                last_active_retention_activity_date='NULL',
+                passively_retained='0'
+            )
+        ]
 
-        bucket_name = _FAKE_RETENTION_ELIGIBLE_BUCKET
-        test_file = 'retention_test.csv'
-        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        test_date = datetime(2020, 10, 13)
         pytz.timezone('US/Central').localize(test_date)
 
-        with clock.FakeClock(test_date):
-            self._create_ingestion_test_file(test_file, bucket_name, participant_ids)
-
-        task_data = {
-            "bucket": bucket_name,
+        retention_eligible_import.import_retention_eligible_metrics_file({
+            "bucket": 'test_bucket',
             "upload_date": test_date.isoformat(),
-            "file_path": bucket_name + '/' + test_file
-        }
+            "file_path": 'test_bucket/test_file.csv'
+        })
 
-        retention_eligible_import.import_retention_eligible_metrics_file(task_data)
+        eligible_date = datetime(2020, 2, 20)
+        last_active_date = datetime(2020, 2, 10)
+        self._assert_summary_retention_fields(
+            summary=ps1,
+            status=RetentionStatus.ELIGIBLE,
+            eligible_time=eligible_date,
+            last_activity_time=last_active_date,
+            retention_type=RetentionType.ACTIVE
+        )
+        self._assert_summary_retention_fields(
+            summary=ps2,
+            status=RetentionStatus.ELIGIBLE,
+            eligible_time=eligible_date,
+            last_activity_time=last_active_date,
+            retention_type=RetentionType.PASSIVE
+        )
+        self._assert_summary_retention_fields(
+            summary=ps3,
+            status=RetentionStatus.ELIGIBLE,
+            eligible_time=eligible_date,
+            last_activity_time=last_active_date,
+            retention_type=RetentionType.ACTIVE_AND_PASSIVE
+        )
+        self._assert_summary_retention_fields(
+            summary=ps4,
+            status=RetentionStatus.NOT_ELIGIBLE,
+            eligible_time=None,
+            last_activity_time=None,
+            retention_type=None
+        )
 
-        psr1 = self.send_get(f'Participant/P{ps1.participantId}/Summary')
-        self.assertEqual(psr1.get('retentionEligibleStatus'), str(RetentionStatus.ELIGIBLE))
-        self.assertEqual(psr1.get('retentionEligibleTime'), '2020-02-20T00:00:00')
-        self.assertEqual(psr1.get('lastActiveRetentionActivityTime'), '2020-02-10T00:00:00')
-        self.assertEqual(psr1.get('retentionType'), str(RetentionType.ACTIVE))
-        psr2 = self.send_get(f'Participant/P{ps2.participantId}/Summary')
-        self.assertEqual(psr2.get('retentionEligibleStatus'), str(RetentionStatus.ELIGIBLE))
-        self.assertEqual(psr2.get('retentionEligibleTime'), '2020-02-20T00:00:00')
-        self.assertEqual(psr2.get('lastActiveRetentionActivityTime'), '2020-02-10T00:00:00')
-        self.assertEqual(psr2.get('retentionType'), str(RetentionType.PASSIVE))
-        psr3 = self.send_get(f'Participant/P{ps3.participantId}/Summary')
-        self.assertEqual(psr3.get('retentionEligibleStatus'), str(RetentionStatus.ELIGIBLE))
-        self.assertEqual(psr3.get('retentionEligibleTime'), '2020-02-20T00:00:00')
-        self.assertEqual(psr3.get('lastActiveRetentionActivityTime'), '2020-02-10T00:00:00')
-        self.assertEqual(psr3.get('retentionType'), str(RetentionType.ACTIVE_AND_PASSIVE))
-        psr4 = self.send_get(f'Participant/P{ps4.participantId}/Summary')
-        self.assertEqual(psr4.get('retentionEligibleStatus'), str(RetentionStatus.NOT_ELIGIBLE))
-        self.assertEqual(psr4.get('retentionEligibleTime'), None)
-        self.assertEqual(psr4.get('retentionType'), 'UNSET')
-        psr5 = self.send_get(f'Participant/P{ps5.participantId}/Summary')
-        self.assertEqual(psr5.get('retentionEligibleStatus'), 'UNSET')
-        self.assertEqual(psr5.get('retentionEligibleTime'), None)
-        self.assertEqual(psr5.get('retentionType'), 'UNSET')
+        # closing anything the session has open to prep for the next phase of the test
+        self.session.commit()
 
         # test update with new file
-        test_file = 'retention_test_2.csv'
-        test_date = datetime.datetime(2020, 10, 14, 0, 0, 0, 0)
+        csv_reader.return_value = [
+            self._build_csv_row(
+                participant_id=ps1.participantId,
+                retention_eligible='1',
+                retention_eligible_date='2020-03-20',
+                actively_retained='0',
+                last_active_retention_activity_date='2020-03-10',
+                passively_retained='1'
+            ),
+            self._build_csv_row(
+                participant_id=ps2.participantId,
+                retention_eligible='0',
+                retention_eligible_date='NULL',
+                actively_retained='0',
+                last_active_retention_activity_date='NULL',
+                passively_retained='0'
+            ),
+            self._build_csv_row(
+                participant_id=ps3.participantId,
+                retention_eligible='1',
+                retention_eligible_date='2020-02-20',
+                actively_retained='1',
+                last_active_retention_activity_date='2020-02-10',
+                passively_retained='1'
+            ),
+            self._build_csv_row(
+                participant_id=ps4.participantId,
+                retention_eligible='1',
+                retention_eligible_date='2020-03-20',
+                actively_retained='1',
+                last_active_retention_activity_date='2020-03-10',
+                passively_retained='0'
+            )
+        ]
+
+        test_date = datetime(2021, 10, 20)
         pytz.timezone('US/Central').localize(test_date)
-
-        with clock.FakeClock(test_date):
-            self._create_ingestion_test_file(test_file, bucket_name, participant_ids)
-
-        task_data = {
-            "bucket": bucket_name,
+        retention_eligible_import.import_retention_eligible_metrics_file({
+            "bucket": 'test_bucket',
             "upload_date": test_date.isoformat(),
-            "file_path": bucket_name + '/' + test_file
-        }
+            "file_path": 'test_bucket/test_file.csv'
+        })
 
-        retention_eligible_import.import_retention_eligible_metrics_file(task_data)
+        self._assert_summary_retention_fields(
+            summary=ps1,
+            status=RetentionStatus.ELIGIBLE,
+            eligible_time=datetime(2020, 3, 20),
+            last_activity_time=datetime(2020, 3, 10),
+            retention_type=RetentionType.PASSIVE
+        )
+        self._assert_summary_retention_fields(
+            summary=ps2,
+            status=RetentionStatus.NOT_ELIGIBLE,
+            eligible_time=None,
+            last_activity_time=None,
+            retention_type=None
+        )
+        self._assert_summary_retention_fields(
+            summary=ps3,
+            status=RetentionStatus.ELIGIBLE,
+            eligible_time=datetime(2020, 2, 20),
+            last_activity_time=datetime(2020, 2, 10),
+            retention_type=RetentionType.ACTIVE_AND_PASSIVE
+        )
+        self._assert_summary_retention_fields(
+            summary=ps4,
+            status=RetentionStatus.ELIGIBLE,
+            eligible_time=datetime(2020, 3, 20),
+            last_activity_time=datetime(2020, 3, 10),
+            retention_type=RetentionType.ACTIVE
+        )
 
-        psr1 = self.send_get(f'Participant/P{ps1.participantId}/Summary')
-        self.assertEqual(psr1.get('retentionEligibleStatus'), str(RetentionStatus.ELIGIBLE))
-        self.assertEqual(psr1.get('retentionEligibleTime'), '2020-03-20T00:00:00')
-        self.assertEqual(psr1.get('lastActiveRetentionActivityTime'), '2020-03-10T00:00:00')
-        self.assertEqual(psr1.get('retentionType'), str(RetentionType.PASSIVE))
-        psr2 = self.send_get(f'Participant/P{ps2.participantId}/Summary')
-        self.assertEqual(psr2.get('retentionEligibleStatus'), str(RetentionStatus.NOT_ELIGIBLE))
-        self.assertEqual(psr2.get('retentionEligibleTime'), None)
-        self.assertEqual(psr2.get('retentionType'), 'UNSET')
-        psr3 = self.send_get(f'Participant/P{ps3.participantId}/Summary')
-        self.assertEqual(psr3.get('retentionEligibleStatus'), str(RetentionStatus.ELIGIBLE))
-        self.assertEqual(psr3.get('retentionEligibleTime'), '2020-02-20T00:00:00')
-        self.assertEqual(psr3.get('lastActiveRetentionActivityTime'), '2020-02-10T00:00:00')
-        self.assertEqual(psr3.get('retentionType'), str(RetentionType.ACTIVE_AND_PASSIVE))
-        psr4 = self.send_get(f'Participant/P{ps4.participantId}/Summary')
-        self.assertEqual(psr4.get('retentionEligibleStatus'), str(RetentionStatus.ELIGIBLE))
-        self.assertEqual(psr4.get('retentionEligibleTime'), '2020-03-20T00:00:00')
-        self.assertEqual(psr4.get('lastActiveRetentionActivityTime'), '2020-03-10T00:00:00')
-        self.assertEqual(psr4.get('retentionType'), str(RetentionType.ACTIVE))
-        psr5 = self.send_get(f'Participant/P{ps5.participantId}/Summary')
-        self.assertEqual(psr5.get('retentionEligibleStatus'), 'UNSET')
-        self.assertEqual(psr5.get('retentionEligibleTime'), None)
-        self.assertEqual(psr5.get('retentionType'), 'UNSET')
+        # Check that the update didn't create a new metrics object
+        first_metric_obj_list = self.session.query(RetentionEligibleMetrics).filter(
+            RetentionEligibleMetrics.participantId == ps1.participantId
+        ).all()
+        self.assertEqual(1, len(first_metric_obj_list))
 
         ps = self.send_get("ParticipantSummary?retentionEligibleStatus=NOT_ELIGIBLE&_includeTotal=TRUE")
         self.assertEqual(len(ps['entry']), 1)
@@ -116,7 +189,7 @@ class RetentionEligibleImportTest(BaseTestCase):
                            "&_includeTotal=TRUE")
         self.assertEqual(len(ps['entry']), 1)
         ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
-        self.assertEqual(len(ps['entry']), 2)
+        self.assertEqual(len(ps['entry']), 1)
         ps = self.send_get("ParticipantSummary?retentionType=UNSET&retentionEligibleStatus=NOT_ELIGIBLE"
                            "&_includeTotal=TRUE")
         self.assertEqual(len(ps['entry']), 1)
@@ -141,8 +214,8 @@ class RetentionEligibleImportTest(BaseTestCase):
             samplesToIsolateDNA=1
         )
 
-        retention_window = datetime.timedelta(days=100)
-        in_eighteen_month = datetime.datetime.now() - retention_window
+        retention_window = timedelta(days=100)
+        in_eighteen_month = datetime.now() - retention_window
         ps3 = self.data_generator.create_database_participant_summary(
             consentForStudyEnrollmentAuthored=TIME_1,
             sampleStatus1ED10Time=TIME_1,
@@ -204,25 +277,41 @@ class RetentionEligibleImportTest(BaseTestCase):
         self.assertEqual(p4['retentionEligibleTime'], TIME_1.strftime("%Y-%m-%dT%H:%M:%S"))
         self.assertEqual(p4['retentionType'], str(RetentionType.ACTIVE_AND_PASSIVE))
 
-    def _create_ingestion_test_file(self, test_data_filename, bucket_name, participant_ids, folder=None):
-        test_data_file = self._open_test_file(test_data_filename, participant_ids)
-        self._write_cloud_csv(test_data_filename, test_data_file, folder=folder, bucket=bucket_name)
+    @classmethod
+    def _build_csv_row(
+        cls, participant_id: str, retention_eligible: str, retention_eligible_date: str, actively_retained: str,
+        last_active_retention_activity_date: str, passively_retained: str
+    ):
+        return {
+            'participant_id': participant_id,
+            'retention_eligible': retention_eligible,
+            'retention_eligible_date': retention_eligible_date,
+            'actively_retained': actively_retained,
+            'last_active_retention_activity_date': last_active_retention_activity_date,
+            'passively_retained': passively_retained,
+            'UBR': '0',
+            'UBR1_RaceEthnicity': '0',
+            'UBR2_Age': '0',
+            'UBR3_Sex': '0',
+            'UBR4_SexualAndGenderMinorities': '0',
+            'UBR5_Income': '0',
+            'UBR6_Education': '0',
+            'UBR7_Geography': '0',
+            'UBR8_AccessToCare': '0',
+            'UBR9_Disability': '0'
+        }
 
-    def _open_test_file(self, test_filename, participant_ids=None):
-        with open(test_data.data_path(test_filename)) as f:
-            lines = f.readlines()
-            csv_str = ""
-            for idx, line in enumerate(lines):
-                if '{pid}' in line:
-                    line = line.replace('{pid}', str(participant_ids[idx-1]))
-                csv_str += line
+    def _get_participant_summary(self, participant_id):
+        return self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant_id
+        ).one()
 
-            return csv_str
-
-    def _write_cloud_csv(self, file_name, contents_str, bucket=None, folder=None):
-        if folder is None:
-            path = "/%s/%s" % (bucket, file_name)
-        else:
-            path = "/%s/%s/%s" % (bucket, folder, file_name)
-        with open_cloud_file(path, mode='wb') as cloud_file:
-            cloud_file.write(contents_str.encode("utf-8"))
+    def _assert_summary_retention_fields(
+        self, summary: ParticipantSummary, status: RetentionStatus, eligible_time,
+        last_activity_time, retention_type: Optional[RetentionType]
+    ):
+        self.session.refresh(summary)
+        self.assertEqual(status, summary.retentionEligibleStatus)
+        self.assertEqual(eligible_time, summary.retentionEligibleTime)
+        self.assertEqual(last_activity_time, summary.lastActiveRetentionActivityTime)
+        self.assertEqual(retention_type, summary.retentionType)

@@ -994,7 +994,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         has_weight = False
         for measurement in measurement_collection.measurements:
             # Measurement should count if there is a value recorded, or if there are modifications/qualifiers
-            is_valid_value = measurement.valueDecimal is not None or measurement.qualifiers
+            is_valid_value = measurement.valueDecimal is not None or bool(measurement.qualifiers)
             if measurement.codeValue in height_codes:
                 has_height = is_valid_value
             elif measurement.codeValue in weight_codes:

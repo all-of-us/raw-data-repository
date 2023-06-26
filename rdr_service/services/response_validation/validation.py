@@ -14,6 +14,11 @@ from rdr_service.domain_model import response as response_domain_model
 from rdr_service.model.code import Code
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionType
 
+
+class BranchParsingError(Exception):
+    ...
+
+
 class _Requirement(ABC):
     """
     Base class for a logical constraint on a question within a survey.
@@ -122,6 +127,13 @@ class Question:
             answer_value=value
         )
 
+    def answer_not_equal(self, value) -> Condition:
+        return _HasAnsweredQuestionWith(
+            question_code=self.question_code,
+            comparison=_Comparison.NOT,
+            answer_value=value
+        )
+
     def has_option_selected(self, option_value) -> Condition:
         return _HasSelectedOption(
             question_code=self.question_code,
@@ -135,6 +147,7 @@ class _Comparison(Enum):
     EQUALS = auto()
     GREATER_THAN = auto()
     LESS_THAN = auto()
+    NOT = auto()
 
 
 class InAnySurvey(Condition):
@@ -280,12 +293,16 @@ class _HasAnsweredQuestionWith(Condition):
             self._passes = answer and answer.value > self.expected_answer_value
         elif self.comparison == _Comparison.LESS_THAN:
             self._passes = answer and answer.value < self.expected_answer_value
+        elif self.comparison == _Comparison.NOT:
+            self._passes = answer and answer.value != self.expected_answer_value
 
     def __str__(self):
         if self.comparison == _Comparison.GREATER_THAN:
             return f"[{self.question_code}] > {self.expected_answer_value}"
         elif self.comparison == _Comparison.LESS_THAN:
             return f"[{self.question_code}] < {self.expected_answer_value}"
+        elif self.comparison == _Comparison.NOT:
+            return f'[{self.question_code}] <> {self.expected_answer_value}'
         else:
             return f"[{self.question_code}] = '{self.expected_answer_value}'"
 
@@ -379,7 +396,7 @@ class _BaseParser(ABC):
         if self._next_expected_chars:
             expected = self._next_expected_chars.pop(0)
             if expected != char:
-                raise Exception(f'unexpected "{char}", was expecting "{expected}"')
+                raise BranchParsingError(f'unexpected "{char}", was expecting "{expected}"')
         else:
             self._process_char(char)
 
@@ -433,35 +450,50 @@ class _ConstraintParser(_BaseParser):
             else:
                 self._answer_chars.append(char)
         else:
-            raise Exception(f'unsure what to do with "{char}" in {self._state}')
+            raise BranchParsingError(f'unsure what to do with "{char}" in {self._state}')
 
     def _finish_reading_question_code(self):
         if self._state != _ConstraintParserState.READING_QUESTION_CODE:
-            raise Exception(f'unexpected end of reading question code in {self._state}')
+            raise BranchParsingError(f'unexpected end of reading question code in {self._state}')
 
         self._state = _ConstraintParserState.READING_COMPARISON
         self._next_expected_chars = [' ']
 
     def _start_reading_checkbox_constraint(self):
         if self._state != _ConstraintParserState.READING_QUESTION_CODE:
-            raise Exception(f'unexpected transition to checkbox parsing in {self._state}')
+            raise BranchParsingError(f'unexpected transition to checkbox parsing in {self._state}')
 
         self._state = _ConstraintParserState.READING_CHECKBOX_OPTION
 
     def _read_comparison(self, comparison_char):
-        if comparison_char == '=':
-            self._next_expected_chars = [' ', "'"]
-        elif comparison_char in ['<', '>']:
-            self._next_expected_chars = [' ']
+        if self._comparison_operation is None and comparison_char == '<':
+            # could be less-than, or could be not-equal, store character seen and respond based on next one
+            self._comparison_operation = comparison_char  #
+        elif self._comparison_operation == '<':  # Previous char was <, so find intention based on current char
+            if comparison_char == ' ':
+                # previous char was less-than, wrap up comparator parsing
+                self._state = _ConstraintParserState.READING_ANSWER
+            elif comparison_char == '>':
+                # parsed not-equal, wrap up parsing and continue to answer
+                self._state = _ConstraintParserState.READING_ANSWER
+                self._next_expected_chars = [' ']
+                self._comparison_operation = '<>'
+            else:
+                raise BranchParsingError(f'Unexpected "{comparison_char}" seen after "<"')
         else:
-            raise Exception(f'unrecognized comparison char "{comparison_char}"')
+            if comparison_char == '=':
+                self._next_expected_chars = [' ', "'"]
+            elif comparison_char == '>':
+                self._next_expected_chars = [' ']
+            else:
+                raise BranchParsingError(f'unrecognized comparison char "{comparison_char}"')
 
-        self._state = _ConstraintParserState.READING_ANSWER
-        self._comparison_operation = comparison_char
+            self._state = _ConstraintParserState.READING_ANSWER
+            self._comparison_operation = comparison_char
 
     def _finish_checkbox_constraint(self):
         if self._state != _ConstraintParserState.READING_CHECKBOX_OPTION:
-            raise Exception(f'unexpected end of reading checkbox in {self._state}')
+            raise BranchParsingError(f'unexpected end of reading checkbox in {self._state}')
 
         self._state = None
         question_code = ''.join(self._question_code_chars)
@@ -473,7 +505,7 @@ class _ConstraintParser(_BaseParser):
 
     def finish_constraint(self):
         if self._state != _ConstraintParserState.READING_ANSWER:
-            raise Exception('unexpected end of constraint')
+            raise BranchParsingError('unexpected end of constraint')
 
         self._state = None
         question_code = ''.join(self._question_code_chars)
@@ -483,6 +515,8 @@ class _ConstraintParser(_BaseParser):
             condition = Question(question_code).answer_greater_than(answer_code)
         elif self._comparison_operation == '<':
             condition = Question(question_code).answer_less_than(answer_code)
+        elif self._comparison_operation == '<>':
+            condition = Question(question_code).answer_not_equal(answer_code)
         else:
             condition = Question(question_code).is_answered_with(answer_code)
 
@@ -507,15 +541,15 @@ class _BranchingLogicParser(_BaseParser):
 
     def start_new_nesting_level(self):
         if self._state is not None:
-            raise Exception('unexpected transition to reading a new nesting level')
+            raise BranchParsingError('unexpected transition to reading a new nesting level')
 
         self._child_parser = _BranchingLogicParser(self)
 
     def finish_nesting_level(self):
         if self._state is not None:
-            raise Exception(f'unexpected end to nesting level in {self._state}')
+            raise BranchParsingError(f'unexpected end to nesting level in {self._state}')
         if not self._parent:
-            raise Exception('unexpected end of nesting level at the root parser')
+            raise BranchParsingError('unexpected end of nesting level at the root parser')
 
         self._parent.child_parsing_complete(
             new_condition=self.get_resulting_conditional()
@@ -558,7 +592,7 @@ class _BranchingLogicParser(_BaseParser):
             elif char == 'o' and self._state in [None, _ParserState.READING_CONDITIONAL]:
                 self.finish_or_operation()
             else:
-                raise Exception(f'unsure what to do with "{char}" in state {self._state}')
+                raise BranchParsingError(f'unsure what to do with "{char}" in state {self._state}')
 
     def child_parsing_complete(self, new_condition: Condition, next_expected_chars=None):
         if next_expected_chars is None:
@@ -572,7 +606,7 @@ class _BranchingLogicParser(_BaseParser):
     def get_resulting_conditional(self):
         if self._child_parser:
             if isinstance(self._child_parser, _BranchingLogicParser):
-                raise Exception('Unexpected end of parsing: unfinished nesting levels')
+                raise BranchParsingError('Unexpected end of parsing: unfinished nesting levels')
             elif isinstance(self._child_parser, _ConstraintParser):
                 self._child_parser.finish_constraint()
 

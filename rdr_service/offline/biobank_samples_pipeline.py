@@ -307,7 +307,8 @@ def _query_and_write_reports(exporter, now: datetime, report_type, path_received
     report_paths = [path_missing, path_modified]
     report_predicates = [missing_predicate, modified_predicate]
 
-    query_params = _build_query_params(start_date=now - datetime.timedelta(days=(report_cover_range + 1)))
+    start_of_report_range = now - datetime.timedelta(days=report_cover_range+1)
+    query_params = _build_query_params(start_date=start_of_report_range)
     _query_and_write_received_report(exporter, path_received, query_params, received_predicate)
 
     for report_path, report_predicate in zip(report_paths, report_predicates):
