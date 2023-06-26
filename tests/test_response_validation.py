@@ -242,6 +242,29 @@ class TestConditionalFromBranchingLogic(BaseTestCase):
         result = Condition.from_branching_logic(branching_logic)
         self.assertEqual(branching_logic, str(result))
 
+    def test_answer_less_than(self):
+        branching_logic = "[a] < 7"
+        result = Condition.from_branching_logic(branching_logic)
+        self.assertEqual(branching_logic, str(result))
+
+    def test_answer_not_equal(self):
+        branching_logic = "[a] <> 7"
+        result = Condition.from_branching_logic(branching_logic)
+        self.assertEqual(branching_logic, str(result))
+
+        result.process_response(
+            self._build_response({
+                'a': (7, DataType.INTEGER)
+            }))
+        self.assertFalse(result.passes())
+
+        result.process_response(
+            self._build_response({
+                'a': (19, DataType.INTEGER)
+            })
+        )
+        self.assertTrue(result.passes())
+
     def test_number_comparison_with_quotes(self):
         branching_logic = "[a] > '7'"
         result = Condition.from_branching_logic(branching_logic)
@@ -266,3 +289,16 @@ class TestConditionalFromBranchingLogic(BaseTestCase):
         branching_logic = "[a] = 'a1' and ([b] > 0 or [c(option_1)] = '1' and [d] > 5)"
         result = Condition.from_branching_logic(branching_logic)
         self.assertEqual("([a] = 'a1' and (([b] > 0 or [c(option_1)] = '1') and [d] > 5))", str(result))
+
+    @classmethod
+    def _build_response(cls, answer_dict):
+        return Response(
+            answered_codes={
+                question_code: [Answer(id=1, value=str(answer_value), data_type=data_type)]
+                for question_code, (answer_value, data_type) in answer_dict.items()
+            },
+            authored_datetime=datetime.now(),
+            id=8,
+            status=QuestionnaireResponseStatus.COMPLETED,
+            survey_code='test'
+        )

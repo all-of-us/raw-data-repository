@@ -773,7 +773,7 @@ class ConsentValidationController:
 
     @classmethod
     def _report_validation_errors(cls) -> bool:
-        return config.GAE_PROJECT == RdrEnvironment.PROD.name
+        return config.GAE_PROJECT == RdrEnvironment.PROD.value
 
 
 class ConsentValidator:

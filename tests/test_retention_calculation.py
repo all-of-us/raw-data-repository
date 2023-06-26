@@ -45,6 +45,7 @@ class RetentionCalculationIntegrationTest(BaseTestCase):
         Return the data in provided to the calculation code.
         """
         _supplement_with_rdr_calculations(
-            RetentionEligibleMetrics(participantId=self.summary.participantId)
+            RetentionEligibleMetrics(participantId=self.summary.participantId),
+            session=self.session
         )
         return self.retention_calc_mock.call_args[0][0]

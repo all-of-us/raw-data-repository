@@ -9,7 +9,7 @@ from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
-from rdr_service.model.measurements import PhysicalMeasurements
+from rdr_service.model.measurements import Measurement, PhysicalMeasurements
 from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus, \
     PhysicalMeasurementsCollectType, OriginMeasurementUnit
@@ -208,7 +208,8 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             finalizedSiteId=2,
             collectType=PhysicalMeasurementsCollectType.SITE,
             originMeasurementUnit=OriginMeasurementUnit.UNSET,
-            origin='hpro'
+            origin='hpro',
+            meetsCoreDataRequirements=False
         )
 
         doc = json.loads(self._with_id(self.measurement_json, "1"))
@@ -412,3 +413,50 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             record = session.query(PhysicalMeasurements).filter(PhysicalMeasurements.participantId==self.participant.participantId).first()
 
         self.assertEqual(type(measurements.resource), type(record.resource))
+
+    def _make_measurement(self, id_, code_value, pm_id, qualifiers=None):
+        if qualifiers is None:
+            qualifiers = []
+
+        return Measurement(
+            measurementId=id_,
+            physicalMeasurementsId=pm_id,
+            codeValue=code_value,
+            codeSystem='test',
+            qualifiers=qualifiers,
+            measurementTime=datetime.datetime.utcnow()
+        )
+
+    def test_core_data_qualifiers(self):
+        """
+        Make sure we can process qualifiers for height and weight
+        """
+
+        self._make_summary()
+        pm = self._make_physical_measurements()
+
+        pm.measurements = [
+            self._make_measurement(
+                id_=1,
+                pm_id=pm.physicalMeasurementsId,
+                code_value='height',
+                qualifiers=[
+                    self._make_measurement(id_=3, pm_id=pm.physicalMeasurementsId, code_value='height-qualifier')
+                ]
+            ),
+            self._make_measurement(
+                id_=2,
+                pm_id=pm.physicalMeasurementsId,
+                code_value='weight',
+                qualifiers=[
+                    self._make_measurement(id_=4, pm_id=pm.physicalMeasurementsId, code_value='weight-qualifier')
+                ]
+            )
+        ]
+
+        self.dao.insert(pm)
+
+        db_obj: PhysicalMeasurements = self.session.query(PhysicalMeasurements).filter(
+            PhysicalMeasurements.physicalMeasurementsId == pm.physicalMeasurementsId
+        ).one()
+        self.assertTrue(db_obj.meetsCoreDataRequirements)

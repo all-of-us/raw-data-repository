@@ -6,7 +6,7 @@ env_variables:
   RDR_CONFIG_PROVIDER: "rdr_service.config.GoogleCloudDatastoreConfigProvider"
   RDR_STORAGE_PROVIDER: "rdr_service.storage.GoogleCloudStorageProvider"
 
-runtime: python37
+runtime: python311
 
 entrypoint: python3 main.py --service
 

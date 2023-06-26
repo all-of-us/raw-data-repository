@@ -44,10 +44,13 @@ class SmsIngestManifestFunction(FunctionPubSubHandler):
 
         object_id = self.event.attributes.objectId.lower()
 
-        if object_id.endswith("_test_sample_list.csv"):
+        if "pull_lists" in object_id:
             file_type = "SAMPLE_LIST"
-        else:
+        elif "n0_manifest" in object_id:
             file_type = "N0"
+        else:
+            _logger.info(f"{object_id} not configured for ingestion")
+            return
 
         _logger.info(f"Event payload: {self.event}")
 

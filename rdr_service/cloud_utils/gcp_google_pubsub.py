@@ -23,11 +23,27 @@ from rdr_service.config import GAE_PROJECT
 from rdr_service.services.system_utils import retry_func, list_chunks
 
 _INSTANCE_MAPPING = {
-    'all-of-us-rdr-prod': 'all-of-us-rdr-prod:us-central1:rdrbackupdb-b',
+    'all-of-us-rdr-prod': 'all-of-us-rdr-prod:us-central1:rdrbackupdb-d',
     'all-of-us-rdr-stable': 'all-of-us-rdr-stable:us-central1:rdrbackupdb',
     'pmi-drc-api-test': 'pmi-drc-api-test:us-central1:rdrmaindb',
     'all-of-us-rdr-sandbox': 'all-of-us-rdr-sandbox:us-central1:rdrmaindb'
 }
+
+
+class _PubSubServiceCache:
+    """ Simple object to cache the Google Pub/Sub service object and refresh it every so often. """
+    service = None
+    use_count: int = 0
+
+    def get_service(self):
+        if self.service is None or self.use_count > 10000:
+            self.service = discovery.build('pubsub', 'v1', cache_discovery=False)
+            self.use_count = 0
+        self.use_count += 1
+        return self.service
+
+_pubsub_service_cache = _PubSubServiceCache()
+
 
 # TODO: Add production project id after testing in Stable.
 # TODO: Add Stable after more testing has been completed in Test.
@@ -43,7 +59,7 @@ def publish_pubsub_message(project_id: str, topic: str, message: dict):
     :param message: Data to publish to pub-sub topic.
     :return: operation result
     """
-    service = discovery.build('pubsub', 'v1', cache_discovery=True)
+    service = _pubsub_service_cache.get_service()
     topic_path = f'projects/{project_id}/topics/{topic}'
     payload = json.dumps(message).encode('utf-8')
     body = {
@@ -126,7 +142,7 @@ def submit_pipeline_pubsub_msg(database: str = 'rdr', table: str = None, action:
     validated_pk_values = _validate_pk_values(pk_values, expected_len=len(pk_columns)) or []
     if not len(validated_pk_values):
         log_pipeline_error(f'pipeline: {table} pk_values {pk_values} for pk_columns {pk_columns} failed validation',
-                           response_only=os.environ["UNITTEST_FLAG"] != "1")
+                           response_only=os.environ.get("UNITTEST_FLAG", '0') != "1")
     # If project is not allowed or is localhost, return error message
     if project not in allowed_projects:
         return log_pipeline_error(f'pipeline: project {project} not allowed.', True)
@@ -267,10 +283,10 @@ def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableM
     # Submit a pipeline Pub/Sub event for this model record, if the primary key data looks valid
     if not pk_columns:
         log_pipeline_error(f'Empty pk_columns list after inspection of {database}.{tablename}',
-                           response_only=os.environ["UNITTEST_FLAG"] != "1")
+                           response_only=os.environ.get("UNITTEST_FLAG", '0') != "1")
     elif not pk_values:
         log_pipeline_error(f'Empty pk_values list for pubsub upsert message for {database}.{tablename}',
-                           response_only=os.environ["UNITTEST_FLAG"] != "1")
+                           response_only=os.environ.get("UNITTEST_FLAG", '0') != "1")
     else:
         # Temporary/forced logging to profile pipeline activity during unittests (logging level must be ERROR)
         # log_pipeline_error(f'pipeline: pubsub {database}.{tablename}, pk_cols {pk_columns}, pk_values {pk_values}',

@@ -231,6 +231,8 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         )
 
     def _is_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        # TODO: When implementing WEAR validation for Vibrent, remove the filter currently blocking
+        #  them from being checked (in ConsentDao.get_consent_responses_to_validate)
         raise NotImplementedError('Wear consent validation not implemented for Vibrent')
 
     def _is_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
