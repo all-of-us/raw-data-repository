@@ -6,7 +6,7 @@ from flask import request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock
-from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, ParticipantOpsElementTypes
+from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, ParticipantOpsElementTypes, ModuleTypes
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RTI, RDR
 from rdr_service.app_util import auth_required
@@ -16,7 +16,7 @@ from rdr_service.dao.study_nph_dao import NphIntakeDao, NphParticipantEventActiv
     NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao, NphConsentEventTypeDao, \
     NphParticipantDao
 from rdr_service.model.study_nph import WithdrawalEvent, DeactivationEvent, ConsentEvent, EnrollmentEvent, \
-    ParticipantOpsDataElement
+    ParticipantOpsDataElement, DietEvent
 
 MAX_PAYLOAD_LENGTH = 50
 
@@ -52,6 +52,7 @@ class PostIntakePayload(ABC):
         self.nph_enrollment_event_dao = NphDefaultBaseDao(model_type=EnrollmentEvent)
         self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
         self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivationEvent)
+        self.nph_diet_event_dao = NphDefaultBaseDao(model_type=DietEvent)
 
         self.participant_op_data = NphDefaultBaseDao(model_type=ParticipantOpsDataElement)
         self.bundle_identifier = None
@@ -59,30 +60,23 @@ class PostIntakePayload(ABC):
 
         self.participant_response = []
         self.intake_payload = intake_payload
+
         # fhir + json
         self.applicable_entries = [
             'consent',
             'encounter',
             'pairing',
-            'enrollmentstatus'
+            'enrollmentstatus',
+            'withdrawal',
+            'deactivation',
+            'diet'
         ]
 
-    @classmethod
-    def create_post_intake(cls, *, intake_payload):
-        return cls(intake_payload)
-
-    def build_event_dao_map(self) -> dict:
-        event_dao_map = {}
-        event_dao_instance_items = {k: v for k, v in self.__dict__.items() if 'event_dao' in k}
-        for activity in self.current_activities:
-            event_dao_map[f'{activity.name.lower()}'] = event_dao_instance_items[
-                f'nph_{activity.name.lower()}_event_dao']
-        return event_dao_map
-
-    def validate_payload_length(self) -> None:
-        self.intake_payload = [self.intake_payload] if type(self.intake_payload) is not list else self.intake_payload
-        if len(self.intake_payload) > MAX_PAYLOAD_LENGTH:
-            raise BadRequest(f'Payload bundle(s) length is limited to {MAX_PAYLOAD_LENGTH}')
+        self.current_module = None
+        self.special_event_obj_map = {
+            'consent': self.get_consent_events,
+            'diet': self.get_diet_events
+        }
 
     @abstractmethod
     def create_ops_data_elements(self, *, participant_id: str, participant_obj: dict) -> List[dict]:
@@ -109,12 +103,33 @@ class PostIntakePayload(ABC):
         ...
 
     @abstractmethod
+    def get_diet_events(self, entry: dict) -> List[dict]:
+        ...
+
+    @abstractmethod
     def get_bundle_identifier(self, entry: dict) -> int:
         ...
 
     @abstractmethod
     def iterate_entries(self) -> EntryObjData:
         ...
+
+    @classmethod
+    def create_post_intake(cls, *, intake_payload):
+        return cls(intake_payload)
+
+    def build_event_dao_map(self) -> dict:
+        event_dao_map = {}
+        event_dao_instance_items = {k: v for k, v in self.__dict__.items() if 'event_dao' in k}
+        for activity in self.current_activities:
+            event_dao_map[f'{activity.name.lower()}'] = event_dao_instance_items[
+                f'nph_{activity.name.lower()}_event_dao']
+        return event_dao_map
+
+    def validate_payload_length(self) -> None:
+        self.intake_payload = [self.intake_payload] if type(self.intake_payload) is not list else self.intake_payload
+        if len(self.intake_payload) > MAX_PAYLOAD_LENGTH:
+            raise BadRequest(f'Payload bundle(s) length is limited to {MAX_PAYLOAD_LENGTH}')
 
     def get_event_type_id(self, *, activity_name: str, activity_source: str) -> Optional[int]:
         event_type_dao_instance_items = {k: v for k, v in self.__dict__.items() if 'type_dao' in k}
@@ -131,10 +146,12 @@ class PostIntakePayload(ABC):
         return event_activity.id
 
     def create_event_objs(self, *, participant_id: str, entry: dict, activity_data: ActivityData) -> List:
-
-        nph_event_dao = self.event_dao_map[activity_data.name]
-        current_entry_consent_events = self.get_consent_events(entry)
-        current_entry_events = current_entry_consent_events if current_entry_consent_events else [entry]
+        current_entry_events = []
+        nph_event_dao = self.event_dao_map.get(activity_data.name)
+        handle_special_objs_events = self.special_event_obj_map.get(activity_data.name)
+        if handle_special_objs_events:
+            current_entry_events = handle_special_objs_events(entry)
+        current_entry_events = current_entry_events if current_entry_events else [entry]
 
         current_event_objs = []
         for entry_event in current_entry_events:
@@ -147,7 +164,7 @@ class PostIntakePayload(ABC):
             }
 
             # handle consent events based on provisions in payload
-            if current_entry_consent_events:
+            if activity_data.name == 'consent':
                 event_obj['provision'] = entry_event
 
             # handle pairing event based on model
@@ -165,6 +182,9 @@ class PostIntakePayload(ABC):
                     activity_name=activity_data.name,
                     activity_source=activity_data.source
                 )
+
+            if hasattr(nph_event_dao.model_type.__table__.columns, 'module'):
+                event_obj['module'] = ModuleTypes.lookup_by_name(self.current_module.upper())
 
             event_obj.pop('provision', None)
 
@@ -315,7 +335,10 @@ class PostIntakePayloadFHIR(PostIntakePayload):
             return consents
 
         except KeyError as e:
-            raise BadRequest(f'Key error on provision lookup: {e} bundle_id: {self.bundle_identifier}')
+            raise BadRequest(f'Key error on consent lookup: {e} bundle_id: {self.bundle_identifier}')
+
+    def get_diet_events(self, entry: dict) -> List[dict]:
+        ...
 
     def extract_participant_id(self, participant_obj: dict):
         try:
@@ -351,6 +374,9 @@ class PostIntakePayloadFHIR(PostIntakePayload):
 
     def iterate_entries(self) -> EntryObjData:
         participant_event_objs, all_event_objs, all_participant_ops_data, summary_updates = [], [], [], []
+
+        # all FHIR payloads should default to Module1
+        self.current_module = 'Module1'
 
         for resource in self.intake_payload:
             self.bundle_identifier = self.get_bundle_identifier(resource)
@@ -413,11 +439,6 @@ class PostIntakePayloadFHIR(PostIntakePayload):
 # Custom JSON specific payloads
 class PostIntakePayloadJSON(PostIntakePayload):
 
-    def __init__(self, intake_payload):
-        super().__init__(intake_payload)
-
-        self.current_module = None
-
     def get_bundle_identifier(self, entry: dict) -> str:
         return entry['info'].get('ListId')
 
@@ -440,7 +461,18 @@ class PostIntakePayloadJSON(PostIntakePayload):
         return elements_found
 
     def get_site_id(self, entry: dict) -> Optional[int]:
-        ...
+
+        pairing_site_code = entry.get('Site')
+
+        if not pairing_site_code:
+            raise BadRequest(f'Cannot find site pairing code: bundle_id: {self.bundle_identifier}')
+
+        site = self.nph_site_dao.get_site_id_from_external(external_id=pairing_site_code)
+
+        if not site:
+            raise BadRequest(f'Cannot find site from site code: bundle_id: {self.bundle_identifier}')
+
+        return site.id
 
     def extract_participant_id(self, participant_obj: dict) -> Optional[str]:
         try:
@@ -458,36 +490,60 @@ class PostIntakePayloadJSON(PostIntakePayload):
             raise BadRequest(f'Cannot parse participant information from payload: {e} bundle_id:'
                              f' {self.bundle_identifier}')
 
-    def extract_activity_data(self, entry: List[dict], activity_name: str = None) -> List[ActivityData]:
-        current_entry_activity_data = []
+    def extract_activity_data(self, entry: dict, activity_name: str) -> ActivityData:
+        activity_source_map = {
+            'enrollment': 'Status'
+        }
 
-        try:
-            current_activity = list(filter(lambda x: x.name.lower() == activity_name,
-                                           self.current_activities))
-            if not current_activity:
-                raise BadRequest(f'Cannot reconcile activity type bundle_id: {self.bundle_identifier}')
+        activity_source = activity_name
+        extract_value = activity_source_map.get(activity_name)
+        if extract_value:
+            activity_source = f'{self.current_module}_{entry.get(extract_value)}'.lower()
 
-            # activity_source_map = {
-            #     'enrollment': 'Status'
-            # }[activity_name]
+        current_activity = list(filter(lambda x: x.name.lower() == activity_name,
+                                       self.current_activities))
+        if not current_activity:
+            raise BadRequest(f'Cannot reconcile activity type bundle_id: {self.bundle_identifier}')
 
-            # for _ in activity_entries:
-            #     current_entry_activity_data.append(
-            #         ActivityData(
-            #             id=current_activity[0].id,
-            #             name=activity_name,
-            #             source=f'{self.current_module}_{activity_source_map}'.lower()
-            #         )
-            #     )
-            return current_entry_activity_data
+        return ActivityData(
+            id=current_activity[0].id,
+            name=activity_name,
+            source=activity_source
+        )
 
-        except KeyError as e:
-            return BadRequest(f'Key error on activity lookup: {e} bundle_id: {self.bundle_identifier}')
+    def extract_authored_time(self, entry: dict):
+        date_time = entry.get('Date') or entry.get('ParticipantSignedDate')
 
-    def extract_authored_time(self, entry: dict) -> str:
-        ...
+        if not date_time:
+            raise BadRequest(f'Cannot get value on authored time lookup bundle_id: {self.bundle_identifier}')
+
+        return date_time
 
     def get_consent_events(self, entry: dict) -> List[dict]:
+        consents = []
+        consent_opt_ins = {k: v for k, v in entry.items() if self.current_module in k}
+        current_consent_types = self.nph_consent_type_dao.get_all()
+        try:
+            main_consent_opt_in = list(filter(lambda x: x.name.replace(' ', '') == f'{self.current_module}Consent',
+                                              current_consent_types))
+            consents.append({
+                'opt_in': ConsentOptInTypes.lookup_by_name('PERMIT'),
+                'code': main_consent_opt_in[0].source_name
+            })
+
+            for consent_key, consent_decision in consent_opt_ins.items():
+                current_sub_opt_in = [obj for obj in current_consent_types if obj.name.replace(' ', '') == consent_key]
+                consents.append({
+                    'opt_in': ConsentOptInTypes.lookup_by_name(consent_decision.upper()),
+                    'code': current_sub_opt_in[0].source_name
+                })
+            return consents
+
+        except Exception as e:
+            raise BadRequest(f'Cannot parse consent type from payload: {e} bundle_id:'
+                             f' {self.bundle_identifier}')
+
+    def get_diet_events(self, entry: dict) -> List[dict]:
         ...
 
     def iterate_entries(self):
@@ -505,6 +561,7 @@ class PostIntakePayloadJSON(PostIntakePayload):
 
                 participant_id = self.extract_participant_id(participant_obj=participant_obj)
 
+                # top-level
                 all_participant_ops_data.extend(
                     self.create_ops_data_elements(
                         participant_id=participant_id,
@@ -517,31 +574,33 @@ class PostIntakePayloadJSON(PostIntakePayload):
                 applicable_entries: dict = {k.lower(): v for k, v in participant_obj.items()
                                             if k.lower() in self.applicable_entries}
 
+                # granular
                 for key, entry in applicable_entries.items():
-                    # activity_entries = [entry] if type(entry) is not list else entry
-                    activity_name = key.lower().replace('status', '')
-                    # should be list of activity_data
-                    activity_data_list = self.extract_activity_data(
-                        entry=entry,
-                        activity_name=activity_name
-                    )
-                    for activity_data in activity_data_list:
-                        # fhir
-                        entry['bundle_identifier'] = self.bundle_identifier
+                    activity_entries = [entry] if type(entry) is not list else entry
+
+                    for activity_entry in activity_entries:
+                        activity_data = self.extract_activity_data(
+                            entry=activity_entry,
+                            activity_name=key.lower().replace('status', '')
+                        )
+
+                        activity_entry['bundle_identifier'] = self.bundle_identifier
 
                         participant_event_objs.append({
                             'created': clock.CLOCK.now(),
                             'modified': clock.CLOCK.now(),
                             'participant_id': participant_id,
                             'activity_id': activity_data.id,
-                            'resource': entry
+                            'resource': activity_entry
                         })
 
                         event_objs = self.create_event_objs(
                             participant_id=participant_id,
-                            entry=entry,
+                            entry=activity_entry,
                             activity_data=activity_data
                         )
+
+                        all_event_objs.extend(event_objs)
 
                         if activity_data.name in ('consent', 'withdrawal', 'deactivation'):
                             summary_update = {
@@ -550,8 +609,6 @@ class PostIntakePayloadJSON(PostIntakePayload):
                                 'event_authored_time': event_objs[0]['event_authored_time']
                             }
                             summary_updates.append(summary_update)
-
-                        all_event_objs.extend(event_objs)
 
         return EntryObjData(
             participant_event_objs=participant_event_objs,

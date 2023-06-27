@@ -5,7 +5,7 @@ from sqlalchemy.dialects.mysql import TINYINT, JSON
 from sqlalchemy.orm import relation, relationship
 
 from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, ParticipantOpsElementTypes, \
-    StoredSampleStatus, IncidentStatus, IncidentType, DietType, DietStatus, ModuleType
+    StoredSampleStatus, IncidentStatus, IncidentType, DietType, DietStatus, ModuleTypes
 from rdr_service.model.base import NphBase, model_insert_listener, model_update_listener
 from rdr_service.model.utils import UTCDateTime, Enum
 
@@ -293,7 +293,7 @@ class WithdrawalEvent(NphBase):
     event_authored_time = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    module = Column(Enum(ModuleType), nullable=False)
+    module = Column(Enum(ModuleTypes), nullable=False)
 
 
 event.listen(WithdrawalEvent, "before_insert", model_insert_listener)
@@ -310,7 +310,7 @@ class DeactivationEvent(NphBase):
     event_authored_time = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    module = Column(Enum(ModuleType), nullable=False)
+    module = Column(Enum(ModuleTypes), nullable=False)
 
 
 event.listen(DeactivationEvent, "before_insert", model_insert_listener)
@@ -328,7 +328,7 @@ class DietEvent(NphBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     external_id = Column(String(32))
-    module = Column(Enum(ModuleType), nullable=False)
+    module = Column(Enum(ModuleTypes), nullable=False)
     diet_name = Column(Enum(DietType), nullable=False)
     status = Column(Enum(DietStatus), nullable=False)
 

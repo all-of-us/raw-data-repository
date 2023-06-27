@@ -851,7 +851,7 @@ class NphParticipantEventActivityDao(BaseDao, NphDaoMixin):
 
 class NphEventTypeMixin(NphDaoMixin):
 
-    def get_event_by_source_name(self, source_name):
+    def get_event_by_source_name(self, source_name: str) -> List:
         if not hasattr(self.model_type, 'source_name'):
             return []
 
@@ -860,6 +860,18 @@ class NphEventTypeMixin(NphDaoMixin):
                 self.model_type
             ).filter(
                 self.model_type.source_name == source_name
+            )
+            return records.first()
+
+    def get_event_by_name(self, name: str) -> List:
+        if not hasattr(self.model_type, 'name'):
+            return []
+
+        with self.session() as session:
+            records = session.query(
+                self.model_type
+            ).filter(
+                self.model_type.source_name == name
             )
             return records.first()
 

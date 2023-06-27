@@ -54,11 +54,11 @@ class StoredSampleStatus(messages.Enum):
     DISPOSED = 3
 
 
-class ModuleType(messages.Enum):
+class ModuleTypes(messages.Enum):
 
-    MODULE_1 = 1
-    MODULE_2 = 2
-    MODULE_3 = 3
+    MODULE1 = 1
+    MODULE2 = 2
+    MODULE3 = 3
 
 
 class IncidentStatus(messages.Enum):
