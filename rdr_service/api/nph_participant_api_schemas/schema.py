@@ -1,6 +1,6 @@
 import logging
 from graphene import ObjectType, String, Int, DateTime, Field, List, Schema, NonNull, relay
-from sqlalchemy.orm import Query, aliased
+from sqlalchemy.orm import aliased
 from sqlalchemy import and_
 
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
@@ -17,7 +17,6 @@ from rdr_service.model.study_nph import (
 from rdr_service.model.site import Site
 from rdr_service.model.rex import ParticipantMapping
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.dao import database_factory
 from rdr_service.api.nph_participant_api_schemas.util import QueryBuilder, NphParticipantData
 from rdr_service import config
 
@@ -343,12 +342,13 @@ class ParticipantConnection(relay.Connection):
     result_count = Int()
 
     @staticmethod
-    def resolve_total_count(root, _):
-        with database_factory.get_database().session() as sessions:
-            logging.debug(root)
-            query = Query(Participant)
-            query.session = sessions
-            return query.count()
+    def resolve_total_count(_, info):
+        participant_query = info.context.get('participant_query')
+        if participant_query is None:
+            logging.error('graphql context is missing participant_query for resolving total count')
+
+        full_query = participant_query.offset(0).limit(None)
+        return full_query.count()
 
     @staticmethod
     def resolve_result_count(root, _):
@@ -493,12 +493,15 @@ class ParticipantQuery(ObjectType):
                 if not nph_id:
                     query = query_builder.get_resulting_query()
                     query = query.limit(limit).offset(off_set)
+                    info.context['participant_query'] = query
+
                     logging.info(query)
                     return NphParticipantData.load_nph_participant_data(query, NPH_BIOBANK_PREFIX)
 
                 logging.info('Fetch NPH ID: %d', nph_id)
                 query = query.filter(ParticipantMapping.ancillary_participant_id == int(nph_id))
                 logging.info(query)
+
                 return NphParticipantData.load_nph_participant_data(query, NPH_BIOBANK_PREFIX)
 
             except Exception as ex:
