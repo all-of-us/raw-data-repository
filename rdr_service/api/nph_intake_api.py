@@ -53,15 +53,12 @@ class PostIntakePayload(ABC):
         self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
         self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivationEvent)
         self.nph_diet_event_dao = NphDefaultBaseDao(model_type=DietEvent)
-
         self.participant_op_data = NphDefaultBaseDao(model_type=ParticipantOpsDataElement)
+
         self.bundle_identifier = None
         self.event_dao_map = {}
-
         self.participant_response = []
         self.intake_payload = intake_payload
-
-        # fhir + json
         self.applicable_entries = [
             'consent',
             'encounter',
@@ -71,7 +68,6 @@ class PostIntakePayload(ABC):
             'deactivation',
             'diet'
         ]
-
         self.current_module = None
         self.special_event_obj_map = {
             'consent': self.get_consent_events,
@@ -230,8 +226,8 @@ class PostIntakePayload(ABC):
     def handle_data_from_payload(self):
 
         self.validate_payload_length()
-        self.event_dao_map = self.build_event_dao_map()
-        entry_obj = self.iterate_entries()
+        self.event_dao_map: dict = self.build_event_dao_map()
+        entry_obj: EntryObjData = self.iterate_entries()
 
         self.handle_data_inserts(
             participant_event_objs=entry_obj.participant_event_objs,
@@ -394,12 +390,12 @@ class PostIntakePayloadFHIR(PostIntakePayload):
 
             self.participant_response.append({'nph_participant_id': participant_id})
 
-            applicable_entries = [
+            applicable_entries: List = [
                 obj for obj in resource['entry'] if obj['resource']['resourceType'].lower() in self.applicable_entries
             ]
 
             for entry in applicable_entries:
-                activity_data = self.extract_activity_data(entry)
+                activity_data: ActivityData = self.extract_activity_data(entry)
 
                 # fhir
                 entry['bundle_identifier'] = self.bundle_identifier
@@ -412,7 +408,7 @@ class PostIntakePayloadFHIR(PostIntakePayload):
                     'resource': entry
                 })
 
-                event_objs = self.create_event_objs(
+                event_objs: List[dict] = self.create_event_objs(
                     participant_id=participant_id,
                     entry=entry,
                     activity_data=activity_data
@@ -579,7 +575,7 @@ class PostIntakePayloadJSON(PostIntakePayload):
                     activity_entries = [entry] if type(entry) is not list else entry
 
                     for activity_entry in activity_entries:
-                        activity_data = self.extract_activity_data(
+                        activity_data: ActivityData = self.extract_activity_data(
                             entry=activity_entry,
                             activity_name=key.lower().replace('status', '')
                         )
@@ -594,7 +590,7 @@ class PostIntakePayloadJSON(PostIntakePayload):
                             'resource': activity_entry
                         })
 
-                        event_objs = self.create_event_objs(
+                        event_objs: List[dict] = self.create_event_objs(
                             participant_id=participant_id,
                             entry=activity_entry,
                             activity_data=activity_data

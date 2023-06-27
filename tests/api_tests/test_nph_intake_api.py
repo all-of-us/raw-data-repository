@@ -323,9 +323,7 @@ class NphIntakeAPITest(BaseTestCase):
     #
     #     enrollment_activity = self.nph_activity.get(1)
     #     pairing_activity = self.nph_activity.get(2)
-    #
     #     consent_activity = self.nph_activity.get(3)
-    #
     #     withdrawal_activity = self.nph_activity.get(4)
     #     deactivation_activity = self.nph_activity.get(5)
     #
@@ -390,8 +388,6 @@ class NphIntakeAPITest(BaseTestCase):
     #
     #     response = self.send_post('nph/Intake', request_data=consent_json)
 
-    # def test_diet_data_stored(self):
-    #     pass
 
     def tearDown(self):
         super().tearDown()
