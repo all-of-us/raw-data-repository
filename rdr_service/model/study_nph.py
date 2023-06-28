@@ -293,7 +293,7 @@ class WithdrawalEvent(NphBase):
     event_authored_time = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    module = Column(Enum(ModuleTypes), nullable=True)
+    module = Column(Enum(ModuleTypes), nullable=False)
 
 
 event.listen(WithdrawalEvent, "before_insert", model_insert_listener)
@@ -310,7 +310,7 @@ class DeactivationEvent(NphBase):
     event_authored_time = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    module = Column(Enum(ModuleTypes), nullable=True)
+    module = Column(Enum(ModuleTypes), nullable=False)
 
 
 event.listen(DeactivationEvent, "before_insert", model_insert_listener)
@@ -327,10 +327,12 @@ class DietEvent(NphBase):
     event_authored_time = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    external_id = Column(String(32))
+    diet_id = Column(TINYINT, nullable=False)
+    status_id = Column(BigInteger, nullable=False)
     module = Column(Enum(ModuleTypes), nullable=False)
     diet_name = Column(Enum(DietType), nullable=False)
     status = Column(Enum(DietStatus), nullable=False)
+    current = Column(TINYINT, default=0)
 
 
 event.listen(DietEvent, "before_insert", model_insert_listener)

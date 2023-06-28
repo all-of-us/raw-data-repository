@@ -46,8 +46,8 @@ def upgrade_nph():
                     sa.PrimaryKeyConstraint('id'),
                     schema='nph'
                     )
-    op.add_column('deactivation_event', sa.Column('module', rdr_service.model.utils.Enum(ModuleType), nullable=True))
-    op.add_column('withdrawal_event', sa.Column('module', rdr_service.model.utils.Enum(ModuleType), nullable=True))
+    op.add_column('deactivation_event', sa.Column('module', rdr_service.model.utils.Enum(ModuleType), nullable=False))
+    op.add_column('withdrawal_event', sa.Column('module', rdr_service.model.utils.Enum(ModuleType), nullable=False))
     # ### end Alembic commands ###
 
 

@@ -6,7 +6,8 @@ from flask import request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock
-from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, ParticipantOpsElementTypes, ModuleTypes
+from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, ParticipantOpsElementTypes, \
+    ModuleTypes, DietType, DietStatus
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RTI, RDR
 from rdr_service.app_util import auth_required
@@ -155,13 +156,13 @@ class PostIntakePayload(ABC):
             event_obj = {
                 'created': clock.CLOCK.now(),
                 'modified': clock.CLOCK.now(),
-                'event_authored_time': self.extract_authored_time(entry),
+                'event_authored_time': entry_event.get('event_authored_time') or self.extract_authored_time(entry),
                 'participant_id': participant_id,
             }
 
-            # handle consent events based on provisions in payload
-            if activity_data.name == 'consent':
-                event_obj['provision'] = entry_event
+            # special data attributes added to base event obj
+            if handle_special_objs_events:
+                event_obj.update(entry_event)
 
             # handle pairing event based on model
             if hasattr(nph_event_dao.model_type.__table__.columns, 'site_id'):
@@ -170,9 +171,8 @@ class PostIntakePayload(ABC):
             # handle models with event type relationships
             if hasattr(nph_event_dao.model_type.__table__.columns, 'event_type_id'):
                 # source for consent activity data should be null add opt_in value
-                if activity_data.name == 'consent' and event_obj.get('provision'):
-                    activity_data.source = event_obj['provision']['code']
-                    event_obj['opt_in'] = event_obj['provision']['opt_in']
+                if activity_data.name == 'consent' and event_obj.get('code'):
+                    activity_data.source = event_obj.get('code')
 
                 event_obj['event_type_id'] = self.get_event_type_id(
                     activity_name=activity_data.name,
@@ -181,8 +181,6 @@ class PostIntakePayload(ABC):
 
             if hasattr(nph_event_dao.model_type.__table__.columns, 'module'):
                 event_obj['module'] = ModuleTypes.lookup_by_name(self.current_module.upper())
-
-            event_obj.pop('provision', None)
 
             # handle additional keys for later processing
             event_obj['additional'] = {
@@ -435,6 +433,11 @@ class PostIntakePayloadFHIR(PostIntakePayload):
 # Custom JSON specific payloads
 class PostIntakePayloadJSON(PostIntakePayload):
 
+    def __init__(self, intake_payload):
+        super().__init__(intake_payload)
+
+        self.current_consent_types = self.nph_consent_type_dao.get_all()
+
     def get_bundle_identifier(self, entry: dict) -> str:
         return entry['info'].get('ListId')
 
@@ -516,19 +519,23 @@ class PostIntakePayloadJSON(PostIntakePayload):
         return date_time
 
     def get_consent_events(self, entry: dict) -> List[dict]:
+
+        def clean_consent_key(value: str) -> str:
+            return value.replace(' ', '')
+
         consents = []
         consent_opt_ins = {k: v for k, v in entry.items() if self.current_module in k}
-        current_consent_types = self.nph_consent_type_dao.get_all()
         try:
-            main_consent_opt_in = list(filter(lambda x: x.name.replace(' ', '') == f'{self.current_module}Consent',
-                                              current_consent_types))
+            main_consent_opt_in = list(filter(lambda x: clean_consent_key(x.name) == f'{self.current_module}Consent',
+                                              self.current_consent_types))
             consents.append({
                 'opt_in': ConsentOptInTypes.lookup_by_name('PERMIT'),
                 'code': main_consent_opt_in[0].source_name
             })
 
             for consent_key, consent_decision in consent_opt_ins.items():
-                current_sub_opt_in = [obj for obj in current_consent_types if obj.name.replace(' ', '') == consent_key]
+                current_sub_opt_in = [obj for obj in self.current_consent_types if
+                                      clean_consent_key(obj.name) == consent_key]
                 consents.append({
                     'opt_in': ConsentOptInTypes.lookup_by_name(consent_decision.upper()),
                     'code': current_sub_opt_in[0].source_name
@@ -540,7 +547,25 @@ class PostIntakePayloadJSON(PostIntakePayload):
                              f' {self.bundle_identifier}')
 
     def get_diet_events(self, entry: dict) -> List[dict]:
-        ...
+        diet_entries = []
+
+        diet_name, diet_id, diet_statuses = \
+            DietType.lookup_by_name(entry.get('DietName').upper()), \
+            entry.get('DietId'), \
+            entry.get('DietStatus')
+
+        current_map = {'true': True, 'false': False}
+
+        for diet_status in diet_statuses:
+            diet_entries.append({
+                'diet_id': diet_id,
+                'diet_name': diet_name,
+                'status_id': diet_status.get('StatusId'),
+                'status': DietStatus.lookup_by_name(diet_status.get('Status').upper()),
+                'current': current_map.get(diet_status.get('Current').lower()),
+                'event_authored_time': self.extract_authored_time(diet_status)
+            })
+        return diet_entries
 
     def iterate_entries(self):
         participant_event_objs, all_event_objs, all_participant_ops_data, summary_updates = [], [], [], []
@@ -557,7 +582,6 @@ class PostIntakePayloadJSON(PostIntakePayload):
 
                 participant_id = self.extract_participant_id(participant_obj=participant_obj)
 
-                # top-level
                 all_participant_ops_data.extend(
                     self.create_ops_data_elements(
                         participant_id=participant_id,
@@ -570,7 +594,6 @@ class PostIntakePayloadJSON(PostIntakePayload):
                 applicable_entries: dict = {k.lower(): v for k, v in participant_obj.items()
                                             if k.lower() in self.applicable_entries}
 
-                # granular
                 for key, entry in applicable_entries.items():
                     activity_entries = [entry] if type(entry) is not list else entry
 

@@ -35,6 +35,8 @@ class NphIntakeAPITest(BaseTestCase):
         self.nph_data_gen.create_database_pairing_event_type(
             name="Initial"
         )
+
+        # Module 1 Enrollment
         self.nph_data_gen.create_database_enrollment_event_type(
             name="Module 1 Eligibility Confirmed",
             source_name='module1_eligibilityConfirmed'
@@ -43,6 +45,27 @@ class NphIntakeAPITest(BaseTestCase):
             name="Module 1 Consented",
             source_name='module1_consented'
         )
+
+        # Module 2 Enrollment
+        self.nph_data_gen.create_database_enrollment_event_type(
+            name="Module 2 Eligibility Confirmed",
+            source_name='module2_eligibilityConfirmed'
+        )
+        self.nph_data_gen.create_database_enrollment_event_type(
+            name="Module 2 Consented",
+            source_name='module2_consented'
+        )
+
+        self.nph_data_gen.create_database_enrollment_event_type(
+            name="Module 2 Started",
+            source_name='module2_started'
+        )
+
+        self.nph_data_gen.create_database_enrollment_event_type(
+            name="Module 2 Complete",
+            source_name='module2_completed'
+        )
+
         for _ in range(2):
             self.nph_data_gen.create_database_participant()
 
@@ -54,13 +77,14 @@ class NphIntakeAPITest(BaseTestCase):
                 organization_external_id="nph-test-org"
             )
 
+        # Module 1 Consent
         # overall consent obj
         self.nph_data_gen.create_database_consent_event_type(
             name='Module 1 Consent',
             source_name='m1_consent'
         )
 
-        # consent opt-ins
+        # consent opt-ins only for
         self.nph_data_gen.create_database_consent_event_type(
             name='Module 1 Consent GPS',
             source_name='m1_consent_gps'
@@ -74,6 +98,12 @@ class NphIntakeAPITest(BaseTestCase):
         self.nph_data_gen.create_database_consent_event_type(
             name='Module 1 Consent Tissue',
             source_name='m1_consent_tissue'
+        )
+
+        # Module 2 Consent
+        self.nph_data_gen.create_database_consent_event_type(
+            name='Module 2 Consent',
+            source_name='m2_consent'
         )
 
     # FHIR payloads
@@ -307,14 +337,17 @@ class NphIntakeAPITest(BaseTestCase):
         self.assertTrue(self.nph_deactivation_event_dao.get_all() == [])
 
     # JSON payloads
-    # def test_m1_operational_json_payload(self):
-    #
-    #     with open(data_path("nph_m1_operational_multi_non_fhir.json")) as f:
-    #         consent_json = json.load(f)
-    #
-    #     current_participant_ids = [100000000, 100000001]
-    #
-    #     response = self.send_post('nph/Intake', request_data=consent_json)
+    def test_m1_operational_json_payload(self):
+
+        with open(data_path("nph_m1_operational_multi_non_fhir.json")) as f:
+            consent_json = json.load(f)
+
+        current_participant_ids = [100000000, 100000001]
+
+        response = self.send_post('nph/Intake', request_data=consent_json)
+
+        print(current_participant_ids)
+        print(response)
     #     self.assertEqual(len(response), len(current_participant_ids))
     #     self.assertTrue(all(int(obj['nph_participant_id']) in current_participant_ids for obj in response))
     #
@@ -378,16 +411,17 @@ class NphIntakeAPITest(BaseTestCase):
     #     self.assertTrue(self.nph_consent_event_dao.get_all() == [])
     #     self.assertTrue(self.nph_withdrawal_event_dao.get_all() == [])
     #     print('Darryl')
+    #
+    def test_m2_operational_json_payload(self):
 
-    # def test_m2_operational_json_payload(self):
-    #
-    #     with open(data_path("nph_m2_operational_multi_non_fhir.json")) as f:
-    #         consent_json = json.load(f)
-    #
-    #     current_participant_ids = [100000000, 100000001]
-    #
-    #     response = self.send_post('nph/Intake', request_data=consent_json)
+        with open(data_path("nph_m2_operational_multi_non_fhir.json")) as f:
+            consent_json = json.load(f)
 
+        current_participant_ids = [100000000]
+
+        response = self.send_post('nph/Intake', request_data=consent_json)
+        print(current_participant_ids)
+        print(response)
 
     def tearDown(self):
         super().tearDown()

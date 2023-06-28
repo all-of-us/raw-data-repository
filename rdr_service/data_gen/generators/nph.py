@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from rdr_service.ancillary_study_resources.nph.enums import ModuleTypes
 from rdr_service.dao import database_factory
 from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
     PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
@@ -194,6 +195,7 @@ class NphDataGenerator(NphBaseGenerator):
 
     def create_database_withdrawal_event(self, **kwargs):
         withdrawal_event = self._withdrawal_event(**kwargs)
+        withdrawal_event.module = ModuleTypes.MODULE1
         self._commit_to_database(withdrawal_event)
         return withdrawal_event
 
@@ -203,6 +205,7 @@ class NphDataGenerator(NphBaseGenerator):
 
     def create_database_deactivated_event(self, **kwargs):
         deactivated_event = self._deactivated_event(**kwargs)
+        deactivated_event.module = ModuleTypes.MODULE1
         self._commit_to_database(deactivated_event)
         return deactivated_event
 

@@ -1,68 +1,112 @@
 {
 	"info": {
-		"ListId": "1212AS",
-		"CreatedDate": "2023-01-01T00:00:00-04:00",
-		"TotalNumberofParticipants": 4,
+		"ListId": "M2EX",
+		"CreatedDate": "2024-06-08T13:11:11-04:00",
+		"TotalNumberofParticipants": 1,
 		"Participants": [
 			{
 				"Id": 1,
-				"NPHId": "9999999999999",
+				"NPHId": "100000000",
 				"Module": "Module2",
-				"DOB": "2023-01-01",
+				"DOB": "1981-01-01",
 				"EnrollmentStatus": [
 					{
 						"StatusId": 1,
 						"Status": "consented",
-						"Reason": null,
-						"Date": "2023-01-01T00:00:00-04:00",
+						"Date": "2024-04-26T09:01:00-04:00",
 						"Current": "false"
 					},
 					{
 						"StatusId": 2,
 						"Status": "eligibilityConfirmed",
-						"Reason": null,
-						"Date": "2023-01-01T00:00:00-04:00",
+						"Date": "2024-04-26T09:15:00-04:00",
 						"Current": "false"
 					},
 					{
 						"StatusId": 3,
 						"Status": "started",
-						"Reason": null,
-						"Date": "2023-01-01T00:00:00-04:00",
+						"Date": "2024-04-28T09:01:00-04:00",
+						"Current": "false"
+					},
+					{
+						"StatusId": 4,
+						"Status": "completed",
+						"Date": "2024-06-30T09:01:00-04:00",
 						"Current": "true"
 					}
 				],
 				"Diet": [
 					{
-						"Id": 1,
-						"Name": "Orange",
-						"StartDateTime": "2023-01-01T00:00:00-04:00",
-						"CompleteDateTime": "2023-01-01T00:00:00-04:00",
-						"discontinuedTime": "",
-						"CurrentStatus:": "Completed"
+						"DietId": 1,
+						"DietName": "Orange",
+						"DietStatus": [
+							{
+								"StatusId": 1,
+								"Date": "2024-04-28T09:01:00-04:00",
+								"Status": "started",
+								"Current": "false"
+							},
+							{
+								"StatusId": 2,
+								"Date": "2024-05-07T09:30:00-04:00",
+								"Status": "completed",
+								"Current": "false"
+							}
+						]
 					},
 					{
-						"Id": 2,
-						"Name": "Blue",
-						"StartDateTime": "2023-01-01T00:00:00-04:00",
-						"CompleteDateTime": "",
-						"discontinuedTime": "",
-						"CurrentStatus:": "Started"
+						"DietId": 2,
+						"DietName": "Blue",
+						"DietStatus": [
+							{
+								"StatusId": 3,
+								"Date": "2024-05-20T09:35:00-04:00",
+								"Status": "started",
+								"Current": "false"
+							},
+							{
+								"StatusId": 4,
+								"Date": "2024-05-27T09:31:00-04:00",
+								"Status": "completed",
+								"Current": "false"
+							}
+						]
+					},
+					{
+						"DietId": 3,
+						"DietName": "Purple",
+						"DietStatus": [
+							{
+								"StatusId": 5,
+								"Date": "2024-06-05T09:35:00-04:00",
+								"Status": "started",
+								"Current": "false"
+							},
+							{
+								"StatusId": 6,
+								"Date": "2024-06-18T09:31:00-04:00",
+								"Status": "completed",
+								"Current": "true"
+							}
+						]
 					}
 				],
-				"Consent": {
-					"Version": 1,
-					"SignedName": "Amir",
-					"StaffName": "Ellie",
-					"StaffSignedDate": "2023-01-01T00:00:00-04:00",
-					"FileName": "Contsent_12.pdf",
-					"ParticipantSignedDate": "2023-01-01T00:00:00-04:00",
-				},
+				"Consent": [
+					{
+						"Version": 1,
+						"SignedName": "Lisa Harvey",
+						"StaffName": "Ellie Sheridan",
+						"StaffSignedDate": "2024-04-26",
+						"FileName": "19991110000444_v2.pdf",
+						"ParticipantSignedDate": "2024-04-26T08:15:00-04:00"
+					}
+				],
 				"Pairing": {
-					"Site": "nph-site-nphxyz",
-					"Date": "2023-01-01T00:00:00-04:00"
+					"Site": "nph-test-site-2",
+					"Date": "2024-04-16T08:19:52-04:00"
 				}
 			}
 		]
 	}
 }
+
