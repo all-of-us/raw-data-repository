@@ -65,9 +65,18 @@ class PhysicalMeasurements(Base):
     """Original resource value; whole payload request that was sent"""
     meetsCoreDataRequirements = Column('meets_core_data_reqs', Boolean)
     """
-    Indicates whether the measurement satisfies the requirements for Core Data
-    (provides both height and weight values, or a modification for any value not provided)
-    ."""
+    Deprecated in favor of satisfiesHeightRequirements and satisfiesWeightRequirements.
+    """
+    satisfiesHeightRequirements = Column('meets_height_reqs', Boolean)
+    """
+    Indicates whether the measurement satisfies the height requirements for Core Data
+    (or a modification for any value not provided).
+    """
+    satisfiesWeightRequirements = Column('meets_weight_reqs', Boolean)
+    """
+    Indicates whether the measurement satisfies the weight requirements for Core Data
+    (or a modification for any value not provided).
+    """
 
 
 class Measurement(Base):
