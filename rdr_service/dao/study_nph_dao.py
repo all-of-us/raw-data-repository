@@ -116,6 +116,7 @@ class NphParticipantDao(BaseDao):
     def get_orders_samples_subquery(self):
         parent_study_category = aliased(StudyCategory)
         parent_study_category_module = aliased(StudyCategory)
+        parent_ordered_sample = aliased(OrderedSample)
         stored_sample_alias = aliased(StoredSample)
 
         with self.session() as session:
@@ -168,7 +169,12 @@ class NphParticipantDao(BaseDao):
                                 ],
                                 else_='Active'
                             ),
-                            'collectionDateUTC', OrderedSample.collected,
+                            'collectionDateUTC', case(
+                                [
+                                    (OrderedSample.parent_sample_id.isnot(None), parent_ordered_sample.collected),
+                                ],
+                                else_=OrderedSample.collected
+                            ),
                             'processingDateUTC', case(
                                 [
                                     (OrderedSample.parent_sample_id.isnot(None), OrderedSample.collected),
@@ -213,6 +219,9 @@ class NphParticipantDao(BaseDao):
             ).outerjoin(
                 parent_study_category_module,
                 parent_study_category_module.id == parent_study_category.parent_id
+            ).outerjoin(
+                parent_ordered_sample,
+                parent_ordered_sample.id == OrderedSample.parent_sample_id
             ).outerjoin(
                 stored_samples_subquery,
                 stored_samples_subquery.c.stored_sample_pid == Participant.id
