@@ -11,7 +11,7 @@ import rdr_service.model.utils
 from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
-from rdr_service.ancillary_study_resources.nph.enums import ModuleType, DietType, DietStatus
+from rdr_service.ancillary_study_resources.nph.enums import ModuleTypes, DietType, DietStatus
 
 revision = '6e26b36d30af'
 down_revision = 'd5ef6dd601fe'
@@ -38,7 +38,7 @@ def upgrade_nph():
                     sa.Column('participant_id', sa.BigInteger(), nullable=True),
                     sa.Column('event_id', sa.BigInteger(), nullable=True),
                     sa.Column('external_id', sa.String(length=32), nullable=True),
-                    sa.Column('module', rdr_service.model.utils.Enum(ModuleType), nullable=False),
+                    sa.Column('module', rdr_service.model.utils.Enum(ModuleTypes), nullable=False),
                     sa.Column('diet_name', rdr_service.model.utils.Enum(DietType), nullable=False),
                     sa.Column('status', rdr_service.model.utils.Enum(DietStatus), nullable=False),
                     sa.ForeignKeyConstraint(['event_id'], ['nph.participant_event_activity.id'], ),
@@ -46,8 +46,24 @@ def upgrade_nph():
                     sa.PrimaryKeyConstraint('id'),
                     schema='nph'
                     )
-    op.add_column('deactivation_event', sa.Column('module', rdr_service.model.utils.Enum(ModuleType), nullable=False))
-    op.add_column('withdrawal_event', sa.Column('module', rdr_service.model.utils.Enum(ModuleType), nullable=False))
+    op.add_column('deactivation_event', sa.Column('module', rdr_service.model.utils.Enum(ModuleTypes), nullable=False))
+    op.add_column('withdrawal_event', sa.Column('module', rdr_service.model.utils.Enum(ModuleTypes), nullable=False))
+
+    op.execute(
+        """
+        Update nph.deactivation_event
+        Set nph.deactivation_event.module = 1
+        Where true
+        """
+    )
+
+    op.execute(
+        """
+        Update nph.withdrawal_event
+        Set nph.withdrawal_event.module = 1
+        Where true
+        """
+    )
     # ### end Alembic commands ###
 
 

@@ -345,9 +345,9 @@ class NphIntakeAPITest(BaseTestCase):
         current_participant_ids = [100000000, 100000001]
 
         response = self.send_post('nph/Intake', request_data=consent_json)
-
         print(current_participant_ids)
         print(response)
+
     #     self.assertEqual(len(response), len(current_participant_ids))
     #     self.assertTrue(all(int(obj['nph_participant_id']) in current_participant_ids for obj in response))
     #
