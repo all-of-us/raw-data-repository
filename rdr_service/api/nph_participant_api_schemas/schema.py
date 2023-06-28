@@ -343,12 +343,15 @@ class ParticipantConnection(relay.Connection):
 
     @staticmethod
     def resolve_total_count(_, info):
-        participant_query = info.context.get('participant_query')
-        if participant_query is None:
-            logging.error('graphql context is missing participant_query for resolving total count')
+        with NphParticipantDao().session() as session:
+            participant_query = info.context.get('participant_query')
+            if participant_query is None:
+                logging.error('graphql context is missing participant_query for resolving total count')
+                return 0
 
-        full_query = participant_query.offset(0).limit(None)
-        return full_query.count()
+            full_query = participant_query.offset(0).limit(None)
+            full_query.session = session
+            return full_query.count()
 
     @staticmethod
     def resolve_result_count(root, _):
@@ -500,8 +503,8 @@ class ParticipantQuery(ObjectType):
 
                 logging.info('Fetch NPH ID: %d', nph_id)
                 query = query.filter(ParticipantMapping.ancillary_participant_id == int(nph_id))
+                info.context['participant_query'] = query
                 logging.info(query)
-
                 return NphParticipantData.load_nph_participant_data(query, NPH_BIOBANK_PREFIX)
 
             except Exception as ex:
