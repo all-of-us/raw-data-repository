@@ -585,7 +585,8 @@ class NphParticipantAPITest(BaseTestCase):
     def test_nph_biospecimen_for_participant(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
         self._create_test_sample_updates()
-        field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID timepointID biobankStatus { limsID biobankModified status } } "
+        field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID collectionDateUTC processingDateUTC " \
+                        "timepointID biobankStatus { limsID biobankModified status } } "
         query = simple_query(field_to_test)
 
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
@@ -596,9 +597,10 @@ class NphParticipantAPITest(BaseTestCase):
             biospecimens: Iterable[Dict[str, str]] = (
                 result.get("participant").get("edges")[i].get("node").get("nphBiospecimens")
             )
-            self.assertEqual(12, len(biospecimens))
+            self.assertEqual(8, len(biospecimens))
             for biospecimen in biospecimens:
                 self.assertIsNotNone(biospecimen.get("biobankStatus")[0].get("status"))
+                self.assertNotEqual(biospecimen.get("processingDateUTC"), biospecimen.get("collectionDateUTC"))
 
     def test_nph_biospecimen_duplicate_stored_samples(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
@@ -675,9 +677,28 @@ class NphParticipantAPITest(BaseTestCase):
             biospecimens: Iterable[Dict[str, str]] = (
                 result.get("participant").get("edges")[0].get("node").get("nphBiospecimens")
             )
-            self.assertEqual(12, len(biospecimens))
+            self.assertEqual(8, len(biospecimens))
             for biospecimen in biospecimens:
                 self.assertIsNotNone(biospecimen.get("biobankStatus")[0].get("status"))
+
+    def test_total_count(self):
+        """
+        Check that the totalCount given in a response matches the count of participants
+        that can be expected for a given query (the total number of participants that match,
+        and would be included if all pages are retrieved).
+        """
+
+        self.add_consents(nph_participant_ids=self.base_participant_ids)
+        self.nph_data_gen.create_database_participant_ops_data_element(
+            source_data_element=ParticipantOpsElementTypes.BIRTHDATE,
+            participant_id=100000000,
+            source_value='1986-01-01'
+        )
+        query = simple_query_with_pagination(value='', limit=1, offset=1)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+
+        result = json.loads(executed.data.decode('utf-8'))
+        self.assertEqual(2, result['participant']['totalCount'])  # assuming the two consented participants are returned
 
     @staticmethod
     def _group_ordered_samples_by_participant(
