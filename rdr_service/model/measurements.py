@@ -63,10 +63,6 @@ class PhysicalMeasurements(Base):
                                      ForeignKey("questionnaire_response.questionnaire_response_id"), nullable=True)
     resource = Column("resource", JSON, nullable=True)
     """Original resource value; whole payload request that was sent"""
-    meetsCoreDataRequirements = Column('meets_core_data_reqs', Boolean)
-    """
-    Deprecated in favor of satisfiesHeightRequirements and satisfiesWeightRequirements.
-    """
     satisfiesHeightRequirements = Column('meets_height_reqs', Boolean)
     """
     Indicates whether the measurement satisfies the height requirements for Core Data
