@@ -86,7 +86,7 @@ class ResponseDuplicationDetector:
         if project != 'localhost' or os.environ.get('UNITTEST_FLAG', '0') == "1":
             submit_pipeline_pubsub_msg(table='questionnaire_response',
                                        action='delete', pk_columns=['questionnaire_response_id'],
-                                       pk_values=duplicate_responses)
+                                       pk_values=duplicate_responses, project=project)
 
             logging.info(f'Sent PubSub notifications to mark {len(duplicate_responses)} records for deletion.')
 
@@ -125,12 +125,13 @@ class ResponseDuplicationDetector:
                 task.execute('rebuild_participants_task', payload=payload, project_id=project,
                              queue='resource-rebuild', in_seconds=30, quiet=True)
 
-    def flag_duplicate_responses(self, num_days_ago=2, from_ts=datetime.utcnow()):
+    def flag_duplicate_responses(self, num_days_ago=2, from_ts=datetime.utcnow(), project=GAE_PROJECT):
         """
         Search for duplicate questionnaire_responses created within the specified date range
         By default, will analyze responses created within the last two days from now
         :param from_ts:   datetime that establishes the end of the date range to search.  Default is utcnow()
         :param num_days_ago:  Number of days back from the from_ts to establish the start of the date range
+        :param project: A project name, if overriding (e.g., when running a tool on localhost)
         """
         earliest_response_date = from_ts - timedelta(days=num_days_ago)
 
@@ -154,4 +155,4 @@ class ResponseDuplicationDetector:
                         QuestionnaireResponse.classificationType: QuestionnaireResponseClassificationType.DUPLICATE
                     })
                 )
-                self.clean_pdr_module_data(questionnaire_ids_to_mark_as_duplicates, session=session)
+                self.clean_pdr_module_data(questionnaire_ids_to_mark_as_duplicates, session=session, project=project)

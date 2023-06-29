@@ -6,19 +6,18 @@ from datetime import date
 from enum import Enum
 from marshmallow import validate
 
-from rdr_service.participant_enums import (QuestionnaireStatus, ParticipantCohort, Race, GenderIdentity,
+from rdr_service.participant_enums import (
+    QuestionnaireStatus, ParticipantCohort, Race, GenderIdentity,
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason,
     SuspensionStatus, QuestionnaireResponseStatus, QuestionnaireResponseClassificationType,
     DeceasedStatus, ParticipantCohortPilotFlag, WithdrawalAIANCeremonyStatus, BiobankOrderStatus,
-    SampleCollectionMethod, PhysicalMeasurementsCollectType, OriginMeasurementUnit,
-    EnrollmentStatusV30, DigitalHealthSharingStatusV31)
+    SampleCollectionMethod, PhysicalMeasurementsCollectType, OriginMeasurementUnit, EnrollmentStatusV30
+)
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
-
-
-# Defining this enum class here so it can be safely removed from the RDR participant_enums file.  This schemas file
-# will eventually be superseded by the new RDR-to-PDR pipeline and removed from the RDR codebase
+# Defining these  enum classes here so they can be safely removed from the RDR participant_enums file.
+# This schemas file will eventually be superseded by the new RDR-to-PDR pipeline and removed from the RDR codebase
 class EnrollmentStatusV31(Enum):
     """A status reflecting how fully enrolled a participant is according to the 3.1 data glossary"""
 
@@ -28,6 +27,14 @@ class EnrollmentStatusV31(Enum):
     CORE_MINUS_PM = 4
     CORE_PARTICIPANT = 5
     BASELINE_PARTICIPANT = 6
+
+class DigitalHealthSharingStatusV31(Enum):
+    """Provides whether EHR files have been or currently are available for the participant"""
+
+    NEVER_SHARED = 1
+    EVER_SHARED = 2
+    CURRENTLY_SHARING = 3
+
 
 class SexualOrientationEnum(Enum):
     SexualOrientation_None = 1
