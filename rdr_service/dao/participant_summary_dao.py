@@ -752,7 +752,12 @@ class ParticipantSummaryDao(UpdatableDao):
             earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
             ehr_consent_date_range_list=ehr_consent_ranges,
             dna_update_time=revised_consent_time,
-            earliest_core_physical_measurement_time=min_or_none(meas.finalized for meas in core_measurements),
+            earliest_height_measurement_time=min_or_none(
+                meas.finalized for meas in core_measurements if meas.satisfiesHeightRequirements
+            ),
+            earliest_weight_measurement_time=min_or_none(
+                meas.finalized for meas in core_measurements if meas.satisfiesWeightRequirements
+            ),
             wgs_sequencing_time=wgs_sequencing_time
         )
         enrollment_info = EnrollmentCalculation.get_enrollment_info(enrollment_dependencies)

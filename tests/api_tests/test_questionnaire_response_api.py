@@ -260,7 +260,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         measurement: PhysicalMeasurements = self.session.query(PhysicalMeasurements).filter(
             PhysicalMeasurements.participantId == from_client_participant_id(participant_id)
         ).one()
-        self.assertTrue(measurement.meetsCoreDataRequirements)
+        self.assertTrue(measurement.satisfiesHeightRequirements)
+        self.assertTrue(measurement.satisfiesWeightRequirements)
 
     def test_remote_pm_metric_response(self):
         participant_id = self.create_participant()

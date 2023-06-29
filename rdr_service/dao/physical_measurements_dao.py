@@ -4,6 +4,7 @@ from typing import List
 
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import observation as fhir_observation
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
+from sqlalchemy import or_
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm.attributes import flag_modified
 from werkzeug.exceptions import BadRequest
@@ -251,7 +252,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
     def insert_remote_pm_with_session(self, session, obj):
         self.set_measurement_ids(obj)
         self.set_self_reported_pm_resource_json(obj)
-        self.update_measurement_core_data_flag(obj)
+        self.update_measurement_core_data_flags(obj)
         self._update_participant_summary(session, obj, is_amendment=False, is_self_reported=True)
         return super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
 
@@ -281,7 +282,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
             session.query(PhysicalMeasurements).filter(PhysicalMeasurements.participantId == obj.participantId).all()
         )
 
-        self.update_measurement_core_data_flag(obj)
+        self.update_measurement_core_data_flags(obj)
 
         # Find any matching measurements and return them instead if the one being inserted matches
         if existing_measurements:
@@ -983,7 +984,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         return record
 
     @classmethod
-    def update_measurement_core_data_flag(cls, measurement_collection: PhysicalMeasurements):
+    def update_measurement_core_data_flags(cls, measurement_collection: PhysicalMeasurements):
         """
         Analyzes the physical measurement data to determine if the Core Data flag should be set to True
         """
@@ -1000,11 +1001,16 @@ class PhysicalMeasurementsDao(UpdatableDao):
             elif measurement.codeValue in weight_codes:
                 has_weight = is_valid_value
 
-        measurement_collection.meetsCoreDataRequirements = has_weight and has_height
+        measurement_collection.satisfiesHeightRequirements = has_height
+        measurement_collection.satisfiesWeightRequirements = has_weight
 
     @classmethod
     def get_core_measurements_for_participant(cls, session, participant_id) -> List[PhysicalMeasurements]:
         return session.query(PhysicalMeasurements).filter(
+            PhysicalMeasurements.physicalMeasurementsId,
             PhysicalMeasurements.participantId == participant_id,
-            PhysicalMeasurements.meetsCoreDataRequirements
+            or_(
+                PhysicalMeasurements.satisfiesHeightRequirements,
+                PhysicalMeasurements.satisfiesWeightRequirements
+            )
         ).all()
