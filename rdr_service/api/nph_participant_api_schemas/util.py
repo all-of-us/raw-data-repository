@@ -92,8 +92,11 @@ class NphParticipantData:
         ))
 
     @classmethod
-    def get_consent_statuses(cls, consent_data: dict) -> Optional[List[dict]]:
+    def get_consent_statuses(cls, consent_data: dict, module: int) -> Optional[List[dict]]:
         if not consent_data:
+            return QuestionnaireStatus.UNSET
+        current_module_consents = [obj for obj in consent_data.get('consent_json') if f'm{module}' in obj.get('value')]
+        if not current_module_consents:
             return QuestionnaireStatus.UNSET
         return list(map(
             lambda x: {
@@ -101,7 +104,7 @@ class NphParticipantData:
                 'time': parse_date(x['time']) if x['time'] else None,
                 'opt_in': str(ConsentOptInTypes(int(x['opt_in'])))
             },
-            consent_data.get('consent_json')
+            current_module_consents
         ))
 
     @classmethod
@@ -173,7 +176,9 @@ class NphParticipantData:
                     "time": withdrawn.event_authored_time if withdrawn else None
                 },
                 'nphEnrollmentStatus': cls.get_enrollment_statuses(enrollments),
-                'nphModule1ConsentStatus': cls.get_consent_statuses(consents),
+                'nphModule1ConsentStatus': cls.get_consent_statuses(consents, 1),
+                'nphModule2ConsentStatus': cls.get_consent_statuses(consents, 2),
+                'nphModule3ConsentStatus': cls.get_consent_statuses(consents, 3),
                 "nphBiospecimens": cls.update_nph_participant_biospeciman_samples(order_samples, order_biobank_samples),
                 'aianStatus': summary.aian,
                 'suspensionStatus': {"value": cls.check_field_value(summary.suspensionStatus),

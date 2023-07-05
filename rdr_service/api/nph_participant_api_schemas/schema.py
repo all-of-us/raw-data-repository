@@ -61,6 +61,7 @@ class Event(ObjectType):
             return context.set_order_expression(sort_info.get('value'))
         raise ValueError(f"{value} : Invalid Key -- Event Object Type")
 
+
 class GraphQLConsentEvent(Event):
     """ NPH ConsentEvent """
     opt_in = Field(NonNull(String))
@@ -302,6 +303,12 @@ class ParticipantField(ObjectType):
     nphEnrollmentStatus = List(Event, name="nphEnrollmentStatus", description='Sourced from NPH Schema.')
     nphModule1ConsentStatus = List(
         GraphQLConsentEvent, name="nphModule1ConsentStatus", description="Sourced from NPH Schema"
+    )
+    nphModule2ConsentStatus = List(
+        GraphQLConsentEvent, name="nphModule2ConsentStatus", description="Sourced from NPH Schema"
+    )
+    nphModule3ConsentStatus = List(
+        GraphQLConsentEvent, name="nphModule3ConsentStatus", description="Sourced from NPH Schema"
     )
     nphBiospecimens = List(GraphQLNphBioSpecimen, name="nphBiospecimens", description="NPH Biospecimens")
     nphWithdrawalStatus = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
