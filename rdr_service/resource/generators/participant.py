@@ -553,9 +553,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'health_datastream_sharing_status_v3_1': str(ps.healthDataStreamSharingStatusV3_1) \
                     if has_enrollment_v3_1 else None,
                 'health_datastream_sharing_status_v3_1_id': int(ps.healthDataStreamSharingStatusV3_1) \
-                    if has_enrollment_v3_1 in ps_col_names else None,
+                    if has_enrollment_v3_1 else None,
                 'health_datastream_sharing_status_v3_1_time': ps.healthDataStreamSharingStatusV3_1Time \
-                    if has_enrollment_v3_1 in ps_col_names else None
+                    if has_enrollment_v3_1 else None
             }
             # Note:  None of the columns in the participant_ehr_receipt table are nullable
             pehr_results = ro_session.query(ParticipantEhrReceipt.id,
