@@ -488,7 +488,13 @@ class CurationExportClass(ToolBase):
                 )
             ),
             SrcClean.filter: literal_column('0'),
-            SrcClean.src_id: Participant.participantOrigin
+            SrcClean.src_id: case(
+                [
+                    (Participant.participantOrigin == 'careevolution', 'ce'),
+                    (Participant.participantOrigin == 'vibrent', 'vibrent'),
+                ],
+                else_=Participant.participantOrigin
+            )
         }
 
         questionnaire_answers_select = session.query(*column_map.values()).select_from(
@@ -744,7 +750,13 @@ class CurationExportClass(ToolBase):
             WearConsent.research_id: Participant.researchId,
             WearConsent.authored: QuestionnaireResponse.authored,
             WearConsent.consent_status: answer_code.value,
-            WearConsent.src_id: Participant.participantOrigin
+            WearConsent.src_id: case(
+                [
+                    (Participant.participantOrigin == 'careevolution', 'ce'),
+                    (Participant.participantOrigin == 'vibrent', 'vibrent'),
+                ],
+                else_=Participant.participantOrigin
+            )
         }
 
         wear_consent_select = session.query(
@@ -1721,7 +1733,12 @@ class CurationExportClass(ToolBase):
                                 meas.measurement_id             AS measurement_id,
                                 pm.physical_measurements_id     AS physical_measurements_id,
                                 meas.parent_id                  AS parent_id,
-                                pm.origin                       AS src_id,
+                                CASE
+                                    WHEN pm.origin = 'hpro' THEN 'healthpro'
+                                    WHEN pm.origin = 'vibrent' THEN 'vibrent'
+                                    WHEN pm.origin = 'careevolution' THEN 'ce'
+                                    ELSE pm.origin
+                                END AS src_id,
                                 pm.collect_type                 AS collect_type
                             FROM rdr.measurement meas
                             INNER JOIN rdr.physical_measurements pm
