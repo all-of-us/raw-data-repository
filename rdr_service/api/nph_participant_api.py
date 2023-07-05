@@ -21,7 +21,7 @@ def nph_participant():
         if validate_error:
             logging.error(validate_error)
             return validation_error_message(validate_error), 400
-        result = NPHParticipantSchema.execute(query)
+        result = NPHParticipantSchema.execute(query, context={})
         if result.errors:
             logging.error(result.errors)
             return validation_error_message(result.errors), 400
