@@ -42,7 +42,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
     QuestionnaireResponseStatus
 from rdr_service.model.resource_data import ResourceData
 from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort,\
-    DigitalHealthSharingStatusV31
+    DigitalHealthSharingStatus
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from tests import test_data
 from tests.test_data import (
@@ -640,7 +640,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             wasEhrDataAvailable=False,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
             enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
-            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
+            healthDataStreamSharingStatus=DigitalHealthSharingStatus.NEVER_SHARED,
             aian=0
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -1274,7 +1274,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             wasEhrDataAvailable=False,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
             enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
-            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
+            healthDataStreamSharingStatus=DigitalHealthSharingStatus.NEVER_SHARED,
             aian=0
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -1354,7 +1354,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             wasEhrDataAvailable=False,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
             enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
-            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
+            healthDataStreamSharingStatus=DigitalHealthSharingStatus.NEVER_SHARED,
             aian=0
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -1441,7 +1441,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             wasEhrDataAvailable=False,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
             enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
-            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
+            healthDataStreamSharingStatus=DigitalHealthSharingStatus.NEVER_SHARED,
             aian=0
         )
         # The participant summary should be updated with the new gender identity, but nothing else
@@ -1518,7 +1518,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             wasEhrDataAvailable=False,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
             enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
-            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
+            healthDataStreamSharingStatus=DigitalHealthSharingStatus.NEVER_SHARED,
             aian=0
         )
         # The participant summary should be updated with the new gender identity, but nothing else

@@ -15,7 +15,7 @@ from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.offline import update_ehr_status
-from rdr_service.participant_enums import EhrStatus, EnrollmentStatusV32, DigitalHealthSharingStatusV31
+from rdr_service.participant_enums import EhrStatus, EnrollmentStatusV32, DigitalHealthSharingStatus
 from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
 
@@ -271,13 +271,13 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
 
         # Additional Goal 1 data elements that will be part of the patch update upon receipt of EHR
         was_ehr_available = (is_ehr_available or first_ehr_time is not None)
-        health_datastream_status = DigitalHealthSharingStatusV31.NEVER_SHARED
+        health_datastream_status = DigitalHealthSharingStatus.NEVER_SHARED
         health_datastream_status_time = None
         if is_ehr_available:
-            health_datastream_status = DigitalHealthSharingStatusV31.CURRENTLY_SHARING
+            health_datastream_status = DigitalHealthSharingStatus.CURRENTLY_SHARING
             health_datastream_status_time = latest_ehr_time
         elif was_ehr_available:
-            health_datastream_status = DigitalHealthSharingStatusV31.EVER_SHARED
+            health_datastream_status = DigitalHealthSharingStatus.EVER_SHARED
             health_datastream_status_time = first_ehr_time
 
         return {

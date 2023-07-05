@@ -56,8 +56,8 @@ class ParticipantCountsOverTimeService(BaseDao):
                     session.execute('DROP TABLE IF EXISTS {};'.format(temp_table_name))
                 # generated columns can not be inserted any value, need to drop them
                 exclude_columns = [
-                    'health_data_stream_sharing_status_v_3_1',
-                    'health_data_stream_sharing_status_v_3_1_time',
+                    'health_data_stream_sharing_status',
+                    'health_data_stream_sharing_status_time',
                     'retention_eligible_time',
                     'retention_eligible_status',
                     'was_ehr_data_available'
