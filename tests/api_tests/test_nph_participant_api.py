@@ -1,11 +1,13 @@
 import json
+import time
 
 from typing import Iterable, Dict, List
 from collections import defaultdict
 from graphql import GraphQLSyntaxError
 from datetime import datetime
 
-from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, StoredSampleStatus
+from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, StoredSampleStatus, DietType, \
+    DietStatus, ModuleTypes
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.rex_dao import RexStudyDao, RexParticipantMappingDao
@@ -507,6 +509,89 @@ class NphParticipantAPITest(BaseTestCase):
             self.assertTrue(all(obj.get('time') is not None for obj in consents))
             self.assertTrue(all(obj.get('optIn') == 'PERMIT' for obj in consents))
 
+    def test_nphDietStatus_fields(self):
+        self.add_consents(nph_participant_ids=self.base_participant_ids)
+        current_diet_types = [obj for obj in DietType if obj.name != 'LMT']
+        # add diet data - module 2 -> 100000000
+        for num, diet_type in enumerate(current_diet_types, start=1):
+            for count in range(1, 3):
+                self.nph_data_gen.create_database_diet_event(
+                    participant_id=self.base_participant_ids[0],
+                    module=ModuleTypes.lookup_by_number(2),
+                    event_id=1,
+                    diet_id=num,
+                    status_id=1,
+                    status=DietStatus.lookup_by_number(count),
+                    current=1,
+                    diet_name=diet_type,
+                    event_authored_time=datetime(2023, 1, num, 12, 1),
+                )
+                if count == 3:
+                    continue
+
+        field_to_test = "nphModule2DietStatus { dietName dietStatus { time status current } }"
+        query = simple_query(field_to_test)
+
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+
+        self.assertEqual(2, len(result.get('participant').get('edges')))
+
+        # should only be 100000000 that has diet data
+        first_participant = result.get('participant').get('edges')[0]
+        self.assertEqual(len(first_participant.get('node').get('nphModule2DietStatus')), 3)
+        for diet_node in first_participant.get('node').get('nphModule2DietStatus'):
+            self.assertEqual(len(diet_node.get('dietStatus')), 2)
+            self.assertIsNotNone(DietType.lookup_by_name(diet_node.get('dietName')))
+            for diet_status in diet_node.get('dietStatus'):
+                self.assertTrue(type(diet_status.get('current')) is bool)
+                self.assertTrue(diet_status.get('status') is not None)
+                self.assertTrue(diet_status.get('time') is not None)
+
+                self.assertTrue('2023-01' in diet_status.get('time'))
+
+        second_participant = result.get('participant').get('edges')[1]
+        self.assertTrue(second_participant.get('node').get('nphModule2DietStatus') == [])
+
+        time.sleep(5)
+        # add more diet data - module 2 -> 100000000 - get max created date
+        for num, diet_type in enumerate(current_diet_types, start=1):
+            for count in range(1, 3):
+                self.nph_data_gen.create_database_diet_event(
+                    participant_id=self.base_participant_ids[0],
+                    module=ModuleTypes.lookup_by_number(2),
+                    event_id=1,
+                    diet_id=num,
+                    status_id=2,
+                    status=DietStatus.lookup_by_number(count),
+                    current=2,
+                    diet_name=diet_type,
+                    event_authored_time=datetime(2023, 2, num, 12, 1),
+                )
+                if count == 3:
+                    continue
+
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+
+        self.assertEqual(2, len(result.get('participant').get('edges')))
+
+        # should only be 100000000 and have updated event_authored_time
+        first_participant = result.get('participant').get('edges')[0]
+        self.assertEqual(len(first_participant.get('node').get('nphModule2DietStatus')), 3)
+        for diet_node in first_participant.get('node').get('nphModule2DietStatus'):
+            self.assertEqual(len(diet_node.get('dietStatus')), 2)
+            self.assertIsNotNone(DietType.lookup_by_name(diet_node.get('dietName')))
+            for diet_status in diet_node.get('dietStatus'):
+                self.assertTrue(type(diet_status.get('current')) is bool)
+                self.assertTrue(diet_status.get('status') is not None)
+                self.assertTrue(diet_status.get('time') is not None)
+
+                self.assertTrue('2023-02' in diet_status.get('time'))
+
+        second_participant = result.get('participant').get('edges')[1]
+        self.assertTrue(second_participant.get('node').get('nphModule2DietStatus') == [])
+
     def test_nphWithdrawalStatus_fields(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
         self.nph_data_gen.create_database_withdrawal_event(
@@ -808,6 +893,7 @@ class NphParticipantAPITest(BaseTestCase):
         self.clear_table_after_test("nph.enrollment_event_type")
         self.clear_table_after_test("nph.participant_ops_data_element")
         self.clear_table_after_test("nph.consent_event")
+        self.clear_table_after_test("nph.diet_event")
 
 
 class NphParticipantAPITestValidation(BaseTestCase):

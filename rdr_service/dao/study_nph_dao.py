@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from types import SimpleNamespace as Namespace
 from typing import Tuple, Dict, List, Any, Optional
+
 from protorpc import messages
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -16,7 +17,7 @@ from rdr_service.model.study_nph import (
     Activity, ParticipantEventActivity, EnrollmentEventType,
     PairingEventType, PairingEvent, ConsentEventType,
     SampleUpdate, BiobankFileExport, SampleExport,
-    StoredSample, EnrollmentEvent, Incident, ConsentEvent
+    StoredSample, EnrollmentEvent, Incident, ConsentEvent, DietEvent
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
@@ -226,6 +227,41 @@ class NphParticipantDao(BaseDao):
                 stored_samples_subquery,
                 stored_samples_subquery.c.stored_sample_pid == Participant.id
             ).group_by(Participant.id).subquery()
+
+    def get_diet_status_subquery(self):
+        diet_alias = aliased(DietEvent)
+
+        with self.session() as session:
+            return session.query(
+                Participant.id.label('diet_pid'),
+                func.json_object(
+                    'diet_json',
+                    func.json_arrayagg(
+                        func.json_object(
+                            'diet_id', DietEvent.diet_id,
+                            'module', DietEvent.module,
+                            'diet_name', DietEvent.diet_name,
+                            'status', DietEvent.status,
+                            'current', DietEvent.current,
+                            'time', DietEvent.event_authored_time
+                        )
+                    ), type_=JSON
+                ).label('diet_status'),
+            ).join(
+                DietEvent,
+                DietEvent.participant_id == Participant.id
+            ).outerjoin(
+                diet_alias,
+                and_(
+                    Participant.id == diet_alias.participant_id,
+                    DietEvent.diet_name == diet_alias.diet_name,
+                    DietEvent.created < diet_alias.created
+                )
+            ).filter(
+              diet_alias.id.is_(None)
+            ).group_by(
+                Participant.id
+            ).subquery()
 
 
 class NphStudyCategoryDao(UpdatableDao):

@@ -222,7 +222,7 @@ class NphDataGenerator(NphBaseGenerator):
     def _diet_event(**kwargs):
         return DietEvent(**kwargs)
 
-    def create_diet_event(self, **kwargs):
+    def create_database_diet_event(self, **kwargs):
         diet_event = self._diet_event(**kwargs)
         self._commit_to_database(diet_event)
         return diet_event

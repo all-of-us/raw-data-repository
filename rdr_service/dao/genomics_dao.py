@@ -2471,7 +2471,8 @@ class GenomicSchedulingDao(BaseDao):
                 )
             ).filter(
                 and_(
-                    GenomicAppointmentEvent.appointment_id == max_appointment_id_subquery.c.max_appointment_id,
+                    GenomicAppointmentEvent.appointment_id ==
+                    max_appointment_id_subquery.c.max_appointment_id,
                     GenomicAppointmentEvent.event_authored_time ==
                     max_event_authored_time_subquery.c.max_event_authored_time
                 )

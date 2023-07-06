@@ -8,7 +8,7 @@ from graphene import List as GrapheneList
 from sqlalchemy.orm import Query, aliased
 
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, ConsentOptInTypes, \
-    StoredSampleStatus
+    StoredSampleStatus, DietType, DietStatus
 from rdr_service.api_util import parse_date
 from rdr_service.dao.study_nph_dao import NphOrderDao
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
@@ -65,22 +65,32 @@ class NphParticipantData:
         return QuestionnaireStatus.UNSET
 
     @classmethod
-    def check_conversion(cls, obj, attr) -> str:
+    def check_conversion(
+        cls,
+        obj,
+        attr
+    ) -> str:
         if not hasattr(obj, cls.nph_order_dao().camel_to_snake(attr)):
             return attr
         return cls.nph_order_dao().camel_to_snake(attr)
 
     @classmethod
-    def get_values_from_obj(cls, obj, values: Union[set, dict]) -> dict:
+    def get_values_from_obj(
+        cls,
+        obj,
+        values: Union[set, dict]
+    ) -> dict:
         if not obj:
             return {k: QuestionnaireStatus.UNSET for k in values}
-
         if type(values) is set:
             return {k: getattr(obj, cls.check_conversion(obj, k)) for k in values}
         return {k: getattr(obj, cls.check_conversion(obj, v)) for k, v in values.items()}
 
     @classmethod
-    def get_enrollment_statuses(cls, enrollment_data: dict) -> Optional[List[dict]]:
+    def get_enrollment_statuses(
+        cls,
+        enrollment_data: dict
+    ) -> Optional[List[dict]]:
         if not enrollment_data:
             return QuestionnaireStatus.UNSET
         return list(map(
@@ -92,10 +102,17 @@ class NphParticipantData:
         ))
 
     @classmethod
-    def get_consent_statuses(cls, consent_data: dict, module: int) -> Optional[List[dict]]:
+    def get_consent_statuses(
+        cls,
+        consent_data: dict,
+        module: int
+    ) -> Optional[List[dict]]:
         if not consent_data:
             return QuestionnaireStatus.UNSET
-        current_module_consents = [obj for obj in consent_data.get('consent_json') if f'm{module}' in obj.get('value')]
+        current_module_consents = [
+            obj for obj in consent_data.get('consent_json')
+            if f'm{module}_consent' in obj.get('value')
+        ]
         if not current_module_consents:
             return QuestionnaireStatus.UNSET
         return list(map(
@@ -108,20 +125,60 @@ class NphParticipantData:
         ))
 
     @classmethod
-    def update_nph_participant_biospeciman_samples(cls,
-                                                   order_samples: dict,
-                                                   order_biobank_samples: dict
-                                                   ) -> Union[Optional[str], Any]:
+    def get_diet_statuses(
+        cls,
+        diet_data: dict,
+        module: int
+    ) -> Optional[List[dict]]:
+        if not diet_data:
+            return []
+        current_module_diet_status = list(filter(lambda x: x.get('module') == module, diet_data.get('diet_json')))
+        if not current_module_diet_status:
+            return []
+        current_diet_statuses = []
+        for diet in DietType:
+            diet_statuses_by_name = list(
+                filter(lambda x: x.get('diet_name') == diet.number, current_module_diet_status))
+            if diet_statuses_by_name:
+                current_diet_statuses.append({
+                    'dietName': diet.name,
+                    'dietStatus': list(map(
+                        lambda x: {
+                            'status': DietStatus.lookup_by_number(x.get('status')).name.lower(),
+                            'time': parse_date(x['time']) if x['time'] else None,
+                            'current': bool(x.get('current'))
+                        },
+                        diet_statuses_by_name
+                    ))
+                })
+        return current_diet_statuses
 
+    @classmethod
+    def get_value_from_ops_data(
+        cls,
+        participant_ops_data: ParticipantOpsElementTypes,
+        enum: Enum
+    ) -> Optional[str]:
+        if not participant_ops_data:
+            return QuestionnaireStatus.UNSET
+        current_ops_value = list(filter(lambda x: x.source_data_element == enum, [participant_ops_data]))
+        if not current_ops_value:
+            return QuestionnaireStatus.UNSET
+        return current_ops_value[0].source_value
+
+    @classmethod
+    def update_nph_participant_biospeciman_samples(
+        cls,
+        order_samples: dict,
+        order_biobank_samples: dict
+    ) -> Union[Optional[str], Any]:
         if not order_samples:
             return []
-
         order_samples = order_samples.get('orders_sample_json')
         for sample in order_samples:
             sample['biobankStatus'] = []
             if not order_biobank_samples:
                 continue
-
             stored_samples = list(filter(lambda x: x.get('orderSampleID') == sample.get('sampleID'),
                                          order_biobank_samples.get('orders_sample_biobank_json')))
 
@@ -135,19 +192,10 @@ class NphParticipantData:
         return order_samples
 
     @classmethod
-    def get_value_from_ops_data(cls, participant_ops_data: ParticipantOpsElementTypes, enum: Enum) -> Optional[str]:
-        if not participant_ops_data:
-            return QuestionnaireStatus.UNSET
-        current_ops_value = list(filter(lambda x: x.source_data_element == enum, [participant_ops_data]))
-        if not current_ops_value:
-            return QuestionnaireStatus.UNSET
-        return current_ops_value[0].source_value
-
-    @classmethod
     def load_nph_participant_data(cls, query: sqlalchemy.orm.Query, biobank_prefix: str) -> List[dict]:
         results, records = [], query.all()
         for summary, site, nph_site, mapping, nph_participant, enrollments, consents, \
-                order_samples, order_biobank_samples, deactivated, withdrawn, ops_data in records:
+                order_samples, order_biobank_samples, diets, deactivated, withdrawn, ops_data in records:
             participant_obj = {
                 'participantNphId': mapping.ancillary_participant_id,
                 'lastModified': summary.lastModified,
@@ -176,9 +224,11 @@ class NphParticipantData:
                     "time": withdrawn.event_authored_time if withdrawn else None
                 },
                 'nphEnrollmentStatus': cls.get_enrollment_statuses(enrollments),
-                'nphModule1ConsentStatus': cls.get_consent_statuses(consents, 1),
-                'nphModule2ConsentStatus': cls.get_consent_statuses(consents, 2),
-                'nphModule3ConsentStatus': cls.get_consent_statuses(consents, 3),
+                'nphModule1ConsentStatus': cls.get_consent_statuses(consents, module=1),
+                'nphModule2ConsentStatus': cls.get_consent_statuses(consents, module=2),
+                'nphModule3ConsentStatus': cls.get_consent_statuses(consents, module=3),
+                'nphModule2DietStatus': cls.get_diet_statuses(diets, module=2),
+                'nphModule3DietStatus': cls.get_diet_statuses(diets, module=3),
                 "nphBiospecimens": cls.update_nph_participant_biospeciman_samples(order_samples, order_biobank_samples),
                 'aianStatus': summary.aian,
                 'suspensionStatus': {"value": cls.check_field_value(summary.suspensionStatus),
