@@ -1,6 +1,6 @@
 import http.client
 import mock
-
+from unittest.mock import call
 from rdr_service.services.gcp_config import RdrEnvironment
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -83,7 +83,6 @@ class OfflineAppTest(BaseTestCase):
 
     @mock.patch('rdr_service.offline.main.dispatch_check_consent_errors_task')
     def test_consent_error_report_route(self, mock_checker):
-        from unittest.mock import call
         # Do not expect the reporting tasks to be dispatched except when on PROD
         self.send_cron_request('ConsentErrorReport')
         mock_checker.assert_not_called()
