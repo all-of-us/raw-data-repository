@@ -209,7 +209,6 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             collectType=PhysicalMeasurementsCollectType.SITE,
             originMeasurementUnit=OriginMeasurementUnit.UNSET,
             origin='hpro',
-            meetsCoreDataRequirements=None,
             satisfiesHeightRequirements=False,
             satisfiesWeightRequirements=False
         )
