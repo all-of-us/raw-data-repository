@@ -291,9 +291,9 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
                 'ehr_update': latest_ehr_time,
                 'enrollment_status_v3_2': str(enrollment_status_v_3_2),
                 'enrollment_status_v3_2_id': int(enrollment_status_v_3_2),
-                'health_datastream_sharing_status_v3_1': str(health_datastream_status),
-                'health_datastream_sharing_status_v3_1_id': int(health_datastream_status),
-                'health_datastream_sharing_status_v3_1_time': health_datastream_status_time
+                'health_datastream_sharing_status': str(health_datastream_status),
+                'health_datastream_sharing_status_id': int(health_datastream_status),
+                'health_datastream_sharing_status_time': health_datastream_status_time
             }
         }
 
