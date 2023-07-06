@@ -209,7 +209,8 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             collectType=PhysicalMeasurementsCollectType.SITE,
             originMeasurementUnit=OriginMeasurementUnit.UNSET,
             origin='hpro',
-            meetsCoreDataRequirements=False
+            satisfiesHeightRequirements=False,
+            satisfiesWeightRequirements=False
         )
 
         doc = json.loads(self._with_id(self.measurement_json, "1"))
@@ -459,4 +460,5 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
         db_obj: PhysicalMeasurements = self.session.query(PhysicalMeasurements).filter(
             PhysicalMeasurements.physicalMeasurementsId == pm.physicalMeasurementsId
         ).one()
-        self.assertTrue(db_obj.meetsCoreDataRequirements)
+        self.assertTrue(db_obj.satisfiesHeightRequirements)
+        self.assertTrue(db_obj.satisfiesWeightRequirements)

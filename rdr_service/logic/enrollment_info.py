@@ -65,7 +65,8 @@ class EnrollmentDependencies:
     earliest_mediated_ehr_receipt_time: datetime
     earliest_physical_measurements_time: datetime
 
-    earliest_core_physical_measurement_time: datetime  # Earliest physical measurement that meets core data reqs
+    earliest_weight_measurement_time: datetime  # Earliest physical measurement that meets core data reqs
+    earliest_height_measurement_time: datetime  # Earliest physical measurement that meets core data reqs
     wgs_sequencing_time: datetime
 
     @property
@@ -233,7 +234,8 @@ class EnrollmentCalculation:
             participant_info.basics_authored_time,
             participant_info.overall_health_authored_time,
             participant_info.lifestyle_authored_time,
-            participant_info.earliest_core_physical_measurement_time,
+            participant_info.earliest_height_measurement_time,
+            participant_info.earliest_weight_measurement_time,
             participant_info.wgs_sequencing_time,
             participant_info.earliest_ehr_file_received_time
         ]
