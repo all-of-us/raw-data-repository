@@ -14,7 +14,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
 from rdr_service.model.site import Site
 from rdr_service.participant_enums import (
-    DigitalHealthSharingStatusV31,
+    DigitalHealthSharingStatus,
     SuspensionStatus,
     UNSET_HPO_ID,
     WithdrawalStatus,
@@ -220,7 +220,7 @@ class ParticipantDaoTest(BaseTestCase):
             retentionEligibleStatus=None,
             wasEhrDataAvailable=False,
             wasParticipantMediatedEhrAvailable=False,
-            healthDataStreamSharingStatusV3_1=DigitalHealthSharingStatusV31.NEVER_SHARED,
+            healthDataStreamSharingStatus=DigitalHealthSharingStatus.NEVER_SHARED,
             aian=0
         )
         self.assertEqual(expected_ps.asdict(), ps.asdict())

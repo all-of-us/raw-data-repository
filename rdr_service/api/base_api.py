@@ -196,8 +196,8 @@ class BaseApi(Resource, ApiUtilMixin):
         if result.__class__.__name__.lower() == 'participantsummary':
             result.wasEhrDataAvailable = None
             result.wasParticipantMediatedEhrAvailable = None
-            result.healthDataStreamSharingStatusV3_1 = None
-            result.healthDataStreamSharingStatusV3_1Time = None
+            result.healthDataStreamSharingStatus = None
+            result.healthDataStreamSharingStatusTime = None
 
         # Support RDR to PDR pipeline
         submit_pipeline_pubsub_msg_from_model(result, self.dao.get_connection_database_name())

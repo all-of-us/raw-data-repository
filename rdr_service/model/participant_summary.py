@@ -27,7 +27,7 @@ from rdr_service.participant_enums import (
     EnrollmentStatus,
     EnrollmentStatusV30,
     EnrollmentStatusV32,
-    DigitalHealthSharingStatusV31,
+    DigitalHealthSharingStatus,
     GenderIdentity,
     OrderStatus,
     PhysicalMeasurementsStatus,
@@ -483,17 +483,17 @@ class ParticipantSummary(Base):
     UTC timestamp indicating the latest reported occurrence of participant-mediated EHR content
     """
 
-    healthDataStreamSharingStatusV3_1 = Column(
-        'health_data_stream_sharing_status_v_3_1',
-        Enum(DigitalHealthSharingStatusV31),
+    healthDataStreamSharingStatus = Column(
+        'health_data_stream_sharing_status',
+        Enum(DigitalHealthSharingStatus),
         Computed(
             case(
                 [
-                    (isEhrDataAvailable, int(DigitalHealthSharingStatusV31.CURRENTLY_SHARING)),
-                    (wasEhrDataAvailable, int(DigitalHealthSharingStatusV31.EVER_SHARED)),
-                    (wasParticipantMediatedEhrAvailable, int(DigitalHealthSharingStatusV31.EVER_SHARED))
+                    (isEhrDataAvailable, int(DigitalHealthSharingStatus.CURRENTLY_SHARING)),
+                    (wasEhrDataAvailable, int(DigitalHealthSharingStatus.EVER_SHARED)),
+                    (wasParticipantMediatedEhrAvailable, int(DigitalHealthSharingStatus.EVER_SHARED))
                 ],
-                else_=int(DigitalHealthSharingStatusV31.NEVER_SHARED)
+                else_=int(DigitalHealthSharingStatus.NEVER_SHARED)
             ),
             persisted=True
         )
@@ -502,13 +502,19 @@ class ParticipantSummary(Base):
     # If both ehrUpdateTime and latestParticipantMediatedEhrReceiptTime are null, result is null
     # If one is null, result is the non-null timestamp
     # If both are non-null, result is the most recent (GREATEST) timestamp
-    healthDataStreamSharingStatusV3_1Time = Column(
-        'health_data_stream_sharing_status_v_3_1_time',
+    healthDataStreamSharingStatusTime = Column(
+        'health_data_stream_sharing_status_time',
         UTCDateTime,
-        Computed(func.nullif(func.greatest(func.coalesce(ehrUpdateTime, 0),
-                                           func.coalesce(latestParticipantMediatedEhrReceiptTime, 0)
-                                           ),
-                             0), persisted=True)
+        Computed(
+            func.nullif(
+                func.greatest(
+                    func.coalesce(ehrUpdateTime, 0),
+                    func.coalesce(latestParticipantMediatedEhrReceiptTime, 0)
+                ),
+                0
+            ),
+            persisted=True
+        )
     )
 
     clinicPhysicalMeasurementsStatus = Column(

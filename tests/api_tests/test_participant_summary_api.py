@@ -142,7 +142,7 @@ participant_summary_default_values = {
     "suspensionStatus": "NOT_SUSPENDED",
     "numberDistinctVisits": 0,
     "ehrStatus": "UNSET",
-    "healthDataStreamSharingStatusV3_1": "NEVER_SHARED",
+    "healthDataStreamSharingStatus": "NEVER_SHARED",
     "ehrConsentExpireStatus": "UNSET",
     "patientStatus": [],
     "participantOrigin": 'example',
@@ -3771,16 +3771,16 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         # Check fields on participant that is sharing
         response = self.send_get(f'Participant/P{sharing_summary.participantId}/Summary')
-        self.assertEqual('CURRENTLY_SHARING', response['healthDataStreamSharingStatusV3_1'])
-        self.assertEqual(latest_receipt_time.isoformat(), response['healthDataStreamSharingStatusV3_1Time'])
+        self.assertEqual('CURRENTLY_SHARING', response['healthDataStreamSharingStatus'])
+        self.assertEqual(latest_receipt_time.isoformat(), response['healthDataStreamSharingStatusTime'])
 
         # Check fields on participant that is NOT sharing
         response = self.send_get(f'Participant/P{not_sharing_summary.participantId}/Summary')
-        self.assertEqual('NEVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
-        self.assertNotIn('healthDataStreamSharingStatusV3_1Time', response)
+        self.assertEqual('NEVER_SHARED', response['healthDataStreamSharingStatus'])
+        self.assertNotIn('healthDataStreamSharingStatusTime', response)
 
         # Check the ordering of participants based on status
-        response = self.send_get(f'ParticipantSummary?_sort=healthDataStreamSharingStatusV3_1&awardee=PITT&_sync=false')
+        response = self.send_get(f'ParticipantSummary?_sort=healthDataStreamSharingStatus&awardee=PITT&_sync=false')
         participant_id_list = [
             from_client_participant_id(entry['resource']['participantId'])
             for entry in response['entry']
@@ -3797,7 +3797,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             ehrUpdateTime=datetime.datetime(2021, 8, 4)
         )
         response = self.send_get(
-            f'ParticipantSummary?_sort=healthDataStreamSharingStatusV3_1Time&awardee=PITT&_sync=false'
+            f'ParticipantSummary?_sort=healthDataStreamSharingStatusTime&awardee=PITT&_sync=false'
         )
         participant_id_list = [
             from_client_participant_id(entry['resource']['participantId'])
@@ -3820,7 +3820,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         # Check that the new fields are hidden
         api_response = self.send_get(f'Participant/P{summary.participantId}/Summary')
         self.assertNotIn('enrollmentStatusV3_2', api_response)
-        self.assertNotIn('healthDataStreamSharingStatusV3_1', api_response)
+        self.assertNotIn('healthDataStreamSharingStatus', api_response)
         self.assertNotIn('hasCoreData', api_response)
         self.assertNotIn('hasCoreDataTime', api_response)
 
@@ -3851,14 +3851,14 @@ class ParticipantSummaryApiTest(BaseTestCase):
                          response['firstParticipantMediatedEhrReceiptTime'])
         self.assertEqual(latest_mediated_ehr_receipt_time.isoformat(),
                          response['latestParticipantMediatedEhrReceiptTime'])
-        self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatus'])
         self.assertEqual(latest_mediated_ehr_receipt_time.isoformat(),
-                         response['healthDataStreamSharingStatusV3_1Time'])
+                         response['healthDataStreamSharingStatusTime'])
 
         # Check fields on participant that is NOT sharing
         response = self.send_get(f'Participant/P{not_sharing_summary.participantId}/Summary')
-        self.assertEqual('NEVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
-        self.assertNotIn('healthDataStreamSharingStatusV3_1Time', response)
+        self.assertEqual('NEVER_SHARED', response['healthDataStreamSharingStatus'])
+        self.assertNotIn('healthDataStreamSharingStatusTime', response)
 
     def test_mediated_and_hpo_ehr_shared(self):
         first_receipt_time = datetime.datetime(2020, 3, 27)
@@ -3893,9 +3893,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
                          response['latestParticipantMediatedEhrReceiptTime'])
         self.assertEqual(intermediate_receipt_time.isoformat(),
                          response['ehrUpdateTime'])
-        self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatus'])
         self.assertEqual(latest_receipt_time.isoformat(),
-                         response['healthDataStreamSharingStatusV3_1Time'])
+                         response['healthDataStreamSharingStatusTime'])
 
         # Check participant where most recently shared is the HPO-provided EHR
         response = self.send_get(f'Participant/P{hpo_ehr_most_recently_shared_summary.participantId}/Summary')
@@ -3903,9 +3903,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
                          response['ehrUpdateTime'])
         self.assertEqual(first_receipt_time.isoformat(),
                          response['latestParticipantMediatedEhrReceiptTime'])
-        self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatusV3_1'])
+        self.assertEqual('EVER_SHARED', response['healthDataStreamSharingStatus'])
         self.assertEqual(latest_receipt_time.isoformat(),
-                         response['healthDataStreamSharingStatusV3_1Time'])
+                         response['healthDataStreamSharingStatusTime'])
 
     def test_disabling_mediated_ehr_fields(self):
         """Check that the participant mediated EHR fields are disabled by default"""

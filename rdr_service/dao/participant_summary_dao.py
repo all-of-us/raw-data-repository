@@ -1320,9 +1320,9 @@ class ParticipantSummaryDao(UpdatableDao):
 
         # Check to see if we should hide digital health sharing fields
         if not config.getSettingJson(config.ENABLE_HEALTH_SHARING_STATUS_3, default=False):
-            del result['healthDataStreamSharingStatusV3_1']
-            if 'healthDataStreamSharingStatusV3_1Time' in result:
-                del result['healthDataStreamSharingStatusV3_1Time']
+            del result['healthDataStreamSharingStatus']
+            if 'healthDataStreamSharingStatusTime' in result:
+                del result['healthDataStreamSharingStatusTime']
 
         # Check if we should hide the participant mediated EHR status fields
         if not config.getSettingJson(config.ENABLE_PARTICIPANT_MEDIATED_EHR, default=False):

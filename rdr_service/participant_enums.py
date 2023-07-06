@@ -178,7 +178,7 @@ class EnrollmentStatusV32(messages.Enum):
     CORE_PARTICIPANT = 5
 
 
-class DigitalHealthSharingStatusV31(messages.Enum):
+class DigitalHealthSharingStatus(messages.Enum):
     """Provides whether EHR files have been or currently are available for the participant"""
 
     NEVER_SHARED = 1
