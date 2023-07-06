@@ -976,6 +976,42 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertEqual('test_portal', prm_src_id)
         self.assertEqual('test_portal', person_src_id)
 
+    def _test_ce_src_id(self):
+        # Care Evolution participant origin should be saved as 'ce' in src_id column
+        consent_questionnaire = self._create_consent_questionnaire()
+
+        participant = self.data_generator.create_database_participant(participantOrigin='careevolution')
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            dateOfBirth=datetime(1982, 1, 9),
+            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10)
+        )
+        self._setup_questionnaire_response(
+            participant,
+            self.questionnaire
+        )
+        self._setup_questionnaire_response(
+            participant,
+            consent_questionnaire,
+            indexed_answers=[
+                (6, 'valueDate', datetime(1982, 1, 9))
+                # Assuming the 6th question is the date of birth
+            ],
+            authored=datetime(2020, 5, 1)
+        )
+
+        self.run_cdm_data_generation(
+            participant_origin='all',
+        )
+
+        obs_src_id = self.session.query(
+            Observation.src_id
+        ).filter(
+            Observation.person_id == participant.participantId
+        ).first()[0]
+
+        self.assertEqual('ce', obs_src_id)
+
     def _setup_pm(self, participant_id: int):
         """ Creates in-person and remote physical measurements for a participant_id"""
         resource = {"entry": [
@@ -1094,7 +1130,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             Measurement.measurement_type_concept_id == 32865
         ).first()[0]
 
-        self.assertEqual('hpro', inperson_src_id)
+        self.assertEqual('healthpro', inperson_src_id)
         self.assertEqual('test-portal', remote_src_id)
 
     def test_include_physical_measurements(self):
