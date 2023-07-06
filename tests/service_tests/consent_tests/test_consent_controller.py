@@ -40,7 +40,6 @@ class ConsentControllerTest(BaseTestCase):
         consent_metrics_dispatch_check_errors_patch = mock.patch(
             'rdr_service.services.consent.validation.dispatch_check_consent_errors_task'
         )
-        self.dispatch_check_consent_errors_mock = consent_metrics_dispatch_check_errors_patch.start()
         self.addCleanup(consent_metrics_dispatch_check_errors_patch.stop)
         self.consent_controller = ConsentValidationController(
             consent_dao=self.consent_dao_mock,
@@ -51,11 +50,7 @@ class ConsentControllerTest(BaseTestCase):
         )
         self.store_strategy = StoreResultStrategy(session=mock.MagicMock(), consent_dao=self.consent_dao_mock)
 
-    @mock.patch(
-        'rdr_service.services.consent.validation.ConsentValidationController._report_validation_errors',
-        return_value=True
-    )
-    def test_new_consent_validation(self, _):
+    def test_new_consent_validation(self):
         """The controller should find all recent participant summary consents authored and validate files for them"""
         primary_and_ehr_participant_id = 123
         cabor_participant_id = 456
@@ -109,10 +104,6 @@ class ConsentControllerTest(BaseTestCase):
                 ConsentFile(id=4, file_path='/valid_cabor_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
             ]
         )
-        # Confirm calls to dispatcher for task that checks for newly detected validation errors.   A separate task
-        # is dispatched for each participant origin.
-        self.assertEqual(2, self.dispatch_check_consent_errors_mock.call_count)
-
         # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
         # values from the expected_updates list
         self.assertDispatchRebuildConsentMetricsCalled([2, 5, 6, 4], call_count=2)

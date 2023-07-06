@@ -21,9 +21,8 @@ from rdr_service.model.consent_file import ConsentFile as ParsingResult, Consent
 from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import ParticipantCohort, QuestionnaireStatus
-from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks, dispatch_check_consent_errors_task
+from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.consent import files
-from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.storage import GoogleCloudStorageProvider
 
 
@@ -599,15 +598,6 @@ class ConsentValidationController:
         """
         Find all the expected consents (filtering by dates if provided) and check the files that have been uploaded
         """
-
-        # Workaround for this job frequently failing (OOM killer) before it can launch these tasks on a normal exit:
-        # Pre-schedule the error reporting tasks to run in 8 hours.  Ensures the error report check occurs once each
-        # time the validation runs.
-        if self._report_validation_errors():
-            # Only dispatch error reports for prod
-            dispatch_check_consent_errors_task(origin='vibrent', in_seconds=1800)
-            dispatch_check_consent_errors_task(origin='careevolution', in_seconds=1800)
-
         # Retrieve consent response objects that need to be validated
         is_last_batch = False
         while not is_last_batch:
@@ -770,11 +760,6 @@ class ConsentValidationController:
 
         logging.warning(f"Unable to find suitable original file for P{participant_id}'s {reconsent_type}")
         return None
-
-    @classmethod
-    def _report_validation_errors(cls) -> bool:
-        return config.GAE_PROJECT == RdrEnvironment.PROD.value
-
 
 class ConsentValidator:
     def __init__(self, consent_factory: files.ConsentFileAbstractFactory,

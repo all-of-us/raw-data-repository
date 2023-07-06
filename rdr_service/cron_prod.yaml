@@ -129,3 +129,8 @@ cron:
   schedule: every Monday 09:00
   timezone: America/New_York
   target: offline
+- description: Daily Consent Error Report checks
+  url: /offline/ConsentErrorReport
+  schedule: every day 08:30
+  target: offline
+  timezone: America/New_York
