@@ -45,9 +45,11 @@ from rdr_service.offline.service_accounts import ServiceAccountKeyManager
 from rdr_service.offline.sync_consent_files import ConsentSyncController
 from rdr_service.offline.table_exporter import TableExporter
 from rdr_service.repository.obfuscation_repository import ObfuscationRepository
+from rdr_service.resource.tasks import dispatch_check_consent_errors_task
 from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
     StoreResultStrategy
 from rdr_service.services.data_quality import DataQualityChecker
+from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.services.hpro_consent import HealthProConsentFile
 from rdr_service.services.flask import OFFLINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
@@ -284,6 +286,20 @@ def validate_consent_files():
             consent_dao=consent_dao
         )
         validation_controller.validate_consent_uploads(store_strategy)
+    return '{"success": "true"}'
+
+@app_util.auth_required_cron
+def consent_error_report():
+    """
+    This cron job is only expected to run in production environment
+    If GAE_PROJECT is not RDR prod, the job is a no-op.
+    """
+    # DA-3670: Move the invocation of the cloud tasks that generate the consent error reports from the now hourly
+    # consent validation cron job to its own once-a-day cron job.
+    if config.GAE_PROJECT == RdrEnvironment.PROD.value:
+        logging.info('Dispatching consent error report tasks')
+        dispatch_check_consent_errors_task(origin='vibrent', in_seconds=30)
+        dispatch_check_consent_errors_task(origin='careevolution', in_seconds=180)
     return '{"success": "true"}'
 
 
@@ -995,6 +1011,11 @@ def _build_pipeline_app():
 
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "ValidateConsentFiles", endpoint="validate_consent_files", view_func=validate_consent_files,
+        methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ConsentErrorReport", endpoint="consent_error_report", view_func=consent_error_report,
         methods=["GET"]
     )
 
