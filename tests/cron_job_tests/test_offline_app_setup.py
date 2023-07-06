@@ -1,6 +1,7 @@
 import http.client
 import mock
-
+from unittest.mock import call
+from rdr_service.services.gcp_config import RdrEnvironment
 from tests.helpers.unittest_base import BaseTestCase
 
 from rdr_service import config
@@ -79,3 +80,17 @@ class OfflineAppTest(BaseTestCase):
     def test_biobank_missing_samples_check_route(self, mock_checker):
         self.send_cron_request('BiobankMissingSamplesCheck')
         mock_checker.assert_called()
+
+    @mock.patch('rdr_service.offline.main.dispatch_check_consent_errors_task')
+    def test_consent_error_report_route(self, mock_checker):
+        # Do not expect the reporting tasks to be dispatched except when on PROD
+        self.send_cron_request('ConsentErrorReport')
+        mock_checker.assert_not_called()
+
+        # To override project, cannot use the settings dict temporary override -- need to set directly?
+        saved_config_project = config.GAE_PROJECT
+        config.GAE_PROJECT = RdrEnvironment.PROD.value
+        self.send_cron_request('ConsentErrorReport')
+        mock_checker.assert_has_calls([call(origin='vibrent', in_seconds=30),
+                                       call(origin='careevolution', in_seconds=180)])
+        config.GAE_PROJECT = saved_config_project
