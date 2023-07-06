@@ -7,11 +7,11 @@ from graphene import List as GrapheneList
 
 from sqlalchemy.orm import Query, aliased
 
-from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, ConsentOptInTypes
+from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, ConsentOptInTypes, \
+    StoredSampleStatus
 from rdr_service.api_util import parse_date
 from rdr_service.dao.study_nph_dao import NphOrderDao
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
-from rdr_service.model.study_nph_enums import StoredSampleStatus
 from rdr_service.participant_enums import QuestionnaireStatus
 
 

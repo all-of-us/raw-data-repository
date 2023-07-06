@@ -43,3 +43,47 @@ class ConsentOptInTypes(messages.Enum):
 class ParticipantOpsElementTypes(messages.Enum):
 
     BIRTHDATE = 1
+
+
+class StoredSampleStatus(messages.Enum):
+    """Status of NPH StoredSample"""
+
+    UNSET = 0
+    RECEIVED = 1
+    SHIPPED = 2
+    DISPOSED = 3
+
+
+class ModuleTypes(messages.Enum):
+
+    MODULE1 = 1
+    MODULE2 = 2
+    MODULE3 = 3
+
+
+class IncidentStatus(messages.Enum):
+    """Status of NPH"""
+    OPEN = 0
+    RESOLVED = 1
+    UNABLE_TO_RESOLVE = 2
+
+
+class IncidentType(messages.Enum):
+
+    UNSET = 0
+
+
+class DietType(messages.Enum):
+
+    BLUE = 1
+    ORANGE = 2
+    PURPLE = 3
+    LMT = 4
+
+
+class DietStatus(messages.Enum):
+
+    STARTED = 1
+    COMPLETED = 2
+    DISCONTINUED = 3
+

@@ -27,7 +27,7 @@ from rdr_service.dao.study_nph_dao import (
     NphParticipantEventActivityDao,
     NphIncidentDao,
 )
-from rdr_service.model.study_nph_enums import IncidentStatus, IncidentType
+from rdr_service.ancillary_study_resources.nph.enums import IncidentStatus, IncidentType
 from rdr_service.clock import FakeClock
 from rdr_service.model.study_nph import (
     Participant,

@@ -7,7 +7,7 @@ from google.cloud._helpers import UTC
 
 from rdr_service import config
 from rdr_service.api_util import open_cloud_file, list_blobs
-from rdr_service.model.study_nph_enums import StoredSampleStatus
+from rdr_service.ancillary_study_resources.nph.enums import StoredSampleStatus
 from rdr_service.model.study_nph import StoredSample
 from rdr_service.dao.study_nph_dao import NphStoredSampleDao
 from rdr_service.offline.biobank_samples_pipeline import DataError

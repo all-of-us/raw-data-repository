@@ -4,9 +4,9 @@ from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Index, e
 from sqlalchemy.dialects.mysql import TINYINT, JSON
 from sqlalchemy.orm import relation, relationship
 
-from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, ParticipantOpsElementTypes
+from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, ParticipantOpsElementTypes, \
+    StoredSampleStatus, IncidentStatus, IncidentType, DietType, DietStatus, ModuleTypes
 from rdr_service.model.base import NphBase, model_insert_listener, model_update_listener
-from rdr_service.model.study_nph_enums import StoredSampleStatus, IncidentStatus, IncidentType
 from rdr_service.model.utils import UTCDateTime, Enum
 
 
@@ -293,6 +293,7 @@ class WithdrawalEvent(NphBase):
     event_authored_time = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    module = Column(Enum(ModuleTypes), nullable=False)
 
 
 event.listen(WithdrawalEvent, "before_insert", model_insert_listener)
@@ -309,10 +310,33 @@ class DeactivationEvent(NphBase):
     event_authored_time = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    module = Column(Enum(ModuleTypes), nullable=False)
 
 
 event.listen(DeactivationEvent, "before_insert", model_insert_listener)
 event.listen(DeactivationEvent, "before_update", model_update_listener)
+
+
+class DietEvent(NphBase):
+    __tablename__ = "diet_event"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    event_authored_time = Column(UTCDateTime)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    diet_id = Column(TINYINT, nullable=False)
+    status_id = Column(BigInteger, nullable=False)
+    module = Column(Enum(ModuleTypes), nullable=False)
+    diet_name = Column(Enum(DietType), nullable=False)
+    status = Column(Enum(DietStatus), nullable=False)
+    current = Column(TINYINT, default=0)
+
+
+event.listen(DietEvent, "before_insert", model_insert_listener)
+event.listen(DietEvent, "before_update", model_update_listener)
 
 
 class SampleUpdate(NphBase):

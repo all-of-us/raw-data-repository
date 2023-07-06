@@ -1,0 +1,70 @@
+{
+  "info": {
+    "ListId": "1212AS",
+    "CreatedDate": "2023-01-01T00:00:00-04:00",
+    "TotalNumberofParticipants": 2,
+    "Participants": [
+      {
+        "Id": 1,
+        "NPHId": "100000000",
+        "Module": "Module1",
+        "DOB": "2022-01-01",
+        "EnrollmentStatus": [
+          {
+            "StatusId": 1,
+            "Status": "consented",
+            "Date": "2023-04-26T09:01:00-04:00",
+            "Current": "false"
+          },
+          {
+            "StatusId": 2,
+            "Status": "eligibilityConfirmed",
+            "Date": "2023-04-27T09:15:00-04:00",
+            "Current": "false"
+          }
+        ],
+        "Consent": [
+          {
+            "Version": 1,
+            "SignedName": "Lisa Harvey",
+            "StaffName": "Ellie Sheridan",
+            "StaffSignedDate": "2023-04-23",
+            "FileName": "19991110000444_v1.pdf",
+            "Module1ConsentTissue": "permit",
+            "Module1ConsentRecontact": "permit",
+            "ParticipantSignedDate": "2023-04-23T08:19:00-04:00"
+          }
+        ],
+        "Pairing": {
+          "Site": "nph-test-site-1",
+          "Date": "2023-01-01T00:00:00-04:00"
+        }
+      },
+      {
+        "Id": 2,
+        "NPHId": "100000001",
+        "Module": "Module1",
+        "DOB": "2023-01-01",
+        "EnrollmentStatus": [
+          {
+            "StatusId": 1,
+            "Status": "eligibilityConfirmed",
+            "Reason": null,
+            "Date": "2023-01-01T00:00:00-04:00",
+            "Current": "true"
+          }
+        ],
+        "Pairing": {
+          "Site": "nph-test-site-2",
+          "Date": "2023-01-01T00:00:00-04:00"
+        },
+        "Deactivation": {
+          "Date": "2023-05-16T09:15:00-04:00"
+        },
+        "Withdrawal": {
+          "Date": "2023-05-16T09:15:00-04:00"
+        }
+      }
+    ]
+  }
+}
