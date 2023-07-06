@@ -342,7 +342,8 @@ class TestEnrollmentInfo(BaseTestCase):
             dna_update_time=dna_update_time,
             earliest_ehr_file_received_time=ehr_file_submitted_time,
             earliest_mediated_ehr_receipt_time=earliest_mediated_ehr_receipt_time,
-            earliest_core_physical_measurement_time=earliest_core_pm_time,
+            earliest_height_measurement_time=earliest_core_pm_time,
+            earliest_weight_measurement_time=earliest_core_pm_time,
             wgs_sequencing_time=wgs_sequencing_time
         )
 
