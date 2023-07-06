@@ -908,18 +908,6 @@ class NphEventTypeMixin(NphDaoMixin):
             )
             return records.first()
 
-    def get_event_by_name(self, name: str) -> Optional[List]:
-        if not hasattr(self.model_type, 'name'):
-            return []
-
-        with self.session() as session:
-            records = session.query(
-                self.model_type
-            ).filter(
-                self.model_type.source_name == name
-            )
-            return records.first()
-
 
 class NphDefaultBaseDao(BaseDao, NphDaoMixin):
     def __init__(self, model_type):
