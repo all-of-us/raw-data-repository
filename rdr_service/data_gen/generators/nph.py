@@ -4,7 +4,7 @@ from rdr_service.ancillary_study_resources.nph.enums import ModuleTypes
 from rdr_service.dao import database_factory
 from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
     PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
-    DeactivationEvent, ParticipantOpsDataElement, OrderedSample, StoredSample, Order, StudyCategory
+    DeactivationEvent, ParticipantOpsDataElement, OrderedSample, StoredSample, Order, StudyCategory, DietEvent
 from rdr_service.ancillary_study_resources.nph import enums
 from rdr_service.model.study_nph_sms import SmsJobRun, SmsSample, SmsBlocklist, SmsN0, SmsN1Mc1
 
@@ -217,6 +217,15 @@ class NphDataGenerator(NphBaseGenerator):
         ops_data_element = self._ops_data_element(**kwargs)
         self._commit_to_database(ops_data_element)
         return ops_data_element
+
+    @staticmethod
+    def _diet_event(**kwargs):
+        return DietEvent(**kwargs)
+
+    def create_database_diet_event(self, **kwargs):
+        diet_event = self._diet_event(**kwargs)
+        self._commit_to_database(diet_event)
+        return diet_event
 
 
 class NphSmsDataGenerator(NphBaseGenerator):

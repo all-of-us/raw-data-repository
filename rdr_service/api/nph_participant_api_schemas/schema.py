@@ -1,5 +1,5 @@
 import logging
-from graphene import ObjectType, String, Int, DateTime, Field, List, Schema, NonNull, relay
+from graphene import ObjectType, String, Int, DateTime, Field, List, Schema, NonNull, relay, Boolean
 from sqlalchemy.orm import aliased
 from sqlalchemy import and_
 
@@ -44,7 +44,6 @@ class SortableField(Field):
 
 class Event(ObjectType):
     """ NPH Participant Event Status """
-
     value = SortableField(
         NonNull(String), sort_modifier=lambda context: context.set_order_expression(context.sort_table.status)
     )
@@ -61,9 +60,23 @@ class Event(ObjectType):
             return context.set_order_expression(sort_info.get('value'))
         raise ValueError(f"{value} : Invalid Key -- Event Object Type")
 
+
 class GraphQLConsentEvent(Event):
     """ NPH ConsentEvent """
     opt_in = Field(NonNull(String))
+
+
+class GraphQLDietStatus(ObjectType):
+
+    time = Field(String)
+    status = Field(String)
+    current = Field(Boolean)
+
+
+class GraphQLDietEvent(ObjectType):
+
+    dietName = Field(String)
+    dietStatus = Field(List(GraphQLDietStatus))
 
 
 class GraphQLNphBiobankStatus(ObjectType):
@@ -76,6 +89,7 @@ class GraphQLNphBiobankStatus(ObjectType):
 
 
 class GraphQLNphBioSpecimen(ObjectType):
+
     orderID = Field(String)
     studyID = Field(String)
     visitID = Field(String)
@@ -94,6 +108,7 @@ class GraphQLNphBioSpecimen(ObjectType):
 
 
 class EventCollection(ObjectType):
+
     current = SortableField(Event)
     historical = List(Event)
 
@@ -105,6 +120,7 @@ class EventCollection(ObjectType):
 
 
 class Sample(ObjectType):
+
     parent = SortableField(EventCollection)
     child = SortableField(EventCollection)
 
@@ -114,6 +130,7 @@ class Sample(ObjectType):
 
 
 class SampleCollection(ObjectType):
+
     ordered = List(Sample)
     stored = SortableField(Sample)
 
@@ -303,6 +320,18 @@ class ParticipantField(ObjectType):
     nphModule1ConsentStatus = List(
         GraphQLConsentEvent, name="nphModule1ConsentStatus", description="Sourced from NPH Schema"
     )
+    nphModule2ConsentStatus = List(
+        GraphQLConsentEvent, name="nphModule2ConsentStatus", description="Sourced from NPH Schema"
+    )
+    nphModule3ConsentStatus = List(
+        GraphQLConsentEvent, name="nphModule3ConsentStatus", description="Sourced from NPH Schema"
+    )
+    nphModule2DietStatus = List(
+        GraphQLDietEvent, name="nphModule2DietStatus", description="Sourced from NPH Schema"
+    )
+    nphModule3DietStatus = List(
+        GraphQLDietEvent, name="nphModule3DietStatus", description="Sourced from NPH Schema"
+    )
     nphBiospecimens = List(GraphQLNphBioSpecimen, name="nphBiospecimens", description="NPH Biospecimens")
     nphWithdrawalStatus = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
     nphDeactivationStatus = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
@@ -389,6 +418,7 @@ class ParticipantQuery(ObjectType):
         consent_subquery = nph_participant_dao.get_consents_subquery()
         enrollment_subquery = nph_participant_dao.get_enrollment_subquery()
         orders_samples_subquery = nph_participant_dao.get_orders_samples_subquery()
+        diet_status_subquery = nph_participant_dao.get_diet_status_subquery()
 
         limit = min(max(limit, MIN_LIMIT), MAX_LIMIT)
         off_set = max(off_set, MIN_OFFSET)
@@ -405,6 +435,7 @@ class ParticipantQuery(ObjectType):
                 consent_subquery.c.consent_status,
                 orders_samples_subquery.c.orders_sample_status,
                 orders_samples_subquery.c.orders_sample_biobank_status,
+                diet_status_subquery.c.diet_status,
                 DeactivationEvent,
                 WithdrawalEvent,
                 ParticipantOpsDataElement
@@ -426,6 +457,9 @@ class ParticipantQuery(ObjectType):
             ).outerjoin(
                 orders_samples_subquery,
                 orders_samples_subquery.c.orders_samples_pid == Participant.id
+            ).outerjoin(
+                diet_status_subquery,
+                diet_status_subquery.c.diet_pid == Participant.id
             ).outerjoin(
                 PairingEvent,
                 PairingEvent.participant_id == ParticipantMapping.ancillary_participant_id
