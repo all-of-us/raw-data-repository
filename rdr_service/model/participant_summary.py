@@ -47,7 +47,8 @@ from rdr_service.participant_enums import (
     SelfReportedPhysicalMeasurementsStatus,
     OnSiteVerificationType,
     OnSiteVerificationVisitType,
-    IdVerificationOriginType
+    IdVerificationOriginType,
+    IdVerificationStatusType
 )
 
 
@@ -1579,13 +1580,14 @@ class ParticipantSummary(Base):
 
     remoteIdVerificationStatus = Column(
         "remote_id_verification_status",
-        Boolean
+        Enum(IdVerificationStatusType),
+        default=IdVerificationStatusType.UNSET
     )
     """
     A flag indicating whether the identity of a participant was verified remotely.
         Unset if no remote identity verification has occurred.
-        Set to 1/True when the participant is verified remotely.
-        and set to 0/False if not.
+        Set to TRUE when the participant is verified remotely.
+        and set to FALSE if not.
     """
 
     remoteIdVerifiedOn = Column("remote_id_verified_on", Date)

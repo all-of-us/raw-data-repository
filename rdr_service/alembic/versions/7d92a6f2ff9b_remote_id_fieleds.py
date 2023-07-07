@@ -39,7 +39,7 @@ def upgrade_rdr():
     op.add_column('participant_summary',
                   sa.Column('remote_id_verification_origin', sa.String(length=80), nullable=True))
     op.add_column('participant_summary', sa.Column('remote_id_verification_status',
-                                                   sa.Boolean(),
+                                                   sa.String(length=10),
                                                    nullable=True))
     op.add_column('participant_summary', sa.Column('remote_id_verified_on',
                                                    sa.Date(),

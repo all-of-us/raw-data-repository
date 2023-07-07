@@ -568,6 +568,12 @@ class IdVerificationOriginType(messages.Enum):
     ON_SITE = 1
     REMOTE = 2
 
+class IdVerificationStatusType(messages.Enum):
+    """Types of Id Verification for the Status"""
+    UNSET = 0
+    TRUE = 1
+    FALSE = 2
+
 
 # M2API age buckets
 AGE_BUCKETS_METRICS_V2_API = ["0-17", "18-25", "26-35", "36-45", "46-55", "56-65", "66-75", "76-85", "86-"]
