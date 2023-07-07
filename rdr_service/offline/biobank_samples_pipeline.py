@@ -3,6 +3,7 @@
 Also updates ParticipantSummary data related to samples.
 """
 
+import csv
 import datetime
 from dateutil.parser import parse
 import logging
@@ -42,6 +43,8 @@ _FILENAME_DATE_FORMAT = "%Y-%m-%d"
 # The output of the reconciliation report goes into this subdirectory within the upload bucket.
 _REPORT_SUBDIR = "reconciliation"
 _BATCH_SIZE = 1000
+# A separate folder/subdirectory to post alerts about overdue/missing samples
+_OVERDUE_DNA_SAMPLES_SUBDIR = "overdue_dna_samples"
 
 # Biobank provides timestamps without time zone info, which should be in central time (see DA-235).
 _INPUT_TIMESTAMP_FORMAT = "%Y/%m/%d %H:%M:%S"  # like 2016/11/30 14:32:18
@@ -182,9 +185,9 @@ def _get_report_paths(report_datetime, report_type="daily"):
     return [_get_report_path(report_datetime, report_name) for report_name in report_name_suffix]
 
 
-def _get_report_path(report_datetime, report_name):
+def _get_report_path(report_datetime, report_name, report_subdir=_REPORT_SUBDIR):
     report_date_str = report_datetime.strftime(_FILENAME_DATE_FORMAT)
-    return f'{_REPORT_SUBDIR}/report_{report_date_str}_{report_name}.csv'
+    return f'{report_subdir}/report_{report_date_str}_{report_name}.csv'
 
 
 def get_withdrawal_report_query(start_date: datetime):
@@ -802,10 +805,12 @@ def in_past_n_days(result, now, n_days, ordered_before=None):
 
 
 # DA-3543: Ordered DNA samples where order was finalized at least a week ago, but haven't been acknowledged by biobank
-# Intended for weekly check/alerts. Orders from more than 30 days ago will not be included in the alerts
-MISSING_STORED_SAMPLES_SQL = """
-                select p.participant_id, p.biobank_id, bo.biobank_order_id, bos.finalized,
-                     GROUP_CONCAT(bos.test) as missing_samples
+# Intended for weekly check/alerts. Orders from more than 30 days ago will not be included in the alerts.  Only used on
+# production
+OVERDUE_DNA_SAMPLES_SQL = f"""
+                select CONCAT('{config.getSetting(config.BIOBANK_ID_PREFIX)}', p.biobank_id) as biobank_id,
+                       bo.biobank_order_id, bos.finalized order_finalized_date,
+                       GROUP_CONCAT(bos.test) as overdue_dna_samples
                 from biobank_order bo
                 join participant p on bo.participant_id = p.participant_id
                 join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
@@ -824,25 +829,37 @@ MISSING_STORED_SAMPLES_SQL = """
                 group by p.participant_id, p.biobank_id, bo.biobank_order_id, bos.finalized
 
         """
-def missing_samples_check():
-    dna_tests = config.getSettingList(config.DNA_SAMPLE_TEST_CODES)
-    slack_config = config.getSettingJson(RDR_SLACK_WEBHOOKS, {})
-    webhook_url = slack_config.get('rdr_biobank_missing_samples_webhook', None)
+
+def write_overdue_samples_report(report_date):
+    """ Writes a report indicating overdue DNA samples to biobank bucket in GCS """
+    bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
+    file_name = _get_report_path(report_date, 'overdue_dna_samples',
+                                 report_subdir=_OVERDUE_DNA_SAMPLES_SUBDIR)
     # May expand what types of orders we monitor in the future, so use a list for WHERE IN clause
     origin_filters = ['hpro']
-    dao = BiobankOrderDao()
-    with dao.session() as session:
-        results = session.execute(
-            MISSING_STORED_SAMPLES_SQL,
-            {"cancelled": int(BiobankOrderStatus.CANCELLED), "dna_tests": dna_tests, "origin_filters": origin_filters}
-        )
+    query_params = {"cancelled": int(BiobankOrderStatus.CANCELLED),
+                    "dna_tests": config.getSettingList(config.DNA_SAMPLE_TEST_CODES),
+                    "origin_filters": origin_filters}
 
-        if results.rowcount > 0:
-            alert_msg = 'DNA samples ordered at least a week ago but still not reported by biobank:\n'
-            for rec in results:
-                alert_msg += f'Biobank ID: A{rec.biobank_id}, order: {rec.biobank_order_id}, ' + \
-                             f'finalized: {rec.finalized}, missing ordered DNA samples: {rec.missing_samples}\n'
-            # Send Slack notification if slack webhook configured, and log error as backup indication
+    exporter = SqlExporter(bucket_name)
+    tmp_file, row_count = exporter.run_export(file_name, OVERDUE_DNA_SAMPLES_SQL, query_params, backup=True,
+                                              skip_upload_if_empty=True)
+    return tmp_file if row_count else None
+
+def overdue_samples_check(report_date=datetime.datetime.utcnow()):
+    slack_config = config.getSettingJson(RDR_SLACK_WEBHOOKS, {})
+    webhook_url = slack_config.get('rdr_biobank_missing_samples_webhook', None)
+    report_tmp_file = write_overdue_samples_report(report_date)
+    # If a file was generated/uploaded, also post a slack alert with the details
+    if report_tmp_file:
+        with open(report_tmp_file, 'r') as f:
+            csv_reader = csv.DictReader(f)
+            alert_msg = ''
+            for row in csv_reader:
+                alert_msg += f'Biobank ID: {row["biobank_id"]}, order: {row["biobank_order_id"]}, ' + \
+                             f'finalized: {row["order_finalized_date"]}, ' + \
+                             f'overdue ordered DNA samples: {row["overdue_dna_samples"]}\n'
+                # Send Slack notification if slack webhook configured, and log error as backup indication
             if webhook_url:
                 slack_handler = SlackMessageHandler(webhook_url=webhook_url)
                 slack_handler.send_message_to_webhook(message_data={'text': alert_msg})

@@ -36,9 +36,13 @@ class SqlExporter(object):
         self._bucket_name = bucket_name
 
     def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None, instance_name=None,
-                   predicate=None):
+                   predicate=None, skip_upload_if_empty=False):
         tmp_file_name = self.write_temp_export_file(sql, query_params, backup, transformf, instance_name, predicate)
-        self.upload_export_file(tmp_file_name, file_name, predicate)
+        with open(tmp_file_name) as f:
+            data_rows = sum(1 for _ in f) - 1  # exclude header row in count
+        if data_rows or not skip_upload_if_empty:
+            self.upload_export_file(tmp_file_name, file_name, predicate)
+        return tmp_file_name, data_rows
 
     def write_temp_export_file(self, sql, query_params, backup, transformf, instance_name, predicate):
         with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
