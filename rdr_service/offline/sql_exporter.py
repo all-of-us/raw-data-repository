@@ -42,7 +42,7 @@ class SqlExporter(object):
         """
         rows = 0
         with open(csv_tmp_file) as f:
-            for line in f:
+            for _ in f:
                 rows += 1
                 if rows > 1:
                     break
