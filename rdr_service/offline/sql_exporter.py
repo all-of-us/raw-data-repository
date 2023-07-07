@@ -35,14 +35,27 @@ class SqlExporter(object):
     def __init__(self, bucket_name):
         self._bucket_name = bucket_name
 
+    def _file_has_data_rows(self, csv_tmp_file):
+        """
+        Return True if at least one data row exists in the CSV temp file.  First row is presumed to be a header row
+        :param tmp_file: The temporary CSV file created by write_temp_export_file()
+        """
+        rows = 0
+        with open(csv_tmp_file) as f:
+            for line in f:
+                rows += 1
+                if rows > 1:
+                    break
+
+        return rows > 1
+
     def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None, instance_name=None,
                    predicate=None, skip_upload_if_empty=False):
         tmp_file_name = self.write_temp_export_file(sql, query_params, backup, transformf, instance_name, predicate)
-        with open(tmp_file_name) as f:
-            data_rows = sum(1 for _ in f) - 1  # exclude header row in count
-        if data_rows or not skip_upload_if_empty:
+        has_data = self._file_has_data_rows(tmp_file_name)
+        if has_data or not skip_upload_if_empty:
             self.upload_export_file(tmp_file_name, file_name, predicate)
-        return tmp_file_name, data_rows
+        return tmp_file_name, has_data
 
     def write_temp_export_file(self, sql, query_params, backup, transformf, instance_name, predicate):
         with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp_file:

@@ -841,9 +841,9 @@ def write_overdue_samples_report(report_date):
                     "origin_filters": origin_filters}
 
     exporter = SqlExporter(bucket_name)
-    tmp_file, row_count = exporter.run_export(file_name, OVERDUE_DNA_SAMPLES_SQL, query_params, backup=True,
-                                              skip_upload_if_empty=True)
-    return tmp_file if row_count else None
+    tmp_file, has_data_rows = exporter.run_export(file_name, OVERDUE_DNA_SAMPLES_SQL, query_params, backup=True,
+                                                  skip_upload_if_empty=True)
+    return tmp_file if has_data_rows else None
 
 def overdue_samples_check(report_date=datetime.datetime.utcnow()):
     slack_config = config.getSettingJson(RDR_SLACK_WEBHOOKS, {})
