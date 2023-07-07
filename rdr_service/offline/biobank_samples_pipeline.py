@@ -21,7 +21,6 @@ from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION
 from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, \
     BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN, RDR_SLACK_WEBHOOKS
 from rdr_service.dao.code_dao import CodeDao
-from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.database_utils import MYSQL_ISO_DATE_FORMAT, parse_datetime, replace_isodate
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
