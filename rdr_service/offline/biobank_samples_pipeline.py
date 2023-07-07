@@ -851,7 +851,7 @@ def overdue_samples_check(report_date=datetime.datetime.utcnow()):
     report_tmp_file = write_overdue_samples_report(report_date)
     # If a file was generated/uploaded, also post a slack alert with the details
     if report_tmp_file:
-        with open(report_tmp_file, 'r') as f:
+        with open(report_tmp_file, 'r', encoding='utf-8') as f:
             csv_reader = csv.DictReader(f)
             alert_msg = ''
             for row in csv_reader:

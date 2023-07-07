@@ -41,7 +41,7 @@ class SqlExporter(object):
         :param tmp_file: The temporary CSV file created by write_temp_export_file()
         """
         rows = 0
-        with open(csv_tmp_file) as f:
+        with open(csv_tmp_file, encoding='utf-8') as f:
             for _ in f:
                 rows += 1
                 if rows > 1:

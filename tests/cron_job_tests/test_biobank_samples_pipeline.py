@@ -601,7 +601,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             biobank_samples_pipeline.overdue_samples_check(self.overdue_samples_report_dt)
             # Verify presence of expected bucket file
             blob = get_blob(_FAKE_BUCKET, blob_name=self.overdue_samples_blobname)
-            assert blob is not None
+            self.assertIsNotNone(blob)
 
             # Verify Slack message populated from bucket file rows
             error_log_call = mock_logging.error.call_args
@@ -638,7 +638,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         )
         # Verify there was no file dropped to the bucket
         blob = get_blob(_FAKE_BUCKET, blob_name=self.overdue_samples_blobname)
-        assert blob is None
+        self.assertIsNone(blob)
 
         with mock.patch('rdr_service.offline.biobank_samples_pipeline.logging') as mock_logging:
             biobank_samples_pipeline.overdue_samples_check(self.overdue_samples_report_dt)
@@ -671,7 +671,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
 
         # Verify there was no file dropped to the bucket
         blob = get_blob(_FAKE_BUCKET, blob_name=self.overdue_samples_blobname)
-        assert blob is None
+        self.assertIsNone(blob)
 
         with mock.patch('rdr_service.offline.biobank_samples_pipeline.logging') as mock_logging:
             biobank_samples_pipeline.overdue_samples_check(self.overdue_samples_report_dt)
