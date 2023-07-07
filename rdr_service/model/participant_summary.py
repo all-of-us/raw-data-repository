@@ -48,7 +48,7 @@ from rdr_service.participant_enums import (
     OnSiteVerificationType,
     OnSiteVerificationVisitType,
     IdVerificationOriginType,
-    IdVerificationStatusType
+    RemoteIdVerificationStatusType
 )
 
 
@@ -1580,8 +1580,8 @@ class ParticipantSummary(Base):
 
     remoteIdVerificationStatus = Column(
         "remote_id_verification_status",
-        Enum(IdVerificationStatusType),
-        default=IdVerificationStatusType.UNSET
+        Enum(RemoteIdVerificationStatusType),
+        default=RemoteIdVerificationStatusType.UNSET
     )
     """
     A flag indicating whether the identity of a participant was verified remotely.

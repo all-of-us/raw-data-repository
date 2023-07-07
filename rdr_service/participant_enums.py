@@ -54,7 +54,7 @@ class ParticipantCohort(messages.Enum):
 class ParticipantCohortPilotFlag(messages.Enum):
     """ Participant Cohort Pilot Group """
     UNSET = 0
-    COHORT_2_PILOT = 1 # Genomics Cohort 2 Pilot Group
+    COHORT_2_PILOT = 1  # Genomics Cohort 2 Pilot Group
 
 
 class PatientStatusFlag(messages.Enum):
@@ -130,12 +130,12 @@ class QuestionnaireResponseClassificationType(messages.Enum):
     Categorize questionnaire response payloads exhibiting known data issues
     See:  DA-2192 and the linked investigation document for more details
     """
-    COMPLETE = 0               # Default, no known issues / normal completed survey payload
-    DUPLICATE = 1              # Identical answer hash to another response or has a cascading subset/superset signature
-    PROFILE_UPDATE = 2         # E.g., TheBasics response payloads which only contain secondary contact updates
-    NO_ANSWER_VALUES = 3       # Isolated cases where payload had question data with no answer values
+    COMPLETE = 0  # Default, no known issues / normal completed survey payload
+    DUPLICATE = 1  # Identical answer hash to another response or has a cascading subset/superset signature
+    PROFILE_UPDATE = 2  # E.g., TheBasics response payloads which only contain secondary contact updates
+    NO_ANSWER_VALUES = 3  # Isolated cases where payload had question data with no answer values
     AUTHORED_TIME_UPDATED = 4  # Known/expected retransmission of previous payloads, but with a corrected authored ts
-    PARTIAL = 5                # Other cases (e.g., partial COPE surveys) where payload is not a completed survey
+    PARTIAL = 5  # Other cases (e.g., partial COPE surveys) where payload is not a completed survey
 
 
 class EnrollmentStatus(messages.Enum):
@@ -456,6 +456,7 @@ class WithdrawalReason(messages.Enum):
     DUPLICATE = 2
     TEST = 3
 
+
 # PDR-252:  This information will initially be required in PDR data for providing metrics.  There are no
 # initial requirements to include this information in RDR GET API responses
 class WithdrawalAIANCeremonyStatus(messages.Enum):
@@ -524,7 +525,6 @@ class RetentionStatus(messages.Enum):
 
 
 class RetentionType(messages.Enum):
-
     UNSET = 0
     ACTIVE = 1
     PASSIVE = 2
@@ -568,7 +568,8 @@ class IdVerificationOriginType(messages.Enum):
     ON_SITE = 1
     REMOTE = 2
 
-class IdVerificationStatusType(messages.Enum):
+
+class RemoteIdVerificationStatusType(messages.Enum):
     """Types of Id Verification for the Status"""
     UNSET = 0
     TRUE = 1
