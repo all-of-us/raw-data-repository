@@ -1241,6 +1241,14 @@ class ParticipantSummaryDao(UpdatableDao):
         if result.get("genderIdentityId"):
             del result["genderIdentityId"]  # deprecated in favor of genderIdentity
 
+        # Format Remote ID Verification Status
+        if result['remoteIdVerificationStatus'] is None:
+            result['remoteIdVerificationStatus'] = 'UNSET'
+        elif result['remoteIdVerificationStatus']:
+            result['remoteIdVerificationStatus'] = 'True'
+        else:
+            result['remoteIdVerificationStatus'] = 'False'
+
         # Map demographic Enums if TheBasics was submitted and Skip wasn't in use
         if is_the_basics_complete and not should_clear_fields_for_withdrawal:
             if obj.genderIdentity is None or obj.genderIdentity == GenderIdentity.UNSET:

@@ -116,8 +116,7 @@ from rdr_service.participant_enums import (
     ConsentExpireStatus,
     OriginMeasurementUnit,
     PhysicalMeasurementsCollectType,
-    IdVerificationOriginType,
-    RemoteIdVerificationStatusType
+    IdVerificationOriginType
 )
 
 _QUESTIONNAIRE_PREFIX = "Questionnaire/"
@@ -943,7 +942,7 @@ class QuestionnaireResponseDao(BaseDao):
         if 'verified' in remote_id_info:
             if remote_id_info['verified'] == "true":
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
-                participant_summary.remoteIdVerificationStatus = RemoteIdVerificationStatusType.TRUE
+                participant_summary.remoteIdVerificationStatus = True
                 participant_summary.remoteIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
                 participant_summary.everIdVerified = True
                 participant_summary.idVerificationOrigin = IdVerificationOriginType.REMOTE
@@ -951,11 +950,8 @@ class QuestionnaireResponseDao(BaseDao):
                     participant_summary.firstIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
             elif remote_id_info['verified'] == "false":
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
-                participant_summary.remoteIdVerificationStatus = RemoteIdVerificationStatusType.FALSE
+                participant_summary.remoteIdVerificationStatus = False
                 participant_summary.remoteIdVerifiedOn = None
-        elif participant_summary:
-            if not participant_summary.remoteIdVerificationStatus:
-                participant_summary.remoteIdVerificationStatus = RemoteIdVerificationStatusType.UNSET
 
         # Set summary fields to SUBMITTED for questionnaire concepts that are found in
         # QUESTIONNAIRE_MODULE_CODE_TO_FIELD

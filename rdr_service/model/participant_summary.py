@@ -47,10 +47,8 @@ from rdr_service.participant_enums import (
     SelfReportedPhysicalMeasurementsStatus,
     OnSiteVerificationType,
     OnSiteVerificationVisitType,
-    IdVerificationOriginType,
-    RemoteIdVerificationStatusType
+    IdVerificationOriginType
 )
-
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.
@@ -150,7 +148,6 @@ class ParticipantSummary(Base):
     recontactMethod = None  # placeholder for docs, API sets on model using corresponding ID field
     """Which method the participant would like used for contact. i.e. phone or email."""
 
-
     # deprecated - will remove languageId in the future
     languageId = Column("language_id", Integer, ForeignKey("code.code_id"))
     """DEPRECATED in favor of primary_language"""
@@ -237,6 +234,7 @@ class ParticipantSummary(Base):
     def organizationId(cls):
         """An organization a participant is paired with or "unset" if none"""
         return Column("organization_id", Integer, ForeignKey("organization.organization_id"))
+
     organization = None  # placeholder for docs, API sets on model using corresponding ID field
     """An organization a participant is paired with or UNSET if none."""
 
@@ -244,12 +242,14 @@ class ParticipantSummary(Base):
     def siteId(cls):
         """A physical location a participant is paired with or UNSET if none."""
         return Column("site_id", Integer, ForeignKey("site.site_id"))
+
     site = None  # placeholder for docs, API sets on model using corresponding ID field
     """A physical location a participant is paired with or UNSET if none."""
 
     @declared_attr
     def enrollmentSiteId(cls):
         return Column("enrollment_site_id", Integer, ForeignKey("site.site_id"))
+
     enrollmentSite = None  # placeholder for docs, API sets on model using corresponding ID field
     "A physical location a participant is enrolled with or UNSET if none."
 
@@ -474,7 +474,7 @@ class ParticipantSummary(Base):
     have ever been present for the participant.  Mediated EHR is a separate EHR source than HPO-provided EHR
     """
 
-    firstParticipantMediatedEhrReceiptTime =  Column("first_participant_mediated_ehr_receipt_time", UTCDateTime)
+    firstParticipantMediatedEhrReceiptTime = Column("first_participant_mediated_ehr_receipt_time", UTCDateTime)
     """
     UTC timestamp indicating first reported occurrence of participant-mediated EHR content
     """
@@ -1317,7 +1317,6 @@ class ParticipantSummary(Base):
     sampleStatus1PXR2Time = Column("sample_status_1pxr2_time", UTCDateTime)
     "The datetime in UTC in which the biobank processed the sample."
 
-
     # Sample fields for Direct Volunteers
     # These are deprecated in favor of using the standard samplestatus2sal2, etc.
     sampleStatusDV1SAL2 = Column("sample_status_dv_1sal2", Enum(SampleStatus), default=SampleStatus.UNSET)
@@ -1510,7 +1509,6 @@ class ParticipantSummary(Base):
     sampleOrderStatus1PXR2Time = Column("sample_order_status_1pxr2_time", UTCDateTime)
     "The time the sample was marked as finalized by the processing site."
 
-
     # The number of BiobankStoredSamples recorded for this participant, limited to those samples
     # where testCode is one of the baseline tests (listed in the config).
     numBaselineSamplesArrived = Column("num_baseline_samples_arrived", SmallInteger, default=0)
@@ -1567,7 +1565,7 @@ class ParticipantSummary(Base):
     """The type of ID verification used for visit
        :ref:`Enumerated values <OnSiteVerificationType>`"""
     onsiteIdVerificationVisitType = Column("onsite_id_verification_visit_type", Enum(OnSiteVerificationVisitType),
-                               default=OnSiteVerificationVisitType.UNSET)
+                                           default=OnSiteVerificationVisitType.UNSET)
     """The type of visit on which ID verification occurred
        :ref:`Enumerated values <OnSiteVerificationVisitType>`"""
     onsiteIdVerificationUser = Column("onsite_id_verification_user", String(200))
@@ -1580,8 +1578,7 @@ class ParticipantSummary(Base):
 
     remoteIdVerificationStatus = Column(
         "remote_id_verification_status",
-        Enum(RemoteIdVerificationStatusType),
-        default=RemoteIdVerificationStatusType.UNSET
+        Boolean
     )
     """
     A flag indicating whether the identity of a participant was verified remotely.
@@ -1652,6 +1649,7 @@ class ParticipantSummary(Base):
     questionnaireOnBehavioralHealthAndPersonalityAuthored = Column("questionnaire_on_behavioral_health_authored",
                                                                    UTCDateTime)
     "UTC timestamp of time Behavioral Health survey was authored by participant"
+
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)
 Index("participant_summary_ln_dob", ParticipantSummary.lastName, ParticipantSummary.dateOfBirth)
