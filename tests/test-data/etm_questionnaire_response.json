@@ -10,15 +10,16 @@
     "extension": [
         {
             "url": "https://research.joinallofus.org/fhir/emorecog/metadata",
-            "valueString": "{\"response_device\":\"mouse\",\"user_agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36\",\"screen_height\":1117,\"screen_width\":1728,\"touch\":false,\"operating_system\":\"MacOS\",\"user_utc_offset\":-300,\"test_start_date_time\":1669667302157,\"test_end_date_time\":1669667382517,\"test_duration\":80360,\"test_restarted\":false,\"test_version\":\"EmoRecog_AoU.v1.Nov22\",\"test_name\":\"TMB Multiracial Emotion Identification\",\"test_short_name\":\"emorecog\",\"test_params\":\"{}\",\"test_language\":\"en\"}"
+            "valueString": "{\"response_device\":\"mouse\",\"user_agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36\",\"screen_height\":1117,\"screen_width\":1728,\"touch\":false,\"operating_system\":\"MacOS\",\"user_utc_offset\":-300,\"test_start_date_time\":1687521289096,\"test_end_date_time\":1687521390759,\"test_duration\":101663,\"test_restarted\":false,\"test_version\":\"EmoRecog_AoU.v1.May23\",\"test_name\":\"TestMyBrain Multiracial Emotion Identification\",\"test_short_name\":\"emorecog\",\"test_params\":\"{}\",\"test_language\":\"en\"}"
         },
         {
             "url": "https://research.joinallofus.org/fhir/emorecog/outcomes",
-            "valueString": "{\"score\":12,\"accuracy\":0.25,\"meanRTc\":219.69,\"medianRTc\":176.65,\"sdRTc\":159.53,\"happy_accuracy\":0,\"happy_meanRTc\":null,\"happy_medianRTc\":null,\"happy_sdRTc\":null,\"angry_accuracy\":0,\"angry_meanRTc\":null,\"angry_medianRTc\":null,\"angry_sdRTc\":null,\"fearful_accuracy\":1,\"fearful_meanRTc\":219.69,\"fearful_medianRTc\":176.65,\"fearful_sdRTc\":159.53,\"sad_accuracy\":0,\"sad_meanRTc\":null,\"sad_medianRTc\":null,\"sad_sdRTc\":null,\"any_timeouts\":0,\"flag_medianRTc\":1,\"flag_sameResponse\":1,\"flag_trialFlags\":1}"
+            "valueString": "{\"score\":13,\"accuracy\":0.2708333333333333,\"meanRTc\":380.18,\"medianRTc\":302.6,\"sdRTc\":310.4,\"happy_accuracy\":0.08333333333333333,\"happy_meanRTc\":264.9,\"happy_medianRTc\":264.9,\"happy_sdRTc\":null,\"angry_accuracy\":0.25,\"angry_meanRTc\":206.63,\"angry_medianRTc\":253.5,\"angry_sdRTc\":135.33,\"fearful_accuracy\":0.5833333333333334,\"fearful_meanRTc\":496.19,\"fearful_medianRTc\":306.2,\"fearful_sdRTc\":388.6,\"sad_accuracy\":0.16666666666666666,\"sad_meanRTc\":292.15,\"sad_medianRTc\":292.15,\"sad_sdRTc\":12.94,\"any_timeouts\":0,\"flag_medianRTc\":1,\"flag_sameResponse\":0,\"flag_trialFlags\":1}"
         }
     ],
-    "authored": "2022-11-28T20:29:42.519Z",
+    "authored": "2023-06-23T11:56:30.760Z",
     "group": {
+        "linkId": "1",
         "question": [
             {
                 "linkId": "1.1",
@@ -47,7 +48,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 713.6
+                                "valueDecimal": 605.1
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -63,13 +64,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667313475
+                                "valueDecimal": 1687521294062
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -100,7 +97,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 209.4
+                                "valueDecimal": 278.9
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -116,13 +113,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667314983
+                                "valueDecimal": 1687521295706
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -153,7 +146,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 69.8
+                                "valueDecimal": 523.1
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -165,17 +158,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667316350
+                                "valueDecimal": 1687521297575
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -202,11 +191,11 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/correct",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 175.7
+                                "valueDecimal": 13292.9
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -218,17 +207,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667317834
+                                "valueDecimal": 1687521312251
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -259,7 +244,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 161.8
+                                "valueDecimal": 359.6
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -271,17 +256,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667319300
+                                "valueDecimal": 1687521313994
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -312,7 +293,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 170.9
+                                "valueDecimal": 587.8
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -324,17 +305,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667320775
+                                "valueDecimal": 1687521315930
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -365,7 +342,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 170.3
+                                "valueDecimal": 345.2
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -377,17 +354,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667322234
+                                "valueDecimal": 1687521317668
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -418,7 +391,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 117.3
+                                "valueDecimal": 989.7
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -430,17 +403,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667323642
+                                "valueDecimal": 1687521320001
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -471,7 +440,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 184.3
+                                "valueDecimal": 936.5
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -483,17 +452,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667325125
+                                "valueDecimal": 1687521322363
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -524,7 +489,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 109.1
+                                "valueDecimal": 655.7
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -536,17 +501,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667326525
+                                "valueDecimal": 1687521324392
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -577,7 +538,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 174.5
+                                "valueDecimal": 342.5
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -589,17 +550,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667328000
+                                "valueDecimal": 1687521326136
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -630,7 +587,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 146
+                                "valueDecimal": 378.4
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -642,17 +599,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667329434
+                                "valueDecimal": 1687521327933
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -683,7 +636,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 153.2
+                                "valueDecimal": 311.1
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -695,17 +648,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667330875
+                                "valueDecimal": 1687521329665
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -736,7 +685,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 167.8
+                                "valueDecimal": 320.2
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -748,17 +697,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667332330
+                                "valueDecimal": 1687521331411
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -789,7 +734,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 197
+                                "valueDecimal": 420.6
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -801,17 +746,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667333825
+                                "valueDecimal": 1687521333217
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -842,7 +783,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 179.6
+                                "valueDecimal": 295.5
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -858,19 +799,59 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667335284
+                                "valueDecimal": 1687521334904
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
             {
                 "linkId": "1.17",
                 "answer": [
+                    {
+                        "extension": [
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/trial_id",
+                                "valueString": "test17"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/image",
+                                "valueString": "fearful3.jpg"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/emotion",
+                                "valueString": "f"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/response",
+                                "valueString": null
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/correct",
+                                "valueDecimal": 1
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/rt",
+                                "valueDecimal": 302.6
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/state",
+                                "valueString": "pointerup-mouse"
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/repeated",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
+                                "valueDecimal": 0
+                            },
+                            {
+                                "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
+                                "valueDecimal": 1687521336618
+                            }
+                        ]
+                    },
                     {
                         "extension": [
                             {
@@ -895,7 +876,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 176.3
+                                "valueDecimal": 302.6
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -907,17 +888,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667336750
+                                "valueDecimal": 1687521336618
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -948,7 +925,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 151.3
+                                "valueDecimal": 406.6
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -960,17 +937,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667338200
+                                "valueDecimal": 1687521338382
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1001,7 +974,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 146.1
+                                "valueDecimal": 488.6
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1013,17 +986,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667339642
+                                "valueDecimal": 1687521340259
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1054,7 +1023,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 191.4
+                                "valueDecimal": 774.5
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1066,17 +1035,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667341133
+                                "valueDecimal": 1687521342404
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1107,7 +1072,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 184.7
+                                "valueDecimal": 1176.6
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1119,17 +1084,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667342617
+                                "valueDecimal": 1687521344930
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1160,7 +1121,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 175.6
+                                "valueDecimal": 639.3
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1172,17 +1133,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667344092
+                                "valueDecimal": 1687521346967
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1209,11 +1166,11 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/correct",
-                                "valueDecimal": 0
+                                "valueDecimal": 1
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 96.3
+                                "valueDecimal": 283
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1229,13 +1186,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667345492
+                                "valueDecimal": 1687521348675
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1262,11 +1215,11 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/correct",
-                                "valueDecimal": 0
+                                "valueDecimal": 1
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 170.9
+                                "valueDecimal": 253.5
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1282,13 +1235,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667346967
+                                "valueDecimal": 1687521350348
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1315,11 +1264,11 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/correct",
-                                "valueDecimal": 0
+                                "valueDecimal": 1
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 27.1
+                                "valueDecimal": 54.1
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1335,13 +1284,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667348281
+                                "valueDecimal": 1687521351844
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1368,11 +1313,11 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/correct",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 256.7
+                                "valueDecimal": 337.3
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1384,17 +1329,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667349842
+                                "valueDecimal": 1687521353556
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1425,7 +1366,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 184.3
+                                "valueDecimal": 214.7
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1441,13 +1382,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667351325
+                                "valueDecimal": 1687521355164
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1474,11 +1411,11 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/correct",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 159.1
+                                "valueDecimal": 268.6
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1494,13 +1431,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667352784
+                                "valueDecimal": 1687521356830
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1531,7 +1464,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 195.7
+                                "valueDecimal": 257.2
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1547,13 +1480,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667354284
+                                "valueDecimal": 1687521358470
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1580,11 +1509,11 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/correct",
-                                "valueDecimal": 0
+                                "valueDecimal": 1
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 193.4
+                                "valueDecimal": 264.9
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1600,13 +1529,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667355775
+                                "valueDecimal": 1687521360104
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1637,7 +1562,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 184.8
+                                "valueDecimal": 555.5
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1649,17 +1574,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667357250
+                                "valueDecimal": 1687521362020
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1690,7 +1611,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 88.3
+                                "valueDecimal": 271.9
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1706,13 +1627,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667358633
+                                "valueDecimal": 1687521363651
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1739,11 +1656,11 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/correct",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 151.3
+                                "valueDecimal": 320.6
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1755,17 +1672,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667360075
+                                "valueDecimal": 1687521365322
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1796,7 +1709,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 195.8
+                                "valueDecimal": 306.2
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1808,17 +1721,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667361558
+                                "valueDecimal": 1687521367002
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1845,11 +1754,11 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/correct",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 105
+                                "valueDecimal": 314.7
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1861,17 +1770,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667362967
+                                "valueDecimal": 1687521368674
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1902,7 +1807,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 149.7
+                                "valueDecimal": 306.2
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1914,17 +1819,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667364418
+                                "valueDecimal": 1687521370336
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -1955,7 +1856,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 163.7
+                                "valueDecimal": 528.3
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -1967,17 +1868,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667365884
+                                "valueDecimal": 1687521372268
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -2008,7 +1905,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 177
+                                "valueDecimal": 2.1
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -2024,13 +1921,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667367359
+                                "valueDecimal": 1687521373833
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -2057,11 +1950,11 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/correct",
-                                "valueDecimal": 0
+                                "valueDecimal": 1
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 175.8
+                                "valueDecimal": 312.3
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -2073,17 +1966,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667368817
+                                "valueDecimal": 1687521375488
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -2110,11 +1999,11 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/correct",
-                                "valueDecimal": 0
+                                "valueDecimal": 1
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 202.1
+                                "valueDecimal": 301.3
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -2126,17 +2015,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667370317
+                                "valueDecimal": 1687521377175
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -2167,7 +2052,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 184.5
+                                "valueDecimal": 250.4
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -2183,13 +2068,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667371800
+                                "valueDecimal": 1687521378844
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -2220,7 +2101,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 212.2
+                                "valueDecimal": 234.9
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -2236,13 +2117,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667373309
+                                "valueDecimal": 1687521380493
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -2273,7 +2150,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 142.3
+                                "valueDecimal": 295.2
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -2289,13 +2166,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667374750
+                                "valueDecimal": 1687521382172
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -2326,7 +2199,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 185.5
+                                "valueDecimal": 319.1
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -2338,17 +2211,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667376234
+                                "valueDecimal": 1687521383839
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -2379,7 +2248,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 201.7
+                                "valueDecimal": 300.2
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -2391,17 +2260,13 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/flagged",
-                                "valueDecimal": 1
+                                "valueDecimal": 0
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667377725
+                                "valueDecimal": 1687521385535
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -2432,7 +2297,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 221.5
+                                "valueDecimal": 298.8
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -2448,13 +2313,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667379242
+                                "valueDecimal": 1687521387219
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -2485,7 +2346,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 201.7
+                                "valueDecimal": 212.7
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -2501,13 +2362,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667380742
+                                "valueDecimal": 1687521388807
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             },
@@ -2538,7 +2395,7 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/rt",
-                                "valueDecimal": 459.8
+                                "valueDecimal": 574.4
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/state",
@@ -2554,13 +2411,9 @@
                             },
                             {
                                 "url": "https://research.joinallofus.org/fhir/emorecog/timestamp",
-                                "valueDecimal": 1669667382517
+                                "valueDecimal": 1687521390757
                             }
-                        ],
-                        "valueCoding": {
-                            "code": "f",
-                            "system": "https://research.joinallofus.org/fhir/emorecog/response"
-                        }
+                        ]
                     }
                 ]
             }
