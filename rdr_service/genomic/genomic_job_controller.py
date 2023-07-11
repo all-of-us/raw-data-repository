@@ -1968,22 +1968,35 @@ class GenomicJobController:
         escalate_pids = [pid[0] for pid in escalate_participants]
         if notification_email_addresses and escalate_pids:
             notified_participants = []
-            for pid in escalate_participants:
-                EmailService.send_email(
-                    Email(
-                        recipients=notification_email_addresses,
-                        subject='GCR Outreach 14 Day Escalation',
-                        plain_text_content=str(pid)
+            error_pids = []
+            for pid in escalate_pids:
+                try:
+                    EmailService.send_email(
+                        Email(
+                            recipients=notification_email_addresses,
+                            subject='GCR Outreach 14 Day Escalation',
+                            plain_text_content=str(pid)
+                        )
                     )
-                )
-                notified_participants.append({
-                    'participant_id': pid,
-                    'created': clock.CLOCK.now(),
-                    'modified': clock.CLOCK.now()
-                })
+                # pylint: disable=broad-except
+                except Exception as e:
+                    error_pids.append(pid)
+                    logging.error(f'Failed to send GCR Outreach Escalation email for {pid}: {e}')
+                else:
+                    notified_participants.append({
+                        'participant_id': pid,
+                        'created': clock.CLOCK.now(),
+                        'modified': clock.CLOCK.now()
+                    })
 
             notified_dao.insert_bulk(notified_participants)
-            self.job_result = GenomicSubProcessResult.SUCCESS
+            if error_pids:
+                self.genomic_alert_slack.send_message_to_webhook(
+                    message_data={'text': f"GCR Outreach Escalation email had errors for PIDs: {error_pids}"}
+                )
+                self.job_result = GenomicSubProcessResult.ERROR
+            else:
+                self.job_result = GenomicSubProcessResult.SUCCESS
         else:
             self.job_result = GenomicSubProcessResult.NO_RESULTS
 

@@ -3,6 +3,7 @@ import json
 
 from dateutil import parser
 import mock
+from python_http_client.exceptions import ForbiddenError
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
@@ -1575,3 +1576,63 @@ class GenomicJobControllerTest(BaseTestCase):
             controller.check_gcr_14day_escalation()
 
         self.assertEqual(email_mock.call_count, 2)
+
+    @mock.patch('rdr_service.services.email_service.EmailService.send_email')
+    def test_check_gcr_14day_escalation_error(self, email_mock):
+        email_mock.side_effect = ForbiddenError(mock.Mock(code=403))
+        mock_slack_handler = mock.MagicMock()
+
+        fake_date = parser.parse("2023-06-01T13:43:23")
+
+        config.override_setting(config.GENOMIC_GCR_ESCALATION_EMAILS, ['test@example.com'])
+        self.data_generator.create_database_genomic_set(
+            genomicSetName='test',
+            genomicSetCriteria='.',
+            genomicSetVersion=1
+        )
+
+        pids = []
+        for _ in range(2):
+            summary = self.data_generator.create_database_participant_summary(
+                consentForStudyEnrollment=1,
+                consentForGenomicsROR=1
+            )
+            set_member = self.data_generator.create_database_genomic_set_member(
+                participantId=summary.participantId,
+                genomicSetId=1,
+                biobankId=1001,
+                collectionTubeId=100,
+                sampleId=10,
+                genomeType="aou_wgs",
+            )
+            self.data_generator.create_database_genomic_member_report_state(
+                participant_id=summary.participantId,
+                genomic_report_state=GenomicReportState.HDR_RPT_POSITIVE,
+                genomic_set_member_id=set_member.id,
+                module='hdr_v1',
+                event_authored_time=fake_date
+            )
+            pids.append(summary.participantId)
+
+        self.data_generator.create_database_genomic_appointment(
+            message_record_id=102,
+            appointment_id=103,
+            event_type='appointment_completed',
+            module_type='hdr',
+            participant_id=pids[1],
+            event_authored_time=fake_date,
+            source='Color',
+            appointment_timestamp=fake_date,
+            appointment_timezone='America/Los_Angeles',
+            location='123 address st',
+            contact_number='17348675309',
+            language='en'
+        )
+
+        with GenomicJobController(GenomicJob.CHECK_GCR_OUTREACH_ESCALATION) as controller:
+            controller.genomic_alert_slack = mock_slack_handler
+            controller.check_gcr_14day_escalation()
+
+        self.assertEqual(email_mock.call_count, 1)
+        self.assertEqual(mock_slack_handler.send_message_to_webhook.call_count, 1)
+
