@@ -736,6 +736,11 @@ class CurationExportClass(ToolBase):
         ).filter(
             DeceasedReport.status == DeceasedReportStatus.APPROVED
         )
+
+        if self.cutoff_date:
+            deceased_select = deceased_select.filter(
+                DeceasedReport.authored < self.cutoff_date
+            )
         insert_query = insert(Death).from_select(column_map.keys(), deceased_select)
         session.execute(insert_query)
 

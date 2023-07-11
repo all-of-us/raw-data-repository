@@ -1211,6 +1211,13 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.assertNotIn(remote_height, measurements)
         self.assertNotIn(remote_weight, measurements)
 
+    def _exists_in_death_table(self, participant_id: int) -> bool:
+        return bool(self.session.query(
+            Death.person_id
+        ).filter(
+            Death.person_id == participant_id
+        ).distinct().scalar())
+
     def test_death_table(self):
         # Create API User for DeceasedReport
         api_user = ApiUser(id=1, username='test', system='test')
@@ -1271,16 +1278,65 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             participant_origin='all',
         )
 
-        def _exists_in_death_table(participant_id: int) -> bool:
-            return bool(self.session.query(
-                Death.person_id
-            ).filter(
-                Death.person_id == participant_id
-            ).distinct().scalar())
+        self.assertTrue(self._exists_in_death_table(pids[0]))
+        self.assertFalse(self._exists_in_death_table(pids[1]))
+        self.assertFalse(self._exists_in_death_table(pids[2]))
 
-        self.assertTrue(_exists_in_death_table(pids[0]))
-        self.assertFalse(_exists_in_death_table(pids[1]))
-        self.assertFalse(_exists_in_death_table(pids[2]))
+    def test_death_table_cutoff(self):
+        # Create API User for DeceasedReport
+        api_user = ApiUser(id=1, username='test', system='test')
+        self.session.add(api_user)
+
+        pids = [10000, 10001]
+        consent_questionnaire = self._create_consent_questionnaire()
+        for pid in pids:
+            participant = self.data_generator.create_database_participant(participantId=pid)
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                dateOfBirth=datetime(1982, 1, 9),
+                consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10)
+            )
+            self._setup_questionnaire_response(
+                participant,
+                consent_questionnaire,
+                indexed_answers=[
+                    (6, 'valueDate', datetime(1982, 1, 9))
+                    # Assuming the 6th question is the date of birth
+                ],
+                authored=datetime(2020, 5, 1)
+            )
+
+        # Approved Deceased report authored after cutoff should not be in Death
+        deceased_reports = [
+            DeceasedReport(
+                participantId=pids[0],
+                dateOfDeath=date(2023, 2, 1),
+                status=DeceasedReportStatus.APPROVED,
+                notification=DeceasedNotification.EHR,
+                authorId=1,
+                authored=datetime(2023, 3, 1)
+            ),
+            DeceasedReport(
+                participantId=pids[1],
+                dateOfDeath=date(2023, 2, 1),
+                status=DeceasedReportStatus.APPROVED,
+                notification=DeceasedNotification.EHR,
+                authorId=1,
+                authored=datetime(2023, 5, 1)
+            )
+        ]
+
+        for deceased_report in deceased_reports:
+            self.session.add(deceased_report)
+        self.session.commit()
+
+        self.run_cdm_data_generation(
+            participant_origin='all',
+            cutoff='2023-04-01'
+        )
+
+        self.assertTrue(self._exists_in_death_table(pids[0]))
+        self.assertFalse(self._exists_in_death_table(pids[1]))
 
     def test_ehr_consent_table(self):
         consent_dao = ConsentDao()
