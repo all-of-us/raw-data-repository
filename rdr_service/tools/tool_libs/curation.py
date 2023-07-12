@@ -723,9 +723,9 @@ class CurationExportClass(ToolBase):
             Death.death_date: DeceasedReport.dateOfDeath,
             Death.death_datetime: DeceasedReport.dateOfDeath.label('date_of_death_datetime'),
             Death.death_type_concept_id: literal("32809"),  # 32809 is the Case Report Form concept id
-            Death.cause_concept_id: literal(None),
-            Death.cause_source_value: literal(None),
-            Death.cause_source_concept_id: literal(None),
+            Death.cause_concept_id: 'NULL',  # CDR requires the text value of these columns to be 'NULL'
+            Death.cause_source_value: 'NULL',
+            Death.cause_source_concept_id: 'NULL',
             Death.src_id: literal("healthpro")
         }
         deceased_select = session.query(*column_map.values()).select_from(
