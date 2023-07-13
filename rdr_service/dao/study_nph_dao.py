@@ -966,6 +966,14 @@ class NphEnrollmentEventTypeDao(BaseDao, NphEventTypeMixin):
     def from_client_json(self):
         pass
 
+    def get_from_source_name(self, source_name: str):
+        with self.session() as session:
+            return session.query(
+                self.model_type
+            ).filter(
+                self.model_type.source_name == source_name
+            ).one_or_none()
+
 
 class NphEnrollmentEventDao(BaseDao):
     def __init__(self):
@@ -1015,6 +1023,14 @@ class NphConsentEventTypeDao(BaseDao, NphEventTypeMixin):
 
     def get_id(self, obj):
         return obj.id
+
+    def get_from_name(self, name: str):
+        with self.session() as session:
+            return session.query(
+                self.model_type
+            ).filter(
+                self.model_type.name == name
+            ).one_or_none()
 
     def from_client_json(self):
         pass

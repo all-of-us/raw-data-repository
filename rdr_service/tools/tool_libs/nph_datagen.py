@@ -17,7 +17,7 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.site_dao import SiteDao
-from rdr_service.dao.study_nph_dao import NphSiteDao
+from rdr_service.dao.study_nph_dao import NphSiteDao, NphConsentEventTypeDao, NphEnrollmentEventTypeDao
 from rdr_service.data_gen.generators.data_generator import DataGenerator
 from rdr_service.data_gen.generators.nph import NphDataGenerator
 from rdr_service.model.rex import ParticipantMapping
@@ -36,6 +36,19 @@ tool_desc = "NPH test data generator tool"
 
 
 class ParticipantGeneratorTool(ToolBase):
+    """
+    Creates NPH participants based on an input CSV
+    Required fields in CSV:
+        nph_participant_id
+        ny_flag (Y/N)
+        sex (M/F)
+        aian_flag (Y/N)
+        tissue_optin (Y/N)
+        aou_site: ex. hpo-site-bannerphoenix
+        nph_site: ex. nph-site-nphpbrcbatonrouge
+        consent_module: ex. Module 2
+        nph_enrollment_status: ex. module2_eligibilityConfirmed
+    """
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super().__init__(args, gcp_env)
@@ -52,6 +65,8 @@ class ParticipantGeneratorTool(ToolBase):
         self.rex_mapping_dao = RexParticipantMappingDao()
         self.code_dao = CodeDao()
         self.rdr_code_sys = "http://terminology.pmi-ops.org/CodeSystem/ppi"
+        self.consent_event_type_dao = NphConsentEventTypeDao()
+        self.enrollment_event_type_dao = NphEnrollmentEventTypeDao()
 
         self.aou_site_dao = SiteDao()
         self.nph_site_dao = NphSiteDao()
@@ -122,8 +137,8 @@ class ParticipantGeneratorTool(ToolBase):
         # NPH Participant
         nph_participant = self.nph_generator.create_database_participant(
             id=row['nph_participant_id'],
-            biobank_id=f"1{row['nph_participant_id']}",
-            research_id=row['nph_participant_id'],
+            biobank_id=f"1{row['nph_participant_id'][4:]}",
+            research_id=row['nph_participant_id'][4:],
         )
 
         nph_site = self.nph_site_dao.get_site_from_external_id(row['nph_site'])
@@ -135,17 +150,45 @@ class ParticipantGeneratorTool(ToolBase):
             event_authored_time=clock.CLOCK.now()
         )
 
-        # NPH Consent
+        # NPH Consent (module 1)
         self.nph_generator.create_database_consent_event(
             participant_id=nph_participant.id,
             event_authored_time=clock.CLOCK.now()
         )
+
+        # Consent, other Modules
+        if row['consent_module'] != 'Module 1':
+            consent_event_type = self.consent_event_type_dao.get_from_name(f"{row['consent_module']} Consent")
+            self.nph_generator.create_database_consent_event(
+                participant_id=nph_participant.id,
+                event_authored_time=clock.CLOCK.now(),
+                event_type_id=consent_event_type.id
+            )
+
+        # Consent, tissue
+        if row['tissue_optin'].upper() == 'Y':
+            consent_event_type = self.consent_event_type_dao.get_from_name(f"Module 1 Consent Tissue")
+            self.nph_generator.create_database_consent_event(
+                participant_id=nph_participant.id,
+                event_authored_time=clock.CLOCK.now(),
+                event_type_id=consent_event_type.id,
+                opt_in=1
+            )
 
         # NPH Enrollment Event REFERRED
         self.nph_generator.create_database_enrollment_event(
             participant_id=nph_participant.id,
             event_authored_time=clock.CLOCK.now()
         )
+
+        if row['nph_enrollment_status'] != 'module1_referred':
+            enrollment_event_type = self.enrollment_event_type_dao.get_from_source_name(row['nph_enrollment_status'])
+            self.nph_generator.create_database_enrollment_event(
+                participant_id=nph_participant.id,
+                event_authored_time=clock.CLOCK.now(),
+                event_type_id=enrollment_event_type.id
+
+            )
 
         # Insert Rex Mapping
         rex_mapping_obj = ParticipantMapping(
