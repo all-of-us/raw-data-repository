@@ -713,11 +713,10 @@ class NphOrderedSampleDao(UpdatableDao):
                              description=obj.sample.description,
                              collected=obj.sample.collected,
                              finalized=obj.sample.finalized,
-                             supplemental_fields=self._fetch_supplemental_fields(obj)
+                             supplemental_fields=self._fetch_supplemental_fields_for_tube(obj)
                              )
 
-    @staticmethod
-    def from_aliquot_client_json(aliquot, order_id: int, nph_sample_id: str) -> OrderedSample:
+    def from_aliquot_client_json(self, aliquot, order_id: int, nph_sample_id: str) -> OrderedSample:
         return OrderedSample(nph_sample_id=nph_sample_id,
                              order_id=order_id,
                              aliquot_id=aliquot.id,
@@ -726,13 +725,24 @@ class NphOrderedSampleDao(UpdatableDao):
                              collected=aliquot.collected,
                              container=aliquot.container,
                              volume=aliquot.volume,
-                             volumeUnits=aliquot.units
+                             volumeUnits=aliquot.units,
+                             supplemental_fields=self._fetch_supplemental_fields_for_aliquot(aliquot)
                              )
 
     @staticmethod
-    def _fetch_supplemental_fields(order_cls) -> Dict:
+    def check_input_struct(value):
+        if hasattr(value, "__dict__"):
+            return vars(value)
+        return value
+
+    def _fetch_supplemental_fields_for_tube(self, order_cls) -> Dict:
         keys = ["test", "description", "collected", "finalized"]
-        result = {k: v for k, v in order_cls.sample.__dict__.items() if k not in keys}
+        result = {k: self.check_input_struct(v) for k, v in order_cls.sample.__dict__.items() if k not in keys}
+        return result
+
+    def _fetch_supplemental_fields_for_aliquot(self, aliquot) -> Dict:
+        keys = ["glycerolAdditiveVolume"]
+        result = {k: self.check_input_struct(v) for k, v in aliquot.__dict__.items() if k in keys}
         return result
 
     def insert_with_session(self, session, order: Namespace) -> Namespace:
@@ -818,7 +828,7 @@ class NphOrderedSampleDao(UpdatableDao):
         order_sample.description = obj.sample.description
         order_sample.collected = obj.sample.collected
         order_sample.finalized = obj.sample.finalized
-        order_sample.supplemental_fields = self._fetch_supplemental_fields(obj)
+        order_sample.supplemental_fields = self._fetch_supplemental_fields_for_tube(obj)
         return order_sample
 
     @staticmethod
@@ -844,6 +854,10 @@ class NphOrderedSampleDao(UpdatableDao):
     def _validate_model(self, obj):
         if obj.order_id is None:
             raise BadRequest("Order ID is missing")
+
+    def get_from_aliquot_id(self, aliquot_id: str) -> OrderedSample:
+        with self.session() as session:
+            return session.query(self.model_type).filter(self.model_type.aliquot_id == aliquot_id).all()
 
 
 def fetch_identifier_value(obj: Namespace, identifier: str) -> str:
