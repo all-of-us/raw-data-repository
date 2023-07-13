@@ -590,6 +590,8 @@ class ConsentValidationController:
             output_strategy.add_all(self._process_validation_results(validator.get_primary_update_validation_results()))
         if self._check_consent_type(ConsentType.ETM, types_to_validate):
             output_strategy.add_all(self._process_validation_results(validator.get_etm_validation_results()))
+        if self._check_consent_type(ConsentType.WEAR, types_to_validate):
+            output_strategy.add_all(self._process_validation_results(validator.get_wear_validation_results()))
 
         # DA-3423:  Populate the consent_response_id values for the ConsentFile validation results as needed
         output_strategy.set_consent_response_ids_for_results()

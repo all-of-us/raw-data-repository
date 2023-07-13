@@ -18,7 +18,9 @@ from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.gcp_utils import gcp_make_auth_header
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType, CONSENT_TYPE_MODULE_NAMES
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.participant import Participant
+from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.model.utils import Enum
 from rdr_service.offline.sync_consent_files import ConsentSyncGuesser
 from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
@@ -273,10 +275,16 @@ class ConsentTool(ToolBase):
             while participant_ids:
                 summaries = ParticipantSummaryDao.get_by_ids_with_session(session=session, obj_ids=participant_ids)
                 for participant_summary in summaries:
-                    controller.validate_participant_consents(
+                    consent_responses = session.query(ConsentResponse).join(
+                        QuestionnaireResponse
+                    ).filter(
+                        QuestionnaireResponse.participantId == participant_summary.participantId,
+                        ConsentResponse.type.in_(consent_types)
+                    ).all()
+                    controller.validate_consent_responses(
                         summary=participant_summary,
                         output_strategy=store_strategy,
-                        types_to_validate=consent_types
+                        consent_responses=consent_responses
                     )
                 participant_ids = list(islice(pid_file, participant_lookup_batch_size))
 
