@@ -513,3 +513,5 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
         self.clear_table_after_test("nph.sample_update")
+        self.clear_table_after_test("rex.participant_mapping")
+        self.clear_table_after_test("rex.study")
