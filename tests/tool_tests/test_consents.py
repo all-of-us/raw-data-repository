@@ -166,7 +166,12 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             pid_file_handle = open_mock.return_value.__enter__.return_value
             pid_file_handle.__iter__.return_value = iter(participant_id_list)
 
-            test_summaries = ['one', 'forty-five', 'two hundred eighty-nine', 'three thousand twenty']
+            test_summaries = [
+                mock.MagicMock(participantId='one'),
+                mock.MagicMock(participantId='forty-five'),
+                mock.MagicMock(participantId='two hundred eighty-nine'),
+                mock.MagicMock(participantId='three thousand twenty')
+            ]
             summary_dao_class_mock.get_by_ids_with_session.return_value = test_summaries
 
             # Verify that the script uses the participant ids from the file for validation
@@ -186,9 +191,9 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             )
 
             # Make sure the validation was done for the loaded summaries and for the specific consent type
-            controller_mock.validate_participant_consents.assert_has_calls(
+            controller_mock.validate_consent_responses.assert_has_calls(
                 calls=[
-                    mock.call(summary=summary, output_strategy=mock.ANY, types_to_validate=[ConsentType.EHR])
+                    mock.call(summary=summary, output_strategy=mock.ANY, consent_responses=mock.ANY)
                     for summary in test_summaries
                 ],
                 any_order=True
