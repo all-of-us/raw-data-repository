@@ -425,7 +425,7 @@ class NphSiteDao(BaseDao):
 
     def get_site_from_external_id(self, external_id):
         with self.session() as session:
-            return session.query(Site).filter(Site.external_id == external_id).one_or_none()
+            return session.query(Site).filter(Site.external_id == external_id).first()
 
     def from_client_json(self):
         pass
@@ -921,6 +921,10 @@ class NphActivityDao(BaseDao):
 
     def from_client_json(self):
         pass
+
+    def get_from_name(self, name: str):
+        with self.session() as session:
+            return session.query(self.model_type).filter(self.model_type.name == name).one_or_none()
 
 
 class NphParticipantEventActivityDao(BaseDao, NphDaoMixin):
