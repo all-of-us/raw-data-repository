@@ -215,7 +215,7 @@ class ParticipantGeneratorTool(ToolBase):
 class ParticipantEventCreatorTool(ToolBase):
     """
        Creates NPH participant events based on an input CSV
-       Currently supports ENROLLMENT and CONSENT activities
+       Currently supports ENROLLMENT, CONSENT, DOB, DIET activities
        Required fields in CSV:
            nph_participant_id
            activity: the name of the activity, i.e. ENROLLMENT, CONSENT
@@ -243,7 +243,8 @@ class ParticipantEventCreatorTool(ToolBase):
 
             return 0
 
-    def run_event_creator(self, row):
+    @staticmethod
+    def run_event_creator(row):
         consent_event_type_dao = NphConsentEventTypeDao()
         enrollment_event_type_dao = NphEnrollmentEventTypeDao()
         nph_generator = NphDataGenerator()
