@@ -236,7 +236,10 @@ class GenomicOutreachApi(BaseApi):
 
         # Create GenomicSetMember with report state
         model = self.dao.from_client_json(resource, participant_id=p_id, mode='gem')
-        model.participantOrigin = self.user_info.get('clientId')
+        participant_origin = self.user_info.get('clientId')
+        if participant_origin not in GENOMIC_CLIENT_IDS:
+            raise BadRequest('Client Id cannot access GenomicOutreach update.')
+        model.participantOrigin = participant_origin
         m = self._do_insert(model)
 
         gem_result_record = self.member_dao.get_gem_results_for_report_state(m)
