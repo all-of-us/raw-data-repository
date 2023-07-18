@@ -6,7 +6,7 @@ import random
 import os
 
 from rdr_service import clock, config
-from rdr_service.api_util import open_cloud_file
+from rdr_service.api_util import open_cloud_file, get_blob
 from rdr_service.code_constants import BIOBANK_TESTS
 from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
     BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN
@@ -50,7 +50,15 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
 
         self.data_generator.initialize_common_codes()
 
-    mock_bucket_paths = [_FAKE_BUCKET, _FAKE_BUCKET + os.sep + biobank_samples_pipeline._REPORT_SUBDIR]
+    mock_bucket_paths = [_FAKE_BUCKET, _FAKE_BUCKET + os.sep + biobank_samples_pipeline._REPORT_SUBDIR,
+                         _FAKE_BUCKET + os.sep + biobank_samples_pipeline._OVERDUE_DNA_SAMPLES_SUBDIR]
+
+    # Set up values used by the overdue samples report test cases
+    overdue_samples_report_dt = datetime.utcnow().replace(microsecond=0)
+    overdue_samples_blobname = biobank_samples_pipeline._get_report_path(
+        overdue_samples_report_dt, 'overdue_dna_samples',
+        report_subdir=biobank_samples_pipeline._OVERDUE_DNA_SAMPLES_SUBDIR
+    )
 
     def _write_cloud_csv(self, file_name, contents_str):
         with open_cloud_file("/%s/%s" % (_FAKE_BUCKET, file_name), mode='wb') as cloud_file:
@@ -538,10 +546,13 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertIsNotNone(cumulative_report_params)
         self.assertEqual(datetime(2021, 8, 1), cumulative_report_params['n_days_ago'])
 
-    def test_overdue_dna_sample(self):
+    def test_overdue_dna_sample_report(self):
         self.temporarily_override_config_setting(config.RDR_SLACK_WEBHOOKS, {
             'rdr_biobank_missing_samples_webhook': 'fakewh12345'
         })
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
+
         participant = self.data_generator.create_database_participant()
         # Biobank order/samples finalized 7 or more days ago (since today's date)
         today = datetime.utcnow().replace(microsecond=0)
@@ -577,23 +588,33 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             test=non_dna_ordered_sample.test,
             status=SampleStatus.RECEIVED
         )
-        # Expect notification that the DNA sample is overdue/missing
+
+        # Expect Slack notification that the DNA sample is overdue
+        biobank_prefix = config.getSetting(config.BIOBANK_ID_PREFIX)
         expected_msg_substrings = [
-            f'Biobank ID: A{participant.biobankId}, order: {order.biobankOrderId}, ',
-            f'finalized: {dna_ordered_sample.finalized}, missing ordered DNA samples: {dna_ordered_sample.test}'
+            f'Biobank ID: {biobank_prefix}{participant.biobankId}, order: {order.biobankOrderId}, ',
+            f'finalized: {dna_ordered_sample.finalized}, overdue ordered DNA samples: {dna_ordered_sample.test}'
         ]
+
         with mock.patch('rdr_service.offline.biobank_samples_pipeline.logging') as mock_logging, \
              mock.patch('rdr_service.services.slack_utils.SlackMessageHandler.send_message_to_webhook') as mock_slack:
-            biobank_samples_pipeline.missing_samples_check()
+            biobank_samples_pipeline.overdue_samples_check(self.overdue_samples_report_dt)
+            # Verify presence of expected bucket file
+            blob = get_blob(_FAKE_BUCKET, blob_name=self.overdue_samples_blobname)
+            self.assertIsNotNone(blob)
+
+            # Verify Slack message populated from bucket file rows
             error_log_call = mock_logging.error.call_args
             slack_webhook_args = mock_slack.call_args
-            self.assertIsNotNone(error_log_call, 'An error log should have been made')
+            self.assertIsNotNone(error_log_call, 'An error log call should have been made')
             self.assertIsNotNone(slack_webhook_args, 'A slack notification should have been made')
             for msg_str in expected_msg_substrings:
                 self.assertIn(msg_str, error_log_call.args[0])
                 self.assertIn(msg_str, slack_webhook_args.kwargs['message_data']['text'])
 
     def test_cancelled_order_sample_not_overdue(self):
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
         participant = self.data_generator.create_database_participant()
         today = datetime.utcnow().replace(microsecond=0)
         order_ts = today - timedelta(days=9)
@@ -615,17 +636,21 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             processed=order_ts,
             finalized=order_ts
         )
+        # Verify there was no file dropped to the bucket
+        blob = get_blob(_FAKE_BUCKET, blob_name=self.overdue_samples_blobname)
+        self.assertIsNone(blob)
 
         with mock.patch('rdr_service.offline.biobank_samples_pipeline.logging') as mock_logging:
-            biobank_samples_pipeline.missing_samples_check()
+            biobank_samples_pipeline.overdue_samples_check(self.overdue_samples_report_dt)
             error_log_call = mock_logging.error.call_args
             self.assertIsNone(error_log_call, "Missing sample notification not expected for cancelled orders")
 
-    def test_missing_sample_not_yet_overdue(self):
+    def test_sample_not_yet_overdue(self):
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
         participant = self.data_generator.create_database_participant()
-        today = datetime.utcnow().replace(microsecond=0)
-        order_ts = today - timedelta(days=6)
-        # Should not be notified of missing samples if less than 7 days since order was finalized
+        order_ts = self.overdue_samples_report_dt - timedelta(days=6)
+        # Should not be notified of overdue samples if less than 7 days since order was finalized
         order = self.data_generator.create_database_biobank_order(
             participantId=participant.participantId,
             orderOrigin='hpro',
@@ -644,7 +669,11 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             finalized=order_ts
         )
 
+        # Verify there was no file dropped to the bucket
+        blob = get_blob(_FAKE_BUCKET, blob_name=self.overdue_samples_blobname)
+        self.assertIsNone(blob)
+
         with mock.patch('rdr_service.offline.biobank_samples_pipeline.logging') as mock_logging:
-            biobank_samples_pipeline.missing_samples_check()
+            biobank_samples_pipeline.overdue_samples_check(self.overdue_samples_report_dt)
             error_log_call = mock_logging.error.call_args
-            self.assertIsNone(error_log_call, "Missing sample notification not expected for orders under a week old")
+            self.assertIsNone(error_log_call, "Overdue sample notification not expected for orders under a week old")

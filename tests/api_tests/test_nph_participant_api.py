@@ -15,7 +15,8 @@ from sqlalchemy.orm import Query
 
 from rdr_service.dao.study_nph_dao import NphParticipantDao, NphDefaultBaseDao
 from rdr_service.model.study_nph import (
-    ConsentEventType, Participant as NphParticipant, Site as NphSite, OrderedSample, Order
+    ConsentEventType, Participant as NphParticipant, Site as NphSite, OrderedSample, Order, WithdrawalEvent,
+    DeactivationEvent
 )
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.main import app
@@ -79,9 +80,9 @@ class NphParticipantAPITest(BaseTestCase):
         self.rex_mapping_dao = RexParticipantMappingDao()
         self.participant_summary_dao = ParticipantSummaryDao()
         self.nph_participant_dao = NphParticipantDao()
-        self.nph_consent_event_type_dao = NphDefaultBaseDao(
-            model_type=ConsentEventType
-        )
+        self.nph_consent_event_type_dao = NphDefaultBaseDao(model_type=ConsentEventType)
+        self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
+        self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivationEvent)
 
         self.data_generator.create_database_hpo()
         self.data_generator.create_database_site()
@@ -594,12 +595,22 @@ class NphParticipantAPITest(BaseTestCase):
 
     def test_nphWithdrawalStatus_fields(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
+        # withdrawal for module 1
         self.nph_data_gen.create_database_withdrawal_event(
             event_authored_time=clock.CLOCK.now(),
             participant_id=100000000,
-            event_id=1
+            event_id=1,
+            module=ModuleTypes.MODULE1
         )
-        field_to_test = "nphWithdrawalStatus {value time} "
+        # add another withdrawal for module 2
+        self.nph_data_gen.create_database_withdrawal_event(
+            event_authored_time=clock.CLOCK.now(),
+            participant_id=100000000,
+            event_id=1,
+            module=ModuleTypes.MODULE2
+        )
+
+        field_to_test = "nphWithdrawalStatus { value time module } "
         query = simple_query(field_to_test)
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
         result = json.loads(executed.data.decode('utf-8'))
@@ -608,24 +619,45 @@ class NphParticipantAPITest(BaseTestCase):
 
         first_participant = result.get('participant').get('edges')[0].get('node')
         self.assertTrue(first_participant.get('participantNphId') == str(self.base_participant_ids[0]))
-        withdrawal = first_participant.get('nphWithdrawalStatus')
-        self.assertTrue(withdrawal.get('time') is not None)
-        self.assertTrue(withdrawal.get('value') == 'WITHDRAWN')
+
+        current_withdrawals = self.nph_withdrawal_event_dao.get_all()
+        self.assertEqual(len(current_withdrawals), 2)
+
+        first_pid_db_withdrawals = list(
+            filter(lambda x: x.participant_id == self.base_participant_ids[0], current_withdrawals))
+        self.assertEqual(len(first_pid_db_withdrawals), 2)
+
+        first_participant_withdrawals = first_participant.get('nphWithdrawalStatus')
+        module_strings = ['module1', 'module2']
+
+        for withdrawal in first_participant_withdrawals:
+            self.assertTrue(withdrawal.get('time') is not None)
+            self.assertTrue(withdrawal.get('value') == 'WITHDRAWN')
+            self.assertTrue(withdrawal.get('module') in module_strings)
 
         second_participant = result.get('participant').get('edges')[1].get('node')
         self.assertTrue(second_participant.get('participantNphId') == str(self.base_participant_ids[1]))
-        withdrawal = second_participant.get('nphWithdrawalStatus')
-        self.assertTrue(withdrawal.get('time') is None)
-        self.assertTrue(withdrawal.get('value') == 'NULL')
+        second_pid_withdrawals = second_participant.get('nphWithdrawalStatus')
+        self.assertEqual(second_pid_withdrawals, [])
 
     def test_nphDeactivationStatus_fields(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
+        # deactivation for module 1
         self.nph_data_gen.create_database_deactivated_event(
             event_authored_time=clock.CLOCK.now(),
             participant_id=100000000,
-            event_id=1
+            event_id=1,
+            module=ModuleTypes.MODULE1
         )
-        field_to_test = "nphDeactivationStatus {value time} "
+        # deactivation for module 2
+        self.nph_data_gen.create_database_deactivated_event(
+            event_authored_time=clock.CLOCK.now(),
+            participant_id=100000000,
+            event_id=1,
+            module=ModuleTypes.MODULE2
+        )
+
+        field_to_test = "nphDeactivationStatus { value time module } "
         query = simple_query(field_to_test)
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
         result = json.loads(executed.data.decode('utf-8'))
@@ -634,15 +666,26 @@ class NphParticipantAPITest(BaseTestCase):
 
         first_participant = result.get('participant').get('edges')[0].get('node')
         self.assertTrue(first_participant.get('participantNphId') == str(self.base_participant_ids[0]))
-        deactivation = first_participant.get('nphDeactivationStatus')
-        self.assertTrue(deactivation.get('time') is not None)
-        self.assertTrue(deactivation.get('value') == 'DEACTIVATED')
+
+        current_deactivations = self.nph_deactivation_event_dao.get_all()
+        self.assertEqual(len(current_deactivations), 2)
+
+        first_pid_db_deactivations = list(
+            filter(lambda x: x.participant_id == self.base_participant_ids[0], current_deactivations))
+        self.assertEqual(len(first_pid_db_deactivations), 2)
+
+        first_participant_deactivations = first_participant.get('nphDeactivationStatus')
+        module_strings = ['module1', 'module2']
+
+        for deactivation in first_participant_deactivations:
+            self.assertTrue(deactivation.get('time') is not None)
+            self.assertTrue(deactivation.get('value') == 'DEACTIVATED')
+            self.assertTrue(deactivation.get('module') in module_strings)
 
         second_participant = result.get('participant').get('edges')[1].get('node')
         self.assertTrue(second_participant.get('participantNphId') == str(self.base_participant_ids[1]))
-        deactivation = second_participant.get('nphDeactivationStatus')
-        self.assertTrue(deactivation.get('time') is None)
-        self.assertTrue(deactivation.get('value') == 'NULL')
+        second_pid_deactivations = second_participant.get('nphDeactivationStatus')
+        self.assertEqual(second_pid_deactivations, [])
 
     def test_nphDateOfBirth_field(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)

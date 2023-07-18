@@ -1005,7 +1005,7 @@ class NphOrderedSampleDaoTest(BaseTestCase):
         request = json.loads(json.dumps(TEST_URINE_SAMPLE), object_hook=lambda d: Namespace(**d))
         order_sample_dao = NphOrderedSampleDao()
         os = order_sample_dao.from_client_json(request, 1, "10001")
-        supplemental_field = order_sample_dao._fetch_supplemental_fields(request)
+        supplemental_field = order_sample_dao._fetch_supplemental_fields_for_tube(request)
         self.assertEqual(os.supplemental_fields, supplemental_field)
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')

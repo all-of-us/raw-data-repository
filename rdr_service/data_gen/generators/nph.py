@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from rdr_service.ancillary_study_resources.nph.enums import ModuleTypes
 from rdr_service.dao import database_factory
+from rdr_service.model.rex import ParticipantMapping
 from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
     PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
     DeactivationEvent, ParticipantOpsDataElement, OrderedSample, StoredSample, Order, StudyCategory, DietEvent
@@ -59,6 +59,24 @@ class NphDataGenerator(NphBaseGenerator):
         participant = self._participant(**fields)
         self._commit_to_database(participant)
         return participant
+
+    @staticmethod
+    def _rex_participant_mapping(**kwargs):
+        return ParticipantMapping(**kwargs)
+
+    def create_database_rex_participant_mapping(self, **kwargs):
+
+        fields = {
+            "primary_study_id": 1,
+            "ancillary_study_id": 2,
+            "primary_participant_id": kwargs.get("primary_participant_id"),
+            "ancillary_participant_id": kwargs.get("ancillary_participant_id"),
+        }
+        fields.update(kwargs)
+
+        participant_mapping = self._rex_participant_mapping(**fields)
+        self._commit_to_database(participant_mapping)
+        return participant_mapping
 
     @staticmethod
     def _site(**kwargs):
@@ -195,7 +213,6 @@ class NphDataGenerator(NphBaseGenerator):
 
     def create_database_withdrawal_event(self, **kwargs):
         withdrawal_event = self._withdrawal_event(**kwargs)
-        withdrawal_event.module = ModuleTypes.MODULE1
         self._commit_to_database(withdrawal_event)
         return withdrawal_event
 
@@ -205,7 +222,6 @@ class NphDataGenerator(NphBaseGenerator):
 
     def create_database_deactivated_event(self, **kwargs):
         deactivated_event = self._deactivated_event(**kwargs)
-        deactivated_event.module = ModuleTypes.MODULE1
         self._commit_to_database(deactivated_event)
         return deactivated_event
 

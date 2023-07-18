@@ -12,7 +12,7 @@ chardet==3.0.4            # via requests
 click==8.1.3              # via flask, pip-tools
 configargparse==1.2.3     # via locust
 coverage==6.0b1             # via -r requirements.in
-cryptography==41.0.0       # via oauthlib, pyopenssl, requests
+cryptography==41.0.2       # via oauthlib, pyopenssl, requests
 defusedxml==0.6.0         # via jira
 dictalchemy3==1.0.0       # via -r requirements.in
 dnspython==1.16.0         # via -r requirements.in
@@ -83,7 +83,7 @@ python-dateutil==2.8.1    # via alembic, faker
 python-editor==1.0.4      # via alembic
 python-http-client==3.2.7  # via sendgrid
 pytz==2020.1              # via babel, flask-restful, google-api-core, google-cloud-firestore
-pyyaml==5.4.1             # via google-python-cloud-debugger
+pyyaml==6.0             # via google-python-cloud-debugger
 pyzmq==25.1.0             # via locust
 redis==4.5.4              # via flask-limiter
 requests-oauthlib==1.3.0  # via jira

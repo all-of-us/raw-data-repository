@@ -554,18 +554,26 @@ class PostIntakePayloadJSON(PostIntakePayload):
             entry.get('DietId'), \
             entry.get('DietStatus')
 
-        current_map = {'true': True, 'false': False}
+        try:
+            current_map = {'true': True, 'false': False}
 
-        for diet_status in diet_statuses:
-            diet_entries.append({
-                'diet_id': diet_id,
-                'diet_name': diet_name,
-                'status_id': diet_status.get('StatusId'),
-                'status': DietStatus.lookup_by_name(diet_status.get('Status').upper()),
-                'current': current_map.get(diet_status.get('Current').lower()),
-                'event_authored_time': self.extract_authored_time(diet_status)
-            })
-        return diet_entries
+            for diet_status in diet_statuses:
+                diet_entries.append({
+                    'diet_id': diet_id,
+                    'diet_name': diet_name,
+                    'status_id': diet_status.get('StatusId'),
+                    'status': DietStatus.lookup_by_name(diet_status.get('Status').upper()),
+                    'current': current_map.get(diet_status.get('Current').lower()),
+                    'event_authored_time': self.extract_authored_time(diet_status)
+                })
+            return diet_entries
+
+        except KeyError as e:
+            return BadRequest(f'Key error on diet lookup: {e} bundle_id: {self.bundle_identifier}')
+
+        except Exception as e:
+            raise BadRequest(f'Cannot parse diet type from payload: {e} bundle_id:'
+                             f' {self.bundle_identifier}')
 
     def iterate_entries(self):
         participant_event_objs, all_event_objs, all_participant_ops_data, summary_updates = [], [], [], []
