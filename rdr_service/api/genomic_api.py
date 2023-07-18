@@ -312,7 +312,7 @@ class GenomicOutreachApiV2(UpdatableApi):
         if not participant_id and not start_date:
             raise BadRequest('Participant ID or Start Date is required for GenomicOutreach lookup.')
 
-        participant_origin = self.user_info[1].get('clientId')
+        participant_origin = self.user_info.get('clientId')
         if participant_origin not in GENOMIC_CLIENT_IDS:
             raise BadRequest('Client Id cannot access GenomicOutreach lookup.')
 
