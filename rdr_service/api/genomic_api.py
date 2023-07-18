@@ -7,7 +7,8 @@ from werkzeug.exceptions import NotFound, BadRequest
 from rdr_service import clock, config
 from rdr_service.api.base_api import BaseApi, log_api_request, UpdatableApi
 from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
-from rdr_service.app_util import auth_required, restrict_to_gae_project
+from rdr_service.app_util import auth_required, restrict_to_gae_project, get_validated_user_info
+from rdr_service.config import GENOMIC_CLIENT_IDS
 from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicSetMemberDao, GenomicOutreachDao, GenomicOutreachDaoV2, \
     GenomicSchedulingDao, GenomicMemberReportStateDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -135,7 +136,7 @@ class GenomicPiiApi(BaseApi):
             participant_id = None
 
         api_payload = GenomicGETPayload(
-            self.dao.get_pii,
+            method=self.dao.get_pii,
             participant_id=participant_id,
             biobank_id=biobank_id,
             mode=mode
@@ -268,6 +269,8 @@ class GenomicOutreachApiV2(UpdatableApi):
     def __init__(self):
         super().__init__(GenomicOutreachDaoV2())
         self.validate_outreach_params()
+        _, user_info = get_validated_user_info()
+        self.user_info = user_info
 
     @auth_required(RDR_AND_PTC)
     def get(self):
@@ -309,11 +312,16 @@ class GenomicOutreachApiV2(UpdatableApi):
         if not participant_id and not start_date:
             raise BadRequest('Participant ID or Start Date is required for GenomicOutreach lookup.')
 
+        participant_origin = self.user_info.get('clientId')
+        if participant_origin not in GENOMIC_CLIENT_IDS:
+            raise BadRequest('Client Id cannot access GenomicOutreach lookup.')
+
         api_payload = GenomicGETPayload(
-            self.dao.get_outreach_data,
+            method=self.dao.get_outreach_data,
             participant_id=participant_id,
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
+            participant_origin=participant_origin
         )
         payload = api_payload.get_payload()
 
@@ -487,7 +495,7 @@ class GenomicSchedulingApi(BaseApi):
             raise BadRequest('Participant ID or Start Date parameter is required for use with GenomicScheduling API.')
 
         api_payload = GenomicGETPayload(
-            self.dao.get_latest_scheduling_data,
+            method=self.dao.get_latest_scheduling_data,
             participant_id=participant_id,
             start_date=start_date,
             end_date=end_date,
