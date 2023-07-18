@@ -143,6 +143,7 @@ SENDGRID_FROM_EMAIL = "no-reply@pmi-ops.org"
 MAYOLINK_ENDPOINT = "mayolink_endpoint"
 GENOMIC_API_MODES = ('gem', 'rhp', 'pgx', 'hdr')
 GENOMIC_CVL_SITES = ('co', 'uw', 'bcm')
+GENOMIC_CLIENT_IDS = ('vibrent', 'careevolution')
 GENOMIC_CVL_SITE_BUCKET_MAP = 'cvl_site_bucket_map'
 GENOMIC_GC_SITE_BUCKET_MAP = 'gc_site_bucket_map'
 CONFIG_BUCKET = "all-of-us-rdr-sequestered-config-test"
