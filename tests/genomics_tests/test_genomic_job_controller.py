@@ -1472,7 +1472,7 @@ class GenomicJobControllerTest(BaseTestCase):
             genomicSetVersion=1
         )
         pids = []
-        for _ in range(5):
+        for _ in range(6):
             summary = self.data_generator.create_database_participant_summary(
                 consentForStudyEnrollment=1,
                 consentForGenomicsROR=1
@@ -1560,7 +1560,13 @@ class GenomicJobControllerTest(BaseTestCase):
         notified_dao.insert_bulk([{
             'participant_id': pids[4],
             'created': clock.CLOCK.now(),
-            'modified': clock.CLOCK.now()
+            'modified': clock.CLOCK.now(),
+            'message_sent': True
+        },{
+            'participant_id': pids[5],
+            'created': clock.CLOCK.now(),
+            'modified': clock.CLOCK.now(),
+            'message_sent': False
         }])
 
         with clock.FakeClock(parser.parse('2022-11-1T05:15:00')):
@@ -1568,6 +1574,7 @@ class GenomicJobControllerTest(BaseTestCase):
             results = [pid[0] for pid in escalated_participants]
         self.assertIn(pids[2], results)
         self.assertIn(pids[3], results)
+        self.assertIn(pids[5], results)
         self.assertNotIn(pids[0], results)
         self.assertNotIn(pids[1], results)
         self.assertNotIn(pids[4], results)
@@ -1575,7 +1582,7 @@ class GenomicJobControllerTest(BaseTestCase):
         with GenomicJobController(GenomicJob.CHECK_GCR_OUTREACH_ESCALATION) as controller:
             controller.check_gcr_14day_escalation()
 
-        self.assertEqual(email_mock.call_count, 2)
+        self.assertEqual(email_mock.call_count, 3)
 
     @mock.patch('rdr_service.services.email_service.EmailService.send_email')
     def test_check_gcr_14day_escalation_error(self, email_mock):
@@ -1633,6 +1640,14 @@ class GenomicJobControllerTest(BaseTestCase):
             controller.genomic_alert_slack = mock_slack_handler
             controller.check_gcr_14day_escalation()
 
+        notified_dao = GenomicDefaultBaseDao(model_type=GenomicGCROutreachEscalationNotified)
+        with notified_dao.session() as session:
+            notification = session.query(
+                GenomicGCROutreachEscalationNotified
+            ).filter(
+                GenomicGCROutreachEscalationNotified.participant_id == pids[0]
+            ).one()
+
         self.assertEqual(email_mock.call_count, 1)
         self.assertEqual(mock_slack_handler.send_message_to_webhook.call_count, 1)
-
+        self.assertEqual(False, notification.message_sent)

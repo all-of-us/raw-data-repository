@@ -1982,11 +1982,18 @@ class GenomicJobController:
                 except Exception as e:
                     error_pids.append(pid)
                     logging.error(f'Failed to send GCR Outreach Escalation email for {pid}: {e}')
+                    notified_participants.append({
+                        'participant_id': pid,
+                        'created': clock.CLOCK.now(),
+                        'modified': clock.CLOCK.now(),
+                        'message_sent': False
+                    })
                 else:
                     notified_participants.append({
                         'participant_id': pid,
                         'created': clock.CLOCK.now(),
-                        'modified': clock.CLOCK.now()
+                        'modified': clock.CLOCK.now(),
+                        'message_sent': True
                     })
 
             notified_dao.insert_bulk(notified_participants)

@@ -3179,7 +3179,11 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
                 )
             ).outerjoin(
                 GenomicGCROutreachEscalationNotified,
-                GenomicMemberReportState.participant_id == GenomicGCROutreachEscalationNotified.participant_id
+                and_(
+                    GenomicMemberReportState.participant_id == GenomicGCROutreachEscalationNotified.participant_id,
+                    GenomicGCROutreachEscalationNotified.message_sent.is_(True)
+                )
+
             ).filter(
                 GenomicGCROutreachEscalationNotified.participant_id.is_(None),
                 GenomicMemberReportState.genomic_report_state == GenomicReportState.HDR_RPT_POSITIVE,
