@@ -132,6 +132,11 @@ class GenomicApiTestBase(BaseTestCase):
         new_user_info['example@example.com']['roles'] = roles
         self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
 
+    def overwrite_test_user_client_id(self, client_id: str) -> None:
+        new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
+        new_user_info['example@example.com']['clientId'] = client_id
+        self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
+
 
 class GPGenomicPIIApiTest(GenomicApiTestBase):
     def setUp(self):
@@ -257,7 +262,8 @@ class GPGenomicPIIApiTest(GenomicApiTestBase):
             qcStatus=GenomicQcStatus.PASS,
             gcManifestSampleSource='Whole Blood',
             informingLoopReadyFlag=1,
-            informingLoopReadyFlagModified=clock.CLOCK.now()
+            informingLoopReadyFlagModified=clock.CLOCK.now(),
+            participantOrigin='vibrent'
         )
         self.data_generator.create_database_genomic_gc_validation_metrics(
             genomicSetMemberId=wgs_member.id,
@@ -287,13 +293,14 @@ class GPGenomicPIIApiTest(GenomicApiTestBase):
         self.assertIsNotNone(response)
         self.assertEqual(response.get('hgm_informing_loop'), True)
 
+        # base informimg loop ready changes allow all origins now
         update_summary = self.ps_dao.get_by_participant_id(p.participantId)
         update_summary.participantOrigin = 'careevolution'
         self.ps_dao.update(update_summary)
 
         response = self.send_get(f"GenomicPII/GP/P{p.participantId}")
         self.assertIsNotNone(response)
-        self.assertEqual(response.get('hgm_informing_loop'), False)
+        self.assertEqual(response.get('hgm_informing_loop'), True)
 
 
 class RhpGenomicPIIApiTest(GenomicApiTestBase):
@@ -437,6 +444,8 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
     def setUp(self):
         super(GenomicOutreachApiTest, self).setUp()
 
+        self.overwrite_test_user_client_id('vibrent')
+
     def test_get_date_lookup(self):
         p2 = self._make_participant()
         p3 = self._make_participant()
@@ -570,6 +579,10 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
 
         member = self.member_dao.get(2)
         self.assertEqual(expected_response, resp)
+
+        # make sure origin is updated with client_id on user_role client_id
+        self.assertEqual(member.participantOrigin, 'vibrent')
+
         self.assertEqual(GenomicWorkflowState.GEM_RPT_PENDING_DELETE, member.genomicWorkflowState)
         report_state_member = self.report_state_dao.get_from_member_id(member.id)
 
@@ -623,7 +636,7 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
             expected_status=403
         )
 
-        self.assertTrue(resp.status_code== 403)
+        self.assertTrue(resp.status_code == 403)
 
 
 class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
@@ -634,6 +647,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.result_dao = GenomicResultViewedDao()
         self.member_dao = GenomicSetMemberDao()
         self.num_participants = 5
+
+        self.overwrite_test_user_client_id('vibrent')
 
     # GET
     def test_full_participant_validation_lookup(self):
@@ -675,7 +690,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         gen_member = self.data_generator.create_database_genomic_set_member(
             genomicSetId=gen_set.id,
             participantId=participant.participantId,
-            genomeType='aou_array'
+            genomeType='aou_array',
+            participantOrigin='vibrent'
         )
 
         resp = self.send_get(
@@ -794,7 +810,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 sampleId="21042005280",
                 genomeType=genome_type,
                 genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
-                participantId=participant.participantId
+                participantId=participant.participantId,
+                participantOrigin='vibrent'
             )
 
             self.data_generator.create_database_genomic_member_report_state(
@@ -879,6 +896,110 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.assertEqual(len(resp['data'][0]), 5)
         self.assertEqual(expected, resp)
 
+    def test_get_participant_lookup_filter_origin(self):
+        first_participant, second_participant = None, None
+        fake_date = parser.parse('2020-05-29T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        for num in range(self.num_participants):
+            participant = self.data_generator.create_database_participant()
+
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                consentForGenomicsRORAuthored=fake_date,
+                consentForStudyEnrollmentAuthored=fake_date
+            )
+
+            module = 'gem'
+            report_state = GenomicReportState.GEM_RPT_READY
+            genome_type = 'aou_array'
+            report_revision_number = 1
+            current_origin = None
+
+            if num == 0:
+                first_participant = participant
+                current_origin = 'vibrent'
+            elif num == 1:
+                second_participant = participant
+                current_origin = 'careevolution'
+
+            gen_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType=genome_type,
+                genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+                participantId=participant.participantId,
+                participantOrigin=current_origin
+            )
+
+            self.data_generator.create_database_genomic_member_report_state(
+                genomic_set_member_id=gen_member.id,
+                participant_id=participant.participantId,
+                module=module,
+                genomic_report_state=report_state,
+                report_revision_number=report_revision_number,
+                event_authored_time=fake_date
+            )
+
+        # SHOULD return data since participant origin is vibrent
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(f'GenomicOutreachV2?participant_id={first_participant.participantId}')
+
+        self.assertIsNotNone(resp)
+        self.assertIsNotNone(resp.get('timestamp'))
+        response_data = resp['data']
+        self.assertEqual(len(response_data), 1)
+        self.assertEqual(response_data[0].get('module'), 'gem')
+        self.assertEqual(response_data[0].get('type'), 'result')
+        self.assertEqual(response_data[0].get('status'), 'ready')
+        self.assertEqual(response_data[0].get('participant_id'), f'P{first_participant.participantId}')
+
+        self.overwrite_test_user_client_id('careevolution')
+
+        # SHOULD NOT return since participant origin is vibrent
+        # and user client_id is careevoluton
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?participant_id={first_participant.participantId}',
+                expected_status=http.client.NOT_FOUND
+            )
+
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json['message'], f"Participant with ID {first_participant.participantId}"
+                                               f" did not pass validation check")
+
+        # SHOULD return data since participant origin is careevolution
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(f'GenomicOutreachV2?participant_id={second_participant.participantId}')
+
+        self.assertIsNotNone(resp)
+        self.assertIsNotNone(resp.get('timestamp'))
+        response_data = resp['data']
+        self.assertEqual(len(response_data), 1)
+        self.assertEqual(response_data[0].get('module'), 'gem')
+        self.assertEqual(response_data[0].get('type'), 'result')
+        self.assertEqual(response_data[0].get('status'), 'ready')
+        self.assertEqual(response_data[0].get('participant_id'), f'P{second_participant.participantId}')
+
+        self.overwrite_test_user_client_id('example')
+
+        # SHOULD NOT return data since client_id is invalid
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?participant_id={second_participant.participantId}',
+                expected_status=http.client.BAD_REQUEST
+            )
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json['message'], f"Client Id cannot access GenomicOutreach lookup.")
+
     def test_get_by_type(self):
         self.num_participants = 10
         fake_date_one = parser.parse('2020-05-29T08:00:01-05:00')
@@ -912,7 +1033,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 sampleId="21042005280",
                 genomeType="aou_array",
                 genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
-                participantId=participant.participantId
+                participantId=participant.participantId,
+                participantOrigin='vibrent'
             )
 
             report_obj = self.data_generator.create_database_genomic_member_report_state(
@@ -1035,7 +1157,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 sampleId="21042005280",
                 genomeType=genome_type,
                 genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
-                participantId=participant.participantId
+                participantId=participant.participantId,
+                participantOrigin='vibrent'
             )
 
             self.data_generator.create_database_genomic_member_report_state(
@@ -1123,7 +1246,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             genomeType="aou_wgs",
             genomicWorkflowState=GenomicWorkflowState.CVL_READY,
             participantId=participant.participantId,
-            genomicWorkflowStateModifiedTime=clock.CLOCK.now()
+            genomicWorkflowStateModifiedTime=clock.CLOCK.now(),
+            participantOrigin='vibrent'
         )
 
         self.data_generator.create_database_genomic_member_report_state(
@@ -1176,6 +1300,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 genomeType="aou_array",
                 genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
                 participantId=participant.participantId,
+                participantOrigin='vibrent'
             )
 
             report_obj = self.data_generator.create_database_genomic_member_report_state(
@@ -1254,7 +1379,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             genomeType="aou_array",
             genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
             participantId=participant_one.participantId,
-            genomicWorkflowStateModifiedTime=fake_date_two
+            genomicWorkflowStateModifiedTime=fake_date_two,
+            participantOrigin='vibrent'
         )
 
         for i, _ in enumerate(decisions):
@@ -1283,7 +1409,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             genomeType="aou_array",
             genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
             participantId=participant_two.participantId,
-            genomicWorkflowStateModifiedTime=fake_date_two
+            genomicWorkflowStateModifiedTime=fake_date_two,
+            participantOrigin='vibrent'
         )
 
         for i, _ in enumerate(decisions):
@@ -1344,7 +1471,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 qcStatus=GenomicQcStatus.PASS,
                 gcManifestSampleSource='Whole Blood',
                 informingLoopReadyFlag=1,
-                informingLoopReadyFlagModified=loop_modified_date
+                informingLoopReadyFlagModified=loop_modified_date,
+                participantOrigin='vibrent'
             )
 
             self.data_generator.create_database_genomic_gc_validation_metrics(
@@ -1429,7 +1557,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             qcStatus=GenomicQcStatus.PASS,
             gcManifestSampleSource='Whole Blood',
             informingLoopReadyFlag=1,
-            informingLoopReadyFlagModified=fake_date_one
+            informingLoopReadyFlagModified=fake_date_one,
+            participantOrigin='vibrent'
         )
 
         self.data_generator.create_database_genomic_gc_validation_metrics(
@@ -1512,7 +1641,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 genomeType=genome_type,
                 genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
                 participantId=participant.participantId,
-                genomicWorkflowStateModifiedTime=fake_date_two
+                genomicWorkflowStateModifiedTime=fake_date_two,
+                participantOrigin='vibrent'
             )
 
             # gem decision
@@ -1640,7 +1770,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             genomeType=genome_type,
             genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
             participantId=participant.participantId,
-            genomicWorkflowStateModifiedTime=fake_date_one
+            genomicWorkflowStateModifiedTime=fake_date_one,
+            participantOrigin='vibrent'
         )
 
         self.data_generator.create_database_genomic_member_report_state(
@@ -1713,6 +1844,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             genomeType=config.GENOME_TYPE_ARRAY,
             genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
             participantId=participant.participantId,
+            participantOrigin='vibrent'
         )
 
         gem_member_report_state = self.data_generator.create_database_genomic_member_report_state(
@@ -1758,6 +1890,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             genomeType=config.GENOME_TYPE_WGS,
             genomicWorkflowState=GenomicWorkflowState.CVL_READY,
             participantId=participant.participantId,
+            participantOrigin='vibrent'
         )
 
         hdr_report_state = self.data_generator.create_database_genomic_member_report_state(
@@ -1941,7 +2074,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         ready_modules = ['hdr', 'pgx']
         self.build_ready_loop_template_data()
 
-        participant = self.data_generator.create_database_participant()
+        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
 
         resp = self.send_post(
             f'GenomicOutreachV2?participant_id=P{participant.participantId}',
@@ -1964,7 +2097,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
     def test_post_twice_same_pid_validation(self):
         self.build_ready_loop_template_data()
 
-        participant = self.data_generator.create_database_participant()
+        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
 
         resp = self.send_post(
             f'GenomicOutreachV2?participant_id=P{participant.participantId}',
@@ -1993,7 +2126,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
     def test_post_with_no_inserts_via_template_returns_correctly(self):
         self.build_ready_loop_template_data()
 
-        participant = self.data_generator.create_database_participant()
+        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
 
         resp = self.send_post(
             f'GenomicOutreachV2?participant_id=P{participant.participantId}',
@@ -2027,7 +2160,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
         self.build_ready_loop_template_data()
 
-        participant = self.data_generator.create_database_participant()
+        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
 
         # POST to create set member
         resp = self.send_post(
@@ -2093,7 +2226,8 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         self.data_generator.create_database_genomic_set_member(
             genomicSetId=self.gen_set.id,
             participantId=participant.participantId,
-            genomeType='aou_array'
+            genomeType='aou_array',
+            participantOrigin='vibrent'
         )
 
         return participant
@@ -2138,7 +2272,8 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         self.data_generator.create_database_genomic_set_member(
             genomicSetId=gen_set.id,
             participantId=participant.participantId,
-            genomeType='aou_array'
+            genomeType='aou_array',
+            participantOrigin='vibrent'
         )
 
         resp = self.send_get(
@@ -3359,7 +3494,8 @@ class GenomicCloudTasksApiTest(BaseTestCase):
             biobankId="100153482",
             sampleId="21042005280",
             genomeType="aou_array",
-            genomicWorkflowState=GenomicWorkflowState.AW0
+            genomicWorkflowState=GenomicWorkflowState.AW0,
+            participantOrigin='vibrent'
         )
 
         data = {}

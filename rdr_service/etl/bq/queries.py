@@ -941,7 +941,8 @@ queries = {
             ON
               dr.participant_id = per.person_id
             WHERE
-              dr.status = 2""",
+              dr.status = 2
+            AND dr.authored < {cutoff}""",
     },
     "ehr_consent_temp_table": {
         "destination": "tmp_ehr_consent",
