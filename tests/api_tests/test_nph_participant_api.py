@@ -515,20 +515,21 @@ class NphParticipantAPITest(BaseTestCase):
         current_diet_types = [obj for obj in DietType if obj.name != 'LMT']
         # add diet data - module 2 -> 100000000
         first_diet_bundle_time = datetime.utcnow() - timedelta(days=1)
-        for num, diet_type in enumerate(current_diet_types, start=1):
-            for diet_status in [DietStatus.STARTED, DietStatus.COMPLETED]:
-                self.nph_data_gen.create_database_diet_event(
-                    participant_id=self.base_participant_ids[0],
-                    module=ModuleTypes.lookup_by_number(2),
-                    event_id=1,
-                    diet_id=num,
-                    status_id=1,
-                    status=diet_status,
-                    current=1,
-                    diet_name=diet_type,
-                    event_authored_time=datetime(2023, 1, num, 12, 1),
-                    created=first_diet_bundle_time
-                )
+        with clock.FakeClock(first_diet_bundle_time):
+            # Ensuring the created time for each diet event is the exact same, and 1 day ago
+            for num, diet_type in enumerate(current_diet_types, start=1):
+                for diet_status in [DietStatus.STARTED, DietStatus.COMPLETED]:
+                    self.nph_data_gen.create_database_diet_event(
+                        participant_id=self.base_participant_ids[0],
+                        module=ModuleTypes.lookup_by_number(2),
+                        event_id=1,
+                        diet_id=num,
+                        status_id=1,
+                        status=diet_status,
+                        current=1,
+                        diet_name=diet_type,
+                        event_authored_time=datetime(2023, 1, num, 12, 1)
+                    )
 
         field_to_test = "nphModule2DietStatus { dietName dietStatus { time status current } }"
         query = simple_query(field_to_test)
@@ -556,20 +557,20 @@ class NphParticipantAPITest(BaseTestCase):
 
         time.sleep(5)
         # add more diet data - module 2 -> 100000000 - get max created date
-        for num, diet_type in enumerate(current_diet_types, start=1):
-            for diet_status in [DietStatus.STARTED, DietStatus.COMPLETED]:
-                self.nph_data_gen.create_database_diet_event(
-                    participant_id=self.base_participant_ids[0],
-                    module=ModuleTypes.lookup_by_number(2),
-                    event_id=1,
-                    diet_id=num,
-                    status_id=2,
-                    status=diet_status,
-                    current=2,
-                    diet_name=diet_type,
-                    event_authored_time=datetime(2023, 2, num, 12, 1),
-                    created=datetime.utcnow()
-                )
+        with clock.FakeClock(datetime.utcnow()):
+            for num, diet_type in enumerate(current_diet_types, start=1):
+                for diet_status in [DietStatus.STARTED, DietStatus.COMPLETED]:
+                    self.nph_data_gen.create_database_diet_event(
+                        participant_id=self.base_participant_ids[0],
+                        module=ModuleTypes.lookup_by_number(2),
+                        event_id=1,
+                        diet_id=num,
+                        status_id=2,
+                        status=diet_status,
+                        current=2,
+                        diet_name=diet_type,
+                        event_authored_time=datetime(2023, 2, num, 12, 1)
+                    )
 
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
         result = json.loads(executed.data.decode('utf-8'))
