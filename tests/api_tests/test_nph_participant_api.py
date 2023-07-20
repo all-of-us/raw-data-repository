@@ -4,7 +4,7 @@ import time
 from typing import Iterable, Dict, List
 from collections import defaultdict
 from graphql import GraphQLSyntaxError
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, StoredSampleStatus, DietType, \
     DietStatus, ModuleTypes
@@ -514,21 +514,21 @@ class NphParticipantAPITest(BaseTestCase):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
         current_diet_types = [obj for obj in DietType if obj.name != 'LMT']
         # add diet data - module 2 -> 100000000
+        first_diet_bundle_time = datetime.utcnow() - timedelta(days=1)
         for num, diet_type in enumerate(current_diet_types, start=1):
-            for count in range(1, 3):
+            for diet_status in [DietStatus.STARTED, DietStatus.COMPLETED]:
                 self.nph_data_gen.create_database_diet_event(
                     participant_id=self.base_participant_ids[0],
                     module=ModuleTypes.lookup_by_number(2),
                     event_id=1,
                     diet_id=num,
                     status_id=1,
-                    status=DietStatus.lookup_by_number(count),
+                    status=diet_status,
                     current=1,
                     diet_name=diet_type,
                     event_authored_time=datetime(2023, 1, num, 12, 1),
+                    created=first_diet_bundle_time
                 )
-                if count == 3:
-                    continue
 
         field_to_test = "nphModule2DietStatus { dietName dietStatus { time status current } }"
         query = simple_query(field_to_test)
@@ -557,20 +557,19 @@ class NphParticipantAPITest(BaseTestCase):
         time.sleep(5)
         # add more diet data - module 2 -> 100000000 - get max created date
         for num, diet_type in enumerate(current_diet_types, start=1):
-            for count in range(1, 3):
+            for diet_status in [DietStatus.STARTED, DietStatus.COMPLETED]:
                 self.nph_data_gen.create_database_diet_event(
                     participant_id=self.base_participant_ids[0],
                     module=ModuleTypes.lookup_by_number(2),
                     event_id=1,
                     diet_id=num,
                     status_id=2,
-                    status=DietStatus.lookup_by_number(count),
+                    status=diet_status,
                     current=2,
                     diet_name=diet_type,
                     event_authored_time=datetime(2023, 2, num, 12, 1),
+                    created=datetime.utcnow()
                 )
-                if count == 3:
-                    continue
 
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
         result = json.loads(executed.data.decode('utf-8'))
