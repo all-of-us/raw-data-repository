@@ -1986,20 +1986,20 @@ class GenomicJobController:
                         'participant_id': pid,
                         'created': clock.CLOCK.now(),
                         'modified': clock.CLOCK.now(),
-                        'message_sent': False
+                        'message_sent': 0
                     })
                 else:
                     notified_participants.append({
                         'participant_id': pid,
                         'created': clock.CLOCK.now(),
                         'modified': clock.CLOCK.now(),
-                        'message_sent': True
+                        'message_sent': 1
                     })
 
             notified_dao.insert_bulk(notified_participants)
             if error_pids:
                 self.genomic_alert_slack.send_message_to_webhook(
-                    message_data={'text': f"GCR Outreach Escalation email had errors for PIDs: {error_pids}"}
+                    message_data={'text': 'GCR Outreach 14 Day Escalation was unable to send all messages'}
                 )
                 self.job_result = GenomicSubProcessResult.ERROR
             else:

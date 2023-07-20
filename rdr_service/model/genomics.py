@@ -1,7 +1,7 @@
 from sqlalchemy import (
     Column, DateTime, ForeignKey, Integer,
     String, SmallInteger, UniqueConstraint, event,
-    BigInteger, Boolean)
+    BigInteger)
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mysql import JSON
 
@@ -1387,7 +1387,7 @@ class GenomicGCROutreachEscalationNotified(Base):
     created = Column(DateTime)
     modified = Column(DateTime)
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False, index=True)
-    message_sent = Column(Boolean)
+    message_sent = Column(SmallInteger, default=0)
 
 
 event.listen(GenomicGCROutreachEscalationNotified, 'before_insert', model_insert_listener)

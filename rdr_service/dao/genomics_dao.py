@@ -3181,7 +3181,7 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
                 GenomicGCROutreachEscalationNotified,
                 and_(
                     GenomicMemberReportState.participant_id == GenomicGCROutreachEscalationNotified.participant_id,
-                    GenomicGCROutreachEscalationNotified.message_sent.is_(True)
+                    GenomicGCROutreachEscalationNotified.message_sent != 0
                 )
 
             ).filter(
