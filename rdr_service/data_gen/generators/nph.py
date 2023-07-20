@@ -165,6 +165,7 @@ class NphDataGenerator(NphBaseGenerator):
             "participant_id": participant_id,
             "event_id": event_id,
             "event_type_id": 1,
+            "event_authored_time": TIME
         }
 
         fields.update(kwargs)
@@ -239,6 +240,21 @@ class NphDataGenerator(NphBaseGenerator):
         return DietEvent(**kwargs)
 
     def create_database_diet_event(self, **kwargs):
+        event_id = kwargs.get('event_id')
+        if not event_id:
+            pea = self.create_database_participant_event_activity(
+                activity_id=6,
+                participant_id=kwargs.get('participant_id'),
+                resource={}
+            )
+            event_id = pea.id
+
+        fields = {
+            "event_authored_time": TIME,
+            "participant_id": kwargs.get('participant_id'),
+            "event_id": event_id,
+        }
+        fields.update(kwargs)
         diet_event = self._diet_event(**kwargs)
         self._commit_to_database(diet_event)
         return diet_event
