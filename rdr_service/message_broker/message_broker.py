@@ -113,7 +113,7 @@ class BaseMessageBroker:
 
 class PtscMessageBroker(BaseMessageBroker):
     def __init__(self, message):
-        super(PtscMessageBroker, self).__init__(message)
+        super().__init__(message)
 
     def make_request_body(self):
         request_body = {
@@ -127,7 +127,7 @@ class PtscMessageBroker(BaseMessageBroker):
 
 class CareEvolutionMessageBroker(BaseMessageBroker):
     def __init__(self, message):
-        super(CareEvolutionMessageBroker, self).__init__(message)
+        super().__init__(message)
 
     def make_request_body(self):
         request_body = {
