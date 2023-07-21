@@ -144,6 +144,52 @@ class MessageBrokerApiTest(BaseTestCase):
                 count = count + 1
         self.assertEqual(count, 5)
 
+    @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id')
+    @mock.patch('rdr_service.message_broker.message_broker.CareEvolutionMessageBroker.send_request')
+    def test_send_valid_message_care_evolution(self, send_request, request_origin):
+        send_request.return_value = 200, {'result': 'mocked result'}, ''
+        request_origin.return_value = 'color'
+        participant = self.data_generator.create_database_participant(participantOrigin='careevolution')
+        request_json = {
+            "event": "result_viewed",
+            "eventAuthoredTime": "2021-05-19T21:05:41Z",
+            "participantId": to_client_participant_id(participant.participantId),
+            "messageBody": {
+                "test_str": "str",
+                "test_int": 0,
+                "test_datatime": "2020-01-01T21:05:41Z",
+                "test_bool": True,
+                "test_json": {'name': 'value'}
+            }
+        }
+        result = self.send_post("MessageBroker", request_json)
+        self.assertEqual(result, {'event': 'result_viewed',
+                                  'participantId': to_client_participant_id(participant.participantId),
+                                  'responseCode': 200,
+                                  'responseBody': {'result': 'mocked result'},
+                                  'errorMessage': ''})
+
+        # test cloud task API
+        from rdr_service.resource import main as resource_main
+        records = self.record_dao.get_all()
+        record = records[0]
+        payload = {
+            'id': record.id,
+            'eventType': record.eventType,
+            'eventAuthoredTime': record.eventAuthoredTime.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            'participantId': record.participantId,
+            'requestBody': record.requestBody
+        }
+        self.send_post(
+            local_path='StoreMessageBrokerEventDataTaskApi',
+            request_data=payload,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        event_data = self.event_data_dao.get_all()
+        self.assertEqual(5, len(event_data))
+
     def test_send_invalid_message(self):
         # request without participant id
         request_json = {
