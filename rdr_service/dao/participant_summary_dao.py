@@ -1,4 +1,5 @@
 import datetime
+
 import faker
 import re
 import threading
@@ -1241,13 +1242,19 @@ class ParticipantSummaryDao(UpdatableDao):
         if result.get("genderIdentityId"):
             del result["genderIdentityId"]  # deprecated in favor of genderIdentity
 
-        # Format Remote ID Verification Status
-        if result['remoteIdVerificationStatus'] is None:
-            result['remoteIdVerificationStatus'] = 'UNSET'
-        elif result['remoteIdVerificationStatus']:
-            result['remoteIdVerificationStatus'] = 'True'
-        else:
-            result['remoteIdVerificationStatus'] = 'False'
+        field_names = [
+            'remoteIdVerificationStatus',
+            'everIdVerified'
+        ]
+        # Format True False None Responses to default to UNSET when none
+        for field_name in field_names:
+            if result.get(field_name) is None:
+                result[field_name] = UNSET
+            elif result[field_name]:
+                result[field_name] = 'True'
+            else:
+                result[field_name] = 'False'
+
 
         # Map demographic Enums if TheBasics was submitted and Skip wasn't in use
         if is_the_basics_complete and not should_clear_fields_for_withdrawal:
@@ -1339,6 +1346,18 @@ class ParticipantSummaryDao(UpdatableDao):
                                'latestParticipantMediatedEhrReceiptTime']:
                 if field_name in result:
                     del result[field_name]
+
+        # Format other responses to default to UNSET when none
+        field_names = [
+            'remoteIdVerifiedOn',
+            'firstIdVerifiedOn',
+            'remoteIdVerificationOrigin',
+            'idVerificationOrigin'
+        ]
+
+        for field_name in field_names:
+            if not result.get(field_name):
+                result[field_name] = UNSET
 
         return {k: v for k, v in list(result.items()) if v is not None}
 
