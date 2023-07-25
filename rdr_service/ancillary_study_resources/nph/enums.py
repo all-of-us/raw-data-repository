@@ -85,6 +85,5 @@ class DietStatus(messages.Enum):
 
     STARTED = 1
     COMPLETED = 2
-    CONTINUED = 3
-    DISCONTINUED = 4
+    DISCONTINUED = 3
 
