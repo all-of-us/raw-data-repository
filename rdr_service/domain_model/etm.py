@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from rdr_service.participant_enums import QuestionnaireStatus
 
@@ -22,7 +22,7 @@ class EtmQuestionnaire:
 
 @dataclass
 class EtmQuestion:
-    link_id: str = None
+    trial_id: str = None
     required: bool = None
 
 
@@ -56,8 +56,8 @@ class EtmResponseExtension:
 @dataclass
 class EtmResponseAnswer:
     id: int = None
-    link_id: str = None
-    answer: str = None
+    trial_id: str = None
+    answer: Optional[str] = None
     metadata_list: List['EtmAnswerMetadata'] = field(default_factory=list)
 
 

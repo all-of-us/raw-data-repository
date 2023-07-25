@@ -151,8 +151,8 @@ def biobank_monthly_reconciliation_report():
     return json.dumps({"monthly-reconciliation-report": "generated"})
 
 @app_util.auth_required_cron
-def biobank_missing_samples_check():
-    biobank_samples_pipeline.missing_samples_check()
+def biobank_overdue_samples_check():
+    biobank_samples_pipeline.overdue_samples_check()
     return '{"success": "true"}'
 
 
@@ -931,9 +931,9 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "BiobankMissingSamplesCheck",
-        endpoint="biobankMissingSamplesCheck",
-        view_func=biobank_missing_samples_check,
+        OFFLINE_PREFIX + "BiobankOverdueSamplesCheck",
+        endpoint="biobankOverdueSamplesCheck",
+        view_func=biobank_overdue_samples_check,
         methods=["GET"],
     )
 

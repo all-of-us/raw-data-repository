@@ -930,9 +930,9 @@ queries = {
               dr.date_of_death AS death_date,
               CAST(dr.date_of_death AS DATETIME) AS death_datetime,
               '32809' AS death_type_concept_id,
-              NULL AS cause_concept_id,
-              NULL AS cause_source_value,
-              NULL AS cause_source_concept_id,
+              'NULL' AS cause_concept_id, -- CDR requires these columns to have a value of 'NULL'
+              'NULL' AS cause_source_value,
+              'NULL' AS cause_source_concept_id,
               'healthpro' AS src_id
             FROM
               `{dataset_id}.deceased_report` dr
@@ -941,7 +941,8 @@ queries = {
             ON
               dr.participant_id = per.person_id
             WHERE
-              dr.status = 2""",
+              dr.status = 2
+            AND dr.authored < {cutoff}""",
     },
     "ehr_consent_temp_table": {
         "destination": "tmp_ehr_consent",

@@ -125,9 +125,9 @@ class Death(CdmBase):
     death_date = Column(Date)
     death_datetime = Column(DateTime)
     death_type_concept_id = Column(BigInteger, )
-    cause_concept_id = Column(BigInteger, nullable=True)
+    cause_concept_id = Column(String(50))
     cause_source_value = Column(String(50))
-    cause_source_concept_id = Column(BigInteger, nullable=True)
+    cause_source_concept_id = Column(String(50))
     src_id = Column(String(50))
 
 

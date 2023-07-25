@@ -1387,6 +1387,7 @@ class GenomicGCROutreachEscalationNotified(Base):
     created = Column(DateTime)
     modified = Column(DateTime)
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False, index=True)
+    message_sent = Column(SmallInteger, default=0)
 
 
 event.listen(GenomicGCROutreachEscalationNotified, 'before_insert', model_insert_listener)

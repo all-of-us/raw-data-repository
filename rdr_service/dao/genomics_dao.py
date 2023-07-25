@@ -1071,7 +1071,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
                 GenomicGCValidationMetrics.drcFpConcordance.ilike('pass'),
                 GenomicSetMember.diversionPouchSiteFlag != 1,
-                ParticipantSummary.participantOrigin != 'careevolution',
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.blockResults != 1,
             )
@@ -1837,7 +1836,12 @@ class GenomicPiiDao(BaseDao):
         participant_dict = participant_data._asdict()
         return {self.camel_to_snake(k): v for k, v in participant_dict.items()}
 
-    def get_pii(self, mode, participant_id=None, biobank_id=None):
+    def get_pii(
+        self,
+        mode,
+        participant_id=None,
+        biobank_id=None
+    ):
         """
         :param mode:
         :param participant_id:
@@ -1948,20 +1952,15 @@ class GenomicOutreachDao(BaseDao):
 
     def to_client_json(self, result):
         report_statuses = list()
-
         for participant in result['data']:
             if participant[1] == GenomicWorkflowState.GEM_RPT_READY:
                 status = "ready"
-
             elif participant[1] == GenomicWorkflowState.GEM_RPT_PENDING_DELETE:
                 status = "pending_delete"
-
             elif participant[1] == GenomicWorkflowState.GEM_RPT_DELETED:
                 status = "deleted"
-
             else:
                 status = "unset"
-
             report_statuses.append(
                 {
                     "participant_id": f'P{participant[0]}',
@@ -2164,7 +2163,16 @@ class GenomicOutreachDaoV2(BaseDao):
             "timestamp": timestamp
         }
 
-    def get_outreach_data(self, participant_id=None, start_date=None, end_date=None):
+    def get_outreach_data(
+        self,
+        participant_id=None,
+        start_date=None,
+        end_date=None,
+        participant_origin=None
+    ):
+        if not participant_origin:
+            return []
+
         informing_loops, results = [], []
         end_date = clock.CLOCK.now() if not end_date else end_date
         informing_loop_ready = GenomicSetMemberDao.base_informing_loop_ready().subquery()
@@ -2221,7 +2229,8 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicInformingLoop.decision_value.isnot(None),
                         GenomicInformingLoop.module_type.in_(self.module),
                         GenomicInformingLoop.event_authored_time.isnot(None),
-                        GenomicSetMember.ignoreFlag != 1
+                        GenomicSetMember.ignoreFlag != 1,
+                        GenomicSetMember.participantOrigin == participant_origin
                     )
                 )
                 ready_loop = (
@@ -2234,7 +2243,8 @@ class GenomicOutreachDaoV2(BaseDao):
                         informing_loop_ready.c.participant_id == GenomicSetMember.participantId
                     ).filter(
                         GenomicSetMember.informingLoopReadyFlag == 1,
-                        GenomicSetMember.informingLoopReadyFlagModified.isnot(None)
+                        GenomicSetMember.informingLoopReadyFlagModified.isnot(None),
+                        GenomicSetMember.participantOrigin == participant_origin
                     )
                 )
                 if participant_id:
@@ -2286,7 +2296,8 @@ class GenomicOutreachDaoV2(BaseDao):
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
                         GenomicMemberReportState.event_authored_time.isnot(None),
-                        GenomicSetMember.ignoreFlag != 1
+                        GenomicSetMember.ignoreFlag != 1,
+                        GenomicSetMember.participantOrigin == participant_origin
                     )
                 )
 
@@ -2313,7 +2324,8 @@ class GenomicOutreachDaoV2(BaseDao):
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
                         GenomicResultViewed.event_authored_time.isnot(None),
-                        GenomicSetMember.ignoreFlag != 1
+                        GenomicSetMember.ignoreFlag != 1,
+                        GenomicSetMember.participantOrigin == participant_origin
                     )
                 )
 
@@ -3179,7 +3191,11 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
                 )
             ).outerjoin(
                 GenomicGCROutreachEscalationNotified,
-                GenomicMemberReportState.participant_id == GenomicGCROutreachEscalationNotified.participant_id
+                and_(
+                    GenomicMemberReportState.participant_id == GenomicGCROutreachEscalationNotified.participant_id,
+                    GenomicGCROutreachEscalationNotified.message_sent != 0
+                )
+
             ).filter(
                 GenomicGCROutreachEscalationNotified.participant_id.is_(None),
                 GenomicMemberReportState.genomic_report_state == GenomicReportState.HDR_RPT_POSITIVE,
