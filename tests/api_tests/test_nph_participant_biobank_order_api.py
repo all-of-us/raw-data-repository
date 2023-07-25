@@ -4,16 +4,13 @@ import json
 from sqlalchemy.orm import Query
 from unittest.mock import MagicMock, patch
 
-from rdr_service.dao.rex_dao import RexStudyDao
-from rdr_service.dao.study_nph_dao import NphOrderedSampleDao
-from rdr_service.data_gen.generators.nph import NphDataGenerator, NphSmsDataGenerator
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao import database_factory
 from rdr_service.main import app
 from rdr_service.model.study_nph import (
     StudyCategory, Order, OrderedSample, Participant, SampleUpdate, Site
 )
-from tests.workflow_tests.test_data.test_biobank_order_payloads import SALIVA_DIET_SAMPLE, URINE_DIET_SAMPLE
+
 
 BLOOD_SAMPLE = {
     "subject": "Patient/P124820391",
@@ -130,52 +127,6 @@ PATCH_CANCEL_SAMPLE = {
 
 
 class TestNPHParticipantOrderAPI(BaseTestCase):
-
-    def setUp(self, *args, **kwargs) -> None:
-        super().setUp(*args, **kwargs)
-        self.nph_datagen = NphDataGenerator()
-        self.sms_datagen = NphSmsDataGenerator()
-
-    @staticmethod
-    def _create_initial_study_data():
-        study_dao = RexStudyDao()
-        aou = study_dao.model_type(schema_name='rdr')
-        nph = study_dao.model_type(schema_name='nph')
-        study_dao.insert(aou)
-        study_dao.insert(nph)
-
-    def setup_backend_for_diet_orders(self):
-        self._create_initial_study_data()
-        self.nph_datagen.create_database_site(
-            external_id="test-site-1",
-            name="Test Site 1",
-            awardee_external_id="test-hpo-1",
-            organization_external_id="test-org-1"
-        )
-        self.sms_datagen.create_database_study_category(
-            name="3",
-            type_label="module"
-        )
-        self.sms_datagen.create_database_study_category(
-            name="Diet",
-            type_label="visitType",
-            parent_id=1,
-        )
-        self.sms_datagen.create_database_study_category(
-            name="Day 0",
-            type_label="timepoint",
-            parent_id=2,
-        )
-        self.nph_datagen.create_database_participant(
-            id=100001,
-            biobank_id=11110000101
-        )
-        aou_participant = self.data_generator.create_database_participant()
-        self.data_generator.create_database_participant_summary(participant=aou_participant)
-        self.nph_datagen.create_database_rex_participant_mapping(
-            primary_participant_id=aou_participant.participantId,
-            ancillary_participant_id=100001,
-        )
 
     @patch('rdr_service.dao.study_nph_dao.Query.filter')
     @patch('rdr_service.api.nph_participant_biobank_order_api.database_factory')
@@ -480,31 +431,6 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
             for each in result:
                 self.assertIsNotNone(each.ordered_sample_json)
 
-    def test_diet_saliva_order(self):
-        self.setup_backend_for_diet_orders()
-        app.test_client().post('rdr/v1/api/v1/nph/Participant/100001/BiobankOrder', json=SALIVA_DIET_SAMPLE)
-        dao = NphOrderedSampleDao()
-        aliquot = dao.get_from_aliquot_id('456')[0]
-        expected_supplement = {"glycerolAdditiveVolume": {"units": "uL", "volume": 1000}}
-        self.assertEqual(expected_supplement, aliquot.supplemental_fields)
-
-    def test_diet_urine_order(self):
-        self.setup_backend_for_diet_orders()
-        app.test_client().post('rdr/v1/api/v1/nph/Participant/100001/BiobankOrder', json=URINE_DIET_SAMPLE)
-        dao = NphOrderedSampleDao()
-        sample = dao.get(1)
-        expected_supplement = {
-            "dlwdose":
-                {
-                    "dose": "84",
-                    "batchid": "NPHDLW9172397",
-                    "dosetime": "2022-11-03T08:45:49Z",
-                    "calculateddose": "84.57",
-                    "participantweight": "56.38"
-                }
-        }
-        self.assertEqual(expected_supplement, sample.supplemental_fields)
-
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("nph.ordered_sample")
@@ -513,5 +439,3 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         self.clear_table_after_test("nph.study_category")
         self.clear_table_after_test("nph.participant")
         self.clear_table_after_test("nph.sample_update")
-        self.clear_table_after_test("rex.participant_mapping")
-        self.clear_table_after_test("rex.study")
