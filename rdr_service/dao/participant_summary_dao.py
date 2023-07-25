@@ -1242,11 +1242,11 @@ class ParticipantSummaryDao(UpdatableDao):
         if result.get("genderIdentityId"):
             del result["genderIdentityId"]  # deprecated in favor of genderIdentity
 
+        # Format True False None Responses to default to UNSET when none
         field_names = [
             'remoteIdVerificationStatus',
             'everIdVerified'
         ]
-        # Format True False None Responses to default to UNSET when none
         for field_name in field_names:
             if result.get(field_name) is None:
                 result[field_name] = UNSET
@@ -1254,7 +1254,6 @@ class ParticipantSummaryDao(UpdatableDao):
                 result[field_name] = 'True'
             else:
                 result[field_name] = 'False'
-
 
         # Map demographic Enums if TheBasics was submitted and Skip wasn't in use
         if is_the_basics_complete and not should_clear_fields_for_withdrawal:
