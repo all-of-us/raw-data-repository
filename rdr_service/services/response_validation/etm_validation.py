@@ -26,8 +26,8 @@ class EtmValidation:
                 result.errors.append(f'Missing "{required_outcome_name}" outcome field')
 
         for required_question in [question for question in questionnaire.question_list if question.required]:
-            if not any(answer.trial_id == required_question.trial_id for answer in response.answer_list):
+            if not any(answer.link_id == required_question.link_id for answer in response.answer_list):
                 result.success = False
-                result.errors.append(f'Missing answer for trial "{required_question.trial_id}"')
+                result.errors.append(f'Missing answer for question "{required_question.link_id}"')
 
         return result

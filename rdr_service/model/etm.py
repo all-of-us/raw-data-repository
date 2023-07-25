@@ -70,7 +70,7 @@ class EtmQuestionnaireResponseAnswer(Base):
         sa.Integer,
         sa.ForeignKey(EtmQuestionnaireResponse.etm_questionnaire_response_id)
     )
-    trial_id = sa.Column(sa.String(40))
+    link_id = sa.Column(sa.String(40))
     answer_value = sa.Column(MEDIUMTEXT)
 
     metadata_list = sa.orm.relationship('EtmAnswerMetadata', backref='answer')

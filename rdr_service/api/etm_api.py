@@ -33,7 +33,7 @@ class EtmApi:
             created=CLOCK.now(),
             modified=CLOCK.now(),
             questionnaire_type=questionnaire_type,
-            semantic_version=fhir_questionnaire.identifier[0].value,
+            semantic_version=fhir_questionnaire.version,
             title=fhir_questionnaire.text.div,
             resource_json=questionnaire_json
         )
@@ -42,8 +42,8 @@ class EtmApi:
         repository.store_questionnaire(questionnaire_obj)
 
         return {
-            **questionnaire_json,
-            'id': questionnaire_obj.id
+            'id': questionnaire_obj.id,
+            **questionnaire_json
         }
 
     @classmethod
@@ -129,27 +129,13 @@ class EtmApi:
     def _parse_answers(cls, question_list) -> List[models.EtmResponseAnswer]:
         result = []
         for question_answer in question_list:
-            for fhir_answer in question_answer.answer:
-                # try to load answer from value coding (original expectation)
-                # otherwise load it from the metadata
-                if fhir_answer.valueCoding:
-                    answer_value = fhir_answer.valueCoding.code
-                else:
-                    response_extension = None
-                    for extension in fhir_answer.extension:
-                        if extension.url.endswith('response'):
-                            response_extension = extension
-                            break
-                    answer_value = response_extension.valueString if response_extension else None
+            if len(question_answer.answer) > 0:
+                fhir_answer = question_answer.answer[0]
 
-                trial_id = None
-                for extension in fhir_answer.extension:
-                    if extension.url.endswith('trial_id'):
-                        trial_id = extension.valueString
-                        break
+                answer_value = fhir_answer.valueCoding.code
 
                 answer_obj = models.EtmResponseAnswer(
-                    trial_id=trial_id,
+                    link_id=question_answer.linkId,
                     answer=answer_value
                 )
                 for extension in fhir_answer.extension:

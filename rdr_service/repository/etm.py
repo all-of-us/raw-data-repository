@@ -56,10 +56,9 @@ class EtmQuestionnaireRepository(BaseRepository):
             and 'question' in result.resource_json['group']
         ):
             question_list = result.resource_json['group']['question']
-
             result.question_list = [
                 domain_model.EtmQuestion(
-                    trial_id=self._get_question_json_trial_id(question_obj),
+                    link_id=question_obj['linkId'],
                     required=question_obj['required']
                 )
                 for question_obj in question_list
@@ -67,11 +66,6 @@ class EtmQuestionnaireRepository(BaseRepository):
 
         return result
 
-    @classmethod
-    def _get_question_json_trial_id(cls, question_json):
-        for extension in question_json['extension']:
-            if extension['url'].endswith('trial_id'):
-                return extension['valueString']
 
     def _latest_db_object_for_version(self, questionnaire_url) -> schema_model.EtmQuestionnaire:
         latest_version_query = (
@@ -138,7 +132,7 @@ class EtmResponseRepository(BaseRepository):
 
         for domain_answer in response_obj.answer_list:
             schema_answer = schema_model.EtmQuestionnaireResponseAnswer(
-                trial_id=domain_answer.trial_id,
+                link_id=domain_answer.link_id,
                 answer_value=domain_answer.answer
             )
             schema_response.answer_list.append(schema_answer)

@@ -80,27 +80,27 @@ class EtmValidationTest(BaseTestCase):
     def test_answer_count_checking(self):
         questionnaire = etm.EtmQuestionnaire(
             question_list=[
-                etm.EtmQuestion(trial_id='1.1', required=True),
-                etm.EtmQuestion(trial_id='1.2', required=True),
-                etm.EtmQuestion(trial_id='1.3', required=True)
+                etm.EtmQuestion(link_id='1.1', required=True),
+                etm.EtmQuestion(link_id='1.2', required=True),
+                etm.EtmQuestion(link_id='1.3', required=True)
             ]
         )
         response = etm.EtmResponse(
             answer_list=[
-                etm.EtmResponseAnswer(trial_id='1.1'),
-                etm.EtmResponseAnswer(trial_id='1.3')
+                etm.EtmResponseAnswer(link_id='1.1'),
+                etm.EtmResponseAnswer(link_id='1.3')
             ]
         )
 
         result = EtmValidation.validate_response(response=response, questionnaire=questionnaire)
         self.assertFalse(result.success)
         self.assertEqual(
-            ['Missing answer for trial "1.2"'],
+            ['Missing answer for question "1.2"'],
             result.errors
         )
 
         response.answer_list.append(
-            etm.EtmResponseAnswer(trial_id='1.2')
+            etm.EtmResponseAnswer(link_id='1.2')
         )
         result = EtmValidation.validate_response(response=response, questionnaire=questionnaire)
         self.assertTrue(result.success)
