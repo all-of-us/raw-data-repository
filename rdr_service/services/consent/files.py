@@ -231,7 +231,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         )
 
     def _is_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        return basename(blob_wrapper.blob.name).startswith('wear_consent')
+        # TODO: When implementing WEAR validation for Vibrent, remove the filter currently blocking
+        #  them from being checked (in ConsentDao.get_consent_responses_to_validate)
+        raise NotImplementedError('Wear consent validation not implemented for Vibrent')
 
     def _is_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         return 'exploring_the_mind_consent_form' in basename(blob_wrapper.blob.name)
@@ -257,10 +259,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         )
 
     def _build_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'WearConsentFile':
-        return VibrentWearConsentFile(
-            pdf=blob_wrapper.get_parsed_pdf(),
-            blob=blob_wrapper.blob
-        )
+        raise NotImplementedError('Wear consent validation not implemented for Vibrent')
 
     def _build_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EtmConsentFile':
         return VibrentEtmConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
@@ -726,28 +725,6 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
 
 
 class VibrentEtmConsentFile(EtmConsentFile):
-    _SIGNATURE_PAGE = 7
-
-    def _get_signature_elements(self):
-        return self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=150, right=400, bottom=155, top=160),
-            page=self._SIGNATURE_PAGE
-        )
-
-    def _get_date_elements(self):
-        return self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=130, right=400, bottom=110, top=115),
-            page=self._SIGNATURE_PAGE
-        )
-
-    def _get_printed_name_elements(self):
-        return self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=350, right=500, bottom=45, top=50),
-            page=self._SIGNATURE_PAGE
-        )
-
-
-class VibrentWearConsentFile(WearConsentFile):
     _SIGNATURE_PAGE = 7
 
     def _get_signature_elements(self):
