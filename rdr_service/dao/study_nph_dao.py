@@ -9,7 +9,7 @@ from protorpc import messages
 from werkzeug.exceptions import BadRequest, NotFound
 
 from sqlalchemy.orm import Query, aliased
-from sqlalchemy import exc, func, case, and_, literal
+from sqlalchemy import exc, func, case, and_
 from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.study_nph import (
@@ -17,7 +17,7 @@ from rdr_service.model.study_nph import (
     Activity, ParticipantEventActivity, EnrollmentEventType,
     PairingEventType, PairingEvent, ConsentEventType,
     SampleUpdate, BiobankFileExport, SampleExport,
-    StoredSample, EnrollmentEvent, Incident, ConsentEvent, DietEvent, DeactivationEvent, WithdrawalEvent
+    StoredSample, EnrollmentEvent, Incident, ConsentEvent, DietEvent
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
@@ -262,42 +262,6 @@ class NphParticipantDao(BaseDao):
             ).group_by(
                 Participant.id
             ).subquery()
-
-    def get_deactivated_subquery(self):
-        with self.session() as session:
-            return session.query(
-                Participant.id.label('deactivation_pid'),
-                func.json_object(
-                    'deactivation_json',
-                    func.json_arrayagg(
-                        func.json_object(
-                            'time', DeactivationEvent.event_authored_time,
-                            'value', literal('DEACTIVATED'),
-                            'module', DeactivationEvent.module)
-                    ), type_=JSON
-                ).label('deactivation_status'),
-            ).join(
-                DeactivationEvent,
-                DeactivationEvent.participant_id == Participant.id
-            ).group_by(Participant.id).subquery()
-
-    def get_withdrawal_subquery(self):
-        with self.session() as session:
-            return session.query(
-                Participant.id.label('withdrawal_pid'),
-                func.json_object(
-                    'withdrawal_json',
-                    func.json_arrayagg(
-                        func.json_object(
-                            'time', WithdrawalEvent.event_authored_time,
-                            'value', literal('WITHDRAWN'),
-                            'module', WithdrawalEvent.module)
-                    ), type_=JSON
-                ).label('withdrawal_status'),
-            ).join(
-                WithdrawalEvent,
-                WithdrawalEvent.participant_id == Participant.id
-            ).group_by(Participant.id).subquery()
 
 
 class NphStudyCategoryDao(UpdatableDao):

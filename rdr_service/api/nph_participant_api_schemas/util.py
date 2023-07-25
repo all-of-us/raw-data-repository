@@ -8,7 +8,7 @@ from graphene import List as GrapheneList
 from sqlalchemy.orm import Query, aliased
 
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, ConsentOptInTypes, \
-    StoredSampleStatus, DietType, DietStatus, ModuleTypes
+    StoredSampleStatus, DietType, DietStatus
 from rdr_service.api_util import parse_date
 from rdr_service.dao.study_nph_dao import NphOrderDao
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
@@ -99,23 +99,6 @@ class NphParticipantData:
                 'time': parse_date(x['time']) if x['time'] else None
             },
             enrollment_data.get('enrollment_json')
-        ))
-
-    @classmethod
-    def get_active_statuses(
-        cls,
-        active_data: dict,
-        active_type: str
-    ) -> Optional[List[dict]]:
-        if not active_data:
-            return []
-        return list(map(
-            lambda x: {
-                'value': x['value'],
-                'time': parse_date(x['time']) if x['time'] else None,
-                'module': ModuleTypes.lookup_by_number(x['module']).name.lower()
-            },
-            active_data.get(f'{active_type}_json')
         ))
 
     @classmethod
@@ -232,8 +215,14 @@ class NphParticipantData:
                     "value": cls.check_field_value(summary.withdrawalStatus),
                     "time": summary.withdrawalAuthored
                 },
-                'nphDeactivationStatus': cls.get_active_statuses(deactivated, 'deactivation'),
-                'nphWithdrawalStatus': cls.get_active_statuses(withdrawn, 'withdrawal'),
+                'nphDeactivationStatus': {
+                    "value": "DEACTIVATED" if deactivated else "NULL",
+                    "time": deactivated.event_authored_time if deactivated else None
+                },
+                'nphWithdrawalStatus': {
+                    "value": "WITHDRAWN" if withdrawn else "NULL",
+                    "time": withdrawn.event_authored_time if withdrawn else None
+                },
                 'nphEnrollmentStatus': cls.get_enrollment_statuses(enrollments),
                 'nphModule1ConsentStatus': cls.get_consent_statuses(consents, module=1),
                 'nphModule2ConsentStatus': cls.get_consent_statuses(consents, module=2),

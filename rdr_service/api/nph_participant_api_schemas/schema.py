@@ -10,6 +10,8 @@ from rdr_service.model.study_nph import (
     Participant,
     Site as nphSite,
     PairingEvent,
+    DeactivationEvent,
+    WithdrawalEvent,
     ParticipantOpsDataElement,
 )
 from rdr_service.model.site import Site
@@ -62,13 +64,6 @@ class Event(ObjectType):
 class GraphQLConsentEvent(Event):
     """ NPH ConsentEvent """
     opt_in = Field(NonNull(String))
-
-
-class GraphQLActiveEvent(ObjectType):
-
-    value = Field(NonNull(String))
-    time = Field(String)
-    module = Field(NonNull(String))
 
 
 class GraphQLDietStatus(ObjectType):
@@ -338,9 +333,8 @@ class ParticipantField(ObjectType):
         GraphQLDietEvent, name="nphModule3DietStatus", description="Sourced from NPH Schema"
     )
     nphBiospecimens = List(GraphQLNphBioSpecimen, name="nphBiospecimens", description="NPH Biospecimens")
-    nphWithdrawalStatus = List(GraphQLActiveEvent, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
-    nphDeactivationStatus = List(GraphQLActiveEvent, name="nphDeactivationStatus",
-                                 description='Sourced from NPH Schema.')
+    nphWithdrawalStatus = SortableField(Event, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
+    nphDeactivationStatus = SortableField(Event, name="nphDeactivationStatus", description='Sourced from NPH Schema.')
     # Bio-specimen
     sample_8_5ml_ssts_1 = Field(SampleCollection, description='Sample 8.5ml SSTS1')
     sample_4ml_ssts_1 = Field(SampleCollection, description='Sample 4ml SSTS1')
@@ -425,8 +419,6 @@ class ParticipantQuery(ObjectType):
         enrollment_subquery = nph_participant_dao.get_enrollment_subquery()
         orders_samples_subquery = nph_participant_dao.get_orders_samples_subquery()
         diet_status_subquery = nph_participant_dao.get_diet_status_subquery()
-        deactivated_subquery = nph_participant_dao.get_deactivated_subquery()
-        withdrawal_subquery = nph_participant_dao.get_withdrawal_subquery()
 
         limit = min(max(limit, MIN_LIMIT), MAX_LIMIT)
         off_set = max(off_set, MIN_OFFSET)
@@ -444,8 +436,8 @@ class ParticipantQuery(ObjectType):
                 orders_samples_subquery.c.orders_sample_status,
                 orders_samples_subquery.c.orders_sample_biobank_status,
                 diet_status_subquery.c.diet_status,
-                deactivated_subquery.c.deactivation_status,
-                withdrawal_subquery.c.withdrawal_status,
+                DeactivationEvent,
+                WithdrawalEvent,
                 ParticipantOpsDataElement
             ).outerjoin(
                 Site,
@@ -468,12 +460,6 @@ class ParticipantQuery(ObjectType):
             ).outerjoin(
                 diet_status_subquery,
                 diet_status_subquery.c.diet_pid == Participant.id
-            ).outerjoin(
-                deactivated_subquery,
-                deactivated_subquery.c.deactivation_pid == Participant.id
-            ).outerjoin(
-                withdrawal_subquery,
-                withdrawal_subquery.c.withdrawal_pid == Participant.id
             ).outerjoin(
                 PairingEvent,
                 PairingEvent.participant_id == ParticipantMapping.ancillary_participant_id
@@ -503,6 +489,12 @@ class ParticipantQuery(ObjectType):
                     ParticipantOpsDataElement.source_value.isnot(None),
                     ParticipantOpsDataElement.id < participant_dob.id,
                 )
+            ).outerjoin(
+                DeactivationEvent,
+                ParticipantMapping.ancillary_participant_id == DeactivationEvent.participant_id
+            ).outerjoin(
+                WithdrawalEvent,
+                ParticipantMapping.ancillary_participant_id == WithdrawalEvent.participant_id
             ).filter(
                 pm2.id.is_(None),
                 participant_dob.id.is_(None),
