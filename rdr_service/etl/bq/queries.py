@@ -11,12 +11,6 @@ queries = {
                 -- measurement_id of the first/second/third/mean diastolic blood pressure
                 46233683 AS relationship_concept_id,
                 -- Systolic to diastolic blood pressure measurement
-                CASE
-                    WHEN tmp1.systolic_blood_pressure_ind = 1 THEN 'syst.diast.first1'
-                    WHEN tmp1.systolic_blood_pressure_ind = 2 THEN 'syst.diast.second1'
-                    WHEN tmp1.systolic_blood_pressure_ind = 3 THEN 'syst.diast.third1'
-                    WHEN tmp1.systolic_blood_pressure_ind = 4 THEN 'syst.diast.mean1'
-                END AS unit_id,
                 tmp1.src_id AS src_id
             FROM `{dataset_id}.tmp_fact_rel_sd` tmp1
                 INNER JOIN `{dataset_id}.tmp_fact_rel_sd` tmp2 ON tmp1.person_id = tmp2.person_id
@@ -34,7 +28,6 @@ queries = {
                 cdm_meas.parent_id AS fact_id_2,
                 581437 AS relationship_concept_id,
                 -- 581437, Child to Parent Measurement
-                'meas.meas1' AS unit_id,
                 cdm_meas.src_id AS src_id
             FROM `{dataset_id}.measurement` cdm_meas
             WHERE cdm_meas.parent_id IS NOT NULL
@@ -47,7 +40,6 @@ queries = {
                 cdm_meas.measurement_id AS fact_id_2,
                 581436 AS relationship_concept_id,
                 -- 581436, Parent to Child Measurement
-                'meas.meas2' AS unit_id,
                 cdm_meas.src_id AS src_id
             FROM `{dataset_id}.measurement` cdm_meas
             WHERE cdm_meas.parent_id IS NOT NULL
@@ -62,12 +54,6 @@ queries = {
                 -- measurement_id of the first/second/third/mean systolic blood pressure
                 46233682 AS relationship_concept_id,
                 -- Diastolic to systolic blood pressure measurement
-                CASE
-                    WHEN tmp1.systolic_blood_pressure_ind = 1 THEN 'syst.diast.first2'
-                    WHEN tmp1.systolic_blood_pressure_ind = 2 THEN 'syst.diast.second2'
-                    WHEN tmp1.systolic_blood_pressure_ind = 3 THEN 'syst.diast.third2'
-                    WHEN tmp1.systolic_blood_pressure_ind = 4 THEN 'syst.diast.mean2'
-                END AS unit_id,
                 tmp1.src_id AS src_id
             FROM `{dataset_id}.tmp_fact_rel_sd` tmp1
                 INNER JOIN `{dataset_id}.tmp_fact_rel_sd` tmp2 ON tmp1.person_id = tmp2.person_id
@@ -85,7 +71,6 @@ queries = {
                 mtq.measurement_id AS fact_id_2,
                 581410 AS relationship_concept_id,
                 -- Observation to Measurement
-                'observ.meas2' AS unit_id,
                 cdm_obs.src_id AS src_id
             FROM `{dataset_id}.observation` cdm_obs
                 INNER JOIN `{dataset_id}.measurement_to_qualifier` mtq ON mtq.qualifier_id = cdm_obs.meas_id
@@ -98,7 +83,6 @@ queries = {
                 cdm_obs.observation_id AS fact_id_2,
                 581411 AS relationship_concept_id,
                 -- Measurement to Observation
-                'observ.meas1' AS unit_id,
                 cdm_obs.src_id AS src_id
             FROM `{dataset_id}.observation` cdm_obs
                 INNER JOIN `{dataset_id}.measurement_to_qualifier` mtq ON mtq.qualifier_id = cdm_obs.meas_id""",
@@ -219,7 +203,6 @@ queries = {
               NULL AS location_id,
               site.site_id AS care_site_source_value,
               NULL AS place_of_service_source_value,
-              'care_site' AS unit_id,
               '' AS src_id
             FROM
               `{dataset_id}.site` site""",
@@ -236,8 +219,7 @@ queries = {
              state,
              zip,
              county,
-             location_source_value,
-             unit_id
+             location_source_value
             FROM (
                SELECT
                DISTINCT
@@ -247,8 +229,7 @@ queries = {
                src.state AS state,
                src.zip AS zip,
                NULL AS county,
-               src.state_ppi_code AS location_source_value,
-               'loc' AS unit_id
+               src.state_ppi_code AS location_source_value
                FROM
                `{dataset_id}.src_person_location` src
             )""",
@@ -288,13 +269,6 @@ queries = {
             END
               AS value_source_value,
               meas.parent_id AS parent_id,
-              CASE
-                WHEN meas.value_decimal IS NOT NULL OR meas.value_unit IS NOT NULL THEN 'meas.dec'
-                WHEN meas.value_code_value IS NOT NULL THEN 'meas.value'
-              ELSE
-              'meas.empty'
-            END
-              AS unit_id,
               meas.src_id AS src_id
             FROM
               `{dataset_id}.src_meas_mapped` meas
@@ -352,7 +326,6 @@ queries = {
               COALESCE(r.race_source_concept_id, 0) AS race_source_concept_id,
               e.ppi_code AS ethnicity_source_value,
               COALESCE(e.ethnicity_source_concept_id, 0) AS ethnicity_source_concept_id,
-              'person' AS unit_id,
               b.src_id AS src_id
             FROM
               `{dataset_id}.src_mapped` src_m
@@ -743,7 +716,6 @@ queries = {
               0 AS discharge_to_concept_id,
               NULL AS discharge_to_source_value,
               NULL AS preceding_visit_occurrence_id,
-              'vis.meas' AS unit_id,
               src.src_id AS src_id
             FROM
               `{dataset_id}.tmp_visits_src` src""",
@@ -788,16 +760,6 @@ queries = {
               src_m.value_source_concept_id AS value_source_concept_id,
               src_m.value_ppi_code AS value_source_value,
               src_m.questionnaire_response_id AS questionnaire_response_id,
-              NULL AS meas_id,
-              CASE
-                WHEN src_m.value_ppi_code IS NOT NULL THEN 'observ.code'
-                WHEN src_m.value_ppi_code IS NULL
-              AND src_m.value_string IS NOT NULL THEN 'observ.str'
-                WHEN src_m.value_number IS NOT NULL THEN 'observ.num'
-                WHEN src_m.value_boolean IS NOT NULL THEN 'observ.bool'
-                WHEN src_m.is_invalid = 1 THEN 'observ.invalid'
-            END
-              AS unit_id,
               src_m.src_id AS src_id
             FROM
               `{dataset_id}.src_mapped` src_m
@@ -827,8 +789,6 @@ queries = {
               meas.vcv_source_concept_id AS value_source_concept_id,
               meas.value_code_value AS value_source_value,
               NULL AS questionnaire_response_id,
-              meas.measurement_id AS meas_id,
-              'observ.meas' AS unit_id,
               meas.src_id AS src_id
             FROM
               `{dataset_id}.src_meas_mapped` meas
@@ -1014,4 +974,10 @@ queries = {
                         """AS src_id  FROM rdr.participant) AS  pid_map  WHERE  pid_map.id_value """
                         """IS NOT NULL;");""",
     },
+    "finalize": {
+        "destination": None,
+        "query": """
+            ALTER TABLE `{dataset_id}.measurement` DROP COLUMN parent_id;
+        """
+    }
 }
