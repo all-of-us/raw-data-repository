@@ -3218,7 +3218,7 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
             )
 
             if participant_origin:
-                records.join(
+                records = records.join(
                     GenomicSetMember,
                     GenomicMemberReportState.participant_id == GenomicSetMember.participantId
                 ).filter(

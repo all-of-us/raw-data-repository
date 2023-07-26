@@ -1964,7 +1964,7 @@ class GenomicJobController:
         """Alerts color when participant with hdr positive result does not have a scheduled or completed appointment"""
         gcr_outreach = {
             GenomicJob.CHECK_GCR_OUTREACH_ESCALATION: {
-                'num_days': 14
+                'num_days': 14,
             },
             GenomicJob.CHECK_GCR_CE_OUTREACH_ESCALATION: {
                 'num_days': 30,
@@ -2008,7 +2008,10 @@ class GenomicJobController:
             notified_dao.insert_bulk(notified_participants)
             if error_pids:
                 self.genomic_alert_slack.send_message_to_webhook(
-                    message_data={'text': 'GCR Outreach 14 Day Escalation was unable to send all messages'}
+                    message_data={
+                        'text': f'GCR Outreach {gcr_outreach.get("num_days")} '
+                                f'Day Escalation was unable to send all messages'
+                    }
                 )
                 self.job_result = GenomicSubProcessResult.ERROR
             else:
