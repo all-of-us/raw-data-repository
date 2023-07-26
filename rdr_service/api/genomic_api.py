@@ -151,6 +151,8 @@ class GenomicOutreachApi(BaseApi):
         super(GenomicOutreachApi, self).__init__(GenomicOutreachDao())
         self.member_dao = GenomicSetMemberDao()
         self.report_state_dao = GenomicMemberReportStateDao()
+        _, user_info = get_validated_user_info()
+        self.user_info = user_info
 
     @auth_required([GEM] + RDR_AND_PTC)
     def get(self, mode=None):
@@ -234,6 +236,10 @@ class GenomicOutreachApi(BaseApi):
 
         # Create GenomicSetMember with report state
         model = self.dao.from_client_json(resource, participant_id=p_id, mode='gem')
+        participant_origin = self.user_info.get('clientId')
+        if participant_origin not in GENOMIC_CLIENT_IDS:
+            raise BadRequest('Client Id cannot access GenomicOutreach update.')
+        model.participantOrigin = participant_origin
         m = self._do_insert(model)
 
         gem_result_record = self.member_dao.get_gem_results_for_report_state(m)

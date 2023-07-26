@@ -444,6 +444,8 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
     def setUp(self):
         super(GenomicOutreachApiTest, self).setUp()
 
+        self.overwrite_test_user_client_id('vibrent')
+
     def test_get_date_lookup(self):
         p2 = self._make_participant()
         p3 = self._make_participant()
@@ -577,6 +579,10 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
 
         member = self.member_dao.get(2)
         self.assertEqual(expected_response, resp)
+
+        # make sure origin is updated with client_id on user_role client_id
+        self.assertEqual(member.participantOrigin, 'vibrent')
+
         self.assertEqual(GenomicWorkflowState.GEM_RPT_PENDING_DELETE, member.genomicWorkflowState)
         report_state_member = self.report_state_dao.get_from_member_id(member.id)
 
@@ -630,7 +636,7 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
             expected_status=403
         )
 
-        self.assertTrue(resp.status_code== 403)
+        self.assertTrue(resp.status_code == 403)
 
 
 class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):

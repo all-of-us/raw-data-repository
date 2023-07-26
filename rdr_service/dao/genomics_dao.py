@@ -1952,20 +1952,15 @@ class GenomicOutreachDao(BaseDao):
 
     def to_client_json(self, result):
         report_statuses = list()
-
         for participant in result['data']:
             if participant[1] == GenomicWorkflowState.GEM_RPT_READY:
                 status = "ready"
-
             elif participant[1] == GenomicWorkflowState.GEM_RPT_PENDING_DELETE:
                 status = "pending_delete"
-
             elif participant[1] == GenomicWorkflowState.GEM_RPT_DELETED:
                 status = "deleted"
-
             else:
                 status = "unset"
-
             report_statuses.append(
                 {
                     "participant_id": f'P{participant[0]}',
@@ -3196,7 +3191,11 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
                 )
             ).outerjoin(
                 GenomicGCROutreachEscalationNotified,
-                GenomicMemberReportState.participant_id == GenomicGCROutreachEscalationNotified.participant_id
+                and_(
+                    GenomicMemberReportState.participant_id == GenomicGCROutreachEscalationNotified.participant_id,
+                    GenomicGCROutreachEscalationNotified.message_sent != 0
+                )
+
             ).filter(
                 GenomicGCROutreachEscalationNotified.participant_id.is_(None),
                 GenomicMemberReportState.genomic_report_state == GenomicReportState.HDR_RPT_POSITIVE,
