@@ -17,19 +17,19 @@ from rdr_service.model.base import InvalidDataState
 
 class PatientPayload:
     def __init__(self, json):
+        self.source = json
         self._fhir_patient = FhirPatient(json)
-        self._json = json
 
     @property
     def participant_id(self):
-        return self._fhir_patient.id
+        return from_client_participant_id(self._fhir_patient.id)
 
     @property
     def has_first_name_update(self):
         return self._has_value_provided(
             field_name='given',
             path_to_field=['name'],
-            json=self._json
+            json=self.source
         )
 
     @property
@@ -49,14 +49,14 @@ class PatientPayload:
         if self._has_value_provided(
             field_name='given',
             path_to_field=['name'],
-            json=self._json
+            json=self.source
         ):
-            name_list = self._json['name']
+            name_list = self.source['name']
             if not name_list:
                 return True
 
-            name_json = name_list[0]
-            provided_name_list = name_json['given']
+            namesource = name_list[0]
+            provided_name_list = namesource['given']
             return provided_name_list and len(provided_name_list) > 1
 
         return False
@@ -78,7 +78,7 @@ class PatientPayload:
         return self._has_value_provided(
             field_name='family',
             path_to_field=['name'],
-            json=self._json
+            json=self.source
         )
 
     @property
@@ -151,7 +151,7 @@ class PatientPayload:
 
     @property
     def has_birthdate_update(self):
-        return 'birthDate' in self._json
+        return 'birthDate' in self.source
 
     @property
     def birthdate(self):
@@ -193,7 +193,7 @@ class PatientPayload:
         return self._has_value_provided(
             field_name='city',
             path_to_field=['address'],
-            json=self._json
+            json=self.source
         )
 
     @property
@@ -205,7 +205,7 @@ class PatientPayload:
         return self._has_value_provided(
             field_name='state',
             path_to_field=['address'],
-            json=self._json
+            json=self.source
         )
 
     @property
@@ -217,7 +217,7 @@ class PatientPayload:
         return self._has_value_provided(
             field_name='postalCode',
             path_to_field=['address'],
-            json=self._json
+            json=self.source
         )
 
     @property
@@ -226,7 +226,7 @@ class PatientPayload:
 
     @property
     def has_language_update(self):
-        return 'communication' in self._json
+        return 'communication' in self.source
 
     @property
     def has_ancillary_identifier(self):
@@ -313,15 +313,15 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
     @auth_required(PTC)
     def post(self):
         json = self.get_request_json()
-        self._process_request(json)
-        self._record_request(json)
+        update_payload = PatientPayload(json)
+        self._process_request(update_payload)
+        self._record_request(update_payload)
         return json
 
     @classmethod
-    def _process_request(cls, json):
-        update_payload = PatientPayload(json)
+    def _process_request(cls, update_payload: PatientPayload):
         update_field_list = {
-            'participant_id': from_client_participant_id(update_payload.participant_id)
+            'participant_id': update_payload.participant_id
         }
 
         if update_payload.has_first_name_update:
@@ -367,6 +367,9 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
             )
 
     @classmethod
-    def _record_request(cls, json):
+    def _record_request(cls, update_payload: PatientPayload):
         repository = ProfileUpdateRepository()
-        repository.store_update_json(json)
+        repository.store_update_json(
+            participant_id=update_payload.participant_id,
+            json=update_payload.source
+        )
