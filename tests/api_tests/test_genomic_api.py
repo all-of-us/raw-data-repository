@@ -2214,6 +2214,8 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
             genomicSetVersion=1
         )
 
+        self.overwrite_test_user_client_id('vibrent')
+
     def build_base_participant_data(self):
 
         participant = self.data_generator.create_database_participant()
@@ -2234,11 +2236,6 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
 
     def test_full_participant_validation_appointment_lookup(self):
 
-        gen_set = self.data_generator.create_database_genomic_set(
-            genomicSetName="..",
-            genomicSetCriteria="..",
-            genomicSetVersion=1
-        )
         participant = self.data_generator.create_database_participant()
 
         # no appointments / no set member
@@ -2270,7 +2267,7 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
 
         # summary / set member / failed validation in query
         self.data_generator.create_database_genomic_set_member(
-            genomicSetId=gen_set.id,
+            genomicSetId=self.gen_set.id,
             participantId=participant.participantId,
             genomeType='aou_array',
             participantOrigin='vibrent'
@@ -2323,6 +2320,70 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         self.assertTrue(all(obj['language'] == appointment_record.language for obj in resp['data']))
 
         self.assertTrue(all(obj['note_available'] is False for obj in resp['data']))
+
+    def test_participant_appointment_lookup_origin_filter(self):
+
+        participant = self.data_generator.create_database_participant()
+
+        # summary / set member
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            consentForGenomicsROR=1
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=self.gen_set.id,
+            participantId=participant.participantId,
+            genomeType='aou_array',
+            participantOrigin='vibrent'
+        )
+
+        # add appointment record
+        self.data_generator.create_database_genomic_appointment(
+            message_record_id=1,
+            appointment_id=1,
+            event_type='appointment_scheduled',
+            module_type='hdr',
+            participant_id=participant.participantId,
+            event_authored_time=clock.CLOCK.now(),
+            source='Color',
+            appointment_timestamp=format_datetime(clock.CLOCK.now()),
+            appointment_timezone='America/Los_Angeles',
+            location='123 address st',
+            contact_number='17348675309',
+            language='EN'
+        )
+
+        resp = self.send_get(
+            f"GenomicScheduling?participant_id=P{participant.participantId}"
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(len(resp.get('data')), 1)
+
+        self.overwrite_test_user_client_id('careevolution')
+
+        # SHOULD NOT return since participant origin is vibrent
+        # and user client_id is careevoluton
+        resp = self.send_get(
+                f'GenomicScheduling?participant_id={participant.participantId}',
+                expected_status=http.client.NOT_FOUND
+            )
+
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json['message'], f"Participant with ID {participant.participantId}"
+                                               f" did not pass validation check")
+
+        self.overwrite_test_user_client_id('example')
+
+        # SHOULD NOT return data since client_id is invalid
+        resp = self.send_get(
+                f'GenomicScheduling?participant_id={participant.participantId}',
+                expected_status=http.client.BAD_REQUEST
+            )
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json['message'], f"Client Id cannot access GenomicScheduling lookup.")
 
     def test_validate_params(self):
         bad_response = 'GenomicScheduling GET accepted params: start_date | end_date | participant_id | module'

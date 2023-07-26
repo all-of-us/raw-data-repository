@@ -477,6 +477,8 @@ class GenomicSchedulingApi(BaseApi):
     def __init__(self):
         super().__init__(GenomicSchedulingDao())
         self.validate_scheduling_params()
+        _, user_info = get_validated_user_info()
+        self.user_info = user_info
 
     @auth_required(RDR_AND_PTC)
     def get(self):
@@ -500,12 +502,17 @@ class GenomicSchedulingApi(BaseApi):
         if not participant_id and not start_date:
             raise BadRequest('Participant ID or Start Date parameter is required for use with GenomicScheduling API.')
 
+        participant_origin = self.user_info.get('clientId')
+        if participant_origin not in GENOMIC_CLIENT_IDS:
+            raise BadRequest('Client Id cannot access GenomicScheduling lookup.')
+
         api_payload = GenomicGETPayload(
             method=self.dao.get_latest_scheduling_data,
             participant_id=participant_id,
             start_date=start_date,
             end_date=end_date,
-            module=module
+            module=module,
+            participant_origin=participant_origin
         )
         payload = api_payload.get_payload()
 

@@ -2423,7 +2423,17 @@ class GenomicSchedulingDao(BaseDao):
             "timestamp": timestamp
         }
 
-    def get_latest_scheduling_data(self, participant_id=None, start_date=None, end_date=None, module=None):
+    def get_latest_scheduling_data(
+        self,
+        participant_id=None,
+        start_date=None,
+        end_date=None,
+        module=None,
+        participant_origin=None
+    ):
+        if not participant_origin:
+            return []
+
         max_appointment_id_subquery = sqlalchemy.orm.Query(
             [functions.max(GenomicAppointmentEvent.appointment_id).label(
                 'max_appointment_id'
@@ -2487,7 +2497,8 @@ class GenomicSchedulingDao(BaseDao):
                     max_appointment_id_subquery.c.max_appointment_id,
                     GenomicAppointmentEvent.event_authored_time ==
                     max_event_authored_time_subquery.c.max_event_authored_time
-                )
+                ),
+                GenomicSetMember.participantOrigin == participant_origin
             )
 
             if module:
