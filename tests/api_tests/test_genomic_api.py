@@ -994,10 +994,10 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         with clock.FakeClock(fake_now):
             resp = self.send_get(
                 f'GenomicOutreachV2?participant_id={second_participant.participantId}',
-                expected_status=http.client.BAD_REQUEST
+                expected_status=http.client.FORBIDDEN
             )
 
-        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.status_code, 403)
         self.assertEqual(resp.json['message'], f"Client Id cannot access GenomicOutreach lookup.")
 
     def test_get_by_type(self):
@@ -2379,10 +2379,10 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
         # SHOULD NOT return data since client_id is invalid
         resp = self.send_get(
                 f'GenomicScheduling?participant_id={participant.participantId}',
-                expected_status=http.client.BAD_REQUEST
+                expected_status=http.client.FORBIDDEN
             )
 
-        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.status_code, 403)
         self.assertEqual(resp.json['message'], f"Client Id cannot access GenomicScheduling lookup.")
 
     def test_validate_params(self):
