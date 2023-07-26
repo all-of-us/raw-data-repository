@@ -1570,7 +1570,7 @@ class GenomicJobControllerTest(BaseTestCase):
         }])
 
         with clock.FakeClock(parser.parse('2022-11-1T05:15:00')):
-            escalated_participants = self.report_state_dao.get_hdr_result_positive_no_appointment()
+            escalated_participants = self.report_state_dao.get_hdr_result_positive_no_appointment(num_days=14)
             results = [pid[0] for pid in escalated_participants]
         self.assertIn(pids[2], results)
         self.assertIn(pids[3], results)
@@ -1580,7 +1580,7 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertNotIn(pids[4], results)
 
         with GenomicJobController(GenomicJob.CHECK_GCR_OUTREACH_ESCALATION) as controller:
-            controller.check_gcr_14day_escalation()
+            controller.check_gcr_escalation(controller.job_id)
 
         self.assertEqual(email_mock.call_count, 3)
 
@@ -1638,7 +1638,7 @@ class GenomicJobControllerTest(BaseTestCase):
 
         with GenomicJobController(GenomicJob.CHECK_GCR_OUTREACH_ESCALATION) as controller:
             controller.genomic_alert_slack = mock_slack_handler
-            controller.check_gcr_14day_escalation()
+            controller.check_gcr_escalation(controller.job_id)
 
         notified_dao = GenomicDefaultBaseDao(model_type=GenomicGCROutreachEscalationNotified)
         with notified_dao.session() as session:
@@ -1651,3 +1651,130 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(email_mock.call_count, 1)
         self.assertEqual(mock_slack_handler.send_message_to_webhook.call_count, 1)
         self.assertEqual(False, notification.message_sent)
+
+    # @mock.patch('rdr_service.services.email_service.EmailService.send_email')
+    # def test_check_gcr_ce_escalation(self, email_mock):
+    #     fake_date = parser.parse("2022-09-01T13:43:23")
+    #     fake_date2 = parser.parse("2022-09-02T14:14:00")
+    #     fake_date3 = parser.parse("2022-09-03T15:15:00")
+    #     config.override_setting(config.GENOMIC_GCR_ESCALATION_EMAILS, ['test@example.com'])
+    #     self.data_generator.create_database_genomic_set(
+    #         genomicSetName='test',
+    #         genomicSetCriteria='.',
+    #         genomicSetVersion=1
+    #     )
+    #     pids = []
+    #     for _ in range(6):
+    #         summary = self.data_generator.create_database_participant_summary(
+    #             consentForStudyEnrollment=1,
+    #             consentForGenomicsROR=1
+    #         )
+    #         set_member = self.data_generator.create_database_genomic_set_member(
+    #             participantId=summary.participantId,
+    #             genomicSetId=1,
+    #             biobankId=1001,
+    #             collectionTubeId=100,
+    #             sampleId=10,
+    #             genomeType="aou_wgs",
+    #         )
+    #         self.data_generator.create_database_genomic_member_report_state(
+    #             participant_id=summary.participantId,
+    #             genomic_report_state=GenomicReportState.HDR_RPT_POSITIVE,
+    #             genomic_set_member_id=set_member.id,
+    #             module='hdr_v1',
+    #             event_authored_time=fake_date
+    #         )
+    #         pids.append(summary.participantId)
+    #
+    #     # Appointment scheduled in future: don't notify
+    #     self.data_generator.create_database_genomic_appointment(
+    #         message_record_id=101,
+    #         appointment_id=102,
+    #         event_type='appointment_scheduled',
+    #         module_type='hdr',
+    #         participant_id=pids[0],
+    #         event_authored_time=fake_date,
+    #         source='Color',
+    #         appointment_timestamp=format_datetime(clock.CLOCK.now()),
+    #         appointment_timezone='America/Los_Angeles',
+    #         location='123 address st',
+    #         contact_number='17348675309',
+    #         language='en'
+    #     )
+    #
+    #     # Appointment completed: don't notify
+    #     self.data_generator.create_database_genomic_appointment(
+    #         message_record_id=102,
+    #         appointment_id=103,
+    #         event_type='appointment_completed',
+    #         module_type='hdr',
+    #         participant_id=pids[1],
+    #         event_authored_time=fake_date,
+    #         source='Color',
+    #         appointment_timestamp=fake_date,
+    #         appointment_timezone='America/Los_Angeles',
+    #         location='123 address st',
+    #         contact_number='17348675309',
+    #         language='en'
+    #     )
+    #
+    #     # Appointment scheduled then canceled: notify
+    #     self.data_generator.create_database_genomic_appointment(
+    #         message_record_id=103,
+    #         appointment_id=104,
+    #         event_type='appointment_scheduled',
+    #         module_type='hdr',
+    #         participant_id=pids[2],
+    #         event_authored_time=fake_date2,
+    #         source='Color',
+    #         appointment_timestamp=format_datetime(clock.CLOCK.now()),
+    #         appointment_timezone='America/Los_Angeles',
+    #         location='123 address st',
+    #         contact_number='17348675309',
+    #         language='en'
+    #     )
+    #     self.data_generator.create_database_genomic_appointment(
+    #         message_record_id=104,
+    #         appointment_id=104,
+    #         event_type='appointment_cancelled',
+    #         module_type='hdr',
+    #         participant_id=pids[2],
+    #         event_authored_time=fake_date3,
+    #         source='Color',
+    #         appointment_timestamp=format_datetime(clock.CLOCK.now()),
+    #         appointment_timezone='America/Los_Angeles',
+    #         location='123 address st',
+    #         contact_number='17348675309',
+    #         language='en'
+    #     )
+    #
+    #     notified_dao = GenomicDefaultBaseDao(model_type=GenomicGCROutreachEscalationNotified)
+    #     notified_dao.insert_bulk([{
+    #         'participant_id': pids[4],
+    #         'created': clock.CLOCK.now(),
+    #         'modified': clock.CLOCK.now(),
+    #         'message_sent': True
+    #     },{
+    #         'participant_id': pids[5],
+    #         'created': clock.CLOCK.now(),
+    #         'modified': clock.CLOCK.now(),
+    #         'message_sent': False
+    #     }])
+    #
+    #     with clock.FakeClock(parser.parse('2022-11-1T05:15:00')):
+    #         escalated_participants = self.report_state_dao.get_hdr_result_positive_no_appointment()
+    #         results = [pid[0] for pid in escalated_participants]
+    #     self.assertIn(pids[2], results)
+    #     self.assertIn(pids[3], results)
+    #     self.assertIn(pids[5], results)
+    #     self.assertNotIn(pids[0], results)
+    #     self.assertNotIn(pids[1], results)
+    #     self.assertNotIn(pids[4], results)
+    #
+    #     with GenomicJobController(GenomicJob.CHECK_GCR_CE_OUTREACH_ESCALATION) as controller:
+    #         controller.check_gcr_escalation(
+    #             num_days=30,
+    #             participant_origin='careevolution'
+    #         )
+    #
+    #     self.assertEqual(email_mock.call_count, 3)

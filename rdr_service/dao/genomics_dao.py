@@ -3165,9 +3165,13 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
                 return value
         return None
 
-    def get_hdr_result_positive_no_appointment(self, days=14) -> List[Tuple[int, None]]:
-        """Returns participants with hdr positive result over 14 days ago and no appointment scheduled/completed"""
-        result_before = clock.CLOCK.now() - timedelta(days=days)
+    def get_hdr_result_positive_no_appointment(
+        self,
+        num_days,
+        participant_origin=None
+    ) -> List[Tuple[int, None]]:
+        """Returns participants with hdr positive result over (num) days ago and no appointment scheduled/completed"""
+        result_before = clock.CLOCK.now() - timedelta(days=num_days)
 
         max_event_authored_time_subquery = sqlalchemy.orm.Query(
             functions.max(GenomicAppointmentEvent.event_authored_time).label(
@@ -3181,7 +3185,7 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
         ).subquery()
 
         with self.session() as session:
-            return session.query(
+            records = session.query(
                 GenomicMemberReportState.participant_id
             ).outerjoin(
                 GenomicAppointmentEvent,
@@ -3200,13 +3204,28 @@ class GenomicMemberReportStateDao(UpdatableDao, GenomicDaoMixin):
                 GenomicGCROutreachEscalationNotified.participant_id.is_(None),
                 GenomicMemberReportState.genomic_report_state == GenomicReportState.HDR_RPT_POSITIVE,
                 GenomicMemberReportState.event_authored_time < result_before,
-                or_(GenomicAppointmentEvent.event_type.notin_(('appointment_completed', 'appointment_scheduled',
-                                                               'appointment_updated')),
+                or_(GenomicAppointmentEvent.event_type.notin_(
+                    (
+                        'appointment_completed',
+                        'appointment_scheduled',
+                        'appointment_updated'
+                    )
+                ),
                     GenomicAppointmentEvent.event_type.is_(None)),
                 or_(GenomicAppointmentEvent.event_authored_time ==
                     max_event_authored_time_subquery.c.max_event_authored_time,
                     GenomicAppointmentEvent.event_authored_time.is_(None))
-            ).distinct().all()
+            )
+
+            if participant_origin:
+                records.join(
+                    GenomicSetMember,
+                    GenomicMemberReportState.participant_id == GenomicSetMember.participantId
+                ).filter(
+                    GenomicSetMember.participantOrigin == participant_origin
+                )
+
+            return records.distinct().all()
 
 
 class GenomicInformingLoopDao(UpdatableDao, GenomicDaoMixin):
