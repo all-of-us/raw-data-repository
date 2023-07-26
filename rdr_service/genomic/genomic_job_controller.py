@@ -1983,7 +1983,7 @@ class GenomicJobController:
                     EmailService.send_email(
                         Email(
                             recipients=notification_email_addresses,
-                            subject='GCR Outreach 14 Day Escalation',
+                            subject=f'GCR Outreach {gcr_outreach.get("num_days")} Day Escalation',
                             plain_text_content=str(pid)
                         )
                     )

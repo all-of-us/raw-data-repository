@@ -1583,6 +1583,7 @@ class GenomicJobControllerTest(BaseTestCase):
             controller.check_gcr_escalation(controller.job_id)
 
         self.assertEqual(email_mock.call_count, 3)
+        self.assertEqual(email_mock.call_args.args[0].subject, 'GCR Outreach 14 Day Escalation')
 
         self.clear_table_after_test('genomic_gcr_outreach_escalation_notified')
 
@@ -1784,5 +1785,6 @@ class GenomicJobControllerTest(BaseTestCase):
             controller.check_gcr_escalation(controller.job_id)
 
         self.assertEqual(email_mock.call_count, 3)
+        self.assertEqual(email_mock.call_args.args[0].subject, 'GCR Outreach 30 Day Escalation')
 
         self.clear_table_after_test('genomic_gcr_outreach_escalation_notified')
