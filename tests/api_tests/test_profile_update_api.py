@@ -435,6 +435,23 @@ class ProfileUpdateApiTest(BaseTestCase):
             preferred_language=None
         )
 
+    @mock.patch('rdr_service.api.profile_update_api.ProfileUpdateRepository.store_update_json')
+    def test_recording_update(self, store_update_mock):
+        participant_id = 123123123
+        update_json = {
+            'id': f'P{participant_id}',
+            'name': [{
+                'given': [
+                    'John'
+                ]
+            }]
+        }
+        self.send_post('Patient', request_data=update_json)
+        store_update_mock.assert_called_with(
+            participant_id=participant_id,
+            json=update_json
+        )
+
     @mock.patch(
         'rdr_service.services.ancillary_studies.study_enrollment.EnrollmentInterface.create_study_participant'
     )
