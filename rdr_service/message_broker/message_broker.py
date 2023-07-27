@@ -26,7 +26,7 @@ class BaseMessageBroker:
         """Returns the access token for the API endpoint."""
         auth_info = self.dest_auth_dao.get_auth_info(self.message.messageDest)
         if not auth_info:
-            raise BadRequest(f'can not find auth info for dest: {self.message.messageDest}')
+            raise BadRequest(f'Can not find auth info for dest: {self.message.messageDest}')
 
         now = clock.CLOCK.now()
         # the token will be expired in 300 secs, compare with the timestamp of 20 secs later
@@ -54,15 +54,15 @@ class BaseMessageBroker:
             return r_json['access_token']
         else:
             logging.warning(
-                f'received {response.status_code} from message broker auth endpoint for {self.message.messageDest}'
+                f'Received {response.status_code} from message broker auth endpoint for {self.message.messageDest}'
             )
-            raise BadGateway(f'can not get access token for dest: {self.message.messageDest}, '
+            raise BadGateway(f'Can not get access token for dest: {self.message.messageDest}, '
                              f'response error: {str(response.status_code)}')
 
     def _get_message_dest_url(self):
         dest_url = self.message_metadata_dao.get_dest_url(self.message.eventType, self.message.messageDest)
         if not dest_url:
-            raise BadRequest(f'no destination url found for dest: {self.message.messageDest} '
+            raise BadRequest(f'No destination url found for dest: {self.message.messageDest} '
                              f'and event: {self.message.eventType}')
         return dest_url
 
@@ -113,7 +113,21 @@ class BaseMessageBroker:
 
 class PtscMessageBroker(BaseMessageBroker):
     def __init__(self, message):
-        super(PtscMessageBroker, self).__init__(message)
+        super().__init__(message)
+
+    def make_request_body(self):
+        request_body = {
+            'event': self.message.eventType,
+            'eventAuthoredTime': format_datetime(self.message.eventAuthoredTime),
+            'participantId': to_client_participant_id(self.message.participantId),
+            'messageBody': self.message.requestBody
+        }
+        return request_body
+
+
+class CareEvolutionMessageBroker(BaseMessageBroker):
+    def __init__(self, message):
+        super().__init__(message)
 
     def make_request_body(self):
         request_body = {
@@ -126,9 +140,16 @@ class PtscMessageBroker(BaseMessageBroker):
 
 
 class MessageBrokerFactory:
-    @staticmethod
-    def create(message):
-        if message.messageDest == 'vibrent':
-            return PtscMessageBroker(message)
-        else:
-            raise BadRequest(f'no destination found: {message.messageDest}')
+
+    @classmethod
+    def create(cls, message):
+
+        try:
+            broker_factory = {
+                'vibrent': PtscMessageBroker,
+                'careevolution': CareEvolutionMessageBroker
+            }[message.messageDest.lower()]
+            return broker_factory(message)
+
+        except (KeyError, Exception) as e:
+            raise BadRequest(f'Error occurred in factory creation: {message.messageDest} Error: {e}')
