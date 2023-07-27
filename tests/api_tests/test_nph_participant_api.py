@@ -116,9 +116,17 @@ class NphParticipantAPITest(BaseTestCase):
         # pairing event type(s)
         self.nph_data_gen.create_database_pairing_event_type(name="INITIAL")
         # enrollment event type(s)
-        for name in ['referred', 'module1_consented']:
+        enrollment_event_types = {
+            'nph_referred': {
+                'name': 'REFERRED',
+            },
+            'module1_consented': {
+                'name': 'Module 1 Consented'
+            }
+        }
+        for name, value in enrollment_event_types.items():
             self.nph_data_gen.create_database_enrollment_event_type(
-                name=name,
+                name=value['name'],
                 source_name=name
             )
         # consent event type(s)
@@ -450,8 +458,49 @@ class NphParticipantAPITest(BaseTestCase):
         for status in enrollment_statuses:
             self.assertIn("time", status)
             self.assertIn("value", status)
-            if status['time']:
-                self.assertEqual(status['value'], 'module1_consented')
+            self.assertEqual(status['value'], 'module1_consented')
+
+    def test_blocked_nphEnrollmentStatus_fields(self):
+        self.add_consents(nph_participant_ids=[self.base_participant_ids[0]])
+        # module1_consented
+        self.nph_data_gen.create_database_enrollment_event(
+            participant_id=self.base_participant_ids[0],
+            event_authored_time=clock.CLOCK.now(),
+            event_type_id=2
+        )
+        # death and losttofollowup
+        blocked_enrollment_event_types = {
+            'module1_death': {
+                'name': 'Module 1 Death'
+            },
+            'module1_losttofollowup': {
+                'name': 'Module 1 Lost to follow up'
+            }
+        }
+        for name, value in blocked_enrollment_event_types.items():
+            event_type = self.nph_data_gen.create_database_enrollment_event_type(
+                name=value['name'],
+                source_name=name
+            )
+            self.nph_data_gen.create_database_enrollment_event(
+                participant_id=self.base_participant_ids[0],
+                event_authored_time=clock.CLOCK.now(),
+                event_type_id=event_type.id
+            )
+        field_to_test = "nphEnrollmentStatus {value time} "
+        query = simple_query(field_to_test)
+        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+        result = json.loads(executed.data.decode('utf-8'))
+
+        self.assertEqual(1, len(result.get('participant').get('edges')))
+
+        enrollment_statuses = result.get('participant').get('edges')[0].get('node').get('nphEnrollmentStatus')
+
+        self.assertEqual(len(enrollment_statuses), 1)
+        for status in enrollment_statuses:
+            self.assertIn("time", status)
+            self.assertIn("value", status)
+            self.assertEqual(status['value'], 'module1_consented')
 
     def test_nphModule1ConsentStatus_fields(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
