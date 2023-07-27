@@ -43,7 +43,7 @@ class EtmApi:
 
         return {
             **questionnaire_json,
-            'id': questionnaire_obj.id
+            'id': str(questionnaire_obj.id)
         }
 
     @classmethod
@@ -64,7 +64,7 @@ class EtmApi:
             response_repository.store_response(response_obj)
 
             return {
-                'id': response_obj.id,
+                'id': str(response_obj.id),
                 **questionnaire_response_json
             }
         else:
