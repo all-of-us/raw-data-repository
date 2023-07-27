@@ -861,7 +861,18 @@ def genomic_update_wgs_storage_class():
 @app_util.auth_required_cron
 @check_genomic_cron_job('notify_gcr_outreach_escalation')
 def genomic_notify_gcr_outreach_escalation():
-    genomic_cvl_pipeline.check_gcr_appointment_escalation()
+    genomic_cvl_pipeline.check_gcr_appointment_escalation(
+        gcr_outreach_job_type=GenomicJob.CHECK_GCR_OUTREACH_ESCALATION
+    )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@check_genomic_cron_job('notify_gcr_ce_outreach_escalation')
+def genomic_notify_gcr_ce_outreach_escalation():
+    genomic_cvl_pipeline.check_gcr_appointment_escalation(
+        gcr_outreach_job_type=GenomicJob.CHECK_GCR_CE_OUTREACH_ESCALATION
+    )
     return '{"success": "true"}'
 
 
@@ -1424,6 +1435,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'GenomicNotifyGCROutreachEscalation',
         endpoint='genomic_notify_outreach_escalation',
         view_func=genomic_notify_gcr_outreach_escalation,
+        methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'GenomicNotifyGCRCEOutreachEscalation',
+        endpoint='genomic_notify_gcr_ce_outreach_escalation',
+        view_func=genomic_notify_gcr_ce_outreach_escalation,
         methods=['GET']
     )
 

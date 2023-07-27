@@ -132,6 +132,7 @@ class GenomicJob(messages.Enum):
     UPDATE_WGS_STORAGE_CLASS = 75
     CHECK_APPOINTMENT_GROR_CHANGED = 76
     CHECK_GCR_OUTREACH_ESCALATION = 77
+    CHECK_GCR_CE_OUTREACH_ESCALATION = 78
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
