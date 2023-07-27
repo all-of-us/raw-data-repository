@@ -2,7 +2,7 @@ import pytz
 from dateutil import parser
 
 from flask import request
-from werkzeug.exceptions import NotFound, BadRequest
+from werkzeug.exceptions import NotFound, BadRequest, Forbidden
 
 from rdr_service import clock, config
 from rdr_service.api.base_api import BaseApi, log_api_request, UpdatableApi
@@ -238,7 +238,8 @@ class GenomicOutreachApi(BaseApi):
         model = self.dao.from_client_json(resource, participant_id=p_id, mode='gem')
         participant_origin = self.user_info.get('clientId')
         if participant_origin not in GENOMIC_CLIENT_IDS:
-            raise BadRequest('Client Id cannot access GenomicOutreach update.')
+            raise Forbidden('Client Id cannot access GenomicOutreach update.')
+
         model.participantOrigin = participant_origin
         m = self._do_insert(model)
 
@@ -320,7 +321,7 @@ class GenomicOutreachApiV2(UpdatableApi):
 
         participant_origin = self.user_info.get('clientId')
         if participant_origin not in GENOMIC_CLIENT_IDS:
-            raise BadRequest('Client Id cannot access GenomicOutreach lookup.')
+            raise Forbidden('Client Id cannot access GenomicOutreach lookup.')
 
         api_payload = GenomicGETPayload(
             method=self.dao.get_outreach_data,
@@ -477,6 +478,8 @@ class GenomicSchedulingApi(BaseApi):
     def __init__(self):
         super().__init__(GenomicSchedulingDao())
         self.validate_scheduling_params()
+        _, user_info = get_validated_user_info()
+        self.user_info = user_info
 
     @auth_required(RDR_AND_PTC)
     def get(self):
@@ -500,12 +503,17 @@ class GenomicSchedulingApi(BaseApi):
         if not participant_id and not start_date:
             raise BadRequest('Participant ID or Start Date parameter is required for use with GenomicScheduling API.')
 
+        participant_origin = self.user_info.get('clientId')
+        if participant_origin not in GENOMIC_CLIENT_IDS:
+            raise Forbidden('Client Id cannot access GenomicScheduling lookup.')
+
         api_payload = GenomicGETPayload(
             method=self.dao.get_latest_scheduling_data,
             participant_id=participant_id,
             start_date=start_date,
             end_date=end_date,
-            module=module
+            module=module,
+            participant_origin=participant_origin
         )
         payload = api_payload.get_payload()
 
