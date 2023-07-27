@@ -60,6 +60,21 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         report_subdir=biobank_samples_pipeline._OVERDUE_DNA_SAMPLES_SUBDIR
     )
 
+    def _verify_overdue_samples_report(self, biobank_id=None, biobank_order=None,
+                                       finalized=None, overdue_samples=None):
+        blob = get_blob(_FAKE_BUCKET, blob_name=self.overdue_samples_blobname)
+        self.assertIsNotNone(blob)
+        with open_cloud_file("/%s/%s" % (_FAKE_BUCKET, self.overdue_samples_blobname), mode='rb') as cloud_file:
+            lines = cloud_file.readlines()
+            if not overdue_samples:
+                # No overdue samples expected in this report; verify it's a header row only
+                self.assertEqual(1, len(lines))
+                self.assertEqual(lines[0].decode().rstrip(),
+                                 'biobank_id,biobank_order_id,order_finalized_date,overdue_dna_samples')
+            else:
+                # Verify the data row expected by the test case
+                self.assertEqual(lines[1].decode().rstrip(),
+                                 f'{biobank_id},{biobank_order},{finalized},{overdue_samples}')
     def _write_cloud_csv(self, file_name, contents_str):
         with open_cloud_file("/%s/%s" % (_FAKE_BUCKET, file_name), mode='wb') as cloud_file:
             cloud_file.write(contents_str.encode("utf-8"))
@@ -599,10 +614,13 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         with mock.patch('rdr_service.offline.biobank_samples_pipeline.logging') as mock_logging, \
              mock.patch('rdr_service.services.slack_utils.SlackMessageHandler.send_message_to_webhook') as mock_slack:
             biobank_samples_pipeline.overdue_samples_check(self.overdue_samples_report_dt)
-            # Verify presence of expected bucket file
+            # Verify generated bucket file
             blob = get_blob(_FAKE_BUCKET, blob_name=self.overdue_samples_blobname)
             self.assertIsNotNone(blob)
-
+            self._verify_overdue_samples_report(biobank_id=f'{biobank_prefix}{participant.biobankId}',
+                                                biobank_order=order.biobankOrderId,
+                                                finalized=order_ts.strftime("%Y-%m-%d %H:%M:%S"),
+                                                overdue_samples='1ED04')
             # Verify Slack message populated from bucket file rows
             error_log_call = mock_logging.error.call_args
             slack_webhook_args = mock_slack.call_args
@@ -636,12 +654,12 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             processed=order_ts,
             finalized=order_ts
         )
-        # Verify there was no file dropped to the bucket
-        blob = get_blob(_FAKE_BUCKET, blob_name=self.overdue_samples_blobname)
-        self.assertIsNone(blob)
 
         with mock.patch('rdr_service.offline.biobank_samples_pipeline.logging') as mock_logging:
             biobank_samples_pipeline.overdue_samples_check(self.overdue_samples_report_dt)
+            # Verify there was an empty file (header row only) dropped to the bucket
+            self._verify_overdue_samples_report(overdue_samples=None)
+            # Verify there were no errors logged (logging also triggers slack notification)
             error_log_call = mock_logging.error.call_args
             self.assertIsNone(error_log_call, "Missing sample notification not expected for cancelled orders")
 
@@ -669,11 +687,10 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             finalized=order_ts
         )
 
-        # Verify there was no file dropped to the bucket
-        blob = get_blob(_FAKE_BUCKET, blob_name=self.overdue_samples_blobname)
-        self.assertIsNone(blob)
-
         with mock.patch('rdr_service.offline.biobank_samples_pipeline.logging') as mock_logging:
             biobank_samples_pipeline.overdue_samples_check(self.overdue_samples_report_dt)
+            # Verify there was an empty file (header row only) dropped to the bucket
+            self._verify_overdue_samples_report(overdue_samples=None)
+            # Verify there were no errors logged (logging also triggers slack notification)
             error_log_call = mock_logging.error.call_args
             self.assertIsNone(error_log_call, "Overdue sample notification not expected for orders under a week old")
