@@ -32,7 +32,7 @@ def upgrade_rdr():
         sa.Column("cache_table_name", sa.String(length=100), nullable=False),
         sa.Column("type", sa.String(length=50), nullable=True),
         sa.Column("in_progress", sa.Boolean(), nullable=False),
-        sa.Column("complete", sa.Boolean(), nullable=False),
+        sa.Column("complete", sa.Boolean(create_constraint=False), nullable=False),
         sa.Column("date_inserted", model.utils.UTCDateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )

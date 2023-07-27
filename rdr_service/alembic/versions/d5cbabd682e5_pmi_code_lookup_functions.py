@@ -22,6 +22,7 @@ fn_get_code_module = ReplaceableObject(
     """
   (pmi_code VARCHAR(80))
   RETURNS VARCHAR(80)
+  READS SQL DATA
   BEGIN
     # Return the top most parent PMI code of the given PMI code, the code may be
     # of any code_type (1 thru 4).
@@ -44,6 +45,7 @@ fn_get_code_module_id = ReplaceableObject(
     """
   (pmi_code VARCHAR(80))
   RETURNS INT
+  READS SQL DATA
   BEGIN
     # Return the top most parent ID of the given PMI code, the code may be
     # of any code_type (1 thru 4).
