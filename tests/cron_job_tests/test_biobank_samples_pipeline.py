@@ -64,16 +64,16 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
                                        finalized=None, overdue_samples=None):
         blob = get_blob(_FAKE_BUCKET, blob_name=self.overdue_samples_blobname)
         self.assertIsNotNone(blob)
-        with open_cloud_file("/%s/%s" % (_FAKE_BUCKET, self.overdue_samples_blobname), mode='rb') as cloud_file:
+        with open_cloud_file("/%s/%s" % (_FAKE_BUCKET, self.overdue_samples_blobname)) as cloud_file:
             lines = cloud_file.readlines()
             if not overdue_samples:
                 # No overdue samples expected in this report; verify it's a header row only
                 self.assertEqual(1, len(lines))
-                self.assertEqual(lines[0].decode().rstrip(),
+                self.assertEqual(lines[0].rstrip(),
                                  'biobank_id,biobank_order_id,order_finalized_date,overdue_dna_samples')
             else:
                 # Verify the data row expected by the test case
-                self.assertEqual(lines[1].decode().rstrip(),
+                self.assertEqual(lines[1].rstrip(),
                                  f'{biobank_id},{biobank_order},{finalized},{overdue_samples}')
     def _write_cloud_csv(self, file_name, contents_str):
         with open_cloud_file("/%s/%s" % (_FAKE_BUCKET, file_name), mode='wb') as cloud_file:
