@@ -64,7 +64,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
                                        finalized=None, overdue_samples=None):
         blob = get_blob(_FAKE_BUCKET, blob_name=self.overdue_samples_blobname)
         self.assertIsNotNone(blob)
-        with open_cloud_file("/%s/%s" % (_FAKE_BUCKET, self.overdue_samples_blobname)) as cloud_file:
+        with open_cloud_file(f'/{_FAKE_BUCKET}/{self.overdue_samples_blobname}') as cloud_file:
             lines = cloud_file.readlines()
             if not overdue_samples:
                 # No overdue samples expected in this report; verify it's a header row only
@@ -76,7 +76,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
                 self.assertEqual(lines[1].rstrip(),
                                  f'{biobank_id},{biobank_order},{finalized},{overdue_samples}')
     def _write_cloud_csv(self, file_name, contents_str):
-        with open_cloud_file("/%s/%s" % (_FAKE_BUCKET, file_name), mode='wb') as cloud_file:
+        with open_cloud_file(f'/{_FAKE_BUCKET}/{file_name}', mode='wb') as cloud_file:
             cloud_file.write(contents_str.encode("utf-8"))
 
     def _make_biobank_order(self, **kwargs):
