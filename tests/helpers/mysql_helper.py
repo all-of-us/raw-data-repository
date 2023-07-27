@@ -134,7 +134,7 @@ def _clear_data(engine):
     engine.execute("set foreign_key_checks = 0")
     for table_name, is_dirty in table_changed.items():
         if is_dirty:
-            engine.execute(f'truncate table {table_name}')
+            engine.execute(f'delete from {table_name}')
             table_changed[table_name] = False
 
     engine.execute("set foreign_key_checks = 1")
