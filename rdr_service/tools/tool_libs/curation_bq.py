@@ -63,7 +63,14 @@ class CurationBQ(ToolBase):
         'ehr_consent',
         'wear_consent',
         'participant_id_mapping',
-        'finalize'
+        'finalize',
+        'qrai_author',
+        'qrai_language',
+        'qrai_code',
+        'tmp_survey_conduct',
+        'survey_conduct',
+        'create_empty_tables',
+        'pid_rid_mapping'
     ]
 
     export_tables = [
