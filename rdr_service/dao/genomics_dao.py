@@ -2782,7 +2782,7 @@ class GenomicAW2RawDao(BaseDao, GenomicDaoMixin):
                 GenomicAW2Raw.file_path == filepath
             ).one_or_none()
 
-    def get_raw_record_from_identifier_genome_type(self, *, identifier, genome_type, created_after:datetime=None):
+    def get_raw_record_from_identifier_genome_type(self, *, identifier, genome_type, created_after: datetime = None):
         with self.session() as session:
             record = session.query(GenomicAW2Raw).filter(
                 GenomicAW2Raw.sample_id == identifier,

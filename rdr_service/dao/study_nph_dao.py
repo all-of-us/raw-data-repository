@@ -103,7 +103,8 @@ class NphParticipantDao(BaseDao):
                     func.json_arrayagg(
                         func.json_object(
                             'time', EnrollmentEvent.event_authored_time,
-                            'value', EnrollmentEventType.source_name)
+                            'value', EnrollmentEventType.source_name
+                        )
                     ), type_=JSON
                 ).label('enrollment_status'),
             ).join(
@@ -112,6 +113,9 @@ class NphParticipantDao(BaseDao):
             ).join(
                 EnrollmentEventType,
                 EnrollmentEventType.id == EnrollmentEvent.event_type_id,
+            ).filter(
+                EnrollmentEventType.source_name.notlike('%_death'),
+                EnrollmentEventType.source_name.notlike('%_losttofollowup')
             ).group_by(Participant.id).subquery()
 
     def get_orders_samples_subquery(self):
