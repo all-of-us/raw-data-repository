@@ -842,15 +842,15 @@ def write_overdue_samples_report(report_date):
 
     exporter = SqlExporter(bucket_name)
     tmp_file, has_data_rows = exporter.run_export(file_name, OVERDUE_DNA_SAMPLES_SQL, query_params, backup=True,
-                                                  skip_upload_if_empty=True)
-    return tmp_file if has_data_rows else None
+                                                  skip_upload_if_empty=False)
+    return tmp_file, has_data_rows
 
 def overdue_samples_check(report_date=datetime.datetime.utcnow()):
     slack_config = config.getSettingJson(RDR_SLACK_WEBHOOKS, {})
     webhook_url = slack_config.get('rdr_biobank_missing_samples_webhook', None)
-    report_tmp_file = write_overdue_samples_report(report_date)
-    # If a file was generated/uploaded, also post a slack alert with the details
-    if report_tmp_file:
+    report_tmp_file, has_data_rows = write_overdue_samples_report(report_date)
+    # If a file with data was generated/uploaded, also post a slack alert with the details
+    if report_tmp_file and has_data_rows:
         with open(report_tmp_file, 'r', encoding='utf-8') as f:
             csv_reader = csv.DictReader(f)
             alert_msg = ''
