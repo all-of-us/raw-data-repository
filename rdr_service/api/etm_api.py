@@ -42,8 +42,7 @@ class EtmApi:
         repository.store_questionnaire(questionnaire_obj)
 
         return {
-            **questionnaire_json,
-            'id': str(questionnaire_obj.id)
+            **questionnaire_json
         }
 
     @classmethod
