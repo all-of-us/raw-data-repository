@@ -1,7 +1,4 @@
 from tests.helpers.unittest_base import BaseTestCase
-from rdr_service.clock import FakeClock
-from rdr_service import clock
-from datetime import timedelta
 
 
 class ResearchProjectsDirectoryApiTest(BaseTestCase):
@@ -180,10 +177,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "findingsFromStudy": 'findingsFromStudy string2'
             }
         ]
-        now = clock.CLOCK.now()
-        sequest_hours_ago = now - timedelta(hours=24)
-        with FakeClock(sequest_hours_ago):
-            self.send_post('workbench/directory/workspaces', request_data=request_json)
+
+        self.send_post('workbench/directory/workspaces', request_data=request_json)
         # test get research projects directory before review
         result = self.send_get('researchHub/projectDirectory')
         self.assertEqual(len(result['data']), 2)
@@ -721,10 +716,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "findingsFromStudy": 'findingsFromStudy string2'
             }
         ]
-        now = clock.CLOCK.now()
-        sequest_hours_ago = now - timedelta(hours=24)
-        with FakeClock(sequest_hours_ago):
-            self.send_post('workbench/directory/workspaces', request_data=request_json)
+
+        self.send_post('workbench/directory/workspaces', request_data=request_json)
         result = self.send_get('researchHub/projectDirectory?status=ACTIVE')
         self.assertEqual(len(result['data']), 1)
         # test search by project purpose
@@ -784,97 +777,6 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         result = self.send_get('researchHub/projectDirectory?page=1&pageSize=2')
         self.assertEqual(result['totalMatchedRecords'], 2)
         self.assertEqual(len(result['data']), 2)
-
-    def test_get_research_projects_directory_less_than_23_hours(self):
-        # create researchers
-        researchers_json = [
-            {
-                "userId": 0,
-                "creationTime": "2019-11-26T21:21:13.056Z",
-                "modifiedTime": "2019-11-26T21:21:13.056Z",
-                "givenName": "given name 1",
-                "familyName": "family name 1",
-                "streetAddress1": "string",
-                "streetAddress2": "string",
-                "city": "string",
-                "state": "string",
-                "zipCode": "string",
-                "country": "string",
-                "ethnicity": "HISPANIC",
-                "gender": ["MAN"],
-                "race": ["AIAN"],
-                "sexAtBirth": ["FEMALE"],
-                "sexualOrientation": "BISEXUAL",
-                "affiliations": [
-                    {
-                        "institution": "institution1",
-                        "role": "institution role 1",
-                        "nonAcademicAffiliation": "INDUSTRY"
-                    }
-                ],
-                "verifiedInstitutionalAffiliation": {
-                    "institutionShortName": "verified institution",
-                    "institutionalRole": "verified institution role 1",
-                    "nonAcademicAffiliation": "INDUSTRY"
-                }
-            }
-        ]
-        self.send_post('workbench/directory/researchers', request_data=researchers_json)
-
-        # create workspace
-        request_json = [
-            {
-                "workspaceId": 0,
-                "name": "workspace name str",
-                "creationTime": "2020-11-25T17:43:41.085Z",
-                "modifiedTime": "2020-11-25T17:43:41.085Z",
-                "status": "ACTIVE",
-                "workspaceUsers": [
-                    {
-                        "userId": 0,
-                        "role": "READER",
-                        "status": "ACTIVE"
-                    }
-                ],
-                "excludeFromPublicDirectory": False,
-                "diseaseFocusedResearch": True,
-                "diseaseFocusedResearchName": "disease focused research name str",
-                "otherPurposeDetails": "other purpose details str",
-                "methodsDevelopment": True,
-                "controlSet": True,
-                "ancestry": True,
-                "socialBehavioral": True,
-                "populationHealth": True,
-                "drugDevelopment": True,
-                "commercialPurpose": True,
-                "educational": True,
-                "otherPurpose": True,
-                "scientificApproaches": 'reasonForInvestigation string',
-                "intendToStudy": 'intendToStudy string',
-                "findingsFromStudy": 'findingsFromStudy string',
-                "focusOnUnderrepresentedPopulations": True,
-                "workspaceDemographic": {
-                    "raceEthnicity": ['AIAN', 'MENA'],
-                    "age": ['AGE_0_11', 'AGE_65_74'],
-                    "sexAtBirth": "UNSET",
-                    "genderIdentity": "OTHER_THAN_MAN_WOMAN",
-                    "sexualOrientation": "OTHER_THAN_STRAIGHT",
-                    "geography": "RURAL",
-                    "disabilityStatus": "DISABILITY",
-                    "accessToCare": "NOT_EASILY_ACCESS_CARE",
-                    "educationLevel": "LESS_THAN_HIGH_SCHOOL",
-                    "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
-                    "others": "string"
-                }
-            }
-        ]
-        now = clock.CLOCK.now()
-        sequest_hours_ago = now - timedelta(hours=22)
-        with FakeClock(sequest_hours_ago):
-            self.send_post('workbench/directory/workspaces', request_data=request_json)
-        # test get research projects directory before review
-        result = self.send_get('researchHub/projectDirectory')
-        self.assertEqual(len(result['data']), 0)
 
     def test_workspace_audit_sync_api(self):
         # create researchers
@@ -1641,10 +1543,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "findingsFromStudy": 'findingsFromStudy string2'
             }
         ]
-        now = clock.CLOCK.now()
-        sequest_hours_ago = now - timedelta(hours=24)
-        with FakeClock(sequest_hours_ago):
-            self.send_post('workbench/directory/workspaces', request_data=request_json)
+
+        self.send_post('workbench/directory/workspaces', request_data=request_json)
         # test get research projects directory before review
         result = self.send_get('researchHub/projectDirectory')
         self.assertEqual(len(result['data']), 1)
@@ -1864,10 +1764,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "findingsFromStudy": 'findingsFromStudy string2'
             }
         ]
-        now = clock.CLOCK.now()
-        sequest_hours_ago = now - timedelta(hours=24)
-        with FakeClock(sequest_hours_ago):
-            self.send_post('workbench/directory/workspaces', request_data=request_json)
+
+        self.send_post('workbench/directory/workspaces', request_data=request_json)
 
         # check that only the workspace created after May of 2020 is returned
         result = self.send_get('researchHub/projectDirectory?status=ACTIVE')

@@ -6,7 +6,6 @@ from rdr_service.app_util import auth_required
 from rdr_service.dao.workbench_dao import WorkbenchWorkspaceDao
 from rdr_service.participant_enums import WorkbenchWorkspaceStatus
 
-DEFAULT_SEQUESTRATION_WINDOWS = 23
 MAX_PAGE_SIZE = 2000
 
 
@@ -18,7 +17,6 @@ class ResearchProjectsDirectoryApi(Resource):
     def get(self):
         params = {
             'status': request.args.get('status'),
-            'sequest_hour': request.args.get('sequestHour'),
             'given_name': request.args.get('givenName'),
             'family_name': request.args.get('familyName'),
             'owner_name': request.args.get('ownerName'),
@@ -54,14 +52,6 @@ class ResearchProjectsDirectoryApi(Resource):
                 raise BadRequest(f"Invalid parameter status: {params['status']}")
         else:
             filters['status'] = None
-
-        if params['sequest_hour']:
-            try:
-                filters['sequest_hour'] = int(params['sequest_hour'])
-            except TypeError:
-                raise BadRequest(f"Invalid parameter sequestHour: {params['sequest_hour']}")
-        else:
-            filters['sequest_hour'] = DEFAULT_SEQUESTRATION_WINDOWS
 
         if params['user_source_id']:
             try:
