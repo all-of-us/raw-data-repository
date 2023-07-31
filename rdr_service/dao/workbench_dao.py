@@ -7,7 +7,7 @@ from sqlalchemy import desc, or_, and_, func, distinct, case
 from sqlalchemy.orm import subqueryload, aliased
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
-from datetime import datetime, timedelta
+from datetime import datetime
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.bq_workbench_dao import rebuild_bq_wb_researchers
@@ -473,7 +473,6 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
     def get_workspaces_with_user_detail(self, **kwargs):
         status = kwargs.get('status')
-        sequest_hour = kwargs.get('sequest_hour')
         given_name = kwargs.get('given_name')
         family_name = kwargs.get('family_name')
         owner_name = kwargs.get('owner_name')
@@ -491,8 +490,6 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             raise BadRequest("invalid parameter: page")
 
         workspace_dict = {}
-        now = clock.CLOCK.now()
-        sequest_hours_ago = now - timedelta(hours=sequest_hour)
         with self.session() as session:
             start_date = datetime(2020, 5, 27)
             subquery = (
@@ -510,8 +507,6 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                                            WorkbenchWorkspaceUser.role == int(WorkbenchWorkspaceUserRole.OWNER),
                                            WorkbenchWorkspaceApproved.id.notin_(subquery)
                                        )),
-                                   or_(WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
-                                       WorkbenchWorkspaceApproved.isReviewed == 1),
                                    WorkbenchWorkspaceApproved.creationTime > start_date
                                    )
                            )
@@ -534,10 +529,6 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
                     WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
                     WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
-                    or_(
-                        WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
-                        WorkbenchWorkspaceApproved.isReviewed == 1
-                    ),
                     WorkbenchWorkspaceApproved.creationTime > start_date
                 ).order_by(
                     desc(WorkbenchWorkspaceApproved.modifiedTime)
@@ -554,10 +545,6 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
                     WorkbenchResearcher.id == WorkbenchInstitutionalAffiliations.researcherId,
                     WorkbenchInstitutionalAffiliations.isVerified == 1,
-                    or_(
-                        WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
-                        WorkbenchWorkspaceApproved.isReviewed == 1
-                    ),
                     WorkbenchWorkspaceApproved.creationTime > start_date
                 )
             )
