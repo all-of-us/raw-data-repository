@@ -941,9 +941,14 @@ class QuestionnaireResponseDao(BaseDao):
 
         if 'verified' in remote_id_info:
             if remote_id_info['verified'] == "true":
+                if 'verified_on' in remote_id_info:
+                    participant_summary.remoteIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
+                else:
+                    raise BadRequest(
+                        f"Cannot accept a remote id verification without the verified_on"
+                    )
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
                 participant_summary.remoteIdVerificationStatus = True
-                participant_summary.remoteIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
                 participant_summary.everIdVerified = True
                 participant_summary.idVerificationOrigin = IdVerificationOriginType.REMOTE
                 if not participant_summary.firstIdVerifiedOn:
