@@ -23,8 +23,8 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.model.utils import Enum
 from rdr_service.offline.sync_consent_files import ConsentSyncGuesser
-from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
-    LogResultStrategy
+from rdr_service.services.consent.validation import ConsentValidationController, \
+    LogResultStrategy, UpdateResultStrategy
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
@@ -263,7 +263,7 @@ class ConsentTool(ToolBase):
         )
         with open(self.args.pid_file) as pid_file,\
                 self.get_session() as session,\
-                ReplacementStoringStrategy(
+                UpdateResultStrategy(
                     session=session,
                     consent_dao=controller.consent_dao,
                     project_id=self.gcp_env.project
