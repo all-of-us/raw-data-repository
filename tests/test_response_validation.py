@@ -237,6 +237,11 @@ class TestConditionalFromBranchingLogic(BaseTestCase):
         result = Condition.from_branching_logic(branching_logic)
         self.assertEqual(branching_logic, str(result))
 
+    def test_equality_with_integer(self):
+        branching_logic = "[a] = 7"
+        result = Condition.from_branching_logic(branching_logic)
+        self.assertEqual("[a] = '7'", str(result))
+
     def test_answer_greater_than(self):
         branching_logic = "[a] > 7"
         result = Condition.from_branching_logic(branching_logic)
