@@ -21,11 +21,9 @@ class EtmIngestionTest(BaseTestCase):
     def test_questionnaire_ingestion(self):
         with open(data_path('etm_questionnaire.json')) as file:
             questionnaire_json = json.load(file)
-        response = self.send_post('Questionnaire', questionnaire_json)
+        self.send_post('Questionnaire', questionnaire_json)
 
-        questionnaire_obj: etm.EtmQuestionnaire = self.session.query(etm.EtmQuestionnaire).filter(
-            etm.EtmQuestionnaire.etm_questionnaire_id == response['id']
-        ).one()
+        questionnaire_obj: etm.EtmQuestionnaire = self.session.query(etm.EtmQuestionnaire).one()
         self.assertEqual('emorecog', questionnaire_obj.questionnaire_type)
         self.assertEqual(questionnaire_json['identifier'][0]['value'], questionnaire_obj.semantic_version)
         self.assertEqual(questionnaire_json['text']['div'], questionnaire_obj.title)
@@ -36,18 +34,14 @@ class EtmIngestionTest(BaseTestCase):
         with open(data_path('etm_questionnaire.json')) as file:
             questionnaire_json = json.load(file)
 
-        first_response = self.send_post('Questionnaire', questionnaire_json)
-        second_response = self.send_post('Questionnaire', questionnaire_json)
+        self.send_post('Questionnaire', questionnaire_json)
+        self.send_post('Questionnaire', questionnaire_json)
 
-        first_questionnaire: etm.EtmQuestionnaire = self.session.query(etm.EtmQuestionnaire).filter(
-            etm.EtmQuestionnaire.etm_questionnaire_id == first_response['id']
-        ).one()
-        self.assertEqual(1, first_questionnaire.version)
-
-        second_questionnaire: etm.EtmQuestionnaire = self.session.query(etm.EtmQuestionnaire).filter(
-            etm.EtmQuestionnaire.etm_questionnaire_id == second_response['id']
-        ).one()
-        self.assertEqual(2, second_questionnaire.version)
+        questionnaire_list: List[etm.EtmQuestionnaire] = self.session.query(etm.EtmQuestionnaire).order_by(
+            etm.EtmQuestionnaire.version
+        ).all()
+        for expected_version, questionnaire in enumerate(questionnaire_list, start=1):
+            self.assertEqual(expected_version, questionnaire.version)
 
     def test_questionnaire_api_response(self):
         """Ensure that the full json sent is returned in the response"""
@@ -55,16 +49,12 @@ class EtmIngestionTest(BaseTestCase):
             questionnaire_json = json.load(file)
         response = self.send_post('Questionnaire', questionnaire_json)
 
-        # We overwrite the id value with our own internal id
-        del response['id']
-        del questionnaire_json['id']
-
         self.assertEqual(questionnaire_json, response)
 
     def test_questionnaire_response_ingestion(self):
         with open(data_path('etm_questionnaire.json')) as file:
             questionnaire_json = json.load(file)
-            questionnaire = self.send_post('Questionnaire', questionnaire_json)
+            self.send_post('Questionnaire', questionnaire_json)
 
         participant_id = self.data_generator.create_database_participant().participantId
 
@@ -80,7 +70,6 @@ class EtmIngestionTest(BaseTestCase):
         self.assertEqual('emorecog', saved_response.questionnaire_type)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, saved_response.status)
         self.assertEqual(participant_id, saved_response.participant_id)
-        self.assertEqual(questionnaire['id'], saved_response.etm_questionnaire_id)
         self.assertEqual(questionnaire_response_json, saved_response.resource)
         self.assert_has_answers(
             expected_answer_list=[
