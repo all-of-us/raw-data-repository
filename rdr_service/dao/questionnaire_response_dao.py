@@ -103,7 +103,7 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
 from rdr_service.model.measurements import PhysicalMeasurements, Measurement
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseExtension, QuestionnaireResponseClassificationType
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption, SurveyQuestionType
 from rdr_service.participant_enums import (
@@ -480,8 +480,8 @@ class QuestionnaireResponseDao(BaseDao):
         # profile update data (not a full survey). PTSC may eventually start marking TheBasics profile update
         # payloads with in-progress FHIR status;  for now, must inspect the response content/code ids to determine
         if (module == THE_BASICS_PPI_MODULE and
-                    (questionnaire_response.status == QuestionnaireResponseStatus.IN_PROGRESS or
-                     all(c in self.thebasics_profile_update_codes for c in code_ids))
+            (questionnaire_response.status == QuestionnaireResponseStatus.IN_PROGRESS or
+             all(c in self.thebasics_profile_update_codes for c in code_ids))
         ):
             questionnaire_response.classificationType = QuestionnaireResponseClassificationType.PROFILE_UPDATE
         # in-progress status can also denote other partial/incomplete payloads, such as incomplete COPE survey responses
@@ -492,7 +492,7 @@ class QuestionnaireResponseDao(BaseDao):
         #  (name, address, email, etc.) as PROFILE_UPDATE (vs. only classifying secondary contact profile updates via
         #  TheBasics), then this check must allow those ConsentPII responses trigger _update_participant_summary()
         if (questionnaire_response.status == QuestionnaireResponseStatus.COMPLETED and
-               questionnaire_response.classificationType == QuestionnaireResponseClassificationType.COMPLETE):
+            questionnaire_response.classificationType == QuestionnaireResponseClassificationType.COMPLETE):
             with self.session() as new_session:
                 self._update_participant_summary(
                     new_session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
@@ -617,8 +617,8 @@ class QuestionnaireResponseDao(BaseDao):
                             raise BadRequest(f'unknown measurement unit {answer_code_value} for participant '
                                              f'{participant_id}')
                     elif (
-                        question_code.value in['self_reported_height_ft', 'self_reported_height_in',
-                                               'self_reported_height_cm']
+                        question_code.value in ['self_reported_height_ft', 'self_reported_height_in',
+                                                'self_reported_height_cm']
                         and answer.valueInteger is not None
                     ):
                         self_reported_int_value_map[question_code.value] = round(answer.valueInteger, 1)
@@ -800,7 +800,7 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value in [EHR_CONSENT_QUESTION_CODE, EHR_SENSITIVE_CONSENT_QUESTION_CODE]:
                         code = code_dao.get(answer.valueCodeId)
                         if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED and \
-                                authored > participant_summary.ehrConsentExpireAuthored:
+                            authored > participant_summary.ehrConsentExpireAuthored:
                             participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.UNSET
                             participant_summary.ehrConsentExpireAuthored = None
                             participant_summary.ehrConsentExpireTime = None
@@ -810,7 +810,7 @@ class QuestionnaireResponseDao(BaseDao):
                             if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
                                 participant_summary.consentForElectronicHealthRecordsFirstYesAuthored = authored
                             if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED and \
-                                    authored < participant_summary.ehrConsentExpireAuthored:
+                                authored < participant_summary.ehrConsentExpireAuthored:
                                 ehr_consent = False
                     elif code.value == EHR_CONSENT_EXPIRED_QUESTION_CODE:
                         if answer.valueString and answer.valueString == EHR_CONSENT_EXPIRED_YES:
@@ -896,7 +896,7 @@ class QuestionnaireResponseDao(BaseDao):
                             participant_summary.consentForElectronicHealthRecordsAuthored = authored
                             participant_summary.consentForElectronicHealthRecordsTime = questionnaire_response.created
                     elif code.value.lower() == REMOTE_ID_VERIFIED_ON_CODE:
-                        remote_id_info['verified_on'] = int(answer.valueString)/1000
+                        remote_id_info['verified_on'] = int(answer.valueString) / 1000
                     elif code.value.lower() == REMOTE_ID_VERIFIED_CODE:
                         remote_id_info['verified'] = answer.valueString
                     elif code.value.lower() == ETM_CONSENT_QUESTION_CODE:
@@ -926,7 +926,7 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_summary.race = race
                 something_changed = True
             if not participant_summary.aian \
-                    and Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE in get_all_races_from_codes(race_codes):
+                and Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE in get_all_races_from_codes(race_codes):
                 participant_summary.aian = True
                 something_changed = True
 
@@ -939,19 +939,24 @@ class QuestionnaireResponseDao(BaseDao):
 
         dna_program_consent_update_code = config.getSettingJson(config.DNA_PROGRAM_CONSENT_UPDATE_CODE, None)
 
-        if 'verified' in remote_id_info and 'verified_on' in remote_id_info:
+        if 'verified' in remote_id_info:
             if remote_id_info['verified'] == "true":
+                if 'verified_on' in remote_id_info:
+                    participant_summary.remoteIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
+                else:
+                    raise BadRequest(
+                        "Cannot accept a remote id verification without the verified_on"
+                    )
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
                 participant_summary.remoteIdVerificationStatus = True
-                participant_summary.remoteIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
                 participant_summary.everIdVerified = True
                 participant_summary.idVerificationOrigin = IdVerificationOriginType.REMOTE
                 if not participant_summary.firstIdVerifiedOn:
                     participant_summary.firstIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
-        if 'verified' in remote_id_info:
-            if remote_id_info['verified'] == "false":
+            elif remote_id_info['verified'] == "false":
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
                 participant_summary.remoteIdVerificationStatus = False
+                participant_summary.remoteIdVerifiedOn = None
 
         # Set summary fields to SUBMITTED for questionnaire concepts that are found in
         # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
@@ -974,7 +979,7 @@ class QuestionnaireResponseDao(BaseDao):
                         if gror_consent is None:
                             raise BadRequest(
                                 "GROR Consent answer is required to match code {}."
-                                    .format([CONSENT_GROR_YES_CODE, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE])
+                                .format([CONSENT_GROR_YES_CODE, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE])
                             )
                         new_status = gror_consent
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
@@ -982,7 +987,7 @@ class QuestionnaireResponseDao(BaseDao):
                         participant_summary.semanticVersionForPrimaryConsent = \
                             questionnaire_response.questionnaireSemanticVersion
                         if participant_summary.consentCohort is None or \
-                                participant_summary.consentCohort == ParticipantCohort.UNSET:
+                            participant_summary.consentCohort == ParticipantCohort.UNSET:
 
                             if participant_summary.participantOrigin == 'vibrent':
                                 logging.warning(f'Missing expected consent cohort information for participant '
@@ -1060,7 +1065,7 @@ class QuestionnaireResponseDao(BaseDao):
                     mod_authored = module['authored']
 
                     if getattr(participant_summary, mod_submitted) \
-                            != QuestionnaireStatus.SUBMITTED:
+                        != QuestionnaireStatus.SUBMITTED:
                         setattr(participant_summary, mod_submitted, QuestionnaireStatus.SUBMITTED)
                         setattr(participant_summary, mod_authored, authored)
                         module_changed = True
@@ -1083,12 +1088,12 @@ class QuestionnaireResponseDao(BaseDao):
             if not all(first_last):
                 raise BadRequest(
                     "First name ({:s}), and last name ({:s}) required for consenting."
-                        .format(*["present" if part else "missing" for part in first_last])
+                    .format(*["present" if part else "missing" for part in first_last])
                 )
             if not any(email_phone):
                 raise BadRequest(
                     "Email address ({:s}), or phone number ({:s}) required for consenting."
-                        .format(*["present" if part else "missing" for part in email_phone])
+                    .format(*["present" if part else "missing" for part in email_phone])
                 )
 
             participant_summary.lastModified = clock.CLOCK.now()
@@ -1206,9 +1211,9 @@ class QuestionnaireResponseDao(BaseDao):
                     new_value[health_module]['authoredTime'] = authored_str
 
                 new_value[health_module]['history'].insert(0, {
-                        'status': health_module_status,
-                        'authoredTime': authored_str
-                    })
+                    'status': health_module_status,
+                    'authoredTime': authored_str
+                })
                 new_value[health_module]['history'] = sorted(new_value[health_module]['history'],
                                                              key=lambda i: parse_datetime(i['authoredTime']),
                                                              reverse=True)
@@ -1606,6 +1611,7 @@ class QuestionnaireResponseDao(BaseDao):
 
         return matched_response_id
 
+
 def _validate_consent_pdfs(resource):
     """Checks for any consent-form-signed-pdf extensions and validates their PDFs in GCS."""
     if resource.get("resourceType") != "QuestionnaireResponse":
@@ -1639,6 +1645,7 @@ def _validate_consent_pdfs(resource):
     else:
         return found_pdf
 
+
 def _get_consent_filenames_from_resource(resource: Dict) -> List[str]:
     """
     Given a QuestionnaireResponse payload, extract the consent filename(s) from the consent-form-signed-pdf extension(s)
@@ -1652,6 +1659,7 @@ def _get_consent_filenames_from_resource(resource: Dict) -> List[str]:
         consent_files.append(extension["valueString"])
 
     return consent_files
+
 
 def _raise_if_gcloud_file_missing(path):
     """Checks that a GCS file exists.
@@ -1679,10 +1687,10 @@ class QuestionnaireResponseAnswerDao(BaseDao):
             return []
         return (
             session.query(QuestionnaireResponseAnswer)
-                .join(QuestionnaireResponse)
-                .join(QuestionnaireQuestion)
-                .filter(QuestionnaireResponse.participantId == participant_id)
-                .filter(QuestionnaireResponseAnswer.endTime == None)
-                .filter(QuestionnaireQuestion.codeId.in_(code_ids))
-                .all()
+            .join(QuestionnaireResponse)
+            .join(QuestionnaireQuestion)
+            .filter(QuestionnaireResponse.participantId == participant_id)
+            .filter(QuestionnaireResponseAnswer.endTime == None)
+            .filter(QuestionnaireQuestion.codeId.in_(code_ids))
+            .all()
         )

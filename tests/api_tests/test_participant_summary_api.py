@@ -32,8 +32,8 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import (
     ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType,
-    TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus)
-from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id,\
+    TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus, IdVerificationOriginType)
+from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id, \
     load_qr_response_json
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -163,6 +163,11 @@ participant_summary_default_values = {
     "onsiteIdVerificationVisitType": "UNSET",
     "questionnaireOnLifeFunctioning": "UNSET",
     "aian": False,
+    "remoteIdVerificationStatus": "UNSET",
+    "remoteIdVerificationOrigin": "UNSET",
+    "remoteIdVerifiedOn": "UNSET",
+    "everIdVerified": "UNSET",
+    "firstIdVerifiedOn": "UNSET",
     "idVerificationOrigin": "UNSET",
     "consentForNphModule1": False,
     "nphWithdrawal": False,
@@ -4452,12 +4457,32 @@ class ParticipantSummaryApiTest(BaseTestCase):
             for unexpected_participant in unexpected_participant_list
         ))
 
-    def test_remote_id_verified(self):
-        """ Test to see if a remote ID verification True Response saves successfully """
+    def test_remote_id_verification(self):
+        """ Test to see if a remote ID verification True, False, and No Response saves successfully """
+        # Set up participant, questionnaire, questionnaire response & send POST request to API
         participant = self.data_generator.create_database_participant()
         participant_id = f'P{participant.participantId}'
         authored = datetime.datetime.now()
         self.send_consent(participant.participantId, authored=authored)
+        # load & send a response w/ no remote id verification
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        resource = load_qr_response_json(
+            'questionnaire_response1.json',
+            questionnaire_id,
+            participant_id
+        )
+        self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
+        # Get request from API to assert certain values stay UNSET
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['remoteIdVerificationStatus'], UNSET)
+        self.assertEqual(summary['onsiteIdVerificationType'], UNSET)
+        self.assertEqual(summary['onsiteIdVerificationVisitType'], UNSET)
+        self.assertEqual(summary['remoteIdVerificationOrigin'], UNSET)
+        self.assertEqual(summary['remoteIdVerifiedOn'], UNSET)
+        self.assertEqual(summary['everIdVerified'], UNSET)
+        self.assertEqual(summary['firstIdVerifiedOn'], UNSET)
+        self.assertEqual(summary['idVerificationOrigin'], UNSET)
+        # load & send a True remote ID verification response
         questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
         resource = load_qr_response_json(
             'remote_id_verification_questionnaire_response.json',
@@ -4465,27 +4490,31 @@ class ParticipantSummaryApiTest(BaseTestCase):
             participant_id
         )
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
-        # Get request from API to assert information is accurate
+        # Get request from API to assert True Response information is accurate
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
-        self.assertEqual(summary['remoteIdVerificationStatus'], True)
+        self.assertEqual(summary['remoteIdVerificationStatus'], 'True')
         self.assertEqual(summary['remoteIdVerifiedOn'], '2023-01-17')
-
+        # Change the date for remoteIdVerifiedOn to 1/18/2023
         resource['group']['question'][1]['answer'][0]['valueString'] = "1674066632000"
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['remoteIdVerifiedOn'], '2023-01-18')
-        self.assertEqual(summary['everIdVerified'], True)
+        self.assertEqual(summary['everIdVerified'], 'True')
         self.assertEqual(summary['firstIdVerifiedOn'], '2023-01-17')
-        self.assertEqual(summary['idVerificationOrigin'], 'REMOTE')
-
-    def test_remote_id_not_verified(self):
-        """ Test to see if a remote ID verification False Response saves successfully """
-        # Set up participant, questionnaire, questionnaire response & send POST request to API
-        participant = self.data_generator.create_database_participant()
-        participant_id = f'P{participant.participantId}'
-        authored = datetime.datetime.now()
-        self.send_consent(participant.participantId, authored=authored)
+        self.assertEqual(summary['idVerificationOrigin'], IdVerificationOriginType.REMOTE.name)
+        # Load & send a response w/ no remote id verification again
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        resource = load_qr_response_json(
+            'questionnaire_response1.json',
+            questionnaire_id,
+            participant_id
+        )
+        self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
+        # Get request from API to assert status stays True, and does not go back to UNSET
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['remoteIdVerificationStatus'], 'True')
+        # load False response
         questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
         resource = load_qr_response_json(
             'remote_id_verification_questionnaire_false_response.json',
@@ -4493,8 +4522,13 @@ class ParticipantSummaryApiTest(BaseTestCase):
             participant_id
         )
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
-        # Get request from API to assert information is accurate
+        # Get request from API to assert False Response information is accurate
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
-        self.assertNotIn('remoteIdVerifiedOn', summary)
-        self.assertEqual(summary['remoteIdVerificationStatus'], False)
+        self.assertEqual(summary['remoteIdVerifiedOn'], UNSET)
+        self.assertEqual(summary['remoteIdVerificationStatus'], 'False')
+        self.assertEqual(summary['onsiteIdVerificationType'], UNSET)
+        self.assertEqual(summary['onsiteIdVerificationVisitType'], UNSET)
+        self.assertEqual(summary['everIdVerified'], 'True')
+        self.assertEqual(summary['firstIdVerifiedOn'], '2023-01-17')
+        self.assertEqual(summary['idVerificationOrigin'], IdVerificationOriginType.REMOTE.name)
