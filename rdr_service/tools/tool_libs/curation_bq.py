@@ -62,7 +62,44 @@ class CurationBQ(ToolBase):
         'ehr_consent_temp_table',
         'ehr_consent',
         'wear_consent',
-        'participant_id_mapping'
+        'participant_id_mapping',
+        'finalize',
+        'qrai_author',
+        'qrai_language',
+        'qrai_code',
+        'tmp_survey_conduct',
+        'survey_conduct',
+        'create_empty_tables',
+        'pid_rid_mapping'
+    ]
+
+    export_tables = [
+        'care_site',
+        'condition_era',
+        'condition_occurrence',
+        'consent',
+        'cost',
+        'death',
+        'device_exposure',
+        'dose_era',
+        'drug_era',
+        'drug_exposure',
+        'fact_relationship',
+        'location',
+        'measurement',
+        'metadata',
+        'note_nlp',
+        'observation',
+        'observation_period',
+        'payer_plan_period',
+        'person',
+        'pid_rid_mapping',
+        'procedure_occurrence',
+        'provider',
+        'questionnaire_response_additional_info',
+        'visit_detail',
+        'visit_occurrence',
+        'wear_consent'
     ]
 
     def __init__(self, args, gcp_env=None, tool_name=None, replica=False):
@@ -80,8 +117,10 @@ class CurationBQ(ToolBase):
             self.import_tables_to_bq()
         elif self.args.run_etl:
             self.run_etl()
+        elif self.args.export:
+            self.export()
         else:
-            _logger.error("One of --load-data or --run-etl must be set")
+            _logger.error("One of --load-data, --run-etl, or --export must be set")
 
     def run_query(self, sql: str, job_config: Union[None, google.cloud.bigquery.QueryJobConfig]):
         query_job = self.client.query(sql, job_config=job_config)
@@ -124,6 +163,25 @@ class CurationBQ(ToolBase):
         self.run_query(sql=queries.queries['filter_surveys']['query'].format(dataset_id=self.dataset_id),
                        job_config=None)
 
+    def export(self):
+        client = bigquery.Client()
+        dataset_ref = bigquery.DatasetReference(self.args.project, self.args.dataset)
+        for table in self.export_tables:
+            _logger.info(f"Exporting table {table}")
+            table_ref = dataset_ref.table(table)
+            bq_table = client.get_table(table_ref)
+            _logger.info(f"Table byte size: {bq_table.num_bytes}")
+            if bq_table.num_bytes > 900000000:  # Shard if table size close to 1GB
+                destination = f"gs://{self.args.destination}/{table}_*.csv"
+            else:
+                destination = f"gs://{self.args.destination}/{table}.csv"
+            extract_job = client.extract_table(
+                table_ref,
+                destination,
+                location="us-central1",
+            )
+            extract_job.result()
+
 
 def add_additional_arguments(parser):
     parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")
@@ -131,6 +189,8 @@ def add_additional_arguments(parser):
     parser.add_argument("--dataset", help="dataset to use for ETL run", required=True)
     parser.add_argument("--load-data", help="Load data to dataset", default=False, action="store_true")
     parser.add_argument("--run-etl", help="Run the ETL process", default=False, action="store_true")
+    parser.add_argument("--export", help="Export data to GCS bucket", default=False, action="store_true")
+    parser.add_argument("--destination", help="GCS bucket and path to export to")
     parser.add_argument("--cutoff", help="cutoff date used for the run", required=True)
 
 

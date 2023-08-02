@@ -912,6 +912,13 @@ class CurationExportClass(ToolBase):
             _logger.debug(f"Populating with {len(self.pid_list)} PIDs")
             _logger.debug("Populating src_clean")
             self.run_function_on_pids(self._build_src_clean, session, "src_clean")
+            if not self.args.omit_measurements:
+                _logger.debug("Populating measurements")
+                self._populate_measurements(session, self.cutoff_date, self.include_in_person_pm,
+                                            self.include_remote_pm)
+
+            if self.args.prep_bq:
+                return
 
             self._finalize_src_clean(session)
 
@@ -922,9 +929,8 @@ class CurationExportClass(ToolBase):
 
             self._populate_src_tables(session)
             if not self.args.omit_measurements:
-                _logger.debug("Populating measurements")
-                self._populate_measurements(session, self.cutoff_date, self.include_in_person_pm,
-                                            self.include_remote_pm)
+                _logger.debug("Finishing measurements")
+                self._finish_measurements(session)
             if not self.args.omit_surveys:
                 _logger.debug("Populating observation survey data")
                 self.run_function_on_pids(self._populate_observation_surveys, session, "observation survey data")
@@ -1373,7 +1379,6 @@ class CurationExportClass(ToolBase):
                             SET cdm.src_clean.filter = 1
                             WHERE cdm.src_clean.participant_id IN ({",".join([str(pid) for pid in pid_list])})""")
 
-
     @staticmethod
     def _populate_src_participant(session, pid_list):
         session.execute(f"""INSERT INTO cdm.src_participant
@@ -1710,8 +1715,8 @@ class CurationExportClass(ToolBase):
                             DROP TABLE cdm.tmp_person;
                             """)
 
-    @staticmethod
-    def _populate_measurements(session, cutoff_date: Union[None, datetime], include_onsite: bool = True,
+
+    def _populate_measurements(self, session, cutoff_date: Union[None, datetime], include_onsite: bool = True,
                                include_remote: bool = True):
         cutoff_filter = ''
         if cutoff_date:
@@ -1751,10 +1756,12 @@ class CurationExportClass(ToolBase):
                                 AND pm.final = 1
                                 {collect_type_filter}
                                 AND (pm.status <> 2 OR pm.status IS NULL) {cutoff_filter}
-                            INNER JOIN cdm.person pe
-                                ON pe.person_id = pm.participant_id
+                            WHERE pm.participant_id IN ({",".join([str(pid) for pid in self.pid_list])})
                             ;
                             """)
+
+    @staticmethod
+    def _finish_measurements(session):
         session.execute("""ALTER TABLE cdm.src_meas ADD KEY (code_value);
                             ALTER TABLE cdm.src_meas ADD KEY (physical_measurements_id);
                             """)
@@ -2344,6 +2351,8 @@ def add_additional_arguments(parser):
                             action="store_true", default=False)
     cdm_parser.add_argument("--exclude-remote-pm", help="Excludes remote physical measurements",
                             action="store_true", default=False)
+    cdm_parser.add_argument("--prep-bq", help="Only create src tables to load to BigQuery", action="store_true",
+                            default=False)
 
     manage_code_parser = subparsers.add_parser('exclude-code')
     manage_code_parser.add_argument("--operation", help="operation type for exclude code command: add or remove",
