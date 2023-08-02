@@ -1455,7 +1455,7 @@ class ParticipantSummaryDao(UpdatableDao):
     def bulk_update_ehr_status_with_session(session, record_list: List[ParticipantEhrRecord]):
         query = (
             sqlalchemy.update(ParticipantSummary)
-            .where(ParticipantSummary.participantId == sqlalchemy.bindparam("pid"))
+            .where(ParticipantSummary.participantId == sqlalchemy.bindparam("participant_id"))
             .values(
                 {
                     ParticipantSummary.ehrStatus.name: EhrStatus.PRESENT,
