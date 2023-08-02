@@ -32,6 +32,7 @@ class ParticipantEhrReceipt(Base):
     fileTimestamp = Column("file_timestamp", UTCDateTime, nullable=False)
     firstSeen = Column("first_seen", UTCDateTime, nullable=False)
     lastSeen = Column("last_seen", UTCDateTime, nullable=False)
+    hpo_id = Column(Integer)
 
 
 Index(

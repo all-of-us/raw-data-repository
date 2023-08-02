@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 import logging
 import math
+from typing import List
+
 from sqlalchemy import bindparam
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.sql import func
@@ -13,6 +15,7 @@ from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.domain_model.ehr import ParticipantEhrRecord
 from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import EhrStatus
@@ -47,7 +50,7 @@ def make_update_participant_summaries_job(project_id=None, bigquery_view=None):
             bigquery_view = None
 
     if bigquery_view:
-        query = "SELECT person_id, latest_upload_time FROM `{}`".format(bigquery_view)
+        query = "SELECT person_id, latest_upload_time, hpo_id FROM `{}`".format(bigquery_view)
         return bigquery.BigQueryJob(query, default_dataset_id="operations_analytics", page_size=1000,
                                     project_id=project_id)
     else:
@@ -67,17 +70,25 @@ def update_participant_summaries():
         LOG.warning("Skipping update_participant_summaries because of invalid config")
 
 
-def _track_historical_participant_ehr_data(session, parameter_sets):
+def _track_historical_participant_ehr_data(session, record_list: List[ParticipantEhrRecord]):
     query = insert(ParticipantEhrReceipt).values({
         ParticipantEhrReceipt.participantId: bindparam('pid'),
         ParticipantEhrReceipt.fileTimestamp: bindparam('receipt_time'),
+        ParticipantEhrReceipt.hpo_id: bindparam('hpo_id'),
         ParticipantEhrReceipt.firstSeen: func.utc_timestamp(),
         ParticipantEhrReceipt.lastSeen: func.utc_timestamp()
     }).on_duplicate_key_update({
         'last_seen': func.utc_timestamp()
     }).prefix_with('IGNORE')
 
-    session.execute(query, parameter_sets)
+    session.execute(query, [
+        {
+            'pid': record.participant_id,
+            'receipt_time': record.receipt_time,
+            'hpo_id': record.hpo_id
+        }
+        for record in record_list
+    ])
 
 
 def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
@@ -90,16 +101,18 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
     batch_size = 100
     for i, page in enumerate(job):
         LOG.info("Processing page {} of results...".format(i))
-        parameter_sets = []
+        participant_records = []
         with summary_dao.session() as session:
             for row in page:
                 participant_id = row.person_id
                 file_upload_time = row.latest_upload_time
+                hpo_id = row.hpo_id
 
-                parameter_sets.append({
-                    "pid": participant_id,
-                    "receipt_time": file_upload_time
-                })
+                participant_records.append(ParticipantEhrRecord(
+                    participant_id=participant_id,
+                    receipt_time=file_upload_time,
+                    hpo_id=hpo_id
+                ))
                 if participant_id in participant_ids_that_previously_had_ehr:
                     # Remove any participants that are part of the current page, they're being rebuilt currently, so
                     # they won't need to rebuilt again at the end (when we get the ones that are no longer in the view)
@@ -114,8 +127,8 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
                         summary_dao.update_enrollment_status(session=session, summary=summary)
                     new_ids_with_status_checked.add(participant_id)
 
-            _track_historical_participant_ehr_data(session, parameter_sets)
-            query_result = summary_dao.bulk_update_ehr_status_with_session(session, parameter_sets)
+            _track_historical_participant_ehr_data(session, participant_records)
+            query_result = summary_dao.bulk_update_ehr_status_with_session(session, participant_records)
             session.commit()
 
             total_rows = query_result.rowcount
@@ -125,7 +138,7 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
                 # Rebuild participants in the page that have new data available. Checking that the participant
                 #  ehr receipts were created since the job started (offsetting by an hour to account for any
                 #  difference between server times)
-                participant_ids_in_page = [param['pid'] for param in parameter_sets]
+                participant_ids_in_page = [record.participant_id for record in participant_records]
                 new_ehr_data_results = session.query(ParticipantEhrReceipt.participantId).filter(
                     ParticipantEhrReceipt.firstSeen >= job_start_time - timedelta(hours=1),
                     ParticipantEhrReceipt.participantId.in_(participant_ids_in_page)

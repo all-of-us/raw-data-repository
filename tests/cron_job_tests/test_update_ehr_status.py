@@ -1,4 +1,5 @@
 import collections
+from dataclasses import dataclass
 import datetime
 
 import mock
@@ -17,6 +18,13 @@ from rdr_service.model.organization import Organization
 from rdr_service.offline import update_ehr_status
 from rdr_service.participant_enums import EhrStatus, EnrollmentStatusV32, DigitalHealthSharingStatus
 from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
+
+
+@dataclass
+class EhrUpdatePidRow:
+    person_id: int
+    latest_upload_time: datetime.datetime
+    hpo_id: int = 0
 
 
 class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
@@ -129,7 +137,6 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         return participant, summary
 
     # Mock BigQuery result types
-    EhrUpdatePidRow = collections.namedtuple("EhrUpdatePidRow", ["person_id", "latest_upload_time"])
     TableCountsRow = collections.namedtuple("TableCountsRow", ["org_id", "person_upload_time"])
 
     @mock.patch("rdr_service.offline.update_ehr_status.update_organizations_from_job")
@@ -167,12 +174,14 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(first_ehr_time, ps_data['first_ehr_receipt_time'])
         self.assertEqual(latest_ehr_time, ps_data['latest_ehr_receipt_time'])
 
-    def assert_has_participant_ehr_record(self, participant_id, file_timestamp, first_seen, last_seen):
-        record = self.session.query(ParticipantEhrReceipt).filter(
+    def assert_has_participant_ehr_record(self, participant_id, file_timestamp, first_seen, last_seen, hpo_id=None):
+        record: ParticipantEhrReceipt = self.session.query(ParticipantEhrReceipt).filter(
             ParticipantEhrReceipt.participantId == participant_id,
             ParticipantEhrReceipt.fileTimestamp == file_timestamp
         ).one_or_none()
         self.assertIsNotNone(record, f'EHR receipt was not recorded for participant {participant_id}')
+        if hpo_id is not None:
+            self.assertEqual(hpo_id, record.hpo_id)
 
         # The first_seen and last_seen fields are set with mysql's NOW function,
         #   so check that the time is close to what is expected
@@ -199,16 +208,16 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
     def test_updates_participant_summaries(self, mock_summary_job):
 
         # Run job with data for participants 11 and 14
-        p_eleven_first_upload = self.EhrUpdatePidRow(11, datetime.datetime(2020, 3, 12, 8))
-        p_fourteen_upload = self.EhrUpdatePidRow(14, datetime.datetime(2020, 3, 12, 10))
+        p_eleven_first_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 12, 8), hpo_id=8)
+        p_fourteen_upload = EhrUpdatePidRow(14, datetime.datetime(2020, 3, 12, 10))
         mock_summary_job.return_value.__iter__.return_value = [[p_eleven_first_upload, p_fourteen_upload]]
 
         first_job_run_time = datetime.datetime.utcnow()
         update_ehr_status.update_ehr_status_participant()
 
         # Run job with data for participants 11 and 12 (leaving 14 out)
-        new_p_eleven_upload = self.EhrUpdatePidRow(11, datetime.datetime(2020, 3, 30, 2))
-        p_twelve_upload = self.EhrUpdatePidRow(12, datetime.datetime(2020, 3, 27, 18))
+        new_p_eleven_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 30, 2), hpo_id=19)
+        p_twelve_upload = EhrUpdatePidRow(12, datetime.datetime(2020, 3, 27, 18))
         mock_summary_job.return_value.__iter__.return_value = [
             [p_eleven_first_upload, new_p_eleven_upload, p_twelve_upload]
         ]
@@ -227,13 +236,15 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             participant_id=11,
             file_timestamp=p_eleven_first_upload.latest_upload_time,
             first_seen=first_job_run_time,
-            last_seen=second_job_run_time
+            last_seen=second_job_run_time,
+            hpo_id=p_eleven_first_upload.hpo_id
         )
         self.assert_has_participant_ehr_record(
             participant_id=11,
             file_timestamp=new_p_eleven_upload.latest_upload_time,
             first_seen=second_job_run_time,
-            last_seen=second_job_run_time
+            last_seen=second_job_run_time,
+            hpo_id=new_p_eleven_upload.hpo_id
         )
 
         self.assert_ehr_data_matches(
@@ -342,7 +353,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             ehrUpdateTime=first_upload_datetime,
             enrollmentStatusV3_2=EnrollmentStatusV32.PARTICIPANT_PLUS_EHR,
         ).participantId
-        first_view_data = self.EhrUpdatePidRow(first_pid, first_upload_datetime)
+        first_view_data = EhrUpdatePidRow(first_pid, first_upload_datetime)
         self.data_generator.create_database_participant_ehr_receipt(
             participantId=first_pid,
             fileTimestamp=first_upload_datetime,
@@ -360,7 +371,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             enrollmentStatusV3_2=EnrollmentStatusV32.CORE_PARTICIPANT,
             enrollmentStatusCoreV3_2Time=seconds_first_upload_time
         ).participantId
-        second_view_data = self.EhrUpdatePidRow(second_pid, datetime.datetime(2020, 3, 12, 10))
+        second_view_data = EhrUpdatePidRow(second_pid, datetime.datetime(2020, 3, 12, 10))
         self.data_generator.create_database_participant_ehr_receipt(
             participantId=second_pid,
             fileTimestamp=seconds_first_upload_time,
@@ -371,7 +382,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         third_pid = self.data_generator.create_database_participant_summary(
             enrollmentStatusV3_2=EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
         ).participantId
-        third_view_data = self.EhrUpdatePidRow(third_pid, datetime.datetime(2020, 3, 14, 10))
+        third_view_data = EhrUpdatePidRow(third_pid, datetime.datetime(2020, 3, 14, 10))
 
         # set up data for the fourth scenario (participant is no longer in the view)
         fourth_upload_time = datetime.datetime(2020, 5, 10)
@@ -419,7 +430,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         """Checking that a participant's enrollment status gets updated when they have EHR submitted for them"""
 
         test_participant_id = self.data_generator.create_database_participant_summary().participantId
-        view_data = self.EhrUpdatePidRow(test_participant_id, datetime.datetime(2020, 3, 12, 10))
+        view_data = EhrUpdatePidRow(test_participant_id, datetime.datetime(2020, 3, 12, 10))
 
         mock_summary_job.return_value.__iter__.return_value = [[view_data]]
         update_ehr_status.update_ehr_status_participant()
@@ -485,7 +496,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
     def test_ignores_bad_data(self, mock_summary_job, mock_organization_job):
         invalid_participant_id = -1
         mock_summary_job.return_value.__iter__.return_value = [[
-            self.EhrUpdatePidRow(invalid_participant_id, datetime.datetime(2020, 10, 10))
+            EhrUpdatePidRow(invalid_participant_id, datetime.datetime(2020, 10, 10))
         ]]
         mock_organization_job.return_value.__iter__.return_value = [
             [

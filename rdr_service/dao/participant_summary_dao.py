@@ -41,6 +41,7 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_incentives_dao import ParticipantIncentivesDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
+from rdr_service.domain_model.ehr import ParticipantEhrRecord
 from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentDependencies
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
@@ -1451,7 +1452,7 @@ class ParticipantSummaryDao(UpdatableDao):
             return session.execute(query)
 
     @staticmethod
-    def bulk_update_ehr_status_with_session(session, parameter_sets):
+    def bulk_update_ehr_status_with_session(session, record_list: List[ParticipantEhrRecord]):
         query = (
             sqlalchemy.update(ParticipantSummary)
             .where(ParticipantSummary.participantId == sqlalchemy.bindparam("pid"))
@@ -1467,7 +1468,13 @@ class ParticipantSummaryDao(UpdatableDao):
                 }
             )
         )
-        return session.execute(query, parameter_sets)
+        return session.execute(query, [
+            {
+                'pid': record.participant_id,
+                'receipt_time': record.receipt_time
+            }
+            for record in record_list
+        ])
 
     def bulk_update_retention_eligible_flags(self, upload_date):
         with self.session() as session:
