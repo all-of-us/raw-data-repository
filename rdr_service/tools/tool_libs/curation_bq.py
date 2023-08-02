@@ -3,6 +3,7 @@ from typing import Union
 
 import google.cloud.bigquery
 from google.cloud import bigquery
+from google.cloud.exceptions import NotFound
 
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 from rdr_service.etl.bq import queries
@@ -166,21 +167,39 @@ class CurationBQ(ToolBase):
     def export(self):
         client = bigquery.Client()
         dataset_ref = bigquery.DatasetReference(self.args.project, self.args.dataset)
+        if self.args.to_bq:
+            export_dataset_id = f"{self.args.project}.{self.args.destination}"
+            try:
+                dataset = client.get_dataset(export_dataset_id)
+            except NotFound:
+                _logger.error("Export dataset does not exist")
+                return
+            if dataset.location != 'us-central1':
+                _logger.error("Export dataset must be created in us-central1 region")
+                return
         for table in self.export_tables:
             _logger.info(f"Exporting table {table}")
             table_ref = dataset_ref.table(table)
             bq_table = client.get_table(table_ref)
-            _logger.info(f"Table byte size: {bq_table.num_bytes}")
-            if bq_table.num_bytes > 900000000:  # Shard if table size close to 1GB
-                destination = f"gs://{self.args.destination}/{table}_*.csv"
+            if not self.args.to_bq:
+                _logger.debug(f"Table byte size: {bq_table.num_bytes}")
+                if bq_table.num_bytes > 900000000:  # Shard if table size close to 1GB
+                    destination = f"gs://{self.args.destination}/{table}_*.csv"
+                else:
+                    destination = f"gs://{self.args.destination}/{table}.csv"
+                extract_job = client.extract_table(
+                    table_ref,
+                    destination,
+                    location="us-central1",
+                )
+                extract_job.result()
             else:
-                destination = f"gs://{self.args.destination}/{table}.csv"
-            extract_job = client.extract_table(
-                table_ref,
-                destination,
-                location="us-central1",
-            )
-            extract_job.result()
+                source = f"{self.args.project}.{self.args.dataset}.{table}"
+                destination = f"{self.args.destination}.{table}"
+                client.copy_table(
+                    source,
+                    destination
+                )
 
 
 def add_additional_arguments(parser):
@@ -190,7 +209,8 @@ def add_additional_arguments(parser):
     parser.add_argument("--load-data", help="Load data to dataset", default=False, action="store_true")
     parser.add_argument("--run-etl", help="Run the ETL process", default=False, action="store_true")
     parser.add_argument("--export", help="Export data to GCS bucket", default=False, action="store_true")
-    parser.add_argument("--destination", help="GCS bucket and path to export to")
+    parser.add_argument("--destination", help="BQ dataset or GCS path to export to")
+    parser.add_argument("--to-bq", help="Export to bq dataset instead of GCS", action="store_true")
     parser.add_argument("--cutoff", help="cutoff date used for the run", required=True)
 
 
