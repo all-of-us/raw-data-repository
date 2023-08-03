@@ -390,15 +390,22 @@ class _ParserBoolOperation(Enum):
 
 class _BaseParser(ABC):
     def __init__(self):
-        self._next_expected_chars = []
+        self._next_expected_chars: List[ExpectedChar] = []
 
     def process_char(self, char):
         if self._next_expected_chars:
             expected = self._next_expected_chars.pop(0)
-            if expected != char:
+            is_matching_char = expected.char == char
+
+            # raise an error if the character doesn't match a required character
+            if not is_matching_char and not expected.optional:
                 raise BranchParsingError(f'unexpected "{char}", was expecting "{expected}"')
-        else:
-            self._process_char(char)
+
+            # skip over characters that match the expected
+            if is_matching_char:
+                return
+
+        self._process_char(char)
 
     @abstractmethod
     def _process_char(self, char):
@@ -410,6 +417,12 @@ class _ConstraintParserState:
     READING_CHECKBOX_OPTION = auto()
     READING_COMPARISON = auto()
     READING_ANSWER = auto()
+
+
+@dataclass
+class ExpectedChar:
+    char: str
+    optional: bool = False
 
 
 class _ConstraintParser(_BaseParser):
@@ -457,7 +470,7 @@ class _ConstraintParser(_BaseParser):
             raise BranchParsingError(f'unexpected end of reading question code in {self._state}')
 
         self._state = _ConstraintParserState.READING_COMPARISON
-        self._next_expected_chars = [' ']
+        self._next_expected_chars = [ExpectedChar(' ')]
 
     def _start_reading_checkbox_constraint(self):
         if self._state != _ConstraintParserState.READING_QUESTION_CODE:
@@ -476,15 +489,15 @@ class _ConstraintParser(_BaseParser):
             elif comparison_char == '>':
                 # parsed not-equal, wrap up parsing and continue to answer
                 self._state = _ConstraintParserState.READING_ANSWER
-                self._next_expected_chars = [' ']
+                self._next_expected_chars = [ExpectedChar(' ')]
                 self._comparison_operation = '<>'
             else:
                 raise BranchParsingError(f'Unexpected "{comparison_char}" seen after "<"')
         else:
             if comparison_char == '=':
-                self._next_expected_chars = [' ', "'"]
+                self._next_expected_chars = [ExpectedChar(' '), ExpectedChar("'", optional=True)]
             elif comparison_char == '>':
-                self._next_expected_chars = [' ']
+                self._next_expected_chars = [ExpectedChar(' ')]
             else:
                 raise BranchParsingError(f'unrecognized comparison char "{comparison_char}"')
 
@@ -500,7 +513,15 @@ class _ConstraintParser(_BaseParser):
         option_code = ''.join(self._expected_option_selection_chars)
         self._parent.child_parsing_complete(
             new_condition=Question(question_code).has_option_selected(option_code),
-            next_expected_chars=[']', ' ', '=', ' ', "'", '1', "'"]
+            next_expected_chars=[
+                ExpectedChar(']'),
+                ExpectedChar(' '),
+                ExpectedChar('='),
+                ExpectedChar(' '),
+                ExpectedChar("'"),
+                ExpectedChar('1'),
+                ExpectedChar("'")
+            ]
         )
 
     def finish_constraint(self):
@@ -557,12 +578,12 @@ class _BranchingLogicParser(_BaseParser):
 
     def finish_and_operation(self):
         self.parsed_tokens.append(_ParserBoolOperation.AND)
-        self._next_expected_chars = ['n', 'd', ' ']
+        self._next_expected_chars = [ExpectedChar('n'), ExpectedChar('d'), ExpectedChar(' ')]
         self._state = None
 
     def finish_or_operation(self):
         self.parsed_tokens.append(_ParserBoolOperation.OR)
-        self._next_expected_chars = ['r', ' ']
+        self._next_expected_chars = [ExpectedChar('r'), ExpectedChar(' ')]
         self._state = None
 
     def _process_char(self, char):

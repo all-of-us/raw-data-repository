@@ -43,7 +43,8 @@ class SrcClean(CdmBase):
     filter = Column(SmallInteger)
     is_invalid = Column(Boolean)
     src_id = Column(String(50))
-    __table_args__ = (Index('idx_src_clean_participant_id', participant_id),)
+    __table_args__ = (Index('idx_src_clean_participant_id', participant_id),
+                      Index('idx_src_clean_questionnaire_response_id', questionnaire_response_id))
 
 
 class Location(CdmBase):

@@ -127,7 +127,8 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
     def run_cdm_data_generation(cutoff=None, vocabulary='gs://curation-vocabulary/aou_vocab_20220201/',
                                 participant_origin='all', participant_list_file=None, include_surveys=None,
                                 exclude_surveys=None, exclude_participants=None, omit_surveys=False,
-                                omit_measurements=False, exclude_in_person_pm=False, exclude_remote_pm=False):
+                                omit_measurements=False, exclude_in_person_pm=False, exclude_remote_pm=False,
+                                prep_bq=False):
         CurationEtlTest.run_tool(CurationExportClass, tool_args={
             'command': 'cdm-data',
             'cutoff': cutoff,
@@ -140,7 +141,8 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             'omit_surveys': omit_surveys,
             'omit_measurements': omit_measurements,
             "exclude_in_person_pm": exclude_in_person_pm,
-            "exclude_remote_pm": exclude_remote_pm
+            "exclude_remote_pm": exclude_remote_pm,
+            "prep_bq": prep_bq
         })
 
     @staticmethod
@@ -461,13 +463,13 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         Curation team request to exclude participants that were under 18 at the time of study consent.
         """
         self._create_consent_questionnaire()
-        self.run_cdm_data_generation()
+        self.run_cdm_data_generation(omit_measurements=True)
         src_clean_answers = self.session.query(SrcClean).all()
         self.assertEqual(4, len(src_clean_answers))
 
         dob = datetime(1982, 1, 11)
         self.data_generator.create_database_participant_summary(participant=self.participant, dateOfBirth=dob)
-        self.run_cdm_data_generation()
+        self.run_cdm_data_generation(omit_measurements=True)  # PM query errors out when no PIDs are supplied.
         src_clean_answers = self.session.query(SrcClean).all()
         self.assertEqual(0, len(src_clean_answers))
 
