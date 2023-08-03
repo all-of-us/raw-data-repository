@@ -15,13 +15,53 @@ from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.domain_model.ehr import ParticipantEhrRecord
+from rdr_service.domain_model.ehr import ParticipantEhrFile
 from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import EhrStatus
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 
 LOG = logging.getLogger(__name__)
+
+
+class ParticipantEhrTracking:
+    """Helper class for keeping track of participants with ehr files seen in a job"""
+
+    def __init__(self, participant_ids_with_recent_ehr):
+        self._files_in_batch: List[ParticipantEhrFile] = []
+
+        self._ids_with_recent_ehr = set(participant_ids_with_recent_ehr)
+        self._recent_ids_still_with_files = set()
+
+    def record_file_uploaded(self, record: ParticipantEhrFile):
+        self._files_in_batch.append(record)
+
+        participant_id = record.participant_id
+        if participant_id in self._ids_with_recent_ehr:
+            # After parsing all the files, we want _ids_with_recent_ehr to only be the participants
+            # that no longer have ehr files present. But we'll also want to know if a participant
+            # didn't have one before, so this will move their id to another list.
+            self._ids_with_recent_ehr.remove(participant_id)
+            self._recent_ids_still_with_files.add(participant_id)
+
+    def get_batch_list(self):
+        return self._files_in_batch
+
+    def clear_batch_list(self):
+        self._files_in_batch = []
+
+    def get_participants_no_longer_current(self):
+        # After parsing all the current files, this will only be left with the participants that weren't
+        # seen in the BQ view
+        return self._ids_with_recent_ehr
+
+    def get_participants_with_new_files(self):
+        """Retrieve all the participant ids that didn't have files present in the BQ view recently, but do now"""
+        return {
+            record.participant_id
+            for record in self._files_in_batch
+            if record.participant_id not in self._recent_ids_still_with_files
+        }
 
 
 def update_ehr_status_organization():
@@ -50,7 +90,7 @@ def make_update_participant_summaries_job(project_id=None, bigquery_view=None):
             bigquery_view = None
 
     if bigquery_view:
-        query = "SELECT person_id, latest_upload_time, hpo_id FROM `{}`".format(bigquery_view)
+        query = f"SELECT person_id, latest_upload_time, hpo_id FROM `{bigquery_view}`"
         return bigquery.BigQueryJob(query, default_dataset_id="operations_analytics", page_size=1000,
                                     project_id=project_id)
     else:
@@ -70,9 +110,9 @@ def update_participant_summaries():
         LOG.warning("Skipping update_participant_summaries because of invalid config")
 
 
-def _track_historical_participant_ehr_data(session, record_list: List[ParticipantEhrRecord]):
+def _track_historical_participant_ehr_data(session, file_list: List[ParticipantEhrFile]):
     query = insert(ParticipantEhrReceipt).values({
-        ParticipantEhrReceipt.participantId: bindparam('pid'),
+        ParticipantEhrReceipt.participantId: bindparam('participant_id'),
         ParticipantEhrReceipt.fileTimestamp: bindparam('receipt_time'),
         ParticipantEhrReceipt.hpo_id: bindparam('hpo_id'),
         ParticipantEhrReceipt.firstSeen: func.utc_timestamp(),
@@ -83,52 +123,46 @@ def _track_historical_participant_ehr_data(session, record_list: List[Participan
 
     session.execute(query, [
         {
-            'pid': record.participant_id,
+            'participant_id': record.participant_id,
             'receipt_time': record.receipt_time,
             'hpo_id': record.hpo_id
         }
-        for record in record_list
+        for record in file_list
     ])
 
 
 def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
-    summary_dao = ParticipantSummaryDao()
-    participant_ids_that_previously_had_ehr = summary_dao.get_participant_ids_with_ehr_data_available()
-    new_ids_with_status_checked = set()  # Any participant ids with new files that have already had their status updated
-    summary_dao.prepare_for_ehr_status_update()
     job_start_time = datetime.utcnow()
+
+    # record which participants have the current flags set,
+    # so we can update PDR with the ones that don't have it set later
+    summary_dao = ParticipantSummaryDao()
+    hpo_ehr_tracking = ParticipantEhrTracking(
+        summary_dao.get_participant_ids_with_ehr_data_available()
+    )
+
+    # clear the current flags in the db (they'll get set again if they still have files, otherwise they'll remain unset)
+    summary_dao.prepare_for_ehr_status_update()
 
     batch_size = 100
     for i, page in enumerate(job):
         LOG.info("Processing page {} of results...".format(i))
-        participant_records = []
+        hpo_ehr_tracking.clear_batch_list()
+        participant_ids_to_rebuild = set()
+
         with summary_dao.session() as session:
             for row in page:
-                participant_id = row.person_id
-                file_upload_time = row.latest_upload_time
-                hpo_id = row.hpo_id
+                hpo_ehr_tracking.record_file_uploaded(
+                    ParticipantEhrFile(
+                        participant_id=row.person_id,
+                        receipt_time=row.latest_upload_time,
+                        hpo_id=row.hpo_id
+                    )
+                )
 
-                participant_records.append(ParticipantEhrRecord(
-                    participant_id=participant_id,
-                    receipt_time=file_upload_time,
-                    hpo_id=hpo_id
-                ))
-                if participant_id in participant_ids_that_previously_had_ehr:
-                    # Remove any participants that are part of the current page, they're being rebuilt currently, so
-                    # they won't need to rebuilt again at the end (when we get the ones that are no longer in the view)
-                    participant_ids_that_previously_had_ehr.discard(participant_id)
-                elif participant_id not in new_ids_with_status_checked:
-                    # For any participants that got EHR files for the first time: check their enrollment status and
-                    # make sure we don't check it again if they have another file
-                    summary = summary_dao.get_for_update(session=session, obj_id=participant_id)
-                    if summary is None:
-                        LOG.error(f'No summary found for P{participant_id}')
-                    else:
-                        summary_dao.update_enrollment_status(session=session, summary=summary)
-                    new_ids_with_status_checked.add(participant_id)
-
-            _track_historical_participant_ehr_data(session, participant_records)
-            query_result = summary_dao.bulk_update_ehr_status_with_session(session, participant_records)
+            hpo_files_in_batch = hpo_ehr_tracking.get_batch_list()
+            _track_historical_participant_ehr_data(session, hpo_files_in_batch)
+            query_result = summary_dao.bulk_update_ehr_status_with_session(session, hpo_files_in_batch)
             session.commit()
 
             total_rows = query_result.rowcount
@@ -138,7 +172,7 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
                 # Rebuild participants in the page that have new data available. Checking that the participant
                 #  ehr receipts were created since the job started (offsetting by an hour to account for any
                 #  difference between server times)
-                participant_ids_in_page = [record.participant_id for record in participant_records]
+                participant_ids_in_page = [record.participant_id for record in hpo_files_in_batch]
                 new_ehr_data_results = session.query(ParticipantEhrReceipt.participantId).filter(
                     ParticipantEhrReceipt.firstSeen >= job_start_time - timedelta(hours=1),
                     ParticipantEhrReceipt.participantId.in_(participant_ids_in_page)
@@ -146,9 +180,25 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
                 # TODO: only get the participants that actually changed
 
                 participant_ids_with_new_ehr_data = [row.participantId for row in new_ehr_data_results]
-                create_rebuild_tasks_for_participants(participant_ids_with_new_ehr_data,
-                                                      batch_size, project_id, summary_dao)
+                participant_ids_to_rebuild.update(participant_ids_with_new_ehr_data)
 
+            for participant_id in hpo_ehr_tracking.get_participants_with_new_files():
+                # Update the enrollment status of any participants that didn't recently have ehr files
+                summary = summary_dao.get_for_update(session=session, obj_id=participant_id)
+                if summary is None:
+                    LOG.error(f'No summary found for P{participant_id}')
+                else:
+                    summary_dao.update_enrollment_status(session=session, summary=summary)
+                    participant_ids_to_rebuild.add(participant_id)
+
+            if participant_ids_to_rebuild:
+                create_rebuild_tasks_for_participants(
+                    list(participant_ids_to_rebuild), batch_size, project_id, summary_dao
+                )
+
+    # Rebuild any participants that had the "current" flag set before, but don't now
+    # (because they didn't have a file today)
+    participant_ids_that_previously_had_ehr = hpo_ehr_tracking.get_participants_no_longer_current()
     LOG.info(f'Rebuilding {len(participant_ids_that_previously_had_ehr)} '
              f'participants that no longer appear in the view')
     create_rebuild_tasks_for_participants(participant_ids_that_previously_had_ehr, batch_size, project_id, summary_dao)

@@ -3,7 +3,7 @@ from datetime import datetime
 
 
 @dataclass
-class ParticipantEhrRecord:
+class ParticipantEhrFile:
     participant_id: int
     receipt_time: datetime
     hpo_id: int
