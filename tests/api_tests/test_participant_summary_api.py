@@ -347,6 +347,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "patientStatus": patient_statuses or [],
                 "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
                 "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
+                "isParticipantMediatedEhrDataAvailable": False
             }
         )
 
