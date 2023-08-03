@@ -465,7 +465,8 @@ class ParticipantSummary(Base):
         "is_participant_mediated_ehr_data_available",
         Boolean,
         nullable=False,
-        server_default=expression.false()
+        server_default=expression.false(),
+        default=False
     )
     """
     A true or false value that indicates whether participant-mediated Electronic Health Records (EHR)
