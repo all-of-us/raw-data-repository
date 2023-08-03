@@ -9,7 +9,7 @@ from collections import OrderedDict
 from dateutil import parser, tz
 from dateutil.parser import ParserError
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import func, desc, exc, inspect
+from sqlalchemy import func, desc, exc, inspect, or_
 from werkzeug.exceptions import NotFound
 
 from rdr_service import config
@@ -162,6 +162,10 @@ _enrollment_status_map = {
     EnrollmentStatusV2.CORE_MINUS_PM: PDREnrollmentStatusEnum.CoreParticipantMinusPM,
     EnrollmentStatusV2.CORE_PARTICIPANT: PDREnrollmentStatusEnum.CoreParticipant
 }
+
+
+def get_ce_mediated_hpo_id():
+    return config.getSettingJson(config.CE_MEDIATED_HPO_ID, default=None)
 
 
 def _act(timestamp, group: ActivityGroupEnum, event: ParticipantEventEnum, **kwargs):
@@ -558,14 +562,26 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     if has_enrollment_v3_1 else None
             }
             # Note:  None of the columns in the participant_ehr_receipt table are nullable
-            pehr_results = ro_session.query(ParticipantEhrReceipt.id,
+            pehr_query = ro_session.query(ParticipantEhrReceipt.id,
                                             ParticipantEhrReceipt.fileTimestamp,
                                             ParticipantEhrReceipt.firstSeen,
                                             ParticipantEhrReceipt.lastSeen
                                             ) \
-                .filter(ParticipantEhrReceipt.participantId == p_id) \
-                .order_by(ParticipantEhrReceipt.firstSeen,
-                          ParticipantEhrReceipt.fileTimestamp).all()
+                .filter(
+                    ParticipantEhrReceipt.participantId == p_id
+                ).order_by(
+                    ParticipantEhrReceipt.firstSeen,
+                    ParticipantEhrReceipt.fileTimestamp
+                )
+            ce_hpo_id = get_ce_mediated_hpo_id()
+            if ce_hpo_id is not None:
+                pehr_query = pehr_query.filter(
+                    or_(
+                        ParticipantEhrReceipt.hpo_id.is_(None),
+                        ParticipantEhrReceipt.hpo_id != ce_hpo_id
+                    )
+                )
+            pehr_results = pehr_query.all()
 
             if len(pehr_results):
                 for row in pehr_results:

@@ -1,6 +1,7 @@
 import collections
 from dataclasses import dataclass
 import datetime
+from typing import Optional
 
 import mock
 import pytz
@@ -15,6 +16,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline import update_ehr_status
 from rdr_service.participant_enums import EhrStatus, EnrollmentStatusV32, DigitalHealthSharingStatus
 from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
@@ -156,8 +158,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         self.assertFalse(mock_update_summaries.called)
         self.assertFalse(mock_update_organizations.called)
 
-    def assert_ehr_data_matches(self, had_ehr_status: EhrStatus, currently_has_ehr, first_ehr_time, latest_ehr_time,
-                                participant_id):
+    def assert_ehr_data_matches(self, had_ehr_status: Optional[EhrStatus], currently_has_ehr, first_ehr_time,
+                                latest_ehr_time, participant_id):
         # Check participant summary
         participant_summary = self.summary_dao.get(participant_id)
         self.assertEqual(had_ehr_status, participant_summary.ehrStatus)
@@ -166,13 +168,24 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(latest_ehr_time, participant_summary.ehrUpdateTime)
 
         # Check generated data
+        expected_pdr_status_str = \
+            str(EhrStatus.NOT_PRESENT) if participant_summary.ehrStatus is None else str(participant_summary.ehrStatus)
         ps_data = self.make_participant_resource(participant_id)
-        self.assertEqual(str(participant_summary.ehrStatus), ps_data['ehr_status'])
+        self.assertEqual(expected_pdr_status_str, ps_data['ehr_status'])
         self.assertEqual(participant_summary.ehrReceiptTime, ps_data['ehr_receipt'])
         self.assertEqual(participant_summary.ehrUpdateTime, ps_data['ehr_update'])
         self.assertEqual(participant_summary.isEhrDataAvailable, ps_data['is_ehr_data_available'])
         self.assertEqual(first_ehr_time, ps_data['first_ehr_receipt_time'])
         self.assertEqual(latest_ehr_time, ps_data['latest_ehr_receipt_time'])
+
+    def assert_mediated_data_matches(
+        self, had_ehr_status, currently_has_ehr, first_ehr_time, latest_ehr_time, participant_id
+    ):
+        participant_summary: ParticipantSummary = self.summary_dao.get(participant_id)
+        self.assertEqual(had_ehr_status, participant_summary.wasParticipantMediatedEhrAvailable)
+        self.assertEqual(currently_has_ehr, participant_summary.isParticipantMediatedEhrDataAvailable)
+        self.assertEqual(first_ehr_time, participant_summary.firstParticipantMediatedEhrReceiptTime)
+        self.assertEqual(latest_ehr_time, participant_summary.latestParticipantMediatedEhrReceiptTime)
 
     def assert_has_participant_ehr_record(self, participant_id, file_timestamp, first_seen, last_seen, hpo_id=None):
         record: ParticipantEhrReceipt = self.session.query(ParticipantEhrReceipt).filter(
@@ -204,22 +217,33 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             ])
         self.assertTrue(any([ehr_receipt_matches_expected(ehr_receipt) for ehr_receipt in ps_data['ehr_receipts']]))
 
+    @mock.patch('rdr_service.resource.generators.participant.get_ce_mediated_hpo_id')
+    @mock.patch('rdr_service.offline.update_ehr_status.ParticipantEhrTracking.is_ce_mediated_file')
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_participant_summaries_job")
-    def test_updates_participant_summaries(self, mock_summary_job):
+    def test_updates_participant_summaries(self, mock_summary_job, is_ce_file_mock, resoure_ce_mock):
+        ce_hpo_id = 230
 
-        # Run job with data for participants 11 and 14
+        def ce_id_check(file):
+            return ce_hpo_id == file.hpo_id
+        is_ce_file_mock.side_effect = ce_id_check
+        resoure_ce_mock.return_value = ce_hpo_id
+
+        # Run job with data for participants 11 and 14, and a CE file for 13
         p_eleven_first_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 12, 8), hpo_id=8)
         p_fourteen_upload = EhrUpdatePidRow(14, datetime.datetime(2020, 3, 12, 10))
-        mock_summary_job.return_value.__iter__.return_value = [[p_eleven_first_upload, p_fourteen_upload]]
+        mock_summary_job.return_value.__iter__.return_value = [
+            [p_eleven_first_upload, p_fourteen_upload]
+        ]
 
         first_job_run_time = datetime.datetime.utcnow()
         update_ehr_status.update_ehr_status_participant()
 
-        # Run job with data for participants 11 and 12 (leaving 14 out)
+        # Run job with data for participants 11 and 12 (leaving 14 out), and a new CE file for 13
         new_p_eleven_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 30, 2), hpo_id=19)
         p_twelve_upload = EhrUpdatePidRow(12, datetime.datetime(2020, 3, 27, 18))
+        p_ce_upload = EhrUpdatePidRow(13, datetime.datetime(2021, 4, 1), hpo_id=ce_hpo_id)
         mock_summary_job.return_value.__iter__.return_value = [
-            [p_eleven_first_upload, new_p_eleven_upload, p_twelve_upload]
+            [p_eleven_first_upload, new_p_eleven_upload, p_twelve_upload, p_ce_upload]
         ]
 
         second_job_run_time = datetime.datetime.utcnow()
@@ -273,6 +297,22 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             file_timestamp=p_fourteen_upload.latest_upload_time,
             first_seen=first_job_run_time,
             last_seen=first_job_run_time
+        )
+
+        # Check on the values for the CE upload
+        self.assert_ehr_data_matches(
+            participant_id=13,
+            had_ehr_status=None,
+            currently_has_ehr=False,
+            first_ehr_time=None,
+            latest_ehr_time=None
+        )
+        self.assert_mediated_data_matches(
+            participant_id=13,
+            had_ehr_status=True,
+            currently_has_ehr=True,
+            first_ehr_time=p_ce_upload.latest_upload_time,
+            latest_ehr_time=p_ce_upload.latest_upload_time
         )
 
     @staticmethod
@@ -440,7 +480,6 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(test_participant_id, checked_participant_id)
 
         self.clear_table_after_test(ParticipantEhrReceipt.__tablename__)
-
 
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_organizations_job")
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_participant_summaries_job")
