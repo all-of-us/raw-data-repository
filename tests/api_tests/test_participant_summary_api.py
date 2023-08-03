@@ -154,6 +154,7 @@ participant_summary_default_values = {
     "sample1SAL2CollectionMethod": "UNSET",
     "isEhrDataAvailable": False,
     "wasEhrDataAvailable": False,
+    "isParticipantMediatedEhrDataAvailable": False,
     "wasParticipantMediatedEhrAvailable": False,
     "questionnaireOnCopeVaccineMinute1": "UNSET",
     "questionnaireOnCopeVaccineMinute2": "UNSET",

@@ -1341,9 +1341,12 @@ class ParticipantSummaryDao(UpdatableDao):
 
         # Check if we should hide the participant mediated EHR status fields
         if not config.getSettingJson(config.ENABLE_PARTICIPANT_MEDIATED_EHR, default=False):
-            for field_name in ['wasParticipantMediatedEhrAvailable',
-                               'firstParticipantMediatedEhrReceiptTime',
-                               'latestParticipantMediatedEhrReceiptTime']:
+            for field_name in [
+                'isParticipantMediatedEhrDataAvailable',
+                'wasParticipantMediatedEhrAvailable',
+                'firstParticipantMediatedEhrReceiptTime',
+                'latestParticipantMediatedEhrReceiptTime'
+            ]:
                 if field_name in result:
                     del result[field_name]
 
