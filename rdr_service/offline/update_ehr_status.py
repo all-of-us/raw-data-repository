@@ -22,6 +22,7 @@ from rdr_service.participant_enums import EhrStatus
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 
 LOG = logging.getLogger(__name__)
+ce_hpo_id = config.getSettingJson(config.CE_MEDIATED_HPO_ID, default=None)
 
 
 class ParticipantEhrTracking:
@@ -62,6 +63,14 @@ class ParticipantEhrTracking:
             for record in self._files_in_batch
             if record.participant_id not in self._recent_ids_still_with_files
         }
+
+    @classmethod
+    def is_ce_mediated_file(cls, file: ParticipantEhrFile):
+        if ce_hpo_id is None:
+            # Continue assuming everything's HPO uploaded if CE's id isn't set
+            return False
+
+        return file.hpo_id == ce_hpo_id
 
 
 def update_ehr_status_organization():
@@ -138,7 +147,10 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
     # so we can update PDR with the ones that don't have it set later
     summary_dao = ParticipantSummaryDao()
     hpo_ehr_tracking = ParticipantEhrTracking(
-        summary_dao.get_participant_ids_with_ehr_data_available()
+        summary_dao.get_participant_ids_with_hpo_ehr_data_available()
+    )
+    ce_ehr_tracking = ParticipantEhrTracking(
+        summary_dao.get_participant_ids_with_mediated_ehr_data_available()
     )
 
     # clear the current flags in the db (they'll get set again if they still have files, otherwise they'll remain unset)
@@ -152,20 +164,27 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
 
         with summary_dao.session() as session:
             for row in page:
-                hpo_ehr_tracking.record_file_uploaded(
-                    ParticipantEhrFile(
-                        participant_id=row.person_id,
-                        receipt_time=row.latest_upload_time,
-                        hpo_id=row.hpo_id
-                    )
+                ehr_file = ParticipantEhrFile(
+                    participant_id=row.person_id,
+                    receipt_time=row.latest_upload_time,
+                    hpo_id=row.hpo_id
                 )
+                if ParticipantEhrTracking.is_ce_mediated_file(ehr_file):
+                    file_tracker = ce_ehr_tracking
+                else:
+                    file_tracker = hpo_ehr_tracking
+                file_tracker.record_file_uploaded(ehr_file)
 
             hpo_files_in_batch = hpo_ehr_tracking.get_batch_list()
-            _track_historical_participant_ehr_data(session, hpo_files_in_batch)
-            query_result = summary_dao.bulk_update_ehr_status_with_session(session, hpo_files_in_batch)
+            ce_files_in_batch = ce_ehr_tracking.get_batch_list()
+            _track_historical_participant_ehr_data(session, hpo_files_in_batch + ce_files_in_batch)
+
+            hpo_update_count = summary_dao.bulk_update_hpo_ehr_status_with_session(session, hpo_files_in_batch)
+            ce_update_count = summary_dao.bulk_update_mediated_ehr_status_with_session(session, ce_files_in_batch)
+
             session.commit()
 
-            total_rows = query_result.rowcount
+            total_rows = hpo_update_count + ce_update_count
             LOG.info("Affected {} rows.".format(total_rows))
 
             if total_rows > 0:
@@ -182,7 +201,11 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
                 participant_ids_with_new_ehr_data = [row.participantId for row in new_ehr_data_results]
                 participant_ids_to_rebuild.update(participant_ids_with_new_ehr_data)
 
-            for participant_id in hpo_ehr_tracking.get_participants_with_new_files():
+            participants_with_new_files = (
+                hpo_ehr_tracking.get_participants_with_new_files()
+                | ce_ehr_tracking.get_participants_with_new_files()
+            )
+            for participant_id in participants_with_new_files:
                 # Update the enrollment status of any participants that didn't recently have ehr files
                 summary = summary_dao.get_for_update(session=session, obj_id=participant_id)
                 if summary is None:
