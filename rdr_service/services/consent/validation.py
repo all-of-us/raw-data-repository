@@ -13,7 +13,7 @@ from rdr_service import code_constants, config
 from rdr_service.config import MissingConfigException
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.consent_dao import ConsentDao
-# from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType,\
@@ -468,13 +468,14 @@ class _ValidationOutputHelper:
 
 
 class ConsentValidationController:
-    def __init__(self, consent_dao: ConsentDao, participant_summary_dao: ParticipantSummaryDao,
-                  storage_provider: GoogleCloudStorageProvider, session: Session):
+    def __init__(self, consent_dao: ConsentDao, participant_summary_dao: ParticipantSummaryDao, hpo_dao: HPODao,
+                 storage_provider: GoogleCloudStorageProvider, session: Session):
         self.consent_dao = consent_dao
         self.participant_summary_dao = participant_summary_dao
         self.storage_provider = storage_provider
-        self.va_hpo_id = 14  # hpo_dao.get_by_name('VA').hpoI
+        self.va_hpo_id = 15  # hpo_dao.get_by_name('VA').hpoId
         self._session = session
+        print(f"ignoring this hpo ID {hpo_dao.get_by_name('VA').hpoId}")
 
     @classmethod
     def build_controller(cls, session):
