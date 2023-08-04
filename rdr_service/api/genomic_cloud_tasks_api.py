@@ -87,15 +87,17 @@ class BaseGenomicTaskApi(Resource):
 
 class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
     """
-    Cloud Task endpoint: Load raw AW1/AW2 Manifest to
-    genomic_aw1_raw or genomic_aw2_raw table
+    Cloud Task endpoint: Load raw csv manifest to RAW manifest models
     """
     def post(self):
         super(LoadRawAWNManifestDataAPI, self).post()
         logging.info(f'Loading {self.data.get("file_type").upper()} Raw Data: {self.data.get("filename")}')
 
         # Call pipeline function
-        genomic_dispatch.load_awn_manifest_into_raw_table(self.data.get("file_path"), self.data.get("file_type"))
+        genomic_dispatch.load_awn_manifest_into_raw_table(
+            file_path=self.data.get("file_path"),
+            manifest_type=self.data.get("file_type")
+        )
 
         self.create_cloud_record()
 

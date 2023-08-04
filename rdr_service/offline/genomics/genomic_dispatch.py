@@ -17,7 +17,7 @@ def load_awn_manifest_into_raw_table(
     provider=None,
     cvl_site_id=None
 ):
-    raw_jobs_map = {
+    short_read_map = {
         "aw1": {
             'job_id': GenomicJob.LOAD_AW1_TO_RAW_TABLE,
             'dao': GenomicAW1RawDao
@@ -33,7 +33,9 @@ def load_awn_manifest_into_raw_table(
         "aw4": {
             'job_id': GenomicJob.LOAD_AW4_TO_RAW_TABLE,
             'dao': GenomicAW4RawDao
-        },
+        }
+    }
+    cvl_map = {
         "w1il": {
             'job_id': GenomicJob.LOAD_CVL_W1IL_TO_RAW_TABLE,
             'dao': GenomicW1ILRawDao
@@ -70,6 +72,8 @@ def load_awn_manifest_into_raw_table(
             'job_id': GenomicJob.LOAD_CVL_W5NF_TO_RAW_TABLE,
             'dao': GenomicW5NFRawDao
         },
+    }
+    long_read_map = {
         "lr": {
             'job_id': GenomicJob.LOAD_LR_TO_RAW_TABLE,
             'dao': GenomicDefaultBaseDao,
@@ -81,20 +85,31 @@ def load_awn_manifest_into_raw_table(
             'model': GenomicL0Raw
         }
     }
+    # pr_map = {
+    #     "pr": {
+    #         'job_id': GenomicJob.LOAD_PR_TO_RAW_TABLE,
+    #         'dao': GenomicDefaultBaseDao,
+    #         'model': GenomicPRRaw
+    #     },
+    # }
+    raw_jobs_map = {
+        **short_read_map,
+        **long_read_map,
+        **cvl_map,
+        # **pr_map
+    }[manifest_type]
 
-    raw_job = raw_jobs_map.get(manifest_type)
-    if raw_job:
-        with GenomicJobController(
-            raw_job.get('job_id'),
-            bq_project_id=project_id,
-            storage_provider=provider
-        ) as controller:
-            controller.load_raw_awn_data_from_filepath(
-                file_path,
-                raw_job.get('dao'),
-                cvl_site_id=cvl_site_id,
-                model=raw_job.get('model')
-            )
+    with GenomicJobController(
+        job_id=raw_jobs_map.get('job_id'),
+        bq_project_id=project_id,
+        storage_provider=provider
+    ) as controller:
+        controller.load_raw_awn_data_from_filepath(
+            file_path,
+            raw_jobs_map.get('dao'),
+            cvl_site_id=cvl_site_id,
+            model=raw_jobs_map.get('model')
+        )
 
 
 def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
