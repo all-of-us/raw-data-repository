@@ -170,6 +170,12 @@ class GenomicJob(messages.Enum):
     LOAD_LR_TO_RAW_TABLE = 350
     LOAD_L0_TO_RAW_TABLE = 351
 
+    PR_PR_WORKFLOW = 400
+    PR_P0_WORKFLOW = 401
+
+    LOAD_PR_TO_RAW_TABLE = 450
+    LOAD_P0_TO_RAW_TABLE = 451
+
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
 
@@ -181,6 +187,7 @@ class GenomicJob(messages.Enum):
 
     # Datagen Manifest Workflows
     DATAGEN_MANIFEST_GENERATION = 3001
+
 
 class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions. States are not in any order. """
@@ -322,6 +329,9 @@ class GenomicManifestTypes(messages.Enum):
     CVL_W1IL_HDR = 27
     LR_LR = 28
     LR_L0 = 29
+
+    PR_PR = 40
+    PR_P0 = 41
 
 
 class GenomicContaminationCategory(messages.Enum):

@@ -372,6 +372,48 @@ class IngestLongReadManifestTaskApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
+class IngestPRManifestTaskApi(BaseGenomicTaskApi):
+    """
+    Cloud Task endpoint: Ingest PR Manifest(s).
+    """
+    def post(self):
+        super().post()
+
+        pr_manifest_map = {
+            'pr': {
+                'job': GenomicJob.PR_PR_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.PR_PR
+            },
+        }
+
+        for file_path in self.file_paths:
+            logging.info(f'Ingesting LR Manifest File: {self.data.get("filename")}')
+
+            task_type = self.data.get("file_type")
+            workflow_data = pr_manifest_map[task_type]
+
+            # Set up file/JSON
+            task_data = {
+                "job": workflow_data.get('job'),
+                "bucket": self.data["bucket_name"],
+                "file_data": {
+                    "create_feedback_record": False,
+                    "upload_date": self.data["upload_date"],
+                    "manifest_type": workflow_data.get('manifest_type'),
+                    "file_path": file_path,
+                }
+            }
+
+            logging.info(f'{task_type.upper()} task data: {task_data}')
+
+            self.execute_manifest_ingestion(task_data, task_type.upper())
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
 class IngestSamplesFromRawTaskAPI(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Ingest samples based on list

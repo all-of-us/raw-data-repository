@@ -3720,3 +3720,45 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(manifest_generation['success'], True)
         self.assertEqual(ingest_mock.call_count, 1)
 
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
+    def test_ingest_pr_job_task_api(self, ingest_mock):
+
+        from rdr_service.resource import main as resource_main
+
+        pr_map = {
+            'pr': {
+                'job': GenomicJob.PR_PR_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.PR_PR
+            }
+        }
+
+        test_bucket = 'test_pr_bucket'
+
+        for pr_key, pr_data in pr_map.items():
+
+            pr_type_file_path = f"{test_bucket}/test_pr_{pr_key}_file.csv"
+
+            data = {
+                "file_path": pr_type_file_path,
+                "bucket_name": pr_type_file_path.split('/')[0],
+                "upload_date": '2020-09-13T20:52:12+00:00',
+                "file_type": pr_key
+            }
+
+            self.send_post(
+                local_path='IngestPRManifestTaskApi',
+                request_data=data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+            call_json = ingest_mock.call_args[0][0]
+
+            self.assertEqual(ingest_mock.called, True)
+            self.assertEqual(call_json['bucket'], data['bucket_name'])
+            self.assertEqual(call_json['job'], pr_data['job'])
+            self.assertIsNotNone(call_json['file_data'])
+            self.assertEqual(
+                call_json['file_data']['manifest_type'],
+                pr_data['manifest_type']
+            )
