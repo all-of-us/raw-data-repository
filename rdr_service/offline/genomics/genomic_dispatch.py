@@ -6,7 +6,7 @@ from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, Gen
     GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW5NFRawDao, GenomicDefaultBaseDao
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult
-from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw
+from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicPRRaw
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -85,18 +85,18 @@ def load_awn_manifest_into_raw_table(
             'model': GenomicL0Raw
         }
     }
-    # pr_map = {
-    #     "pr": {
-    #         'job_id': GenomicJob.LOAD_PR_TO_RAW_TABLE,
-    #         'dao': GenomicDefaultBaseDao,
-    #         'model': GenomicPRRaw
-    #     },
-    # }
+    pr_map = {
+        "pr": {
+            'job_id': GenomicJob.LOAD_PR_TO_RAW_TABLE,
+            'dao': GenomicDefaultBaseDao,
+            'model': GenomicPRRaw
+        },
+    }
     raw_jobs_map = {
         **short_read_map,
         **long_read_map,
         **cvl_map,
-        # **pr_map
+        **pr_map
     }[manifest_type]
 
     with GenomicJobController(

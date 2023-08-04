@@ -1708,3 +1708,26 @@ class GenomicL0Raw(Base):
 
 event.listen(GenomicL0Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicL0Raw, 'before_update', model_update_listener)
+
+
+class GenomicPRRaw(Base):
+    """
+    Raw data from PR files
+    """
+    __tablename__ = 'genomic_pr_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    p_site_id = Column(String(255), nullable=True)
+
+
+event.listen(GenomicPRRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicPRRaw, 'before_update', model_update_listener)
