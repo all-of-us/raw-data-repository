@@ -946,21 +946,45 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             ).all()
         return members
 
-    def get_control_sample_parent(self, genome_type, sample_id):
+    def get_control_sample_parent(
+        self,
+        genome_type: str,
+        sample_id
+    ):
         """
-        Returns the GenomicSetMember parent record for a control sample
+        Returns the GenomicSetMember parent record()s for a control sample
         :param genome_type:
         :param sample_id:
         :return: GenomicSetMember
         """
         with self.session() as session:
             return session.query(
-                GenomicSetMember
+                GenomicSetMember.sampleId
             ).filter(
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CONTROL_SAMPLE,
                 GenomicSetMember.sampleId == sample_id,
                 GenomicSetMember.genomeType == genome_type
             ).one_or_none()
+
+    def get_control_sample_parent_records(
+        self,
+        genome_type: str,
+        sample_ids: List[int]
+    ):
+        """
+        Returns the GenomicSetMember parent record()s for a control sample
+        :param genome_type:
+        :param sample_ids:
+        :return: GenomicSetMember
+        """
+        with self.session() as session:
+            return session.query(
+                GenomicSetMember.sampleId
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CONTROL_SAMPLE,
+                GenomicSetMember.sampleId.in_(sample_ids),
+                GenomicSetMember.genomeType == genome_type
+            ).all()
 
     def get_control_sample_for_gc_and_genome_type(self, _site, genome_type, biobank_id,
                                                   collection_tube_id, sample_id):
@@ -976,7 +1000,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         """
         with self.session() as session:
             return session.query(
-                GenomicSetMember
+                GenomicSetMember.id
             ).filter(
                 GenomicSetMember.sampleId == sample_id,
                 GenomicSetMember.genomeType == genome_type,
