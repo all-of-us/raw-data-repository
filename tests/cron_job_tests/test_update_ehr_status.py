@@ -24,7 +24,7 @@ from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 class EhrUpdatePidRow:
     person_id: int
     latest_upload_time: datetime.datetime
-    hpo_id: int = 0
+    hpo_id: str = ''
 
 
 class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
@@ -208,7 +208,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
     def test_updates_participant_summaries(self, mock_summary_job):
 
         # Run job with data for participants 11 and 14
-        p_eleven_first_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 12, 8), hpo_id=8)
+        p_eleven_first_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 12, 8), hpo_id='one')
         p_fourteen_upload = EhrUpdatePidRow(14, datetime.datetime(2020, 3, 12, 10))
         mock_summary_job.return_value.__iter__.return_value = [[p_eleven_first_upload, p_fourteen_upload]]
 
@@ -216,7 +216,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         update_ehr_status.update_ehr_status_participant()
 
         # Run job with data for participants 11 and 12 (leaving 14 out)
-        new_p_eleven_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 30, 2), hpo_id=19)
+        new_p_eleven_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 30, 2), hpo_id='five')
         p_twelve_upload = EhrUpdatePidRow(12, datetime.datetime(2020, 3, 27, 18))
         mock_summary_job.return_value.__iter__.return_value = [
             [p_eleven_first_upload, new_p_eleven_upload, p_twelve_upload]

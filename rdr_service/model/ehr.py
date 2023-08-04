@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Index, Integer
+from sqlalchemy import Column, ForeignKey, Index, Integer, String
 
 from rdr_service.model.base import Base
 from rdr_service.model.participant import Participant
@@ -32,7 +32,7 @@ class ParticipantEhrReceipt(Base):
     fileTimestamp = Column("file_timestamp", UTCDateTime, nullable=False)
     firstSeen = Column("first_seen", UTCDateTime, nullable=False)
     lastSeen = Column("last_seen", UTCDateTime, nullable=False)
-    hpo_id = Column(Integer)
+    hpo_id = Column(String(128))
 
 
 Index(
