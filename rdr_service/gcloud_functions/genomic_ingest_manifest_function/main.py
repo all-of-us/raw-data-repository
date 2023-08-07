@@ -32,24 +32,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
     def __init__(self, gcp_env, _event, _context):
         super().__init__(gcp_env, _event, _context)
-
         self.task_root = '/resource/task/'
-
-        self.task_mappings = {
-            "aw1": "IngestAW1ManifestTaskApi",
-            "aw1f": "IngestAW1ManifestTaskApi",
-            "aw2": "IngestAW2ManifestTaskApi",
-            "aw4": "IngestAW4ManifestTaskApi",
-            "aw5": "IngestAW5ManifestTaskApi",
-            "w2sc": "IngestCVLManifestTaskApi",
-            "w3ns": "IngestCVLManifestTaskApi",
-            "w3sc": "IngestCVLManifestTaskApi",
-            "w3ss": "IngestCVLManifestTaskApi",
-            "w4wr": "IngestCVLManifestTaskApi",
-            "w5nf": "IngestCVLManifestTaskApi",
-            "lr": "IngestLongReadManifestTaskApi",
-            "pr": "IngestPRManifestTaskApi"
-        }
 
     def run(self):
         """ Handle Pub/Sub message events.
@@ -62,25 +45,77 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
         object_id = self.event.attributes.objectId.lower()
 
+        short_read_tasks = {
+            '_sample_manifests': {
+                'manifest_type': 'aw1',
+                'task_endpoint': 'IngestAW1ManifestTaskApi'
+            },
+            'aw1f_pre_results': {
+                'manifest_type': 'aw1f',
+                'task_endpoint': 'IngestAW1ManifestTaskApi'
+            },
+            '_data_manifests': {
+                'manifest_type': 'aw2',
+                'task_endpoint': 'IngestAW2ManifestTaskApi'
+            },
+            'aw4_': {
+                'manifest_type': 'aw4',
+                'task_endpoint': 'IngestAW4ManifestTaskApi'
+            },
+            'aw5_': {
+                'manifest_type': 'aw5',
+                'task_endpoint': 'IngestAW5ManifestTaskApi'
+            },
+        }
+        cvl_tasks = {
+            '_w2sc_': {
+                'manifest_type': 'w2sc',
+                'task_endpoint': 'IngestCVLManifestTaskApi'
+            },
+            '_w3ns_': {
+                'manifest_type': 'w3ns',
+                'task_endpoint': 'IngestCVLManifestTaskApi'
+            },
+            '_w3sc_': {
+                'manifest_type': 'w3sc',
+                'task_endpoint': 'IngestCVLManifestTaskApi'
+            },
+            '_pkg': {
+                'manifest_type': 'w3ss',
+                'task_endpoint': 'IngestCVLManifestTaskApi'
+            },
+            '_w4wr_': {
+                'manifest_type': 'w4wr',
+                'task_endpoint': 'IngestCVLManifestTaskApi'
+            },
+            '_w5nf_': {
+                'manifest_type': 'w5nf',
+                'task_endpoint': 'IngestCVLManifestTaskApi'
+            },
+        }
+        long_read_tasks = {
+            '_lr_requests_': {
+                'manifest_type': 'lr',
+                'task_endpoint': 'IngestLongReadManifestTaskApi'
+            },
+        }
+        pr_tasks = {
+            '_pr_requests_': {
+                'manifest_type': 'pr',
+                'task_endpoint': 'IngestPRManifestTaskApi'
+            }
+        }
+
         task_key_map = {
-            '_sample_manifests': 'aw1',
-            'aw1f_pre_results': 'aw1f',
-            '_data_manifests': 'aw2',
-            'aw4_': 'aw4',
-            'aw5_': 'aw5',
-            '_w2sc_': 'w2sc',
-            '_w3ns_': 'w3ns',
-            '_w3sc_': 'w3sc',
-            '_pkg': 'w3ss',
-            '_w4wr_': 'w4wr',
-            '_w5nf_': 'w5nf',
-            '_lr_requests_': 'lr',
-            '_pr_requests_': 'pr'
+            **short_read_tasks,
+            **cvl_tasks,
+            **long_read_tasks,
+            **pr_tasks
         }
 
         for key, value in task_key_map.items():
             if key in object_id:
-                task_key = value
+                task_data = value
                 break
         else:
             _logger.info("No files match ingestion criteria.")
@@ -88,20 +123,21 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
         _logger.info(f"Event payload: {self.event}")
 
-        if task_key:
+        if task_data:
             _logger.info("Pushing cloud tasks...")
 
-            api_route = f'{self.task_root}{self.task_mappings[task_key]}'
+            api_route = f'{self.task_root}{task_data.get("task_endpoint")}'
+            manifest_type = task_data.get("manifest_type")
 
             data = {
-                "file_type": task_key,
+                "file_type": manifest_type,
                 "filename": self.event.attributes.objectId,
                 "file_path": f'{self.event.attributes.bucketId}/{self.event.attributes.objectId}',
                 "bucket_name": self.event.attributes.bucketId,
                 "topic": "genomic_manifest_upload",
                 "event_payload": self.event,
                 "upload_date": self.event.attributes.eventTime,
-                "task": f'{task_key}_manifest',
+                "task": f'{manifest_type}_manifest',
                 "api_route": api_route,
                 "cloud_function": True,
             }
@@ -109,7 +145,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             bypass_raw_keys = ['aw5']
 
             # Load into raw table
-            if task_key not in bypass_raw_keys:
+            if manifest_type not in bypass_raw_keys:
                 raw_cloud_task = GCPCloudTask()
                 raw_cloud_task.execute(
                     f'{self.task_root}LoadRawAWNManifestDataAPI',
