@@ -2787,7 +2787,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-            load_raw_awn_data_mock.assert_called_with(test_file_path, key)
+            load_raw_awn_data_mock.assert_called_with(file_path=test_file_path, manifest_type=key)
 
         self.assertEqual(load_raw_awn_data_mock.call_count, len(raw_manifest_keys))
 
