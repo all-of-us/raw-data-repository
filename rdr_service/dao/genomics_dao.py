@@ -4862,3 +4862,12 @@ class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
             ).distinct().all()
 
 
+class GenomicPRDao(BaseDao, GenomicDaoMixin):
+    def __init__(self):
+        super().__init__(GenomicSetMember, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass

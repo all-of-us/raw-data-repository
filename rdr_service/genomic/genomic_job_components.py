@@ -19,6 +19,7 @@ from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_long_read_workflow import GenomicLongReadWorkFlow
 from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow
+from rdr_service.genomic.genomic_sub_workflow import GenomicSubWorkflow
 from rdr_service.genomic_enums import ResultsModuleType
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -63,7 +64,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     UserEventMetricsDao,
     GenomicQueriesDao,
-    GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao)
+    GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao, GenomicPRDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -287,7 +288,7 @@ class GenomicFileIngester:
         workflow_map = {
             GenomicJob.AW1_MANIFEST: GenomicAW1Workflow,
             GenomicJob.AW1F_MANIFEST: GenomicAW1Workflow,
-            GenomicJob.METRICS_INGESTION: GenomicAW2Workflow
+            GenomicJob.METRICS_INGESTION: GenomicAW2Workflow,
         }
 
         current_ingestion_map = {
@@ -305,7 +306,8 @@ class GenomicFileIngester:
             GenomicJob.CVL_W3SC_WORKFLOW: self._ingest_cvl_w3sc_manifest,
             GenomicJob.CVL_W4WR_WORKFLOW: self._ingest_cvl_w4wr_manifest,
             GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
-            GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_lr_manifest
+            GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_lr_manifest,
+            GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_pr_manifest
         }
 
         current_ingestion_workflow = current_ingestion_map.get(self.job_id)
@@ -1169,6 +1171,14 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
+    @staticmethod
+    def _ingest_pr_pr_manifest(rows: List[OrderedDict]) -> GenomicSubProcessResult:
+        try:
+            GenomicSubWorkflow.create_genomic_sub_workflow(dao=GenomicPRDao).run_ingestion(rows)
+            return GenomicSubProcessResult.SUCCESS
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
     @classmethod
     def validate_collection_tube_id(cls, collection_tube_id, bid):
         """
@@ -1538,6 +1548,13 @@ class GenomicFileValidator:
             "longreadplatform"
         )
 
+        # PR pipeline
+        self.PR_PR_SCHEMA = (
+            "biobankid",
+            "genometype",
+            "psiteid",
+        )
+
         self.values_for_validation = {
             GenomicJob.METRICS_INGESTION: {
                 GENOME_TYPE_ARRAY: {
@@ -1833,6 +1850,20 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        # PR pipeline
+        def pr_pr_manifest_name_rule():
+            """
+            PR PR manifest name rule
+            """
+            return (
+                len(filename_components) == 5 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'pr' and
+                filename_components[3] == 'requests' and
+                filename.lower().endswith('csv')
+            )
+
         ingestion_name_rules = {
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
             GenomicJob.AW1_MANIFEST: bb_to_gc_manifest_name_rule,
@@ -1849,7 +1880,8 @@ class GenomicFileValidator:
             GenomicJob.CVL_W3SS_WORKFLOW: cvl_w3ss_manifest_name_rule,
             GenomicJob.CVL_W4WR_WORKFLOW: cvl_w4wr_manifest_name_rule,
             GenomicJob.CVL_W5NF_WORKFLOW: cvl_w5nf_manifest_name_rule,
-            GenomicJob.LR_LR_WORKFLOW: lr_lr_manifest_name_rule
+            GenomicJob.LR_LR_WORKFLOW: lr_lr_manifest_name_rule,
+            GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule
         }
 
         try:
@@ -1967,6 +1999,8 @@ class GenomicFileValidator:
                 return self.CVL_W5NF_SCHEMA
             if self.job_id == GenomicJob.LR_LR_WORKFLOW:
                 return self.LR_LR_SCHEMA
+            if self.job_id == GenomicJob.PR_PR_WORKFLOW:
+                return self.PR_PR_SCHEMA
 
         except (IndexError, KeyError):
             return GenomicSubProcessResult.ERROR

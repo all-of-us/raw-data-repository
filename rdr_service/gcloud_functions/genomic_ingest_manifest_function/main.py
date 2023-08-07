@@ -115,7 +115,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
         for key, value in task_key_map.items():
             if key in object_id:
-                task_data = value
+                task_data: dict = value
                 break
         else:
             _logger.info("No files match ingestion criteria.")

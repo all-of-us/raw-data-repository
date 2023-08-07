@@ -17,7 +17,7 @@ def load_awn_manifest_into_raw_table(
     provider=None,
     cvl_site_id=None
 ):
-    short_read_map = {
+    short_read_raw_map = {
         "aw1": {
             'job_id': GenomicJob.LOAD_AW1_TO_RAW_TABLE,
             'dao': GenomicAW1RawDao
@@ -35,7 +35,7 @@ def load_awn_manifest_into_raw_table(
             'dao': GenomicAW4RawDao
         }
     }
-    cvl_map = {
+    cvl_raw_map = {
         "w1il": {
             'job_id': GenomicJob.LOAD_CVL_W1IL_TO_RAW_TABLE,
             'dao': GenomicW1ILRawDao
@@ -73,7 +73,7 @@ def load_awn_manifest_into_raw_table(
             'dao': GenomicW5NFRawDao
         },
     }
-    long_read_map = {
+    long_read_raw_map = {
         "lr": {
             'job_id': GenomicJob.LOAD_LR_TO_RAW_TABLE,
             'dao': GenomicDefaultBaseDao,
@@ -85,7 +85,7 @@ def load_awn_manifest_into_raw_table(
             'model': GenomicL0Raw
         }
     }
-    pr_map = {
+    pr_raw_map = {
         "pr": {
             'job_id': GenomicJob.LOAD_PR_TO_RAW_TABLE,
             'dao': GenomicDefaultBaseDao,
@@ -93,10 +93,10 @@ def load_awn_manifest_into_raw_table(
         },
     }
     raw_jobs_map = {
-        **short_read_map,
-        **long_read_map,
-        **cvl_map,
-        **pr_map
+        **short_read_raw_map,
+        **long_read_raw_map,
+        **cvl_raw_map,
+        **pr_raw_map
     }[manifest_type]
 
     with GenomicJobController(
@@ -134,7 +134,8 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.CVL_W3SS_WORKFLOW,
         GenomicJob.CVL_W4WR_WORKFLOW,
         GenomicJob.CVL_W5NF_WORKFLOW,
-        GenomicJob.LR_LR_WORKFLOW
+        GenomicJob.LR_LR_WORKFLOW,
+        GenomicJob.PR_PR_WORKFLOW
     )
 
     if _task_data.job in ingestion_workflows:
