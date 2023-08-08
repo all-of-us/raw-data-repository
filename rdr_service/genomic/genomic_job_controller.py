@@ -147,18 +147,19 @@ class GenomicJobController:
         self._end_run()
 
     def execute_auto_generation(self):
-        auto_generation_map = {
-            GenomicJob.LR_LR_WORKFLOW: 'l0'
-        }
-        manifest_generation = auto_generation_map.get(self.job_id, None)
-        if manifest_generation:
+        try:
+            auto_generation_manifest_map = {
+                GenomicJob.LR_LR_WORKFLOW: 'l0',
+                GenomicJob.PR_PR_WORKFLOW: 'p0'
+            }[self.job_id]
+
             self.execute_cloud_task(
-                {
-                    'manifest_type': manifest_generation
-                },
+                {'manifest_type': auto_generation_manifest_map},
                 'genomic_generate_manifest',
                 'genomic-generate-manifest'
             )
+        except KeyError:
+            pass
 
     def insert_genomic_manifest_file_record(self):
         """

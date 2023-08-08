@@ -6,7 +6,7 @@ from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, Gen
     GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW5NFRawDao, GenomicDefaultBaseDao
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult
-from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicPRRaw
+from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicPRRaw, GenomicP0Raw
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -91,25 +91,34 @@ def load_awn_manifest_into_raw_table(
             'dao': GenomicDefaultBaseDao,
             'model': GenomicPRRaw
         },
+        "p0": {
+            'job_id': GenomicJob.LOAD_P0_TO_RAW_TABLE,
+            'dao': GenomicDefaultBaseDao,
+            'model': GenomicP0Raw
+        },
     }
-    raw_jobs_map = {
-        **short_read_raw_map,
-        **long_read_raw_map,
-        **cvl_raw_map,
-        **pr_raw_map
-    }[manifest_type]
 
-    with GenomicJobController(
-        job_id=raw_jobs_map.get('job_id'),
-        bq_project_id=project_id,
-        storage_provider=provider
-    ) as controller:
-        controller.load_raw_awn_data_from_filepath(
-            file_path,
-            raw_jobs_map.get('dao'),
-            cvl_site_id=cvl_site_id,
-            model=raw_jobs_map.get('model')
-        )
+    try:
+        raw_jobs_map = {
+            **short_read_raw_map,
+            **long_read_raw_map,
+            **cvl_raw_map,
+            **pr_raw_map
+        }[manifest_type]
+
+        with GenomicJobController(
+            job_id=raw_jobs_map.get('job_id'),
+            bq_project_id=project_id,
+            storage_provider=provider
+        ) as controller:
+            controller.load_raw_awn_data_from_filepath(
+                file_path,
+                raw_jobs_map.get('dao'),
+                cvl_site_id=cvl_site_id,
+                model=raw_jobs_map.get('model')
+            )
+    except KeyError:
+        pass
 
 
 def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):

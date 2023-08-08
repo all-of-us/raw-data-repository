@@ -1,12 +1,17 @@
-
+import csv
 import datetime
+import os
+from unittest import mock
 
-from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestFileDao, GenomicFileProcessedDao, \
-    GenomicJobRunDao
+from rdr_service import config, clock
+from rdr_service.api_util import open_cloud_file
+from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestFileDao, \
+    GenomicFileProcessedDao, GenomicJobRunDao, GenomicPRDao
+from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, \
     GenomicSubProcessStatus, GenomicSubProcessResult
-from rdr_service.model.genomics import GenomicPRRaw
-from rdr_service.offline.genomics import genomic_dispatch
+from rdr_service.model.genomics import GenomicPRRaw, GenomicP0Raw
+from rdr_service.offline.genomics import genomic_dispatch, genomic_proteomics_pipeline
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -22,6 +27,7 @@ class GenomicPRPipelineTest(BaseTestCase):
             genomicSetCriteria=".",
             genomicSetVersion=1
         )
+        self.pr_dao = GenomicPRDao()
 
     def base_pr_data_insert(self, **kwargs):
         for num in range(1, kwargs.get('num_set_members', 4)):
@@ -42,7 +48,7 @@ class GenomicPRPipelineTest(BaseTestCase):
                 validationStatus=1,
                 sexAtBirth="F",
                 collectionTubeId=f"{num}2222222222",
-                ai_an='Y'
+                ai_an='N'
             )
 
     def execute_base_pr_ingestion(self, **kwargs):
@@ -82,6 +88,16 @@ class GenomicPRPipelineTest(BaseTestCase):
             manifest_type=GenomicManifestTypes.PR_PR
         )
 
+        pr_members = self.pr_dao.get_all()
+
+        self.assertEqual(len(pr_members), 3)
+        self.assertTrue(all(obj.biobank_id is not None for obj in pr_members))
+        self.assertTrue(all(obj.sample_id is None for obj in pr_members))
+        self.assertTrue(all(obj.genome_type == 'aou_proteomics' for obj in pr_members))
+        self.assertTrue(all(obj.p_site_id == 'bi' for obj in pr_members))
+        self.assertTrue(all(obj.genomic_set_member_id is not None for obj in pr_members))
+        self.assertTrue(all(obj.proteomics_set == 1 for obj in pr_members))
+
         # check job run record
         pr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_PR_WORKFLOW, self.job_run_dao.get_all()))
 
@@ -89,6 +105,8 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertEqual(len(pr_job_runs), 1)
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in pr_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in pr_job_runs))
+
+        self.clear_table_after_test('genomic_proteomics')
 
     def test_pr_manifest_to_raw_ingestion(self):
 
@@ -118,7 +136,148 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.genome_type is not None for obj in pr_raw_records))
         self.assertTrue(all(obj.p_site_id is not None for obj in pr_raw_records))
 
-        self.assertTrue(all(obj.genome_type == 'aou_proteomics' for obj in pr_raw_records))
-        self.assertTrue(all(obj.p_site_id == 'bi' for obj in pr_raw_records))
+        # check job run record
+        pr_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_PR_TO_RAW_TABLE, self.job_run_dao.get_all()))
 
+        self.assertIsNotNone(pr_raw_job_runs)
+        self.assertEqual(len(pr_raw_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in pr_raw_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in pr_raw_job_runs))
+
+        self.clear_table_after_test('genomic_proteomics')
+
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_full_pr_to_p0_cloud_task_manifest(self, cloud_task_mock):
+
+        self.execute_base_pr_ingestion(
+            test_file='RDR_AoU_PR_Requests.csv',
+            job_id=GenomicJob.PR_PR_WORKFLOW,
+            manifest_type=GenomicManifestTypes.PR_PR
+        )
+
+        self.assertEqual(cloud_task_mock.called, True)
+        self.assertEqual(cloud_task_mock.call_count, 1)
+
+        # manifest type
+        self.assertTrue(len(cloud_task_mock.call_args[0][0]), 1)
+        self.assertTrue(cloud_task_mock.call_args[0][0].get('manifest_type') == 'p0')
+
+        # task queue
+        self.assertTrue(len(cloud_task_mock.call_args[0][2]), 1)
+        self.assertTrue(cloud_task_mock.call_args[0][2] == 'genomic-generate-manifest')
+
+        self.clear_table_after_test('genomic_proteomics')
+
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_p0_manifest_generation(self, cloud_task):
+
+        # pr always proceeds p0 in workflow
+        self.execute_base_pr_ingestion(
+            test_file='RDR_AoU_PR_Requests.csv',
+            job_id=GenomicJob.PR_PR_WORKFLOW,
+            manifest_type=GenomicManifestTypes.PR_PR
+        )
+
+        pr_members = self.pr_dao.get_all()
+        self.assertEqual(len(pr_members), 3)
+
+        # RESET cloud task mock that was called from LR ingestion for later checks in test
+        cloud_task.reset_mock()
+
+        fake_date = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+        # init p0 workflow from pipeline
+        with clock.FakeClock(fake_date):
+            genomic_proteomics_pipeline.pr_p0_manifest_workflow()
+
+        current_pr_manifests = self.manifest_file_dao.get_all()
+
+        # 1 for PR and 1 for P0
+        self.assertEqual(len(current_pr_manifests), 2)
+
+        # check P0 manifest only
+        current_p0_manifest = list(filter(lambda x: x.manifestTypeId == GenomicManifestTypes.PR_P0,
+                                          current_pr_manifests))
+
+        self.assertEqual(len(current_p0_manifest), 1)
+        self.assertTrue(all(obj.recordCount == len(pr_members) for obj in current_p0_manifest))
+        self.assertTrue(all(obj.manifestTypeId == GenomicManifestTypes.PR_P0 for obj in current_p0_manifest))
+        self.assertTrue(all(obj.manifestTypeIdStr == GenomicManifestTypes.PR_P0.name for obj in current_p0_manifest))
+
+        manifest_def_provider = ManifestDefinitionProvider(kwargs={})
+        columns_expected = manifest_def_provider.manifest_columns_config[GenomicManifestTypes.PR_P0]
+
+        with open_cloud_file(
+            os.path.normpath(
+                f'{current_p0_manifest[0].filePath}'
+            )
+        ) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            csv_rows = list(csv_reader)
+            self.assertEqual(len(csv_rows), len(pr_members))
+
+            # check for all columns
+            manifest_columns = csv_reader.fieldnames
+            self.assertTrue(list(columns_expected) == manifest_columns)
+
+            prefix = config.getSetting(config.BIOBANK_ID_PREFIX)
+
+            for row in csv_rows:
+                self.assertIsNotNone(row['biobank_id'])
+                self.assertTrue(prefix in row['biobank_id'])
+                self.assertIsNotNone(row['collection_tube_id'])
+                self.assertIsNotNone(row['sex_at_birth'])
+                self.assertIsNotNone(row['validation_passed'])
+                self.assertIsNotNone(row['ai_an'])
+                self.assertIsNotNone(row['ny_flag'])
+                self.assertIsNotNone(row['p_site_id'])
+
+                self.assertEqual(row['sex_at_birth'], 'F')
+                self.assertEqual(row['ny_flag'], 'N')
+                self.assertEqual(row['genome_type'], config.GENOME_TYPE_PR)
+                self.assertEqual(row['p_site_id'], 'bi')
+                self.assertEqual(row['ai_an'], 'N')
+                self.assertEqual(row['validation_passed'], 'Y')
+
+        pr_files_processed = self.file_processed_dao.get_all()
+
+        # 1 for PR and 1 for P0
+        self.assertEqual(len(pr_files_processed), 2)
+
+        # check job run record
+        p0_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_P0_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(p0_job_runs)
+        self.assertEqual(len(p0_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p0_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p0_job_runs))
+
+        # Cloud task needs to be BYPASSED for updating members @ this time
+        self.assertFalse(cloud_task.called)
+        self.assertEqual(cloud_task.call_count, 0)
+
+        # check raw records
+        p0_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicP0Raw
+        )
+
+        p0_raw_records = p0_raw_dao.get_all()
+        self.assertEqual(len(p0_raw_records), len(pr_members))
+        self.assertTrue(all(obj.file_path is not None for obj in p0_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in p0_raw_records))
+        self.assertTrue(all(obj.collection_tube_id is not None for obj in p0_raw_records))
+        self.assertTrue(all(obj.sex_at_birth == 'F' for obj in p0_raw_records))
+        self.assertTrue(all(obj.ny_flag == 'N' for obj in p0_raw_records))
+        self.assertTrue(all(obj.genome_type == config.GENOME_TYPE_PR for obj in p0_raw_records))
+        self.assertTrue(all(obj.ai_an == 'N' for obj in p0_raw_records))
+        self.assertTrue(all(obj.p_site_id == 'bi' for obj in p0_raw_records))
+
+        # check job run record
+        p0_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_P0_TO_RAW_TABLE, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(p0_raw_job_runs)
+        self.assertEqual(len(p0_raw_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p0_raw_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p0_raw_job_runs))
+
+        self.clear_table_after_test('genomic_proteomics')
 

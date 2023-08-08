@@ -89,7 +89,7 @@ from rdr_service.config import (
     CVL_W1IL_PGX_MANIFEST_SUBFOLDER,
     CVL_W2W_MANIFEST_SUBFOLDER,
     CVL_W3SR_MANIFEST_SUBFOLDER,
-    LR_L0_MANIFEST_SUBFOLDER
+    LR_L0_MANIFEST_SUBFOLDER, PR_P0_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
@@ -1171,10 +1171,12 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
-    @staticmethod
-    def _ingest_pr_pr_manifest(rows: List[OrderedDict]) -> GenomicSubProcessResult:
+    def _ingest_pr_pr_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
-            GenomicSubWorkflow.create_genomic_sub_workflow(dao=GenomicPRDao).run_ingestion(rows)
+            GenomicSubWorkflow.create_genomic_sub_workflow(
+                dao=GenomicPRDao,
+                job_id=self.job_id
+            ).run_workflow(row_data=rows)
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
@@ -2843,6 +2845,7 @@ class ManifestDefinitionProvider:
         )
         self.query_dao = GenomicQueriesDao()
         self.long_read_dao = GenomicLongReadDao()
+        self.pr_dao = GenomicPRDao()
 
         self.manifest_columns_config = {
             GenomicManifestTypes.GEM_A1: (
@@ -3013,6 +3016,16 @@ class ManifestDefinitionProvider:
                 'lr_site_id',
                 'long_read_platform'
             ),
+            GenomicManifestTypes.PR_P0: (
+                'biobank_id',
+                'collection_tube_id',
+                'sex_at_birth',
+                'genome_type',
+                'ny_flag',
+                'validation_passed',
+                'ai_an',
+                'p_site_id',
+            ),
         }
 
     def _get_source_data_query(self, manifest_type):
@@ -3113,6 +3126,12 @@ class ManifestDefinitionProvider:
                     f'-{now_formatted}.csv',
                 'query': self.long_read_dao.get_l0_records_from_max_set
             },
+            GenomicManifestTypes.PR_P0: {
+                'output_filename':
+                    f'{PR_P0_MANIFEST_SUBFOLDER}/Proteomics-Manifest-AoU-{self.kwargs.get("pr_max_set")}'
+                    f'-{now_formatted}.csv',
+                'query': self.pr_dao.get_p0_records_from_max_set
+            },
         }
         def_config = def_config.get(manifest_type)
         return self.ManifestDef(
@@ -3167,8 +3186,12 @@ class ManifestCompiler:
         """
 
         def _extract_member_ids_update(obj_list: List[dict]) -> List[int]:
-            if self.controller.job_id in [GenomicJob.LR_L0_WORKFLOW]:
+            if self.controller.job_id in [
+                GenomicJob.LR_L0_WORKFLOW,
+                GenomicJob.PR_P0_WORKFLOW
+            ]:
                 return []
+
             update_member_ids = [
                 obj.genomic_set_member_id for obj in
                 obj_list if hasattr(obj, 'genomic_set_member_id')

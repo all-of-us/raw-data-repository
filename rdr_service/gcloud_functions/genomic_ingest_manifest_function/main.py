@@ -103,7 +103,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             '_pr_requests_': {
                 'manifest_type': 'pr',
                 'task_endpoint': 'IngestPRManifestTaskApi'
-            }
+            },
         }
 
         task_key_map = {
