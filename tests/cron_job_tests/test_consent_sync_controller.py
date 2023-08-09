@@ -224,7 +224,7 @@ class ConsentSyncControllerTest(BaseTestCase):
             ], any_order=True
         )
 
-    def test_building_sync_filters(self):
+    def test_building_sync_filters(self, _):
         """Verify that the controller reads the config and sends consent types to exclude"""
         self.temporarily_override_config_setting(
             key=config.CONSENT_SYNC_BUCKETS,
