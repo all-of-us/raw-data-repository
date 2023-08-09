@@ -154,10 +154,11 @@ class GenomicJobController:
             }[self.job_id]
 
             self.execute_cloud_task(
-                {'manifest_type': auto_generation_manifest_map},
-                'genomic_generate_manifest',
-                'genomic-generate-manifest'
+                payload={'manifest_type': auto_generation_manifest_map},
+                endpoint='genomic_generate_manifest',
+                task_queue='genomic-generate-manifest'
             )
+
         except KeyError:
             pass
 
