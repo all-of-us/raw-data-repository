@@ -144,7 +144,8 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.CVL_W4WR_WORKFLOW,
         GenomicJob.CVL_W5NF_WORKFLOW,
         GenomicJob.LR_LR_WORKFLOW,
-        GenomicJob.PR_PR_WORKFLOW
+        GenomicJob.PR_PR_WORKFLOW,
+        GenomicJob.PR_P1_WORKFLOW
     )
 
     if _task_data.job in ingestion_workflows:

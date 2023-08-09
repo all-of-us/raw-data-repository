@@ -4934,3 +4934,30 @@ class GenomicPRDao(BaseDao, GenomicDaoMixin):
                 GenomicProteomics.proteomics_set ==
                 self.get_max_set_subquery().c.proteomics_set
             ).distinct().all()
+
+    # def get_pipeline_members(self, biobank_id: List[str], collection_tube_ids: List[str] = None):
+    #     with self.session() as session:
+    #         return session.query(
+    #             func.concat(get_biobank_id_prefix(), GenomicProteomics.biobank_id),
+    #             GenomicSetMember.collectionTubeId,
+    #             GenomicSetMember.sexAtBirth,
+    #             GenomicProteomics.genome_type,
+    #             func.IF(GenomicSetMember.nyFlag == 1,
+    #                     sqlalchemy.sql.expression.literal("Y"),
+    #                     sqlalchemy.sql.expression.literal("N")).label('ny_flag'),
+    #             func.IF(GenomicSetMember.validationStatus == 1,
+    #                     sqlalchemy.sql.expression.literal("Y"),
+    #                     sqlalchemy.sql.expression.literal("N")).label('validation_passed'),
+    #             GenomicSetMember.ai_an,
+    #             GenomicProteomics.p_site_id,
+    #         ).join(
+    #             GenomicSetMember,
+    #             and_(
+    #                 GenomicSetMember.id == GenomicProteomics.genomic_set_member_id,
+    #                 GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+    #                 GenomicSetMember.ignoreFlag != 1
+    #             )
+    #         ).filter(
+    #             GenomicProteomics.proteomics_set ==
+    #             self.get_max_set_subquery().c.proteomics_set
+    #         ).distinct().all()

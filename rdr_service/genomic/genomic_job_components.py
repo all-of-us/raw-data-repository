@@ -307,7 +307,8 @@ class GenomicFileIngester:
             GenomicJob.CVL_W4WR_WORKFLOW: self._ingest_cvl_w4wr_manifest,
             GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
             GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_lr_manifest,
-            GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_pr_manifest
+            GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_pr_manifest,
+            GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_p1_manifest
         }
 
         current_ingestion_workflow = current_ingestion_map.get(self.job_id)
@@ -1163,8 +1164,8 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
-    @staticmethod
-    def _ingest_lr_lr_manifest(rows: List[OrderedDict]) -> GenomicSubProcessResult:
+    def _ingest_lr_lr_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
+        rows = [self.clean_row_keys(row) for row in rows]
         try:
             GenomicLongReadWorkFlow.run_lr_workflow(rows)
             return GenomicSubProcessResult.SUCCESS
@@ -1172,6 +1173,18 @@ class GenomicFileIngester:
             return GenomicSubProcessResult.ERROR
 
     def _ingest_pr_pr_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
+        rows = [self.clean_row_keys(row) for row in rows]
+        try:
+            GenomicSubWorkflow.create_genomic_sub_workflow(
+                dao=GenomicPRDao,
+                job_id=self.job_id
+            ).run_workflow(row_data=rows)
+            return GenomicSubProcessResult.SUCCESS
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_pr_p1_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
+        rows = [self.clean_row_keys(row) for row in rows]
         try:
             GenomicSubWorkflow.create_genomic_sub_workflow(
                 dao=GenomicPRDao,
@@ -1557,6 +1570,37 @@ class GenomicFileValidator:
             "psiteid",
         )
 
+        self.PR_P1_SCHEMA = (
+            "packageid",
+            "biobankidsampleid",
+            "boxstorageunitid",
+            "boxidplateid",
+            "wellposition",
+            "sampleid",
+            "parentsampleid",
+            "collectiontubeid",
+            "matrixid",
+            "collectiondate",
+            "biobankid",
+            "sexatbirth",
+            "age",
+            "nystateyn",
+            "sampletype",
+            "treatments",
+            "quantityul",
+            "visitdescription",
+            "samplesource",
+            "study",
+            "trackingnumber",
+            "contact",
+            "email",
+            "studypi",
+            "sitename",
+            "genometype",
+            "failuremode",
+            "failuremodedesc"
+        )
+
         self.values_for_validation = {
             GenomicJob.METRICS_INGESTION: {
                 GENOME_TYPE_ARRAY: {
@@ -1866,6 +1910,19 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def pr_p1_manifest_name_rule():
+            """
+            PR P1 manifest name rule
+            """
+            return (
+                len(filename_components) == 4 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'proteomics' and
+                'pkg' in filename_components[3] and
+                filename.lower().endswith('csv')
+            )
+
         ingestion_name_rules = {
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
             GenomicJob.AW1_MANIFEST: bb_to_gc_manifest_name_rule,
@@ -1883,12 +1940,12 @@ class GenomicFileValidator:
             GenomicJob.CVL_W4WR_WORKFLOW: cvl_w4wr_manifest_name_rule,
             GenomicJob.CVL_W5NF_WORKFLOW: cvl_w5nf_manifest_name_rule,
             GenomicJob.LR_LR_WORKFLOW: lr_lr_manifest_name_rule,
-            GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule
+            GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule,
+            GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule
         }
 
         try:
-            is_valid_filename = ingestion_name_rules[self.job_id]()
-            return is_valid_filename
+            return ingestion_name_rules[self.job_id]()
 
         except KeyError:
             return GenomicSubProcessResult.ERROR
@@ -2003,6 +2060,8 @@ class GenomicFileValidator:
                 return self.LR_LR_SCHEMA
             if self.job_id == GenomicJob.PR_PR_WORKFLOW:
                 return self.PR_PR_SCHEMA
+            if self.job_id == GenomicJob.PR_P1_WORKFLOW:
+                return self.PR_P1_SCHEMA
 
         except (IndexError, KeyError):
             return GenomicSubProcessResult.ERROR

@@ -1741,13 +1741,13 @@ class GenomicPRRaw(Base):
     """
     __tablename__ = 'genomic_pr_raw'
 
-    id = Column('id', Integer,
+    id = Column(Integer,
                 primary_key=True, autoincrement=True, nullable=False)
-    created = Column('created', DateTime, nullable=True)
-    modified = Column('modified', DateTime, nullable=True)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
 
-    file_path = Column('file_path', String(255), nullable=True, index=True)
-    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
 
     biobank_id = Column(String(255), nullable=True)
     genome_type = Column(String(255), nullable=True)
@@ -1764,13 +1764,13 @@ class GenomicP0Raw(Base):
     """
     __tablename__ = 'genomic_p0_raw'
 
-    id = Column('id', Integer,
+    id = Column(Integer,
                 primary_key=True, autoincrement=True, nullable=False)
-    created = Column('created', DateTime, nullable=True)
-    modified = Column('modified', DateTime, nullable=True)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
 
-    file_path = Column('file_path', String(255), nullable=True, index=True)
-    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
 
     biobank_id = Column(String(255), nullable=True)
     collection_tube_id = Column(String(255), nullable=True)
@@ -1780,3 +1780,47 @@ class GenomicP0Raw(Base):
     validation_passed = Column(String(255), nullable=True)
     ai_an = Column(String(255), nullable=True)
     p_site_id = Column(String(255), nullable=True)
+
+
+class GenomicP1Raw(Base):
+    """
+    Raw Data from P1 files
+    """
+    __tablename__ = 'genomic_p1_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    package_id = Column(String(255), nullable=True)
+    biobankid_sample_id = Column(String(255), nullable=True)
+    box_storageunit_id = Column(String(255), nullable=True)
+    box_id_plate_id = Column(String(255), nullable=True)
+    well_position = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    parent_sample_id = Column(String(255), nullable=True, index=True)
+    collection_tubeid = Column(String(255), nullable=True, index=True)
+    matrix_id = Column(String(255), nullable=True)
+    collection_date = Column(String(255), nullable=True)
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    age = Column(String(255), nullable=True)
+    ny_state_y_n = Column(String(255), nullable=True)
+    sample_type = Column(String(255), nullable=True)
+    treatments = Column(String(255), nullable=True)
+    quantity_ul = Column(String(255), nullable=True)
+    visit_description = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    study = Column(String(255), nullable=True)
+    tracking_number = Column(String(255), nullable=True)
+    contact = Column(String(255), nullable=True)
+    email = Column(String(255), nullable=True)
+    study_pi = Column(String(255), nullable=True)
+    site_name = Column(String(255), nullable=True, index=True)
+    failure_mode = Column(String(255), nullable=True)
+    failure_mode_desc = Column(String(255), nullable=True)
+    genome_type = Column(String(80), nullable=True, index=True)
