@@ -216,7 +216,7 @@ class ConsentDao(BaseDao):
         ).all()
 
     @classmethod
-    def _get_ready_to_sync_with_session(cls, session: Session, org_names, hpo_names):
+    def _get_ready_to_sync_with_session(cls, session: Session, org_names, hpo_names, additional_filters=None):
         query = (
             session.query(ConsentFile)
             .join(Participant)
@@ -231,18 +231,35 @@ class ConsentDao(BaseDao):
                 ConsentFile.type != ConsentType.ETM
             )
         )
+
+        if additional_filters:
+            for hpo_name, filter_dict in additional_filters.items():
+                exclude_type_list = filter_dict.get('exclude_types')
+                if exclude_type_list:
+                    query = query.filter(
+                        or_(
+                            HPO.name != hpo_name,
+                            ConsentFile.type.notin_(exclude_type_list)
+                        )
+                    )
+
         return query.all()
 
-    def get_files_ready_to_sync(self, org_names, hpo_names, session: Session = None) -> Collection[ConsentFile]:
+    def get_files_ready_to_sync(
+        self, org_names, hpo_names, session: Session = None, additional_filters=None
+    ) -> Collection[ConsentFile]:
         if session is None:
             with self.session() as dao_session:
                 return self._get_ready_to_sync_with_session(
                     session=dao_session,
                     org_names=org_names,
-                    hpo_names=hpo_names
+                    hpo_names=hpo_names,
+                    additional_filters=additional_filters
                 )
         else:
-            return self._get_ready_to_sync_with_session(session=session, org_names=org_names, hpo_names=hpo_names)
+            return self._get_ready_to_sync_with_session(
+                session=session, org_names=org_names, hpo_names=hpo_names, additional_filters=additional_filters
+            )
 
     @classmethod
     def get_files_for_participant(cls, participant_id: int, session: Session,

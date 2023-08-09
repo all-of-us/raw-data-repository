@@ -263,3 +263,32 @@ class ConsentFileDaoTest(BaseTestCase):
             (2, ConsentType.EHR),       # file that was checked the longest ago
             (4, ConsentType.EHR),
         ], list(result))
+
+    def test_optional_sync_filter(self):
+        test_hpo_name = 'no_wear_consents'
+        hpo = self.data_generator.create_database_hpo(name=test_hpo_name)
+        participant = self.data_generator.create_database_participant(hpoId=hpo.hpoId)
+        only_file_to_sync = self.data_generator.create_database_consent_file(
+            id=27,
+            participant_id=participant.participantId,
+            type=ConsentType.EHR,
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC
+        )
+        self.data_generator.create_database_consent_file(
+            id=31,
+            participant_id=participant.participantId,
+            type=ConsentType.WEAR,
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC
+        )
+
+        results = self.consent_dao.get_files_ready_to_sync(
+            session=self.session,
+            org_names=[],
+            hpo_names=[test_hpo_name],
+            additional_filters={
+                test_hpo_name: {
+                    'exclude_types': [ConsentType.WEAR]
+                }
+            }
+        )
+        self.assertEqual([only_file_to_sync], results)

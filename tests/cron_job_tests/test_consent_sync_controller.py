@@ -2,7 +2,7 @@ import mock
 
 from rdr_service import config
 from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.model.consent_file import ConsentFile
+from rdr_service.model.consent_file import ConsentFile, ConsentType
 from rdr_service.offline.sync_consent_files import ConsentSyncController, DEFAULT_GOOGLE_GROUP, DEFAULT_ORG_NAME
 from rdr_service.storage import GoogleCloudStorageProvider
 from tests.helpers.unittest_base import BaseTestCase
@@ -222,6 +222,38 @@ class ConsentSyncControllerTest(BaseTestCase):
                 mock.call([self.foo_file.id]),
                 mock.call([self.bar_file.id]),
             ], any_order=True
+        )
+
+    def test_building_sync_filters(self):
+        """Verify that the controller reads the config and sends consent types to exclude"""
+        self.temporarily_override_config_setting(
+            key=config.CONSENT_SYNC_BUCKETS,
+            value={
+                'orgs': {},
+                'hpos': {
+                    'default_hpo': {
+                        'bucket': 'default_bucket',
+                        'zip_consents': False
+                    },
+                    'no_wear_hpo': {
+                        'bucket': 'no_wear_bucket',
+                        'zip_consents': False,
+                        'exclude_types': ['WEAR']
+                    }
+                }
+            }
+        )
+        self.sync_controller.sync_ready_files()
+
+        # Check that the config was used to filter the consent files loaded
+        filters_sent = self.consent_dao_mock.get_files_ready_to_sync.call_args.kwargs['additional_filters']
+        self.assertEqual(
+            {
+                'no_wear_hpo': {
+                    'exclude_types': [ConsentType.WEAR]
+                }
+            },
+            filters_sent
         )
 
     @classmethod
