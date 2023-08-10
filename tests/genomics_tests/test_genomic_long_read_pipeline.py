@@ -166,12 +166,11 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertEqual(cloud_task_mock.call_count, 1)
 
         # manifest type
-        self.assertTrue(len(cloud_task_mock.call_args[0][0]), 1)
-        self.assertTrue(cloud_task_mock.call_args[0][0].get('manifest_type') == 'l0')
+        self.assertTrue(len(cloud_task_mock.call_args[1]), 1)
+        self.assertTrue(cloud_task_mock.call_args[1].get('payload').get('manifest_type') == 'l0')
 
         # task queue
-        self.assertTrue(len(cloud_task_mock.call_args[0][2]), 1)
-        self.assertTrue(cloud_task_mock.call_args[0][2] == 'genomic-generate-manifest')
+        self.assertTrue(cloud_task_mock.call_args[1].get('task_queue') == 'genomic-generate-manifest')
 
         self.clear_table_after_test('genomic_long_read')
 

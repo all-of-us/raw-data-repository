@@ -32,29 +32,12 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
     def __init__(self, gcp_env, _event, _context):
         super().__init__(gcp_env, _event, _context)
-
         self.task_root = '/resource/task/'
-
-        self.task_mappings = {
-            "aw1": "IngestAW1ManifestTaskApi",
-            "aw1f": "IngestAW1ManifestTaskApi",
-            "aw2": "IngestAW2ManifestTaskApi",
-            "aw4": "IngestAW4ManifestTaskApi",
-            "aw5": "IngestAW5ManifestTaskApi",
-            "w2sc": "IngestCVLManifestTaskApi",
-            "w3ns": "IngestCVLManifestTaskApi",
-            "w3sc": "IngestCVLManifestTaskApi",
-            "w3ss": "IngestCVLManifestTaskApi",
-            "w4wr": "IngestCVLManifestTaskApi",
-            "w5nf": "IngestCVLManifestTaskApi",
-            "lr": "IngestLongReadManifestTaskApi"
-        }
 
     def run(self):
         """ Handle Pub/Sub message events.
         https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage
         """
-
         _logger.info("""This Function was triggered by messageId {} published at {}
             """.format(self.context.event_id, self.context.timestamp))
 
@@ -62,70 +45,107 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
         object_id = self.event.attributes.objectId.lower()
 
-        # AW1 files have "_sample_manifests" in file name
-        if '_sample_manifests' in object_id:
-            task_key = "aw1"
-        # AW1F files have "aw1f_pre_results" in file name
-        elif 'aw1f_pre_results' in object_id:
-            task_key = "aw1f"
-        # AW2 files have "_data_manifests" in their file name
-        elif '_data_manifests' in object_id:
-            task_key = "aw2"
-        # AW4 files have "AW4" in their file path (bucket name)
-        elif 'aw4_' in object_id:
-            task_key = "aw4"
-        # AW5 files have "AW5" in their file path (bucket name)
-        elif 'aw5_' in object_id:
-            task_key = "aw5"
-        # W2SC files have "W2SC" in their file path (bucket name)
-        elif '_w2sc_' in object_id:
-            task_key = "w2sc"
-        # W3NS files have "W3NS" in their file path (bucket name)
-        elif '_w3ns_' in object_id:
-            task_key = "w3ns"
-        # W3SC files have "W3SC" in their file path (bucket name)
-        elif '_w3sc_' in object_id:
-            task_key = "w3sc"
-        # W3SS files have "_PKG" in their file path (bucket name)
-        elif '_pkg' in object_id:
-            task_key = "w3ss"
-        # W4WR files have "W4WR" in their file path (bucket name)
-        elif '_w4wr_' in object_id:
-            task_key = "w4wr"
-        # W5NF files have "W5NF" in their file path (bucket name)
-        elif '_w5nf_' in object_id:
-            task_key = "w5nf"
-        elif '_lr_requests_' in object_id:
-            task_key = "lr"
+        short_read_tasks = {
+            '_sample_manifests': {
+                'manifest_type': 'aw1',
+                'task_endpoint': 'IngestAW1ManifestTaskApi'
+            },
+            'aw1f_pre_results': {
+                'manifest_type': 'aw1f',
+                'task_endpoint': 'IngestAW1ManifestTaskApi'
+            },
+            '_data_manifests': {
+                'manifest_type': 'aw2',
+                'task_endpoint': 'IngestAW2ManifestTaskApi'
+            },
+            'aw4_': {
+                'manifest_type': 'aw4',
+                'task_endpoint': 'IngestAW4ManifestTaskApi'
+            },
+            'aw5_': {
+                'manifest_type': 'aw5',
+                'task_endpoint': 'IngestAW5ManifestTaskApi'
+            },
+        }
+        cvl_tasks = {
+            '_w2sc_': {
+                'manifest_type': 'w2sc',
+                'task_endpoint': 'IngestCVLManifestTaskApi'
+            },
+            '_w3ns_': {
+                'manifest_type': 'w3ns',
+                'task_endpoint': 'IngestCVLManifestTaskApi'
+            },
+            '_w3sc_': {
+                'manifest_type': 'w3sc',
+                'task_endpoint': 'IngestCVLManifestTaskApi'
+            },
+            '_pkg': {
+                'manifest_type': 'w3ss',
+                'task_endpoint': 'IngestCVLManifestTaskApi'
+            },
+            '_w4wr_': {
+                'manifest_type': 'w4wr',
+                'task_endpoint': 'IngestCVLManifestTaskApi'
+            },
+            '_w5nf_': {
+                'manifest_type': 'w5nf',
+                'task_endpoint': 'IngestCVLManifestTaskApi'
+            },
+        }
+        long_read_tasks = {
+            '_lr_requests_': {
+                'manifest_type': 'lr',
+                'task_endpoint': 'IngestLongReadManifestTaskApi'
+            },
+        }
+        pr_tasks = {
+            '_pr_requests_': {
+                'manifest_type': 'pr',
+                'task_endpoint': 'IngestPRManifestTaskApi'
+            },
+        }
 
+        task_key_map = {
+            **short_read_tasks,
+            **cvl_tasks,
+            **long_read_tasks,
+            **pr_tasks
+        }
+
+        for key, value in task_key_map.items():
+            if key in object_id:
+                task_data: dict = value
+                break
         else:
             _logger.info("No files match ingestion criteria.")
             return
 
         _logger.info(f"Event payload: {self.event}")
 
-        if task_key:
+        if task_data:
             _logger.info("Pushing cloud tasks...")
 
-            api_route = f'{self.task_root}{self.task_mappings[task_key]}'
+            api_route = f'{self.task_root}{task_data.get("task_endpoint")}'
+            manifest_type = task_data.get("manifest_type")
 
             data = {
-                "file_type": task_key,
+                "file_type": manifest_type,
                 "filename": self.event.attributes.objectId,
                 "file_path": f'{self.event.attributes.bucketId}/{self.event.attributes.objectId}',
                 "bucket_name": self.event.attributes.bucketId,
                 "topic": "genomic_manifest_upload",
                 "event_payload": self.event,
                 "upload_date": self.event.attributes.eventTime,
-                "task": f'{task_key}_manifest',
+                "task": f'{manifest_type}_manifest',
                 "api_route": api_route,
                 "cloud_function": True,
             }
 
-            raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w3ns', 'w3sc', 'w3ss', 'w4wr', 'w5nf', 'lr']
+            bypass_raw_keys = ['aw5']
 
             # Load into raw table
-            if task_key in raw_manifest_keys:
+            if manifest_type not in bypass_raw_keys:
                 raw_cloud_task = GCPCloudTask()
                 raw_cloud_task.execute(
                     f'{self.task_root}LoadRawAWNManifestDataAPI',
