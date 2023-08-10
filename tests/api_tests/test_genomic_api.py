@@ -2787,7 +2787,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-            load_raw_awn_data_mock.assert_called_with(test_file_path, key)
+            load_raw_awn_data_mock.assert_called_with(file_path=test_file_path, manifest_type=key)
 
         self.assertEqual(load_raw_awn_data_mock.call_count, len(raw_manifest_keys))
 
@@ -3687,8 +3687,8 @@ class GenomicCloudTasksApiTest(BaseTestCase):
                 lr_data['manifest_type']
             )
 
-    @mock.patch('rdr_service.offline.genomics.genomic_long_read_pipeline.lr_l0_manifest_workflow')
-    def test_generate_l0_manifest_api(self, ingest_mock):
+    @mock.patch('rdr_service.offline.genomics.genomic_proteomics_pipeline.pr_p0_manifest_workflow')
+    def test_generate_manifest_api(self, ingest_mock):
 
         from rdr_service.resource import main as resource_main
 
@@ -3706,7 +3706,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(ingest_mock.call_count, 0)
 
         data = {
-            'manifest_type': 'l0'
+            'manifest_type': 'p0'
         }
 
         manifest_generation = self.send_post(
@@ -3720,3 +3720,60 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(manifest_generation['success'], True)
         self.assertEqual(ingest_mock.call_count, 1)
 
+        data = {
+            'manifest_type': 'll'
+        }
+
+        manifest_generation = self.send_post(
+            local_path='GenerateManifestApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(manifest_generation)
+        self.assertEqual(manifest_generation['success'], False)
+        self.assertEqual(ingest_mock.call_count, 1)
+
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
+    def test_ingest_pr_job_task_api(self, ingest_mock):
+
+        from rdr_service.resource import main as resource_main
+
+        pr_map = {
+            'pr': {
+                'job': GenomicJob.PR_PR_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.PR_PR
+            }
+        }
+
+        test_bucket = 'test_pr_bucket'
+
+        for pr_key, pr_data in pr_map.items():
+
+            pr_type_file_path = f"{test_bucket}/test_pr_{pr_key}_file.csv"
+
+            data = {
+                "file_path": pr_type_file_path,
+                "bucket_name": pr_type_file_path.split('/')[0],
+                "upload_date": '2020-09-13T20:52:12+00:00',
+                "file_type": pr_key
+            }
+
+            self.send_post(
+                local_path='IngestPRManifestTaskApi',
+                request_data=data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+            call_json = ingest_mock.call_args[0][0]
+
+            self.assertEqual(ingest_mock.called, True)
+            self.assertEqual(call_json['bucket'], data['bucket_name'])
+            self.assertEqual(call_json['job'], pr_data['job'])
+            self.assertIsNotNone(call_json['file_data'])
+            self.assertEqual(
+                call_json['file_data']['manifest_type'],
+                pr_data['manifest_type']
+            )

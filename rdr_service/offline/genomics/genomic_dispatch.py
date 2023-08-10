@@ -6,7 +6,7 @@ from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, Gen
     GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW5NFRawDao, GenomicDefaultBaseDao
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult
-from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw
+from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicPRRaw, GenomicP0Raw
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -17,7 +17,7 @@ def load_awn_manifest_into_raw_table(
     provider=None,
     cvl_site_id=None
 ):
-    raw_jobs_map = {
+    short_read_raw_map = {
         "aw1": {
             'job_id': GenomicJob.LOAD_AW1_TO_RAW_TABLE,
             'dao': GenomicAW1RawDao
@@ -33,7 +33,9 @@ def load_awn_manifest_into_raw_table(
         "aw4": {
             'job_id': GenomicJob.LOAD_AW4_TO_RAW_TABLE,
             'dao': GenomicAW4RawDao
-        },
+        }
+    }
+    cvl_raw_map = {
         "w1il": {
             'job_id': GenomicJob.LOAD_CVL_W1IL_TO_RAW_TABLE,
             'dao': GenomicW1ILRawDao
@@ -70,6 +72,8 @@ def load_awn_manifest_into_raw_table(
             'job_id': GenomicJob.LOAD_CVL_W5NF_TO_RAW_TABLE,
             'dao': GenomicW5NFRawDao
         },
+    }
+    long_read_raw_map = {
         "lr": {
             'job_id': GenomicJob.LOAD_LR_TO_RAW_TABLE,
             'dao': GenomicDefaultBaseDao,
@@ -81,20 +85,40 @@ def load_awn_manifest_into_raw_table(
             'model': GenomicL0Raw
         }
     }
+    pr_raw_map = {
+        "pr": {
+            'job_id': GenomicJob.LOAD_PR_TO_RAW_TABLE,
+            'dao': GenomicDefaultBaseDao,
+            'model': GenomicPRRaw
+        },
+        "p0": {
+            'job_id': GenomicJob.LOAD_P0_TO_RAW_TABLE,
+            'dao': GenomicDefaultBaseDao,
+            'model': GenomicP0Raw
+        },
+    }
 
-    raw_job = raw_jobs_map.get(manifest_type)
-    if raw_job:
+    try:
+        raw_jobs_map = {
+            **short_read_raw_map,
+            **long_read_raw_map,
+            **cvl_raw_map,
+            **pr_raw_map
+        }[manifest_type]
+
         with GenomicJobController(
-            raw_job.get('job_id'),
+            job_id=raw_jobs_map.get('job_id'),
             bq_project_id=project_id,
             storage_provider=provider
         ) as controller:
             controller.load_raw_awn_data_from_filepath(
                 file_path,
-                raw_job.get('dao'),
+                raw_jobs_map.get('dao'),
                 cvl_site_id=cvl_site_id,
-                model=raw_job.get('model')
+                model=raw_jobs_map.get('model')
             )
+    except KeyError:
+        pass
 
 
 def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
@@ -119,7 +143,8 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.CVL_W3SS_WORKFLOW,
         GenomicJob.CVL_W4WR_WORKFLOW,
         GenomicJob.CVL_W5NF_WORKFLOW,
-        GenomicJob.LR_LR_WORKFLOW
+        GenomicJob.LR_LR_WORKFLOW,
+        GenomicJob.PR_PR_WORKFLOW
     )
 
     if _task_data.job in ingestion_workflows:
