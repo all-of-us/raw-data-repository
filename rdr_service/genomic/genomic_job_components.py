@@ -1175,7 +1175,8 @@ class GenomicFileIngester:
         try:
             GenomicSubWorkflow.create_genomic_sub_workflow(
                 dao=GenomicPRDao,
-                job_id=self.job_id
+                job_id=self.job_id,
+                job_run_id=self.job_run_id
             ).run_workflow(row_data=rows)
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
