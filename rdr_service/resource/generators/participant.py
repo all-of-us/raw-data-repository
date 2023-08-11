@@ -507,7 +507,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             logging.debug(f'No participant_summary record found for {p_id}')
             # PDR-2024: Set default email/phone values if there is no participant_summary yet
             data['email'], data['email_available'] = None, 0
-            data['phone_number'], data['login_phone_number'], data['phone_numer_available'] = None, None, 0
+            data['phone_number'], data['login_phone_number'], data['phone_number_available'] = None, None, 0
         else:
             enrollment_v2 = EnrollmentStatusV2(int(ps.enrollmentStatus))
             # SqlAlchemy may return None for our zero-based NOT_PRESENT EhrStatus Enum, so map None to NOT_PRESENT
