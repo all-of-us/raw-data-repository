@@ -505,8 +505,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         if not ps:
             logging.debug(f'No participant_summary record found for {p_id}')
-            # PDR-2024: ParticipantSummary now source for current email/phone (could have changed to test values via
-            # profile_update), need to set those fields to None
+            # PDR-2024: Set default email/phone values if there is no participant_summary yet
             data['email'], data['email_available'] = None, 0
             data['phone_number'], data['login_phone_number'], data['phone_numer_available'] = None, None, 0
         else:
@@ -561,8 +560,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'health_datastream_sharing_status_v3_1_time': ps.healthDataStreamSharingStatusV3_1Time \
                     if has_enrollment_v3_1 else None,
 
-                # PDR-2024:  ParticipantSummary record now source for email and phone (which can indicate test pid),
-                # to make sure the info is current after any profile_update API requests
+                # PDR-2024:  ParticipantSummary record now source for current email and phone creds sent via
+                # profile_update API, need most recent creds in PDR record to identify potential test pids
                 'email': ps.email,
                 'email_available': 1 if ps.email else 0,
                 'phone_number': ps.phoneNumber,
