@@ -4,9 +4,10 @@ from rdr_service.genomic_enums import GenomicJob
 
 class GenomicSubWorkflow:
 
-    def __init__(self, dao, job_id):
+    def __init__(self, dao, job_id, job_run_id):
         self.dao = dao()
         self.job_id = job_id
+        self.job_run_id = job_run_id
         self.row_data = []
 
     def __get_subworkflow_method(self):
@@ -15,8 +16,8 @@ class GenomicSubWorkflow:
         }[self.job_id]
 
     @classmethod
-    def create_genomic_sub_workflow(cls, *, dao, job_id):
-        return cls(dao, job_id)
+    def create_genomic_sub_workflow(cls, *, dao, job_id, job_run_id):
+        return cls(dao, job_id, job_run_id)
 
     def run_workflow(self, *, row_data):
         self.row_data = row_data
@@ -24,7 +25,7 @@ class GenomicSubWorkflow:
 
     def run_request_ingestion(self):
         current_set = self.dao.get_max_set()
-        incremented_set_number = 1 if current_set[0] is None else current_set[0]
+        incremented_set_number = 1 if current_set[0] is None else current_set[0]+1
 
         new_pipeline_members = self.dao.get_new_pipeline_members(
             biobank_ids=[row.get('biobank_id')[1:] for row in self.row_data],
@@ -41,7 +42,8 @@ class GenomicSubWorkflow:
                 'biobank_id': member.biobank_id,
                 # later sub-pipelines will have logic for handling this defaulting for now
                 'p_site_id': p_site_id,
-                'proteomics_set': incremented_set_number
+                'proteomics_set': incremented_set_number,
+                'created_job_run_id': self.job_run_id
             })
 
         self.dao.insert_bulk(pipeline_objs)
