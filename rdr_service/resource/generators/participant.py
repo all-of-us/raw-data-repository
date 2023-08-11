@@ -505,6 +505,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         if not ps:
             logging.debug(f'No participant_summary record found for {p_id}')
+            # PDR-2024: ParticipantSummary now source for current email/phone (could have changed to test values via
+            # profile_update), need to set those fields to None
+            data['email'], data['email_available'] = None, 0
+            data['phone_number'], data['login_phone_number'], data['phone_numer_available'] = None, None, 0
         else:
             enrollment_v2 = EnrollmentStatusV2(int(ps.enrollmentStatus))
             # SqlAlchemy may return None for our zero-based NOT_PRESENT EhrStatus Enum, so map None to NOT_PRESENT
@@ -555,7 +559,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'health_datastream_sharing_status_v3_1_id': int(ps.healthDataStreamSharingStatusV3_1) \
                     if has_enrollment_v3_1 else None,
                 'health_datastream_sharing_status_v3_1_time': ps.healthDataStreamSharingStatusV3_1Time \
-                    if has_enrollment_v3_1 else None
+                    if has_enrollment_v3_1 else None,
+
+                # PDR-2024:  ParticipantSummary record now source for email and phone (which can indicate test pid),
+                # to make sure the info is current after any profile_update API requests
+                'email': ps.email,
+                'email_available': 1 if ps.email else 0,
+                'phone_number': ps.phoneNumber,
+                'login_phone_number': ps.loginPhoneNumber,
+                'phone_number_available': 1 if ps.phoneNumber or ps.loginPhoneNumber else 0
             }
             # Note:  None of the columns in the participant_ehr_receipt table are nullable
             pehr_results = ro_session.query(ParticipantEhrReceipt.id,
@@ -609,7 +621,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         qnans, responses = self.get_module_answers(self.ro_dao, 'ConsentPII', p_id, return_responses=True)
         if not qnans:
             # return the minimum data required when we don't have the questionnaire data.
-            return {'email': None, 'is_ghost_id': 0}
+            return { 'is_ghost_id': 0}
 
         # TODO: Update this to a JSONObject instead of BQRecord object.
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent response.
@@ -627,9 +639,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'last_name': qnan.get('PIIName_Last'),
             'date_of_birth': dob,
             'primary_language': qnan.get('language'),
-            'email': qnan.get('ConsentPII_EmailAddress'),
-            'phone_number': qnan.get('PIIContactInformation_Phone'),
-            'login_phone_number': qnan.get('ConsentPII_VerifiedPrimaryPhoneNumber'),
             'addresses': [
                 {
                     'addr_type': BQStreetAddressTypeEnum.RESIDENCE.name,
@@ -642,9 +651,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'addr_country': 'US'
                 }
             ],
-            'cabor_authored': None,
-            'email_available': 1 if qnan.get('ConsentPII_EmailAddress') else 0,
-            'phone_number_available': 1 if (qnan.get('phone_number') or qnan.get('login_phone_number')) else 0
+            'cabor_authored': None
         }
 
         # PDR-178:  RDR handles CABoR consents a little differently in that once it receives an initial CABoR
