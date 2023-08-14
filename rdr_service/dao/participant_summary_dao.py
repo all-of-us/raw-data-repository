@@ -748,7 +748,9 @@ class ParticipantSummaryDao(UpdatableDao):
             basics_authored_time=summary.questionnaireOnTheBasicsAuthored,
             overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
             lifestyle_authored_time=summary.questionnaireOnLifestyleAuthored,
-            earliest_ehr_file_received_time=summary.ehrReceiptTime,
+            earliest_ehr_file_received_time=min_or_none(
+                [summary.ehrReceiptTime, summary.firstParticipantMediatedEhrReceiptTime]
+            ),
             earliest_mediated_ehr_receipt_time=summary.firstParticipantMediatedEhrReceiptTime,
             earliest_physical_measurements_time=earliest_physical_measurements_time,
             earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,

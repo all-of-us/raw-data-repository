@@ -480,6 +480,51 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(EnrollmentStatusV32.CORE_PARTICIPANT, summary.enrollmentStatusV3_2)
         self.assertEqual(summary.clinicPhysicalMeasurementsFinalizedTime, summary.enrollmentStatusCoreV3_2Time)
 
+    @mock.patch('rdr_service.dao.genomics_dao.GenomicSetMemberDao.get_wgs_pass_date')
+    @mock.patch(
+        'rdr_service.dao.physical_measurements_dao.PhysicalMeasurementsDao.get_core_measurements_for_participant'
+    )
+    def test_mediated_ehr_core_data(self, core_measurements_mock, wgs_pass_date_mock):
+        """Verify that the core data flag can be set based on mediated EHR data"""
+
+        # Set up a summary that has everything but mediated EHR files
+        ehr_consent_authored_time = datetime.datetime(2018, 3, 1)
+        self.mock_ehr_interest_ranges.return_value = [
+            DateRange(start=ehr_consent_authored_time)
+        ]
+        physical_measurements_time = datetime.datetime(2022, 7, 12)
+        wgs_pass_date_mock.return_value = physical_measurements_time
+        core_measurements_mock.return_value = [PhysicalMeasurements(
+            satisfiesWeightRequirements=True,
+            satisfiesHeightRequirements=True,
+            finalized=physical_measurements_time
+        )]
+        summary = ParticipantSummary(
+            participantId=1,
+            biobankId=2,
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
+            questionnaireOnTheBasicsAuthored=ehr_consent_authored_time,
+            questionnaireOnLifestyleAuthored=ehr_consent_authored_time,
+            questionnaireOnOverallHealthAuthored=ehr_consent_authored_time,
+            samplesToIsolateDNA=SampleStatus.RECEIVED,
+            clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.COMPLETED,
+            clinicPhysicalMeasurementsFinalizedTime=physical_measurements_time,
+            enrollmentStatus=EnrollmentStatus.MEMBER,
+            enrollmentStatusV3_0=EnrollmentStatusV30.PARTICIPANT,
+            enrollmentStatusV3_2=EnrollmentStatusV32.PARTICIPANT
+        )
+
+        # Be sure that the test data so far doesn't set the Core Data flag
+        self.dao.update_enrollment_status(summary, session=mock.MagicMock())
+        self.assertFalse(summary.hasCoreData)
+
+        # Set the mediated ehr date and then check to be sure the Core Data flag gets set because of it
+        summary.firstParticipantMediatedEhrReceiptTime = physical_measurements_time
+        self.dao.update_enrollment_status(summary, session=mock.MagicMock())
+        self.assertTrue(summary.hasCoreData)
+
     def testUpdateEnrollmentStatusSelfReportedPm(self):
         ehr_consent_authored_time = datetime.datetime(2018, 3, 1)
         self.mock_ehr_interest_ranges.return_value = [
