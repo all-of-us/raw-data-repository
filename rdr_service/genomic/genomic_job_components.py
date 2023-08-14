@@ -1173,22 +1173,22 @@ class GenomicFileIngester:
             return GenomicSubProcessResult.ERROR
 
     def _ingest_pr_pr_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
-        rows = [self.clean_row_keys(row) for row in rows]
         try:
             GenomicSubWorkflow.create_genomic_sub_workflow(
                 dao=GenomicPRDao,
-                job_id=self.job_id
+                job_id=self.job_id,
+                job_run_id=self.job_run_id
             ).run_workflow(row_data=rows)
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
     def _ingest_pr_p1_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
-        rows = [self.clean_row_keys(row) for row in rows]
         try:
             GenomicSubWorkflow.create_genomic_sub_workflow(
                 dao=GenomicPRDao,
-                job_id=self.job_id
+                job_id=self.job_id,
+                job_run_id=self.job_run_id
             ).run_workflow(row_data=rows)
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):

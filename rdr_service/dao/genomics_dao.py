@@ -4961,3 +4961,4 @@ class GenomicPRDao(BaseDao, GenomicDaoMixin):
     #             GenomicProteomics.proteomics_set ==
     #             self.get_max_set_subquery().c.proteomics_set
     #         ).distinct().all()
+

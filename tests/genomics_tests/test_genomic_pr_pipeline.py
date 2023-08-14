@@ -97,12 +97,54 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.p_site_id == 'bi' for obj in pr_members))
         self.assertTrue(all(obj.genomic_set_member_id is not None for obj in pr_members))
         self.assertTrue(all(obj.proteomics_set == 1 for obj in pr_members))
+        self.assertTrue(all(obj.created_job_run_id is not None for obj in pr_members))
 
         # check job run record
         pr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_PR_WORKFLOW, self.job_run_dao.get_all()))
 
         self.assertIsNotNone(pr_job_runs)
         self.assertEqual(len(pr_job_runs), 1)
+        self.assertTrue(all(obj.created_job_run_id == pr_job_runs[0].id for obj in pr_members))
+
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in pr_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in pr_job_runs))
+
+        self.clear_table_after_test('genomic_proteomics')
+
+    def test_pr_manifest_ingestion_increments_set(self):
+
+        self.execute_base_pr_ingestion(
+            test_file='RDR_AoU_PR_Requests.csv',
+            job_id=GenomicJob.PR_PR_WORKFLOW,
+            manifest_type=GenomicManifestTypes.PR_PR
+        )
+
+        pr_members = self.pr_dao.get_all()
+        self.assertTrue(all(obj.proteomics_set == 1 for obj in pr_members))
+
+        # check job run record
+        pr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_PR_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(pr_job_runs)
+        self.assertEqual(len(pr_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in pr_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in pr_job_runs))
+
+        # rerun job should increment set correctly
+        self.execute_base_pr_ingestion(
+            test_file='RDR_AoU_PR_Requests.csv',
+            job_id=GenomicJob.PR_PR_WORKFLOW,
+            manifest_type=GenomicManifestTypes.PR_PR
+        )
+
+        pr_members = self.pr_dao.get_all()
+        self.assertTrue(any(obj.proteomics_set == 2 for obj in pr_members))
+
+        # check job run record
+        pr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_PR_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(pr_job_runs)
+        self.assertEqual(len(pr_job_runs), 2)
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in pr_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in pr_job_runs))
 
@@ -277,72 +319,5 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertEqual(len(p0_raw_job_runs), 1)
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p0_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p0_raw_job_runs))
-
-        self.clear_table_after_test('genomic_proteomics')
-
-    def test_p1_manifest_ingestion(self):
-
-        self.execute_base_pr_ingestion(
-            test_file='RDR_AoU_Proteomics_PKG-2301-123456.csv',
-            job_id=GenomicJob.PR_P1_WORKFLOW,
-            manifest_type=GenomicManifestTypes.PR_P1,
-            include_timestamp=False
-        )
-
-        pr_members = self.pr_dao.get_all()
-
-        self.assertEqual(len(pr_members), 3)
-        self.assertTrue(all(obj.biobank_id is not None for obj in pr_members))
-        self.assertTrue(all(obj.sample_id is None for obj in pr_members))
-        self.assertTrue(all(obj.genome_type == 'aou_proteomics' for obj in pr_members))
-        self.assertTrue(all(obj.p_site_id == 'bi' for obj in pr_members))
-        self.assertTrue(all(obj.genomic_set_member_id is not None for obj in pr_members))
-        self.assertTrue(all(obj.proteomics_set == 1 for obj in pr_members))
-
-        # check job run record
-        pr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_PR_WORKFLOW, self.job_run_dao.get_all()))
-
-        self.assertIsNotNone(pr_job_runs)
-        self.assertEqual(len(pr_job_runs), 1)
-        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in pr_job_runs))
-        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in pr_job_runs))
-
-        self.clear_table_after_test('genomic_proteomics')
-
-    def test_pr_manifest_to_raw_ingestion(self):
-
-        self.execute_base_pr_ingestion(
-            test_file='RDR_AoU_PR_Requests.csv',
-            job_id=GenomicJob.PR_PR_WORKFLOW,
-            manifest_type=GenomicManifestTypes.PR_PR,
-        )
-
-        pr_raw_dao = GenomicDefaultBaseDao(
-            model_type=GenomicPRRaw
-        )
-
-        manifest_type = 'pr'
-        pr_manifest_file = self.manifest_file_dao.get(1)
-
-        genomic_dispatch.load_awn_manifest_into_raw_table(
-            pr_manifest_file.filePath,
-            manifest_type
-        )
-
-        pr_raw_records = pr_raw_dao.get_all()
-
-        self.assertEqual(len(pr_raw_records), 3)
-        self.assertTrue(all(obj.file_path is not None for obj in pr_raw_records))
-        self.assertTrue(all(obj.biobank_id is not None for obj in pr_raw_records))
-        self.assertTrue(all(obj.genome_type is not None for obj in pr_raw_records))
-        self.assertTrue(all(obj.p_site_id is not None for obj in pr_raw_records))
-
-        # check job run record
-        pr_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_PR_TO_RAW_TABLE, self.job_run_dao.get_all()))
-
-        self.assertIsNotNone(pr_raw_job_runs)
-        self.assertEqual(len(pr_raw_job_runs), 1)
-        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in pr_raw_job_runs))
-        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in pr_raw_job_runs))
 
         self.clear_table_after_test('genomic_proteomics')

@@ -96,6 +96,11 @@ def load_awn_manifest_into_raw_table(
             'dao': GenomicDefaultBaseDao,
             'model': GenomicP0Raw
         },
+        "p1": {
+            'job_id': GenomicJob.LOAD_P1_TO_RAW_TABLE,
+            'dao': GenomicDefaultBaseDao,
+            'model': ''
+        }
     }
 
     try:

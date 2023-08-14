@@ -1729,6 +1729,7 @@ class GenomicProteomics(Base):
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
     p_site_id = Column(String(255), nullable=True)
     proteomics_set = Column(Integer, nullable=False, default=0)
+    created_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"), nullable=True)
 
 
 event.listen(GenomicProteomics, 'before_insert', model_insert_listener)
@@ -1824,3 +1825,4 @@ class GenomicP1Raw(Base):
     failure_mode = Column(String(255), nullable=True)
     failure_mode_desc = Column(String(255), nullable=True)
     genome_type = Column(String(80), nullable=True, index=True)
+

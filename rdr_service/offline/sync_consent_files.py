@@ -23,7 +23,7 @@ from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob,
 from rdr_service.dao import database_factory
 from rdr_service.dao.participant_dao import ParticipantDao, ParticipantHistoryDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -251,9 +251,19 @@ class ConsentSyncController:
         hpos_sync_config = sync_config['hpos']
         orgs_sync_config = sync_config['orgs']
 
+        filters = {
+            hpo_name: {
+                'exclude_types': [
+                    ConsentType(excluded_type_str) for excluded_type_str in options['exclude_types']
+                ]
+            }
+            for hpo_name, options in hpos_sync_config.items()
+            if 'exclude_types' in options
+        }
         file_list: List[ConsentFile] = self.consent_dao.get_files_ready_to_sync(
             hpo_names=hpos_sync_config.keys(),
-            org_names=orgs_sync_config.keys()
+            org_names=orgs_sync_config.keys(),
+            additional_filters=filters
         )
 
         pairing_info_map = self._build_participant_pairing_map(file_list)

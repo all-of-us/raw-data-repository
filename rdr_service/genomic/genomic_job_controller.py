@@ -161,6 +161,9 @@ class GenomicJobController:
         except KeyError:
             pass
 
+        except KeyError:
+            pass
+
     def insert_genomic_manifest_file_record(self):
         """
         Inserts genomic_manifest_file record from _file_data dict
