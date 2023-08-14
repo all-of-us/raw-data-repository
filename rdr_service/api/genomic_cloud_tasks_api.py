@@ -18,7 +18,7 @@ from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
-from rdr_service.offline.genomics import genomic_dispatch, genomic_long_read_pipeline
+from rdr_service.offline.genomics import genomic_dispatch, genomic_long_read_pipeline, genomic_proteomics_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
     genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, \
@@ -87,15 +87,17 @@ class BaseGenomicTaskApi(Resource):
 
 class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
     """
-    Cloud Task endpoint: Load raw AW1/AW2 Manifest to
-    genomic_aw1_raw or genomic_aw2_raw table
+    Cloud Task endpoint: Load raw csv manifest to RAW manifest models
     """
     def post(self):
         super(LoadRawAWNManifestDataAPI, self).post()
         logging.info(f'Loading {self.data.get("file_type").upper()} Raw Data: {self.data.get("filename")}')
 
         # Call pipeline function
-        genomic_dispatch.load_awn_manifest_into_raw_table(self.data.get("file_path"), self.data.get("file_type"))
+        genomic_dispatch.load_awn_manifest_into_raw_table(
+            file_path=self.data.get("file_path"),
+            manifest_type=self.data.get("file_type")
+        )
 
         self.create_cloud_record()
 
@@ -349,6 +351,48 @@ class IngestLongReadManifestTaskApi(BaseGenomicTaskApi):
 
             task_type = self.data.get("file_type")
             workflow_data = lr_manifest_map[task_type]
+
+            # Set up file/JSON
+            task_data = {
+                "job": workflow_data.get('job'),
+                "bucket": self.data["bucket_name"],
+                "file_data": {
+                    "create_feedback_record": False,
+                    "upload_date": self.data["upload_date"],
+                    "manifest_type": workflow_data.get('manifest_type'),
+                    "file_path": file_path,
+                }
+            }
+
+            logging.info(f'{task_type.upper()} task data: {task_data}')
+
+            self.execute_manifest_ingestion(task_data, task_type.upper())
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
+class IngestPRManifestTaskApi(BaseGenomicTaskApi):
+    """
+    Cloud Task endpoint: Ingest PR Manifest(s).
+    """
+    def post(self):
+        super().post()
+
+        pr_manifest_map = {
+            'pr': {
+                'job': GenomicJob.PR_PR_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.PR_PR
+            },
+        }
+
+        for file_path in self.file_paths:
+            logging.info(f'Ingesting LR Manifest File: {self.data.get("filename")}')
+
+            task_type = self.data.get("file_type")
+            workflow_data = pr_manifest_map[task_type]
 
             # Set up file/JSON
             task_data = {
@@ -764,16 +808,17 @@ class GenerateManifestApi(BaseGenomicTaskApi):
     def post(self):
         super().post()
         manifest_type = self.data.get('manifest_type')
-        generate_manifest_map = {
-            'l0': genomic_long_read_pipeline.lr_l0_manifest_workflow
-        }
+        try:
+            generate_manifest_map = {
+                'l0': genomic_long_read_pipeline.lr_l0_manifest_workflow,
+                'p0': genomic_proteomics_pipeline.pr_p0_manifest_workflow
+            }[manifest_type]
 
-        run_manifest_generation = generate_manifest_map.get(manifest_type, None)
-        if not run_manifest_generation:
+            generate_manifest_map()
+
+            logging.info('Complete.')
+            return {"success": True}
+
+        except KeyError:
             logging.warning(f'Genomics Manifest {manifest_type} is not available for generation.')
             return {"success": False}
-
-        run_manifest_generation()
-
-        logging.info('Complete.')
-        return {"success": True}

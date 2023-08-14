@@ -6,4 +6,4 @@ from datetime import datetime
 class ParticipantEhrFile:
     participant_id: int
     receipt_time: datetime
-    hpo_id: int
+    hpo_id: str

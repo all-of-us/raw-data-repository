@@ -48,7 +48,8 @@ from rdr_service.model.genomics import (
     GenomicW3SCRaw, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
-    GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead)
+    GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead,
+    GenomicProteomics)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -4832,7 +4833,7 @@ class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.gcManifestParentSampleId.in_(parent_tube_ids)
             ).distinct().all()
 
-    def get_l0_records_from_max_set(self) -> List[GenomicLongRead]:
+    def get_l0_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicLongRead.biobank_id),
@@ -4862,3 +4863,74 @@ class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
             ).distinct().all()
 
 
+class GenomicPRDao(BaseDao, GenomicDaoMixin):
+    def __init__(self):
+        super().__init__(GenomicProteomics, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    @classmethod
+    def get_max_set_subquery(cls):
+        return sqlalchemy.orm.Query(
+            functions.max(GenomicProteomics.proteomics_set).label('proteomics_set')
+        ).subquery()
+
+    def get_max_set(self):
+        with self.session() as session:
+            return session.query(
+                self.get_max_set_subquery()
+            ).one()
+
+    def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
+        with self.session() as session:
+            return session.query(
+                GenomicSetMember.id.label('genomic_set_member_id'),
+                GenomicSetMember.biobankId.label('biobank_id')
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).filter(
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
+                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,  # sub flows default to array sample
+                GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
+                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
+                GenomicSetMember.diversionPouchSiteFlag != 1,
+                GenomicSetMember.blockResults != 1,
+                GenomicSetMember.blockResearch != 1,
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.biobankId.in_(biobank_ids),
+                GenomicSetMember.ai_an == 'N'
+            ).distinct().all()
+
+    def get_p0_records_from_max_set(self):
+        with self.session() as session:
+            return session.query(
+                func.concat(get_biobank_id_prefix(), GenomicProteomics.biobank_id),
+                GenomicSetMember.collectionTubeId,
+                GenomicSetMember.sexAtBirth,
+                GenomicProteomics.genome_type,
+                func.IF(GenomicSetMember.nyFlag == 1,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("N")).label('ny_flag'),
+                func.IF(GenomicSetMember.validationStatus == 1,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("N")).label('validation_passed'),
+                GenomicSetMember.ai_an,
+                GenomicProteomics.p_site_id,
+            ).join(
+                GenomicSetMember,
+                and_(
+                    GenomicSetMember.id == GenomicProteomics.genomic_set_member_id,
+                    GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                    GenomicSetMember.ignoreFlag != 1
+                )
+            ).filter(
+                GenomicProteomics.proteomics_set ==
+                self.get_max_set_subquery().c.proteomics_set
+            ).distinct().all()

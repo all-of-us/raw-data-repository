@@ -26,7 +26,7 @@ from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 class EhrUpdatePidRow:
     person_id: int
     latest_upload_time: datetime.datetime
-    hpo_id: int = 0
+    hpo_id: str = ''
 
 
 class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
@@ -221,7 +221,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
     @mock.patch('rdr_service.offline.update_ehr_status.ParticipantEhrTracking.is_ce_mediated_file')
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_participant_summaries_job")
     def test_updates_participant_summaries(self, mock_summary_job, is_ce_file_mock, resoure_ce_mock):
-        ce_hpo_id = 230
+        ce_hpo_id = 'ce-mediated'
 
         def ce_id_check(file):
             return ce_hpo_id == file.hpo_id
@@ -229,7 +229,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         resoure_ce_mock.return_value = ce_hpo_id
 
         # Run job with data for participants 11 and 14, and a CE file for 13
-        p_eleven_first_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 12, 8), hpo_id=8)
+        p_eleven_first_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 12, 8), hpo_id='one')
         p_fourteen_upload = EhrUpdatePidRow(14, datetime.datetime(2020, 3, 12, 10))
         mock_summary_job.return_value.__iter__.return_value = [
             [p_eleven_first_upload, p_fourteen_upload]
@@ -239,7 +239,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         update_ehr_status.update_ehr_status_participant()
 
         # Run job with data for participants 11 and 12 (leaving 14 out), and a new CE file for 13
-        new_p_eleven_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 30, 2), hpo_id=19)
+        new_p_eleven_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 30, 2), hpo_id='five')
         p_twelve_upload = EhrUpdatePidRow(12, datetime.datetime(2020, 3, 27, 18))
         p_ce_upload = EhrUpdatePidRow(13, datetime.datetime(2021, 4, 1), hpo_id=ce_hpo_id)
         mock_summary_job.return_value.__iter__.return_value = [
