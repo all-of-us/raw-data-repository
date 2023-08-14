@@ -107,7 +107,7 @@ def load_awn_manifest_into_raw_table(
             bq_project_id=project_id,
             storage_provider=provider
         ) as controller:
-            controller.load_raw_awn_data_from_filepath(
+            controller.load_raw_manifest_data_from_filepath(
                 file_path,
                 raw_dao=raw_jobs_map.get('dao', GenomicDefaultBaseDao),
                 cvl_site_id=cvl_site_id,
