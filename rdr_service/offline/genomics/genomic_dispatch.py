@@ -1,12 +1,12 @@
 import logging
 
 from rdr_service import config
-from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicAW3RawDao, GenomicAW4RawDao, \
-    GenomicW1ILRawDao, GenomicW2SCRawDao, GenomicW2WRawDao, GenomicW3NSRawDao, GenomicW3SCRawDao, GenomicW3SSRawDao, \
-    GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW5NFRawDao, GenomicDefaultBaseDao
+from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicDefaultBaseDao
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult
-from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicPRRaw, GenomicP0Raw
+from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicPRRaw, GenomicP0Raw, GenomicW1ILRaw, \
+    GenomicW2SCRaw, GenomicW2WRaw, GenomicW3NSRaw, GenomicW3SCRaw, GenomicW3SRRaw, GenomicW3SSRaw, GenomicW4WRRaw, \
+    GenomicW5NFRaw, GenomicAW4Raw, GenomicAW3Raw
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -28,72 +28,68 @@ def load_awn_manifest_into_raw_table(
         },
         "aw3": {
             'job_id': GenomicJob.LOAD_AW3_TO_RAW_TABLE,
-            'dao': GenomicAW3RawDao
+            'model': GenomicAW3Raw
         },
         "aw4": {
             'job_id': GenomicJob.LOAD_AW4_TO_RAW_TABLE,
-            'dao': GenomicAW4RawDao
+            'model': GenomicAW4Raw
         }
     }
     cvl_raw_map = {
         "w1il": {
             'job_id': GenomicJob.LOAD_CVL_W1IL_TO_RAW_TABLE,
-            'dao': GenomicW1ILRawDao
+            'model': GenomicW1ILRaw
         },
         "w2sc": {
             'job_id': GenomicJob.LOAD_CVL_W2SC_TO_RAW_TABLE,
-            'dao': GenomicW2SCRawDao
+            'model': GenomicW2SCRaw
         },
         "w2w": {
             'job_id': GenomicJob.LOAD_CVL_W2W_TO_RAW_TABLE,
-            'dao': GenomicW2WRawDao
+            'model': GenomicW2WRaw
         },
         "w3ns": {
             'job_id': GenomicJob.LOAD_CVL_W3NS_TO_RAW_TABLE,
-            'dao': GenomicW3NSRawDao
+            'model': GenomicW3NSRaw
         },
         "w3sc": {
             'job_id': GenomicJob.LOAD_CVL_W3SC_TO_RAW_TABLE,
-            'dao': GenomicW3SCRawDao
+            'model': GenomicW3SCRaw
         },
         "w3ss": {
             'job_id': GenomicJob.LOAD_CVL_W3SS_TO_RAW_TABLE,
-            'dao': GenomicW3SSRawDao
+            'model': GenomicW3SSRaw
         },
         "w3sr": {
             'job_id': GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE,
-            'dao': GenomicW3SRRawDao
+            'model': GenomicW3SRRaw
         },
         "w4wr": {
             'job_id': GenomicJob.LOAD_CVL_W4WR_TO_RAW_TABLE,
-            'dao': GenomicW4WRRawDao
+            'model': GenomicW4WRRaw
         },
         "w5nf": {
             'job_id': GenomicJob.LOAD_CVL_W5NF_TO_RAW_TABLE,
-            'dao': GenomicW5NFRawDao
+            'model': GenomicW5NFRaw
         },
     }
     long_read_raw_map = {
         "lr": {
             'job_id': GenomicJob.LOAD_LR_TO_RAW_TABLE,
-            'dao': GenomicDefaultBaseDao,
             'model': GenomicLRRaw
         },
         "l0": {
             'job_id': GenomicJob.LOAD_L0_TO_RAW_TABLE,
-            'dao': GenomicDefaultBaseDao,
             'model': GenomicL0Raw
         }
     }
     pr_raw_map = {
         "pr": {
             'job_id': GenomicJob.LOAD_PR_TO_RAW_TABLE,
-            'dao': GenomicDefaultBaseDao,
             'model': GenomicPRRaw
         },
         "p0": {
             'job_id': GenomicJob.LOAD_P0_TO_RAW_TABLE,
-            'dao': GenomicDefaultBaseDao,
             'model': GenomicP0Raw
         },
     }
@@ -113,7 +109,7 @@ def load_awn_manifest_into_raw_table(
         ) as controller:
             controller.load_raw_awn_data_from_filepath(
                 file_path,
-                raw_jobs_map.get('dao'),
+                raw_dao=raw_jobs_map.get('dao', GenomicDefaultBaseDao),
                 cvl_site_id=cvl_site_id,
                 model=raw_jobs_map.get('model')
             )
