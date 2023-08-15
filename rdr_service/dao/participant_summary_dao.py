@@ -1341,9 +1341,12 @@ class ParticipantSummaryDao(UpdatableDao):
 
         # Check if we should hide the participant mediated EHR status fields
         if not config.getSettingJson(config.ENABLE_PARTICIPANT_MEDIATED_EHR, default=False):
-            for field_name in ['wasParticipantMediatedEhrAvailable',
-                               'firstParticipantMediatedEhrReceiptTime',
-                               'latestParticipantMediatedEhrReceiptTime']:
+            for field_name in [
+                'isParticipantMediatedEhrDataAvailable',
+                'wasParticipantMediatedEhrAvailable',
+                'firstParticipantMediatedEhrReceiptTime',
+                'latestParticipantMediatedEhrReceiptTime'
+            ]:
                 if field_name in result:
                     del result[field_name]
 
@@ -1435,10 +1438,17 @@ class ParticipantSummaryDao(UpdatableDao):
         ).all()
         return [obj.participantId for obj in db_results]
 
-    def get_participant_ids_with_ehr_data_available(self):
+    def get_participant_ids_with_hpo_ehr_data_available(self):
         with self.session() as session:
             result = session.query(ParticipantSummary.participantId).filter(
                 ParticipantSummary.isEhrDataAvailable == expression.true()
+            ).all()
+            return {row.participantId for row in result}
+
+    def get_participant_ids_with_mediated_ehr_data_available(self):
+        with self.session() as session:
+            result = session.query(ParticipantSummary.participantId).filter(
+                ParticipantSummary.isParticipantMediatedEhrDataAvailable == expression.true()
             ).all()
             return {row.participantId for row in result}
 
@@ -1446,35 +1456,69 @@ class ParticipantSummaryDao(UpdatableDao):
         with self.session() as session:
             query = (
                 sqlalchemy.update(ParticipantSummary).values({
-                    ParticipantSummary.isEhrDataAvailable: False
+                    ParticipantSummary.isEhrDataAvailable: False,
+                    ParticipantSummary.isParticipantMediatedEhrDataAvailable: False
                 })
             )
             return session.execute(query)
 
-    @staticmethod
-    def bulk_update_ehr_status_with_session(session, record_list: List[ParticipantEhrFile]):
+    @classmethod
+    def _bulk_update_ehr_fields(cls, session, record_list: List[ParticipantEhrFile], values_to_update) -> int:
+        if not record_list:
+            return 0
+
         query = (
             sqlalchemy.update(ParticipantSummary)
-            .where(ParticipantSummary.participantId == sqlalchemy.bindparam("pid"))
-            .values(
-                {
-                    ParticipantSummary.ehrStatus.name: EhrStatus.PRESENT,
-                    ParticipantSummary.isEhrDataAvailable: True,
-                    ParticipantSummary.ehrUpdateTime: sqlalchemy.bindparam("receipt_time"),
-                    ParticipantSummary.ehrReceiptTime: sqlalchemy.case(
-                        [(ParticipantSummary.ehrReceiptTime.is_(None), sqlalchemy.bindparam("receipt_time"))],
-                        else_=ParticipantSummary.ehrReceiptTime,
-                    ),
-                }
-            )
+            .where(ParticipantSummary.participantId == sqlalchemy.bindparam('pid'))
+            .values(values_to_update)
         )
-        return session.execute(query, [
+        query_result = session.execute(query, [
             {
                 'pid': record.participant_id,
                 'receipt_time': record.receipt_time
             }
             for record in record_list
         ])
+        return query_result.rowcount
+
+    @classmethod
+    def bulk_update_hpo_ehr_status_with_session(cls, session, record_list: List[ParticipantEhrFile]):
+        return cls._bulk_update_ehr_fields(
+            session=session,
+            record_list=record_list,
+            values_to_update={
+                ParticipantSummary.ehrStatus.name: EhrStatus.PRESENT,
+                ParticipantSummary.isEhrDataAvailable: True,
+                ParticipantSummary.ehrUpdateTime: sqlalchemy.bindparam("receipt_time"),
+                ParticipantSummary.ehrReceiptTime: sqlalchemy.case(
+                    [
+                        (ParticipantSummary.ehrReceiptTime.is_(None), sqlalchemy.bindparam("receipt_time"))
+                    ],
+                    else_=ParticipantSummary.ehrReceiptTime,
+                )
+            }
+        )
+
+    @classmethod
+    def bulk_update_mediated_ehr_status_with_session(cls, session, record_list: List[ParticipantEhrFile]):
+        return cls._bulk_update_ehr_fields(
+            session=session,
+            record_list=record_list,
+            values_to_update={
+                ParticipantSummary.wasParticipantMediatedEhrAvailable: True,
+                ParticipantSummary.isParticipantMediatedEhrDataAvailable: True,
+                ParticipantSummary.latestParticipantMediatedEhrReceiptTime: sqlalchemy.bindparam("receipt_time"),
+                ParticipantSummary.firstParticipantMediatedEhrReceiptTime: sqlalchemy.case(
+                    [
+                        (
+                            ParticipantSummary.firstParticipantMediatedEhrReceiptTime.is_(None),
+                            sqlalchemy.bindparam("receipt_time")
+                        )
+                    ],
+                    else_=ParticipantSummary.firstParticipantMediatedEhrReceiptTime,
+                )
+            }
+        )
 
     def bulk_update_retention_eligible_flags(self, upload_date):
         with self.session() as session:
