@@ -1164,8 +1164,8 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
-    def _ingest_lr_lr_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
-        rows = [self.clean_row_keys(row) for row in rows]
+    @classmethod
+    def _ingest_lr_lr_manifest(cls, rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
             GenomicLongReadWorkFlow.run_lr_workflow(rows)
             return GenomicSubProcessResult.SUCCESS
