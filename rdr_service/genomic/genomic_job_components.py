@@ -373,7 +373,7 @@ class GenomicFileIngester:
             _type='resolved'
         )
 
-    def load_raw_awn_file(self, raw_dao, **kwargs):
+    def load_raw_manifest_file(self, raw_dao, **kwargs):
         """
         Loads raw models with raw data from manifests file
         Ex: genomic_aw1_raw => aw1_manifest
