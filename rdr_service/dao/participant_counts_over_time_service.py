@@ -85,6 +85,9 @@ class ParticipantCountsOverTimeService(BaseDao):
                 session.execute('ALTER TABLE {} MODIFY participant_origin VARCHAR(80)'.format(temp_table_name))
                 session.execute('ALTER TABLE {} MODIFY deceased_status SMALLINT'.format(temp_table_name))
                 session.execute('ALTER TABLE {} MODIFY is_ehr_data_available TINYINT(1)'.format(temp_table_name))
+                session.execute(
+                    f'ALTER TABLE {temp_table_name} MODIFY is_participant_mediated_ehr_data_available TINYINT(1)'
+                )
                 session.execute('ALTER TABLE {} MODIFY was_participant_mediated_ehr_available TINYINT(1)'
                                  .format(temp_table_name))
 
