@@ -12,6 +12,7 @@ from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, \
     GenomicSubProcessStatus, GenomicSubProcessResult
 from rdr_service.model.genomics import GenomicPRRaw, GenomicP0Raw, GenomicP1Raw
 from rdr_service.offline.genomics import genomic_dispatch, genomic_proteomics_pipeline
+from rdr_service.participant_enums import QuestionnaireStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -322,37 +323,53 @@ class GenomicPRPipelineTest(BaseTestCase):
 
         self.clear_table_after_test('genomic_proteomics')
 
-    # def test_p1_manifest_ingestion(self):
-    #
-    #     self.execute_base_pr_ingestion(
-    #         test_file='RDR_AoU_Proteomics_PKG-2301-123456.csv',
-    #         job_id=GenomicJob.PR_P1_WORKFLOW,
-    #         manifest_type=GenomicManifestTypes.PR_P1,
-    #         include_timestamp=False
-    #     )
-    #
-    #     pr_members = self.pr_dao.get_all()
-    #
-    #     self.assertEqual(len(pr_members), 3)
-    #     self.assertTrue(all(obj.biobank_id is not None for obj in pr_members))
-    #     self.assertTrue(all(obj.sample_id is None for obj in pr_members))
-    #     self.assertTrue(all(obj.genome_type == 'aou_proteomics' for obj in pr_members))
-    #     self.assertTrue(all(obj.p_site_id == 'bi' for obj in pr_members))
-    #     self.assertTrue(all(obj.genomic_set_member_id is not None for obj in pr_members))
-    #     self.assertTrue(all(obj.proteomics_set == 1 for obj in pr_members))
-    #     self.assertTrue(all(obj.created_job_run_id is not None for obj in pr_members))
-    #
-    #     # check job run record
-    #     pr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_PR_WORKFLOW, self.job_run_dao.get_all()))
-    #
-    #     self.assertIsNotNone(pr_job_runs)
-    #     self.assertEqual(len(pr_job_runs), 1)
-    #     self.assertTrue(all(obj.created_job_run_id == pr_job_runs[0].id for obj in pr_members))
-    #
-    #     self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in pr_job_runs))
-    #     self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in pr_job_runs))
-    #
-    #     self.clear_table_after_test('genomic_proteomics')
+    def test_p1_manifest_ingestion(self):
+
+        for num in range(1, 4):
+            participant_summary = self.data_generator.create_database_participant_summary(
+                consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
+                consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
+            )
+            genomic_set_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                participantId=participant_summary.participantId,
+                biobankId=f"100{num}",
+                genomeType="aou_array",
+                collectionTubeId=num,
+                ai_an="N"
+            )
+            if num < 3:
+                self.data_generator.create_database_genomic_proteomics(
+                    genomic_set_member_id=genomic_set_member.id,
+                    biobank_id=genomic_set_member.biobankId,
+                    genome_type="aou_proteomics",
+                    p_site_id="bi",
+                    proteomics_set=1
+                )
+
+        self.execute_base_pr_ingestion(
+            test_file='RDR_AoU_Proteomics_PKG-2301-123456.csv',
+            job_id=GenomicJob.PR_P1_WORKFLOW,
+            manifest_type=GenomicManifestTypes.PR_P1,
+            include_timestamp=False
+        )
+
+        pr_members = self.pr_dao.get_all()
+
+        self.assertEqual(len(pr_members), 2)
+        self.assertTrue(all(obj.sample_id is not None for obj in pr_members))
+        self.assertTrue(all(obj.sample_id in ['1111', '1112'] for obj in pr_members))
+
+        # check job run record
+        p1_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_P1_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(p1_job_runs)
+        self.assertEqual(len(p1_job_runs), 1)
+
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p1_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p1_job_runs))
+
+        self.clear_table_after_test('genomic_proteomics')
 
     def test_p1_manifest_to_raw_ingestion(self):
 

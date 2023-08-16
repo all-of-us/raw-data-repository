@@ -3189,7 +3189,7 @@ class ManifestDefinitionProvider:
                 'output_filename':
                     f'{PR_P0_MANIFEST_SUBFOLDER}/Proteomics-Manifest-AoU-{self.kwargs.get("pr_max_set")}'
                     f'-{now_formatted}.csv',
-                'query': self.pr_dao.get_p0_records_from_max_set
+                'query': self.pr_dao.get_zero_manifest_records_from_max_set
             },
         }
         def_config = def_config.get(manifest_type)
