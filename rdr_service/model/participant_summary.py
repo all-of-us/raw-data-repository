@@ -503,6 +503,7 @@ class ParticipantSummary(Base):
             case(
                 [
                     (isEhrDataAvailable, int(DigitalHealthSharingStatus.CURRENTLY_SHARING)),
+                    (isParticipantMediatedEhrDataAvailable, int(DigitalHealthSharingStatus.CURRENTLY_SHARING)),
                     (wasEhrDataAvailable, int(DigitalHealthSharingStatus.EVER_SHARED)),
                     (wasParticipantMediatedEhrAvailable, int(DigitalHealthSharingStatus.EVER_SHARED))
                 ],
