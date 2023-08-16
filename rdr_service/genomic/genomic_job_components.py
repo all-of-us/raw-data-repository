@@ -342,8 +342,10 @@ class GenomicFileIngester:
             return GenomicSubProcessResult.ERROR
 
     def _set_data_ingest_iterations(self, data_rows: List[dict]):
-        excluded_jobs = [GenomicJob.LR_LR_WORKFLOW]
-        all_ingestions = []
+        excluded_jobs, all_ingestions = [
+            GenomicJob.LR_LR_WORKFLOW,
+            GenomicJob.PR_PR_WORKFLOW
+        ], []
         if self.controller.max_num \
             and self.job_id not in excluded_jobs \
                 and len(data_rows) > self.controller.max_num:
