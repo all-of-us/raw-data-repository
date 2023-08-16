@@ -154,6 +154,7 @@ participant_summary_default_values = {
     "sample1SAL2CollectionMethod": "UNSET",
     "isEhrDataAvailable": False,
     "wasEhrDataAvailable": False,
+    "isParticipantMediatedEhrDataAvailable": False,
     "wasParticipantMediatedEhrAvailable": False,
     "questionnaireOnCopeVaccineMinute1": "UNSET",
     "questionnaireOnCopeVaccineMinute2": "UNSET",
@@ -347,6 +348,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "patientStatus": patient_statuses or [],
                 "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
                 "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
+                "isParticipantMediatedEhrDataAvailable": False
             }
         )
 

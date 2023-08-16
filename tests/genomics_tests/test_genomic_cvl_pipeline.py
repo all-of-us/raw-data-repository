@@ -10,14 +10,14 @@ from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.config import GENOMIC_DEPRECATED_WGS_DRAGEN
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
-    GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, \
-    GenomicW3SCRawDao, GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, \
-    GenomicCVLSecondSampleDao, GenomicW1ILRawDao, GenomicW2WRawDao, GenomicCVLResultPastDueDao
+    GenomicManifestFileDao, \
+    GenomicCVLSecondSampleDao, GenomicCVLResultPastDueDao, GenomicDefaultBaseDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicQcStatus, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicWorkflowState, ResultsModuleType
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
 from rdr_service.model.config_utils import to_client_biobank_id
-from rdr_service.model.genomics import GenomicGCValidationMetrics, GenomicSetMember
+from rdr_service.model.genomics import GenomicGCValidationMetrics, GenomicSetMember, GenomicW1ILRaw, GenomicW2WRaw, \
+    GenomicW3NSRaw, GenomicW2SCRaw, GenomicW3SCRaw, GenomicW3SRRaw, GenomicW3SSRaw, GenomicW4WRRaw, GenomicW5NFRaw
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline.genomics import genomic_cvl_pipeline
 from rdr_service.offline.genomics import genomic_dispatch
@@ -111,7 +111,9 @@ class GenomicCVLPipelineTest(BaseTestCase):
             results_module=ResultsModuleType.HDRV1
         )
 
-        w2sc_raw_dao = GenomicW2SCRawDao()
+        w2sc_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicW2SCRaw
+        )
 
         manifest_type = 'w2sc'
         w2sc_manifest_file = self.manifest_file_dao.get(1)
@@ -263,7 +265,9 @@ class GenomicCVLPipelineTest(BaseTestCase):
             self.assertEqual(updated_field, 'cvlW3srManifestJobRunID')
 
         # check raw records
-        w3sr_raw_dao = GenomicW3SRRawDao()
+        w3sr_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicW3SRRaw
+        )
 
         w3sr_raw_records = w3sr_raw_dao.get_all()
         self.assertEqual(len(cvl_sites), len(w3sr_raw_records))
@@ -320,7 +324,9 @@ class GenomicCVLPipelineTest(BaseTestCase):
             results_module=ResultsModuleType.HDRV1
         )
 
-        w3ns_raw_dao = GenomicW3NSRawDao()
+        w3ns_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicW3NSRaw
+        )
 
         manifest_type = 'w3ns'
         w3sc_manifest_file = self.manifest_file_dao.get(1)
@@ -383,7 +389,9 @@ class GenomicCVLPipelineTest(BaseTestCase):
             results_module=ResultsModuleType.HDRV1
         )
 
-        w3sc_raw_dao = GenomicW3SCRawDao()
+        w3sc_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicW3SCRaw
+        )
 
         manifest_type = 'w3sc'
         w3sc_manifest_file = self.manifest_file_dao.get(1)
@@ -444,7 +452,9 @@ class GenomicCVLPipelineTest(BaseTestCase):
             include_timestamp=False
         )
 
-        w3ss_raw_dao = GenomicW3SSRawDao()
+        w3ss_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicW3SSRaw
+        )
 
         manifest_type = 'w3ss'
         w3ss_manifest_file = self.manifest_file_dao.get(1)
@@ -495,7 +505,9 @@ class GenomicCVLPipelineTest(BaseTestCase):
             results_module=ResultsModuleType.HDRV1
         )
 
-        w4wr_raw_dao = GenomicW4WRRawDao()
+        w4wr_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicW4WRRaw
+        )
 
         manifest_type = 'w4wr'
         w4wr_manifest_file = self.manifest_file_dao.get(1)
@@ -550,7 +562,9 @@ class GenomicCVLPipelineTest(BaseTestCase):
             include_sub_num=True
         )
 
-        w5nf_raw_dao = GenomicW5NFRawDao()
+        w5nf_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicW5NFRaw
+        )
 
         manifest_type = 'w5nf'
         w5nf_manifest_file = self.manifest_file_dao.get(1)
@@ -799,7 +813,10 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
     def test_w1il_manifest_generation_to_raw(self):
         cvl_sites = config.GENOMIC_CVL_SITES
-        w1il_raw_dao = GenomicW1ILRawDao()
+        w1il_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicW1ILRaw
+        )
+
         # PGX manifest
         with clock.FakeClock(clock.CLOCK.now()):
             genomic_cvl_pipeline.cvl_w1il_manifest_workflow(
@@ -1097,7 +1114,9 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
     def test_w2w_manifest_generation_to_raw(self):
         cvl_sites = config.GENOMIC_CVL_SITES
-        w2w_raw_dao = GenomicW2WRawDao()
+        w2w_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicW2WRaw
+        )
 
         with clock.FakeClock(clock.CLOCK.now()):
             genomic_cvl_pipeline.cvl_w2w_manifest_workflow(

@@ -1630,7 +1630,7 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def load_raw_awn_data_from_filepath(self, file_path, raw_dao, **kwargs):
+    def load_raw_manifest_data_from_filepath(self, file_path, raw_dao, **kwargs):
         """
         Loads raw manifests data to raw table
         :param file_path: "bucket/folder/manifest_file.csv"
@@ -1644,7 +1644,7 @@ class GenomicJobController:
                                             target_file=file_path,
                                             _controller=self)
 
-        self.job_result = self.ingester.load_raw_awn_file(raw_dao, **kwargs)
+        self.job_result = self.ingester.load_raw_manifest_file(raw_dao, **kwargs)
 
     def create_incident(
         self,

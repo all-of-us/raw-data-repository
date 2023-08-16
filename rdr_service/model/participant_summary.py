@@ -461,6 +461,18 @@ class ParticipantSummary(Base):
     UTC timestamp indicating the latest time RDR was aware of signed and uploaded EHR documents
     """
 
+    isParticipantMediatedEhrDataAvailable = Column(
+        "is_participant_mediated_ehr_data_available",
+        Boolean,
+        nullable=False,
+        server_default=expression.false(),
+        default=False
+    )
+    """
+    A true or false value that indicates whether participant-mediated Electronic Health Records (EHR)
+    are currently present for the participant.
+    """
+
     # DA-3156:  Separate tracking for participant-mediated EHR (e.g., from CE participants)
     # These values will be backfilled based on a report of mediated EHR activity imported into a temp table
     wasParticipantMediatedEhrAvailable = Column(
@@ -491,6 +503,7 @@ class ParticipantSummary(Base):
             case(
                 [
                     (isEhrDataAvailable, int(DigitalHealthSharingStatus.CURRENTLY_SHARING)),
+                    (isParticipantMediatedEhrDataAvailable, int(DigitalHealthSharingStatus.CURRENTLY_SHARING)),
                     (wasEhrDataAvailable, int(DigitalHealthSharingStatus.EVER_SHARED)),
                     (wasParticipantMediatedEhrAvailable, int(DigitalHealthSharingStatus.EVER_SHARED))
                 ],

@@ -45,9 +45,8 @@ from rdr_service.model.genomics import (
     GenomicMemberReportState,
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
-    GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
-    GenomicW3SCRaw, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
-    GenomicCVLSecondSample, GenomicW2WRaw, GenomicW1ILRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
+    GenomicResultViewed, GenomicAW3Raw, GenomicW4WRRaw, GenomicW3SCRaw,
+    GenomicCVLSecondSample, GenomicW2WRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead,
     GenomicProteomics)
@@ -2830,138 +2829,6 @@ class GenomicAW2RawDao(BaseDao, GenomicDaoMixin):
         if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
-
-
-class GenomicAW3RawDao(BaseDao, GenomicDaoMixin):
-    def __init__(self):
-        super(GenomicAW3RawDao, self).__init__(
-            GenomicAW3Raw, order_by_ending=['id'])
-
-    def get_id(self, obj):
-        pass
-
-    def from_client_json(self):
-        pass
-
-
-class GenomicAW4RawDao(BaseDao, GenomicDaoMixin):
-    def __init__(self):
-        super(GenomicAW4RawDao, self).__init__(
-            GenomicAW4Raw, order_by_ending=['id'])
-
-    def get_id(self, obj):
-        pass
-
-    def from_client_json(self):
-        pass
-
-
-class GenomicW1ILRawDao(BaseDao, GenomicDaoMixin):
-    def __init__(self):
-        super(GenomicW1ILRawDao, self).__init__(
-            GenomicW1ILRaw, order_by_ending=['id'])
-
-    def get_id(self, obj):
-        pass
-
-    def from_client_json(self):
-        pass
-
-
-class GenomicW2WRawDao(BaseDao, GenomicDaoMixin):
-    def __init__(self):
-        super(GenomicW2WRawDao, self).__init__(
-            GenomicW2WRaw, order_by_ending=['id'])
-
-    def get_id(self, obj):
-        pass
-
-    def from_client_json(self):
-        pass
-
-
-class GenomicW2SCRawDao(BaseDao, GenomicDaoMixin):
-    def __init__(self):
-        super(GenomicW2SCRawDao, self).__init__(
-            GenomicW2SCRaw, order_by_ending=['id'])
-
-    def get_id(self, obj):
-        pass
-
-    def from_client_json(self):
-        pass
-
-
-class GenomicW3NSRawDao(BaseDao, GenomicDaoMixin):
-    def __init__(self):
-        super(GenomicW3NSRawDao, self).__init__(
-            GenomicW3NSRaw, order_by_ending=['id'])
-
-    def get_id(self, obj):
-        pass
-
-    def from_client_json(self):
-        pass
-
-
-class GenomicW3SCRawDao(BaseDao, GenomicDaoMixin):
-    def __init__(self):
-        super(GenomicW3SCRawDao, self).__init__(
-            GenomicW3SCRaw, order_by_ending=['id'])
-
-    def get_id(self, obj):
-        pass
-
-    def from_client_json(self):
-        pass
-
-
-class GenomicW3SRRawDao(BaseDao, GenomicDaoMixin):
-    def __init__(self):
-        super(GenomicW3SRRawDao, self).__init__(
-            GenomicW3SRRaw, order_by_ending=['id'])
-
-    def get_id(self, obj):
-        pass
-
-    def from_client_json(self):
-        pass
-
-
-class GenomicW3SSRawDao(BaseDao, GenomicDaoMixin):
-    def __init__(self):
-        super(GenomicW3SSRawDao, self).__init__(
-            GenomicW3SSRaw, order_by_ending=['id'])
-
-    def get_id(self, obj):
-        pass
-
-    def from_client_json(self):
-        pass
-
-
-class GenomicW4WRRawDao(BaseDao, GenomicDaoMixin):
-    def __init__(self):
-        super(GenomicW4WRRawDao, self).__init__(
-            GenomicW4WRRaw, order_by_ending=['id'])
-
-    def get_id(self, obj):
-        pass
-
-    def from_client_json(self):
-        pass
-
-
-class GenomicW5NFRawDao(BaseDao, GenomicDaoMixin):
-    def __init__(self):
-        super(GenomicW5NFRawDao, self).__init__(
-            GenomicW5NFRaw, order_by_ending=['id'])
-
-    def get_id(self, obj):
-        pass
-
-    def from_client_json(self):
-        pass
 
 
 class GenomicIncidentDao(UpdatableDao, GenomicDaoMixin):

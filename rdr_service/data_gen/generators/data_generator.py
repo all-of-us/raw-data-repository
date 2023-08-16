@@ -318,6 +318,7 @@ class DataGenerator:
             "participantOrigin": participant.participantOrigin,
             "deceasedStatus": DeceasedStatus.UNSET,
             "isEhrDataAvailable": False,
+            "isParticipantMediatedEhrDataAvailable": False,
             "wasParticipantMediatedEhrAvailable": False,
             "consentForNphModule1": False,
             "nphWithdrawal": False,

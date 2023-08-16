@@ -30,7 +30,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicAW2RawDao,
     GenomicIncidentDao,
     GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao, GenomicAW4RawDao, GenomicAW3RawDao, GenomicDefaultBaseDao)
+    GenomicGcDataFileMissingDao, GenomicDefaultBaseDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -3027,7 +3027,9 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.pipelineId, rows[1]['pipeline_id'])
 
             # Test AW3 loaded into raw table
-            aw3_dao = GenomicAW3RawDao()
+            aw3_dao = GenomicDefaultBaseDao(
+            model_type=GenomicAW3Raw
+        )
             raw_records = aw3_dao.get_all()
             raw_records.sort(key=lambda x: x.biobank_id)
 
@@ -3704,7 +3706,9 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.pipelineId, pipeline_id)
 
             # Test AW3 loaded into raw table
-            aw3_dao = GenomicAW3RawDao()
+            aw3_dao = GenomicDefaultBaseDao(
+                model_type=GenomicAW3Raw
+            )
             raw_records = aw3_dao.get_all()
             raw_records.sort(key=lambda x: x.biobank_id)
 
@@ -4574,7 +4578,9 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(row['processing_count'], '1')
 
             # Test AW3 loaded into raw table
-            aw3_dao = GenomicAW3RawDao()
+            aw3_dao = GenomicDefaultBaseDao(
+                model_type=GenomicAW3Raw
+            )
             raw_records = aw3_dao.get_all()
             raw_records.sort(key=lambda x: x.biobank_id)
 
@@ -4693,7 +4699,9 @@ class GenomicPipelineTest(BaseTestCase):
         # Test AW4 Raw table
         genomic_dispatch.load_awn_manifest_into_raw_table(f"{bucket_name}/{sub_folder}/{file_name}", "aw4")
 
-        aw4_dao = GenomicAW4RawDao()
+        aw4_dao = GenomicDefaultBaseDao(
+            model_type=GenomicAW4Raw
+        )
         raw_records = aw4_dao.get_all()
         raw_records.sort(key=lambda x: x.biobank_id)
 
@@ -6742,7 +6750,9 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.pipelineId, rows[0]['pipeline_id'])
 
             # Test AW3 loaded into raw table
-            aw3_dao = GenomicAW3RawDao()
+            aw3_dao = GenomicDefaultBaseDao(
+                model_type=GenomicAW3Raw
+            )
             raw_records = aw3_dao.get_all()
             raw_records.sort(key=lambda x: x.biobank_id)
 
@@ -6959,7 +6969,9 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.meanCoverage, row['mean_coverage'])
 
             # Test AW3 loaded into raw table
-            aw3_dao = GenomicAW3RawDao()
+            aw3_dao = GenomicDefaultBaseDao(
+                model_type=GenomicAW3Raw
+            )
             raw_records = aw3_dao.get_all()
             raw_records.sort(key=lambda x: x.biobank_id)
 
