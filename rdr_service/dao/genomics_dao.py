@@ -1367,6 +1367,12 @@ class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
     def from_client_json(self):
         pass
 
+    @classmethod
+    def get_max_id_subquery(cls):
+        return sqlalchemy.orm.Query(
+            functions.max(GenomicJobRun.id).label('id')
+        ).subquery()
+
     def get_last_successful_runtime(self, job_id):
         with self.session() as session:
             return session.query(
@@ -1378,6 +1384,16 @@ class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
                     GenomicSubProcessResult.SUCCESS,
                     GenomicSubProcessResult.NO_FILES
                 ])).one()[0]
+
+    def get_last_run_status_for_job_id(self, job_id):
+        with self.session() as session:
+            return session.query(
+                GenomicJobRun.runResult
+            ).filter(
+                GenomicJobRun.jobId == job_id,
+                GenomicJobRun.id ==
+                self.get_max_id_subquery().c.id
+            ).one()
 
     def insert_run_record(self, job_id):
         """
