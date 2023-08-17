@@ -7,6 +7,8 @@ from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
+from rdr_service.model.log_position import LogPosition
+from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import to_client_participant_id
 from tests.helpers.unittest_base import BaseTestCase
@@ -39,6 +41,11 @@ class PubSubTest(BaseTestCase):
                 "excluded_table_list": [
                     "log_position",
                     "questionnaire_response_answer"
+                ],
+                "secondary_excluded_table_list": [
+                  "hpo",
+                  "organization",
+                  "site"
                 ]
             }
         )
@@ -169,3 +176,60 @@ class PubSubTest(BaseTestCase):
 
         self.assertTrue(mock_pub_func.called)
         self.assertEqual(mock_pub_func.call_count, 1)
+
+    @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
+    def test_pubsub_primary_table_exclusion(self, mock_pub_func):
+        """ Test Pub/Sub event message is not sent when primary table model is in the exclusion list """
+        mock_pub_func.return_value = {'messageIds': ['123']}
+
+        log_position = LogPosition(logPositionId=35)
+        self.summary_dao.insert(log_position)
+
+        parents = submit_pipeline_pubsub_msg_from_model(log_position, 'rdr')
+
+        self.assertIsNotNone(parents)
+        self.assertFalse(mock_pub_func.called)
+        self.assertEqual(mock_pub_func.call_count, 0)
+
+    @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
+    def test_pubsub_secondary_table_exclusion(self, mock_pub_func):
+        """ Test Pub/Sub event message is not sent for secondary table models in the secondary exclusion list """
+        mock_pub_func.return_value = {'messageIds': ['123']}
+
+        # Fetch the Participant record and add an Organization record to it.
+        with self.summary_dao.session() as session:
+            participant = session.query(Participant).filter(Participant.participantId == self.participant.participantId).first()
+            organization = session.query(Organization).first()
+            participant.organization = organization
+
+        self.assertIsNotNone(organization)
+
+        parents = submit_pipeline_pubsub_msg_from_model(participant, 'rdr')
+
+        self.assertListEqual(parents, ['participant'])
+        self.assertTrue(mock_pub_func.called)
+        self.assertEqual(mock_pub_func.call_count, 1)
+
+        # Now remove 'organization' from the secondary exclusion list and test again.
+        self.temporarily_override_config_setting(
+            'pdr_pipeline', {
+                "allowed_projects": [
+                    "localhost"
+                ],
+                "excluded_table_list": [
+                    "log_position",
+                    "questionnaire_response_answer"
+                ],
+                "secondary_excluded_table_list": [
+                    "hpo",
+                    # "organization",
+                    "site"
+                ]
+            }
+        )
+
+        parents = submit_pipeline_pubsub_msg_from_model(participant, 'rdr')
+
+        self.assertListEqual(parents, ['participant', 'organization'])
+        self.assertTrue(mock_pub_func.called)
+        self.assertEqual(mock_pub_func.call_count, 3)  # Previous call for 'participant' plus two more now.
