@@ -18,7 +18,7 @@ from rdr_service.model.genomics import GenomicManifestFeedback, GenomicManifestF
     GenomicMemberReportState, UserEventMetrics, GenomicInformingLoop, GenomicGcDataFile, GenomicGcDataFileMissing, \
     GenomicResultViewed, GenomicCVLSecondSample, GenomicSampleSwap, \
     GenomicSampleSwapMember, GenomicCVLResultPastDue, GenomicW4WRRaw, GenomicW3SCRaw, GenomicAppointmentEvent, \
-    GenomicAppointmentEventMetrics, GenomicLongRead
+    GenomicAppointmentEventMetrics, GenomicLongRead, GenomicProteomics
 from rdr_service.model.hpo import HPO
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.log_position import LogPosition
@@ -884,6 +884,15 @@ class DataGenerator:
     @staticmethod
     def _genomic_long_read(**kwargs):
         return GenomicLongRead(**kwargs)
+
+    @staticmethod
+    def _genomic_proteomics(**kwargs):
+        return GenomicProteomics(**kwargs)
+
+    def create_database_genomic_proteomics(self, **kwargs):
+        m = self._genomic_proteomics(**kwargs)
+        self._commit_to_database(m)
+        return m
 
     def create_withdrawn_participant(self, withdrawal_reason_justification, is_native_american=False,
                                      requests_ceremony=None, withdrawal_time=datetime.utcnow()):

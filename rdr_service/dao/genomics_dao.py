@@ -6,6 +6,7 @@ from typing import Optional
 import pytz
 import sqlalchemy
 
+from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from dateutil import parser
 
@@ -4746,27 +4747,49 @@ class GenomicLongReadDao(UpdatableDao, GenomicDaoMixin):
             ).distinct().all()
 
 
-class GenomicPRDao(BaseDao, GenomicDaoMixin):
-    def __init__(self):
-        super().__init__(GenomicProteomics, order_by_ending=['id'])
+class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
+
+    validate_version_match = False
 
     def from_client_json(self):
         pass
 
     def get_id(self, obj):
-        pass
+        return obj.id
+
+    @abstractmethod
+    def get_new_pipeline_members(self, *, biobank_ids: List[str]):
+        ...
 
     @classmethod
     def get_max_set_subquery(cls):
-        return sqlalchemy.orm.Query(
-            functions.max(GenomicProteomics.proteomics_set).label('proteomics_set')
-        ).subquery()
+        ...
 
     def get_max_set(self):
         with self.session() as session:
             return session.query(
                 self.get_max_set_subquery()
             ).one()
+
+    @abstractmethod
+    def get_zero_manifest_records_from_max_set(self):
+        ...
+
+    @abstractmethod
+    def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
+        ...
+
+
+class GenomicPRDao(GenomicSubDao):
+
+    def __init__(self):
+        super().__init__(GenomicProteomics, order_by_ending=['id'])
+
+    @classmethod
+    def get_max_set_subquery(cls):
+        return sqlalchemy.orm.Query(
+            functions.max(GenomicProteomics.proteomics_set).label('proteomics_set')
+        ).subquery()
 
     def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
         with self.session() as session:
@@ -4791,7 +4814,7 @@ class GenomicPRDao(BaseDao, GenomicDaoMixin):
                 GenomicSetMember.ai_an == 'N'
             ).distinct().all()
 
-    def get_p0_records_from_max_set(self):
+    def get_zero_manifest_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicProteomics.biobank_id),
@@ -4817,3 +4840,26 @@ class GenomicPRDao(BaseDao, GenomicDaoMixin):
                 GenomicProteomics.proteomics_set ==
                 self.get_max_set_subquery().c.proteomics_set
             ).distinct().all()
+
+    def get_pipeline_members_missing_sample_id(
+        self,
+        *,
+        biobank_ids: List[str],
+        collection_tube_ids: List[str]
+    ):
+        with self.session() as session:
+            return session.query(
+                GenomicProteomics.id,
+                GenomicProteomics.biobank_id
+            ).join(
+                GenomicSetMember,
+                and_(
+                    GenomicSetMember.id == GenomicProteomics.genomic_set_member_id,
+                    GenomicSetMember.biobankId.in_(biobank_ids),
+                    GenomicSetMember.collectionTubeId.in_(collection_tube_ids),
+                    GenomicSetMember.ignoreFlag != 1
+                )
+            ).filter(
+                GenomicProteomics.sample_id.is_(None)
+            ).distinct().all()
+

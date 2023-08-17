@@ -10,8 +10,9 @@ from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestF
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, \
     GenomicSubProcessStatus, GenomicSubProcessResult
-from rdr_service.model.genomics import GenomicPRRaw, GenomicP0Raw
+from rdr_service.model.genomics import GenomicPRRaw, GenomicP0Raw, GenomicP1Raw
 from rdr_service.offline.genomics import genomic_dispatch, genomic_proteomics_pipeline
+from rdr_service.participant_enums import QuestionnaireStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -173,10 +174,9 @@ class GenomicPRPipelineTest(BaseTestCase):
         pr_raw_records = pr_raw_dao.get_all()
 
         self.assertEqual(len(pr_raw_records), 3)
-        self.assertTrue(all(obj.file_path is not None for obj in pr_raw_records))
-        self.assertTrue(all(obj.biobank_id is not None for obj in pr_raw_records))
-        self.assertTrue(all(obj.genome_type is not None for obj in pr_raw_records))
-        self.assertTrue(all(obj.p_site_id is not None for obj in pr_raw_records))
+
+        for attribute in GenomicPRRaw.__table__.columns:
+            self.assertTrue(all(getattr(obj, str(attribute).split('.')[1]) is not None for obj in pr_raw_records))
 
         # check job run record
         pr_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_PR_TO_RAW_TABLE, self.job_run_dao.get_all()))
@@ -302,10 +302,11 @@ class GenomicPRPipelineTest(BaseTestCase):
         )
 
         p0_raw_records = p0_raw_dao.get_all()
+
+        for attribute in GenomicP0Raw.__table__.columns:
+            self.assertTrue(all(getattr(obj, str(attribute).split('.')[1]) is not None for obj in p0_raw_records))
+
         self.assertEqual(len(p0_raw_records), len(pr_members))
-        self.assertTrue(all(obj.file_path is not None for obj in p0_raw_records))
-        self.assertTrue(all(obj.biobank_id is not None for obj in p0_raw_records))
-        self.assertTrue(all(obj.collection_tube_id is not None for obj in p0_raw_records))
         self.assertTrue(all(obj.sex_at_birth == 'F' for obj in p0_raw_records))
         self.assertTrue(all(obj.ny_flag == 'N' for obj in p0_raw_records))
         self.assertTrue(all(obj.genome_type == config.GENOME_TYPE_PR for obj in p0_raw_records))
@@ -322,3 +323,87 @@ class GenomicPRPipelineTest(BaseTestCase):
 
         self.clear_table_after_test('genomic_proteomics')
 
+    def test_p1_manifest_ingestion(self):
+
+        for num in range(1, 4):
+            participant_summary = self.data_generator.create_database_participant_summary(
+                consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
+                consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
+            )
+            genomic_set_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                participantId=participant_summary.participantId,
+                biobankId=f"100{num}",
+                genomeType="aou_array",
+                collectionTubeId=num,
+                ai_an="N"
+            )
+            if num < 3:
+                self.data_generator.create_database_genomic_proteomics(
+                    genomic_set_member_id=genomic_set_member.id,
+                    biobank_id=genomic_set_member.biobankId,
+                    genome_type="aou_proteomics",
+                    p_site_id="bi",
+                    proteomics_set=1
+                )
+
+        self.execute_base_pr_ingestion(
+            test_file='RDR_AoU_Proteomics_PKG-2301-123456.csv',
+            job_id=GenomicJob.PR_P1_WORKFLOW,
+            manifest_type=GenomicManifestTypes.PR_P1,
+            include_timestamp=False
+        )
+
+        pr_members = self.pr_dao.get_all()
+
+        self.assertEqual(len(pr_members), 2)
+        self.assertTrue(all(obj.sample_id is not None for obj in pr_members))
+        self.assertTrue(all(obj.sample_id in ['1111', '1112'] for obj in pr_members))
+
+        # check job run record
+        p1_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_P1_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(p1_job_runs)
+        self.assertEqual(len(p1_job_runs), 1)
+
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p1_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p1_job_runs))
+
+        self.clear_table_after_test('genomic_proteomics')
+
+    def test_p1_manifest_to_raw_ingestion(self):
+
+        self.execute_base_pr_ingestion(
+            test_file='RDR_AoU_Proteomics_PKG-2301-123456.csv',
+            job_id=GenomicJob.PR_P1_WORKFLOW,
+            manifest_type=GenomicManifestTypes.PR_P1,
+            include_timestamp=False
+        )
+
+        p1_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicP1Raw
+        )
+
+        manifest_type = 'p1'
+        p1_manifest_file = self.manifest_file_dao.get(1)
+
+        genomic_dispatch.load_awn_manifest_into_raw_table(
+            p1_manifest_file.filePath,
+            manifest_type
+        )
+
+        p1_raw_records = p1_raw_dao.get_all()
+        self.assertEqual(len(p1_raw_records), 3)
+
+        for attribute in GenomicP1Raw.__table__.columns:
+            self.assertTrue(all(getattr(obj, str(attribute).split('.')[1]) is not None for obj in p1_raw_records))
+
+        # check job run record
+        p1_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_P1_TO_RAW_TABLE, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(p1_raw_job_runs)
+        self.assertEqual(len(p1_raw_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p1_raw_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p1_raw_job_runs))
+
+        self.clear_table_after_test('genomic_proteomics')
