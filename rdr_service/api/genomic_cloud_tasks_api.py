@@ -386,6 +386,10 @@ class IngestPRManifestTaskApi(BaseGenomicTaskApi):
                 'job': GenomicJob.PR_PR_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.PR_PR
             },
+            'p1': {
+                'job': GenomicJob.PR_P1_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.PR_P1
+            }
         }
 
         for file_path in self.file_paths:

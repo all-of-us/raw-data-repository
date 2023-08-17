@@ -158,6 +158,8 @@ class GenomicJobController:
                 endpoint='genomic_generate_manifest',
                 task_queue='genomic-generate-manifest'
             )
+        except KeyError:
+            pass
 
         except KeyError:
             pass

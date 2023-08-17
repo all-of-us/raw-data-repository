@@ -12,7 +12,8 @@ class GenomicSubWorkflow:
 
     def __get_subworkflow_method(self):
         return {
-            GenomicJob.PR_PR_WORKFLOW: self.run_request_ingestion
+            GenomicJob.PR_PR_WORKFLOW: self.run_request_ingestion,
+            GenomicJob.PR_P1_WORKFLOW: self.run_sample_ingestion
         }[self.job_id]
 
     @classmethod
@@ -47,3 +48,21 @@ class GenomicSubWorkflow:
             })
 
         self.dao.insert_bulk(pipeline_objs)
+
+    def run_sample_ingestion(self):
+
+        updated_pipeline_members = self.dao.get_pipeline_members_missing_sample_id(
+            biobank_ids=[row.get('biobank_id')[1:] for row in self.row_data if row.get('sample_id')],
+            collection_tube_ids=[row.get('collection_tubeid') for row in self.row_data if row.get('sample_id')]
+        )
+
+        update_objs = []
+        for member in updated_pipeline_members:
+            matching_row = list(filter(lambda x: x.get('biobank_id')[1:] == member.biobank_id, self.row_data))
+            update_objs.append({
+                'id': member.id,
+                'modified': clock.CLOCK.now(),
+                'sample_id': matching_row[0].get('sample_id')
+            })
+
+        self.dao.bulk_update(update_objs)
