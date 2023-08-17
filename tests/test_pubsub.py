@@ -198,7 +198,8 @@ class PubSubTest(BaseTestCase):
 
         # Fetch the Participant record and add an Organization record to it.
         with self.summary_dao.session() as session:
-            participant = session.query(Participant).filter(Participant.participantId == self.participant.participantId).first()
+            participant = session.query(Participant).\
+                filter(Participant.participantId == self.participant.participantId).first()
             organization = session.query(Organization).first()
             participant.organization = organization
 
