@@ -192,6 +192,11 @@
     "excluded_table_list" : [
       "log_position",
       "questionnaire_response_answer"
+    ],
+    "secondary_excluded_table_list": [
+      "hpo",
+      "organization",
+      "site"
     ]
   }
 }

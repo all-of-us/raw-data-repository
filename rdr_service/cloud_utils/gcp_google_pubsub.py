@@ -201,6 +201,7 @@ def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableM
     pdr_config = config.getSettingJson('pdr_pipeline')
     allowed_projects = pdr_config['allowed_projects']
     excluded_table_list = pdr_config['excluded_table_list']
+    secondary_excluded_table_list = pdr_config['secondary_excluded_table_list'] + excluded_table_list
 
     # Allow code to run in _ALLOWED_PROJECTS or if running locally for all unittests, otherwise just return.
     if GAE_PROJECT != 'localhost' and GAE_PROJECT not in allowed_projects:
@@ -224,10 +225,10 @@ def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableM
             if chld:
                 # Skip excluded tables.
                 if isinstance(chld, list):
-                    if chld[0].__tablename__ in excluded_table_list or chld[0].__tablename__ in p:
+                    if chld[0].__tablename__ in secondary_excluded_table_list or chld[0].__tablename__ in p:
                         continue
                 else:
-                    if chld.__tablename__ in excluded_table_list or chld.__tablename__ in p:
+                    if chld.__tablename__ in secondary_excluded_table_list or chld.__tablename__ in p:
                         continue
 
                 submit_pipeline_pubsub_msg_from_model(chld, database=database, parents=p)
@@ -287,11 +288,15 @@ def submit_pipeline_pubsub_msg_from_model(models: [DictableModel, List[DictableM
     elif not pk_values:
         log_pipeline_error(f'Empty pk_values list for pubsub upsert message for {database}.{tablename}',
                            response_only=os.environ.get("UNITTEST_FLAG", '0') != "1")
-    else:
+    elif tablename not in excluded_table_list:
         # Temporary/forced logging to profile pipeline activity during unittests (logging level must be ERROR)
         # log_pipeline_error(f'pipeline: pubsub {database}.{tablename}, pk_cols {pk_columns}, pk_values {pk_values}',
         #                    response_only=os.environ["UNITTEST_FLAG"] != "1")
         submit_pipeline_pubsub_msg(database=database, table=tablename, action='upsert',
-                                   pk_columns=pk_columns,
-                                   pk_values=pk_values)
+                                       pk_columns=pk_columns,
+                                       pk_values=pk_values)
+    else:
+        # Skip sending a Pub-Sub event
+        pass
+
     return parents
