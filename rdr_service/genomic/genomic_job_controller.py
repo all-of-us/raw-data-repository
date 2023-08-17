@@ -143,22 +143,23 @@ class GenomicJobController:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.execute_auto_generation()
         self._end_run()
+        self.execute_auto_generation_from_cloud_task()
 
-    def execute_auto_generation(self):
+    def execute_auto_generation_from_cloud_task(self):
         try:
             auto_generation_manifest_map = {
                 GenomicJob.LR_LR_WORKFLOW: 'l0',
                 GenomicJob.PR_PR_WORKFLOW: 'p0'
             }[self.job_id]
 
-            self.execute_cloud_task(
-                payload={'manifest_type': auto_generation_manifest_map},
-                endpoint='genomic_generate_manifest',
-                task_queue='genomic-generate-manifest'
-            )
-
+            last_job_run_status = self.job_run_dao.get_last_run_status_for_job_id(job_id=self.job_id)
+            if last_job_run_status and last_job_run_status[0] in [GenomicSubProcessResult.SUCCESS]:
+                self.execute_cloud_task(
+                    payload={'manifest_type': auto_generation_manifest_map},
+                    endpoint='genomic_generate_manifest',
+                    task_queue='genomic-generate-manifest'
+                )
         except KeyError:
             pass
 
@@ -2030,7 +2031,10 @@ class GenomicJobController:
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
         self.job_run_dao.update_run_record(
-            self.job_run.id, self.job_result, GenomicSubProcessStatus.COMPLETED)
+            self.job_run.id,
+            self.job_result,
+            GenomicSubProcessStatus.COMPLETED
+        )
 
         # Insert incident if job isn't successful
         if self.job_result.number > 2:
