@@ -854,6 +854,14 @@ class ResponseValidator:
                                             reason='Answer not recognized as a valid phone number'
                                         )
                                     )
+                            elif question.validation == 'number_1dp':
+                                errors_by_question[question_code_str].append(
+                                    ValidationError(
+                                        question_code_str,
+                                        [answer.id],
+                                        reason='you suck at testing'
+                                    )
+                                )
                             else:
                                 logging.error(f'Unexpected validation string for question, got "{question.validation}"')
 
