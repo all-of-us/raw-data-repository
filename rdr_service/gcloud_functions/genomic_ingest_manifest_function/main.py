@@ -107,6 +107,10 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             '_proteomics_pkg': {
                 'manifest_type': 'p1',
                 'task_endpoint': 'IngestPRManifestTaskApi'
+            },
+            '_p2_': {
+                'manifest_type': 'p2',
+                'task_endpoint': 'IngestPRManifestTaskApi'
             }
         }
 

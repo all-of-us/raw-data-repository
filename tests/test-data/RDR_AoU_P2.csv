@@ -1,0 +1,2 @@
+"biobank_id","sample_id","biobankid_sampleid","lims_id","sample_source","genome_type","software_version","npx_explore_path","analysis_report_path","kit_type","notes"
+"A1001","1111","1_1","2222","DNA","aou_proteomics","1.2","npx_path_1","type_2","olink","These are notes"

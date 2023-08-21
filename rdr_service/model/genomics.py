@@ -1798,7 +1798,7 @@ class GenomicP1Raw(Base):
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
 
     package_id = Column(String(255), nullable=True)
-    biobankid_sample_id = Column(String(255), nullable=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
     box_storageunit_id = Column(String(255), nullable=True)
     box_id_plate_id = Column(String(255), nullable=True)
     well_position = Column(String(255), nullable=True)
@@ -1826,3 +1826,29 @@ class GenomicP1Raw(Base):
     failure_mode_desc = Column(String(255), nullable=True)
     genome_type = Column(String(80), nullable=True, index=True)
 
+
+class GenomicP2Raw(Base):
+    """
+    Raw Data from P2 files
+    """
+    __tablename__ = 'genomic_p2_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    lims_id = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    software_version = Column(String(255), nullable=True)
+    npx_explore_path = Column(String(255), nullable=True)
+    analysis_report_path = Column(String(255), nullable=True)
+    kit_type = Column(String(255), nullable=True)
+    notes = Column(String(1028), nullable=True)

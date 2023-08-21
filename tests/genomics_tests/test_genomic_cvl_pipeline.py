@@ -118,7 +118,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         manifest_type = 'w2sc'
         w2sc_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_dispatch.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_manifest_into_raw_table(
             w2sc_manifest_file.filePath,
             manifest_type
         )
@@ -331,7 +331,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         manifest_type = 'w3ns'
         w3sc_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_dispatch.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_manifest_into_raw_table(
             w3sc_manifest_file.filePath,
             manifest_type
         )
@@ -396,7 +396,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         manifest_type = 'w3sc'
         w3sc_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_dispatch.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_manifest_into_raw_table(
             w3sc_manifest_file.filePath,
             manifest_type
         )
@@ -459,7 +459,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         manifest_type = 'w3ss'
         w3ss_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_dispatch.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_manifest_into_raw_table(
             w3ss_manifest_file.filePath,
             manifest_type
         )
@@ -512,7 +512,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         manifest_type = 'w4wr'
         w4wr_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_dispatch.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_manifest_into_raw_table(
             w4wr_manifest_file.filePath,
             manifest_type
         )
@@ -569,7 +569,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         manifest_type = 'w5nf'
         w5nf_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_dispatch.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_manifest_into_raw_table(
             w5nf_manifest_file.filePath,
             manifest_type
         )

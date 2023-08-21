@@ -32,7 +32,7 @@ from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
     GenomicManifestFeedback
 from rdr_service.offline.genomics import genomic_dispatch
-from rdr_service.offline.genomics.genomic_dispatch import load_awn_manifest_into_raw_table
+from rdr_service.offline.genomics.genomic_dispatch import load_manifest_into_raw_table
 
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
@@ -1267,7 +1267,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                     f"Loading AW3 Array Raw Data: {manifest['file_path']}")
 
                 # Call pipeline function to load raw
-                load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
+                load_manifest_into_raw_table(manifest['file_path'], "aw3")
 
     def resolve_missing_files(self, job):
         # Run the resolve_missing_files job
@@ -1856,7 +1856,7 @@ class LoadRawManifest(GenomicManifestBase):
 
         if manifest_list:
             for manifest_path in manifest_list:
-                genomic_dispatch.load_awn_manifest_into_raw_table(
+                genomic_dispatch.load_manifest_into_raw_table(
                     file_path=manifest_path,
                     manifest_type=self.args.manifest_type.lower(),
                     project_id=self.gcp_env.project,

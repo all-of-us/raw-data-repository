@@ -5,7 +5,7 @@ from rdr_service.config import BIOBANK_SAMPLES_BUCKET_NAME
 from rdr_service.dao.genomics_dao import GenomicLongReadDao
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
-from rdr_service.offline.genomics.genomic_dispatch import load_awn_manifest_into_raw_table
+from rdr_service.offline.genomics.genomic_dispatch import load_manifest_into_raw_table
 
 
 def lr_l0_manifest_workflow():
@@ -24,7 +24,7 @@ def lr_l0_manifest_workflow():
                 f"Loading L0 Manifest Raw Data: {manifest['file_path']}"
             )
             # Call pipeline function to load raw
-            load_awn_manifest_into_raw_table(
+            load_manifest_into_raw_table(
                 manifest['file_path'],
                 "l0",
             )
