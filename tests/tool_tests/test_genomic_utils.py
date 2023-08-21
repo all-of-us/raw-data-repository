@@ -100,7 +100,7 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             fileName="test_GEN_data_manifest.csv"
         )
 
-    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.load_awn_manifest_into_raw_table')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.load_manifest_into_raw_table')
     def test_load_manifest_into_raw_table(self, load_job_mock):
         test_file = "test-bucket/test_folder/test_manifest_file.csv"
 
