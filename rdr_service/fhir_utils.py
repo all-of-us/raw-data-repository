@@ -84,3 +84,11 @@ def _dict_has_values(obj, **queries):
         except KeyError:
             return False
     return True
+
+
+def find_extension(comparator, container):
+    for extension in container.extension:
+        if comparator(extension):
+            return extension
+
+    return None
