@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from rdr_service.dao import database_factory
 from rdr_service.dao.pediatric_data_log_dao import PediatricDataLogDao
 from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from tests.helpers.unittest_base import BaseTestCase
