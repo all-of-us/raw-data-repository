@@ -1,6 +1,5 @@
 from enum import Enum
 
-from protorpc import messages
 import sqlalchemy as sa
 from sqlalchemy.orm import relationship
 
