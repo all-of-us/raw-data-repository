@@ -87,6 +87,9 @@ def _dict_has_values(obj, **queries):
 
 
 def find_extension(comparator, container):
+    if container.extension is None:
+        return None
+
     for extension in container.extension:
         if comparator(extension):
             return extension
