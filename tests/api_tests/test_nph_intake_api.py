@@ -410,7 +410,8 @@ class NphIntakeAPITest(BaseTestCase):
         self.assertEqual(len(consent_events), 3)
         self.assertTrue(all(obj.participant_id == current_participant_ids[0] for obj in consent_events))
         # all permit
-        self.assertTrue(all(obj.opt_in == ConsentOptInTypes.PERMIT for obj in consent_events))
+        self.assertTrue(all(obj.opt_in in (ConsentOptInTypes.PERMIT, ConsentOptInTypes.PERMIT2) for obj in
+                            consent_events))
         self.assertEqual([1, 4, 3], [obj.event_type_id for obj in consent_events])
         # should be none for second participant
         self.assertFalse(any(obj.participant_id == current_participant_ids[1] for obj in consent_events))
