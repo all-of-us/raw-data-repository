@@ -4,7 +4,7 @@ from rdr_service import config
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_storage_class import GenomicStorageClass
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
-from rdr_service.offline.genomics.genomic_dispatch import load_awn_manifest_into_raw_table
+from rdr_service.offline.genomics.genomic_dispatch import load_manifest_into_raw_table
 
 
 def new_participant_workflow():
@@ -76,7 +76,7 @@ def aw3_array_manifest_workflow():
                 f"Loading AW3 Array Raw Data: {manifest['file_path']}")
 
             # Call pipeline function to load raw
-            load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
+            load_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
 def aw3_wgs_manifest_workflow(**kwargs):
@@ -97,7 +97,7 @@ def aw3_wgs_manifest_workflow(**kwargs):
                 f"Loading AW3 Array Raw Data: {manifest['file_path']}")
 
             # Call pipeline function to load raw
-            load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
+            load_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
 def aw3_array_investigation_workflow():
@@ -117,7 +117,7 @@ def aw3_array_investigation_workflow():
                 f"Loading AW3 Array Investigation Raw Data: {manifest['file_path']}")
 
             # Call pipeline function to load raw
-            load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
+            load_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
 def aw3_wgs_investigation_workflow(**kwargs):
@@ -138,7 +138,7 @@ def aw3_wgs_investigation_workflow(**kwargs):
                 f"Loading AW3 WGS Investigation Raw Data: {manifest['file_path']}")
 
             # Call pipeline function to load raw
-            load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
+            load_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
 def gem_a1_manifest_workflow():

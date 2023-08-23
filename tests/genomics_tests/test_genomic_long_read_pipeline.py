@@ -128,7 +128,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         manifest_type = 'lr'
         lr_manifest_file = self.manifest_file_dao.get(1)
 
-        genomic_dispatch.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_manifest_into_raw_table(
             lr_manifest_file.filePath,
             manifest_type
         )

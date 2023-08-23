@@ -94,7 +94,7 @@ class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
         logging.info(f'Loading {self.data.get("file_type").upper()} Raw Data: {self.data.get("filename")}')
 
         # Call pipeline function
-        genomic_dispatch.load_awn_manifest_into_raw_table(
+        genomic_dispatch.load_manifest_into_raw_table(
             file_path=self.data.get("file_path"),
             manifest_type=self.data.get("file_type")
         )
@@ -389,6 +389,10 @@ class IngestPRManifestTaskApi(BaseGenomicTaskApi):
             'p1': {
                 'job': GenomicJob.PR_P1_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.PR_P1
+            },
+            'p2': {
+                'job': GenomicJob.PR_P2_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.PR_P2
             }
         }
 
