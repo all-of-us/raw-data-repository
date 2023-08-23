@@ -13,7 +13,8 @@ class GenomicSubWorkflow:
     def __get_subworkflow_method(self):
         return {
             GenomicJob.PR_PR_WORKFLOW: self.run_request_ingestion,
-            GenomicJob.PR_P1_WORKFLOW: self.run_sample_ingestion
+            GenomicJob.PR_P1_WORKFLOW: self.run_sample_ingestion,
+            GenomicJob.PR_P2_WORKFLOW: self.run_bypass
         }[self.job_id]
 
     @classmethod
@@ -23,6 +24,9 @@ class GenomicSubWorkflow:
     def run_workflow(self, *, row_data):
         self.row_data = row_data
         self.__get_subworkflow_method()()
+
+    def run_bypass(self):
+        ...
 
     def run_request_ingestion(self):
         current_set = self.dao.get_max_set()

@@ -2767,7 +2767,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
             expected_payload.job,
             called_json_obj.job)
 
-    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.load_awn_manifest_into_raw_table')
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.load_manifest_into_raw_table')
     def test_load_manifests_raw_data_task_api(self, load_raw_awn_data_mock):
 
         from rdr_service.resource import main as resource_main

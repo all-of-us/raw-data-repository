@@ -4,7 +4,7 @@ from rdr_service import config
 from rdr_service.genomic.genomic_cvl_reconciliation import GenomicCVLReconcile
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
-from rdr_service.offline.genomics.genomic_dispatch import load_awn_manifest_into_raw_table
+from rdr_service.offline.genomics.genomic_dispatch import load_manifest_into_raw_table
 
 
 def cvl_w1il_manifest_workflow(cvl_site_bucket_map, module_type):
@@ -29,7 +29,7 @@ def cvl_w1il_manifest_workflow(cvl_site_bucket_map, module_type):
                     f"Loading W1IL Manifest Raw Data: {manifest['file_path']}")
 
                 # Call pipeline function to load raw
-                load_awn_manifest_into_raw_table(
+                load_manifest_into_raw_table(
                     manifest['file_path'],
                     "w1il",
                     cvl_site_id=site_id
@@ -53,7 +53,7 @@ def cvl_w2w_manifest_workflow(cvl_site_bucket_map):
                     f"Loading W2W Manifest Raw Data: {manifest['file_path']}")
 
                 # Call pipeline function to load raw
-                load_awn_manifest_into_raw_table(
+                load_manifest_into_raw_table(
                     manifest['file_path'],
                     "w2w",
                     cvl_site_id=site_id
@@ -79,7 +79,7 @@ def cvl_w3sr_manifest_workflow():
                     f"Loading W3SR Manifest Raw Data: {manifest['file_path']}")
 
                 # Call pipeline function to load raw
-                load_awn_manifest_into_raw_table(
+                load_manifest_into_raw_table(
                     manifest['file_path'],
                     "w3sr",
                     cvl_site_id=site_id

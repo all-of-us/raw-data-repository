@@ -4697,7 +4697,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(file_name, file_record.fileName)
 
         # Test AW4 Raw table
-        genomic_dispatch.load_awn_manifest_into_raw_table(f"{bucket_name}/{sub_folder}/{file_name}", "aw4")
+        genomic_dispatch.load_manifest_into_raw_table(f"{bucket_name}/{sub_folder}/{file_name}", "aw4")
 
         aw4_dao = GenomicDefaultBaseDao(
             model_type=GenomicAW4Raw
@@ -4815,7 +4815,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(file_name, file_record.fileName)
 
         # Test AW4 Raw table
-        genomic_dispatch.load_awn_manifest_into_raw_table(f"{bucket_name}/{sub_folder}/{file_name}", "aw4")
+        genomic_dispatch.load_manifest_into_raw_table(f"{bucket_name}/{sub_folder}/{file_name}", "aw4")
 
         aw4_dao = GenomicDefaultBaseDao(
             model_type=GenomicAW4Raw
@@ -5424,7 +5424,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
         # Run load job
-        genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw1")
+        genomic_dispatch.load_manifest_into_raw_table(test_file_path, "aw1")
 
         # Expected columns in table
         expected_columns = [
@@ -5493,7 +5493,7 @@ class GenomicPipelineTest(BaseTestCase):
                 folder=_FAKE_GENOTYPING_FOLDER,
             )
             test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
-            genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw1")
+            genomic_dispatch.load_manifest_into_raw_table(test_file_path, "aw1")
             time.sleep(5)
 
         biobank_id = '2'
@@ -5540,7 +5540,7 @@ class GenomicPipelineTest(BaseTestCase):
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
 
         # Run load job
-        genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw2")
+        genomic_dispatch.load_manifest_into_raw_table(test_file_path, "aw2")
 
         aw2_raw_records = self.aw2_raw_dao.get_all()
 
@@ -5598,7 +5598,7 @@ class GenomicPipelineTest(BaseTestCase):
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
 
         # Run load job
-        genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw2")
+        genomic_dispatch.load_manifest_into_raw_table(test_file_path, "aw2")
 
         aw2_raw_records = self.aw2_raw_dao.get_all()
 
@@ -5923,7 +5923,7 @@ class GenomicPipelineTest(BaseTestCase):
             folder=_FAKE_GENOTYPING_FOLDER,
         )
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
-        genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw1")
+        genomic_dispatch.load_manifest_into_raw_table(test_file_path, "aw1")
 
         raw_records = self.aw1_raw_dao.get_all()
         raw_records = [obj for obj in raw_records if obj.sample_id != ""]
@@ -6199,7 +6199,7 @@ class GenomicPipelineTest(BaseTestCase):
     #     )
     #
     #     # Run load job
-    #     genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
+    #     genomic_pipeline.load_manifest_into_raw_table(test_file_path, "aw1")
     #
     #     genomic_pipeline.reconcile_raw_to_aw1_ingested()
     #
@@ -6262,7 +6262,7 @@ class GenomicPipelineTest(BaseTestCase):
         )
 
         # Run load job
-        genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw2")
+        genomic_dispatch.load_manifest_into_raw_table(test_file_path, "aw2")
 
         self.data_generator.create_database_genomic_file_processed(
             runId=1,
@@ -6272,7 +6272,7 @@ class GenomicPipelineTest(BaseTestCase):
             fileName=test_file_name,
         )
 
-        genomic_dispatch.load_awn_manifest_into_raw_table(test_file_path, "aw2")
+        genomic_dispatch.load_manifest_into_raw_table(test_file_path, "aw2")
 
         genomic_pipeline.reconcile_raw_to_aw2_ingested()
 
@@ -6308,7 +6308,7 @@ class GenomicPipelineTest(BaseTestCase):
             }
         }
         # Run load job
-        genomic_dispatch.load_awn_manifest_into_raw_table(f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}", "aw1")
+        genomic_dispatch.load_manifest_into_raw_table(f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}", "aw1")
 
         # Call pipeline function
         genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
@@ -6346,7 +6346,7 @@ class GenomicPipelineTest(BaseTestCase):
     #         }
     #     }
     #     # Run load job
-    #     genomic_pipeline.load_awn_manifest_into_raw_table(f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}", "aw2")
+    #     genomic_pipeline.load_manifest_into_raw_table(f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}", "aw2")
     #
     #     # Call pipeline function
     #     genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
