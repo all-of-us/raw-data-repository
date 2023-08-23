@@ -493,8 +493,10 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 )
             return members.all()
 
-    def get_member_ids_from_sample_ids(self,
-                                       sample_ids: List[int], genome_type=None):
+    def get_member_ids_from_sample_ids(
+        self,
+        sample_ids: List[int],
+        genome_type: str = None):
         """
         :param sample_ids:
         :param genome_type:
@@ -505,6 +507,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.id
             ).filter(
                 GenomicSetMember.sampleId.in_(sample_ids),
+                GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
             )
             if genome_type:
