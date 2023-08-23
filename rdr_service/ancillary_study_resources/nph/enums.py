@@ -38,6 +38,8 @@ class ConsentOptInTypes(messages.Enum):
 
     PERMIT = 1
     DENY = 2
+    PERMIT2 = 3
+    PERMIT3 = 4
 
 
 class ParticipantOpsElementTypes(messages.Enum):
