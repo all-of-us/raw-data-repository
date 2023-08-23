@@ -7,7 +7,7 @@ from graphql import GraphQLSyntaxError
 from datetime import datetime, timedelta
 
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, StoredSampleStatus, DietType, \
-    DietStatus, ModuleTypes
+    DietStatus, ModuleTypes, ConsentOptInTypes
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.rex_dao import RexStudyDao, RexParticipantMappingDao
@@ -169,7 +169,7 @@ class NphParticipantAPITest(BaseTestCase):
             ancillary_participant_id = ancillary_participant_id + 1
 
     # base method for adding consent events - main req for showing in resp
-    def add_consents(self, nph_participant_ids: List = None, module_nums: List[int] = None) -> None:
+    def add_consents(self, nph_participant_ids: List = None, module_nums: List[int] = None, **kwargs) -> None:
         all_consent_event_types = self.nph_consent_event_type_dao.get_all()
         if module_nums:
             updated_consent_event_types = []
@@ -186,7 +186,8 @@ class NphParticipantAPITest(BaseTestCase):
             for consent_event_type in all_consent_event_types:
                 self.nph_data_gen.create_database_consent_event(
                         participant_id=participant_id,
-                        event_type_id=consent_event_type.id
+                        event_type_id=consent_event_type.id,
+                        opt_in=kwargs.get('opt_in', ConsentOptInTypes.PERMIT)
                 )
 
     def test_client_single_result(self):
@@ -503,7 +504,10 @@ class NphParticipantAPITest(BaseTestCase):
             self.assertEqual(status['value'], 'module1_consented')
 
     def test_nphModule1ConsentStatus_fields(self):
-        self.add_consents(nph_participant_ids=self.base_participant_ids)
+        self.add_consents(
+            nph_participant_ids=self.base_participant_ids,
+            opt_in=ConsentOptInTypes.PERMIT2
+        )
         field_to_test = "nphModule1ConsentStatus {value time optIn} "
         query = simple_query(field_to_test)
         executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
@@ -519,7 +523,7 @@ class NphParticipantAPITest(BaseTestCase):
             consents = edge.get('node').get('nphModule1ConsentStatus')
             self.assertTrue(all(obj.get('value') in m1_consents for obj in consents))
             self.assertTrue(all(obj.get('time') is not None for obj in consents))
-            self.assertTrue(all(obj.get('optIn') == 'PERMIT' for obj in consents))
+            self.assertTrue(all(obj.get('optIn') == 'PERMIT2' for obj in consents))
 
     def test_nphModule2ConsentStatus_fields(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids, module_nums=[1, 2])
