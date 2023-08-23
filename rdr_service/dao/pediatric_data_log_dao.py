@@ -1,12 +1,34 @@
+import logging
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from rdr_service.dao.base_dao import with_session
 from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
+from rdr_service.participant_enums import PediatricAgeRange
 
 
 class PediatricDataLogDao:
+    @classmethod
+    @with_session
+    def record_age_range(cls, participant_id: int, age_range_str: str, session: Session):
+        if age_range_str == 'UNSET':
+            # non-pediatric participants will get UNSET sent as their age range.
+            # No need to record or log these as an error
+            return None
+        if age_range_str not in PediatricAgeRange.names():
+            logging.error(f'Unrecognized age range value "{age_range_str}"')
+            return None
+
+        cls.insert(
+            data=PediatricDataLog(
+                participant_id=participant_id,
+                data_type=PediatricDataType.AGE_RANGE,
+                value=age_range_str
+            ),
+            session=session
+        )
+
     @classmethod
     @with_session
     def get_latest(

@@ -547,12 +547,12 @@ class ProfileUpdateApiTest(BaseTestCase):
                 ]
             }
         )
-        data_to_insert = pediatric_data_insert_mock.call_args.args[0]
+        data_to_insert = pediatric_data_insert_mock.call_args.kwargs['data']
         self.assertEqual(participant_id, data_to_insert.participant_id)
         self.assertEqual(PediatricDataType.AGE_RANGE, data_to_insert.data_type)
         self.assertEqual('SIX_AND_BELOW', data_to_insert.value)
 
-    @mock.patch('rdr_service.api.profile_update_api.logging')
+    @mock.patch('rdr_service.dao.pediatric_data_log_dao.logging')
     def test_unrecognized_range(self, logging_mock):
         """Verify that we don't crash if we get an age range we don't recognize."""
         self.send_post(
@@ -570,7 +570,7 @@ class ProfileUpdateApiTest(BaseTestCase):
         logging_mock.error.assert_called_with('Unrecognized age range value "not_valid"')
 
     @mock.patch('rdr_service.dao.pediatric_data_log_dao.PediatricDataLogDao.insert')
-    @mock.patch('rdr_service.api.profile_update_api.logging')
+    @mock.patch('rdr_service.dao.pediatric_data_log_dao.logging')
     def test_unset_age_range(self, logging_mock, pediatric_data_insert_mock):
         """
         The API receives 'UNSET' for participants that are not pediatric.

@@ -10,7 +10,6 @@ from rdr_service.app_util import auth_required
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.pediatric_data_log_dao import PediatricDataLogDao
 from rdr_service.fhir_utils import find_extension
-from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.contactpoint import ContactPoint
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.patient import Patient as FhirPatient
@@ -291,16 +290,7 @@ class PatientPayload:
         if not age_range_extension:
             return None
 
-        age_range_str = age_range_extension.valueCode
-        if age_range_str == 'UNSET':
-            # non-pediatric participants will get UNSET sent as their age range.
-            # No need to record or log these as an error
-            return None
-        if age_range_str not in PediatricAgeRange.names():
-            logging.error(f'Unrecognized age range value "{age_range_str}"')
-            return None
-
-        return PediatricAgeRange(age_range_extension.valueCode)
+        return age_range_extension.valueCode
 
     @classmethod
     def _has_value_provided(cls, field_name, path_to_field, json):
@@ -397,12 +387,9 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
 
         # Handle pediatric date range update
         if update_payload.pediatric_age_range:
-            PediatricDataLogDao.insert(
-                PediatricDataLog(
-                    participant_id=update_payload.participant_id,
-                    data_type=PediatricDataType.AGE_RANGE,
-                    value=str(update_payload.pediatric_age_range)
-                )
+            PediatricDataLogDao.record_age_range(
+                participant_id=update_payload.participant_id,
+                age_range_str=update_payload.pediatric_age_range
             )
 
     @classmethod
