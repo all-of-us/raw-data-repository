@@ -53,8 +53,11 @@ class PediatricDataLogDao:
             session=session,
             lock_for_update=True
         )
-        if latest_data:
-            latest_data.replaced_by = data
+        # Skip inserting if the new record is identical to the latest
+        if latest_data and latest_data.value == data.value:
+            return
 
         session.add(data)
+        if latest_data:
+            latest_data.replaced_by = data
 

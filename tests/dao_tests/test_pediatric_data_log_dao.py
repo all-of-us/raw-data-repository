@@ -39,3 +39,33 @@ class PediatricDataLogDaoTest(BaseTestCase):
         # check that the last record inserted was set as the replacement
         self.session.refresh(august_record)
         self.assertEqual(latest_record.id, august_record.replaced_by_id)
+
+    def test_insert_duplicate(self):
+        """
+        If the value being inserted matches the latest value (for the given data type)
+        don't insert the duplicate record
+        """
+        participant = self.data_generator.create_database_participant()
+
+        existing_record = PediatricDataLog(
+            participant_id=participant.participantId,
+            created=datetime(2022, 8, 17),
+            data_type=PediatricDataType.AGE_RANGE,
+            value='testing_duplicate'
+        )
+        self.session.add(existing_record)
+        self.session.commit()
+
+        PediatricDataLogDao.insert(
+            PediatricDataLog(
+                participant_id=participant.participantId,
+                data_type=PediatricDataType.AGE_RANGE,
+                value='testing_duplicate'
+            )
+        )
+
+        pediatric_data = self.session.query(PediatricDataLog).filter(
+            PediatricDataLog.participant_id == participant.participantId
+        ).all()
+        self.assertEqual(1, len(pediatric_data))
+        self.assertEqual(existing_record.id, pediatric_data[0].id)
