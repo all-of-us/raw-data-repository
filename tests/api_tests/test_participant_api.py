@@ -808,6 +808,31 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
             all([file.sync_status == ConsentSyncStatus.READY_FOR_SYNC for file in participant_consent_files])
         )
 
+    @mock.patch('rdr_service.api.participant_api.PediatricDataLogDao')
+    def test_storing_age_range(self, pediatric_dao_mock):
+        response = self.send_post('Participant', {
+            'childAccountType': 'TEEN'
+        })
+        pediatric_dao_mock.record_age_range.assert_called_with(
+            participant_id=from_client_participant_id(response['participantId']),
+            age_range_str='TEEN'
+        )
+
+    @mock.patch('rdr_service.api.participant_api.PediatricDataLogDao')
+    def test_update_age_range(self, pediatric_dao_mock):
+        """Verify a PUT request also records the age range data"""
+        participant = self.data_generator.create_database_participant(providerLink='{}')
+        self.send_put(f"Participant/P{participant.participantId}", {
+            'childAccountType': 'SIX_AND_BELOW',
+            'withdrawalStatus': 'NOT_WITHDRAWN',
+            'suspensionStatus': 'NOT_SUSPENDED'
+        }, headers={"If-Match": 'W/"1"'})
+
+        pediatric_dao_mock.record_age_range.assert_called_with(
+            participant_id=participant.participantId,
+            age_range_str='SIX_AND_BELOW'
+        )
+
 def _add_code_answer(code_answers, link_id, code):
     if code:
         code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
