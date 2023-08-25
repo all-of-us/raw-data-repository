@@ -37,6 +37,14 @@ class RetentionEligibilityDependencies:
     reconsent_response_timestamp:           Optional[datetime]  # Cohort 1 reconsent to primary consent
     gror_response_timestamp:                Optional[datetime]
 
+    # Additional elements from DA-3507
+    nph_consent_timestamp:                  Optional[datetime]
+    etm_consent_timestamp:                  Optional[datetime]
+    wear_consent_timestamp:                 Optional[datetime]
+    ehhwb_response_timestamp:               Optional[datetime]
+    bhp_response_timestamp:                 Optional[datetime]
+    latest_etm_response_timestamp:          Optional[datetime]  # Repeatable EtM task responses, find most recent
+
 
 class RetentionEligibility:
     def __init__(self, participant_data: RetentionEligibilityDependencies):

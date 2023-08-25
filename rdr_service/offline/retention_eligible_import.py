@@ -18,6 +18,7 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.participant_enums import DeceasedStatus, RetentionType, RetentionStatus, WithdrawalStatus
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
+from rdr_service.repository.etm import EtmResponseRepository
 from rdr_service.services.retention_calculation import Consent, RetentionEligibility, RetentionEligibilityDependencies
 from rdr_service.storage import GoogleCloudStorageCSVReader
 
@@ -288,7 +289,7 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
         family_health_response_timestamp=summary.questionnaireOnFamilyHealthAuthored,
         medical_history_response_timestamp=summary.questionnaireOnMedicalHistoryAuthored,
         fam_med_history_response_timestamp=summary.questionnaireOnPersonalAndFamilyHealthHistoryAuthored,
-        sdoh_response_timestamp=summary.questionnaireOnSocialDeterminantsOfHealthTime,
+        sdoh_response_timestamp=summary.questionnaireOnSocialDeterminantsOfHealthAuthored,
         latest_cope_response_timestamp=_aggregate_response_timestamps(
             session=session,
             participant_id=summary.participantId,
@@ -307,7 +308,18 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
             survey_code_list=[PRIMARY_CONSENT_UPDATE_MODULE],
             aggregate_function=min  # Get the earliest cohort 1 reconsent response
         ),
-        gror_response_timestamp=summary.consentForGenomicsRORAuthored
+        gror_response_timestamp=summary.consentForGenomicsRORAuthored,
+        # Additions for DA-3507
+        # NOTE:  Will NPH timestamp need to be updated to be latest_nph_consent once Modules 2/3 are introduced?
+        nph_consent_timestamp=summary.consentForNphModule1Authored,
+        etm_consent_timestamp=summary.consentForEtMAuthored,
+        wear_consent_timestamp=None,
+        ehhwb_response_timestamp=summary.questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored,
+        bhp_response_timestamp=summary.questionnaireOnBehavioralHealthAndPersonalityAuthored,
+        latest_etm_response_timestamp=_get_latest_etm_task_response_timestamp(
+            session=session,
+            participant_id=summary.participantId
+        )
     )
     retention_data = RetentionEligibility(dependencies)
 
@@ -352,6 +364,12 @@ def _aggregate_response_timestamps(session, participant_id, survey_code_list, ag
 
     # Process the dates (excluding any that might be None)
     return aggregate_function(timestamp for timestamp in revised_consent_time_list if timestamp)
+
+def _get_latest_etm_task_response_timestamp(session, participant_id, task_types=None) -> datetime:
+    """ Look for the most recent Exploring the Mind task response for a participant"""
+    etm_responses = EtmResponseRepository.get_etm_responses(session=session, participant_id=participant_id,
+                                                            task_types=task_types)
+    return max(r.authored for r in etm_responses if r.authored) if etm_responses else None
 
 
 class RetentionEligibleMetricCsvColumns(object):

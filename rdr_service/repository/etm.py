@@ -1,5 +1,6 @@
 
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import Query, Session
+from typing import List
 
 from rdr_service.dao import database_factory
 from rdr_service.domain_model import etm as domain_model
@@ -153,3 +154,19 @@ class EtmResponseRepository(BaseRepository):
 
         self._add_to_session(schema_response)
         response_obj.id = schema_response.etm_questionnaire_response_id
+
+    @classmethod
+    def get_etm_responses(cls, session: Session, participant_id: int = None, task_types: List = None):
+
+        etm_response_query = Query(schema_model.EtmQuestionnaireResponse)
+        etm_response_query.session = session
+        if participant_id:
+            etm_response_query = etm_response_query.filter(
+                schema_model.EtmQuestionnaireResponse.participant_id == participant_id
+            )
+        if task_types:
+            etm_response_query = etm_response_query.filter(
+                schema_model.EtmQuestionnaireResponse.questionnaire_type.in_(task_types)
+            )
+
+        return etm_response_query.all()
