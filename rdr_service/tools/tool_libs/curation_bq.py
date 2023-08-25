@@ -58,20 +58,21 @@ class CurationBQ(ToolBase):
         'note',
         'tmp_fact_rel_sd',
         'fact_relationship',
-        'survey_conduct',
+        'procedure_occurrence',
         'death',
         'ehr_consent_temp_table',
         'ehr_consent',
         'wear_consent',
         'participant_id_mapping',
-        'finalize',
         'qrai_author',
         'qrai_language',
         'qrai_code',
         'tmp_survey_conduct',
         'survey_conduct',
         'create_empty_tables',
-        'pid_rid_mapping'
+        'pid_rid_mapping',
+        'cope_survey_semantic_version_map',
+        'finalize'
     ]
 
     export_tables = [
@@ -100,7 +101,11 @@ class CurationBQ(ToolBase):
         'questionnaire_response_additional_info',
         'visit_detail',
         'visit_occurrence',
-        'wear_consent'
+        'wear_consent',
+        'survey_conduct',
+        'cope_survey_semantic_version_map',
+        'note',
+        'procedure_occurrence'
     ]
 
     def __init__(self, args, gcp_env=None, tool_name=None, replica=False):

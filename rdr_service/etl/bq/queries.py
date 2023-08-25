@@ -219,7 +219,8 @@ queries = {
              state,
              zip,
              county,
-             location_source_value
+             location_source_value,
+             src_id
             FROM (
                SELECT
                DISTINCT
@@ -229,7 +230,8 @@ queries = {
                src.state AS state,
                src.zip AS zip,
                NULL AS county,
-               src.state_ppi_code AS location_source_value
+               src.state_ppi_code AS location_source_value,
+               src.src_id AS src_id
                FROM
                `{dataset_id}.src_person_location` src
             )""",
@@ -384,7 +386,8 @@ queries = {
         "query": """
             SELECT
                src_c.participant_id                AS participant_id,
-               src_c.date_of_survey                AS date_of_survey,
+               CAST(src_c.date_of_survey AS TIMESTAMP)
+                                                   AS date_of_survey,
                src_c.question_ppi_code             AS question_ppi_code,
                src_c.question_code_id              AS question_code_id,
                COALESCE(vc1.concept_id, 0)         AS question_source_concept_id,
@@ -448,7 +451,7 @@ queries = {
               COALESCE(tmp1.cv_source_concept_id, 0) AS cv_source_concept_id,
               COALESCE(tmp1.cv_concept_id, 0) AS cv_concept_id,
               tmp1.cv_domain_id AS cv_domain_id,
-              meas.measurement_time AS measurement_time,
+              CAST(meas.measurement_time AS TIMESTAMP) AS measurement_time,
               meas.value_decimal AS value_decimal,
               meas.value_unit AS value_unit,
               COALESCE(vc1.concept_id, 0) AS vu_concept_id,
@@ -524,20 +527,21 @@ queries = {
     "src_person_location": {
         "query": """
             SELECT
-              `{dataset_id}.src_participant`.participant_id AS participant_id,
+              p.participant_id AS participant_id,
               MAX(m_address_1.value_string) AS address_1,
               MAX(m_address_2.value_string) AS address_2,
               MAX(m_city.value_string) AS city,
               MAX(m_zip.value_string) AS zip,
               MAX(m_state.value_ppi_code) AS state_ppi_code,
               MAX(RIGHT(m_state.value_ppi_code, 2)) AS state,
-              NULL AS location_id
+              NULL AS location_id,
+              p.src_id AS src_id
             FROM
-              `{dataset_id}.src_participant`
+              `{dataset_id}.src_participant` p
             INNER JOIN
               `{dataset_id}.src_mapped` m_address_1
             ON
-              `{dataset_id}.src_participant`.participant_id = m_address_1.participant_id
+              p.participant_id = m_address_1.participant_id
               AND m_address_1.question_ppi_code = 'PIIAddress_StreetAddress'
             LEFT JOIN
               `{dataset_id}.src_mapped` m_address_2
@@ -569,7 +573,7 @@ queries = {
                 m_address_1_2.participant_id = m_address_1.participant_id
                 AND m_address_1_2.question_ppi_code = 'PIIAddress_StreetAddress')
             GROUP BY
-              `{dataset_id}.src_participant`.participant_id;""",
+              p.participant_id, p.src_id;""",
         "destination": "src_person_location",
         "append": False,
     },
@@ -702,9 +706,9 @@ queries = {
               9202 AS visit_concept_id,
               -- 9202 - 'Outpatient Visit'
               DATE(src.visit_start_datetime) AS visit_start_date,
-              src.visit_start_datetime AS visit_start_datetime,
+              CAST(src.visit_start_datetime AS TIMESTAMP) AS visit_start_datetime,
               DATE(src.visit_end_datetime) AS visit_end_date,
-              src.visit_end_datetime AS visit_end_datetime,
+              CAST(src.visit_end_datetime AS TIMESTAMP) AS visit_end_datetime,
               44818519 AS visit_type_concept_id,
               -- 44818519 - 'Clinical Study Visit'
               NULL AS provider_id,
@@ -712,9 +716,9 @@ queries = {
               src.visit_occurrence_id AS visit_source_value,
               0 AS visit_source_concept_id,
               0 AS admitting_source_concept_id,
-              NULL AS admitting_source_value,
+              CAST(NULL AS STRING) AS admitting_source_value,
               0 AS discharge_to_concept_id,
-              NULL AS discharge_to_source_value,
+              CAST(NULL AS STRING) AS discharge_to_source_value,
               NULL AS preceding_visit_occurrence_id,
               src.src_id AS src_id
             FROM
@@ -847,13 +851,14 @@ queries = {
               `{dataset_id}.src_person_location` person_loc
             SET
               person_loc.location_id = loc.location_id
-              FROM `{dataset_id}.location` loc
+            FROM `{dataset_id}.location` loc
             WHERE
               IFNULL(person_loc.address_1, '') = IFNULL(loc.address_1, '')
               AND IFNULL(person_loc.address_2, '') = IFNULL(loc.address_2, '')
               AND IFNULL(person_loc.city, '') = IFNULL(loc.city, '')
               AND IFNULL(person_loc.state, '') = IFNULL(loc.state, '')
-              AND IFNULL(person_loc.zip, '') = IFNULL(loc.zip, '')""",
+              AND IFNULL(person_loc.zip, '') = IFNULL(loc.zip, '')
+              AND IFNULL(person_loc.src_id, '') = IFNULL(loc.src_id, '')""",
         "destination": None,
     },
     "death": {
@@ -863,7 +868,7 @@ queries = {
             SELECT
               dr.participant_id AS person_id,
               dr.date_of_death AS death_date,
-              CAST(dr.date_of_death AS DATETIME) AS death_datetime,
+              CAST(dr.date_of_death AS TIMESTAMP) AS death_datetime,
               '32809' AS death_type_concept_id,
               'NULL' AS cause_concept_id, -- CDR requires these columns to have a value of 'NULL'
               'NULL' AS cause_source_value,
@@ -955,6 +960,7 @@ queries = {
         "query": """
             ALTER TABLE `{dataset_id}.measurement` DROP COLUMN parent_id;
             ALTER TABLE `{dataset_id}.observation` DROP COLUMN meas_id;
+            ALTER TABLE `{dataset_id}.questionnaire_response_additional_info` DROP COLUMN id;
         """
     },
     "qrai_author": {
@@ -1013,9 +1019,9 @@ queries = {
                         tsc.participant_id person_id,
                         COALESCE(voc_c.concept_id, 0) survey_concept_id,
                         NULL survey_start_date,
-                        NULL survey_start_datetime,
+                        CAST(NULL AS TIMESTAMP) survey_start_datetime,
                         DATE(tsc.authored) survey_end_date,
-                        tsc.authored survey_end_datetime,
+                        CAST(tsc.authored AS TIMESTAMP) survey_end_datetime,
                         0 provider_id,
                         CASE WHEN
                             tsc.non_participant_author = 'CATI' THEN     42530794
@@ -1041,11 +1047,14 @@ queries = {
                         tsc.code_id survey_source_concept_id,
                         tsc.questionnaire_response_id survey_source_identifier,
                         0 validated_survey_concept_id,
-                        '' validated_survey_source_value,
+                        CAST(NULL AS INT64) validated_survey_source_value,
                         NULL survey_version_number,
                         '' visit_occurrence_id,
                         '' response_visit_occurrence_id,
-                        p.src_id src_id
+                        CASE WHEN
+                            p.src_id = 'careevolution' THEN 'ce'
+                            ELSE p.src_id
+                        END src_id
                 FROM `{dataset_id}.tmp_survey_conduct` tsc
                 LEFT JOIN `{dataset_id}.concept` voc_c
                     ON voc_c.concept_code = tsc.value AND voc_c.vocabulary_id = 'PPI'
@@ -1066,8 +1075,8 @@ queries = {
                       drug_era_id INT64,
                       person_id INT64,
                       drug_concept_id INT64,
-                      drug_era_start_date DATE,
-                      drug_era_end_date DATE,
+                      drug_era_start_date TIMESTAMP,
+                      drug_era_end_date TIMESTAMP,
                       drug_exposure_count INT64,
                       gap_days INT64,
                       src_id STRING
@@ -1088,8 +1097,8 @@ queries = {
                       condition_era_id INT64,
                       person_id INT64,
                       condition_concept_id INT64,
-                      condition_era_start_date DATE,
-                      condition_era_end_date DATE,
+                      condition_era_start_date TIMESTAMP,
+                      condition_era_end_date TIMESTAMP,
                       condition_occurrence_count INT64,
                       src_id STRING
                     )
@@ -1106,7 +1115,7 @@ queries = {
                       note_nlp_source_concept_id INT64,
                       nlp_system STRING,
                       nlp_date DATE,
-                      nlp_datetime DATETIME,
+                      nlp_datetime TIMESTAMP,
                       term_exists STRING,
                       term_temporal STRING,
                       term_modifiers STRING,
@@ -1121,7 +1130,7 @@ queries = {
                       value_as_string STRING,
                       value_as_concept_id INT64,
                       metadata_date DATE,
-                      metadata_datetime DATETIME,
+                      metadata_datetime TIMESTAMP,
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
@@ -1143,37 +1152,18 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.procedure_occurrence`
-                    (
-                      procedure_occurrence_id INT64,
-                      person_id INT64,
-                      procedure_concept_id INT64,
-                      procedure_date DATE,
-                      procedure_datetime DATETIME,
-                      procedure_type_concept_id INT64,
-                      modifier_concept_id INT64,
-                      quantity INT64,
-                      provider_id INT64,
-                      visit_occurrence_id INT64,
-                      visit_detail_id INT64,
-                      procedure_source_value STRING,
-                      procedure_source_concept_id INT64,
-                      modifier_source_value STRING,
-                      src_id STRING
-                    )
-                    DEFAULT COLLATE 'und:ci';
                     CREATE TABLE `{dataset_id}.device_exposure`
                     (
                       device_exposure_id INT64,
                       person_id INT64,
                       device_concept_id INT64,
                       device_exposure_start_date DATE,
-                      device_exposure_start_datetime DATETIME,
+                      device_exposure_start_datetime TIMESTAMP,
                       device_exposure_end_date DATE,
-                      device_exposure_end_datetime DATETIME,
+                      device_exposure_end_datetime TIMESTAMP,
                       device_type_concept_id INT64,
                       unique_device_id STRING,
-                      quantity NUMERIC,
+                      quantity INTEGER,
                       provider_id INT64,
                       visit_occurrence_id INT64,
                       visit_detail_id INT64,
@@ -1194,6 +1184,7 @@ queries = {
                       plan_concept_id INT64,
                       plan_source_value STRING,
                       plan_source_concept_id INT64,
+                      sponsor_source_value STRING,
                       sponsor_concept_id INT64,
                       sponsor_source_concept_id INT64,
                       family_source_value STRING,
@@ -1209,9 +1200,9 @@ queries = {
                       person_id INT64,
                       condition_concept_id INT64,
                       condition_start_date DATE,
-                      condition_start_datetime DATETIME,
+                      condition_start_datetime TIMESTAMP,
                       condition_end_date DATE,
-                      condition_end_datetime DATETIME,
+                      condition_end_datetime TIMESTAMP,
                       condition_type_concept_id INT64,
                       condition_status_concept_id INT64,
                       stop_reason STRING,
@@ -1230,9 +1221,9 @@ queries = {
                       person_id INT64,
                       drug_concept_id INT64,
                       drug_exposure_start_date DATE,
-                      drug_exposure_start_datetime DATETIME,
+                      drug_exposure_start_datetime TIMESTAMP,
                       drug_exposure_end_date DATE,
-                      drug_exposure_end_datetime DATETIME,
+                      drug_exposure_end_datetime TIMESTAMP,
                       verbatim_end_date DATE,
                       drug_type_concept_id INT64,
                       stop_reason STRING,
@@ -1296,9 +1287,9 @@ queries = {
                       person_id INT64,
                       visit_detail_concept_id INT64,
                       visit_detail_start_date DATE,
-                      visit_detail_start_datetime DATETIME,
+                      visit_detail_start_datetime TIMESTAMP,
                       visit_detail_end_date DATE,
-                      visit_detail_end_datetime DATETIME,
+                      visit_detail_end_datetime TIMESTAMP,
                       visit_detail_type_concept_id INT64,
                       provider_id INT64,
                       care_site_id INT64,
@@ -1319,8 +1310,72 @@ queries = {
     "pid_rid_mapping": {
         "destination": "pid_rid_mapping",
         "append": False,
-        "query": """SELECT DISTINCT sc.participant_id, sc.research_id, sc.external_id, sc.src_id
+        "query": """SELECT DISTINCT sc.participant_id AS person_id, sc.research_id, sc.external_id AS vibrent_id,
+                                    sc.src_id
                             FROM `{dataset_id}.src_clean` sc
                             join `{dataset_id}.person` p on sc.participant_id=p.person_id"""
+    },
+"cope_survey_semantic_version_map": {
+        "destination": "cope_survey_semantic_version_map",
+        "append": False,
+        "query": """
+        SELECT * FROM
+              EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
+              "SELECT participant_id, questionnaire_response_id, semantic_version, cope_month, CASE WHEN src_id """
+              """= 'careevolution' THEN 'ce' ELSE src_id END src_id FROM ( ( """
+              """SELECT 1 as sort_col, 'participant_id', 'questionnaire_response_id', 'semantic_version', """
+              """ 'cope_month', 'src_id' ) UNION ALL ( SELECT 2 as sort_col, participant_id,"""
+              """questionnaire_response_id, semantic_version, cope_month,src_id FROM ( SELECT qr.participant_id, """
+              """questionnaire_response_id, semantic_version, CASE when qh.external_id in ('Vibrent_FORM_ID_1413',"""
+              """'COPE Survey') then 'may' when qh.external_id in ('June COPE Survey','Vibrent_FORM_ID_1416') then """
+              """'june' when qh.external_id in ('July COPE Survey','Vibrent_FORM_ID_1424') then 'july' when """
+              """qh.external_id in ('October COPE Survey','Vibrent_FORM_ID_1442') then 'nov' when qh.external_id in """
+              """('December COPE Survey','Vibrent_FORM_ID_1453') then 'dec' when qh.external_id in ('February """
+              """COPE Survey','Vibrent_FORM_ID_1456') then 'feb' when qh.external_id in ('cope_vaccine1',"""
+              """'Vibrent_FORM_ID_1502') then 'vaccine1' when qh.external_id in ('cope_vaccine2',"""
+              """'Vibrent_FORM_ID_1513') then 'vaccine2' when qh.external_id in ('cope_vaccine3',"""
+              """'Vibrent_FORM_ID_1535') then 'vaccine3' when qh.external_id in ('cope_vaccine4',"""
+              """'Vibrent_FORM_ID_1545') then 'vaccine4' END AS 'cope_month', p.participant_origin AS src_id FROM """
+              """rdr.questionnaire_history qh INNER JOIN rdr.questionnaire_response qr ON qr.questionnaire_id = """
+              """qh.questionnaire_id AND qr.questionnaire_version = qh.version JOIN rdr.participant p on """
+              """qr.participant_id = p.participant_id WHERE qh.external_id IN ('Vibrent_FORM_ID_1413','COPE Survey',"""
+              """'June COPE Survey','Vibrent_FORM_ID_1416','July COPE Survey','Vibrent_FORM_ID_1424',"""
+              """'October COPE Survey','Vibrent_FORM_ID_1442','December COPE Survey','Vibrent_FORM_ID_1453',"""
+              """'February COPE Survey','Vibrent_FORM_ID_1456','cope_vaccine1','Vibrent_FORM_ID_1502',"""
+              """'cope_vaccine2','Vibrent_FORM_ID_1513','cope_vaccine3','Vibrent_FORM_ID_1535','cope_vaccine4',"""
+              """'Vibrent_FORM_ID_1545') ) as data ) ) a ORDER BY a.sort_col ASC;"); """
+    },
+    "procedure_occurrence": {
+        "destination": "procedure_occurrence",
+        "append": False,
+        "query": """
+                            SELECT
+                                src_m1.participant_id                       AS person_id,
+                                COALESCE(vc.concept_id, 0)                  AS procedure_concept_id,
+                                src_m2.value_date                           AS procedure_date,
+                                TIMESTAMP(src_m2.value_date)                AS procedure_datetime,
+                                581412                                      AS procedure_type_concept_id,   -- 581412, Procedure Recorded from a Survey
+                                0                                           AS modifier_concept_id,
+                                NULL                                        AS quantity,
+                                NULL                                        AS provider_id,
+                                NULL                                        AS visit_occurrence_id,
+                                NULL                                        AS visit_detail_id,
+                                stcm.source_code                            AS procedure_source_value,
+                                COALESCE(stcm.source_concept_id, 0)         AS procedure_source_concept_id,
+                                NULL                                        AS modifier_source_value,
+                                'procedure'                                 AS unit_id,
+                                src_m1.src_id                               AS src_id
+                            FROM `{dataset_id}.src_mapped` src_m1
+                            INNER JOIN `{dataset_id}.source_to_concept_map` stcm
+                                ON src_m1.value_ppi_code = stcm.source_code
+                                AND stcm.source_vocabulary_id = 'ppi-proc'
+                            INNER JOIN `{dataset_id}.src_mapped` src_m2
+                                ON src_m1.participant_id = src_m2.participant_id
+                                AND src_m2.question_ppi_code = 'OrganTransplant_Date'
+                                AND src_m2.value_date IS NOT NULL
+                            LEFT JOIN `{dataset_id}.concept` vc
+                                ON stcm.target_concept_id = vc.concept_id
+                                AND vc.standard_concept = 'S'
+                                AND vc.invalid_reason IS NULL"""
     }
 }
