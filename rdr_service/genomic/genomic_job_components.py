@@ -64,7 +64,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     UserEventMetricsDao,
     GenomicQueriesDao,
-    GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao, GenomicPRDao)
+    GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao, GenomicPRDao, GenomicRNADao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -309,7 +309,8 @@ class GenomicFileIngester:
             GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_lr_manifest,
             GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
-            GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest
+            GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
+            GenomicJob.RNA_RR_WORKFLOW: self._ingest_rna_manifest
         }
 
         current_ingestion_workflow = current_ingestion_map.get(self.job_id)
@@ -1179,6 +1180,17 @@ class GenomicFileIngester:
         try:
             GenomicSubWorkflow.create_genomic_sub_workflow(
                 dao=GenomicPRDao,
+                job_id=self.job_id,
+                job_run_id=self.job_run_id
+            ).run_workflow(row_data=rows)
+            return GenomicSubProcessResult.SUCCESS
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_rna_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
+        try:
+            GenomicSubWorkflow.create_genomic_sub_workflow(
+                dao=GenomicRNADao,
                 job_id=self.job_id,
                 job_run_id=self.job_run_id
             ).run_workflow(row_data=rows)

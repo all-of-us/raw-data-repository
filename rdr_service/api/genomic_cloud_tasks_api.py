@@ -374,14 +374,14 @@ class IngestLongReadManifestTaskApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
-class IngestPRManifestTaskApi(BaseGenomicTaskApi):
+class IngestSubManifestTaskApi(BaseGenomicTaskApi):
     """
-    Cloud Task endpoint: Ingest PR Manifest(s).
+    Cloud Task endpoint: Ingest Sub-workflow Manifest(s).
     """
     def post(self):
         super().post()
 
-        pr_manifest_map = {
+        sub_manifest_map = {
             'pr': {
                 'job': GenomicJob.PR_PR_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.PR_PR
@@ -393,6 +393,11 @@ class IngestPRManifestTaskApi(BaseGenomicTaskApi):
             'p2': {
                 'job': GenomicJob.PR_P2_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.PR_P2
+            },
+            'rr': {
+                'job': GenomicJob.RNA_RR_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.RNA_RR
+
             }
         }
 
@@ -400,7 +405,7 @@ class IngestPRManifestTaskApi(BaseGenomicTaskApi):
             logging.info(f'Ingesting LR Manifest File: {self.data.get("filename")}')
 
             task_type = self.data.get("file_type")
-            workflow_data = pr_manifest_map[task_type]
+            workflow_data = sub_manifest_map[task_type]
 
             # Set up file/JSON
             task_data = {

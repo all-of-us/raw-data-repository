@@ -49,7 +49,7 @@ from rdr_service.model.genomics import (
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead,
-    GenomicProteomics)
+    GenomicProteomics, GenomicRNA)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -4866,3 +4866,23 @@ class GenomicPRDao(GenomicSubDao):
                 GenomicProteomics.sample_id.is_(None)
             ).distinct().all()
 
+
+class GenomicRNADao(GenomicSubDao):
+
+    def __init__(self):
+        super().__init__(GenomicRNA, order_by_ending=['id'])
+
+    @classmethod
+    def get_max_set_subquery(cls):
+        return sqlalchemy.orm.Query(
+            functions.max(GenomicRNA.rna_set).label('rna_set')
+        ).subquery()
+
+    def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
+        ...
+
+    def get_zero_manifest_records_from_max_set(self):
+        ...
+
+    def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
+        ...

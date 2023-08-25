@@ -3761,7 +3761,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
             }
 
             self.send_post(
-                local_path='IngestPRManifestTaskApi',
+                local_path='IngestSubManifestTaskApi',
                 request_data=data,
                 prefix="/resource/task/",
                 test_client=resource_main.app.test_client(),

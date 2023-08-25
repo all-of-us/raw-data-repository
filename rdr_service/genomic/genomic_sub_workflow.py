@@ -1,3 +1,5 @@
+from typing import List
+
 from rdr_service import clock
 from rdr_service.genomic_enums import GenomicJob
 
@@ -14,12 +16,22 @@ class GenomicSubWorkflow:
         return {
             GenomicJob.PR_PR_WORKFLOW: self.run_request_ingestion,
             GenomicJob.PR_P1_WORKFLOW: self.run_sample_ingestion,
-            GenomicJob.PR_P2_WORKFLOW: self.run_bypass
+            GenomicJob.PR_P2_WORKFLOW: self.run_bypass,
+            GenomicJob.RNA_RR_WORKFLOW: self.run_request_ingestion
         }[self.job_id]
 
     @classmethod
     def create_genomic_sub_workflow(cls, *, dao, job_id, job_run_id):
         return cls(dao, job_id, job_run_id)
+
+    def extract_site_id(self) -> dict:
+        current_site_id = {}
+        try:
+            current_site_id_type = list(filter(lambda item: '_site_id' in item, self.row_data[0].items()))
+            current_site_id = current_site_id_type[0]
+        except KeyError:
+            ...
+        return current_site_id
 
     def run_workflow(self, *, row_data):
         self.row_data = row_data
@@ -29,7 +41,7 @@ class GenomicSubWorkflow:
         ...
 
     def run_request_ingestion(self):
-        current_set = self.dao.get_max_set()
+        current_set: List[int] = self.dao.get_max_set()
         incremented_set_number = 1 if current_set[0] is None else current_set[0]+1
 
         new_pipeline_members = self.dao.get_new_pipeline_members(
@@ -37,7 +49,7 @@ class GenomicSubWorkflow:
         )
 
         pipeline_objs = []
-        p_site_id = self.row_data[0].get('p_site_id')
+        # current_site_data: dict = self.extract_site_id()
 
         for member in new_pipeline_members:
             pipeline_objs.append({
@@ -45,10 +57,10 @@ class GenomicSubWorkflow:
                 'modified': clock.CLOCK.now(),
                 'genomic_set_member_id': member.genomic_set_member_id,
                 'biobank_id': member.biobank_id,
-                # later sub-pipelines will have logic for handling this defaulting for now
-                'p_site_id': p_site_id,
+                'created_job_run_id': self.job_run_id,
+
+                'p_site_id': '',
                 'proteomics_set': incremented_set_number,
-                'created_job_run_id': self.job_run_id
             })
 
         self.dao.insert_bulk(pipeline_objs)

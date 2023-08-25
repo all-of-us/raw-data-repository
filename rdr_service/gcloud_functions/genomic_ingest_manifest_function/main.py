@@ -102,15 +102,21 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         pr_tasks = {
             '_pr_requests_': {
                 'manifest_type': 'pr',
-                'task_endpoint': 'IngestPRManifestTaskApi'
+                'task_endpoint': 'IngestSubManifestTaskApi'
             },
             '_proteomics_pkg': {
                 'manifest_type': 'p1',
-                'task_endpoint': 'IngestPRManifestTaskApi'
+                'task_endpoint': 'IngestSubManifestTaskApi'
             },
             '_p2_': {
                 'manifest_type': 'p2',
-                'task_endpoint': 'IngestPRManifestTaskApi'
+                'task_endpoint': 'IngestSubManifestTaskApi'
+            }
+        },
+        rna_tasks = {
+           'rr_requests': {
+                'manifest_type': 'rr',
+                'task_endpoint': 'IngestSubManifestTaskApi'
             }
         }
 
@@ -118,7 +124,8 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             **short_read_tasks,
             **cvl_tasks,
             **long_read_tasks,
-            **pr_tasks
+            **pr_tasks,
+            **rna_tasks
         }
 
         for key, value in task_key_map.items():

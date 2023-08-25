@@ -94,6 +94,7 @@ GENOME_TYPE_WGS = "aou_wgs"
 GENOME_TYPE_CVL = "aou_cvl"
 GENOME_TYPE_LR = "aou_long_read"
 GENOME_TYPE_PR = "aou_proteomics"
+GENOME_TYPE_RNA = ("aou_rnaseq", "aou_isoseq")
 GENOMIC_DEPRECATED_WGS_DRAGEN = 'dragen_3.4.12'
 GENOMIC_UPDATED_WGS_DRAGEN = 'dragen_3.7.8'
 GENOMIC_JOB_IDS_BYPASS_VALIDATION = "genomic_job_ids_bypass_validation"
