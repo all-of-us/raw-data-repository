@@ -24,7 +24,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.model.utils import Enum
 from rdr_service.offline.sync_consent_files import ConsentSyncGuesser
 from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
-    LogResultStrategy
+    LogResultStrategy, UpdateResultStrategy
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
@@ -73,6 +73,58 @@ class ConsentTool(ToolBase):
             self.retro_validate()
         elif self.args.command == 'files-for-update':
             self.files_for_update()
+        elif self.args.command == 'revalidate':
+            self.revalidate()
+
+    def revalidate(self):
+        """
+        query to find va participants that need files rechecked (because of pairing after validation):
+        select *
+        from consent_file cf
+        inner join participant_summary ps on ps.participant_id = cf.participant_id
+        where sync_status = 1 and `type` = 3 and other_errors like 'veteran consent%'
+        and ps.hpo_id = 15 and ps.consent_for_electronic_health_records != 1
+        ;
+
+        """
+
+        consent_dao = ConsentDao()
+        with (
+            open(self.args.pid_file) as pid_file,
+            self.get_session() as session,
+            UpdateResultStrategy(
+                session=session,
+                consent_dao=consent_dao,
+                project_id=self.gcp_env.project
+            ) as store_strategy
+        ):
+            controller = ConsentValidationController(
+                consent_dao=consent_dao,
+                participant_summary_dao=ParticipantSummaryDao(),
+                hpo_dao=HPODao(),
+                storage_provider=GoogleCloudStorageProvider(),
+                session=self.get_session()
+            )
+            # Get participant ids from the file in batches
+            # (retrieving all their summaries at once, processing them before the next batch)
+            participant_lookup_batch_size = 500
+            participant_ids = list(islice(pid_file, participant_lookup_batch_size))
+            while participant_ids:
+                summaries = ParticipantSummaryDao.get_by_ids_with_session(session=session, obj_ids=participant_ids)
+                for participant_summary in summaries:
+                    consent_files = consent_dao.get_files_for_participant(
+                        participant_id=participant_summary.participantId,
+                        session=session
+                    )
+                    for file in consent_files:
+                        if file.sync_status != ConsentSyncStatus.NEEDS_CORRECTING:
+                            continue
+                        controller.revalidate_file(
+                            summary=participant_summary,
+                            file=file,
+                            output_strategy=store_strategy
+                        )
+                participant_ids = list(islice(pid_file, participant_lookup_batch_size))
 
     def _call_server_for_retro_validation(self, participant_ids):
         if len(participant_ids) > 0:
@@ -404,6 +456,9 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
     subparsers.add_parser('check-retro-sync')
     subparsers.add_parser('retro-validation')
     subparsers.add_parser('files-for-update')
+
+    revalidate_parser = subparsers.add_parser('revalidate')
+    revalidate_parser.add_argument('--pid-file', help='File listing the participant ids to validate', required=True)
 
 
 def run():

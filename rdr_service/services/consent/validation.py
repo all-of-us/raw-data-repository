@@ -645,8 +645,8 @@ class ConsentValidationController:
     def revalidate_file(self, summary: ParticipantSummary, file: ParsingResult,
                         output_strategy: ValidationOutputStrategy):
         validator = self._build_validator(participant_summary=summary)
-        result = validator.revalidate(file)
-        output_strategy.add_result(result)
+        result_list = validator.revalidate(file)
+        output_strategy.add_all(result_list)
 
     @classmethod
     def _check_consent_type(cls, consent_type: ConsentType, to_check_list: Collection[ConsentType]):
@@ -864,7 +864,7 @@ class ConsentValidator:
             expected_sign_datetime=expected_signing_date
         )
 
-    def revalidate(self, file: ParsingResult) -> ParsingResult:
+    def revalidate(self, file: ParsingResult) -> List[ParsingResult]:
         expected_signature_datetime = datetime(
             year=file.expected_sign_date.year,
             month=file.expected_sign_date.month,
@@ -876,7 +876,7 @@ class ConsentValidator:
             consent_files=[new_results],
             consent_type=file.type,
             expected_sign_datetime=expected_signature_datetime
-        )[0]
+        )
 
     def _get_extra_validation_function_by_type(self, consent_type: ConsentType):
         if consent_type in [ConsentType.PRIMARY, ConsentType.PRIMARY_RECONSENT]:
