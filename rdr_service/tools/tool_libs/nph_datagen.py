@@ -79,6 +79,15 @@ class ParticipantGeneratorTool(ToolBase):
 
         nph_generator = NphDataGenerator()
 
+        # Useful for debugging if an event is improperly supplied.
+        # Leaving in for now
+        # exist = nph_generator.session.query(Participant).filter(
+        #     Participant.id == int(row.get('nph_participant_id'))
+        # ).all()
+        #
+        # if exist:
+        #     return
+
         aou_participant_dao = ParticipantDao()
 
         rex_mapping_dao = RexParticipantMappingDao()
@@ -120,7 +129,7 @@ class ParticipantGeneratorTool(ToolBase):
             siteId=aou_site.siteId,
             aian=1 if row['aian_flag'].upper() == "Y" else 0,
             email=f'nph.{aou_participant.participantId}@test.com',
-            date_of_birth=dob,
+            dateOfBirth=dob,
             phoneNumber=f"5{aou_participant.participantId}",
             questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
             questionnaireOnTheBasicsTime=clock.CLOCK.now(),
@@ -190,12 +199,10 @@ class ParticipantGeneratorTool(ToolBase):
                 participant_id=nph_participant.id,
                 event_authored_time=clock.CLOCK.now(),
                 event_type_id=enrollment_event_type.id
-
             )
 
         nph_generator.create_database_participant_ops_data_element(
             participant_id=nph_participant.id,
-            event_authored_time=clock.CLOCK.now(),
             source_data_element=1,
             source_value=str(dob),
         )
@@ -219,9 +226,10 @@ class ParticipantEventCreatorTool(ToolBase):
        Required fields in CSV:
            nph_participant_id
            activity: the name of the activity, i.e. ENROLLMENT, CONSENT
-           source_name: matches the [activity]_event_type.source_name
+           source_name (not needed for diet): matches the [activity]_event_type.source_name
            required for Diet:
                 diet_name: BLUE, PURPLE, ORANGE, etc
+                diet_status: Started, Completed, etc.
                 diet_module: 1, 2, 3
        """
 
@@ -273,7 +281,8 @@ class ParticipantEventCreatorTool(ToolBase):
                 module=ModuleTypes.lookup_by_number(int(row['diet_module'])),
                 diet_id=1,
                 status_id=1,
-                status=DietStatus.lookup_by_number(1),
+                status=DietStatus.lookup_by_name(row.get('diet_status').upper()),
+                event_authored_time=clock.CLOCK.now(),
                 current=1,
                 diet_name=DietType.lookup_by_name(row['diet_name'].upper()),
             )
