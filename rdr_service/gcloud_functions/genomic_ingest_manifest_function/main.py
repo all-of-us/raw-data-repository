@@ -96,7 +96,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         long_read_tasks = {
             '_lr_requests_': {
                 'manifest_type': 'lr',
-                'task_endpoint': 'IngestLongReadManifestTaskApi'
+                'task_endpoint': 'IngestSubManifestTaskApi'
             },
         }
         pr_tasks = {

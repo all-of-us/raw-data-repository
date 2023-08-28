@@ -332,56 +332,19 @@ class IngestCVLManifestTaskApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
-class IngestLongReadManifestTaskApi(BaseGenomicTaskApi):
-    """
-    Cloud Task endpoint: Ingest Long Read Manifest(s).
-    """
-    def post(self):
-        super().post()
-
-        lr_manifest_map = {
-            'lr': {
-                'job': GenomicJob.LR_LR_WORKFLOW,
-                'manifest_type': GenomicManifestTypes.LR_LR
-            },
-        }
-
-        for file_path in self.file_paths:
-            logging.info(f'Ingesting LR Manifest File: {self.data.get("filename")}')
-
-            task_type = self.data.get("file_type")
-            workflow_data = lr_manifest_map[task_type]
-
-            # Set up file/JSON
-            task_data = {
-                "job": workflow_data.get('job'),
-                "bucket": self.data["bucket_name"],
-                "file_data": {
-                    "create_feedback_record": False,
-                    "upload_date": self.data["upload_date"],
-                    "manifest_type": workflow_data.get('manifest_type'),
-                    "file_path": file_path,
-                }
-            }
-
-            logging.info(f'{task_type.upper()} task data: {task_data}')
-
-            self.execute_manifest_ingestion(task_data, task_type.upper())
-
-        self.create_cloud_record()
-
-        logging.info('Complete.')
-        return {"success": True}
-
-
 class IngestSubManifestTaskApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Ingest Sub-workflow Manifest(s).
     """
     def post(self):
         super().post()
-
-        sub_manifest_map = {
+        long_read_map = {
+            'lr': {
+                'job': GenomicJob.LR_LR_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.LR_LR
+            },
+        }
+        pr_map = {
             'pr': {
                 'job': GenomicJob.PR_PR_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.PR_PR
@@ -394,11 +357,18 @@ class IngestSubManifestTaskApi(BaseGenomicTaskApi):
                 'job': GenomicJob.PR_P2_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.PR_P2
             },
+        }
+        rna_map = {
             'rr': {
                 'job': GenomicJob.RNA_RR_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.RNA_RR
 
             }
+        }
+        sub_manifest_map = {
+            **long_read_map,
+            **pr_map,
+            **rna_map
         }
 
         for file_path in self.file_paths:
