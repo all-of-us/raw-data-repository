@@ -338,6 +338,7 @@ class IngestSubManifestTaskApi(BaseGenomicTaskApi):
     """
     def post(self):
         super().post()
+
         long_read_map = {
             'lr': {
                 'job': GenomicJob.LR_LR_WORKFLOW,
@@ -372,7 +373,7 @@ class IngestSubManifestTaskApi(BaseGenomicTaskApi):
         }
 
         for file_path in self.file_paths:
-            logging.info(f'Ingesting LR Manifest File: {self.data.get("filename")}')
+            logging.info(f'Ingesting Sub Manifest File: {self.data.get("filename")}')
 
             task_type = self.data.get("file_type")
             workflow_data = sub_manifest_map[task_type]
