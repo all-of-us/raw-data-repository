@@ -2,7 +2,7 @@ import datetime
 from unittest import mock
 
 from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestFileDao, \
-    GenomicFileProcessedDao, GenomicJobRunDao, GenomicPRDao
+    GenomicFileProcessedDao, GenomicJobRunDao, GenomicRNADao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, \
     GenomicSubProcessStatus, GenomicSubProcessResult
 from rdr_service.model.genomics import GenomicRRRaw
@@ -22,7 +22,7 @@ class GenomicRNAPipelineTest(BaseTestCase):
             genomicSetCriteria=".",
             genomicSetVersion=1
         )
-        self.rna_dao = GenomicPRDao()
+        self.rna_dao = GenomicRNADao()
 
     def base_rna_data_insert(self, **kwargs):
         for num in range(1, kwargs.get('num_set_members', 4)):
@@ -43,6 +43,7 @@ class GenomicRNAPipelineTest(BaseTestCase):
                 validationStatus=1,
                 sexAtBirth="F",
                 collectionTubeId=f"{num}2222222222",
+                ai_an='N'
             )
 
     def execute_base_rna_ingestion(self, **kwargs):
@@ -88,9 +89,9 @@ class GenomicRNAPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.biobank_id is not None for obj in rr_members))
         self.assertTrue(all(obj.sample_id is None for obj in rr_members))
         self.assertTrue(all(obj.genome_type == 'aou_rnaseq' for obj in rr_members))
-        self.assertTrue(all(obj.p_site_id == 'bi' for obj in rr_members))
+        self.assertTrue(all(obj.r_site_id == 'bi' for obj in rr_members))
         self.assertTrue(all(obj.genomic_set_member_id is not None for obj in rr_members))
-        self.assertTrue(all(obj.proteomics_set == 1 for obj in rr_members))
+        self.assertTrue(all(obj.rna_set == 1 for obj in rr_members))
         self.assertTrue(all(obj.created_job_run_id is not None for obj in rr_members))
 
         # check job run record
@@ -103,18 +104,18 @@ class GenomicRNAPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in rr_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in rr_job_runs))
 
-        self.clear_table_after_test('genomic_proteomics')
+        self.clear_table_after_test('genomic_rna')
 
     def test_pr_manifest_ingestion_increments_set(self):
 
-        self.execute_base_pr_ingestion(
+        self.execute_base_rna_ingestion(
             test_file='RDR_AoU_RR_Requests.csv',
-            job_id=GenomicJob.RNA_PR_WORKFLOW,
+            job_id=GenomicJob.RNA_RR_WORKFLOW,
             manifest_type=GenomicManifestTypes.RNA_RR
         )
 
-        rr_members = self.pr_dao.get_all()
-        self.assertTrue(all(obj.proteomics_set == 1 for obj in rr_members))
+        rr_members = self.rna_dao.get_all()
+        self.assertTrue(all(obj.rna_set == 1 for obj in rr_members))
 
         # check job run record
         rr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.RNA_RR_WORKFLOW, self.job_run_dao.get_all()))
@@ -125,14 +126,14 @@ class GenomicRNAPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in rr_job_runs))
 
         # rerun job should increment set correctly
-        self.execute_base_pr_ingestion(
+        self.execute_base_rna_ingestion(
             test_file='RDR_AoU_RR_Requests.csv',
             job_id=GenomicJob.RNA_RR_WORKFLOW,
             manifest_type=GenomicManifestTypes.RNA_RR
         )
 
         rr_members = self.rna_dao.get_all()
-        self.assertTrue(any(obj.proteomics_set == 2 for obj in rr_members))
+        self.assertTrue(any(obj.rna_set == 2 for obj in rr_members))
 
         # check job run record
         rr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.RNA_RR_WORKFLOW, self.job_run_dao.get_all()))
@@ -142,11 +143,11 @@ class GenomicRNAPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in rr_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in rr_job_runs))
 
-        self.clear_table_after_test('genomic_proteomics')
+        self.clear_table_after_test('genomic_rna')
 
     def test_rr_manifest_to_raw_ingestion(self):
 
-        self.execute_base_pr_ingestion(
+        self.execute_base_rna_ingestion(
             test_file='RDR_AoU_RR_Requests.csv',
             job_id=GenomicJob.RNA_RR_WORKFLOW,
             manifest_type=GenomicManifestTypes.RNA_RR,
@@ -166,25 +167,25 @@ class GenomicRNAPipelineTest(BaseTestCase):
 
         rr_raw_records = rr_raw_dao.get_all()
 
-        self.assertEqual(len(rr_raw_dao), 3)
+        self.assertEqual(len(rr_raw_records), 3)
 
         for attribute in GenomicRRRaw.__table__.columns:
             self.assertTrue(all(getattr(obj, str(attribute).split('.')[1]) is not None for obj in rr_raw_records))
 
         # check job run record
-        rr_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_PR_TO_RAW_TABLE, self.job_run_dao.get_all()))
+        rr_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_RR_TO_RAW_TABLE, self.job_run_dao.get_all()))
 
         self.assertIsNotNone(rr_raw_job_runs)
         self.assertEqual(len(rr_raw_job_runs), 1)
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in rr_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in rr_raw_job_runs))
 
-        self.clear_table_after_test('genomic_proteomics')
+        self.clear_table_after_test('genomic_rna')
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_full_rr_to_r0_cloud_task_manifest(self, cloud_task_mock):
 
-        self.execute_base_pr_ingestion(
+        self.execute_base_rna_ingestion(
             test_file='RDR_AoU_RR_Requests.csv',
             job_id=GenomicJob.RNA_RR_WORKFLOW,
             manifest_type=GenomicManifestTypes.RNA_RR
@@ -200,4 +201,4 @@ class GenomicRNAPipelineTest(BaseTestCase):
         # task queue
         self.assertTrue(cloud_task_mock.call_args[1].get('task_queue') == 'genomic-generate-manifest')
 
-        self.clear_table_after_test('genomic_proteomics')
+        self.clear_table_after_test('genomic_rna')

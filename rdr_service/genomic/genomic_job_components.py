@@ -338,7 +338,8 @@ class GenomicFileIngester:
     def _set_data_ingest_iterations(self, data_rows: List[dict]):
         excluded_jobs, all_ingestions = [
             GenomicJob.LR_LR_WORKFLOW,
-            GenomicJob.PR_PR_WORKFLOW
+            GenomicJob.PR_PR_WORKFLOW,
+            GenomicJob.RNA_RR_WORKFLOW
         ], []
         if self.controller.max_num \
             and self.job_id not in excluded_jobs \
@@ -1614,7 +1615,7 @@ class GenomicFileValidator:
         self.RNA_RR_SCHEMA = (
             "biobankid",
             "genometype",
-            "psiteid",
+            "rsiteid",
         )
 
         self.values_for_validation = {
