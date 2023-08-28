@@ -43,7 +43,6 @@ class GenomicRNAPipelineTest(BaseTestCase):
                 validationStatus=1,
                 sexAtBirth="F",
                 collectionTubeId=f"{num}2222222222",
-                ai_an='N'
             )
 
     def execute_base_rna_ingestion(self, **kwargs):
@@ -80,10 +79,10 @@ class GenomicRNAPipelineTest(BaseTestCase):
         self.execute_base_rna_ingestion(
             test_file='RDR_AoU_RR_Requests.csv',
             job_id=GenomicJob.RNA_RR_WORKFLOW,
-            manifest_type=GenomicManifestTypes.RNA_PR
+            manifest_type=GenomicManifestTypes.RNA_RR
         )
 
-        rr_members = self.pr_dao.get_all()
+        rr_members = self.rna_dao.get_all()
 
         self.assertEqual(len(rr_members), 3)
         self.assertTrue(all(obj.biobank_id is not None for obj in rr_members))
@@ -128,15 +127,15 @@ class GenomicRNAPipelineTest(BaseTestCase):
         # rerun job should increment set correctly
         self.execute_base_pr_ingestion(
             test_file='RDR_AoU_RR_Requests.csv',
-            job_id=GenomicJob.RNA_PR_WORKFLOW,
+            job_id=GenomicJob.RNA_RR_WORKFLOW,
             manifest_type=GenomicManifestTypes.RNA_RR
         )
 
-        rr_members = self.pr_dao.get_all()
+        rr_members = self.rna_dao.get_all()
         self.assertTrue(any(obj.proteomics_set == 2 for obj in rr_members))
 
         # check job run record
-        rr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.RNA_PR_WORKFLOW, self.job_run_dao.get_all()))
+        rr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.RNA_RR_WORKFLOW, self.job_run_dao.get_all()))
 
         self.assertIsNotNone(rr_job_runs)
         self.assertEqual(len(rr_job_runs), 2)
@@ -187,8 +186,8 @@ class GenomicRNAPipelineTest(BaseTestCase):
 
         self.execute_base_pr_ingestion(
             test_file='RDR_AoU_RR_Requests.csv',
-            job_id=GenomicJob.RNA_PR_WORKFLOW,
-            manifest_type=GenomicManifestTypes.RNA_PR
+            job_id=GenomicJob.RNA_RR_WORKFLOW,
+            manifest_type=GenomicManifestTypes.RNA_RR
         )
 
         self.assertEqual(cloud_task_mock.called, True)

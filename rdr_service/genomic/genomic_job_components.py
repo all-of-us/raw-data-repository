@@ -30,8 +30,6 @@ from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.resource.generators.genomics import genomic_user_event_metrics_batch_update
 from rdr_service.api_util import (
     open_cloud_file,
-    copy_cloud_file,
-    delete_cloud_file,
     list_blobs,
     get_blob
 )
@@ -59,8 +57,6 @@ from rdr_service.dao.genomics_dao import (
     GenomicManifestFileDao,
     GenomicAW1RawDao,
     GenomicAW2RawDao,
-    GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao,
     GenomicIncidentDao,
     UserEventMetricsDao,
     GenomicQueriesDao,
@@ -76,8 +72,6 @@ from rdr_service.genomic.validation import (
 )
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.config import (
-    getSetting,
-    GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
     GENOME_TYPE_ARRAY,
@@ -103,7 +97,6 @@ class GenomicFileIngester:
     def __init__(self, job_id=None,
                  job_run_id=None,
                  bucket=None,
-                 archive_folder=None,
                  sub_folder=None,
                  _controller=None,
                  target_file=None):
@@ -115,7 +108,6 @@ class GenomicFileIngester:
         self.file_queue = deque()
         self.target_file = target_file
         self.bucket_name = bucket
-        self.archive_folder_name = archive_folder
         self.sub_folder_name = sub_folder
         self.investigation_set_id = None
         self.participant_dao = None
@@ -124,7 +116,6 @@ class GenomicFileIngester:
             job_id=self.job_id,
             controller=self.controller
         )
-        self.file_mover = GenomicFileMover(archive_folder=self.archive_folder_name)
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.file_processed_dao = GenomicFileProcessedDao()
         self.member_dao = GenomicSetMemberDao()
@@ -1619,6 +1610,13 @@ class GenomicFileValidator:
             "notes"
         )
 
+        # RNA pipeline
+        self.RNA_RR_SCHEMA = (
+            "biobankid",
+            "genometype",
+            "psiteid",
+        )
+
         self.values_for_validation = {
             GenomicJob.METRICS_INGESTION: {
                 GENOME_TYPE_ARRAY: {
@@ -1953,6 +1951,20 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        # RNA pipeline
+        def rna_rr_manifest_name_rule():
+            """
+            RNA PR manifest name rule
+            """
+            return (
+                len(filename_components) == 5 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'rr' and
+                filename_components[3] == 'requests' and
+                filename.lower().endswith('csv')
+            )
+
         ingestion_name_rules = {
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
             GenomicJob.AW1_MANIFEST: bb_to_gc_manifest_name_rule,
@@ -1972,7 +1984,8 @@ class GenomicFileValidator:
             GenomicJob.LR_LR_WORKFLOW: lr_lr_manifest_name_rule,
             GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule,
             GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule,
-            GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule
+            GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule,
+            GenomicJob.RNA_RR_WORKFLOW: rna_rr_manifest_name_rule
         }
 
         try:
@@ -2094,123 +2107,20 @@ class GenomicFileValidator:
                 return self.PR_P1_SCHEMA
             if self.job_id == GenomicJob.PR_P2_WORKFLOW:
                 return self.PR_P2_SCHEMA
-
+            if self.job_id == GenomicJob.RNA_RR_WORKFLOW:
+                return self.RNA_RR_SCHEMA
         except (IndexError, KeyError):
             return GenomicSubProcessResult.ERROR
-
-
-class GenomicFileMover:
-    """
-    This utility class moves files in the bucket by copying into an archive folder
-    and deleting the old instance.
-    """
-
-    def __init__(self, archive_folder=None):
-        self.archive_folder = archive_folder
-
-    def archive_file(self, file_obj=None, file_path=None):
-        """
-        This method moves a file to an archive
-        by copy and delete
-        :param file_obj: a genomic_file_processed object to move
-        :return:
-        """
-        source_path = file_obj.filePath if file_obj else file_path
-        file_name = source_path.split('/')[-1]
-        archive_path = source_path.replace(file_name,
-                                           f"{self.archive_folder}/"
-                                           f"{file_name}")
-        try:
-            copy_cloud_file(source_path, archive_path)
-            delete_cloud_file(source_path)
-        except FileNotFoundError:
-            logging.error(f"No file found at '{file_obj.filePath}'")
 
 
 class GenomicReconciler:
     """ This component handles reconciliation between genomic datasets """
 
-    def __init__(self, run_id, job_id, archive_folder=None, file_mover=None,
-                 bucket_name=None, storage_provider=None, controller=None):
+    def __init__(self, run_id, job_id):
 
         self.run_id = run_id
         self.job_id = job_id
-        self.bucket_name = bucket_name
-        self.archive_folder = archive_folder
-        self.cvl_file_name = None
-        self.file_list = None
-        self.ready_signal = None
-
-        # Dao components
         self.member_dao = GenomicSetMemberDao()
-        self.metrics_dao = GenomicGCValidationMetricsDao()
-        self.file_dao = GenomicFileProcessedDao()
-        self.data_file_dao = GenomicGcDataFileDao()
-        self.data_file_missing_dao = GenomicGcDataFileMissingDao()
-
-        # Other components
-        self.file_mover = file_mover
-        self.storage_provider = storage_provider
-        self.controller = controller
-
-    def process_missing_data(self, metric, missing_data_files, genome_type):
-        missing_files_config = config.getSettingJson(config.GENOMIC_SKIP_MISSING_FILETYPES, {})
-        missing_files_config = missing_files_config.get(genome_type)
-
-        if missing_files_config:
-            missing_files_config = list(missing_files_config) if not type(missing_files_config) \
-                                                                     is list else missing_files_config
-
-            missing_data_files = [
-                x for x in list(missing_data_files) if x not in missing_files_config
-            ]
-
-        if missing_data_files:
-            file = self.file_dao.get(metric.genomicFileProcessedId)
-            member = self.member_dao.get(metric.genomicSetMemberId)
-
-            description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
-            description += f"\nGenomic Job Run ID: {self.run_id}"
-            file_list = '\n'.join([mf for mf in missing_data_files])
-            description += f"\nManifest File: {file.fileName}"
-            description += "\nMissing Data File(s):"
-            description += f"\n{file_list}"
-
-            self.controller.create_incident(
-                source_job_run_id=self.run_id,
-                source_file_processed_id=file.id,
-                code=GenomicIncidentCode.MISSING_FILES.name,
-                message=description,
-                genomic_set_member_id=member.id,
-                biobank_id=member.biobankId,
-                sample_id=member.sampleId if member.sampleId else "",
-                collection_tube_id=member.collectionTubeId if member.collectionTubeId else "",
-                slack=True
-            )
-
-    def generate_cvl_reconciliation_report(self):
-        """
-        The main method for the CVL Reconciliation report,
-        outputs report file to the cvl subfolder and updates
-        genomic_set_member
-        :return: result code
-        """
-        members = self.member_dao.get_members_for_cvl_reconciliation()
-        if members:
-            cvl_subfolder = getSetting(GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER)
-            self.cvl_file_name = f"{cvl_subfolder}/cvl_report_{self.run_id}.csv"
-            self._write_cvl_report_to_file(members)
-
-            self.controller.execute_cloud_task({
-                'member_ids': [m.id for m in members],
-                'field': 'reconcileCvlJobRunId',
-                'value': self.run_id,
-                'is_job_run': True,
-            }, 'genomic_set_member_update_task')
-
-            return GenomicSubProcessResult.SUCCESS
-
-        return GenomicSubProcessResult.NO_FILES
 
     def update_report_states_for_consent_removal(self, workflow_states):
         """
@@ -2232,44 +2142,6 @@ class GenomicReconciler:
                 removal_date = self.member_dao.get_consent_removal_date(member)
                 if removal_date:
                     self.member_dao.update_report_consent_removal_date(member, removal_date)
-
-    def update_report_state_for_reconsent(self, last_run_time):
-        """
-        This code is not currently executed, the reconsent has been deferred.
-        :param last_run_time:
-        :return:
-        """
-        # Get reconsented members to update (consent > last run time of job_id)
-        reconsented_gror_members = self.member_dao.get_reconsented_gror_since_date(last_run_time)
-
-        # update each member with the new state
-        for member in reconsented_gror_members:
-            new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
-                                                          signal='reconsented')
-
-            if new_state is not None or new_state != member.genomicWorkflowState:
-                self.member_dao.update_member_workflow_state(member, new_state)
-                self.member_dao.update_report_consent_removal_date(member, None)
-
-    def _write_cvl_report_to_file(self, members):
-        """
-        writes data to csv file in bucket
-        :param members:
-        :return: result code
-        """
-        try:
-            # extract only columns we need
-            cvl_columns = ('biobank_id', 'sample_id', 'member_id')
-            report_data = ((m.biobankId, m.sampleId, m.id) for m in members)
-
-            # Use SQL exporter
-            exporter = SqlExporter(self.bucket_name)
-            with exporter.open_cloud_writer(self.cvl_file_name) as writer:
-                writer.write_header(cvl_columns)
-                writer.write_rows(report_data)
-            return GenomicSubProcessResult.SUCCESS
-        except RuntimeError:
-            return GenomicSubProcessResult.ERROR
 
 
 class GenomicBiobankSamplesCoupler:

@@ -1490,7 +1490,7 @@ class GenomicJobController:
         :param genome_type: array or wgs
         """
 
-        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, controller=self)
+        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id)
 
         if genome_type == GENOME_TYPE_ARRAY:
             workflow_states = [GenomicWorkflowState.GEM_RPT_READY,

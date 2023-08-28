@@ -100,12 +100,12 @@ def load_manifest_into_raw_table(
             'job_id': GenomicJob.LOAD_P2_TO_RAW_TABLE,
             'model': GenomicP2Raw
         }
-    },
+    }
     rna_raw_map = {
         "rr": {
             'job_id': GenomicJob.LOAD_RR_TO_RAW_TABLE,
             'model': GenomicRRRaw
-        },
+        }
     }
 
     try:
