@@ -1725,7 +1725,7 @@ class GenomicProteomics(Base):
     genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"), nullable=False, index=True)
     biobank_id = Column(String(128), nullable=False, index=True)
     sample_id = Column(String(80), nullable=True, index=True)
-    genome_type = Column(String(80), nullable=False, default='aou_proteomics')
+    genome_type = Column(String(80), nullable=False)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
     p_site_id = Column(String(255), nullable=True)
     proteomics_set = Column(Integer, nullable=False, default=0)
