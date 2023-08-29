@@ -15,8 +15,8 @@ _BATCH_SIZE = 1000
 class SqlExportFileWriter(object):
     """Writes rows to a CSV file, optionally filtering on a predicate."""
 
-    def __init__(self, dest, predicate=None):
-        self._writer = csv.writer(dest, delimiter=DELIMITER)
+    def __init__(self, dest, predicate=None, delimiter=DELIMITER):
+        self._writer = csv.writer(dest, delimiter=delimiter)
         self._predicate = predicate
 
     def write_header(self, keys):
@@ -115,13 +115,13 @@ class SqlExporter(object):
             cursor.close()
 
     @contextlib.contextmanager
-    def open_cloud_writer(self, file_name, predicate=None):
+    def open_cloud_writer(self, file_name, predicate=None, delimiter=DELIMITER):
         gcs_path = "/%s/%s" % (self._bucket_name, file_name)
         # Logging does not expand in GCloud, so I'm trying this out.
         message = f"Exporting data to {gcs_path}"
         logging.info(message)
         with open_cloud_file(gcs_path, mode='w') as dest:
-            writer = SqlExportFileWriter(dest, predicate)
+            writer = SqlExportFileWriter(dest, predicate, delimiter)
             yield writer
             message = f"Export to {gcs_path} complete."
             logging.info(message)
