@@ -1632,16 +1632,16 @@ class QuestionnaireResponseDao(BaseDao):
     def _response_provides_primary_consent(cls, answers, question_map, code_map, code_dao):
         for answer in answers:
             question = question_map.get(answer.questionId)
-            question_code = code_map.get(question.codeId)
+            question_code: Code = code_map.get(question.codeId)
 
-            if question_code.value.lower() == CONSENT_QUESTION_CODE:
-                answer_value = code_dao.get(answer.valueCodeId).value
-                if answer_value.lower() == EXTRA_CONSENT_YES:
+            if question_code and question_code.value_matches(CONSENT_QUESTION_CODE):
+                answer_code: Code = code_dao.get(answer.valueCodeId)
+                if answer_code.value_matches(EXTRA_CONSENT_YES):
                     return True
-                elif answer_value.lower() == EXTRA_CONSENT_NO:
+                elif answer_code.value_matches(EXTRA_CONSENT_NO):
                     return False
                 else:
-                    logging.error(f'Unexpected consent answer "{answer_value}"')
+                    logging.error(f'Unexpected consent answer "{answer_code.value}"')
                     raise BadRequest('Invalid consent response')
 
         # At this point, we haven't seen the consent response question. So continue with original behavior
