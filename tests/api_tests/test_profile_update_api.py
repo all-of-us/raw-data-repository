@@ -1,6 +1,7 @@
 from datetime import date
 import mock
 
+from rdr_service.model.pediatric_data_log import PediatricDataType
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -460,7 +461,7 @@ class ProfileUpdateApiTest(BaseTestCase):
             "id": "P123123123",
             "contained": [
                 {
-                    "resourceType" : "Provenance",
+                    "resourceType": "Provenance",
                     "id": "PMIParticipantProvenanceExample",
                     "target": [
                         {
@@ -530,6 +531,65 @@ class ProfileUpdateApiTest(BaseTestCase):
             participant_id=123123123,
             login_phone_number='1234567890'
         )
+
+    @mock.patch('rdr_service.dao.pediatric_data_log_dao.PediatricDataLogDao.insert')
+    def test_reading_pediatric_age_range(self, pediatric_data_insert_mock):
+        participant_id = 123123123
+        self.send_post(
+            'Patient',
+            request_data={
+                'id': f'P{participant_id}',
+                'extension': [
+                    {
+                        'url': 'https://pmi-fhir-ig.github.io/pmi-fhir-ig/StructureDefinition/child-account-type',
+                        'valueCode': 'SIX_AND_BELOW'
+                    }
+                ]
+            }
+        )
+        data_to_insert = pediatric_data_insert_mock.call_args.kwargs['data']
+        self.assertEqual(participant_id, data_to_insert.participant_id)
+        self.assertEqual(PediatricDataType.AGE_RANGE, data_to_insert.data_type)
+        self.assertEqual('SIX_AND_BELOW', data_to_insert.value)
+
+    @mock.patch('rdr_service.dao.pediatric_data_log_dao.logging')
+    def test_unrecognized_range(self, logging_mock):
+        """Verify that we don't crash if we get an age range we don't recognize."""
+        self.send_post(
+            'Patient',
+            request_data={
+                'id': 'P123123123',
+                'extension': [
+                    {
+                        'url': 'https://pmi-fhir-ig.github.io/pmi-fhir-ig/StructureDefinition/child-account-type',
+                        'valueCode': 'not_valid'
+                    }
+                ]
+            }
+        )
+        logging_mock.error.assert_called_with('Unrecognized age range value "not_valid"')
+
+    @mock.patch('rdr_service.dao.pediatric_data_log_dao.PediatricDataLogDao.insert')
+    @mock.patch('rdr_service.dao.pediatric_data_log_dao.logging')
+    def test_unset_age_range(self, logging_mock, pediatric_data_insert_mock):
+        """
+        The API receives 'UNSET' for participants that are not pediatric.
+        Verify that we don't store a pediatric record for them if that's the case.
+        """
+        self.send_post(
+            'Patient',
+            request_data={
+                'id': 'P123123123',
+                'extension': [
+                    {
+                        'url': 'https://pmi-fhir-ig.github.io/pmi-fhir-ig/StructureDefinition/child-account-type',
+                        'valueCode': 'UNSET'
+                    }
+                ]
+            }
+        )
+        pediatric_data_insert_mock.assert_not_called()
+        logging_mock.error.assert_not_called()
 
 
 class ProfileUpdateIntegrationTest(BaseTestCase):

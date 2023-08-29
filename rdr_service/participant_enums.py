@@ -1036,3 +1036,9 @@ class WorkbenchResearcherYesNoPreferNot(messages.Enum):
     YES = 1
     NO = 2
     PREFER_NOT_TO_ANSWER = 3
+
+
+class PediatricAgeRange(messages.Enum):
+    SIX_AND_BELOW = 1
+    SEVEN_TO_TWELVE = 2
+    TEEN = 3

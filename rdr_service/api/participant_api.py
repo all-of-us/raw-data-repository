@@ -6,6 +6,8 @@ from rdr_service.api.base_api import UpdatableApi, BaseApi
 from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO, HEALTHPRO
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.pediatric_data_log_dao import PediatricDataLogDao
+from rdr_service.model.utils import from_client_participant_id
 
 
 class ParticipantApi(UpdatableApi):
@@ -21,11 +23,26 @@ class ParticipantApi(UpdatableApi):
 
     @app_util.auth_required(PTC)
     def post(self):
-        return super(ParticipantApi, self).post()
+        response, *_ = super(ParticipantApi, self).post()
+        self._check_for_pediatric_update(from_client_participant_id(response['participantId']))
+
+        return response, *_
 
     @app_util.auth_required(PTC)
     def put(self, p_id):
-        return super(ParticipantApi, self).put(p_id)
+        response = super(ParticipantApi, self).put(p_id)
+        self._check_for_pediatric_update(p_id)
+
+        return response
+
+    def _check_for_pediatric_update(self, participant_id):
+        pediatric_age_range_field = 'childAccountType'
+        request_json = self.get_request_json()
+        if pediatric_age_range_field in request_json:
+            PediatricDataLogDao.record_age_range(
+                participant_id=participant_id,
+                age_range_str=request_json[pediatric_age_range_field]
+            )
 
 
 class ParticipantResearchIdApi(BaseApi):

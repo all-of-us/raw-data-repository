@@ -1,9 +1,12 @@
 import collections
+from collections.abc import Callable
+from contextlib import ExitStack
 import datetime
 import json
 import logging
 import random
 import re
+from typing import ParamSpec, TypeVar
 
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from collections import OrderedDict
@@ -865,3 +868,21 @@ def save_raw_request_record(log: RequestsLog):
             session.flush()
 
         return log
+
+
+# Trying to set up dynamic type hinting for the decorator
+# (didn't work for me as of 2023-08, but maybe a bug in pycharm and hopefully will get fixed soon)
+T = TypeVar('T')
+P = ParamSpec('P')
+
+
+def with_session(func: Callable[P, T]) -> Callable[P, T]:
+    """Decorator to fill in the session parameter on a method if none is passed in"""
+    def decorator(*args: P.args, **kwargs: P.kwargs) -> T:
+        with ExitStack() as stack:
+            if kwargs.get('session', None) is None:
+                kwargs['session'] = stack.enter_context(database_factory.get_database().session())
+
+            return func(*args, **kwargs)
+
+    return decorator
