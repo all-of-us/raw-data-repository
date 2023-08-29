@@ -104,7 +104,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
         if env_split in ['prod', 'stable', 'sandbox']:
             bucket = config.NPH_SMS_BUCKETS.get(env_split).get(recipient)
 
-        if "mcc" in bucket.lower():
+        if "ucsd" in recipient.lower():
             delimiter_str = '\t'
         else:
             delimiter_str = ','
