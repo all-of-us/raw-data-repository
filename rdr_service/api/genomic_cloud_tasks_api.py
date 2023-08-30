@@ -18,7 +18,8 @@ from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
-from rdr_service.offline.genomics import genomic_dispatch, genomic_long_read_pipeline, genomic_proteomics_pipeline
+from rdr_service.offline.genomics import genomic_dispatch, genomic_long_read_pipeline, genomic_proteomics_pipeline, \
+    genomic_rna_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
     genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, \
@@ -795,7 +796,8 @@ class GenerateManifestApi(BaseGenomicTaskApi):
         try:
             generate_manifest_map = {
                 'l0': genomic_long_read_pipeline.lr_l0_manifest_workflow,
-                'p0': genomic_proteomics_pipeline.pr_p0_manifest_workflow
+                'p0': genomic_proteomics_pipeline.pr_p0_manifest_workflow,
+                'r0': genomic_rna_pipeline.rna_r0_manifest_workflow
             }[manifest_type]
 
             generate_manifest_map()

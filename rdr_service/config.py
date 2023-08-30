@@ -75,6 +75,7 @@ CVL_W2W_MANIFEST_SUBFOLDER = "W2W_manifests"
 CVL_W3SR_MANIFEST_SUBFOLDER = "W3SR_manifests"
 LR_L0_MANIFEST_SUBFOLDER = "l0_manifests"
 PR_P0_MANIFEST_SUBFOLDER = "p0_manifests"
+RNA_R0_MANIFEST_SUBFOLDER = "r0_manifests"
 GENOMIC_AW2_SUBFOLDERS = ("aw2_wgs_data_manifest_subfolder_name", "aw2_genotyping_data_manifest_subfolder_name")
 GENOMIC_AW5_WGS_SUBFOLDERS = "aw5_wgs_data_manifest_subfolder_name"
 GENOMIC_AW5_ARRAY_SUBFOLDERS = "aw5_genotyping_data_manifest_subfolder_name"

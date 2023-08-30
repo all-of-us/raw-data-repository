@@ -1901,3 +1901,27 @@ class GenomicRRRaw(Base):
 
 event.listen(GenomicRRRaw, 'before_insert', model_insert_listener)
 event.listen(GenomicRRRaw, 'before_update', model_update_listener)
+
+
+class GenomicR0Raw(Base):
+    """
+    Raw data from R0 files
+    """
+    __tablename__ = 'genomic_r0_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    collection_tube_id = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    ny_flag = Column(String(255), nullable=True)
+    validation_passed = Column(String(255), nullable=True)
+    ai_an = Column(String(255), nullable=True)
+    r_site_id = Column(String(255), nullable=True)

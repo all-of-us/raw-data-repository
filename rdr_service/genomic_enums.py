@@ -181,8 +181,10 @@ class GenomicJob(messages.Enum):
     LOAD_P2_TO_RAW_TABLE = 453
 
     RNA_RR_WORKFLOW = 500
+    RNA_R0_WORKFLOW = 501
 
     LOAD_RR_TO_RAW_TABLE = 550
+    LOAD_RO_TO_RAW_TABLE = 551
 
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
@@ -344,7 +346,7 @@ class GenomicManifestTypes(messages.Enum):
     PR_P2 = 43
 
     RNA_RR = 50
-
+    RNA_R0 = 51
 
 class GenomicContaminationCategory(messages.Enum):
     UNSET = 0
