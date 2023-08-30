@@ -104,9 +104,15 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
         if env_split in ['prod', 'stable', 'sandbox']:
             bucket = config.NPH_SMS_BUCKETS.get(env_split).get(recipient)
 
+        if "ucsd" in recipient.lower():
+            delimiter_str = '\t'
+        else:
+            delimiter_str = ','
+
         recipient_xfer_dict = {
             "bucket": bucket,
-            "file_name": f"n1_mcac_manifests/{recipient}_n1_{clock.CLOCK.now().isoformat()}.csv"
+            "file_name": f"n1_manifests/{recipient}_n1_{clock.CLOCK.now().isoformat()}.csv",
+            "delimiter": delimiter_str,
         }
 
         return recipient_xfer_dict

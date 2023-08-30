@@ -138,7 +138,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(ingested_record.age, "32")
 
     @staticmethod
-    def create_data_n1_mc1_generation():
+    def create_data_n1_mc1_generation(destination='UNC_META'):
         sms_datagen = NphSmsDataGenerator()
 
         # Urine Sample
@@ -164,7 +164,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             sample_identifier="test",
             sample_id=10001,
             lims_sample_id="000200",
-            destination="UNC_META"
+            destination=destination
         )
         sms_datagen.create_database_sms_sample(
             ethnicity="test",
@@ -175,7 +175,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             sample_identifier="test",
             sample_id=10002,
             lims_sample_id="000200",
-            destination="UNC_META"
+            destination=destination
         )
         sms_datagen.create_database_sms_sample(
             ethnicity="test",
@@ -186,7 +186,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             sample_identifier="test",
             sample_id=10003,
             lims_sample_id="000200",
-            destination="UNC_META"
+            destination=destination
         )
 
         sms_datagen.create_database_sms_n0(
@@ -272,7 +272,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        expected_csv_path = "test-bucket-unc-meta/n1_mcac_manifests/UNC_META_n1_2023-04-25T15:13:00.csv"
+        expected_csv_path = "test-bucket-unc-meta/n1_manifests/UNC_META_n1_2023-04-25T15:13:00.csv"
 
         with open_cloud_file(expected_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file)
@@ -324,6 +324,35 @@ class NphSmsWorkflowsTest(BaseTestCase):
             )
         manifest_records = n1_mcac_dao.get_all()
         self.assertEqual(len(manifest_records), 3)
+
+    def test_n1_mcc_tab_delimited(self):
+        self.create_data_n1_mc1_generation(destination="UCSD")
+
+        generation_data = {
+            "job": "FILE_GENERATION",
+            "file_type": "N1_MC1",
+            "recipient": "UCSD"
+        }
+        with clock.FakeClock(self.TIME_1):
+            from rdr_service.resource import main as resource_main
+            self.send_post(
+                local_path='NphSmsGenerationTaskApi',
+                request_data=generation_data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+        expected_csv_path = "test-bucket-unc-meta/n1_manifests/UCSD_n1_2023-04-25T15:13:00.csv"
+
+        with open_cloud_file(expected_csv_path, mode='r') as cloud_file:
+            csv_reader = csv.DictReader(cloud_file, delimiter='\t')
+            csv_rows = list(csv_reader)
+
+        self.assertEqual(csv_rows[0]['sample_id'], '10001')
+        self.assertEqual(csv_rows[0]['matrix_id'], "1111")
+        self.assertEqual(csv_rows[0]['urine_color'], '"Color 4"')
+        self.assertEqual(csv_rows[0]['urine_clarity'], '"Clean"')
+        self.assertEqual(csv_rows[0]['manufacturer_lot'], '256837')
 
     @mock.patch('rdr_service.workflow_management.nph.sms_pipeline.GCPCloudTask.execute')
     def test_sms_pipeline_n1_function(self, task_mock):
