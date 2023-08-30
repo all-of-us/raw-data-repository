@@ -1343,7 +1343,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             GenomicSetMember
         ).join(
             GenomicJobRun,
-            GenomicJobRun.jobId == GenomicSetMember.aw4ManifestJobRunID
+            GenomicJobRun.id == GenomicSetMember.aw4ManifestJobRunID
         ).filter(
             GenomicSetMember.participantId == participant_id,
             GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
