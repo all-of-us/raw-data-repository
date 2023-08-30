@@ -49,7 +49,7 @@ from rdr_service.model.genomics import (
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead,
-    GenomicProteomics)
+    GenomicProteomics, GenomicRNA)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -4760,9 +4760,28 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
     def get_id(self, obj):
         return obj.id
 
-    @abstractmethod
-    def get_new_pipeline_members(self, *, biobank_ids: List[str]):
-        ...
+    def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
+        with self.session() as session:
+            return session.query(
+                GenomicSetMember.id.label('genomic_set_member_id'),
+                GenomicSetMember.biobankId.label('biobank_id')
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).filter(
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
+                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,  # sub flows default to array sample
+                GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
+                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
+                GenomicSetMember.diversionPouchSiteFlag != 1,
+                GenomicSetMember.blockResults != 1,
+                GenomicSetMember.blockResearch != 1,
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.biobankId.in_(biobank_ids),
+                GenomicSetMember.ai_an == 'N'
+            ).distinct().all()
 
     @classmethod
     def get_max_set_subquery(cls):
@@ -4793,29 +4812,6 @@ class GenomicPRDao(GenomicSubDao):
         return sqlalchemy.orm.Query(
             functions.max(GenomicProteomics.proteomics_set).label('proteomics_set')
         ).subquery()
-
-    def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
-        with self.session() as session:
-            return session.query(
-                GenomicSetMember.id.label('genomic_set_member_id'),
-                GenomicSetMember.biobankId.label('biobank_id')
-            ).join(
-                ParticipantSummary,
-                ParticipantSummary.participantId == GenomicSetMember.participantId
-            ).filter(
-                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
-                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,  # sub flows default to array sample
-                GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
-                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
-                GenomicSetMember.diversionPouchSiteFlag != 1,
-                GenomicSetMember.blockResults != 1,
-                GenomicSetMember.blockResearch != 1,
-                GenomicSetMember.ignoreFlag != 1,
-                GenomicSetMember.biobankId.in_(biobank_ids),
-                GenomicSetMember.ai_an == 'N'
-            ).distinct().all()
 
     def get_zero_manifest_records_from_max_set(self):
         with self.session() as session:
@@ -4866,3 +4862,20 @@ class GenomicPRDao(GenomicSubDao):
                 GenomicProteomics.sample_id.is_(None)
             ).distinct().all()
 
+
+class GenomicRNADao(GenomicSubDao):
+
+    def __init__(self):
+        super().__init__(GenomicRNA, order_by_ending=['id'])
+
+    @classmethod
+    def get_max_set_subquery(cls):
+        return sqlalchemy.orm.Query(
+            functions.max(GenomicRNA.rna_set).label('rna_set')
+        ).subquery()
+
+    def get_zero_manifest_records_from_max_set(self):
+        ...
+
+    def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
+        ...

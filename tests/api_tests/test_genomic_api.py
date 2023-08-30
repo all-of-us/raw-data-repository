@@ -3644,49 +3644,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(gc_metrics['success'], True)
         self.assertEqual(ingest_mock.call_count, 1)
 
-    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
-    def test_ingest_lr_job_task_api(self, ingest_mock):
-
-        from rdr_service.resource import main as resource_main
-
-        lr_map = {
-            'lr': {
-                'job': GenomicJob.LR_LR_WORKFLOW,
-                'manifest_type': GenomicManifestTypes.LR_LR
-            }
-        }
-
-        test_bucket = 'test_lr_bucket'
-
-        for lr_key, lr_data in lr_map.items():
-
-            lr_type_file_path = f"{test_bucket}/test_lr_{lr_key}_file.csv"
-
-            data = {
-                "file_path": lr_type_file_path,
-                "bucket_name": lr_type_file_path.split('/')[0],
-                "upload_date": '2020-09-13T20:52:12+00:00',
-                "file_type": lr_key
-            }
-
-            self.send_post(
-                local_path='IngestLongReadManifestTaskApi',
-                request_data=data,
-                prefix="/resource/task/",
-                test_client=resource_main.app.test_client(),
-            )
-
-            call_json = ingest_mock.call_args[0][0]
-
-            self.assertEqual(ingest_mock.called, True)
-            self.assertEqual(call_json['bucket'], data['bucket_name'])
-            self.assertEqual(call_json['job'], lr_data['job'])
-            self.assertIsNotNone(call_json['file_data'])
-            self.assertEqual(
-                call_json['file_data']['manifest_type'],
-                lr_data['manifest_type']
-            )
-
     @mock.patch('rdr_service.offline.genomics.genomic_proteomics_pipeline.pr_p0_manifest_workflow')
     def test_generate_manifest_api(self, ingest_mock):
 
@@ -3761,7 +3718,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
             }
 
             self.send_post(
-                local_path='IngestPRManifestTaskApi',
+                local_path='IngestSubManifestTaskApi',
                 request_data=data,
                 prefix="/resource/task/",
                 test_client=resource_main.app.test_client(),

@@ -150,7 +150,8 @@ class GenomicJobController:
         try:
             auto_generation_manifest_map = {
                 GenomicJob.LR_LR_WORKFLOW: 'l0',
-                GenomicJob.PR_PR_WORKFLOW: 'p0'
+                GenomicJob.PR_PR_WORKFLOW: 'p0',
+                GenomicJob.RNA_RR_WORKFLOW: 'r0'
             }[self.job_id]
 
             last_job_run_status = self.job_run_dao.get_last_run_status_for_job_id(job_id=self.job_id)
@@ -1490,7 +1491,7 @@ class GenomicJobController:
         :param genome_type: array or wgs
         """
 
-        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, controller=self)
+        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id)
 
         if genome_type == GENOME_TYPE_ARRAY:
             workflow_states = [GenomicWorkflowState.GEM_RPT_READY,

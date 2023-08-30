@@ -1725,7 +1725,7 @@ class GenomicProteomics(Base):
     genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"), nullable=False, index=True)
     biobank_id = Column(String(128), nullable=False, index=True)
     sample_id = Column(String(80), nullable=True, index=True)
-    genome_type = Column(String(80), nullable=False, default='aou_proteomics')
+    genome_type = Column(String(80), nullable=False)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
     p_site_id = Column(String(255), nullable=True)
     proteomics_set = Column(Integer, nullable=False, default=0)
@@ -1852,3 +1852,52 @@ class GenomicP2Raw(Base):
     analysis_report_path = Column(String(255), nullable=True)
     kit_type = Column(String(255), nullable=True)
     notes = Column(String(1028), nullable=True)
+
+
+class GenomicRNA(Base):
+    """
+    Used for storing the member records that are being
+    sequenced in the Proteomics pipeline
+    """
+
+    __tablename__ = "genomic_rna"
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"), nullable=False, index=True)
+    biobank_id = Column(String(128), nullable=False, index=True)
+    sample_id = Column(String(80), nullable=True, index=True)
+    genome_type = Column(String(80), nullable=False)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+    r_site_id = Column(String(255), nullable=True)
+    rna_set = Column(Integer, nullable=False, default=0)
+    created_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"), nullable=True)
+
+
+event.listen(GenomicRNA, 'before_insert', model_insert_listener)
+event.listen(GenomicRNA, 'before_update', model_update_listener)
+
+
+class GenomicRRRaw(Base):
+    """
+    Raw data from RR files
+    """
+    __tablename__ = 'genomic_rr_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    r_site_id = Column(String(255), nullable=True)
+
+
+event.listen(GenomicRRRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicRRRaw, 'before_update', model_update_listener)

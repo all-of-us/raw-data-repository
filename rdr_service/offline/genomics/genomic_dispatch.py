@@ -6,7 +6,7 @@ from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult
 from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicPRRaw, GenomicP0Raw, GenomicW1ILRaw, \
     GenomicW2SCRaw, GenomicW2WRaw, GenomicW3NSRaw, GenomicW3SCRaw, GenomicW3SRRaw, GenomicW3SSRaw, GenomicW4WRRaw, \
-    GenomicW5NFRaw, GenomicAW4Raw, GenomicAW3Raw, GenomicP1Raw, GenomicP2Raw
+    GenomicW5NFRaw, GenomicAW4Raw, GenomicAW3Raw, GenomicP1Raw, GenomicP2Raw, GenomicRRRaw
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -99,14 +99,22 @@ def load_manifest_into_raw_table(
         "p2": {
             'job_id': GenomicJob.LOAD_P2_TO_RAW_TABLE,
             'model': GenomicP2Raw
-        }}
+        }
+    }
+    rna_raw_map = {
+        "rr": {
+            'job_id': GenomicJob.LOAD_RR_TO_RAW_TABLE,
+            'model': GenomicRRRaw
+        }
+    }
 
     try:
         raw_jobs_map = {
             **short_read_raw_map,
             **long_read_raw_map,
             **cvl_raw_map,
-            **pr_raw_map
+            **pr_raw_map,
+            **rna_raw_map
         }[manifest_type]
 
         with GenomicJobController(
@@ -149,7 +157,8 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.LR_LR_WORKFLOW,
         GenomicJob.PR_PR_WORKFLOW,
         GenomicJob.PR_P1_WORKFLOW,
-        GenomicJob.PR_P2_WORKFLOW
+        GenomicJob.PR_P2_WORKFLOW,
+        GenomicJob.RNA_RR_WORKFLOW,
     )
 
     if _task_data.job in ingestion_workflows:
