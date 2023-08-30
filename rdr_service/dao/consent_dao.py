@@ -60,7 +60,8 @@ class ConsentDao(BaseDao):
                     ConsentFile.participant_id == QuestionnaireResponse.participantId
                 )
             ).filter(
-                ConsentFile.id.is_(None)
+                ConsentFile.id.is_(None),
+                Participant.participantOrigin != 'configurator'
             ).options(
                 joinedload(ConsentResponse.response)
             )
