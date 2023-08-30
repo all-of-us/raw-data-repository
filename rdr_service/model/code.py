@@ -70,6 +70,9 @@ class _CodeBase(object):
     def parentId(cls):
         return Column("parent_id", Integer, ForeignKey("code.code_id"))
 
+    def value_matches(self, value: str):
+        return self.value and self.value.lower() == value
+
 
 class Code(_CodeBase, Base):
     """A code for a module, question, or answer.

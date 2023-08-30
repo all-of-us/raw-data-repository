@@ -46,6 +46,7 @@ VA_PRIMARY_RECONSENT_C3_QUESTION = 'vaprimaryreconsent_c3_agree'
 NON_VA_PRIMARY_RECONSENT_QUESTION = 'nonvaprimaryreconsent_agree'
 ETM_CONSENT_QUESTION_CODE = 'etm_consent'
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
+CONSENT_QUESTION_CODE = 'extraconsent_consent'
 
 GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
 RACE_QUESTION_CODE = "Race_WhatRaceEthnicity"
@@ -116,6 +117,8 @@ CONSENT_PERMISSION_NO_CODE = "ConsentPermission_No"
 CONSENT_PERMISSION_NOT_SURE = "ConsentPermission_NotSure"
 EHR_CONSENT_EXPIRED_YES = "EHRConsentPII_ConsentExpired_Yes"
 SENSITIVE_EHR_YES = "sensitivetype2__agree"
+EXTRA_CONSENT_YES = 'extraconsent_agreetoconsent'
+EXTRA_CONSENT_NO = 'extraconsent_donotagreetoconsent'
 
 # Consent GROR Answer Codes
 CONSENT_GROR_YES_CODE = "CheckDNA_Yes"

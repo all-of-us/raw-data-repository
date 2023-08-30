@@ -30,6 +30,9 @@ from rdr_service.code_constants import (
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
     CONSENT_PERMISSION_YES_CODE,
+    CONSENT_QUESTION_CODE,
+    EXTRA_CONSENT_YES,
+    EXTRA_CONSENT_NO,
     SENSITIVE_EHR_YES,
     DATE_OF_BIRTH_QUESTION_CODE,
     DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -511,7 +514,8 @@ class QuestionnaireResponseDao(BaseDao):
             session.merge(answer)
 
         summary = ParticipantSummaryDao().get_for_update(session, questionnaire_response.participantId)
-        ParticipantSummaryDao().update_enrollment_status(summary, session=session)
+        if summary:
+            ParticipantSummaryDao().update_enrollment_status(summary, session=session)
 
         return questionnaire_response
 
@@ -706,7 +710,11 @@ class QuestionnaireResponseDao(BaseDao):
 
         code_ids.extend([concept.codeId for concept in questionnaire_history.concepts])
 
+        # Fetch the codes for all questions and concepts
         code_dao = CodeDao()
+        codes = code_dao.get_with_ids(code_ids)
+        code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
+        question_map = {question.questionnaireQuestionId: question for question in questions}
 
         something_changed = False
         module_changed = False
@@ -715,10 +723,23 @@ class QuestionnaireResponseDao(BaseDao):
             consent_code = code_dao.get_code(PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE)
             if not consent_code:
                 raise BadRequest("No study enrollment consent code found; import codebook.")
-            if not consent_code.codeId in code_ids:
+
+            # Should only be receiving primary consent responses when there isn't yet a participant summary
+            is_primary_consent = consent_code.codeId in code_ids
+            if not is_primary_consent:
                 raise BadRequest(
                     f"Can't submit order for participant {questionnaire_response.participantId} without consent"
                 )
+
+            # Only generate a participant summary if the response indicates consent was given
+            if not self._response_provides_primary_consent(
+                answers=questionnaire_response.answers,
+                question_map=question_map,
+                code_map=code_map,
+                code_dao=code_dao
+            ):
+                return
+
             if not _validate_consent_pdfs(resource_json):
                 raise BadRequest(
                     f"Unable to find signed consent-for-enrollment file for participant"
@@ -726,10 +747,6 @@ class QuestionnaireResponseDao(BaseDao):
             participant_summary = ParticipantDao.create_summary_for_participant(participant)
             something_changed = True
 
-        # Fetch the codes for all questions and concepts
-        codes = code_dao.get_with_ids(code_ids)
-        code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
-        question_map = {question.questionnaireQuestionId: question for question in questions}
         race_code_ids = []
         gender_code_ids = []
         ehr_consent = False
@@ -1610,6 +1627,26 @@ class QuestionnaireResponseDao(BaseDao):
                         break
 
         return matched_response_id
+
+    @classmethod
+    def _response_provides_primary_consent(cls, answers, question_map, code_map, code_dao):
+        for answer in answers:
+            question = question_map.get(answer.questionId)
+            question_code: Code = code_map.get(question.codeId)
+
+            if question_code and question_code.value_matches(CONSENT_QUESTION_CODE):
+                answer_code: Code = code_dao.get(answer.valueCodeId)
+                if answer_code.value_matches(EXTRA_CONSENT_YES):
+                    return True
+                elif answer_code.value_matches(EXTRA_CONSENT_NO):
+                    return False
+                else:
+                    logging.error(f'Unexpected consent answer "{answer_code.value}"')
+                    raise BadRequest('Invalid consent response')
+
+        # At this point, we haven't seen the consent response question. So continue with original behavior
+        # of assuming consent because of the response
+        return True
 
 
 def _validate_consent_pdfs(resource):

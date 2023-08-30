@@ -9,9 +9,13 @@ from sqlalchemy import or_
 from sqlalchemy.orm.session import make_transient
 
 from rdr_service.clock import FakeClock
+from rdr_service.concepts import Concept
 from rdr_service import config
-from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, PPI_SYSTEM, \
-    CONSENT_PERMISSION_NO_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_TRANSGENDER_CODE
+from rdr_service.code_constants import (
+    CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, CONSENT_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
+    EMAIL_QUESTION_CODE, EXTRA_CONSENT_NO, EXTRA_CONSENT_YES, FIRST_NAME_QUESTION_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE,
+    GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE, PPI_SYSTEM
+)
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao, \
     ParticipantSummaryDao
@@ -22,6 +26,7 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao, QuestionnaireResponseDao
 from rdr_service.model.code import Code
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
+from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
 from rdr_service.model.measurements import PhysicalMeasurements
@@ -1877,6 +1882,92 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(TIME_2.isoformat(), summary['questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored'])
         self.assertEqual(TIME_3.isoformat(), summary['questionnaireOnBehavioralHealthAndPersonalityTime'])
         self.assertEqual(TIME_3.isoformat(), summary['questionnaireOnEmotionalHealthHistoryAndWellBeingTime'])
+
+    def test_explicit_primary_consent_answers(self):
+        primary_consent_module_code = self.data_generator.create_database_code(
+            system=PPI_SYSTEM,
+            value=CONSENT_FOR_STUDY_ENROLLMENT_MODULE
+        )
+        consent_question_code = self.data_generator.create_database_code(value=CONSENT_QUESTION_CODE)
+        first_name_code = self.data_generator.create_database_code(value=FIRST_NAME_QUESTION_CODE)
+        last_name_code = self.data_generator.create_database_code(value=LAST_NAME_QUESTION_CODE)
+        email_code = self.data_generator.create_database_code(value=EMAIL_QUESTION_CODE)
+
+        # Set up questionnaire, inserting through DAO to get history to generate as well
+        questionnaire = self.data_generator._questionnaire()
+        questionnaire.concepts = [
+            QuestionnaireConcept(codeId=primary_consent_module_code.codeId)
+        ]
+        for link_id, code in {
+            'consent_question': consent_question_code,
+            'first_name': first_name_code,
+            'last_name': last_name_code,
+            'email': email_code
+        }.items():
+            question = self.data_generator._questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                linkId=link_id,
+                codeId=code.codeId
+            )
+            questionnaire.questions.append(question)
+
+        questionnaire_dao = QuestionnaireDao()
+        questionnaire_dao.insert(questionnaire)
+
+
+        # Create and send response of a participant providing consent
+        consented_participant = self.data_generator.create_database_participant()
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            consented_participant.participantId,
+            questionnaire.questionnaireId,
+            string_answers=[
+                ('first_name', 'bob'),
+                ('last_name', 'foo'),
+                ('email', 'test@net.com')
+            ],
+            code_answers=[
+                ('consent_question', Concept(code=EXTRA_CONSENT_YES, system='test'))
+            ]
+        )
+        response = self.send_post(
+            f'Participant/P{consented_participant.participantId}/QuestionnaireResponse', questionnaire_response_json
+        )
+
+        # Verify that the summary was created, and that the response was stored
+        self.assertIsNotNone(
+            self.session.query(ParticipantSummary).filter(
+                ParticipantSummary.participantId == consented_participant.participantId
+            ).one_or_none()
+        )
+        stored_response = self.session.query(QuestionnaireResponse).filter(
+            QuestionnaireResponse.participantId == consented_participant.participantId
+        ).one()
+        self.assertEqual(response['id'], str(stored_response.questionnaireResponseId))
+
+        # Create and send response of a participant that does not provide consent
+        no_participant = self.data_generator.create_database_participant()
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            no_participant.participantId,
+            questionnaire.questionnaireId,
+            code_answers=[
+                ('consent_question', Concept(code=EXTRA_CONSENT_NO, system='test'))
+            ]
+        )
+        response = self.send_post(
+            f'Participant/P{no_participant.participantId}/QuestionnaireResponse', questionnaire_response_json
+        )
+
+        # Verify that the summary was NOT created, but that the response was still stored
+        self.assertIsNone(
+            self.session.query(ParticipantSummary).filter(
+                ParticipantSummary.participantId == no_participant.participantId
+            ).one_or_none()
+        )
+        stored_response = self.session.query(QuestionnaireResponse).filter(
+            QuestionnaireResponse.participantId == no_participant.participantId
+        ).one()
+        self.assertEqual(response['id'], str(stored_response.questionnaireResponseId))
 
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
