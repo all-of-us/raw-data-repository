@@ -83,7 +83,7 @@ from rdr_service.config import (
     CVL_W1IL_PGX_MANIFEST_SUBFOLDER,
     CVL_W2W_MANIFEST_SUBFOLDER,
     CVL_W3SR_MANIFEST_SUBFOLDER,
-    LR_L0_MANIFEST_SUBFOLDER, PR_P0_MANIFEST_SUBFOLDER
+    LR_L0_MANIFEST_SUBFOLDER, PR_P0_MANIFEST_SUBFOLDER, RNA_R0_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
@@ -2810,6 +2810,7 @@ class ManifestDefinitionProvider:
         self.query_dao = GenomicQueriesDao()
         self.long_read_dao = GenomicLongReadDao()
         self.pr_dao = GenomicPRDao()
+        self.rna_dao = GenomicRNADao()
 
         self.manifest_columns_config = {
             GenomicManifestTypes.GEM_A1: (
@@ -2990,6 +2991,16 @@ class ManifestDefinitionProvider:
                 'ai_an',
                 'p_site_id',
             ),
+            GenomicManifestTypes.RNA_R0: (
+                'biobank_id',
+                'collection_tube_id',
+                'sex_at_birth',
+                'genome_type',
+                'ny_flag',
+                'validation_passed',
+                'ai_an',
+                'r_site_id',
+            ),
         }
 
     def _get_source_data_query(self, manifest_type):
@@ -3096,6 +3107,12 @@ class ManifestDefinitionProvider:
                     f'-{now_formatted}.csv',
                 'query': self.pr_dao.get_zero_manifest_records_from_max_set
             },
+            GenomicManifestTypes.RNA_R0: {
+                'output_filename':
+                    f'{RNA_R0_MANIFEST_SUBFOLDER}/RNASeq-Manifest-AoU-{self.kwargs.get("rna_max_set")}'
+                    f'-{now_formatted}.csv',
+                'query': self.rna_dao.get_zero_manifest_records_from_max_set
+            },
         }
         def_config = def_config.get(manifest_type)
         return self.ManifestDef(
@@ -3152,7 +3169,8 @@ class ManifestCompiler:
         def _extract_member_ids_update(obj_list: List[dict]) -> List[int]:
             if self.controller.job_id in [
                 GenomicJob.LR_L0_WORKFLOW,
-                GenomicJob.PR_P0_WORKFLOW
+                GenomicJob.PR_P0_WORKFLOW,
+                GenomicJob.RNA_R0_WORKFLOW
             ]:
                 return []
 

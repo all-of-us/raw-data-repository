@@ -4875,7 +4875,31 @@ class GenomicRNADao(GenomicSubDao):
         ).subquery()
 
     def get_zero_manifest_records_from_max_set(self):
-        ...
+        with self.session() as session:
+            return session.query(
+                func.concat(get_biobank_id_prefix(), GenomicRNA.biobank_id),
+                GenomicSetMember.collectionTubeId,
+                GenomicSetMember.sexAtBirth,
+                GenomicRNA.genome_type,
+                func.IF(GenomicSetMember.nyFlag == 1,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("N")).label('ny_flag'),
+                func.IF(GenomicSetMember.validationStatus == 1,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("N")).label('validation_passed'),
+                GenomicSetMember.ai_an,
+                GenomicRNA.r_site_id,
+            ).join(
+                GenomicSetMember,
+                and_(
+                    GenomicSetMember.id == GenomicRNA.genomic_set_member_id,
+                    GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                    GenomicSetMember.ignoreFlag != 1
+                )
+            ).filter(
+                GenomicRNA.rna_set ==
+                self.get_max_set_subquery().c.rna_set
+            ).distinct().all()
 
     def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
         ...

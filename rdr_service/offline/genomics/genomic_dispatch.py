@@ -6,7 +6,7 @@ from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult
 from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicPRRaw, GenomicP0Raw, GenomicW1ILRaw, \
     GenomicW2SCRaw, GenomicW2WRaw, GenomicW3NSRaw, GenomicW3SCRaw, GenomicW3SRRaw, GenomicW3SSRaw, GenomicW4WRRaw, \
-    GenomicW5NFRaw, GenomicAW4Raw, GenomicAW3Raw, GenomicP1Raw, GenomicP2Raw, GenomicRRRaw
+    GenomicW5NFRaw, GenomicAW4Raw, GenomicAW3Raw, GenomicP1Raw, GenomicP2Raw, GenomicRRRaw, GenomicR0Raw
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -105,6 +105,10 @@ def load_manifest_into_raw_table(
         "rr": {
             'job_id': GenomicJob.LOAD_RR_TO_RAW_TABLE,
             'model': GenomicRRRaw
+        },
+        "r0": {
+            'job_id': GenomicJob.LOAD_RO_TO_RAW_TABLE,
+            'model': GenomicR0Raw
         }
     }
 
