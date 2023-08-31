@@ -1517,11 +1517,19 @@ class QuestionnaireResponseDao(BaseDao):
         return [result_row.participantId for result_row in query.all()]
 
     @classmethod
-    def get_latest_answer_to_question(cls, session: Session, participant_id, question_code_value) -> str:
+    def get_answers_to_question(cls, session: Session, participant_id, question_code_value, latest_only=False):
+        """
+        Return a result row or rows with the answer code value strings and authored times to the specified question code
+        Results are ordered by most recently authored first
+        :param session: Session object for query
+        :param participant_id:  Filter for this participant's responses
+        :param question_code_value: The question code value string to search for available answers
+        :param latest_only: When True, return only the most recently authored answer result
+        """
         answer_code = aliased(Code)
         question_code = aliased(Code)
         query = (
-            session.query(answer_code.value)
+            session.query(answer_code.value, QuestionnaireResponse.authored)
             .select_from(QuestionnaireResponse)
             .join(QuestionnaireResponseAnswer)
             .join(QuestionnaireQuestion)
@@ -1536,27 +1544,46 @@ class QuestionnaireResponseDao(BaseDao):
                 answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId
             )
             .order_by(QuestionnaireResponse.authored.desc())
-            .filter(QuestionnaireResponse.participantId == participant_id)
-            .limit(1)
-        )
+            .filter(QuestionnaireResponse.participantId == participant_id))
 
-        return query.scalar()
+        if latest_only:
+            query = query.limit(1)
+            return query.one()
+
+        else:
+            return query.all()
+
+    @classmethod
+    def get_latest_answer_to_question(cls, session: Session, participant_id, question_code_value):
+        """
+        Return a result row with the answer code value string and authored time of the most recently authored
+        answer to the specified question code
+        """
+        return cls.get_answers_to_question(session, participant_id, question_code_value, latest_only=True)
 
     @classmethod
     def get_latest_answer_for_state_of_residence(cls, session: Session, participant_id) -> str:
-        return cls.get_latest_answer_to_question(
+        """
+        Return the most recently authored answer code value string for the StreetAddressPIIState question code
+        """
+        answer = cls.get_latest_answer_to_question(
             session=session,
             participant_id=participant_id,
             question_code_value=code_constants.STATE_QUESTION_CODE
         )
+        return answer.value
 
     @classmethod
     def get_latest_answer_for_state_receiving_care(cls, session: Session, participant_id) -> str:
-        return cls.get_latest_answer_to_question(
+        """
+        Return the most recently authored answer code value string for the ReceiveCarePIIState question code
+        """
+        answer = cls.get_latest_answer_to_question(
             session=session,
             participant_id=participant_id,
             question_code_value=code_constants.RECEIVE_CARE_STATE
         )
+        return answer.value
 
     @classmethod
     def _code_in_list(cls, code_value: str, code_list: List[str]):

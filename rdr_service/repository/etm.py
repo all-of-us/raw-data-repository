@@ -169,4 +169,6 @@ class EtmResponseRepository(BaseRepository):
                 schema_model.EtmQuestionnaireResponse.questionnaire_type.in_(task_types)
             )
 
+        etm_response_query = etm_response_query.order_by(schema_model.EtmQuestionnaireResponse.authored)
+
         return etm_response_query.all()

@@ -127,6 +127,7 @@ COHORT_1_REVIEW_CONSENT_YES_CODE = "ReviewConsentAgree_Yes"
 COHORT_1_REVIEW_CONSENT_NO_CODE = "ReviewConsentAgree_No"
 
 WEAR_YES_ANSWER_CODE = "wear_yes"
+WEAR_NO_ANSWER_CODE = "wear_no"
 
 # Cohort Group Code
 CONSENT_COHORT_GROUP_CODE = "ConsentPII_CohortGroup"
@@ -226,7 +227,7 @@ APPLE_HEALTH_KIT_STOP_SHARING_MODULE = "participantintendstostopsharingappleheal
 FITBIT_SHARING_MODULE = "participantintendstosharefitbit"
 FITBIT_STOP_SHARING_MODULE = "participantintendstostopsharingfitbit"
 
-# General response answer codes
+# General response answer codes (used for EtM consent yes/no responses)
 AGREE_YES = "agree_yes"
 AGREE_NO = "agree_no"
 

@@ -10,6 +10,7 @@ from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (
     COHORT_1_REVIEW_CONSENT_NO_CODE,
     COHORT_1_REVIEW_CONSENT_YES_CODE,
+    COPE_CONSENT_QUESTION_CODE,
     CONSENT_COPE_DEFERRED_CODE,
     CONSENT_COPE_NO_CODE,
     CONSENT_COPE_YES_CODE,
@@ -693,7 +694,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
 
         # Send the consent, making it look like any necessary cloud files exist (for primary consent)
         with mock.patch('rdr_service.dao.questionnaire_response_dao._raise_if_gcloud_file_missing', return_value=True):
-            self.questionnaire_response_dao.insert(response)
+            return self.questionnaire_response_dao.insert(response)
 
     def _setup_participant(self):
         self._setup_questionnaire()
@@ -764,7 +765,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
 
             qr.answers.extend([answer])
 
-        self._insert_questionnaire_response(qr)
+        return self._insert_questionnaire_response(qr)
 
     def test_cope_updates_num_completed(self):
         self.insert_codes()
@@ -1660,6 +1661,37 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
         )
 
         return questionnaire
+
+    def test_find_answers_to_question_code(self):
+        """
+        Tests refactored utility routines in QuestionnaireResponseDao to retrieve answers to specific question code
+        """
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        self.participant_dao.insert(p)
+
+        self._setup_participant()
+        self._create_cope_questionnaire(identifier='Form_13')
+
+        earliest_authored_ts = datetime.datetime(2020, 5, 5, 12, 0, 0)
+        latest_authored_ts = datetime.datetime(2020, 5, 5, 15, 0, 0)
+
+        qr_id_1 = self._submit_questionnaire_response(self.cope_consent_yes,
+                                                      authored_datetime=earliest_authored_ts)
+        qr_id_2 = self._submit_questionnaire_response(self.cope_consent_no,
+                                                      authored_datetime=latest_authored_ts)
+
+        self.assertNotEqual(qr_id_1.questionnaireResponseId, qr_id_2.questionnaireResponseId)
+        dao = QuestionnaireResponseDao()
+        with dao.session() as session:
+            result = dao.get_latest_answer_to_question(session, p.participantId, COPE_CONSENT_QUESTION_CODE)
+            self.assertEqual(result.value, CONSENT_COPE_NO_CODE)
+            answer_vals = dao.get_answers_to_question(session, p.participantId, COPE_CONSENT_QUESTION_CODE)
+            self.assertEqual(len(answer_vals), 2)
+            self.assertEqual(answer_vals[0].value, CONSENT_COPE_NO_CODE)
+            self.assertEqual(answer_vals[0].authored, latest_authored_ts)
+            self.assertEqual(answer_vals[1].value, CONSENT_COPE_YES_CODE)
+            self.assertEqual(answer_vals[1].authored, earliest_authored_ts)
 
 
 class QuestionnaireResponseDaoCloudCheckTest(BaseTestCase):

@@ -155,7 +155,13 @@ class RetentionCalculationTest(BaseTestCase):
         remote_pm_authored: datetime = None,
         life_func_authored: datetime = None,
         reconsent_authored: datetime = None,
-        gror_authored: datetime = None
+        gror_authored: datetime = None,
+        etm_consent_yes_authored: datetime = None,
+        wear_consent_yes_authored: datetime = None,
+        nph_consent_yes_authored: datetime = None,
+        ehhwb_authored: datetime = None,
+        bhp_authored: datetime = None,
+        latest_etm_task_authored: datetime = None
     ) -> RetentionEligibilityDependencies:
         default_data = RetentionEligibilityDependencies(
             primary_consent=Consent(
@@ -181,7 +187,13 @@ class RetentionCalculationTest(BaseTestCase):
             remote_pm_response_timestamp=remote_pm_authored,
             life_func_response_timestamp=life_func_authored,
             reconsent_response_timestamp=reconsent_authored,
-            gror_response_timestamp=gror_authored
+            gror_response_timestamp=gror_authored,
+            nph_consent_timestamp=nph_consent_yes_authored,
+            etm_consent_timestamp=etm_consent_yes_authored,
+            wear_consent_timestamp=wear_consent_yes_authored,
+            ehhwb_response_timestamp=ehhwb_authored,
+            bhp_response_timestamp=bhp_authored,
+            latest_etm_response_timestamp=latest_etm_task_authored
         )
         if first_ehr_authored is not None:
             default_data.first_ehr_consent = Consent(

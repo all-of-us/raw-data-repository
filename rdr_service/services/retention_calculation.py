@@ -91,6 +91,12 @@ class RetentionEligibility:
             or self._is_less_than_18_months_ago(self._participant.latest_cope_response_timestamp)
             or self._is_less_than_18_months_ago(self._participant.remote_pm_response_timestamp)
             or self._is_less_than_18_months_ago(self._participant.life_func_response_timestamp)
+            or self._is_less_than_18_months_ago(self._participant.bhp_response_timestamp)
+            or self._is_less_than_18_months_ago(self._participant.ehhwb_response_timestamp)
+            or self._is_less_than_18_months_ago(self._participant.nph_consent_timestamp)
+            or self._is_less_than_18_months_ago(self._participant.wear_consent_timestamp)
+            or self._is_less_than_18_months_ago(self._participant.etm_consent_timestamp)
+            or self._is_less_than_18_months_ago(self._participant.latest_etm_response_timestamp)
             or (
                 self._participant.consent_cohort in [ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2]
                 and self._is_less_than_18_months_ago(self._participant.gror_response_timestamp)
@@ -113,7 +119,13 @@ class RetentionEligibility:
             self._participant.sdoh_response_timestamp,
             self._participant.latest_cope_response_timestamp,
             self._participant.remote_pm_response_timestamp,
-            self._participant.life_func_response_timestamp
+            self._participant.life_func_response_timestamp,
+            self._participant.bhp_response_timestamp,
+            self._participant.ehhwb_response_timestamp,
+            self._participant.nph_consent_timestamp,
+            self._participant.wear_consent_timestamp,
+            self._participant.etm_consent_timestamp,
+            self._participant.latest_etm_response_timestamp
         ]
 
         if self._participant.consent_cohort in [ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2]:
