@@ -11,8 +11,7 @@
 **/lib
 **/bin
 **/venv
-**/venv37
-**/venv39
+**/venv*
 **/.DS_Store
 
 **/.idea
