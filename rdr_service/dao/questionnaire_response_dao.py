@@ -1571,7 +1571,7 @@ class QuestionnaireResponseDao(BaseDao):
             participant_id=participant_id,
             question_code_value=code_constants.STATE_QUESTION_CODE
         )
-        return answer.value
+        return answer.value if answer else None
 
     @classmethod
     def get_latest_answer_for_state_receiving_care(cls, session: Session, participant_id) -> str:
@@ -1583,7 +1583,7 @@ class QuestionnaireResponseDao(BaseDao):
             participant_id=participant_id,
             question_code_value=code_constants.RECEIVE_CARE_STATE
         )
-        return answer.value
+        return answer.value if answer else None
 
     @classmethod
     def _code_in_list(cls, code_value: str, code_list: List[str]):

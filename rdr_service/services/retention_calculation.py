@@ -37,7 +37,7 @@ class RetentionEligibilityDependencies:
     reconsent_response_timestamp:           Optional[datetime]  # Cohort 1 reconsent to primary consent
     gror_response_timestamp:                Optional[datetime]
 
-    # Additional elements from DA-3507
+    # Additional elements from DA-3705
     nph_consent_timestamp:                  Optional[datetime]
     etm_consent_timestamp:                  Optional[datetime]
     wear_consent_timestamp:                 Optional[datetime]
