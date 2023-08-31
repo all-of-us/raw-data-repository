@@ -69,7 +69,7 @@ class ModuleLookupEnum(enum.Enum):
 
 _consent_module_question_map = {
     # { module: question code string }
-    'ConsentPII': None,
+    'ConsentPII': 'extraconsent_consent',
     'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
     'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
     'GROR': 'ResultsConsent_CheckDNA',
@@ -128,7 +128,9 @@ _consent_answer_status_map = {
     # Generic yes/no answer codes that apply to multiple consents (e.g., VA/non-VA reconsents and EtM consents)
     'agree_yes': BQModuleStatusEnum.SUBMITTED,
     'agree_no': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
-
+    # For the updated ConsentPII that allows yes or no reponses
+    'extraconsent_agreetoconsent': BQModuleStatusEnum.SUBMITTED,
+    'extraconsent_donotagreetoconsent': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
 }
 
 # PDR-252:  When RDR starts accepting QuestionnaireResponse payloads for withdrawal screens, AIAN participants
@@ -634,7 +636,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # PDR-178:  Retrieve both the processed (layered) answers result, and the raw responses. This allows us to
         # do some extra processing of the ConsentPII data without having to query all over again.
         qnans, responses = self.get_module_answers(self.ro_dao, 'ConsentPII', p_id, return_responses=True)
-        if not qnans:
+
+        # PDR-2031:  Newer ConsentPII may have extraconsent_consent question code now with a "no" answer
+        if not qnans or ('extraconsent_consent' in qnans and \
+                         qnans['extraconsent_consent'] == 'extraconsent_donotagreetoconsent'):
             # return the minimum data required when we don't have the questionnaire data.
             return { 'is_ghost_id': 0}
 
@@ -851,9 +856,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                                 and module_status not in (BQModuleStatusEnum.SUBMITTED_NOT_VALIDATED,
                                                           BQModuleStatusEnum.SUBMITTED_INVALID)
                         ):
-                            activity.append(_act(row.authored, ActivityGroupEnum.QuestionnaireModule, en, **mod_ca))
-                            mod_found = True
-                            break
+                            # PDR-2031 Exclude ConsentPII activity/events if the status is SUBMITTED_NO_CONSENT
+                            if not (module_name == 'ConsentPII' and
+                                    module_status == BQModuleStatusEnum.SUBMITTED_NO_CONSENT):
+                                activity.append(_act(row.authored, ActivityGroupEnum.QuestionnaireModule, en, **mod_ca))
+                                mod_found = True
+                                break
+
                     if mod_found is False:
                         # The participant's module history often contains modules we aren't explicitly tracking as a
                         # ParticipantActivity yet.  Downgrade log message to debug to avoid noisy warnings
@@ -1667,9 +1676,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                   answer_code:  answer code string value
                   consent_status:  BQModuleStatusEnum
         """
-        if module in _consent_module_question_map and _consent_module_question_map[module] is None:
-            # Defaults when a consent like ConsentPII doesn't have explicit consent question (implied "yes")
-            return 'ConsentPermission_Yes', BQModuleStatusEnum.SUBMITTED
+        if module in _consent_module_question_map:
+            # PDR-2031: "or" clause here will fall back to original ConsentPII behavior of an implied "yes", since older
+            # ConsentPII responses will not contain the configured consent question, but newer consents will
+            if _consent_module_question_map[module] is None or \
+                    (module == 'ConsentPII' and not hasattr(response_rec, _consent_module_question_map[module])):
+                return 'ConsentPermission_Yes', BQModuleStatusEnum.SUBMITTED
 
         answer_code = None
 
