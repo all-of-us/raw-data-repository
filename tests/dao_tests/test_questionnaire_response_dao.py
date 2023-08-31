@@ -1676,16 +1676,26 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
         earliest_authored_ts = datetime.datetime(2020, 5, 5, 12, 0, 0)
         latest_authored_ts = datetime.datetime(2020, 5, 5, 15, 0, 0)
 
-        qr_id_1 = self._submit_questionnaire_response(self.cope_consent_yes,
-                                                      authored_datetime=earliest_authored_ts)
-        qr_id_2 = self._submit_questionnaire_response(self.cope_consent_no,
-                                                      authored_datetime=latest_authored_ts)
-
-        self.assertNotEqual(qr_id_1.questionnaireResponseId, qr_id_2.questionnaireResponseId)
         dao = QuestionnaireResponseDao()
         with dao.session() as session:
+            # Confirm checking for answers that do not exist yet will not raise any exception
+            result = dao.get_latest_answer_to_question(session, p.participantId, COPE_CONSENT_QUESTION_CODE)
+            self.assertIsNone(result)
+
+            qr_id_1 = self._submit_questionnaire_response(self.cope_consent_yes,
+                                                          authored_datetime=earliest_authored_ts)
+            qr_id_2 = self._submit_questionnaire_response(self.cope_consent_no,
+                                                          authored_datetime=latest_authored_ts)
+            session.commit()
+
+            self.assertTrue(None not in [qr_id_1, qr_id_2])
+            self.assertNotEqual(qr_id_1.questionnaireResponseId, qr_id_2.questionnaireResponseId)
+
+            # Verify the most recent response's answer code is returned
             result = dao.get_latest_answer_to_question(session, p.participantId, COPE_CONSENT_QUESTION_CODE)
             self.assertEqual(result.value, CONSENT_COPE_NO_CODE)
+
+            # Verify both of the responses' answer codes returned (ordered by most recently authored first)
             answer_vals = dao.get_answers_to_question(session, p.participantId, COPE_CONSENT_QUESTION_CODE)
             self.assertEqual(len(answer_vals), 2)
             self.assertEqual(answer_vals[0].value, CONSENT_COPE_NO_CODE)

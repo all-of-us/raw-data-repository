@@ -1548,7 +1548,7 @@ class QuestionnaireResponseDao(BaseDao):
 
         if latest_only:
             query = query.limit(1)
-            return query.one()
+            return query.one_or_none()
 
         else:
             return query.all()
