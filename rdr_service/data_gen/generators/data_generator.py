@@ -31,6 +31,7 @@ from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireHistory, \
     QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer, QuestionnaireResponse
+from rdr_service.model.etm import EtmQuestionnaire, EtmQuestionnaireResponse
 from rdr_service.model.site import Site
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
 from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
@@ -51,6 +52,7 @@ class DataGenerator:
         self._next_unique_biobank_order_id = 100000000
         self._next_unique_biobank_stored_sample_id = 800000000
         self._next_unique_questionnaire_response_id = 500000000
+        self._next_unique_etm_questionnaire_response_id = 300000000
 
         # Set placeholders for withdrawal survey questionnaires
         self.withdrawal_questionnaire = None
@@ -179,6 +181,53 @@ class DataGenerator:
 
         return QuestionnaireQuestion(**kwargs)
 
+    def create_database_etm_questionnaire(self, **kwargs):
+        etm_questionnaire = self._etm_questionnaire(**kwargs)
+        self._commit_to_database(etm_questionnaire)
+        return etm_questionnaire
+
+    @staticmethod
+    def _etm_questionnaire(**kwargs):
+        for field, default in [('version', 1),
+                               ('created', datetime.now()),
+                               ('modified', datetime.now()),
+                               ('questionnaire_type', 'emorecog'),
+                               ('semantic_version', 'version 1'),
+                               ('title', 'Test ETM module'),
+                               ('resource', '{"version": 1}')]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        return EtmQuestionnaire(**kwargs)
+
+    def create_etm_questionnaire_response(self, **kwargs):
+        etm_questionnaire_response = self._etm_questionnaire_response(**kwargs)
+        self._commit_to_database(etm_questionnaire_response)
+        return etm_questionnaire_response
+
+    def _etm_questionnaire_response(self, **kwargs):
+        for field, default in [('created', datetime.now()),
+                               ('modified', datetime.now()),
+                               ('authored', datetime(2023, 1, 1)),
+                               ('resource', '{}'),
+                               ('questionnaire_type', 'emorecog'),
+                               ('status', QuestionnaireResponseStatus.COMPLETED),
+                               ('version', 1)]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        if 'etm_questionnaire_response_id' not in kwargs:
+            kwargs['etm_questionnaire_response_id'] = self.unique_etm_questionnaire_response_id()
+        if 'etm_questionnaire_id' not in kwargs:
+            etm_questionnaire = self.create_database_etm_questionnaire()
+            kwargs['etm_questionnaire_id'] = etm_questionnaire.etm_questionnaire_id
+            kwargs['version'] = etm_questionnaire.version
+        if 'participant_id' not in kwargs:
+            participant = self.create_database_participant()
+            kwargs['participant_id'] = participant.participantId
+
+        return EtmQuestionnaireResponse(**kwargs)
+
     def unique_participant_id(self):
         next_participant_id = self._next_unique_participant_id
         self._next_unique_participant_id += 1
@@ -213,6 +262,11 @@ class DataGenerator:
         next_questionnaire_response_id = self._next_unique_questionnaire_response_id
         self._next_unique_questionnaire_response_id += 1
         return next_questionnaire_response_id
+
+    def unique_etm_questionnaire_response_id(self):
+        next_etm_questionnaire_resopnse_id = self._next_unique_etm_questionnaire_response_id
+        self._next_unique_etm_questionnaire_response_id += 1
+        return next_etm_questionnaire_resopnse_id
 
     def create_database_site(self, **kwargs):
         site = self._site_with_defaults(**kwargs)

@@ -37,6 +37,14 @@ class RetentionEligibilityDependencies:
     reconsent_response_timestamp:           Optional[datetime]  # Cohort 1 reconsent to primary consent
     gror_response_timestamp:                Optional[datetime]
 
+    # Additional elements from DA-3705
+    nph_consent_timestamp:                  Optional[datetime]
+    etm_consent_timestamp:                  Optional[datetime]
+    wear_consent_timestamp:                 Optional[datetime]
+    ehhwb_response_timestamp:               Optional[datetime]
+    bhp_response_timestamp:                 Optional[datetime]
+    latest_etm_response_timestamp:          Optional[datetime]  # Repeatable EtM task responses, find most recent
+
 
 class RetentionEligibility:
     def __init__(self, participant_data: RetentionEligibilityDependencies):
@@ -83,6 +91,12 @@ class RetentionEligibility:
             or self._is_less_than_18_months_ago(self._participant.latest_cope_response_timestamp)
             or self._is_less_than_18_months_ago(self._participant.remote_pm_response_timestamp)
             or self._is_less_than_18_months_ago(self._participant.life_func_response_timestamp)
+            or self._is_less_than_18_months_ago(self._participant.bhp_response_timestamp)
+            or self._is_less_than_18_months_ago(self._participant.ehhwb_response_timestamp)
+            or self._is_less_than_18_months_ago(self._participant.nph_consent_timestamp)
+            or self._is_less_than_18_months_ago(self._participant.wear_consent_timestamp)
+            or self._is_less_than_18_months_ago(self._participant.etm_consent_timestamp)
+            or self._is_less_than_18_months_ago(self._participant.latest_etm_response_timestamp)
             or (
                 self._participant.consent_cohort in [ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2]
                 and self._is_less_than_18_months_ago(self._participant.gror_response_timestamp)
@@ -105,7 +119,13 @@ class RetentionEligibility:
             self._participant.sdoh_response_timestamp,
             self._participant.latest_cope_response_timestamp,
             self._participant.remote_pm_response_timestamp,
-            self._participant.life_func_response_timestamp
+            self._participant.life_func_response_timestamp,
+            self._participant.bhp_response_timestamp,
+            self._participant.ehhwb_response_timestamp,
+            self._participant.nph_consent_timestamp,
+            self._participant.wear_consent_timestamp,
+            self._participant.etm_consent_timestamp,
+            self._participant.latest_etm_response_timestamp
         ]
 
         if self._participant.consent_cohort in [ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2]:

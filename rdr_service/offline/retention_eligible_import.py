@@ -9,15 +9,18 @@ from rdr_service.clock import CLOCK
 from rdr_service.code_constants import (
     COHORT_1_REVIEW_CONSENT_YES_CODE, COPE_MODULE, COPE_NOV_MODULE, COPE_DEC_MODULE, COPE_FEB_MODULE,
     COPE_VACCINE_MINUTE_1_MODULE_CODE, COPE_VACCINE_MINUTE_2_MODULE_CODE, COPE_VACCINE_MINUTE_3_MODULE_CODE,
-    COPE_VACCINE_MINUTE_4_MODULE_CODE, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE
+    COPE_VACCINE_MINUTE_4_MODULE_CODE, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
+    WEAR_CONSENT_QUESTION_CODE, WEAR_YES_ANSWER_CODE, ETM_CONSENT_QUESTION_CODE, AGREE_YES
 )
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.participant_enums import DeceasedStatus, RetentionType, RetentionStatus, WithdrawalStatus
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
+from rdr_service.repository.etm import EtmResponseRepository
 from rdr_service.services.retention_calculation import Consent, RetentionEligibility, RetentionEligibilityDependencies
 from rdr_service.storage import GoogleCloudStorageCSVReader
 
@@ -263,6 +266,18 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
         logging.error(f'no summary for P{metrics_data.participantId}')
         return
 
+    # For WEAR and EtM consents, need to look for most recent "yes" response only
+    wear_consent_ts = _find_qualifying_response(session, metrics_data.participantId,
+                                                WEAR_CONSENT_QUESTION_CODE, WEAR_YES_ANSWER_CODE)
+    etm_consent_ts = _find_qualifying_response(session, metrics_data.participantId,
+                                               ETM_CONSENT_QUESTION_CODE, AGREE_YES)
+
+    # Get most recent EtM task response (if consented).  Note: prt tasks are not in plan currently, but RDR production
+    # has some unexpected prt payloads from early 2023.  Specify a list of valid tasks so prt data is excluded
+    etm_task_ts = _get_latest_etm_task_response_timestamp(
+        session, metrics_data.participantId, task_types=['GradCPT', 'flanker', 'delaydiscount', 'emorecog']
+    ) if etm_consent_ts else None
+
     dependencies = RetentionEligibilityDependencies(
         primary_consent=Consent(
             is_consent_provided=True,
@@ -288,7 +303,7 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
         family_health_response_timestamp=summary.questionnaireOnFamilyHealthAuthored,
         medical_history_response_timestamp=summary.questionnaireOnMedicalHistoryAuthored,
         fam_med_history_response_timestamp=summary.questionnaireOnPersonalAndFamilyHealthHistoryAuthored,
-        sdoh_response_timestamp=summary.questionnaireOnSocialDeterminantsOfHealthTime,
+        sdoh_response_timestamp=summary.questionnaireOnSocialDeterminantsOfHealthAuthored,
         latest_cope_response_timestamp=_aggregate_response_timestamps(
             session=session,
             participant_id=summary.participantId,
@@ -307,7 +322,14 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
             survey_code_list=[PRIMARY_CONSENT_UPDATE_MODULE],
             aggregate_function=min  # Get the earliest cohort 1 reconsent response
         ),
-        gror_response_timestamp=summary.consentForGenomicsRORAuthored
+        gror_response_timestamp=summary.consentForGenomicsRORAuthored,
+        # Additions for DA-3705 (only NPH module consent info currently available is NPH1)
+        nph_consent_timestamp=summary.consentForNphModule1Authored,
+        etm_consent_timestamp=etm_consent_ts,
+        wear_consent_timestamp=wear_consent_ts,
+        ehhwb_response_timestamp=summary.questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored,
+        bhp_response_timestamp=summary.questionnaireOnBehavioralHealthAndPersonalityAuthored,
+        latest_etm_response_timestamp=etm_task_ts
     )
     retention_data = RetentionEligibility(dependencies)
 
@@ -352,6 +374,29 @@ def _aggregate_response_timestamps(session, participant_id, survey_code_list, ag
 
     # Process the dates (excluding any that might be None)
     return aggregate_function(timestamp for timestamp in revised_consent_time_list if timestamp)
+
+def _find_qualifying_response(session, participant_id: int, q_code: str, ans_code: str) -> Optional[datetime.datetime]:
+    """
+    Search for a specific question_code/answer relevant to RDR retention calculations.
+    For example, a "yes" response to a WEAR or EtM consent is a qualifying activity
+    :param session: Session object
+    :param participant_id:   Participant id (integer)
+    :param q_code:  Question code string value, e.g., code_constants.WEAR_CONSENT_QUESTION_CODE
+    :param ans_code: Answer code string value, e.g., code_constants.WEAR_YES_ANSWER_CODE
+    :returns: The authored time of the response, or None if no match is found
+    """
+    results = QuestionnaireResponseDao.get_answers_to_question(session, participant_id, q_code)
+    # Results are ordered most recently authored first, so return authored from first result w/matching answer value
+    for row in results:
+        if row.value == ans_code:
+            return row.authored
+    return None
+
+def _get_latest_etm_task_response_timestamp(session, participant_id, task_types=None) -> datetime:
+    """ Look for the most recent Exploring the Mind task response for a participant"""
+    etm_responses = EtmResponseRepository.get_etm_responses(session=session, participant_id=participant_id,
+                                                            task_types=task_types)
+    return max(r.authored for r in etm_responses if r.authored) if etm_responses else None
 
 
 class RetentionEligibleMetricCsvColumns(object):
