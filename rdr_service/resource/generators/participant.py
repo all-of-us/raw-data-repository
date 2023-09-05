@@ -133,6 +133,14 @@ _consent_answer_status_map = {
     'extraconsent_donotagreetoconsent': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
 }
 
+# PDR-2031: PDR decision to map new ConsentPII user-provided answer codes to codes we were already using
+# in PDR (and that users are used to querying).  I.e., until now every ConsentPII response data record was given a
+# default ConsentPermission_Yes answer code value.
+_replace_answer_codes = {
+    'extraconsent_agreetoconsent': 'ConsentPermission_Yes',
+    'extraconsent_donotagreetoconsent': 'ConsentPermission_No'
+}
+
 # PDR-252:  When RDR starts accepting QuestionnaireResponse payloads for withdrawal screens, AIAN participants
 # will be given options for a last rites ceremony for their biobank samples.  Map answer codes to the status enum value
 # included with the PDR participant data
@@ -1676,17 +1684,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                   answer_code:  answer code string value
                   consent_status:  BQModuleStatusEnum
         """
-        if module in _consent_module_question_map:
-            # PDR-2031: "or" clause here will fall back to original ConsentPII behavior of an implied "yes", since older
-            # ConsentPII responses will not contain the configured consent question, but newer consents will
-            if _consent_module_question_map[module] is None or \
-                    (module == 'ConsentPII' and not hasattr(response_rec, _consent_module_question_map[module])):
+        consent_question = _consent_module_question_map[module]
+        if consent_question:
+            # For any consents without an explicit consent question, default to implied ConsentPermission_Yes/SUBMITTED
+            # PDR-2031: "or" retains previous implied yes ConsentPII behavior if this response is based on old codebook
+            # that does not have the new explicit consent question
+            if not consent_question or (module == 'ConsentPII' and isinstance(consent_question, str) and
+                                        not hasattr(response_rec, consent_question)):
                 return 'ConsentPermission_Yes', BQModuleStatusEnum.SUBMITTED
 
         answer_code = None
 
-        consent_question_codes = _consent_module_question_map[module]
-        code_list = [consent_question_codes, ] if isinstance(consent_question_codes, str) else consent_question_codes
+        code_list = [consent_question] if isinstance(consent_question, str) else consent_question
         for code in code_list:
             answer_code = response_rec.get(code, None)
             if answer_code:
@@ -1702,7 +1711,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 # PDR-1625: SUBMITTED_INVALID has a revised meaning for PDF validation, so use UNSET for missing answers
                 consent_status = BQModuleStatusEnum.UNSET
 
-        return answer_code, consent_status
+        # Handle any special case, PDR-specific mapping of the answer code value (see PDR-2031)
+        return _replace_answer_codes.get(answer_code, answer_code), consent_status
 
     @staticmethod
     def is_replay(prev_data_dict, prev_answer_hash,
