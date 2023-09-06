@@ -80,7 +80,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 'manifest_type': 'w3sc',
                 'task_endpoint': 'IngestCVLManifestTaskApi'
             },
-            '_pkg': {
+            '_cvl_pkg': {
                 'manifest_type': 'w3ss',
                 'task_endpoint': 'IngestCVLManifestTaskApi'
             },
