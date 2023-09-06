@@ -112,7 +112,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 'manifest_type': 'p2',
                 'task_endpoint': 'IngestSubManifestTaskApi'
             }
-        },
+        }
         rna_tasks = {
            'rr_requests': {
                 'manifest_type': 'rr',
@@ -127,6 +127,8 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             **pr_tasks,
             **rna_tasks
         }
+
+        print(f'task key: {task_key_map}')
 
         for key, value in task_key_map.items():
             if key in object_id:
