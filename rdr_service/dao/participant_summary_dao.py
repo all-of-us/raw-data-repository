@@ -686,7 +686,8 @@ class ParticipantSummaryDao(UpdatableDao):
         if getattr(summary, field_name) is not None:
             setattr(summary, field_name, None)
 
-    def update_enrollment_status(self, summary: ParticipantSummary, session, allow_downgrade=False):
+    def update_enrollment_status(self, summary: ParticipantSummary, session,
+                                 allow_downgrade=False, pdr_pubsub=True):
         """
         Updates the enrollment status field on the provided participant summary to the correct value.
         If allow_downgrade flag is set (e.g., when called by backfill tool), V3.* statuses will be recalculated
@@ -956,8 +957,8 @@ class ParticipantSummaryDao(UpdatableDao):
         )
         summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
 
-        # Support RDR to PDR pipeline
-        submit_pipeline_pubsub_msg_from_model(summary, self.get_connection_database_name())
+        if pdr_pubsub:
+            submit_pipeline_pubsub_msg_from_model(summary, self.get_connection_database_name())
 
     def calculate_enrollment_status(
         self, consent, num_completed_baseline_ppi_modules, physical_measurements_status,
