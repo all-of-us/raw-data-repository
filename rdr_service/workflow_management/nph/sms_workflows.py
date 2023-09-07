@@ -106,6 +106,14 @@ class SmsWorkflow:
             model_obj = self.file_dao.get_model_obj_from_items(record.items())
             self.file_dao.insert(model_obj)
 
+    def convert_empty_string_to_none(self, rows):
+        for row in rows:
+            for key, value in row.items():
+                if value == "":
+                    row[key] = None
+        return rows
+
+
     def execute_workflow(self):
         """
         Entrypoint for SMS Workflow execution.
@@ -155,7 +163,9 @@ class SmsWorkflow:
 
             self.validate_columns(data_to_ingest["fieldnames"], self.file_dao)
 
-            self.write_data_to_manifest_table(data_to_ingest["rows"])
+            cleaned_rows = self.convert_empty_string_to_none(data_to_ingest["rows"])
+
+            self.write_data_to_manifest_table(cleaned_rows)
 
     def job_generation(self):
         """
