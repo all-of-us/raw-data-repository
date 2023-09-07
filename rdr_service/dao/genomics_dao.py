@@ -4760,14 +4760,54 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
     def get_id(self, obj):
         return obj.id
 
+    def get_max_set(self):
+        with self.session() as session:
+            return session.query(
+                self.get_max_set_subquery()
+            ).one()
+
+    @abstractmethod
+    def get_new_pipeline_members(self,  *, biobank_ids: List[str]):
+        ...
+
+    @abstractmethod
+    def get_zero_manifest_records_from_max_set(self):
+        ...
+
+    @abstractmethod
+    def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
+        ...
+
+    @abstractmethod
+    def get_max_set_subquery(self):
+        ...
+
+
+class GenomicPRDao(GenomicSubDao):
+
+    def __init__(self):
+        super().__init__(GenomicProteomics, order_by_ending=['id'])
+
+    def get_max_set_subquery(self):
+        return sqlalchemy.orm.Query(
+            functions.max(GenomicProteomics.proteomics_set).label('proteomics_set')
+        ).subquery()
+
     def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
         with self.session() as session:
             return session.query(
                 GenomicSetMember.id.label('genomic_set_member_id'),
-                GenomicSetMember.biobankId.label('biobank_id')
+                GenomicSetMember.biobankId.label('biobank_id'),
+                BiobankStoredSample.biobankStoredSampleId.label('collection_tube_id')
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                BiobankStoredSample,
+                and_(
+                    GenomicSetMember.biobankId == BiobankStoredSample.biobankId,
+                    BiobankStoredSample.test == '1ED10'
+                )
             ).filter(
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
@@ -4783,41 +4823,11 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.ai_an == 'N'
             ).distinct().all()
 
-    @classmethod
-    def get_max_set_subquery(cls):
-        ...
-
-    def get_max_set(self):
-        with self.session() as session:
-            return session.query(
-                self.get_max_set_subquery()
-            ).one()
-
-    @abstractmethod
-    def get_zero_manifest_records_from_max_set(self):
-        ...
-
-    @abstractmethod
-    def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
-        ...
-
-
-class GenomicPRDao(GenomicSubDao):
-
-    def __init__(self):
-        super().__init__(GenomicProteomics, order_by_ending=['id'])
-
-    @classmethod
-    def get_max_set_subquery(cls):
-        return sqlalchemy.orm.Query(
-            functions.max(GenomicProteomics.proteomics_set).label('proteomics_set')
-        ).subquery()
-
     def get_zero_manifest_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicProteomics.biobank_id),
-                GenomicSetMember.collectionTubeId,
+                GenomicProteomics.collection_tube_id,
                 GenomicSetMember.sexAtBirth,
                 GenomicProteomics.genome_type,
                 func.IF(GenomicSetMember.nyFlag == 1,
@@ -4850,16 +4860,10 @@ class GenomicPRDao(GenomicSubDao):
             return session.query(
                 GenomicProteomics.id,
                 GenomicProteomics.biobank_id
-            ).join(
-                GenomicSetMember,
-                and_(
-                    GenomicSetMember.id == GenomicProteomics.genomic_set_member_id,
-                    GenomicSetMember.biobankId.in_(biobank_ids),
-                    GenomicSetMember.collectionTubeId.in_(collection_tube_ids),
-                    GenomicSetMember.ignoreFlag != 1
-                )
             ).filter(
-                GenomicProteomics.sample_id.is_(None)
+                GenomicProteomics.sample_id.is_(None),
+                GenomicProteomics.biobank_id.in_(biobank_ids),
+                GenomicProteomics.collection_tube_id.in_(collection_tube_ids),
             ).distinct().all()
 
 
@@ -4868,17 +4872,46 @@ class GenomicRNADao(GenomicSubDao):
     def __init__(self):
         super().__init__(GenomicRNA, order_by_ending=['id'])
 
-    @classmethod
-    def get_max_set_subquery(cls):
+    def get_max_set_subquery(self):
         return sqlalchemy.orm.Query(
             functions.max(GenomicRNA.rna_set).label('rna_set')
         ).subquery()
+
+    def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
+        with self.session() as session:
+            return session.query(
+                GenomicSetMember.id.label('genomic_set_member_id'),
+                GenomicSetMember.biobankId.label('biobank_id'),
+                BiobankStoredSample.biobankStoredSampleId.label('collection_tube_id')
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                BiobankStoredSample,
+                and_(
+                    GenomicSetMember.biobankId == BiobankStoredSample.biobankId,
+                    BiobankStoredSample.test == '1PXR2'
+                )
+            ).filter(
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
+                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,  # sub flows default to array sample
+                GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
+                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
+                GenomicSetMember.diversionPouchSiteFlag != 1,
+                GenomicSetMember.blockResults != 1,
+                GenomicSetMember.blockResearch != 1,
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.biobankId.in_(biobank_ids),
+                GenomicSetMember.ai_an == 'N'
+            ).distinct().all()
 
     def get_zero_manifest_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicRNA.biobank_id),
-                GenomicSetMember.collectionTubeId,
+                GenomicRNA.collection_tube_id,
                 GenomicSetMember.sexAtBirth,
                 GenomicRNA.genome_type,
                 func.IF(GenomicSetMember.nyFlag == 1,
