@@ -524,8 +524,8 @@ class QuestionnaireResponseDao(BaseDao):
             if extension.url == _GUARDIAN_EXTENSION:
                 AccountLinkDao.save_account_link(
                     account_link=AccountLink(
-                        first_id=questionnaire_response.participantId,
-                        second_id=from_client_participant_id(extension.valueString)
+                        participant_id=questionnaire_response.participantId,
+                        related_id=from_client_participant_id(extension.valueString)
                     ),
                     session=session
                 )

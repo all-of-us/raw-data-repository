@@ -24,15 +24,15 @@ class AccountLink(Base):
     Timestamp of when the relationship stops being applicable. May be null to denote that it
     always will be (or that we simply don't know the 'end' time for it).
     """
-    first_id = sa.Column(sa.Integer, sa.ForeignKey('participant.participant_id'))
+    participant_id = sa.Column(sa.Integer, sa.ForeignKey('participant.participant_id'))
     """
-    One of the two participants in the relationship. Better to not assume it
-    would be a particular side (like the parent).
+    The first participant this relationship definition focuses on.
+    In a child-guardian relationship, this would be the child's participant id.
     """
-    second_id = sa.Column(sa.Integer, sa.ForeignKey('participant.participant_id'))
+    related_id = sa.Column(sa.Integer, sa.ForeignKey('participant.participant_id'))
     """
-    One of the two participants in the relationship. Better to not assume it
-    would be a particular side (like the child).
+    The second participant this relationship definition focuses on.
+    In a child-guardian relationship, this would be the guardian's participant id.
     """
 
 

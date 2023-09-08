@@ -14,11 +14,11 @@ class AccountLinkDaoTest(BaseTestCase):
 
         # Link the parents to the child, flip-flopping which side of the child is in
         AccountLinkDao.save_account_link(
-            account_link=AccountLink(first_id=first_parent_id, second_id=child_id),
+            account_link=AccountLink(participant_id=child_id, related_id=first_parent_id),
             session=self.session
         )
         AccountLinkDao.save_account_link(
-            account_link=AccountLink(first_id=child_id, second_id=second_parent_id),
+            account_link=AccountLink(participant_id=child_id, related_id=second_parent_id),
             session=self.session
         )
 
@@ -33,14 +33,14 @@ class AccountLinkDaoTest(BaseTestCase):
         # Link the parents to the child, flip-flopping which side of the child is in
         AccountLinkDao.save_account_link(
             account_link=AccountLink(
-                first_id=first_parent_id, second_id=child_id,
+                participant_id=child_id, related_id=first_parent_id,
                 start=datetime(2020, 10, 1)
             ),
             session=self.session
         )
         AccountLinkDao.save_account_link(
             account_link=AccountLink(
-                first_id=child_id, second_id=second_parent_id,
+                participant_id=child_id, related_id=second_parent_id,
                 end=datetime(2020, 11, 1)
             ),
             session=self.session

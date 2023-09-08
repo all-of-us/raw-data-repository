@@ -12,6 +12,7 @@ class AccountLinkDao:
     @classmethod
     @with_session
     def save_account_link(cls, account_link: AccountLink, session: Session):
+        # todo: prevent saving duplicated account links
         session.add(account_link)
 
     @classmethod
@@ -20,12 +21,9 @@ class AccountLinkDao:
         """Returns the ids for any accounts linked to the given participant"""
         now_datetime = CLOCK.now()
         account_link_list = session.query(AccountLink).filter(
-            or_(AccountLink.first_id == participant_id, AccountLink.second_id == participant_id),
+            AccountLink.participant_id == participant_id,
             or_(AccountLink.start.is_(None), AccountLink.start < now_datetime),
             or_(AccountLink.end.is_(None), AccountLink.end > now_datetime)
         ).all()
 
-        return {
-            account_link.first_id if account_link.first_id != participant_id else account_link.second_id
-            for account_link in account_link_list
-        }
+        return {account_link.related_id for account_link in account_link_list}
