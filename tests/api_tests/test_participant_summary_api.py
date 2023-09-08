@@ -176,7 +176,8 @@ participant_summary_default_values = {
     "nphDeactivation": False,
     "hasCoreData": False,
     "questionnaireOnEmotionalHealthHistoryAndWellBeing": "UNSET",
-    "questionnaireOnBehavioralHealthAndPersonality": "UNSET"
+    "questionnaireOnBehavioralHealthAndPersonality": "UNSET",
+    'relatedParticipants': 'UNSET'
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)

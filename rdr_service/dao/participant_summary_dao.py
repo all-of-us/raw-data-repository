@@ -537,7 +537,8 @@ class ParticipantSummaryDao(UpdatableDao):
         # query.options(selectinload(ParticipantSummary.patientStatus))
         # sql = self.query_to_text(query)
 
-        query.options(self._default_api_query_options())
+        if not query_definition.attributes:  # temporarily skip any joinloads if using result field filters
+            query.options(self._default_api_query_options())
         return query, order_by_field_names
 
     def make_query_filter(self, field_name, value):

@@ -1672,7 +1672,8 @@ class ParticipantSummary(Base):
             foreign(participantId) == remote(AccountLink.participant_id),
             AccountLink.get_active_filter()
         ),
-        uselist=True
+        uselist=True,
+        lazy='noload'
     )
 
 
