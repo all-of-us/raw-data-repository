@@ -82,6 +82,7 @@ class GenomicSubWorkflow:
         return {
             'genomic_set_member_id': new_member.genomic_set_member_id,
             'biobank_id': new_member.biobank_id,
+            'collection_tube_id': new_member.collection_tube_id
         }
 
     def set_instance_attributes_from_data(self) -> None:

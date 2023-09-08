@@ -5,6 +5,7 @@ from unittest import mock
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestFileDao, \
     GenomicFileProcessedDao, GenomicJobRunDao, GenomicRNADao
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
@@ -28,9 +29,14 @@ class GenomicRNAPipelineTest(BaseTestCase):
             genomicSetVersion=1
         )
         self.rna_dao = GenomicRNADao()
+        self.stored_sample_dao = BiobankStoredSampleDao()
 
     def base_rna_data_insert(self, **kwargs):
         for num in range(1, kwargs.get('num_set_members', 4)):
+            participant = self.data_generator.create_database_participant(
+                participantOrigin='vibrent',
+                biobankId=f"{num}"
+            )
             participant_summary = self.data_generator.create_database_participant_summary(
                 withdrawalStatus=1,
                 suspensionStatus=1,
@@ -50,13 +56,29 @@ class GenomicRNAPipelineTest(BaseTestCase):
                 collectionTubeId=f"{num}2222222222",
                 ai_an='N'
             )
+            # should be two stored bio samples per biobank_id
+            self.data_generator.create_database_biobank_stored_sample(
+                biobankId=participant.biobankId,
+                biobankOrderIdentifier=self.fake.pyint(),
+                biobankStoredSampleId=f"{num}11111",
+                confirmed=clock.CLOCK.now(),
+                test='1PXR2'
+            )
+            self.data_generator.create_database_biobank_stored_sample(
+                biobankId=participant.biobankId,
+                biobankOrderIdentifier=self.fake.pyint(),
+                biobankStoredSampleId=f"{num + 10}11111",
+                confirmed=clock.CLOCK.now(),
+                test='1ED04'
+            )
 
     def execute_base_rna_ingestion(self, **kwargs):
         test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
         bucket_name = 'test_rna_bucket'
         subfolder = 'rna_subfolder'
 
-        self.base_rna_data_insert()
+        if not kwargs.get('bypass_data_insert'):
+            self.base_rna_data_insert()
 
         test_file_name = create_ingestion_test_file(
             kwargs.get('test_file'),
@@ -94,10 +116,16 @@ class GenomicRNAPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.biobank_id is not None for obj in rna_members))
         self.assertTrue(all(obj.sample_id is None for obj in rna_members))
         self.assertTrue(all(obj.genome_type == 'aou_rnaseq' for obj in rna_members))
+        self.assertTrue(all(obj.collection_tube_id is not None for obj in rna_members))
         self.assertTrue(all(obj.r_site_id == 'bi' for obj in rna_members))
         self.assertTrue(all(obj.genomic_set_member_id is not None for obj in rna_members))
         self.assertTrue(all(obj.rna_set == 1 for obj in rna_members))
         self.assertTrue(all(obj.created_job_run_id is not None for obj in rna_members))
+
+        # check collection tube ids
+        correct_collection_tube_ids = [obj.biobankStoredSampleId for obj in self.stored_sample_dao.get_all() if
+                                       obj.test == '1PXR2']
+        self.assertTrue(all(obj.collection_tube_id in correct_collection_tube_ids for obj in rna_members))
 
         # check job run record
         rr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.RNA_RR_WORKFLOW, self.job_run_dao.get_all()))
@@ -134,7 +162,8 @@ class GenomicRNAPipelineTest(BaseTestCase):
         self.execute_base_rna_ingestion(
             test_file='RDR_AoU_RR_Requests.csv',
             job_id=GenomicJob.RNA_RR_WORKFLOW,
-            manifest_type=GenomicManifestTypes.RNA_RR
+            manifest_type=GenomicManifestTypes.RNA_RR,
+            bypass_data_insert=True
         )
 
         rna_members = self.rna_dao.get_all()
@@ -260,6 +289,8 @@ class GenomicRNAPipelineTest(BaseTestCase):
             self.assertTrue(list(columns_expected) == manifest_columns)
 
             prefix = config.getSetting(config.BIOBANK_ID_PREFIX)
+            correct_collection_tube_ids = [obj.biobankStoredSampleId for obj in self.stored_sample_dao.get_all() if
+                                           obj.test == '1PXR2']
 
             for row in csv_rows:
                 self.assertIsNotNone(row['biobank_id'])
@@ -277,6 +308,9 @@ class GenomicRNAPipelineTest(BaseTestCase):
                 self.assertEqual(row['r_site_id'], 'bi')
                 self.assertEqual(row['ai_an'], 'N')
                 self.assertEqual(row['validation_passed'], 'Y')
+
+                # check collection tube ids
+                self.assertTrue(row['collection_tube_id'] in correct_collection_tube_ids)
 
         rna_files_processed = self.file_processed_dao.get_all()
 
