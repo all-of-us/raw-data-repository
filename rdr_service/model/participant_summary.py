@@ -1,6 +1,8 @@
 import datetime
+from typing import List
 
 from sqlalchemy import (
+    and_,
     Boolean,
     case,
     Column,
@@ -17,9 +19,10 @@ from sqlalchemy import (
     event)
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import foreign, relationship, remote
 from sqlalchemy.sql import expression
 
+from rdr_service.model.account_link import AccountLink
 from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import (
@@ -1662,6 +1665,15 @@ class ParticipantSummary(Base):
     questionnaireOnBehavioralHealthAndPersonalityAuthored = Column("questionnaire_on_behavioral_health_authored",
                                                                    UTCDateTime)
     "UTC timestamp of time Behavioral Health survey was authored by participant"
+
+    relatedParticipants: List[AccountLink] = relationship(
+        'AccountLink',
+        primaryjoin=and_(
+            foreign(participantId) == remote(AccountLink.participant_id),
+            AccountLink.get_active_filter()
+        ),
+        uselist=True
+    )
 
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)

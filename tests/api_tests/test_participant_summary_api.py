@@ -23,6 +23,7 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.site_dao import SiteDao
+from rdr_service.model.account_link import AccountLink
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
 from rdr_service.model.config_utils import from_client_biobank_id
@@ -4534,3 +4535,25 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(summary['everIdVerified'], 'True')
         self.assertEqual(summary['firstIdVerifiedOn'], '2023-01-17')
         self.assertEqual(summary['idVerificationOrigin'], IdVerificationOriginType.REMOTE.name)
+
+    def test_displaying_linked_accounts(self):
+        first_parent_id = self.data_generator.create_database_participant_summary().participantId
+        second_parent_id = self.data_generator.create_database_participant_summary().participantId
+        child_id = self.data_generator.create_database_participant_summary().participantId
+
+        self.session.add(AccountLink(participant_id=child_id, related_id=first_parent_id))
+        self.session.add(AccountLink(participant_id=child_id, related_id=second_parent_id))
+        self.session.commit()
+
+        from tests.helpers.diagnostics import LoggingDatabaseActivity
+        with LoggingDatabaseActivity():
+            response = self.send_get(f'Participant/P{child_id}/Summary')
+        self.assertEqual(
+            [
+                {'participantId': f'P{first_parent_id}'},
+                {'participantId': f'P{second_parent_id}'}
+            ],
+            response.get('relatedParticipants')
+        )
+
+

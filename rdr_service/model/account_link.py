@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 
+from rdr_service.clock import CLOCK
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import UTCDateTime
 
@@ -34,6 +35,14 @@ class AccountLink(Base):
     The second participant this relationship definition focuses on.
     In a child-guardian relationship, this would be the guardian's participant id.
     """
+
+    @classmethod
+    def get_active_filter(cls):
+        now_datetime = CLOCK.now()
+        return sa.and_(
+            sa.or_(AccountLink.start.is_(None), AccountLink.start < now_datetime),
+            sa.or_(AccountLink.end.is_(None), AccountLink.end > now_datetime)
+        )
 
 
 sa.event.listen(AccountLink, 'before_insert', model_insert_listener)

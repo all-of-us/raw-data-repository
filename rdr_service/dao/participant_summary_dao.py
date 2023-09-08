@@ -8,7 +8,7 @@ import sqlalchemy
 import sqlalchemy.orm
 
 from sqlalchemy import or_, and_
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import Query, joinedload
 from sqlalchemy.sql import expression
 from typing import Collection, List
 
@@ -393,7 +393,7 @@ class ParticipantSummaryDao(UpdatableDao):
             # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
             # return self.get_with_session(session, obj_id,
             #                              options=self.get_eager_child_loading_query_options())
-            return self.get_with_session(session, obj_id)
+            return self.get_with_session(session, obj_id, options=self._default_api_query_options())
 
     @classmethod
     def get_by_ids_with_session(cls, session: sqlalchemy.orm.Session,
@@ -410,7 +410,11 @@ class ParticipantSummaryDao(UpdatableDao):
                 ParticipantSummary
             ).filter(
                 ParticipantSummary.participantId == participant_id
-            ).one_or_none()
+            ).options(self._default_api_query_options()).one_or_none()
+
+    @classmethod
+    def _default_api_query_options(cls):
+        return joinedload(ParticipantSummary.relatedParticipants)
 
     def get_by_hpo(self, hpo, session, yield_batch_size=1000):
         """ Returns participants for HPO except test and ghost participants"""
@@ -532,6 +536,8 @@ class ParticipantSummaryDao(UpdatableDao):
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
         # query.options(selectinload(ParticipantSummary.patientStatus))
         # sql = self.query_to_text(query)
+
+        query.options(self._default_api_query_options())
         return query, order_by_field_names
 
     def make_query_filter(self, field_name, value):
@@ -1352,6 +1358,14 @@ class ParticipantSummaryDao(UpdatableDao):
                 if field_name in result:
                     del result[field_name]
 
+        # Find any linked accounts to display
+        result['relatedParticipants'] = UNSET
+        if obj.relatedParticipants:
+            result['relatedParticipants'] = [
+                {'participantId': to_client_participant_id(account_link.related_id)}
+                for account_link in obj.relatedParticipants
+            ]
+
         # Format other responses to default to UNSET when none
         field_names = [
             'remoteIdVerifiedOn',
@@ -1359,7 +1373,6 @@ class ParticipantSummaryDao(UpdatableDao):
             'remoteIdVerificationOrigin',
             'idVerificationOrigin'
         ]
-
         for field_name in field_names:
             if not result.get(field_name):
                 result[field_name] = UNSET
