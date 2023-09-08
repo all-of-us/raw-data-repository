@@ -1067,7 +1067,10 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.deceasedStatus == DeceasedStatus.UNSET,
-                GenomicGCValidationMetrics.sexConcordance.ilike('true'),
+                or_(
+                    GenomicGCValidationMetrics.sexConcordance.ilike('true'),
+                    GenomicGCValidationMetrics.sexConcordance.ilike('other')
+                ),
                 GenomicGCValidationMetrics.drcSexConcordance.ilike('pass'),
                 GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
@@ -4248,7 +4251,10 @@ class GenomicQueriesDao(BaseDao):
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.deceasedStatus == DeceasedStatus.UNSET,
-                GenomicGCValidationMetrics.sexConcordance.ilike('true'),     # check AW2 gives sex concordance as true
+                or_(
+                    GenomicGCValidationMetrics.sexConcordance.ilike('true'),
+                    GenomicGCValidationMetrics.sexConcordance.ilike('other')
+                ), # check AW2 gives sex concordance as true
                 GenomicGCValidationMetrics.drcSexConcordance.ilike('pass'),  # check AW4 gives sex concordance as true
                 GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
