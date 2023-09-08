@@ -4934,5 +4934,18 @@ class GenomicRNADao(GenomicSubDao):
                 self.get_max_set_subquery().c.rna_set
             ).distinct().all()
 
-    def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
-        ...
+    def get_pipeline_members_missing_sample_id(
+        self,
+        *,
+        biobank_ids: List[str],
+        collection_tube_ids: List[str]
+    ):
+        with self.session() as session:
+            return session.query(
+                GenomicRNA.id,
+                GenomicRNA.biobank_id
+            ).filter(
+                GenomicRNA.sample_id.is_(None),
+                GenomicRNA.biobank_id.in_(biobank_ids),
+                GenomicRNA.collection_tube_id.in_(collection_tube_ids),
+            ).distinct().all()

@@ -360,7 +360,6 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_proteomics')
 
     def test_p1_manifest_ingestion(self):
-
         for num in range(1, 4):
             participant_summary = self.data_generator.create_database_participant_summary(
                 consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,

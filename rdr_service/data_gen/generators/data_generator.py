@@ -18,7 +18,7 @@ from rdr_service.model.genomics import GenomicManifestFeedback, GenomicManifestF
     GenomicMemberReportState, UserEventMetrics, GenomicInformingLoop, GenomicGcDataFile, GenomicGcDataFileMissing, \
     GenomicResultViewed, GenomicCVLSecondSample, GenomicSampleSwap, \
     GenomicSampleSwapMember, GenomicCVLResultPastDue, GenomicW4WRRaw, GenomicW3SCRaw, GenomicAppointmentEvent, \
-    GenomicAppointmentEventMetrics, GenomicLongRead, GenomicProteomics
+    GenomicAppointmentEventMetrics, GenomicLongRead, GenomicProteomics, GenomicRNA
 from rdr_service.model.hpo import HPO
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.log_position import LogPosition
@@ -945,6 +945,15 @@ class DataGenerator:
 
     def create_database_genomic_proteomics(self, **kwargs):
         m = self._genomic_proteomics(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_rna(**kwargs):
+        return GenomicRNA(**kwargs)
+
+    def create_database_genomic_rna(self, **kwargs):
+        m = self._genomic_rna(**kwargs)
         self._commit_to_database(m)
         return m
 
