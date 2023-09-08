@@ -1685,13 +1685,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                   consent_status:  BQModuleStatusEnum
         """
         consent_question = _consent_module_question_map[module]
-        if consent_question:
-            # For any consents without an explicit consent question, default to implied ConsentPermission_Yes/SUBMITTED
-            # PDR-2031: "or" retains previous implied yes ConsentPII behavior if this response is based on old codebook
-            # that does not have the new explicit consent question
-            if not consent_question or (module == 'ConsentPII' and isinstance(consent_question, str) and
-                                        not hasattr(response_rec, consent_question)):
-                return 'ConsentPermission_Yes', BQModuleStatusEnum.SUBMITTED
+        # For any consents without an explicit consent question in their codebook, default to implied "yes"
+        # PDR-2031: "or" clause retains previous behavior if this response predates the update of
+        # the ConsentPII codebook, such that the response received is missing the consent question code
+        if not consent_question or (module == 'ConsentPII' and isinstance(consent_question, str) and
+                                    not hasattr(response_rec, consent_question)):
+            return 'ConsentPermission_Yes', BQModuleStatusEnum.SUBMITTED
 
         answer_code = None
 
