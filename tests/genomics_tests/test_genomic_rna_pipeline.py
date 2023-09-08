@@ -11,8 +11,9 @@ from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestF
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, \
     GenomicSubProcessStatus, GenomicSubProcessResult
-from rdr_service.model.genomics import GenomicRRRaw, GenomicR0Raw
+from rdr_service.model.genomics import GenomicRRRaw, GenomicR0Raw, GenomicR1Raw
 from rdr_service.offline.genomics import genomic_dispatch, genomic_rna_pipeline
+from rdr_service.participant_enums import QuestionnaireStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -353,5 +354,90 @@ class GenomicRNAPipelineTest(BaseTestCase):
         self.assertEqual(len(r0_raw_job_runs), 1)
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in r0_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in r0_raw_job_runs))
+
+        self.clear_table_after_test('genomic_rna')
+
+    def test_r1_manifest_ingestion(self):
+        for num in range(1, 4):
+            participant_summary = self.data_generator.create_database_participant_summary(
+                consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
+                consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
+            )
+            genomic_set_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                participantId=participant_summary.participantId,
+                biobankId=f"100{num}",
+                genomeType="aou_array",
+                collectionTubeId=num,
+                ai_an="N"
+            )
+            if num < 3:
+                self.data_generator.create_database_genomic_rna(
+                    genomic_set_member_id=genomic_set_member.id,
+                    biobank_id=genomic_set_member.biobankId,
+                    collection_tube_id=f'{num}11111',
+                    genome_type="aou_rnaseq",
+                    r_site_id="bi",
+                    rna_set=1
+                )
+
+        self.execute_base_rna_ingestion(
+            test_file='RDR_AoU_RNASeq_PKG-2301-123456.csv',
+            job_id=GenomicJob.RNA_R1_WORKFLOW,
+            manifest_type=GenomicManifestTypes.RNA_R1,
+            include_timestamp=False
+        )
+
+        rna_members = self.rna_dao.get_all()
+
+        self.assertEqual(len(rna_members), 2)
+        self.assertTrue(all(obj.sample_id is not None for obj in rna_members))
+        self.assertTrue(all(obj.sample_id in ['1111', '1112'] for obj in rna_members))
+
+        # check job run record
+        r1_job_runs = list(filter(lambda x: x.jobId == GenomicJob.RNA_R1_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(r1_job_runs)
+        self.assertEqual(len(r1_job_runs), 1)
+
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in r1_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in r1_job_runs))
+
+        self.clear_table_after_test('genomic_rna')
+
+    def test_r1_manifest_to_raw_ingestion(self):
+
+        self.execute_base_rna_ingestion(
+            test_file='RDR_AoU_RNASeq_PKG-2301-123456.csv',
+            job_id=GenomicJob.RNA_R1_WORKFLOW,
+            manifest_type=GenomicManifestTypes.RNA_R1,
+            include_timestamp=False
+        )
+
+        r1_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicR1Raw
+        )
+
+        manifest_type = 'r1'
+        r1_manifest_file = self.manifest_file_dao.get(1)
+
+        genomic_dispatch.load_manifest_into_raw_table(
+            r1_manifest_file.filePath,
+            manifest_type
+        )
+
+        r1_raw_records = r1_raw_dao.get_all()
+        self.assertEqual(len(r1_raw_records), 3)
+
+        for attribute in GenomicR1Raw.__table__.columns:
+            self.assertTrue(all(getattr(obj, str(attribute).split('.')[1]) is not None for obj in r1_raw_records))
+
+        # check job run record
+        r1_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_R1_TO_RAW_TABLE, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(r1_raw_job_runs)
+        self.assertEqual(len(r1_raw_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in r1_raw_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in r1_raw_job_runs))
 
         self.clear_table_after_test('genomic_rna')

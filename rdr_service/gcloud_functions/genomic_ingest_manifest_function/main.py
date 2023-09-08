@@ -117,7 +117,11 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
            'rr_requests': {
                 'manifest_type': 'rr',
                 'task_endpoint': 'IngestSubManifestTaskApi'
-            }
+            },
+            '_rnaseq_pkg': {
+                'manifest_type': 'r1',
+                'task_endpoint': 'IngestSubManifestTaskApi'
+            },
         }
 
         task_key_map = {
