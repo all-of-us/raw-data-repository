@@ -1083,6 +1083,17 @@ class NphIntakeDao(BaseDao):
         return payload
 
 
+class NphBiospecimenDao(BaseDao):
+    def __init__(self):
+        super().__init__(BaseDao)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+
 class NphSampleUpdateDao(BaseDao):
     def __init__(self):
         super(NphSampleUpdateDao, self).__init__(SampleUpdate)

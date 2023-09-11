@@ -26,6 +26,7 @@ from rdr_service.api.mail_kit_order_api import MailKitOrderApi
 from rdr_service.api.genomic_api import GenomicPiiApi, GenomicOutreachApi, GenomicOutreachApiV2, GenomicSchedulingApi
 from rdr_service.api.import_codebook_api import import_codebook
 from rdr_service.api.metrics_fields_api import MetricsFieldsApi
+from rdr_service.api.nph_biospecimen_api import NphBiospecimenAPI
 from rdr_service.api.nph_intake_api import NphIntakeAPI
 from rdr_service.api.participant_api import ParticipantApi, ParticipantResearchIdApi
 from rdr_service.api.participant_incentives import ParticipantIncentivesApi
@@ -395,6 +396,14 @@ api.add_resource(
     API_PREFIX + 'nph/Intake/fhir',
     endpoint='nph.intake',
     methods=['POST']
+)
+
+api.add_resource(
+    NphBiospecimenAPI,
+    API_PREFIX + 'nph/Biospecimen/<string:nph_participant_id>',
+    API_PREFIX + 'nph/Biospecimen',
+    endpoint='nph.biospecimen',
+    methods=['GET']
 )
 
 app.add_url_rule(
