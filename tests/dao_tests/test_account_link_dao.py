@@ -12,7 +12,7 @@ class AccountLinkDaoTest(BaseTestCase):
         second_parent_id = self.data_generator.create_database_participant().participantId
         child_id = self.data_generator.create_database_participant().participantId
 
-        # Link the parents to the child, flip-flopping which side of the child is in
+        # Link the parents to the child
         AccountLinkDao.save_account_link(
             account_link=AccountLink(participant_id=child_id, related_id=first_parent_id),
             session=self.session
@@ -30,7 +30,7 @@ class AccountLinkDaoTest(BaseTestCase):
         second_parent_id = self.data_generator.create_database_participant().participantId
         child_id = self.data_generator.create_database_participant().participantId
 
-        # Link the parents to the child, flip-flopping which side of the child is in
+        # Link the parents to the child
         AccountLinkDao.save_account_link(
             account_link=AccountLink(
                 participant_id=child_id, related_id=first_parent_id,

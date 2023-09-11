@@ -10,8 +10,12 @@ class AccountLinkDao:
     @classmethod
     @with_session
     def save_account_link(cls, account_link: AccountLink, session: Session):
-        # todo: prevent saving duplicated account links
-        session.add(account_link)
+        results = session.query(AccountLink).filter(
+            AccountLink.participant_id == account_link.participant_id,
+            AccountLink.related_id == account_link.related_id
+        ).all()
+        if not results:
+            session.add(account_link)
 
     @classmethod
     @with_session
