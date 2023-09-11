@@ -2188,7 +2188,7 @@ class GenomicOutreachDaoV2(BaseDao):
         participant_id=None,
         start_date=None,
         end_date=None,
-        participant_origin=None
+        participant_origin: List[str] = None
     ):
         if not participant_origin:
             return []
@@ -2250,7 +2250,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicInformingLoop.module_type.in_(self.module),
                         GenomicInformingLoop.event_authored_time.isnot(None),
                         GenomicSetMember.ignoreFlag != 1,
-                        GenomicSetMember.participantOrigin == participant_origin
+                        GenomicSetMember.participantOrigin.in_(participant_origin)
                     )
                 )
                 ready_loop = (
@@ -2264,7 +2264,7 @@ class GenomicOutreachDaoV2(BaseDao):
                     ).filter(
                         GenomicSetMember.informingLoopReadyFlag == 1,
                         GenomicSetMember.informingLoopReadyFlagModified.isnot(None),
-                        GenomicSetMember.participantOrigin == participant_origin
+                        GenomicSetMember.participantOrigin.in_(participant_origin)
                     )
                 )
                 if participant_id:
@@ -2317,7 +2317,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
                         GenomicMemberReportState.event_authored_time.isnot(None),
                         GenomicSetMember.ignoreFlag != 1,
-                        GenomicSetMember.participantOrigin == participant_origin
+                        GenomicSetMember.participantOrigin.in_(participant_origin)
                     )
                 )
 
@@ -2345,7 +2345,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
                         GenomicResultViewed.event_authored_time.isnot(None),
                         GenomicSetMember.ignoreFlag != 1,
-                        GenomicSetMember.participantOrigin == participant_origin
+                        GenomicSetMember.participantOrigin.in_(participant_origin)
                     )
                 )
 
@@ -2449,7 +2449,7 @@ class GenomicSchedulingDao(BaseDao):
         start_date=None,
         end_date=None,
         module=None,
-        participant_origin=None
+        participant_origin: List[str] = None
     ):
         if not participant_origin:
             return []
@@ -2518,7 +2518,7 @@ class GenomicSchedulingDao(BaseDao):
                     GenomicAppointmentEvent.event_authored_time ==
                     max_event_authored_time_subquery.c.max_event_authored_time
                 ),
-                GenomicSetMember.participantOrigin == participant_origin
+                GenomicSetMember.participantOrigin.in_(participant_origin)
             )
 
             if module:

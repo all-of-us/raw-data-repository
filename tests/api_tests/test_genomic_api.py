@@ -988,9 +988,41 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.assertEqual(response_data[0].get('status'), 'ready')
         self.assertEqual(response_data[0].get('participant_id'), f'P{second_participant.participantId}')
 
+        self.overwrite_test_user_client_id('configurator')
+
+        # SHOULD return ALL since client_id is configurator
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?participant_id={first_participant.participantId}'
+            )
+
+        self.assertIsNotNone(resp)
+        response_data = resp['data']
+        self.assertEqual(len(response_data), 1)
+        self.assertEqual(response_data[0].get('participant_id'), f'P{first_participant.participantId}')
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?participant_id={second_participant.participantId}'
+            )
+
+        self.assertIsNotNone(resp)
+        response_data = resp['data']
+        self.assertEqual(len(response_data), 1)
+        self.assertEqual(response_data[0].get('participant_id'), f'P{second_participant.participantId}')
+
         self.overwrite_test_user_client_id('example')
 
         # SHOULD NOT return data since client_id is invalid
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?participant_id={first_participant.participantId}',
+                expected_status=http.client.FORBIDDEN
+            )
+
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json['message'], f"Client Id: example cannot access GenomicOutreach lookup.")
+
         with clock.FakeClock(fake_now):
             resp = self.send_get(
                 f'GenomicOutreachV2?participant_id={second_participant.participantId}',
@@ -998,7 +1030,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             )
 
         self.assertEqual(resp.status_code, 403)
-        self.assertEqual(resp.json['message'], f"Client Id cannot access GenomicOutreach lookup.")
+        self.assertEqual(resp.json['message'], f"Client Id: example cannot access GenomicOutreach lookup.")
 
     def test_get_by_type(self):
         self.num_participants = 10
@@ -2383,7 +2415,7 @@ class GenomicSchedulingApiTest(GenomicApiTestBase):
             )
 
         self.assertEqual(resp.status_code, 403)
-        self.assertEqual(resp.json['message'], f"Client Id cannot access GenomicScheduling lookup.")
+        self.assertEqual(resp.json['message'], f"Client Id: example cannot access GenomicScheduling lookup.")
 
     def test_validate_params(self):
         bad_response = 'GenomicScheduling GET accepted params: start_date | end_date | participant_id | module'
