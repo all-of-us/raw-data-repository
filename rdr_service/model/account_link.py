@@ -50,6 +50,3 @@ class AccountLink(Base):
 
 sa.event.listen(AccountLink, 'before_insert', model_insert_listener)
 sa.event.listen(AccountLink, 'before_update', model_update_listener)
-
-
-# todo: generate the migration file
