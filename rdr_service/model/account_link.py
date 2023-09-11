@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+from sqlalchemy.orm import relationship
 
 from rdr_service.clock import CLOCK
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
@@ -35,6 +36,8 @@ class AccountLink(Base):
     The second participant this relationship definition focuses on.
     In a child-guardian relationship, this would be the guardian's participant id.
     """
+
+    related = relationship('Participant', foreign_keys=related_id)
 
     @classmethod
     def get_active_filter(cls):

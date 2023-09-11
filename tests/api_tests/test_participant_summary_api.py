@@ -4538,21 +4538,27 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(summary['idVerificationOrigin'], IdVerificationOriginType.REMOTE.name)
 
     def test_displaying_linked_accounts(self):
-        first_parent_id = self.data_generator.create_database_participant_summary().participantId
-        second_parent_id = self.data_generator.create_database_participant_summary().participantId
+        first_parent = self.data_generator.create_database_participant_summary()
+        second_parent = self.data_generator.create_database_participant_summary()
         child_id = self.data_generator.create_database_participant_summary().participantId
 
-        self.session.add(AccountLink(participant_id=child_id, related_id=first_parent_id))
-        self.session.add(AccountLink(participant_id=child_id, related_id=second_parent_id))
+        self.session.add(AccountLink(participant_id=child_id, related_id=first_parent.participantId))
+        self.session.add(AccountLink(participant_id=child_id, related_id=second_parent.participantId))
         self.session.commit()
 
-        from tests.helpers.diagnostics import LoggingDatabaseActivity
-        with LoggingDatabaseActivity():
-            response = self.send_get(f'Participant/P{child_id}/Summary')
+        response = self.send_get(f'Participant/P{child_id}/Summary')
         self.assertEqual(
             [
-                {'participantId': f'P{first_parent_id}'},
-                {'participantId': f'P{second_parent_id}'}
+                {
+                    'participantId': f'P{first_parent.participantId}',
+                    'firstName': first_parent.firstName,
+                    'lastName': first_parent.lastName
+                },
+                {
+                    'participantId': f'P{second_parent.participantId}',
+                    'firstName': second_parent.firstName,
+                    'lastName': second_parent.lastName
+                }
             ],
             response.get('relatedParticipants')
         )

@@ -43,6 +43,7 @@ from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.domain_model.ehr import ParticipantEhrFile
 from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentDependencies
+from rdr_service.model.account_link import AccountLink
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
 from rdr_service.model.enrollment_status_history import EnrollmentStatusHistory
@@ -414,7 +415,15 @@ class ParticipantSummaryDao(UpdatableDao):
 
     @classmethod
     def _default_api_query_options(cls):
-        return joinedload(ParticipantSummary.relatedParticipants)
+        return [
+            joinedload(ParticipantSummary.relatedParticipants).load_only()
+            .joinedload(AccountLink.related).load_only()
+            .joinedload(Participant.participantSummary).load_only(
+                ParticipantSummary.participantId,
+                ParticipantSummary.firstName,
+                ParticipantSummary.lastName
+            )
+        ]
 
     def get_by_hpo(self, hpo, session, yield_batch_size=1000):
         """ Returns participants for HPO except test and ghost participants"""
@@ -1362,9 +1371,14 @@ class ParticipantSummaryDao(UpdatableDao):
         # Find any linked accounts to display
         result['relatedParticipants'] = UNSET
         if obj.relatedParticipants:
+            related_summary_list = [link.related.participantSummary for link in obj.relatedParticipants]
             result['relatedParticipants'] = [
-                {'participantId': to_client_participant_id(account_link.related_id)}
-                for account_link in obj.relatedParticipants
+                {
+                    'participantId': to_client_participant_id(related_summary.participantId),
+                    'firstName': related_summary.firstName,
+                    'lastName': related_summary.lastName
+                }
+                for related_summary in related_summary_list
             ]
 
         # Format other responses to default to UNSET when none
