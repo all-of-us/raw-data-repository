@@ -195,7 +195,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             matrix_id=1111,
             package_id="test",
             storage_unit_id="test",
-            file_path="UNC_META_n0_test.csv",
+            file_path=f"{destination}_n0_test.csv",
             well_box_position="A1",
             tracking_number="test",
             sample_comments="test",
@@ -216,7 +216,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             matrix_id=1112,
             package_id="test",
             storage_unit_id="test",
-            file_path="UNC_META_n0_test.csv",
+            file_path=f"{destination}_n0_test.csv",
             well_box_position="A2",
             tracking_number="test",
             sample_comments="test",
@@ -237,7 +237,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             matrix_id=1111,
             package_id="test",
             storage_unit_id="test",
-            file_path="UNC_META_n0_test.csv",
+            file_path=f"{destination}_n0_test.csv",
             well_box_position="A3",
             tracking_number="test",
             sample_comments="test",
@@ -263,7 +263,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         sms_datagen.create_database_sms_n0(
             package_id="test",
             storage_unit_id="test",
-            file_path="UNC_META_n0_test.csv",
+            file_path=f"{destination}_n0_test.csv",
             well_box_position="A4"
         )
 
@@ -346,7 +346,8 @@ class NphSmsWorkflowsTest(BaseTestCase):
         generation_data = {
             "job": "FILE_GENERATION",
             "file_type": "N1_MC1",
-            "recipient": "UCSD"
+            "recipient": "UCSD",
+            "package_id": "test"
         }
         with clock.FakeClock(self.TIME_1):
             from rdr_service.resource import main as resource_main
@@ -371,9 +372,12 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
     @mock.patch('rdr_service.workflow_management.nph.sms_pipeline.GCPCloudTask.execute')
     def test_sms_pipeline_n1_function(self, task_mock):
+        self.create_data_n1_mc1_generation(destination="UNC_META")
         data = {
             "file_type": "N1_MC1",
-            "recipient": "UNC_META"
+            "job": "FILE_GENERATION",
+            "recipient": "UNC_META",
+            "package_id": "test"
         }
         n1_generation()
         task_mock.assert_called_with('nph_sms_generation_task',
