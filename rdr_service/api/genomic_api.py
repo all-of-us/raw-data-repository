@@ -301,7 +301,8 @@ class GenomicOutreachApiV2(UpdatableApi):
         participant_id, request_data = self.validate_post_data()
         return self.set_ready_loop(
             participant_id,
-            request_data
+            request_data,
+            self.participant_origin[0]
         )
 
     @auth_required(RDR_AND_PTC)
@@ -310,7 +311,8 @@ class GenomicOutreachApiV2(UpdatableApi):
         participant_id, request_data = self.validate_post_data()
         return self.set_ready_loop(
             participant_id,
-            request_data
+            request_data,
+            self.participant_origin[0]
         )
 
     def get_outreach(self):
@@ -339,7 +341,7 @@ class GenomicOutreachApiV2(UpdatableApi):
         return self._make_response(payload)
 
     @staticmethod
-    def set_ready_loop(participant_id, req_data):
+    def set_ready_loop(participant_id, req_data, participant_origin):
         member_dao = GenomicSetMemberDao()
 
         def _build_ready_response():
@@ -398,7 +400,8 @@ class GenomicOutreachApiV2(UpdatableApi):
                 external_values={
                     'participant_id': participant_id,
                     'informing_loop_ready_flag': convert_bool_map[req_data['informing_loop_eligible'].lower()],
-                    'informing_loop_ready_flag_modified': parser.parse(req_data['eligibility_date_utc'])
+                    'informing_loop_ready_flag_modified': parser.parse(req_data['eligibility_date_utc']),
+                    'participant_origin': participant_origin
                 }
             )
 
