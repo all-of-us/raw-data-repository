@@ -1989,6 +1989,26 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         ).one()
         self.assertEqual(response['id'], str(stored_response.questionnaireResponseId))
 
+        # Verify PDR data generation, including the mapping of new answer codes to be consistent with existing PDR data
+        pdr_rsc = self.make_participant_resource(consented_participant.participantId)
+        mod_data = self.get_generated_items(pdr_rsc['modules'])
+        self.assertEqual(len(mod_data), 1)
+        self.assertEqual(mod_data[0]['module'], 'ConsentPII')
+        # EXTRA_CONSENT_YES ==> CONSENT_PERMISSION_YES_CODE for PDR
+        self.assertEqual(mod_data[0]['consent_value'], CONSENT_PERMISSION_YES_CODE)
+        self.assertEqual(mod_data[0]['status'], 'SUBMITTED')
+        # This is based on legacy PDR enrollment_status (V2 status values)
+        self.assertEqual(pdr_rsc.get('enrollment_status', None), 'PARTICIPANT')
+
+        pdr_rsc = self.make_participant_resource(no_participant.participantId)
+        mod_data = self.get_generated_items(pdr_rsc['modules'])
+        self.assertEqual(len(mod_data), 1)
+        self.assertEqual(mod_data[0]['module'], 'ConsentPII')
+        # EXTRA_CONSENT_NO ==> CONSENT_PERMISSION_NO_CODE for PDR
+        self.assertEqual(mod_data[0]['consent_value'], CONSENT_PERMISSION_NO_CODE)
+        self.assertEqual(mod_data[0]['status'], 'SUBMITTED_NO_CONSENT')
+        self.assertEqual(pdr_rsc.get('enrollment_status', None), 'REGISTERED')
+
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
         with open(data_path(template_file_name)) as fd:
