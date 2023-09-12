@@ -2058,7 +2058,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 'qc_status': 1,
                 'gc_manifest_sample_source': 'Whole Blood',
                 'informing_loop_ready_flag': 'external_informing_loop_ready_flag',
-                'informing_loop_ready_flag_modified': 'external_informing_loop_ready_flag_modified'
+                'informing_loop_ready_flag_modified': 'external_informing_loop_ready_flag_modified',
+                'participant_origin': 'external_participant_origin'
             },
             'genomic_gc_validation_metrics': {
                 'genomic_set_member_id': '%genomic_set_member.id%',
@@ -2123,6 +2124,28 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
         self.assertTrue(all(obj['module'] in ready_modules for obj in resp['data']))
         self.assertTrue(all(obj['status'] == 'ready' for obj in resp['data']))
+
+        self.clear_table_after_test('genomic_datagen_member_run')
+
+    def test_post_inserts_correctly_with_origin_set(self):
+        self.build_ready_loop_template_data()
+
+        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+
+        resp = self.send_post(
+            f'GenomicOutreachV2?participant_id=P{participant.participantId}',
+            request_data={
+                'informing_loop_eligible': 'yes',
+                'eligibility_date_utc': '2022-03-23T20:52:12+00:00'
+            }
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertEqual(len(resp['data']), 2)
+
+        current_participant_record = [obj for obj in self.member_dao.get_all() if
+                                      obj.participantId == participant.participantId]
+        self.assertEqual(current_participant_record[0].participantOrigin, 'vibrent')
 
         self.clear_table_after_test('genomic_datagen_member_run')
 
