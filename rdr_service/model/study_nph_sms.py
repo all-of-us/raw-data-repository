@@ -56,7 +56,7 @@ class SmsSample(NphBase):
     job_run_id = Column(BigInteger, ForeignKey("sms_job_run.id"))
 
     # File Fields
-    sample_id = Column(BigInteger, index=True)
+    sample_id = Column(String(32), index=True)
     lims_sample_id = Column(String(32), index=True)
     plate_number = Column(String(32))
     position = Column(String(16))
@@ -91,7 +91,7 @@ class SmsN0(NphBase):
     lims_sample_id = Column(String(32))
     matrix_id = Column(String(32))
     biobank_id = Column(String(32))
-    sample_id = Column(BigInteger, index=True)
+    sample_id = Column(String(32), index=True)
     study = Column(String(64))
     visit = Column(String(64))
     timepoint = Column(String(64))
@@ -127,7 +127,7 @@ class SmsN1Mc1(NphBase):
     job_run_id = Column(BigInteger, ForeignKey("sms_job_run.id"))
 
     # Manifest Fields
-    sample_id = Column(BigInteger, index=True)
+    sample_id = Column(String(32), index=True)
     matrix_id = Column(String(32))
     biobank_id = Column(String(32))
     sample_identifier = Column(String(32))
