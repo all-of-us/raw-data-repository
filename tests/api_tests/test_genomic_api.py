@@ -1011,6 +1011,29 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.assertEqual(len(response_data), 1)
         self.assertEqual(response_data[0].get('participant_id'), f'P{second_participant.participantId}')
 
+        self.overwrite_test_user_client_id('color')
+
+        # SHOULD return ALL since client_id is color
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?participant_id={first_participant.participantId}'
+            )
+
+        self.assertIsNotNone(resp)
+        response_data = resp['data']
+        self.assertEqual(len(response_data), 1)
+        self.assertEqual(response_data[0].get('participant_id'), f'P{first_participant.participantId}')
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?participant_id={second_participant.participantId}'
+            )
+
+        self.assertIsNotNone(resp)
+        response_data = resp['data']
+        self.assertEqual(len(response_data), 1)
+        self.assertEqual(response_data[0].get('participant_id'), f'P{second_participant.participantId}')
+
         self.overwrite_test_user_client_id('example')
 
         # SHOULD NOT return data since client_id is invalid
