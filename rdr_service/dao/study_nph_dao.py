@@ -118,7 +118,7 @@ class NphParticipantDao(BaseDao):
                 EnrollmentEventType.source_name.notlike('%_losttofollowup')
             ).group_by(Participant.id).subquery()
 
-    def get_orders_samples_subquery(self):
+    def get_orders_samples_subquery(self, *, nph_participant_id=None, last_modified=None):
         parent_study_category = aliased(StudyCategory)
         parent_study_category_module = aliased(StudyCategory)
         parent_ordered_sample = aliased(OrderedSample)
@@ -151,9 +151,16 @@ class NphParticipantDao(BaseDao):
                 )
             ).filter(
                 stored_sample_alias.id.is_(None)
-            ).group_by(Participant.id).subquery()
+            )
 
-            return session.query(
+            if nph_participant_id:
+                stored_samples_subquery = stored_samples_subquery.filter(Participant.id == nph_participant_id)
+            elif last_modified:
+                ...
+
+            stored_samples_subquery = stored_samples_subquery.group_by(Participant.id).subquery()
+
+            sample_orders = session.query(
                 Participant.id.label('orders_samples_pid'),
                 func.json_object(
                     'orders_sample_json',
@@ -230,7 +237,16 @@ class NphParticipantDao(BaseDao):
             ).outerjoin(
                 stored_samples_subquery,
                 stored_samples_subquery.c.stored_sample_pid == Participant.id
-            ).group_by(Participant.id).subquery()
+            )
+
+            if nph_participant_id:
+                sample_orders = sample_orders.filter(Participant.id == nph_participant_id)
+                return sample_orders.group_by(Participant.id).all()
+            elif last_modified:
+                ...
+
+            sample_orders = sample_orders.group_by(Participant.id).subquery()
+            return sample_orders
 
     def get_diet_status_subquery(self):
         diet_alias = aliased(DietEvent)
@@ -1092,6 +1108,9 @@ class NphBiospecimenDao(BaseDao):
 
     def from_client_json(self):
         pass
+
+    def to_client_json(self, payload):
+        return payload
 
 
 class NphSampleUpdateDao(BaseDao):

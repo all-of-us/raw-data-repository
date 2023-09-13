@@ -812,7 +812,7 @@ class NphParticipantAPITest(BaseTestCase):
 
     def test_nph_biospecimen_for_participant(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
-        _create_test_sample_updates()
+        generate_ordered_sample_data()
         field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID collectionDateUTC processingDateUTC " \
                         "timepointID biobankStatus { limsID biobankModified status } } "
         query = simple_query(field_to_test)
@@ -890,7 +890,7 @@ class NphParticipantAPITest(BaseTestCase):
 
     def test_nph_biospecimen_for_participant_with_pagination(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
-        _create_test_sample_updates()
+        generate_ordered_sample_data()
         field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID timepointID biobankStatus { limsID biobankModified status } } "
         query_1 = simple_query_with_pagination(field_to_test, limit=1, offset=0)
         result_1 = app.test_client().post('/rdr/v1/nph_participant', data=query_1)
@@ -966,7 +966,7 @@ def _group_ordered_samples_by_participant(
     return grouped_ordered_samples_by_participant
 
 
-def _create_test_sample_updates():
+def generate_ordered_sample_data():
     nph_participants = NphParticipantDao().get_all()
     sites = NphSiteDao().get_all()
     study_categories = generate_fake_study_categories()
