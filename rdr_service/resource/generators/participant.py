@@ -1056,10 +1056,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return:
         """
-        # PDR-1432: Workaround for an edge case where HPRO created an "orphaned" biobank order that should be ignored
-        # TODO: When DA-3150 is implemented, need to adjust the biobank table queries in this method to filter on
-        # ignore flags, as appropriate
-        ignore_biobank_orders = ['WEBF77CR2BX5',]
 
         def _get_stored_sample_row(stored_samples, ordered_sample):
             """
@@ -1152,7 +1148,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    bo.finalized_time,
                    case when bmko.id is not null then 1 else 2 end as collection_method
              from biobank_order bo left outer join biobank_mail_kit_order bmko on bmko.biobank_order_id = bo.biobank_order_id
-             where bo.participant_id = :p_id
+             where bo.participant_id = :p_id and bo.ignore_flag != 1
              order by bo.created desc;
          """
 
@@ -1161,7 +1157,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             select bo.participant_id, bo.biobank_order_id, bos.*
             from biobank_order bo
             inner join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
-            where bo.participant_id = :p_id and bo.biobank_order_id = :bo_id
+            where bo.participant_id = :p_id and bo.biobank_order_id = :bo_id and bo.ignore_flag != 1
             order by bos.order_id, test;
         """
 
@@ -1172,7 +1168,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             select
                 (select p.participant_id from participant p where p.biobank_id = bss.biobank_id) as participant_id,
                 (select distinct boi.biobank_order_id from biobank_order_identifier boi
-                   where boi.`value` = bss.biobank_order_identifier and boi.biobank_order_id not in :ignore_orders
+                   where boi.`value` = bss.biobank_order_identifier and boi.biobank_order_id not in
+                            (select biobank_order_id from biobank_order where ignore_flag = 1)
                 ) as biobank_order_id,
                 bss.*
             from biobank_stored_sample bss
@@ -1187,7 +1184,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # be excluded from the list due to rare occurrences of "orphaned" orders created by HPRO
         # TODO:  Update to use a new ignore column as filter when implemented for DA-3150 and backfill is completed
         cursor = ro_session.execute(_biobank_orders_sql, {'p_id': p_id})
-        biobank_orders = [r for r in cursor if r.biobank_order_id not in ignore_biobank_orders]
+        biobank_orders = [r for r in cursor]
         # Create a unique identifier for each biobank order. This uid must be repeatable, so we sort by 'created'.
         # This unique biobank order id will be used as the prefix of the unique id for each biobank sample record.
         # Note: This is why every database table should have an 'id' integer field as the primary key, so we don't
@@ -1201,8 +1198,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # Find stored samples associated with this participant. For any stored samples for which there
         # is no known biobank order, create a separate list that will be consolidated into a "pseudo" order record
-        cursor = ro_session.execute(_biobank_stored_samples_sql, {'bb_id': p_bb_id,
-                                                                  'ignore_orders': ignore_biobank_orders})
+        cursor = ro_session.execute(_biobank_stored_samples_sql, {'bb_id': p_bb_id})
         bss_results = [r for r in cursor]
         bss_missing_orders = list(filter(lambda r: r.biobank_order_id is None, bss_results))
 
