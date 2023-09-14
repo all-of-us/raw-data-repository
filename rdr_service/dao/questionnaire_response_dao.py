@@ -15,6 +15,7 @@ from werkzeug.exceptions import BadRequest
 
 from rdr_service import singletons
 from rdr_service.api_util import dispatch_task
+from rdr_service.dao.account_link_dao import AccountLinkDao
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import fhirdate, questionnaireresponse as fhir_questionnaireresponse
 from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME, \
@@ -102,6 +103,7 @@ from rdr_service.model.log_position import LogPosition
 from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD, \
     QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
+from rdr_service.model.account_link import AccountLink
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
 from rdr_service.model.measurements import PhysicalMeasurements, Measurement
@@ -109,6 +111,7 @@ from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireH
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseExtension, QuestionnaireResponseClassificationType
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption, SurveyQuestionType
+from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import (
     QuestionnaireDefinitionStatus,
     QuestionnaireStatus,
@@ -127,10 +130,9 @@ _QUESTIONNAIRE_HISTORY_SEGMENT = "/_history/"
 _QUESTIONNAIRE_REFERENCE_FORMAT = _QUESTIONNAIRE_PREFIX + "{}" + _QUESTIONNAIRE_HISTORY_SEGMENT + "{}"
 
 _SIGNED_CONSENT_EXTENSION = "http://terminology.pmi-ops.org/StructureDefinition/consent-form-signed-pdf"
-
 _LANGUAGE_EXTENSION = "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language"
-
 _CATI_EXTENSION = "http://all-of-us.org/fhir/forms/non-participant-author"
+_GUARDIAN_EXTENSION = "http://all-of-us.org/fhir/forms/guardian-author"
 
 
 def count_completed_baseline_ppi_modules(participant_summary):
@@ -516,6 +518,17 @@ class QuestionnaireResponseDao(BaseDao):
         summary = ParticipantSummaryDao().get_for_update(session, questionnaire_response.participantId)
         if summary:
             ParticipantSummaryDao().update_enrollment_status(summary, session=session)
+
+        # Create any account links based on extensions
+        for extension in questionnaire_response.extensions:
+            if extension.url == _GUARDIAN_EXTENSION:
+                AccountLinkDao.save_account_link(
+                    account_link=AccountLink(
+                        participant_id=questionnaire_response.participantId,
+                        related_id=from_client_participant_id(extension.valueString)
+                    ),
+                    session=session
+                )
 
         return questionnaire_response
 

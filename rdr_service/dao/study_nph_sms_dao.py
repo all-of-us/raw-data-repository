@@ -1,6 +1,6 @@
-from operator import and_
 from typing import List, Dict
-from sqlalchemy import func
+from sqlalchemy import func, and_
+from sqlalchemy.orm import aliased
 
 from rdr_service import clock
 from rdr_service import config
@@ -90,6 +90,22 @@ class SmsN0Dao(BaseDao, SmsManifestMixin):
     def get_id(self, obj):
         return obj.id
 
+    def get_n0_package_ids_without_n1(self):
+        with self.session() as session:
+            return session.query(
+                SmsN0.package_id,
+                SmsN0.file_path
+            ).outerjoin(
+                SmsN1Mc1,
+                and_(
+                    SmsN0.package_id == SmsN1Mc1.package_id,
+                    SmsN1Mc1.ignore_flag == 0
+                )
+            ).filter(
+                SmsN0.ignore_flag == 0,
+                SmsN1Mc1.id.is_(None)
+            ).distinct().all()
+
 
 class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
     def __init__(self):
@@ -98,9 +114,13 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
     def get_id(self, obj):
         return obj.id
 
-    def get_transfer_def(self, recipient: str) -> dict:
+    def get_transfer_def(self, recipient: str, env=None) -> dict:
         bucket = "test-bucket-unc-meta"
-        env_split = config.GAE_PROJECT.split('-')[-1]
+        if env:
+            env_split = env.split('-')[-1]
+        else:
+            env_split = config.GAE_PROJECT.split('-')[-1]
+
         if env_split in ['prod', 'stable', 'sandbox']:
             bucket = config.NPH_SMS_BUCKETS.get(env_split).get(recipient)
 
@@ -111,7 +131,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
 
         recipient_xfer_dict = {
             "bucket": bucket,
-            "file_name": f"n1_manifests/{recipient}_n1_{clock.CLOCK.now().isoformat()}.csv",
+            "file_name": f"n1_manifests/{recipient}_n1_{clock.CLOCK.now().isoformat(timespec='seconds')}.csv",
             "delimiter": delimiter_str,
         }
 
@@ -121,7 +141,11 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
         if not kwargs.get('recipient'):
             raise KeyError("recipient required for N1_MC1")
 
+        if not kwargs.get('package_id'):
+            raise KeyError("package_id required for N1_MC1")
+
         with self.session() as session:
+            sample_well = aliased(SmsN1Mc1)
             query = session.query(
                 SmsSample.sample_id,
                 SmsN0.matrix_id,
@@ -135,7 +159,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsN0.sample_type,
                 SmsN0.additive_treatment,
                 SmsN0.quantity_ml,
-                SmsN0.age,
+                SmsSample.age,
                 SmsSample.sex_at_birth,
                 SmsN0.package_id,
                 SmsN0.storage_unit_id,
@@ -154,9 +178,12 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 func.json_extract(
                     OrderedSample.supplemental_fields, "$.bowelMovementQuality"
                 ).label('bowel_movement_quality'),
-            ).join(
-                SmsN0,
-                SmsN0.sample_id == SmsSample.sample_id
+            ).outerjoin(
+                SmsSample,
+                and_(
+                    SmsN0.sample_id == SmsSample.sample_id,
+                     SmsSample.ignore_flag == 0
+                )
             ).outerjoin(
                 OrderedSample,
                 SmsSample.sample_id == OrderedSample.nph_sample_id
@@ -169,16 +196,25 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             ).outerjoin(
                 SmsN1Mc1,
                 and_(
-                    SmsSample.sample_id == SmsN1Mc1.sample_id,
+                    SmsN0.sample_id == SmsN1Mc1.sample_id,
                     SmsN1Mc1.ignore_flag == 0
                 )
+            ).outerjoin(
+                sample_well,
+                and_(
+                     SmsN0.well_box_position == sample_well.well_box_position,
+                     SmsN0.package_id == sample_well.package_id,
+                     sample_well.ignore_flag == 0
+                )
             )
-            if kwargs.get("recipient"):
-                query = query.filter(SmsSample.destination == kwargs['recipient'])
 
             query = query.filter(
                 SmsBlocklist.id.is_(None),
-                SmsN1Mc1.id.is_(None)
-            )
+                SmsN1Mc1.id.is_(None),
+                sample_well.id.is_(None),
+                SmsN0.ignore_flag == 0,
+                SmsN0.package_id == kwargs.get('package_id'),
+                SmsN0.file_path.ilike(f'%{kwargs.get("recipient")}%')
+            ).order_by(SmsN0.id)
 
             return query.all()

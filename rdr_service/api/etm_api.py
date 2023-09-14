@@ -2,6 +2,7 @@ import json
 import logging
 from typing import List
 
+from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.questionnaire import Questionnaire as FhirQuestionnaire
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.questionnaireresponse import \
     QuestionnaireResponse as FhirQuestionnaireResponse
@@ -41,6 +42,11 @@ class EtmApi:
         repository = etm_repository.EtmQuestionnaireRepository()
         repository.store_questionnaire(questionnaire_obj)
 
+        # Support RDR to PDR pipeline.  All we need is just the pubsub message for the newly stored
+        # etm_questionnaire record (don't need submit_pipeline_pubsub_msg_from_model())
+        submit_pipeline_pubsub_msg(database='rdr', table='etm_questionnaire', action='insert',
+                                   pk_columns=['etm_questionnaire_id'], pk_values=[questionnaire_obj.id])
+
         return {
             **questionnaire_json
         }
@@ -61,6 +67,11 @@ class EtmApi:
         if validation_result.success:
             response_repository = etm_repository.EtmResponseRepository()
             response_repository.store_response(response_obj)
+
+            # Support RDR to PDR pipeline.  All we need is just the pubsub message for the newly stored
+            # etm_questionnaire_response record (don't need submit_pipeline_pubsub_msg_from_model())
+            submit_pipeline_pubsub_msg(database='rdr', table='etm_questionnaire_response', action='insert',
+                                       pk_columns=['etm_questionnaire_response_id'], pk_values=[response_obj.id])
 
             return {
                 'id': str(response_obj.id),

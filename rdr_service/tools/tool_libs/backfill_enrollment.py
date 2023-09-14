@@ -1,9 +1,14 @@
+
 import logging
 from datetime import datetime
 
+import rdr_service.config as config
+
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg
 from rdr_service.services.system_utils import list_chunks
+
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 tool_cmd = 'backfill-enrollment'
@@ -14,6 +19,7 @@ class BackfillEnrollment(ToolBase):
 
     def run(self):
         super(BackfillEnrollment, self).run()
+        config.override_setting('pdr_pipeline', { 'allowed_projects': [self.gcp_env.project]})
         with self.get_session() as session:
             summary_dao = ParticipantSummaryDao()
             # --id option takes precedence over --from-file option
@@ -45,11 +51,18 @@ class BackfillEnrollment(ToolBase):
                     summary_dao.update_enrollment_status(
                         summary=summary,
                         session=session,
-                        allow_downgrade=self.args.allow_downgrade
+                        allow_downgrade=self.args.allow_downgrade,
+                        # Don't trigger pubsub for PDR pipeline until after the commit
+                        pdr_pubsub=False
                     )
                     last_id = summary.participantId
 
                 session.commit()
+
+                submit_pipeline_pubsub_msg(database='rdr', table='participant_summary', action='upsert',
+                                           pk_columns=['participant_id'], pk_values=id_list_subset,
+                                           project=self.gcp_env.project)
+
 
 def add_additional_arguments(parser):
     parser.add_argument('--id', required=False,

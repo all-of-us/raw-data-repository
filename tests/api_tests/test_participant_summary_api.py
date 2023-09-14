@@ -23,6 +23,7 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.site_dao import SiteDao
+from rdr_service.model.account_link import AccountLink
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
 from rdr_service.model.config_utils import from_client_biobank_id
@@ -175,7 +176,8 @@ participant_summary_default_values = {
     "nphDeactivation": False,
     "hasCoreData": False,
     "questionnaireOnEmotionalHealthHistoryAndWellBeing": "UNSET",
-    "questionnaireOnBehavioralHealthAndPersonality": "UNSET"
+    "questionnaireOnBehavioralHealthAndPersonality": "UNSET",
+    'relatedParticipants': 'UNSET'
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
@@ -4534,3 +4536,31 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(summary['everIdVerified'], 'True')
         self.assertEqual(summary['firstIdVerifiedOn'], '2023-01-17')
         self.assertEqual(summary['idVerificationOrigin'], IdVerificationOriginType.REMOTE.name)
+
+    def test_displaying_linked_accounts(self):
+        first_parent = self.data_generator.create_database_participant_summary()
+        second_parent = self.data_generator.create_database_participant_summary()
+        child_id = self.data_generator.create_database_participant_summary().participantId
+
+        self.session.add(AccountLink(participant_id=child_id, related_id=first_parent.participantId))
+        self.session.add(AccountLink(participant_id=child_id, related_id=second_parent.participantId))
+        self.session.commit()
+
+        response = self.send_get(f'Participant/P{child_id}/Summary')
+        self.assertEqual(
+            [
+                {
+                    'participantId': f'P{first_parent.participantId}',
+                    'firstName': first_parent.firstName,
+                    'lastName': first_parent.lastName
+                },
+                {
+                    'participantId': f'P{second_parent.participantId}',
+                    'firstName': second_parent.firstName,
+                    'lastName': second_parent.lastName
+                }
+            ],
+            response.get('relatedParticipants')
+        )
+
+

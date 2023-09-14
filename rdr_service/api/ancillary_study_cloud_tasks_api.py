@@ -164,7 +164,8 @@ class NphSmsGenerationTaskApi(BaseAncillaryTaskApi):
         generation_data = {
             "job": "FILE_GENERATION",
             "file_type": self.data.get('file_type'),
-            "recipient": self.data.get('recipient')
+            "recipient": self.data.get('recipient'),
+            "package_id": self.data.get('package_id')
         }
         workflow = SmsWorkflow(generation_data)
         workflow.execute_workflow()
