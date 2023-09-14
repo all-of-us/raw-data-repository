@@ -51,11 +51,13 @@ class QuestionnaireResponse(Base):
     externalId = Column('external_id', String(64), nullable=True)
     """@rdr_dictionary_internal_column"""
 
-    classificationType = Column('classification_type',
-      EnumZeroBased(QuestionnaireResponseClassificationType),
-      nullable=True, # To remain consistent with existing column definition and enable op.alter_column
-      default=QuestionnaireResponseClassificationType.COMPLETE,
-      server_default=text(str(int(QuestionnaireResponseClassificationType.COMPLETE))))
+    classificationType = Column(
+        'classification_type',
+        EnumZeroBased(QuestionnaireResponseClassificationType),
+        nullable=True,  # To remain consistent with existing column definition and enable op.alter_column
+        default=QuestionnaireResponseClassificationType.COMPLETE,
+        server_default=text(str(int(QuestionnaireResponseClassificationType.COMPLETE)))
+    )
     """ Classification of a response (e.g., COMPLETE or DUPLICATE) which can determine if it should be ignored """
 
     resource = Column("resource", BlobUTF8, nullable=False)
