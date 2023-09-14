@@ -126,12 +126,14 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
 
         if "ucsd" in recipient.lower():
             delimiter_str = '\t'
+            extension = 'txt'
         else:
             delimiter_str = ','
+            extension = 'csv'
 
         recipient_xfer_dict = {
             "bucket": bucket,
-            "file_name": f"n1_manifests/{recipient}_n1_{clock.CLOCK.now().isoformat(timespec='seconds')}.csv",
+            "file_name": f"n1_manifests/{recipient}_n1_{clock.CLOCK.now().isoformat(timespec='seconds')}.{extension}",
             "delimiter": delimiter_str,
         }
 
