@@ -78,7 +78,7 @@ class GenomicOrigin:
     def set_participant_origin(cls, lookup_type: str):
         _, user_info = get_validated_user_info()
         client_id = user_info.get('clientId')
-        if client_id.lower() == 'configurator':
+        if client_id.lower() in ('configurator', 'color'):
             return GENOMIC_CLIENT_IDS
 
         if client_id not in GENOMIC_CLIENT_IDS:
