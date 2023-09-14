@@ -159,7 +159,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsN0.sample_type,
                 SmsN0.additive_treatment,
                 SmsN0.quantity_ml,
-                SmsN0.age,
+                SmsSample.age,
                 SmsSample.sex_at_birth,
                 SmsN0.package_id,
                 SmsN0.storage_unit_id,

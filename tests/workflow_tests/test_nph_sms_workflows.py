@@ -75,7 +75,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
         # Test Data inserted correctly
         self.assertEqual(ingested_record.job_run_id, 1)
-        self.assertEqual(ingested_record.sample_id, 10001)
+        self.assertEqual(ingested_record.sample_id, "10001")
         self.assertEqual(ingested_record.lims_sample_id, "5847307831")
         self.assertEqual(ingested_record.plate_number, "1")
         self.assertEqual(ingested_record.position, "A1")
@@ -120,7 +120,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(ingested_records[0].lims_sample_id, "00000000000")
         self.assertEqual(ingested_records[0].matrix_id, "MC8888888888")
         self.assertEqual(ingested_records[0].biobank_id, "N222222222")
-        self.assertEqual(ingested_records[0].sample_id, 2222222222)
+        self.assertEqual(ingested_records[0].sample_id, "2222222222")
         self.assertEqual(ingested_records[0].study, None)
         self.assertEqual(ingested_records[0].visit, None)
         self.assertEqual(ingested_records[0].timepoint, None)
@@ -301,7 +301,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         manifest_records = n1_mcac_dao.get_all()
         self.assertEqual(len(manifest_records), 3)
         self.assertEqual(manifest_records[0].file_path, expected_csv_path)
-        self.assertEqual(manifest_records[0].sample_id, 10001)
+        self.assertEqual(manifest_records[0].sample_id, "10001")
         self.assertEqual(manifest_records[0].matrix_id, "1111")
         self.assertEqual(manifest_records[0].bmi, "28")
         self.assertEqual(manifest_records[0].diet, "LMT")
@@ -312,7 +312,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[0].manufacturer_lot, '256837')
 
         self.assertEqual(manifest_records[1].file_path, expected_csv_path)
-        self.assertEqual(manifest_records[1].sample_id, 10002)
+        self.assertEqual(manifest_records[1].sample_id, "10002")
         self.assertEqual(manifest_records[1].matrix_id, "1112")
         self.assertEqual(manifest_records[1].bmi, "28")
         self.assertEqual(manifest_records[1].diet, "LMT")
