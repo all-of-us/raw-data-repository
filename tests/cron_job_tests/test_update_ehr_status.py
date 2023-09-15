@@ -217,16 +217,16 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             ])
         self.assertTrue(any([ehr_receipt_matches_expected(ehr_receipt) for ehr_receipt in ps_data['ehr_receipts']]))
 
-    @mock.patch('rdr_service.resource.generators.participant.get_ce_mediated_hpo_id')
+    @mock.patch('rdr_service.resource.generators.participant.get_ce_mediated_hpo_id_list')
     @mock.patch('rdr_service.offline.update_ehr_status.ParticipantEhrTracking.is_ce_mediated_file')
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_participant_summaries_job")
-    def test_updates_participant_summaries(self, mock_summary_job, is_ce_file_mock, resoure_ce_mock):
+    def test_updates_participant_summaries(self, mock_summary_job, is_ce_file_mock, resource_ce_mock):
         ce_hpo_id = 'ce-mediated'
 
         def ce_id_check(file):
             return ce_hpo_id == file.hpo_id
         is_ce_file_mock.side_effect = ce_id_check
-        resoure_ce_mock.return_value = ce_hpo_id
+        resource_ce_mock.return_value = [ce_hpo_id]
 
         # Run job with data for participants 11 and 14, and a CE file for 13
         p_eleven_first_upload = EhrUpdatePidRow(11, datetime.datetime(2020, 3, 12, 8), hpo_id='one')
@@ -553,3 +553,23 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
 
         foo_a_receipts = self.ehr_receipt_dao.get_all()
         self.assertEqual(len(foo_a_receipts), 0)
+
+    def test_detecting_ce_mediated_files(self):
+        # Check multiple hpo_ids recognized as CE
+        self.assertTrue(
+            update_ehr_status.ParticipantEhrTracking.is_ce_mediated_file(
+                ParticipantEhrReceipt(hpo_id='ce_id_1')
+            )
+        )
+        self.assertTrue(
+            update_ehr_status.ParticipantEhrTracking.is_ce_mediated_file(
+                ParticipantEhrReceipt(hpo_id='ce_id_2')
+            )
+        )
+
+        # Check one that isn't CE
+        self.assertFalse(
+            update_ehr_status.ParticipantEhrTracking.is_ce_mediated_file(
+                ParticipantEhrReceipt(hpo_id='not_ce')
+            )
+        )
