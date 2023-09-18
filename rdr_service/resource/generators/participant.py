@@ -174,7 +174,7 @@ _enrollment_status_map = {
 }
 
 
-def get_ce_mediated_hpo_id():
+def get_ce_mediated_hpo_id_list():
     return config.getSettingJson(config.CE_MEDIATED_HPO_ID, default=None)
 
 
@@ -594,12 +594,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     ParticipantEhrReceipt.firstSeen,
                     ParticipantEhrReceipt.fileTimestamp
                 )
-            ce_hpo_id = get_ce_mediated_hpo_id()
-            if ce_hpo_id is not None:
+            ce_hpo_id_list = get_ce_mediated_hpo_id_list()
+            if ce_hpo_id_list is not None:
                 pehr_query = pehr_query.filter(
                     or_(
                         ParticipantEhrReceipt.hpo_id.is_(None),
-                        ParticipantEhrReceipt.hpo_id != ce_hpo_id
+                        ParticipantEhrReceipt.hpo_id.notin_(ce_hpo_id_list)
                     )
                 )
             pehr_results = pehr_query.all()
