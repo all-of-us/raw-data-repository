@@ -178,7 +178,8 @@ participant_summary_default_values = {
     "hasCoreData": False,
     "questionnaireOnEmotionalHealthHistoryAndWellBeing": "UNSET",
     "questionnaireOnBehavioralHealthAndPersonality": "UNSET",
-    'relatedParticipants': 'UNSET'
+    'relatedParticipants': 'UNSET',
+    'isPediatric': 'UNSET'
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
