@@ -22,6 +22,7 @@ from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.pediatric_data_log_dao import PediatricDataLogDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.account_link import AccountLink
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
@@ -4563,4 +4564,13 @@ class ParticipantSummaryApiTest(BaseTestCase):
             response.get('relatedParticipants')
         )
 
+    def test_pediatric_flag(self):
+        regular_participant = self.data_generator.create_database_participant_summary()
+        pediatric_participant = self.data_generator.create_database_participant_summary()
+        PediatricDataLogDao.record_age_range(participant_id=pediatric_participant.participantId, age_range_str='TEEN')
 
+        response = self.send_get(f'Participant/P{regular_participant.participantId}/Summary')
+        self.assertEqual('UNSET', response['isPediatric'])
+
+        response = self.send_get(f'Participant/P{pediatric_participant.participantId}/Summary')
+        self.assertEqual(True, response['isPediatric'])

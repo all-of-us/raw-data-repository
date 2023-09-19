@@ -56,6 +56,7 @@ from rdr_service.model.participant_summary import (
 )
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.participant import Participant
+from rdr_service.model.pediatric_data_log import PediatricDataType
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.model.utils import get_property_type, to_client_participant_id
 from rdr_service.participant_enums import (
@@ -422,7 +423,8 @@ class ParticipantSummaryDao(UpdatableDao):
                 ParticipantSummary.participantId,
                 ParticipantSummary.firstName,
                 ParticipantSummary.lastName
-            )
+            ),
+            joinedload(ParticipantSummary.pediatricData)
         ]
 
     def get_by_hpo(self, hpo, session, yield_batch_size=1000):
@@ -1377,6 +1379,11 @@ class ParticipantSummaryDao(UpdatableDao):
                 }
                 for related_summary in related_summary_list
             ]
+
+        # set the pediatric data flag
+        result['isPediatric'] = UNSET
+        if any(data.data_type == PediatricDataType.AGE_RANGE for data in obj.pediatricData):
+            result['isPediatric'] = True
 
         # Format other responses to default to UNSET when none
         field_names = [

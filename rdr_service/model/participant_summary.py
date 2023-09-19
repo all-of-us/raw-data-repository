@@ -24,6 +24,7 @@ from sqlalchemy.sql import expression
 
 from rdr_service.model.account_link import AccountLink
 from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
+from rdr_service.model.pediatric_data_log import PediatricDataLog
 from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import (
     EhrStatus,
@@ -1675,6 +1676,22 @@ class ParticipantSummary(Base):
         uselist=True,
         lazy='noload'
     )
+
+    pediatricData: List[PediatricDataLog] = relationship(
+        'PediatricDataLog',
+        primaryjoin=and_(
+            foreign(participantId) == remote(PediatricDataLog.participant_id),
+            PediatricDataLog.replaced_by_id.is_(None)
+        ),
+        uselist=True,
+        lazy='noload'
+    )
+
+    isPediatric = None  # placeholder for docs, DAO sets on model
+    """
+    Field indicating whether this is a pediatric participant or not. The API will display as 'UNSET'
+    for adult participants, and will return a boolean value of true if it's a pediatric participant.
+    """
 
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)
