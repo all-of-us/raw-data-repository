@@ -15,118 +15,57 @@ tool_cmd = 'answer-hash-backfill'
 tool_desc = 'Backfill the answer digest for responses'
 
 emorecog_answer_rules = {
-    "https://research.joinallofus.org/fhir/emorecog/emotion": {
-        'type': 'string',
-        'allowed': ['a','f','h','s']
-    },
-    "https://research.joinallofus.org/fhir/emorecog/trial_id": {
-        'type': 'string'
-    },
-    "https://research.joinallofus.org/fhir/emorecog/image": {
-        'type': 'string'
-    },
-    "https://research.joinallofus.org/fhir/emorecog/response": {
-        'type': 'string'
-    },
-    "https://research.joinallofus.org/fhir/emorecog/correct": {
-        'type': 'integer'
-    },
-    "https://research.joinallofus.org/fhir/emorecog/rt": {
-        'type': 'float'
-    },
-    "https://research.joinallofus.org/fhir/emorecog/state": {
-        'type': 'string'
-    },
-    "https://research.joinallofus.org/fhir/emorecog/repeated": {
-        'type': 'integer'
-    },
-    "https://research.joinallofus.org/fhir/emorecog/flagged": {
-        'type': 'integer'
-    },
-    "https://research.joinallofus.org/fhir/emorecog/timestamp": {
-        'type': 'integer'
-    },
-    "operating_system": {
-        'type': 'string'
-    },
-    "response_device": {
-        'type': 'string'
-    },
-    "screen_height": {
-        'type': 'float'
-    },
-    "screen_width": {
-        'type': 'float'
-    },
-    "test_duration": {
-        'type': 'float'
-    },
-    "test_end_date_time": {
-        'type': 'float'
-    },
-    "test_language": {
-        'type': 'string'
-    },
-    "test_name": {
-        'type': 'string'
-    },
-    "test_params": {
-        'type': 'string'
-    },
-    "test_restarted": {
-        'type': 'float'
-    },
-    "test_short_name": {
-        'type': 'string'
-    },
-    "test_start_date_time": {
-        'type': 'float'
-    },
-    "test_version": {
-        'type': 'string'
-    },
-    "touch": {
-        'type': 'float'
-    },
-    "user_agent": {
-        'type': 'string'
-    },
-    "user_utc_offset": {
-        'type': 'float'
-    },
-    "accuracy": {
-        'type': 'float'
-    },
-    "angry_accuracy": {
-        'type': 'float'
-    },
-    "angry_meanRTc": {
-        'type': 'float'
-    },
-    "angry_medianRTc": {
-        'type': 'float'
-    },
-    "angry_sdRTc": {
-        'type': 'float'
-    },
-    "any_timeouts": {
-        'type': 'float'
-    },
-    "fearful_accuracy": {
-        'type': 'float'
-    },
-    "fearful_meanRTc": {
-        'type': 'float'
-    },
-    "fearful_medianRTc": {
-        'type': 'float'
-    },
-    "fearful_sdRTc": {
-        'type': 'float'
-    },
-    "flag_medianRTc": {
-        'type': 'float'
-    }
+    "https://research.joinallofus.org/fhir/emorecog/image": {"type": "string"},
+    "https://research.joinallofus.org/fhir/emorecog/response": {"type": "string"},
+    "https://research.joinallofus.org/fhir/emorecog/correct": {"type": "integer"},
+    "https://research.joinallofus.org/fhir/emorecog/rt": {"type": "float"},
+    "https://research.joinallofus.org/fhir/emorecog/state": {"type": "string"},
+    "https://research.joinallofus.org/fhir/emorecog/repeated": {"type": "integer"},
+    "https://research.joinallofus.org/fhir/emorecog/flagged": {"type": "integer"},
+    "https://research.joinallofus.org/fhir/emorecog/timestamp": {"type": "integer"},
+    "https://research.joinallofus.org/fhir/emorecog/trial_id": {"type": "string"},
+    "https://research.joinallofus.org/fhir/emorecog/emotion": {"type": "string"},
+    "operating_system": {"type": "string"},
+    "response_device": {"type": "string"},
+    "screen_height": {"type": "float"},
+    "screen_width": {"type": "float"},
+    "test_duration": {"type": "float"},
+    "test_end_date_time": {"type": "float"},
+    "test_language": {"type": "string"},
+    "test_name": {"type": "string"},
+    "test_params": {"type": "string"},
+    "test_restarted": {"type": "float"},
+    "test_short_name": {"type": "string"},
+    "test_start_date_time": {"type": "float"},
+    "test_version": {"type": "string"},
+    "touch": {"type": "float"},
+    "user_agent": {"type": "string"},
+    "user_utc_offset": {"type": "float"},
+    "accuracy": {"type": "float"},
+    "angry_accuracy": {"type": "float"},
+    "angry_meanRTc": {"type": "float", "nullable": True},
+    "angry_medianRTc": {"type": "float", "nullable": True},
+    "angry_sdRTc": {"type": "float", "nullable": True},
+    "any_timeouts": {"type": "float"},
+    "fearful_accuracy": {"type": "float"},
+    "fearful_meanRTc": {"type": "float", "nullable": True},
+    "fearful_medianRTc": {"type": "float", "nullable": True},
+    "fearful_sdRTc": {"type": "float", "nullable": True},
+    "flag_medianRTc": {"type": "float"},
+    "flag_sameResponse": {"type": "integer"},
+    "flag_trialFlags": {"type": "integer"},
+    "happy_accuracy": {"type": "float"},
+    "happy_meanRTc": {"type": "float", "nullable": True},
+    "happy_medianRTc": {"type": "float", "nullable": True},
+    "happy_sdRTc": {"type": "float", "nullable": True},
+    "meanRTc": {"type": "float"},
+    "medianRTc": {"type": "float"},
+    "sad_accuracy": {"type": "float"},
+    "sad_meanRTc": {"type": "float", "nullable": True},
+    "sad_medianRTc": {"type": "float", "nullable": True},
+    "sad_sdRTc": {"type": "float", "nullable": True},
+    "score": {"type": "integer"},
+    "sdRTc": {"type": "float"},
 }
 
 emorecog_validation_schema = {
@@ -145,6 +84,9 @@ emorecog_validation_schema = {
                             "schema": {
                                 "type": "dict",
                                 "schema": {
+                                    "valueCoding": {
+                                        "type": "dict"
+                                    },
                                     "extension": {
                                         "type": "list",
                                         "schema": {
@@ -232,8 +174,9 @@ class DigestBackfillTool(ToolBase):
     def run(self):
         super(DigestBackfillTool, self).run()
 
-        self.validate_payload()
-        # self.setup_schema()
+        # self.validate_payload()
+        self.setup_schema()
+        # self.sync_consents()
 
     def setup_schema(self):
         client = bigquery.Client()
@@ -246,12 +189,12 @@ class DigestBackfillTool(ToolBase):
                 bigquery.ScalarQueryParameter("metadata_schema", "STRING", metadata_schema),
                 bigquery.ScalarQueryParameter("task_version", "STRING", "EmoRecog_AoU.v1.May23"),
                 bigquery.ScalarQueryParameter("questionnaire_type", "STRING", "emorecog"),
-                bigquery.ScalarQueryParameter("valid_from", "TIMESTAMP", datetime.datetime(2023,8,1))
+                bigquery.ScalarQueryParameter("valid_from", "TIMESTAMP", datetime.datetime(2023,9,1))
             ]
         )
         insert_schema = client.query("""
             INSERT INTO rdr_etm_test.etm_validation_schema
-            (questionnaire_type, valid_from, created, fhir_schema, metadata_schema, task_version)
+            (questionnaire_type, valid_from, created, fhir_schema, metadata_schema, task_schema_version)
             VALUES (@questionnaire_type, @valid_from, CURRENT_TIMESTAMP(), @fhir_schema, @metadata_schema, @task_version)
         """, job_options)
         insert_schema.result()
@@ -364,6 +307,39 @@ class DigestBackfillTool(ToolBase):
                 """, job_config=job_config)
                 # wait for insert to finish
                 insert_job.result()
+
+    def sync_consents(self):
+        client = bigquery.Client()
+        # latest_consent_query = client.query("""SELECT MAX(rdr_created) AS """\
+        # """max_created FROM rdr_etm_test.etm_consent;""")
+        # latest_consent_row = latest_consent_query.result()
+        # latest_consent = list(latest_consent_row)[0].get("max_created")
+        # latest_consent = '2020-01-01'
+
+
+        etm_mysql_query = f"""SELECT pa.participant_id AS person_id, pa.research_id, qr.authored, ac.value AS """\
+        """consent_status, pa.participant_origin AS src_id, qr.created AS rdr_created"""\
+        """ FROM rdr.participant pa JOIN rdr.questionnaire_response qr ON """\
+        """pa.participant_id = qr.participant_id JOIN rdr.questionnaire_response_answer qra ON """\
+        """qr.questionnaire_response_id = qra.questionnaire_response_id JOIN """\
+        """rdr.questionnaire_question qq ON qra.question_id = qq.questionnaire_question_id """\
+        """JOIN rdr.code qcd ON qq.code_id = qcd.code_id """\
+        """LEFT JOIN rdr.code ac ON qra.value_code_id = ac.code_id JOIN """\
+        """rdr.questionnaire q ON qr.questionnaire_id = q.questionnaire_id JOIN """\
+        """rdr.questionnaire_concept qc ON q.questionnaire_id = qc.questionnaire_id AND """\
+        """q.version = qc.questionnaire_version JOIN rdr.code cc ON qc.code_id = cc.code_id WHERE """\
+        """ac.value IS NOT NULL AND cc.value = 'english_exploring_the_mind_consent_form' """\
+        """AND qcd.value = 'etm_consent' AND qr.created > '{latest_consent}' """\
+        """ ORDER BY """\
+        """pa.participant_id, qr.authored;"""
+        job_config = bigquery.QueryJobConfig(
+            destination="all-of-us-rdr-sandbox.rdr_etm_test.etm_consent",
+            write_disposition="WRITE_APPEND"
+        )
+        query_job = client.query(f"""
+        SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
+        "{etm_mysql_query}");""", job_config=job_config)
+        query_job.result()
 
     def update_id_list(self):
 
