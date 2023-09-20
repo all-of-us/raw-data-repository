@@ -67,7 +67,7 @@ class TestEnrollmentInfo(BaseTestCase):
             EnrollmentCalculation.get_enrollment_info(participant_info)
         )
 
-    def test_basics_and_gror(self):
+    def test_enrolled_and_ehr(self):
         """
         3.0 should upgrade to PARTICIPANT_PMB_ELIGIBLE when TheBasics has been submitted, but also needs EHR
         3.2 should upgrade to needs TheBasics, but doesn't need EHR.
@@ -143,6 +143,7 @@ class TestEnrollmentInfo(BaseTestCase):
                 v32_data=[
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time),
                     (EnrollmentStatusV32.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time)
                 ]
             ),
@@ -191,6 +192,7 @@ class TestEnrollmentInfo(BaseTestCase):
                 v32_data=[
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time),
                     (EnrollmentStatusV32.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
                     (EnrollmentStatusV32.CORE_PARTICIPANT, participant_info.earliest_physical_measurements_time)
                 ]
@@ -233,6 +235,7 @@ class TestEnrollmentInfo(BaseTestCase):
                 v32_data=[
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time),
                     (EnrollmentStatusV32.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
                     (EnrollmentStatusV32.CORE_PARTICIPANT, participant_info.earliest_physical_measurements_time)
                 ]
