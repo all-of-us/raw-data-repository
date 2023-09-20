@@ -195,23 +195,21 @@ class EnrollmentCalculation:
 
     @classmethod
     def _set_v32_status(cls, enrollment: EnrollmentInfo, participant_info: EnrollmentDependencies):
-        if not participant_info.ever_expressed_interest_in_sharing_ehr:
-            return  # stop here without ehr interest, any more upgrades to the enrollment status require it
-
-        enrollment.upgrade_3_2_status(EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date)
+        if participant_info.ever_expressed_interest_in_sharing_ehr:
+            enrollment.upgrade_3_2_status(
+                EnrollmentStatusV32.PARTICIPANT_PLUS_EHR,
+                participant_info.first_ehr_consent_date
+            )
 
         if not participant_info.has_completed_the_basics_survey:
             return  # stop here without TheBasics, any more upgrades to the enrollment status require it
 
-        # Upgrading 3.2 to ENROLLED_PARTICIPANT requires TheBasics and a GROR response
-        if participant_info.has_completed_gror_survey:
-            matching_date = cls._get_requirements_met_date([
-                participant_info.first_ehr_consent_date,
-                participant_info.basics_authored_time,
-                participant_info.gror_authored_time
-            ])
-            if matching_date:
-                enrollment.upgrade_3_2_status(EnrollmentStatusV32.ENROLLED_PARTICIPANT, matching_date)
+        # Upgrading 3.2 to ENROLLED_PARTICIPANT requires TheBasics
+        if participant_info.basics_authored_time:
+            enrollment.upgrade_3_2_status(
+                EnrollmentStatusV32.ENROLLED_PARTICIPANT,
+                participant_info.basics_authored_time
+            )
 
         if cls._meets_requirements_for_core_minus_pm(participant_info):
             enrollment.upgrade_3_2_status(
