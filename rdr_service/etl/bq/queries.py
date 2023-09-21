@@ -202,8 +202,8 @@ queries = {
               0 AS place_of_service_concept_id,
               NULL AS location_id,
               site.site_id AS care_site_source_value,
-              NULL AS place_of_service_source_value,
-              '' AS src_id
+              CAST(NULL AS STRING) AS place_of_service_source_value,
+              'vibrent' AS src_id
             FROM
               `{dataset_id}.site` site""",
         "destination": "care_site",
