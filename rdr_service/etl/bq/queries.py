@@ -1305,6 +1305,26 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
+                    CREATE TABLE `{dataset_id}.specimen`
+                    (
+                      specimen_id INT64,
+                      person_id INT64,
+                      specimen_concept_id INT64,
+                      specimen_type_concept_id INT64,
+                      specimen_date DATE,
+                      specimen_datetime TIMESTAMP,
+                      quantity NUMERIC,
+                      unit_concept_id INT64,
+                      anatomic_site_concept_id INT64,
+                      disease_status_concept_id INT64,
+                      specimen_source_id STRING,
+                      specimen_source_value STRING,
+                      unit_source_value STRING,
+                      anatomic_site_source_value STRING,
+                      disease_status_source_value STRING,
+                      src_id STRING,
+                    )
+                    DEFAULT COLLATE 'und:ci';
         """
     },
     "pid_rid_mapping": {
