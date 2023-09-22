@@ -8,14 +8,14 @@ from dateutil.parser import parse
 from sqlalchemy import or_
 from sqlalchemy.orm.session import make_transient
 
-from rdr_service.clock import FakeClock
-from rdr_service.concepts import Concept
 from rdr_service import config
+from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (
     CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, CONSENT_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
-    EMAIL_QUESTION_CODE, EXTRA_CONSENT_NO, EXTRA_CONSENT_YES, FIRST_NAME_QUESTION_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE,
-    GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE, PPI_SYSTEM
+    EMAIL_QUESTION_CODE, EXTRA_CONSENT_NO, EXTRA_CONSENT_YES, FIRST_NAME_QUESTION_CODE, GENDER_MAN_CODE,
+    GENDER_WOMAN_CODE, GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE, PEDIATRICS_OVERALL_HEALTH, PPI_SYSTEM
 )
+from rdr_service.concepts import Concept
 from rdr_service.dao.account_link_dao import AccountLinkDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao, \
@@ -33,15 +33,16 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.participant_summary import ParticipantSummary, WithdrawalStatus
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
-from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
-    ParticipantCohort, ParticipantCohortPilotFlag
+from rdr_service.participant_enums import (
+    ParticipantCohort, ParticipantCohortPilotFlag, QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,
+    QuestionnaireStatus
+)
 
 
 from tests.api_tests.test_participant_summary_api import participant_summary_default_values,\
     participant_summary_default_values_no_basics
 from tests.test_data import data_path, load_biobank_order_json
 from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin, BiobankTestMixin
-from rdr_service.concepts import Concept
 from rdr_service.code_constants import RACE_NONE_OF_THESE_CODE
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -2008,6 +2009,45 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(mod_data[0]['consent_value'], CONSENT_PERMISSION_NO_CODE)
         self.assertEqual(mod_data[0]['status'], 'SUBMITTED_NO_CONSENT')
         self.assertEqual(pdr_rsc.get('enrollment_status', None), 'REGISTERED')
+
+    def test_pediatrics_overall_health(self):
+        """
+        Check that the pediatrics version of the OverallHealth survey maps to the correct field on participant summary
+        """
+        module_code = self.data_generator.create_database_code(
+            system=PPI_SYSTEM,
+            value=PEDIATRICS_OVERALL_HEALTH
+        )
+        CodeDao()._invalidate_cache()  # invalidate code cache so the new module code exists
+
+        # Set up questionnaire, inserting through DAO to get history to generate as well
+        questionnaire = self.data_generator._questionnaire()
+        questionnaire.concepts = [QuestionnaireConcept(codeId=module_code.codeId)]
+
+        questionnaire_dao = QuestionnaireDao()
+        questionnaire_dao.insert(questionnaire)
+
+        # Create and send response of a participant providing consent
+        participant_summary: ParticipantSummary = self.data_generator.create_database_participant_summary()
+        participant_id = participant_summary.participantId
+        authored_time = datetime.datetime(2023, 3, 27)
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire.questionnaireId,
+            authored=authored_time
+        )
+
+        submission_time = datetime.datetime(2023, 4, 1)
+        with FakeClock(submission_time):
+            self.send_post(
+                f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json
+            )
+
+        # Verify that the fields for OverallHealth were set
+        self.session.refresh(participant_summary)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnOverallHealth)
+        self.assertEqual(submission_time, participant_summary.questionnaireOnOverallHealthTime)
+        self.assertEqual(authored_time, participant_summary.questionnaireOnOverallHealthAuthored)
 
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):

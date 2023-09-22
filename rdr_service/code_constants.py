@@ -194,6 +194,9 @@ PRIMARY_CONSENT_UPDATE_MODULE = 'PrimaryConsentUpdate'
 WEAR_CONSENT_MODULE = 'wear_consent'
 EMOTIONAL_HEALTH_MODULE = 'ehhwb'
 BEHAVIORAL_HEALTH_MODULE = 'bhp'
+PEDIATRICS_BASICS = 'ped_basics'
+PEDIATRICS_OVERALL_HEALTH = 'ped_overall_health'
+PEDIATRICS_ENVIRONMENTAL_HEALTH = 'ped_environmental_health'
 
 VA_EHR_RECONSENT = 'vaehrreconsent'
 
