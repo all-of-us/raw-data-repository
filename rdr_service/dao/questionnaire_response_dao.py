@@ -87,7 +87,8 @@ from rdr_service.code_constants import (
     AGREE_NO,
     REMOTE_ID_VERIFIED_CODE,
     REMOTE_ID_VERIFIED_ON_CODE,
-    ETM_CONSENT_QUESTION_CODE
+    ETM_CONSENT_QUESTION_CODE,
+    PEDIATRICS_ENVIRONMENTAL_HEALTH
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -99,14 +100,16 @@ from rdr_service.dao.participant_summary_dao import (
     ParticipantRaceAnswersDao,
     ParticipantSummaryDao,
 )
-from rdr_service.model.log_position import LogPosition
+from rdr_service.dao.pediatric_data_log_dao import PediatricDataLogDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD, \
     QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
 from rdr_service.model.account_link import AccountLink
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
+from rdr_service.model.log_position import LogPosition
 from rdr_service.model.measurements import PhysicalMeasurements, Measurement
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseExtension, QuestionnaireResponseClassificationType
@@ -1102,6 +1105,15 @@ class QuestionnaireResponseDao(BaseDao):
                 elif self._code_in_list(code.value, [VA_EHR_RECONSENT]) and not rejected_reconsent:
                     self.consents_provided.append(ConsentType.EHR_RECONSENT)
                     participant_summary.reconsentForElectronicHealthRecordsAuthored = authored
+                elif code.value.lower() == PEDIATRICS_ENVIRONMENTAL_HEALTH:
+                    PediatricDataLogDao.insert(
+                        data=PediatricDataLog(
+                            participant_id=participant.participantId,
+                            data_type=PediatricDataType.ENVIRONMENTAL_HEALTH,
+                            value=authored
+                        ),
+                        session=session
+                    )
 
         if module_changed:
             participant_summary.numCompletedBaselinePPIModules = count_completed_baseline_ppi_modules(

@@ -13,7 +13,8 @@ from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (
     CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, CONSENT_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
     EMAIL_QUESTION_CODE, EXTRA_CONSENT_NO, EXTRA_CONSENT_YES, FIRST_NAME_QUESTION_CODE, GENDER_MAN_CODE,
-    GENDER_WOMAN_CODE, GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE, PEDIATRICS_OVERALL_HEALTH, PPI_SYSTEM
+    GENDER_WOMAN_CODE, GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE, PEDIATRICS_OVERALL_HEALTH,
+    PEDIATRICS_ENVIRONMENTAL_HEALTH, PPI_SYSTEM
 )
 from rdr_service.concepts import Concept
 from rdr_service.dao.account_link_dao import AccountLinkDao
@@ -32,6 +33,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
     QuestionnaireResponseExtension
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.participant_summary import ParticipantSummary, WithdrawalStatus
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
 from rdr_service.participant_enums import (
     ParticipantCohort, ParticipantCohortPilotFlag, QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,
@@ -2027,7 +2029,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         questionnaire_dao = QuestionnaireDao()
         questionnaire_dao.insert(questionnaire)
 
-        # Create and send response of a participant providing consent
+        # Create and send response from a participant
         participant_summary: ParticipantSummary = self.data_generator.create_database_participant_summary()
         participant_id = participant_summary.participantId
         authored_time = datetime.datetime(2023, 3, 27)
@@ -2048,6 +2050,43 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnOverallHealth)
         self.assertEqual(submission_time, participant_summary.questionnaireOnOverallHealthTime)
         self.assertEqual(authored_time, participant_summary.questionnaireOnOverallHealthAuthored)
+
+    def test_pediatrics_enviromental_health(self):
+        """
+        Check that the pediatrics version of the OverallHealth survey maps to the correct field on participant summary
+        """
+        module_code = self.data_generator.create_database_code(
+            system=PPI_SYSTEM,
+            value=PEDIATRICS_ENVIRONMENTAL_HEALTH
+        )
+        CodeDao()._invalidate_cache()  # invalidate code cache so the new module code exists
+
+        # Set up questionnaire, inserting through DAO to get history to generate as well
+        questionnaire = self.data_generator._questionnaire()
+        questionnaire.concepts = [QuestionnaireConcept(codeId=module_code.codeId)]
+
+        questionnaire_dao = QuestionnaireDao()
+        questionnaire_dao.insert(questionnaire)
+
+        # Create and send response from a participant
+        participant_summary: ParticipantSummary = self.data_generator.create_database_participant_summary()
+        participant_id = participant_summary.participantId
+        authored_time = datetime.datetime(2023, 3, 27)
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire.questionnaireId,
+            authored=authored_time
+        )
+        self.send_post(
+            f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json
+        )
+
+        # Verify that a datalog entry was created
+        data_log: PediatricDataLog = self.session.query(PediatricDataLog).filter(
+            PediatricDataLog.participant_id == participant_id,
+            PediatricDataLog.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH
+        ).one()
+        self.assertEqual(str(authored_time), data_log.value)
 
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
