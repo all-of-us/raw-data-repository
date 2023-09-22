@@ -1017,7 +1017,13 @@ queries = {
         "query": """
                 SELECT tsc.questionnaire_response_id survey_conduct_id,
                         tsc.participant_id person_id,
-                        COALESCE(voc_c.concept_id, 0) survey_concept_id,
+                        CASE
+                            WHEN tsc.value = 'wear_consent' AND p.src_id = 'ce' THEN 2100000011
+                            -- Code for CE WEAR consent
+                            WHEN tsc.value = 'wear_consent' AND p.src_id = 'vibrent' THEN 2100000012
+                            -- Code for PTSC WEAR consent
+                            ELSE COALESCE(voc_c.concept_id, 0)
+                        END survey_concept_id,
                         NULL survey_start_date,
                         CAST(NULL AS TIMESTAMP) survey_start_datetime,
                         DATE(tsc.authored) survey_end_date,
