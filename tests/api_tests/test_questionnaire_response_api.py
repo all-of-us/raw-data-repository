@@ -750,7 +750,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
+            "enrollmentStatusEnrolledParticipantV3_2Time": TIME_2.isoformat()
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1181,7 +1182,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
+            "enrollmentStatusEnrolledParticipantV3_2Time": TIME_2.isoformat()
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1358,7 +1360,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
+            "enrollmentStatusEnrolledParticipantV3_2Time": TIME_2.isoformat()
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1402,7 +1405,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
+            "enrollmentStatusEnrolledParticipantV3_2Time": TIME_2.isoformat()
         })
         self.assertJsonResponseMatches(expected, summary)
 
