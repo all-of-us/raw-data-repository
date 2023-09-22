@@ -1272,6 +1272,10 @@ class ParticipantSummaryDao(UpdatableDao):
         for field_name in field_names:
             if result.get(field_name) is None:
                 result[field_name] = UNSET
+            elif result[field_name]:
+                result[field_name] = 'True'
+            else:
+                result[field_name] = 'False'
 
         # Map demographic Enums if TheBasics was submitted and Skip wasn't in use
         if is_the_basics_complete and not should_clear_fields_for_withdrawal:

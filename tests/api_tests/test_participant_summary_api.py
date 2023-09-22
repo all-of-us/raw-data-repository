@@ -4499,14 +4499,14 @@ class ParticipantSummaryApiTest(BaseTestCase):
         # Get request from API to assert True Response information is accurate
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
-        self.assertTrue(summary['remoteIdVerificationStatus'])
+        self.assertEqual(summary['remoteIdVerificationStatus'], 'True')
         self.assertEqual(summary['remoteIdVerifiedOn'], '2023-01-17')
         # Change the date for remoteIdVerifiedOn to 1/18/2023
         resource['group']['question'][1]['answer'][0]['valueString'] = "1674066632000"
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['remoteIdVerifiedOn'], '2023-01-18')
-        self.assertTrue(summary['everIdVerified'])
+        self.assertEqual(summary['everIdVerified'], 'True')
         self.assertEqual(summary['firstIdVerifiedOn'], '2023-01-17')
         self.assertEqual(summary['idVerificationOrigin'], IdVerificationOriginType.REMOTE.name)
         # Load & send a response w/ no remote id verification again
@@ -4519,7 +4519,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
         # Get request from API to assert status stays True, and does not go back to UNSET
         summary = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertTrue(summary['remoteIdVerificationStatus'])
+        self.assertEqual(summary['remoteIdVerificationStatus'], 'True')
         # load False response
         questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
         resource = load_qr_response_json(
@@ -4532,10 +4532,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
         self.assertEqual(summary['remoteIdVerifiedOn'], UNSET)
-        self.assertFalse(summary['remoteIdVerificationStatus'])
+        self.assertEqual(summary['remoteIdVerificationStatus'], 'False')
         self.assertEqual(summary['onsiteIdVerificationType'], UNSET)
         self.assertEqual(summary['onsiteIdVerificationVisitType'], UNSET)
-        self.assertTrue(summary['everIdVerified'])
+        self.assertEqual(summary['everIdVerified'], 'True')
         self.assertEqual(summary['firstIdVerifiedOn'], '2023-01-17')
         self.assertEqual(summary['idVerificationOrigin'], IdVerificationOriginType.REMOTE.name)
 
