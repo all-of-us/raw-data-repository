@@ -270,8 +270,8 @@ class ParticipantUBRCalculator:
         # When calculating 'Age At Consent', ensure that leap years are accounted for. A date subtraction
         # function that is "leap year" aware must be used.
         rd = relativedelta(consent_time, answer)
-        # RBR if age is between 18 and 64, else UBR.
-        if 18 <= rd.years < 65:
+        # PDR-2105 - Due to Pediatric rollout, participants under 18 will no longer count as UBR.
+        if rd.years < 65:
             return UBRValueEnum.RBR
         return UBRValueEnum.UBR
 
