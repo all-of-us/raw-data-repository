@@ -407,7 +407,7 @@ class BQTable(object):
     __project_map__ = [
         ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
         ('all-of-us-rdr-stable', ('aou-pdr-data-stable', 'rdr_ops_data_view')),
-        ('pmi-drc-api-test', ('aou-pdr-data-test', 'rdr_ops_data_view')),
+        ('pmi-drc-api-test', ('aou-pdr-data-dev', 'rdr_ops_data_view')),
     ]
 
     def get_name(self):

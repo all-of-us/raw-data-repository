@@ -512,6 +512,7 @@ class ParticipantSchema(Schema):
     ubr_age_at_consent = fields.UInt8()
     ubr_disability = fields.UInt8()
     ubr_overall = fields.UInt8()
+    is_pediatric = fields.UInt8()
 
     class Meta:
         schema_id = SchemaID.participant
