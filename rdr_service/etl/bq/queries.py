@@ -870,10 +870,10 @@ queries = {
               dr.participant_id AS person_id,
               dr.date_of_death AS death_date,
               CAST(dr.date_of_death AS TIMESTAMP) AS death_datetime,
-              '32809' AS death_type_concept_id,
-              'NULL' AS cause_concept_id, -- CDR requires these columns to have a value of 'NULL'
-              'NULL' AS cause_source_value,
-              'NULL' AS cause_source_concept_id,
+              32809 AS death_type_concept_id,
+              CAST(NULL AS INT64) AS cause_concept_id,
+              CAST(NULL AS STRING) AS cause_source_value,
+              CAST(NULL AS INT64) AS cause_source_concept_id,
               'healthpro' AS src_id
             FROM
               `{dataset_id}.deceased_report` dr
