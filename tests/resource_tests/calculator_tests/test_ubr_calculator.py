@@ -343,7 +343,7 @@ class UBRCalculatorTest(BaseTestCase):
 
         # Test UBR value
         dob = (consent_ts - relativedelta(years=17)).date()
-        self.assertEqual(self.ubr.ubr_age_at_consent(consent, dob), UBRValueEnum.UBR)
+        self.assertEqual(self.ubr.ubr_age_at_consent(consent, dob), UBRValueEnum.RBR)
         dob = (consent_ts - relativedelta(years=65)).date()
         self.assertEqual(self.ubr.ubr_age_at_consent(consent, dob), UBRValueEnum.UBR)
 
