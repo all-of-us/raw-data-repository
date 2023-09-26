@@ -2155,7 +2155,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         ).one()
         self.assertEqual(authored_time.isoformat(), data_log.value)
 
-        # TODO: make sure env health status counts toward number of surveys
+        self.session.refresh(participant_summary)
+        self.assertEqual(1, participant_summary.numCompletedPPIModules)
+        self.assertEqual(1, participant_summary.numCompletedBaselinePPIModules)
 
         # TODO: sorting for the env health fields.... ?
 

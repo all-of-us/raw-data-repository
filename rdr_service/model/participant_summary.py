@@ -24,7 +24,7 @@ from sqlalchemy.sql import expression
 
 from rdr_service.model.account_link import AccountLink
 from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
-from rdr_service.model.pediatric_data_log import PediatricDataLog
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import (
     EhrStatus,
@@ -1705,6 +1705,9 @@ class ParticipantSummary(Base):
     Field indicating whether this is a pediatric participant or not. The API will display as 'UNSET'
     for adult participants, and will return a boolean value of true if it's a pediatric participant.
     """
+
+    def did_submit_environmental_health(self):
+        return any(data.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH for data in self.pediatricData)
 
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)
