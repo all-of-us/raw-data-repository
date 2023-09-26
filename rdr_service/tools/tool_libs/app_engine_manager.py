@@ -229,7 +229,8 @@ class DeployAppClass(ToolBase):
 
             h3. Change Management Description
             System: All of Us DRC, Raw Data Repository (RDR)
-            Developers: Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe, Brian Kimmel, Ayaz Amlani
+            Developer(s): Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe, Brian Kimmel, Ayaz Amlani,
+            Monique Bristol, Shahwaiz Punjwani
             Needed By Date/Event: <target release date>
             Priority: <Low, Medium, High>
             Configuration/Change Manager: Megan Morris
