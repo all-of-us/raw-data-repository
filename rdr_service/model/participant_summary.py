@@ -1115,6 +1115,19 @@ class ParticipantSummary(Base):
     questionnaireOnLifeFunctioningAuthored = Column("questionnaire_on_life_functioning_authored", UTCDateTime)
     "The UTC Date time of when the participant completed the life functioning survey questionnaire"
 
+    questionnaireOnEnvironmentalHealth = None
+    """
+    Indicates status for the pediatric Environmental Health PPI module.
+
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+
+    questionnaireOnEnvironmentalHealthTime = None
+    "Indicates the time at which the RDR received notice of pediatric Environment Health questionnaire response"
+
+    questionnaireOnEnvironmentalHealthAuthored = None
+    "Indicates the time at which the participant completed the pediatric Environment Health questionnaire"
+
     numCompletedBaselinePPIModules = Column("num_completed_baseline_ppi_modules", SmallInteger, default=0)
     """
     The count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth, questionnaireOnLifestyle]

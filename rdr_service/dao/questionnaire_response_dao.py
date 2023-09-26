@@ -88,7 +88,8 @@ from rdr_service.code_constants import (
     REMOTE_ID_VERIFIED_CODE,
     REMOTE_ID_VERIFIED_ON_CODE,
     ETM_CONSENT_QUESTION_CODE,
-    PEDIATRICS_ENVIRONMENTAL_HEALTH
+    PEDIATRICS_ENVIRONMENTAL_HEALTH,
+    PEDIATRIC_RACE_QUESTION_CODE
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -822,7 +823,7 @@ class QuestionnaireResponseDao(BaseDao):
                             something_changed = self._update_field(
                                 participant_summary, summary_field[0], summary_field[1], answer
                             )
-                    elif code.value == RACE_QUESTION_CODE:
+                    elif self._code_in_list(code.value, [RACE_QUESTION_CODE, PEDIATRIC_RACE_QUESTION_CODE]):
                         race_code_ids.append(answer.valueCodeId)
                     elif code.value == DVEHR_SHARING_QUESTION_CODE:
                         code = code_dao.get(answer.valueCodeId)
@@ -1097,8 +1098,7 @@ class QuestionnaireResponseDao(BaseDao):
                     mod_submitted = module['submitted']
                     mod_authored = module['authored']
 
-                    if getattr(participant_summary, mod_submitted) \
-                        != QuestionnaireStatus.SUBMITTED:
+                    if getattr(participant_summary, mod_submitted) != QuestionnaireStatus.SUBMITTED:
                         setattr(participant_summary, mod_submitted, QuestionnaireStatus.SUBMITTED)
                         setattr(participant_summary, mod_authored, authored)
                         module_changed = True
@@ -1110,7 +1110,7 @@ class QuestionnaireResponseDao(BaseDao):
                         data=PediatricDataLog(
                             participant_id=participant.participantId,
                             data_type=PediatricDataType.ENVIRONMENTAL_HEALTH,
-                            value=authored
+                            value=authored.isoformat()
                         ),
                         session=session
                     )
@@ -1629,7 +1629,7 @@ class QuestionnaireResponseDao(BaseDao):
 
     @classmethod
     def _code_in_list(cls, code_value: str, code_list: List[str]):
-        return code_value.lower in [list_value.lower() for list_value in code_list]
+        return code_value.lower() in [list_value.lower() for list_value in code_list]
 
     @classmethod
     def find_consent_response_with_pdf(cls, participant_id: int, consent_type: ConsentType,
