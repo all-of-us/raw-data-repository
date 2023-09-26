@@ -28,6 +28,7 @@ EMAIL_QUESTION_CODE = "ConsentPII_EmailAddress"
 RECONTACT_METHOD_QUESTION_CODE = "PIIContactInformation_RecontactMethod"
 LANGUAGE_QUESTION_CODE = "Language_SpokenWrittenLanguage"
 SEX_QUESTION_CODE = "BiologicalSexAtBirth_SexAtBirth"
+PEDIATRIC_SEX_QUESTION_CODE = "biologicalsexatbirth_sexatbirth_ped"
 SEXUAL_ORIENTATION_QUESTION_CODE = "TheBasics_SexualOrientation"
 EDUCATION_QUESTION_CODE = "EducationLevel_HighestGrade"
 INCOME_QUESTION_CODE = "Income_AnnualIncome"
@@ -50,6 +51,7 @@ CONSENT_QUESTION_CODE = 'extraconsent_consent'
 
 GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
 RACE_QUESTION_CODE = "Race_WhatRaceEthnicity"
+PEDIATRIC_RACE_QUESTION_CODE = "race_whatraceethnicity_ped"
 
 # DA-2419: TheBasics possible partial survey content for profile/secondary contact updates.
 BASICS_PROFILE_UPDATE_QUESTION_CODES = [
