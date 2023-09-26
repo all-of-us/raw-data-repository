@@ -179,6 +179,7 @@ participant_summary_default_values = {
     "hasCoreData": False,
     "questionnaireOnEmotionalHealthHistoryAndWellBeing": "UNSET",
     "questionnaireOnBehavioralHealthAndPersonality": "UNSET",
+    'questionnaireOnEnvironmentalHealth': 'UNSET',
     'relatedParticipants': 'UNSET',
     'isPediatric': 'UNSET'
 }
