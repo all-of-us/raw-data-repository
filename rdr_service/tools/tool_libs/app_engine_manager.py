@@ -240,7 +240,9 @@ class DeployAppClass(ToolBase):
             Data Impact: <Data Impact>
 
             Testing
-            Tester: Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe, Brian Kimmel, Ayaz Amlani
+            Tester(s): Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe, Brian Kimmel, Ayaz Amlani,
+            Monique Bristol, Shahwaiz Punjwani
+
             Date Test Was Completed: {today.strftime("%b %-d, %Y")}
             Implementation/Deployment Date: Ongoing
 
