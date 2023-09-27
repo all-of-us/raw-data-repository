@@ -460,6 +460,7 @@ class BaseDao(object):
             raise BadRequest(f"Invalid pagination token: {token}.")
 
     def _decode_token(self, query_def, fields):
+        print('Darryl 2')
         pagination_token = query_def.pagination_token
         decoded_vals = self._unpack_page_token(pagination_token)
         return self._parse_pagination_data(decoded_vals, fields)
