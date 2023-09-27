@@ -372,6 +372,7 @@ class BaseDao(object):
 
     @staticmethod
     def _make_pagination_token(item_dict, field_names):
+        print('Darryl')
         vals = [item_dict.get(field_name) for field_name in field_names]
         vals_json = json.dumps(vals, default=json_serial)
         return urlsafe_b64encode(str.encode(vals_json))
