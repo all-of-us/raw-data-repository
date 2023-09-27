@@ -1724,6 +1724,7 @@ class GenomicProteomics(Base):
     modified = Column(DateTime)
     genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"), nullable=False, index=True)
     biobank_id = Column(String(128), nullable=False, index=True)
+    collection_tube_id = Column(String(255), nullable=True, index=True)
     sample_id = Column(String(80), nullable=True, index=True)
     genome_type = Column(String(80), nullable=False)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
@@ -1868,6 +1869,7 @@ class GenomicRNA(Base):
     modified = Column(DateTime)
     genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"), nullable=False, index=True)
     biobank_id = Column(String(128), nullable=False, index=True)
+    collection_tube_id = Column(String(255), nullable=True, index=True)
     sample_id = Column(String(80), nullable=True, index=True)
     genome_type = Column(String(80), nullable=False)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
@@ -1929,3 +1931,52 @@ class GenomicR0Raw(Base):
 
 event.listen(GenomicR0Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicR0Raw, 'before_update', model_update_listener)
+
+
+class GenomicR1Raw(Base):
+    """
+    Raw Data from R1 files
+    """
+    __tablename__ = 'genomic_r1_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    package_id = Column(String(255), nullable=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    box_storageunit_id = Column(String(255), nullable=True)
+    box_id_plate_id = Column(String(255), nullable=True)
+    well_position = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    parent_sample_id = Column(String(255), nullable=True, index=True)
+    collection_tubeid = Column(String(255), nullable=True, index=True)
+    matrix_id = Column(String(255), nullable=True)
+    collection_date = Column(String(255), nullable=True)
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    age = Column(String(255), nullable=True)
+    ny_state_y_n = Column(String(255), nullable=True)
+    sample_type = Column(String(255), nullable=True)
+    treatments = Column(String(255), nullable=True)
+    quantity_ul = Column(String(255), nullable=True)
+    total_concentration_ng_ul = Column(String(255), nullable=True)
+    total_yield_ng = Column(String(255), nullable=True)
+    rqs = Column(String(255), nullable=True)
+    two_sixty_two_thirty = Column(String(255), nullable=True)
+    two_sixty_two_eighty = Column(String(255), nullable=True)
+    visit_description = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    study = Column(String(255), nullable=True)
+    tracking_number = Column(String(255), nullable=True)
+    contact = Column(String(255), nullable=True)
+    email = Column(String(255), nullable=True)
+    study_pi = Column(String(255), nullable=True)
+    site_name = Column(String(255), nullable=True, index=True)
+    failure_mode = Column(String(255), nullable=True)
+    failure_mode_desc = Column(String(255), nullable=True)
+    genome_type = Column(String(80), nullable=True, index=True)

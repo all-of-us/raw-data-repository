@@ -105,7 +105,8 @@ class CurationBQ(ToolBase):
         'survey_conduct',
         'cope_survey_semantic_version_map',
         'note',
-        'procedure_occurrence'
+        'procedure_occurrence',
+        'specimen'
     ]
 
     def __init__(self, args, gcp_env=None, tool_name=None, replica=False):

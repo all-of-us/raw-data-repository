@@ -1,3 +1,5 @@
+from typing import List
+
 import pytz
 from dateutil import parser
 
@@ -68,6 +70,20 @@ class GenomicApiValidationMixin:
             raise NotFound(f"Participant with ID {prefix}{checked_value} not found in RDR")
         if not has_member:
             raise NotFound(f"Participant with ID {prefix}{checked_value} not found in Genomics system")
+
+
+class GenomicOrigin:
+
+    @classmethod
+    def set_participant_origin(cls, lookup_type: str):
+        _, user_info = get_validated_user_info()
+        client_id = user_info.get('clientId')
+        if client_id.lower() in ('configurator', 'color'):
+            return GENOMIC_CLIENT_IDS
+
+        if client_id not in GENOMIC_CLIENT_IDS:
+            raise Forbidden(f'Client Id: {client_id} cannot access {lookup_type} lookup.')
+        return [client_id]
 
 
 class GenomicGETPayload(GenomicApiValidationMixin):
@@ -151,13 +167,11 @@ class GenomicOutreachApi(BaseApi):
         super(GenomicOutreachApi, self).__init__(GenomicOutreachDao())
         self.member_dao = GenomicSetMemberDao()
         self.report_state_dao = GenomicMemberReportStateDao()
-        _, user_info = get_validated_user_info()
-        self.user_info = user_info
+        self.participant_origin: List[str] = GenomicOrigin.set_participant_origin(lookup_type='GenomicOutreach')
 
     @auth_required([GEM] + RDR_AND_PTC)
     def get(self, mode=None):
         self._check_mode(mode)
-
         if mode.lower() == "gem":
             return self.get_gem_outreach()
 
@@ -174,7 +188,6 @@ class GenomicOutreachApi(BaseApi):
         :return:
         """
         self._check_mode(mode)
-
         if mode.lower() == "gem":
             return self.post_gem_outreach(p_id)
 
@@ -236,11 +249,7 @@ class GenomicOutreachApi(BaseApi):
 
         # Create GenomicSetMember with report state
         model = self.dao.from_client_json(resource, participant_id=p_id, mode='gem')
-        participant_origin = self.user_info.get('clientId')
-        if participant_origin not in GENOMIC_CLIENT_IDS:
-            raise Forbidden('Client Id cannot access GenomicOutreach update.')
-
-        model.participantOrigin = participant_origin
+        model.participantOrigin = self.participant_origin[0]
         m = self._do_insert(model)
 
         gem_result_record = self.member_dao.get_gem_results_for_report_state(m)
@@ -276,8 +285,7 @@ class GenomicOutreachApiV2(UpdatableApi):
     def __init__(self):
         super().__init__(GenomicOutreachDaoV2())
         self.validate_outreach_params()
-        _, user_info = get_validated_user_info()
-        self.user_info = user_info
+        self.participant_origin: List[str] = GenomicOrigin.set_participant_origin(lookup_type='GenomicOutreach')
 
     @auth_required(RDR_AND_PTC)
     def get(self):
@@ -293,7 +301,8 @@ class GenomicOutreachApiV2(UpdatableApi):
         participant_id, request_data = self.validate_post_data()
         return self.set_ready_loop(
             participant_id,
-            request_data
+            request_data,
+            self.participant_origin[0]
         )
 
     @auth_required(RDR_AND_PTC)
@@ -302,7 +311,8 @@ class GenomicOutreachApiV2(UpdatableApi):
         participant_id, request_data = self.validate_post_data()
         return self.set_ready_loop(
             participant_id,
-            request_data
+            request_data,
+            self.participant_origin[0]
         )
 
     def get_outreach(self):
@@ -319,23 +329,19 @@ class GenomicOutreachApiV2(UpdatableApi):
         if not participant_id and not start_date:
             raise BadRequest('Participant ID or Start Date is required for GenomicOutreach lookup.')
 
-        participant_origin = self.user_info.get('clientId')
-        if participant_origin not in GENOMIC_CLIENT_IDS:
-            raise Forbidden('Client Id cannot access GenomicOutreach lookup.')
-
         api_payload = GenomicGETPayload(
             method=self.dao.get_outreach_data,
             participant_id=participant_id,
             start_date=start_date,
             end_date=end_date,
-            participant_origin=participant_origin
+            participant_origin=self.participant_origin
         )
         payload = api_payload.get_payload()
 
         return self._make_response(payload)
 
     @staticmethod
-    def set_ready_loop(participant_id, req_data):
+    def set_ready_loop(participant_id, req_data, participant_origin):
         member_dao = GenomicSetMemberDao()
 
         def _build_ready_response():
@@ -394,7 +400,8 @@ class GenomicOutreachApiV2(UpdatableApi):
                 external_values={
                     'participant_id': participant_id,
                     'informing_loop_ready_flag': convert_bool_map[req_data['informing_loop_eligible'].lower()],
-                    'informing_loop_ready_flag_modified': parser.parse(req_data['eligibility_date_utc'])
+                    'informing_loop_ready_flag_modified': parser.parse(req_data['eligibility_date_utc']),
+                    'participant_origin': participant_origin
                 }
             )
 
@@ -478,8 +485,7 @@ class GenomicSchedulingApi(BaseApi):
     def __init__(self):
         super().__init__(GenomicSchedulingDao())
         self.validate_scheduling_params()
-        _, user_info = get_validated_user_info()
-        self.user_info = user_info
+        self.participant_origin: List[str] = GenomicOrigin.set_participant_origin(lookup_type='GenomicScheduling')
 
     @auth_required(RDR_AND_PTC)
     def get(self):
@@ -503,17 +509,13 @@ class GenomicSchedulingApi(BaseApi):
         if not participant_id and not start_date:
             raise BadRequest('Participant ID or Start Date parameter is required for use with GenomicScheduling API.')
 
-        participant_origin = self.user_info.get('clientId')
-        if participant_origin not in GENOMIC_CLIENT_IDS:
-            raise Forbidden('Client Id cannot access GenomicScheduling lookup.')
-
         api_payload = GenomicGETPayload(
             method=self.dao.get_latest_scheduling_data,
             participant_id=participant_id,
             start_date=start_date,
             end_date=end_date,
             module=module,
-            participant_origin=participant_origin
+            participant_origin=self.participant_origin
         )
         payload = api_payload.get_payload()
 

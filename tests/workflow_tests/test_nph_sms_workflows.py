@@ -75,7 +75,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
         # Test Data inserted correctly
         self.assertEqual(ingested_record.job_run_id, 1)
-        self.assertEqual(ingested_record.sample_id, 10001)
+        self.assertEqual(ingested_record.sample_id, "10001")
         self.assertEqual(ingested_record.lims_sample_id, "5847307831")
         self.assertEqual(ingested_record.plate_number, "1")
         self.assertEqual(ingested_record.position, "A1")
@@ -113,29 +113,30 @@ class NphSmsWorkflowsTest(BaseTestCase):
         )
 
         n0_dao = SmsN0Dao()
-        ingested_record = n0_dao.get(1)
+        ingested_records = n0_dao.get_all()
+        self.assertEqual(3, len(ingested_records))
 
         # Test Data inserted correctly
-        self.assertEqual(ingested_record.lims_sample_id, "00000000000")
-        self.assertEqual(ingested_record.matrix_id, "MC8888888888")
-        self.assertEqual(ingested_record.biobank_id, "N222222222")
-        self.assertEqual(ingested_record.sample_id, 2222222222)
-        self.assertEqual(ingested_record.study, "")
-        self.assertEqual(ingested_record.visit, "")
-        self.assertEqual(ingested_record.timepoint, "")
-        self.assertEqual(ingested_record.collection_site, "")
-        self.assertEqual(ingested_record.collection_date_time, api_util.parse_date("2023-04-06T03:05:55"))
-        self.assertEqual(ingested_record.sample_type, "")
-        self.assertEqual(ingested_record.additive_treatment, "EDTA")
-        self.assertEqual(ingested_record.quantity_ml, "1")
-        self.assertEqual(ingested_record.manufacturer_lot, "256837")
-        self.assertEqual(ingested_record.well_box_position, "D8")
-        self.assertEqual(ingested_record.storage_unit_id, "SU-##########")
-        self.assertEqual(ingested_record.package_id, "PKG-YYMM-######")
-        self.assertEqual(ingested_record.tracking_number, "xxxxxxxxxxxx")
-        self.assertEqual(ingested_record.shipment_storage_temperature, "-80C")
-        self.assertEqual(ingested_record.sample_comments, "Arrived amibent")
-        self.assertEqual(ingested_record.age, "32")
+        self.assertEqual(ingested_records[0].lims_sample_id, "00000000000")
+        self.assertEqual(ingested_records[0].matrix_id, "MC8888888888")
+        self.assertEqual(ingested_records[0].biobank_id, "N222222222")
+        self.assertEqual(ingested_records[0].sample_id, "2222222222")
+        self.assertEqual(ingested_records[0].study, None)
+        self.assertEqual(ingested_records[0].visit, None)
+        self.assertEqual(ingested_records[0].timepoint, None)
+        self.assertEqual(ingested_records[0].collection_site, None)
+        self.assertEqual(ingested_records[0].collection_date_time, api_util.parse_date("2023-04-06T03:05:55"))
+        self.assertEqual(ingested_records[0].sample_type, None)
+        self.assertEqual(ingested_records[0].additive_treatment, "EDTA")
+        self.assertEqual(ingested_records[0].quantity_ml, "1")
+        self.assertEqual(ingested_records[0].manufacturer_lot, "256837")
+        self.assertEqual(ingested_records[0].well_box_position, "D8")
+        self.assertEqual(ingested_records[0].storage_unit_id, "SU-##########")
+        self.assertEqual(ingested_records[0].package_id, "PKG-YYMM-######")
+        self.assertEqual(ingested_records[0].tracking_number, "xxxxxxxxxxxx")
+        self.assertEqual(ingested_records[0].shipment_storage_temperature, "-80C")
+        self.assertEqual(ingested_records[0].sample_comments, "Arrived amibent")
+        self.assertEqual(ingested_records[0].age, "32")
 
     @staticmethod
     def create_data_n1_mc1_generation(destination='UNC_META'):
@@ -194,7 +195,8 @@ class NphSmsWorkflowsTest(BaseTestCase):
             matrix_id=1111,
             package_id="test",
             storage_unit_id="test",
-            well_box_position="test",
+            file_path=f"{destination}_n0_test.csv",
+            well_box_position="A1",
             tracking_number="test",
             sample_comments="test",
             study="test",
@@ -214,7 +216,8 @@ class NphSmsWorkflowsTest(BaseTestCase):
             matrix_id=1112,
             package_id="test",
             storage_unit_id="test",
-            well_box_position="test",
+            file_path=f"{destination}_n0_test.csv",
+            well_box_position="A2",
             tracking_number="test",
             sample_comments="test",
             study="test",
@@ -234,7 +237,8 @@ class NphSmsWorkflowsTest(BaseTestCase):
             matrix_id=1111,
             package_id="test",
             storage_unit_id="test",
-            well_box_position="test",
+            file_path=f"{destination}_n0_test.csv",
+            well_box_position="A3",
             tracking_number="test",
             sample_comments="test",
             study="test",
@@ -255,13 +259,22 @@ class NphSmsWorkflowsTest(BaseTestCase):
             identifier_type='sample_id'
         )
 
+        # blank well
+        sms_datagen.create_database_sms_n0(
+            package_id="test",
+            storage_unit_id="test",
+            file_path=f"{destination}_n0_test.csv",
+            well_box_position="A4"
+        )
+
     def test_n1_mc1_generation(self):
         self.create_data_n1_mc1_generation()
 
         generation_data = {
             "job": "FILE_GENERATION",
             "file_type": "N1_MC1",
-            "recipient": "UNC_META"
+            "recipient": "UNC_META",
+            "package_id": "test"
         }
         with clock.FakeClock(self.TIME_1):
             from rdr_service.resource import main as resource_main
@@ -286,9 +299,9 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
         n1_mcac_dao = SmsN1Mc1Dao()
         manifest_records = n1_mcac_dao.get_all()
-        self.assertEqual(len(manifest_records), 2)
+        self.assertEqual(len(manifest_records), 3)
         self.assertEqual(manifest_records[0].file_path, expected_csv_path)
-        self.assertEqual(manifest_records[0].sample_id, 10001)
+        self.assertEqual(manifest_records[0].sample_id, "10001")
         self.assertEqual(manifest_records[0].matrix_id, "1111")
         self.assertEqual(manifest_records[0].bmi, "28")
         self.assertEqual(manifest_records[0].diet, "LMT")
@@ -298,8 +311,8 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[0].urine_clarity, '"Clean"')
         self.assertEqual(manifest_records[0].manufacturer_lot, '256837')
 
-        self.assertEqual(manifest_records[0].file_path, expected_csv_path)
-        self.assertEqual(manifest_records[1].sample_id, 10002)
+        self.assertEqual(manifest_records[1].file_path, expected_csv_path)
+        self.assertEqual(manifest_records[1].sample_id, "10002")
         self.assertEqual(manifest_records[1].matrix_id, "1112")
         self.assertEqual(manifest_records[1].bmi, "28")
         self.assertEqual(manifest_records[1].diet, "LMT")
@@ -308,6 +321,8 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[1].collection_date_time, api_util.parse_date("2023-04-20T15:54:33"))
         self.assertEqual(manifest_records[1].bowel_movement, '"I had normal formed stool, and my stool looks like Type 3 and/or 4"')
         self.assertEqual(manifest_records[1].bowel_movement_quality, '"I tend to have normal formed stool - Type 3 and 4"')
+
+        self.assertEqual(manifest_records[2].well_box_position, "A4")
 
         # Test Ignore and rerun
         with n1_mcac_dao.session() as session:
@@ -323,7 +338,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
         manifest_records = n1_mcac_dao.get_all()
-        self.assertEqual(len(manifest_records), 3)
+        self.assertEqual(len(manifest_records), 4)
 
     def test_n1_mcc_tab_delimited(self):
         self.create_data_n1_mc1_generation(destination="UCSD")
@@ -331,7 +346,8 @@ class NphSmsWorkflowsTest(BaseTestCase):
         generation_data = {
             "job": "FILE_GENERATION",
             "file_type": "N1_MC1",
-            "recipient": "UCSD"
+            "recipient": "UCSD",
+            "package_id": "test"
         }
         with clock.FakeClock(self.TIME_1):
             from rdr_service.resource import main as resource_main
@@ -342,7 +358,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        expected_csv_path = "test-bucket-unc-meta/n1_manifests/UCSD_n1_2023-04-25T15:13:00.csv"
+        expected_csv_path = "test-bucket-unc-meta/n1_manifests/UCSD_n1_2023-04-25T15:13:00.txt"
 
         with open_cloud_file(expected_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file, delimiter='\t')
@@ -356,9 +372,12 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
     @mock.patch('rdr_service.workflow_management.nph.sms_pipeline.GCPCloudTask.execute')
     def test_sms_pipeline_n1_function(self, task_mock):
+        self.create_data_n1_mc1_generation(destination="UNC_META")
         data = {
             "file_type": "N1_MC1",
-            "recipient": "UNC_META"
+            "job": "FILE_GENERATION",
+            "recipient": "UNC_META",
+            "package_id": "test"
         }
         n1_generation()
         task_mock.assert_called_with('nph_sms_generation_task',

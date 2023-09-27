@@ -21,17 +21,18 @@ class GenomicSubWorkflow:
             GenomicJob.PR_PR_WORKFLOW: self.run_request_ingestion,
             GenomicJob.PR_P1_WORKFLOW: self.run_sample_ingestion,
             GenomicJob.PR_P2_WORKFLOW: self.run_bypass,
-            GenomicJob.RNA_RR_WORKFLOW: self.run_request_ingestion
+            GenomicJob.RNA_RR_WORKFLOW: self.run_request_ingestion,
+            GenomicJob.RNA_R1_WORKFLOW: self.run_sample_ingestion
         }[self.job_id]
 
     @classmethod
     def create_genomic_sub_workflow(cls, *, dao, job_id, job_run_id):
         return cls(dao, job_id, job_run_id)
 
-    def run_bypass(self):
+    def run_bypass(self) -> None:
         ...
 
-    def set_model_string_attributes(self):
+    def set_model_string_attributes(self) -> List[str]:
         return [str(obj).split('.')[-1] for obj in self.dao.model_type.__table__.columns]
 
     def extract_site_id(self) -> str:
@@ -82,6 +83,7 @@ class GenomicSubWorkflow:
         return {
             'genomic_set_member_id': new_member.genomic_set_member_id,
             'biobank_id': new_member.biobank_id,
+            'collection_tube_id': new_member.collection_tube_id
         }
 
     def set_instance_attributes_from_data(self) -> None:
@@ -89,13 +91,13 @@ class GenomicSubWorkflow:
         self.site_id = self.extract_site_id()
         self.increment_set_number = self.get_incremented_set_number()
 
-    def run_workflow(self, *, row_data):
+    def run_workflow(self, *, row_data) -> None:
         self.row_data = row_data
         self.set_instance_attributes_from_data()
         self.__get_subworkflow_method()()
 
-    def run_request_ingestion(self):
-        model_string_attributes = self.set_model_string_attributes()
+    def run_request_ingestion(self) -> None:
+        model_string_attributes: List[str] = self.set_model_string_attributes()
         new_pipeline_members = self.dao.get_new_pipeline_members(
             biobank_ids=[row.get('biobank_id')[1:] for row in self.row_data],
         )
@@ -112,7 +114,7 @@ class GenomicSubWorkflow:
 
         self.dao.insert_bulk(pipeline_objs)
 
-    def run_sample_ingestion(self):
+    def run_sample_ingestion(self) -> None:
         updated_pipeline_members = self.dao.get_pipeline_members_missing_sample_id(
             biobank_ids=[row.get('biobank_id')[1:] for row in self.row_data if row.get('sample_id')],
             collection_tube_ids=[row.get('collection_tubeid') for row in self.row_data if row.get('sample_id')]

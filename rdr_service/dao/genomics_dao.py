@@ -1067,7 +1067,10 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.deceasedStatus == DeceasedStatus.UNSET,
-                GenomicGCValidationMetrics.sexConcordance.ilike('true'),
+                or_(
+                    GenomicGCValidationMetrics.sexConcordance.ilike('true'),
+                    GenomicGCValidationMetrics.sexConcordance.ilike('other')
+                ),
                 GenomicGCValidationMetrics.drcSexConcordance.ilike('pass'),
                 GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
@@ -2188,7 +2191,7 @@ class GenomicOutreachDaoV2(BaseDao):
         participant_id=None,
         start_date=None,
         end_date=None,
-        participant_origin=None
+        participant_origin: List[str] = None
     ):
         if not participant_origin:
             return []
@@ -2250,7 +2253,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicInformingLoop.module_type.in_(self.module),
                         GenomicInformingLoop.event_authored_time.isnot(None),
                         GenomicSetMember.ignoreFlag != 1,
-                        GenomicSetMember.participantOrigin == participant_origin
+                        GenomicSetMember.participantOrigin.in_(participant_origin)
                     )
                 )
                 ready_loop = (
@@ -2264,7 +2267,7 @@ class GenomicOutreachDaoV2(BaseDao):
                     ).filter(
                         GenomicSetMember.informingLoopReadyFlag == 1,
                         GenomicSetMember.informingLoopReadyFlagModified.isnot(None),
-                        GenomicSetMember.participantOrigin == participant_origin
+                        GenomicSetMember.participantOrigin.in_(participant_origin)
                     )
                 )
                 if participant_id:
@@ -2317,7 +2320,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
                         GenomicMemberReportState.event_authored_time.isnot(None),
                         GenomicSetMember.ignoreFlag != 1,
-                        GenomicSetMember.participantOrigin == participant_origin
+                        GenomicSetMember.participantOrigin.in_(participant_origin)
                     )
                 )
 
@@ -2345,7 +2348,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
                         GenomicResultViewed.event_authored_time.isnot(None),
                         GenomicSetMember.ignoreFlag != 1,
-                        GenomicSetMember.participantOrigin == participant_origin
+                        GenomicSetMember.participantOrigin.in_(participant_origin)
                     )
                 )
 
@@ -2449,7 +2452,7 @@ class GenomicSchedulingDao(BaseDao):
         start_date=None,
         end_date=None,
         module=None,
-        participant_origin=None
+        participant_origin: List[str] = None
     ):
         if not participant_origin:
             return []
@@ -2518,7 +2521,7 @@ class GenomicSchedulingDao(BaseDao):
                     GenomicAppointmentEvent.event_authored_time ==
                     max_event_authored_time_subquery.c.max_event_authored_time
                 ),
-                GenomicSetMember.participantOrigin == participant_origin
+                GenomicSetMember.participantOrigin.in_(participant_origin)
             )
 
             if module:
@@ -4248,7 +4251,10 @@ class GenomicQueriesDao(BaseDao):
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.deceasedStatus == DeceasedStatus.UNSET,
-                GenomicGCValidationMetrics.sexConcordance.ilike('true'),     # check AW2 gives sex concordance as true
+                or_(
+                    GenomicGCValidationMetrics.sexConcordance.ilike('true'),
+                    GenomicGCValidationMetrics.sexConcordance.ilike('other')
+                ), # check AW2 gives sex concordance as true
                 GenomicGCValidationMetrics.drcSexConcordance.ilike('pass'),  # check AW4 gives sex concordance as true
                 GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
@@ -4760,14 +4766,54 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
     def get_id(self, obj):
         return obj.id
 
+    def get_max_set(self):
+        with self.session() as session:
+            return session.query(
+                self.get_max_set_subquery()
+            ).one()
+
+    @abstractmethod
+    def get_new_pipeline_members(self,  *, biobank_ids: List[str]):
+        ...
+
+    @abstractmethod
+    def get_zero_manifest_records_from_max_set(self):
+        ...
+
+    @abstractmethod
+    def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
+        ...
+
+    @abstractmethod
+    def get_max_set_subquery(self):
+        ...
+
+
+class GenomicPRDao(GenomicSubDao):
+
+    def __init__(self):
+        super().__init__(GenomicProteomics, order_by_ending=['id'])
+
+    def get_max_set_subquery(self):
+        return sqlalchemy.orm.Query(
+            functions.max(GenomicProteomics.proteomics_set).label('proteomics_set')
+        ).subquery()
+
     def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
         with self.session() as session:
             return session.query(
                 GenomicSetMember.id.label('genomic_set_member_id'),
-                GenomicSetMember.biobankId.label('biobank_id')
+                GenomicSetMember.biobankId.label('biobank_id'),
+                BiobankStoredSample.biobankStoredSampleId.label('collection_tube_id')
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                BiobankStoredSample,
+                and_(
+                    GenomicSetMember.biobankId == BiobankStoredSample.biobankId,
+                    BiobankStoredSample.test == '1ED10'
+                )
             ).filter(
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
@@ -4783,41 +4829,11 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.ai_an == 'N'
             ).distinct().all()
 
-    @classmethod
-    def get_max_set_subquery(cls):
-        ...
-
-    def get_max_set(self):
-        with self.session() as session:
-            return session.query(
-                self.get_max_set_subquery()
-            ).one()
-
-    @abstractmethod
-    def get_zero_manifest_records_from_max_set(self):
-        ...
-
-    @abstractmethod
-    def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
-        ...
-
-
-class GenomicPRDao(GenomicSubDao):
-
-    def __init__(self):
-        super().__init__(GenomicProteomics, order_by_ending=['id'])
-
-    @classmethod
-    def get_max_set_subquery(cls):
-        return sqlalchemy.orm.Query(
-            functions.max(GenomicProteomics.proteomics_set).label('proteomics_set')
-        ).subquery()
-
     def get_zero_manifest_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicProteomics.biobank_id),
-                GenomicSetMember.collectionTubeId,
+                GenomicProteomics.collection_tube_id,
                 GenomicSetMember.sexAtBirth,
                 GenomicProteomics.genome_type,
                 func.IF(GenomicSetMember.nyFlag == 1,
@@ -4850,16 +4866,10 @@ class GenomicPRDao(GenomicSubDao):
             return session.query(
                 GenomicProteomics.id,
                 GenomicProteomics.biobank_id
-            ).join(
-                GenomicSetMember,
-                and_(
-                    GenomicSetMember.id == GenomicProteomics.genomic_set_member_id,
-                    GenomicSetMember.biobankId.in_(biobank_ids),
-                    GenomicSetMember.collectionTubeId.in_(collection_tube_ids),
-                    GenomicSetMember.ignoreFlag != 1
-                )
             ).filter(
-                GenomicProteomics.sample_id.is_(None)
+                GenomicProteomics.sample_id.is_(None),
+                GenomicProteomics.biobank_id.in_(biobank_ids),
+                GenomicProteomics.collection_tube_id.in_(collection_tube_ids),
             ).distinct().all()
 
 
@@ -4868,17 +4878,46 @@ class GenomicRNADao(GenomicSubDao):
     def __init__(self):
         super().__init__(GenomicRNA, order_by_ending=['id'])
 
-    @classmethod
-    def get_max_set_subquery(cls):
+    def get_max_set_subquery(self):
         return sqlalchemy.orm.Query(
             functions.max(GenomicRNA.rna_set).label('rna_set')
         ).subquery()
+
+    def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
+        with self.session() as session:
+            return session.query(
+                GenomicSetMember.id.label('genomic_set_member_id'),
+                GenomicSetMember.biobankId.label('biobank_id'),
+                BiobankStoredSample.biobankStoredSampleId.label('collection_tube_id')
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                BiobankStoredSample,
+                and_(
+                    GenomicSetMember.biobankId == BiobankStoredSample.biobankId,
+                    BiobankStoredSample.test == '1PXR2'
+                )
+            ).filter(
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
+                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,  # sub flows default to array sample
+                GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
+                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
+                GenomicSetMember.diversionPouchSiteFlag != 1,
+                GenomicSetMember.blockResults != 1,
+                GenomicSetMember.blockResearch != 1,
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.biobankId.in_(biobank_ids),
+                GenomicSetMember.ai_an == 'N'
+            ).distinct().all()
 
     def get_zero_manifest_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicRNA.biobank_id),
-                GenomicSetMember.collectionTubeId,
+                GenomicRNA.collection_tube_id,
                 GenomicSetMember.sexAtBirth,
                 GenomicRNA.genome_type,
                 func.IF(GenomicSetMember.nyFlag == 1,
@@ -4901,5 +4940,18 @@ class GenomicRNADao(GenomicSubDao):
                 self.get_max_set_subquery().c.rna_set
             ).distinct().all()
 
-    def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
-        ...
+    def get_pipeline_members_missing_sample_id(
+        self,
+        *,
+        biobank_ids: List[str],
+        collection_tube_ids: List[str]
+    ):
+        with self.session() as session:
+            return session.query(
+                GenomicRNA.id,
+                GenomicRNA.biobank_id
+            ).filter(
+                GenomicRNA.sample_id.is_(None),
+                GenomicRNA.biobank_id.in_(biobank_ids),
+                GenomicRNA.collection_tube_id.in_(collection_tube_ids),
+            ).distinct().all()

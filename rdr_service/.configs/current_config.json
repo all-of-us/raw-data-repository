@@ -272,5 +272,6 @@
       "organization",
       "site"
     ]
-  }
+  },
+  "ce_mediated_hpo_id": ["ce_id_1", "ce_id_2"]
 }

@@ -22,7 +22,7 @@ from rdr_service.participant_enums import EhrStatus
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 
 LOG = logging.getLogger(__name__)
-ce_hpo_id = config.getSettingJson(config.CE_MEDIATED_HPO_ID, default=None)
+ce_hpo_id_list = config.getSettingJson(config.CE_MEDIATED_HPO_ID, default=None)
 
 
 class ParticipantEhrTracking:
@@ -66,11 +66,11 @@ class ParticipantEhrTracking:
 
     @classmethod
     def is_ce_mediated_file(cls, file: ParticipantEhrFile):
-        if ce_hpo_id is None:
+        if ce_hpo_id_list is None:
             # Continue assuming everything's HPO uploaded if CE's id isn't set
             return False
 
-        return file.hpo_id == ce_hpo_id
+        return file.hpo_id.lower() in ce_hpo_id_list
 
 
 def update_ehr_status_organization():

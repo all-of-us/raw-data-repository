@@ -38,9 +38,11 @@ class SmsWorkflow:
         self.file_type = SmsFileTypes.lookup_by_name(workflow_def['file_type'])
         self.file_path = workflow_def.get('file_path')
         self.recipient = workflow_def.get('recipient')
+        self.package_id = workflow_def.get('package_id')
         self.job_run = None
         self.file_transfer_def = None
         self.file_dao = None
+        self.env = workflow_def.get('env')
 
         # Job Map
         self.process_map = {
@@ -106,6 +108,14 @@ class SmsWorkflow:
             model_obj = self.file_dao.get_model_obj_from_items(record.items())
             self.file_dao.insert(model_obj)
 
+    def convert_empty_string_to_none(self, rows):
+        for row in rows:
+            for key, value in row.items():
+                if value == "":
+                    row[key] = None
+        return rows
+
+
     def execute_workflow(self):
         """
         Entrypoint for SMS Workflow execution.
@@ -155,7 +165,9 @@ class SmsWorkflow:
 
             self.validate_columns(data_to_ingest["fieldnames"], self.file_dao)
 
-            self.write_data_to_manifest_table(data_to_ingest["rows"])
+            cleaned_rows = self.convert_empty_string_to_none(data_to_ingest["rows"])
+
+            self.write_data_to_manifest_table(cleaned_rows)
 
     def job_generation(self):
         """
@@ -169,11 +181,11 @@ class SmsWorkflow:
             self.file_dao = None
 
         if self.file_dao:
-            source_data = self.file_dao.source_data(recipient=self.recipient)
+            source_data = self.file_dao.source_data(recipient=self.recipient, package_id=self.package_id)
 
             if source_data:
 
-                self.file_transfer_def = self.file_dao.get_transfer_def(recipient=self.recipient)
+                self.file_transfer_def = self.file_dao.get_transfer_def(recipient=self.recipient, env=self.env)
 
                 self.export_data_to_cloud(source_data)
 

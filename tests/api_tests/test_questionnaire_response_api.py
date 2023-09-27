@@ -16,6 +16,7 @@ from rdr_service.code_constants import (
     EMAIL_QUESTION_CODE, EXTRA_CONSENT_NO, EXTRA_CONSENT_YES, FIRST_NAME_QUESTION_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE,
     GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE, PPI_SYSTEM
 )
+from rdr_service.dao.account_link_dao import AccountLinkDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao, \
     ParticipantSummaryDao
@@ -749,7 +750,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
+            "enrollmentStatusEnrolledParticipantV3_2Time": TIME_2.isoformat()
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1180,7 +1182,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
+            "enrollmentStatusEnrolledParticipantV3_2Time": TIME_2.isoformat()
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1357,7 +1360,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
+            "enrollmentStatusEnrolledParticipantV3_2Time": TIME_2.isoformat()
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1401,7 +1405,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
+            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
+            "enrollmentStatusEnrolledParticipantV3_2Time": TIME_2.isoformat()
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1631,6 +1636,25 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         )
         self.assertEqual(0, extension_query.count(),
                          'The extension was created, but the valueUri field is expected to be unrecognized')
+
+    def test_pediatric_guardian_extension(self):
+        # Set up questionnaire, a pediatric participant, and a guardian
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        pediatric_id = self.data_generator.create_database_participant_summary().participantId
+        guardian_id = self.data_generator.create_database_participant_summary().participantId
+
+        # Send a response with a pediatric guardian extension (manually adding it to an arbitrary payload)
+        resource = self._load_response_json("questionnaire_response3.json", questionnaire_id, f'P{pediatric_id}')
+        resource['extension'] = [{
+            'url': 'http://all-of-us.org/fhir/forms/guardian-author',
+            'valueString': f'P{guardian_id}'
+        }]
+        self._save_codes(resource)
+        self.send_post(_questionnaire_response_url(f'P{pediatric_id}'), resource)
+
+        # Check that the account link was created
+        linked_ids = AccountLinkDao.get_linked_ids(pediatric_id)
+        self.assertEqual({guardian_id}, linked_ids)
 
     def test_response_for_withdrawn_participant(self):
         participant = self.data_generator.create_database_participant(withdrawalStatus=WithdrawalStatus.NO_USE)
@@ -1968,6 +1992,26 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             QuestionnaireResponse.participantId == no_participant.participantId
         ).one()
         self.assertEqual(response['id'], str(stored_response.questionnaireResponseId))
+
+        # Verify PDR data generation, including the mapping of new answer codes to be consistent with existing PDR data
+        pdr_rsc = self.make_participant_resource(consented_participant.participantId)
+        mod_data = self.get_generated_items(pdr_rsc['modules'])
+        self.assertEqual(len(mod_data), 1)
+        self.assertEqual(mod_data[0]['module'], 'ConsentPII')
+        # EXTRA_CONSENT_YES ==> CONSENT_PERMISSION_YES_CODE for PDR
+        self.assertEqual(mod_data[0]['consent_value'], CONSENT_PERMISSION_YES_CODE)
+        self.assertEqual(mod_data[0]['status'], 'SUBMITTED')
+        # This is based on legacy PDR enrollment_status (V2 status values)
+        self.assertEqual(pdr_rsc.get('enrollment_status', None), 'PARTICIPANT')
+
+        pdr_rsc = self.make_participant_resource(no_participant.participantId)
+        mod_data = self.get_generated_items(pdr_rsc['modules'])
+        self.assertEqual(len(mod_data), 1)
+        self.assertEqual(mod_data[0]['module'], 'ConsentPII')
+        # EXTRA_CONSENT_NO ==> CONSENT_PERMISSION_NO_CODE for PDR
+        self.assertEqual(mod_data[0]['consent_value'], CONSENT_PERMISSION_NO_CODE)
+        self.assertEqual(mod_data[0]['status'], 'SUBMITTED_NO_CONSENT')
+        self.assertEqual(pdr_rsc.get('enrollment_status', None), 'REGISTERED')
 
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):

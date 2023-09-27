@@ -67,37 +67,33 @@ class TestEnrollmentInfo(BaseTestCase):
             EnrollmentCalculation.get_enrollment_info(participant_info)
         )
 
-    def test_basics_and_gror(self):
+    def test_enrolled_and_ehr(self):
         """
-        3.0 should upgrade to PARTICIPANT_PMB_ELIGIBLE when TheBasics has been submitted.
-        3.2 needs TheBasics, but shouldn't upgrade until GROR has been submitted as well.
+        3.0 should upgrade to PARTICIPANT_PMB_ELIGIBLE when TheBasics has been submitted, but also needs EHR
+        3.2 should upgrade to needs TheBasics, but doesn't need EHR.
         The legacy version of the calculation would still just show them as MEMBER.
         """
         participant_info = self._build_participant_info(
             primary_authored_time=datetime(2020, 7, 18),
-            ehr_consent_ranges=[DateRange(start=datetime(2020, 7, 18))],
             basics_time=datetime(2020, 7, 27)
         )
         self.assertEnrollmentInfoEqual(
             self._build_expected_enrollment_info(
                 legacy_data=[
-                    (EnrollmentStatus.INTERESTED, participant_info.primary_consent_authored_time),
-                    (EnrollmentStatus.MEMBER, participant_info.first_ehr_consent_date)
+                    (EnrollmentStatus.INTERESTED, participant_info.primary_consent_authored_time)
                 ],
                 v30_data=[
-                    (EnrollmentStatusV30.PARTICIPANT, participant_info.primary_consent_authored_time),
-                    (EnrollmentStatusV30.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
-                    (EnrollmentStatusV30.PARTICIPANT_PMB_ELIGIBLE, participant_info.basics_authored_time)
+                    (EnrollmentStatusV30.PARTICIPANT, participant_info.primary_consent_authored_time)
                 ],
                 v32_data=[
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
-                    (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date)
+                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time)
                 ]
             ),
             EnrollmentCalculation.get_enrollment_info(participant_info)
         )
 
-        participant_info.gror_authored_time = datetime(2020, 8, 2)
+        participant_info.ehr_consent_date_range_list = [DateRange(start=datetime(2020, 7, 18))]
         self.assertEnrollmentInfoEqual(
             self._build_expected_enrollment_info(
                 legacy_data=[
@@ -112,7 +108,7 @@ class TestEnrollmentInfo(BaseTestCase):
                 v32_data=[
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
-                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.gror_authored_time)
+                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time)
                 ]
             ),
             EnrollmentCalculation.get_enrollment_info(participant_info)
@@ -147,6 +143,7 @@ class TestEnrollmentInfo(BaseTestCase):
                 v32_data=[
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time),
                     (EnrollmentStatusV32.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time)
                 ]
             ),
@@ -195,6 +192,7 @@ class TestEnrollmentInfo(BaseTestCase):
                 v32_data=[
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time),
                     (EnrollmentStatusV32.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
                     (EnrollmentStatusV32.CORE_PARTICIPANT, participant_info.earliest_physical_measurements_time)
                 ]
@@ -237,6 +235,7 @@ class TestEnrollmentInfo(BaseTestCase):
                 v32_data=[
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
+                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time),
                     (EnrollmentStatusV32.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
                     (EnrollmentStatusV32.CORE_PARTICIPANT, participant_info.earliest_physical_measurements_time)
                 ]
