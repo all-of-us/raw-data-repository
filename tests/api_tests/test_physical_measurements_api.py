@@ -672,8 +672,9 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
             f'ParticipantSummary?participantId={summary.participantId}'
         )['entry'][0]['resource']
 
-        # Check that the height and weight status was cleared as a result of cancelled PM.  This means the
-        # hasHeightAndWeight timestamp field will not be present in the response JSON
+        # Check that the height and weight status (as well as core data flag) was cleared as a result of cancelled PM.
+        # This means the null hasHeightAndWeightTime field will not be present at all in the response JSON
+        self.assertFalse(summary_json['hasCoreData'])
         self.assertFalse(summary_json['hasHeightAndWeight'])
         self.assertIsNone(summary_json.get('hasHeightAndWeightTime', None))
 

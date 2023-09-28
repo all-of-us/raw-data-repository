@@ -303,7 +303,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 )
 
         # Commit before recalculating the enrollment status-related details so DB queries to retrieve measurements
-        # data during the calculation will return what was just insertedgit
+        # data during the calculation will return what was just inserted
         session.commit()
         self._update_participant_enrollment_status(participant_summary, session)
         # Update the resource to contain the ID.

@@ -69,8 +69,7 @@ class EtmApi:
         if validation_result.success:
             response_repository = etm_repository.EtmResponseRepository()
             response_repository.store_response(response_obj)
-            # Some uncertainty about whether payload timestamps are always in UTC format?  So force it before
-            # comparing with current participant_summary value (if one exists), which is also given UTC tz
+            # authored value in response should already be UTC, but confirm before comparing below
             resp_authored = response_obj.authored.replace(tzinfo=datetime.timezone.utc)
             ps_dao = ParticipantSummaryDao()
             ps_obj = ps_dao.get_by_participant_id(response_obj.participant_id)

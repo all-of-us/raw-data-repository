@@ -98,7 +98,7 @@ class BQSchema(object):
     """
 
     def __init__(self, *args):
-        if args is not None and len(args) is not 0 and args[0] is not None:
+        if args is not None and len(args) != 0 and args[0] is not None:
             if isinstance(args[0], str):
                 self._add_fields(self, json.loads(args[0]))
             else:
