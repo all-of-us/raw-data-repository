@@ -21,7 +21,7 @@ from rdr_service.model.study_nph import (
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
-
+from rdr_service.query import FieldFilter, Operator, Results
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -118,12 +118,10 @@ class NphParticipantDao(BaseDao):
                 EnrollmentEventType.source_name.notlike('%_losttofollowup')
             ).group_by(Participant.id).subquery()
 
-    def get_orders_samples_subquery(self, *, nph_participant_id=None, last_modified=None):
-        parent_study_category = aliased(StudyCategory)
-        parent_study_category_module = aliased(StudyCategory)
-        parent_ordered_sample = aliased(OrderedSample)
+    def get_stored_samples_subquery(
+        self, *, nph_participant_id=None, **kwargs
+    ):
         stored_sample_alias = aliased(StoredSample)
-
         with self.session() as session:
             stored_samples_subquery = session.query(
                 Participant.id.label('stored_sample_pid'),
@@ -151,17 +149,29 @@ class NphParticipantDao(BaseDao):
                 )
             ).filter(
                 stored_sample_alias.id.is_(None)
-            )
+            ).group_by(Participant.id)
 
             if nph_participant_id:
-                stored_samples_subquery = stored_samples_subquery.filter(Participant.id == nph_participant_id)
-            elif last_modified:
-                ...
+                return stored_samples_subquery.filter(Participant.id == nph_participant_id)
 
-            stored_samples_subquery = stored_samples_subquery.group_by(Participant.id).subquery()
+            if query_def := kwargs.get('query_def'):
+                if query_def.field_filters:
+                    stored_samples_subquery = self._set_filters(
+                        query=stored_samples_subquery,
+                        filters=query_def.field_filters,
+                        model_type=StoredSample
+                    )
 
+            return stored_samples_subquery.subquery()
+
+    def get_orders_samples_subquery(self, *, nph_participant_id=None, **kwargs):
+        parent_study_category = aliased(StudyCategory)
+        parent_study_category_module = aliased(StudyCategory)
+        parent_ordered_sample = aliased(OrderedSample)
+        stored_samples_subquery = self.get_stored_samples_subquery(**kwargs)
+        with self.session() as session:
             sample_orders = session.query(
-                Participant.id.label('orders_samples_pid'),
+                Order.participant_id.label('orders_samples_pid'),
                 func.json_object(
                     'orders_sample_json',
                     func.json_arrayagg(
@@ -217,9 +227,6 @@ class NphParticipantDao(BaseDao):
                 ).label('orders_sample_status'),
                 stored_samples_subquery.c.orders_sample_biobank_status
             ).join(
-                Order,
-                Order.participant_id == Participant.id
-            ).join(
                 OrderedSample,
                 OrderedSample.order_id == Order.id
             ).join(
@@ -236,17 +243,20 @@ class NphParticipantDao(BaseDao):
                 parent_ordered_sample.id == OrderedSample.parent_sample_id
             ).outerjoin(
                 stored_samples_subquery,
-                stored_samples_subquery.c.stored_sample_pid == Participant.id
-            )
+                stored_samples_subquery.c.stored_sample_pid == Order.participant_id
+            ).group_by(Order.participant_id)
 
             if nph_participant_id:
-                sample_orders = sample_orders.filter(Participant.id == nph_participant_id)
-                return sample_orders.group_by(Participant.id).all()
-            elif last_modified:
-                ...
+                sample_orders = sample_orders.filter(
+                    Order.participant_id == nph_participant_id
+                )
+                return sample_orders.all()
 
-            sample_orders = sample_orders.group_by(Participant.id).subquery()
-            return sample_orders
+            if query_def := kwargs.get('query_def'):
+                if query_def.field_filters:
+                    return sample_orders
+
+            return sample_orders.subquery()
 
     def get_diet_status_subquery(self):
         diet_alias = aliased(DietEvent)
@@ -636,6 +646,14 @@ class NphOrderDao(UpdatableDao):
             return True, result
         else:
             return False, None
+
+    def get_orders_by_participant_id(self, participant_id: int):
+        with self.session() as session:
+            return session.query(
+                Order
+            ).filter(
+                Order.participant_id == participant_id
+            ).all()
 
     def get_study_category_id(self, session):
         return self.study_category_dao.get_id(session, self.order_cls)
@@ -1101,7 +1119,8 @@ class NphIntakeDao(BaseDao):
 
 class NphBiospecimenDao(BaseDao):
     def __init__(self):
-        super().__init__(BaseDao)
+        super().__init__(Order, order_by_ending=["participant_id"])
+        self.nph_participant_dao = NphParticipantDao()
 
     def get_id(self, obj):
         return obj.id
@@ -1111,6 +1130,53 @@ class NphBiospecimenDao(BaseDao):
 
     def to_client_json(self, payload):
         return payload
+
+    def _initialize_query(self, session, query_def):
+        return self.nph_participant_dao.get_orders_samples_subquery(query_def=query_def)
+
+    def make_query_filter(self, field_name, value):
+        if field_name == 'last_modified':
+            return FieldFilter(
+                'modified',
+                Operator.GREATER_THAN_OR_EQUALS,
+                value
+            )
+        return super().make_query_filter(field_name, value)
+
+    def query(self, query_definition):
+        if query_definition.invalid_filters and not query_definition.field_filters:
+            raise BadRequest("No valid fields were provided")
+        if not self.order_by_ending:
+            raise BadRequest(f"Can't query on type {self.model_type} -- no order by ending specified")
+        with self.session() as session:
+            total = None
+            query, field_names = self._make_query(session, query_definition)
+            items = query.with_session(session).all()
+            if query_definition.include_total:
+                total = self._count_query(session, query_definition)
+            if not items:
+                return Results([], total=total)
+        if len(items) > query_definition.max_results:
+            page = items[0: query_definition.max_results]
+            token = self._make_pagination_token(
+                item_dict={'participant_id': items[query_definition.max_results - 1].orders_samples_pid},
+                field_names=['participant_id']
+            )
+            return Results(page, token, more_available=True, total=total)
+        else:
+            token = (
+                self._make_pagination_token(
+                    items[-1].asdict(),
+                    field_names) if query_definition.always_return_token else None
+            )
+            return Results(items, token, more_available=False, total=total)
+
+    # @staticmethod
+    # def _make_pagination_token(item_dict, field_names):
+    #     return super()._make_pagination_token(
+    #         item_dict={'participant_id': 'opaque_token'},
+    #         field_names=['participant_id']
+    #     )
 
 
 class NphSampleUpdateDao(BaseDao):

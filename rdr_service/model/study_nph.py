@@ -23,7 +23,6 @@ class Participant(NphBase):
     disable_reason = Column(String(1024))
     biobank_id = Column(BigInteger, nullable=False, unique=True)
     research_id = Column(BigInteger, unique=True)
-
     orders: List['Order'] = relationship('Order', back_populates='participant')
     stored_samples: List['StoredSample'] = relationship(
         'StoredSample', back_populates="participant", order_by="desc(StoredSample.id)"

@@ -199,13 +199,13 @@ class NphParticipantData:
             stored_samples = list(filter(lambda x: x.get('orderSampleID') == sample.get('sampleID'),
                                          order_biobank_samples.get('orders_sample_biobank_json')))
 
-            # sample['biobankStatus'] = [
-            #     {
-            #         "limsID": stored_sample.get('limsID'),
-            #         "biobankModified": stored_sample.get('biobankModified'),
-            #         "status": StoredSampleStatus.lookup_by_number(stored_sample.get('status'))
-            #     } for stored_sample in stored_samples
-            # ]
+            sample['biobankStatus'] = [
+                {
+                    "limsID": stored_sample.get('limsID'),
+                    "biobankModified": stored_sample.get('biobankModified'),
+                    "status": str(StoredSampleStatus.lookup_by_number(stored_sample.get('status')))
+                } for stored_sample in stored_samples
+            ]
         return order_samples
 
     @classmethod
