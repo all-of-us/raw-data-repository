@@ -64,7 +64,7 @@ participant_summary_default_values = {
     "recontactMethod": "UNSET",
     "enrollmentStatus": "INTERESTED",
     "enrollmentStatusV3_0": "PARTICIPANT",
-    "enrollmentStatusV3_2": "PARTICIPANT",
+    "enrollmentStatusV3_2": "ENROLLED_PARTICIPANT",
     "samplesToIsolateDNA": "UNSET",
     "numBaselineSamplesArrived": 0,
     "numCompletedPPIModules": 1,
@@ -191,7 +191,8 @@ participant_summary_default_values_no_basics.update({
     "education": "UNSET",
     "income": "UNSET",
     "sex": "UNSET",
-    "sexualOrientation": "UNSET"
+    "sexualOrientation": "UNSET",
+    "enrollmentStatusV3_2": "PARTICIPANT"
 })
 
 
@@ -353,7 +354,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "cohort2PilotFlag": "UNSET",
                 "patientStatus": patient_statuses or [],
                 "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-                "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
+                "enrollmentStatusParticipantV3_2Time": TIME_1.isoformat(),
+                'enrollmentStatusEnrolledParticipantV3_2Time': TIME_1.isoformat(),
                 "isParticipantMediatedEhrDataAvailable": False
             }
         )
@@ -2819,7 +2821,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", ps_1["sampleStatus2ED10"])
         self.assertEqual("RECEIVED", ps_1["sampleStatus1SAL2"])
         self.assertEqual("RECEIVED", ps_1["samplesToIsolateDNA"])
-        self.assertEqual("PARTICIPANT", ps_1["enrollmentStatusV3_2"])
+        self.assertEqual("ENROLLED_PARTICIPANT", ps_1["enrollmentStatusV3_2"])
         self.assertEqual("UNSET", ps_1["clinicPhysicalMeasurementsStatus"])
         self.assertIsNone(ps_1.get("clinicPhysicalMeasurementsTime"))
         self.assertEqual("GenderIdentity_Man", ps_1["genderIdentity"])
@@ -2857,7 +2859,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", ps_2["sampleStatus2ED10"])
         self.assertEqual("UNSET", ps_2["samplesToIsolateDNA"])
-        self.assertEqual("PARTICIPANT_PLUS_EHR", ps_2["enrollmentStatusV3_2"])
+        self.assertEqual("ENROLLED_PARTICIPANT", ps_2["enrollmentStatusV3_2"])
         self.assertEqual("COMPLETED", ps_2["clinicPhysicalMeasurementsStatus"])
         self.assertEqual(TIME_2.isoformat(), ps_2["clinicPhysicalMeasurementsTime"])
         self.assertEqual("GenderIdentity_Woman", ps_2["genderIdentity"])
@@ -2960,8 +2962,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&consentForCABoR=SUBMITTED", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=UNSET", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=COMPLETED", [[ps_2, ps_3]])
-            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=PARTICIPANT", [[ps_1]])
-            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=PARTICIPANT_PLUS_EHR", [[ps_2]])
+            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=ENROLLED_PARTICIPANT", [[ps_1, ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=CORE_PARTICIPANT", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NOT_WITHDRAWN", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[ps_2]])
@@ -3026,7 +3027,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", new_ps_2["sampleStatus1ED10"])
         self.assertEqual("UNSET", new_ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", new_ps_2["samplesToIsolateDNA"])
-        self.assertEqual("PARTICIPANT_PLUS_EHR", new_ps_2["enrollmentStatusV3_2"])
+        self.assertEqual("ENROLLED_PARTICIPANT", new_ps_2["enrollmentStatusV3_2"])
         self.assertEqual("UNSET", new_ps_2["clinicPhysicalMeasurementsStatus"])
         self.assertEqual("SUBMITTED", new_ps_2["consentForStudyEnrollment"])
         self.assertIsNotNone(new_ps_2["consentForStudyEnrollmentAuthored"])
@@ -4501,14 +4502,14 @@ class ParticipantSummaryApiTest(BaseTestCase):
         # Get request from API to assert True Response information is accurate
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
-        self.assertTrue(summary['remoteIdVerificationStatus'])
+        self.assertEqual(summary['remoteIdVerificationStatus'], 'True')
         self.assertEqual(summary['remoteIdVerifiedOn'], '2023-01-17')
         # Change the date for remoteIdVerifiedOn to 1/18/2023
         resource['group']['question'][1]['answer'][0]['valueString'] = "1674066632000"
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['remoteIdVerifiedOn'], '2023-01-18')
-        self.assertTrue(summary['everIdVerified'])
+        self.assertEqual(summary['everIdVerified'], 'True')
         self.assertEqual(summary['firstIdVerifiedOn'], '2023-01-17')
         self.assertEqual(summary['idVerificationOrigin'], IdVerificationOriginType.REMOTE.name)
         # Load & send a response w/ no remote id verification again
@@ -4521,7 +4522,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
         # Get request from API to assert status stays True, and does not go back to UNSET
         summary = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertTrue(summary['remoteIdVerificationStatus'])
+        self.assertEqual(summary['remoteIdVerificationStatus'], 'True')
         # load False response
         questionnaire_id = self.create_questionnaire("remote_id_verification_questionnaire.json")
         resource = load_qr_response_json(
@@ -4534,10 +4535,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
         self.assertEqual(summary['remoteIdVerifiedOn'], UNSET)
-        self.assertFalse(summary['remoteIdVerificationStatus'])
+        self.assertEqual(summary['remoteIdVerificationStatus'], 'False')
         self.assertEqual(summary['onsiteIdVerificationType'], UNSET)
         self.assertEqual(summary['onsiteIdVerificationVisitType'], UNSET)
-        self.assertTrue(summary['everIdVerified'])
+        self.assertEqual(summary['everIdVerified'], 'True')
         self.assertEqual(summary['firstIdVerifiedOn'], '2023-01-17')
         self.assertEqual(summary['idVerificationOrigin'], IdVerificationOriginType.REMOTE.name)
 
