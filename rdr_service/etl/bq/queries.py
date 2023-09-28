@@ -202,8 +202,8 @@ queries = {
               0 AS place_of_service_concept_id,
               NULL AS location_id,
               site.site_id AS care_site_source_value,
-              NULL AS place_of_service_source_value,
-              '' AS src_id
+              CAST(NULL AS STRING) AS place_of_service_source_value,
+              'vibrent' AS src_id
             FROM
               `{dataset_id}.site` site""",
         "destination": "care_site",
@@ -970,7 +970,8 @@ queries = {
         "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
                        "SELECT DISTINCT 0 AS id, """
                        """qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, """
-                       """qr.non_participant_author as value, p.participant_origin src_id from """
+                       """qr.non_participant_author as value, CASE WHEN p.participant_origin = 'careevolution' """
+                       """THEN 'ce' ELSE p.participant_origin END src_id from """
                        """rdr.questionnaire_response qr JOIN (SELECT DISTINCT questionnaire_response_id from """
                        """cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id JOIN """
                        """rdr.participant p ON qr.participant_id = p.participant_id where qr.non_participant_author """
@@ -982,7 +983,8 @@ queries = {
         "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
                    "SELECT DISTINCT 0 AS id, """
                  """qr.questionnaire_response_id, 'LANGUAGE' as type, """
-                 """qr.language as value, p.participant_origin src_id from """
+                 """qr.language as value, CASE WHEN p.participant_origin = 'careevolution' THEN 'ce' ELSE """
+                 """p.participant_origin END src_id from """
                  """rdr.questionnaire_response qr JOIN (SELECT DISTINCT questionnaire_response_id from """
                  """cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id JOIN """
                  """rdr.participant p ON qr.participant_id = p.participant_id where qr.language """
@@ -993,7 +995,8 @@ queries = {
         "append": True,
         "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
                    "SELECT DISTINCT 0 AS id, """
-                   """qr.questionnaire_response_id, 'CODE' as type, c.value as value, p.participant_origin src_id """
+                   """qr.questionnaire_response_id, 'CODE' as type, c.value as value, CASE WHEN p.participant_origin """
+                   """= 'careevolution' THEN 'ce' ELSE p.participant_origin END src_id """
                    """from rdr.questionnaire_response qr JOIN rdr.questionnaire_concept qc ON qr.questionnaire_id = """
                    """qc.questionnaire_id AND qr.questionnaire_version = qc.questionnaire_version JOIN rdr.code c ON """
                    """qc.code_id = c.code_id JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as """
