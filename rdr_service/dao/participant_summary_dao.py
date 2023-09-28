@@ -1389,6 +1389,15 @@ class ParticipantSummaryDao(UpdatableDao):
         if any(data.data_type == PediatricDataType.AGE_RANGE for data in obj.pediatricData):
             result['isPediatric'] = True
 
+        # EnvironmentalHealth module fields
+        result['questionnaireOnEnvironmentalHealth'] = UNSET
+        for env_health_data in [
+            data for data in obj.pediatricData if data.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH
+        ]:
+            result['questionnaireOnEnvironmentalHealth'] = str(QuestionnaireStatus.SUBMITTED)
+            result['questionnaireOnEnvironmentalHealthTime'] = env_health_data.created
+            result['questionnaireOnEnvironmentalHealthAuthored'] = env_health_data.value
+
         # Format other responses to default to UNSET when none
         field_names = [
             'remoteIdVerifiedOn',

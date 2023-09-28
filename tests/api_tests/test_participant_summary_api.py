@@ -31,6 +31,7 @@ from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
 from rdr_service.model.enrollment_status_history import EnrollmentStatusHistory
 from rdr_service.model.hpo import HPO
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import (
     ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType,
@@ -178,6 +179,7 @@ participant_summary_default_values = {
     "hasCoreData": False,
     "questionnaireOnEmotionalHealthHistoryAndWellBeing": "UNSET",
     "questionnaireOnBehavioralHealthAndPersonality": "UNSET",
+    'questionnaireOnEnvironmentalHealth': 'UNSET',
     'relatedParticipants': 'UNSET',
     'isPediatric': 'UNSET'
 }
@@ -4565,6 +4567,29 @@ class ParticipantSummaryApiTest(BaseTestCase):
             ],
             response.get('relatedParticipants')
         )
+
+    def test_pediatric_environmental_health(self):
+        participant = self.data_generator.create_database_participant_summary()
+
+        # Check that it's UNSET by default
+        response = self.send_get(f'Participant/P{participant.participantId}/Summary')
+        self.assertEqual('UNSET', response['questionnaireOnEnvironmentalHealth'])
+
+        authored_date = datetime.datetime(2022, 7, 8)
+        created_date = datetime.datetime(2022, 7, 10)
+        PediatricDataLogDao.insert(
+            PediatricDataLog(
+                participant_id=participant.participantId,
+                data_type=PediatricDataType.ENVIRONMENTAL_HEALTH,
+                created=created_date,
+                value=authored_date.isoformat()
+            )
+        )
+
+        response = self.send_get(f'Participant/P{participant.participantId}/Summary')
+        self.assertEqual('SUBMITTED', response['questionnaireOnEnvironmentalHealth'])
+        self.assertEqual(created_date.isoformat(), response['questionnaireOnEnvironmentalHealthTime'])
+        self.assertEqual(authored_date.isoformat(), response['questionnaireOnEnvironmentalHealthAuthored'])
 
     def test_pediatric_flag(self):
         regular_participant = self.data_generator.create_database_participant_summary()
