@@ -58,6 +58,7 @@ from rdr_service.code_constants import (
     COPE_CONSENT_QUESTION_CODE,
     WEAR_CONSENT_QUESTION_CODE,
     WEAR_YES_ANSWER_CODE,
+    WEAR_NO_ANSWER_CODE,
     STREET_ADDRESS_QUESTION_CODE,
     STREET_ADDRESS2_QUESTION_CODE,
     EHR_CONSENT_EXPIRED_YES,
@@ -922,6 +923,20 @@ class QuestionnaireResponseDao(BaseDao):
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value.lower() == WEAR_YES_ANSWER_CODE:
                             self.consents_provided.append(ConsentType.WEAR)
+                        # participant_summary should contain most recently authored WEAR consent details
+                        if (participant_summary.consentForWearStudyAuthored is None
+                                or questionnaire_response.authored > participant_summary.consentForWearStudyAuthored):
+                            participant_summary.consentForWearStudyTime = questionnaire_response.created
+                            participant_summary.consentForWearStudyAuthored = authored
+                            if answer_value.lower() == WEAR_YES_ANSWER_CODE:
+                                participant_summary.consentForWearStudy = QuestionnaireStatus.SUBMITTED
+                            elif answer_value.lower() == WEAR_NO_ANSWER_CODE:
+                                participant_summary.consentForWearStudy = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+                            else:
+                                logging.warning(
+                                    f'Unrecognized/no answer value for WEAR consent question: {answer_value} ',
+                                )
+                                participant_summary.consentForWearStudy = QuestionnaireStatus.UNSET
                     elif self._code_in_list(
                         code.value,
                         [
@@ -953,7 +968,6 @@ class QuestionnaireResponseDao(BaseDao):
                             participant_summary.consentForEtM = QuestionnaireStatus.SUBMITTED
                         elif answer_value.lower() == AGREE_NO:
                             participant_summary.consentForEtM = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-
                         participant_summary.consentForEtMTime = questionnaire_response.created
                         participant_summary.consentForEtMAuthored = authored
 
