@@ -152,7 +152,6 @@ class EtmIngestionTest(BaseTestCase):
             self.send_post(
                 f'Participant/P{participant.participantId}/QuestionnaireResponse', questionnaire_response_json
             )
-        etm_records: etm.EtmQuestionnaireResponse = self.session.query(etm.EtmQuestionnaireResponse).all()
         # Confirm participant_summary record was updated with the task authored date
         summary = self.send_get(f"Participant/P{participant.participantId}/Summary")
         self.assertIsNotNone(summary)

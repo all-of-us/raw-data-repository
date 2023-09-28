@@ -1,7 +1,6 @@
 import datetime
 import json
 
-import unittest
 import mock
 
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg, submit_pipeline_pubsub_msg_from_model

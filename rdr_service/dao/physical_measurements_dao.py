@@ -378,8 +378,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
         return participant_summary
 
     def _update_participant_enrollment_status(self, participant_summary,  session):
-         ParticipantSummaryDao().update_enrollment_status(participant_summary, session=session)
-         session.merge(participant_summary)
+        ParticipantSummaryDao().update_enrollment_status(participant_summary, session=session)
+        session.merge(participant_summary)
 
     def get_latest_pm(self, session, participant):
         return (
