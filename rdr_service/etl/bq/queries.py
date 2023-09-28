@@ -286,7 +286,7 @@ queries = {
               NULL AS note_id,
               meas.participant_id AS person_id,
               DATE(meas.measurement_time) AS note_date,
-              meas.measurement_time AS note_datetime,
+              CAST(meas.measurement_time AS TIMESTAMP) AS note_datetime,
               44814645 AS note_type_concept_id,
               -- 44814645 - 'Note'
               0 AS note_class_concept_id,
@@ -299,7 +299,8 @@ queries = {
               NULL AS visit_detail_id,
               meas.code_value AS note_source_value,
               meas.physical_measurements_id AS visit_occurrence_id,
-              'note' AS unit_id
+              'note' AS unit_id,
+              meas.src_id AS src_id
             FROM
               `{dataset_id}.src_meas` meas
             WHERE
@@ -869,10 +870,10 @@ queries = {
               dr.participant_id AS person_id,
               dr.date_of_death AS death_date,
               CAST(dr.date_of_death AS TIMESTAMP) AS death_datetime,
-              '32809' AS death_type_concept_id,
-              'NULL' AS cause_concept_id, -- CDR requires these columns to have a value of 'NULL'
-              'NULL' AS cause_source_value,
-              'NULL' AS cause_source_concept_id,
+              32809 AS death_type_concept_id,
+              CAST(NULL AS INT64) AS cause_concept_id,
+              CAST(NULL AS STRING) AS cause_source_value,
+              CAST(NULL AS INT64) AS cause_source_concept_id,
               'healthpro' AS src_id
             FROM
               `{dataset_id}.deceased_report` dr

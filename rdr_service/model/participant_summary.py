@@ -24,7 +24,7 @@ from sqlalchemy.sql import expression
 
 from rdr_service.model.account_link import AccountLink
 from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
-from rdr_service.model.pediatric_data_log import PediatricDataLog
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import (
     EhrStatus,
@@ -1115,6 +1115,19 @@ class ParticipantSummary(Base):
     questionnaireOnLifeFunctioningAuthored = Column("questionnaire_on_life_functioning_authored", UTCDateTime)
     "The UTC Date time of when the participant completed the life functioning survey questionnaire"
 
+    questionnaireOnEnvironmentalHealth = None
+    """
+    Indicates status for the pediatric Environmental Health PPI module.
+
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+
+    questionnaireOnEnvironmentalHealthTime = None
+    "Indicates the time at which the RDR received notice of pediatric Environment Health questionnaire response"
+
+    questionnaireOnEnvironmentalHealthAuthored = None
+    "Indicates the time at which the participant completed the pediatric Environment Health questionnaire"
+
     numCompletedBaselinePPIModules = Column("num_completed_baseline_ppi_modules", SmallInteger, default=0)
     """
     The count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth, questionnaireOnLifestyle]
@@ -1714,7 +1727,6 @@ class ParticipantSummary(Base):
     regardless of when it was sent to RDR
     """
 
-
     relatedParticipants: List[AccountLink] = relationship(
         'AccountLink',
         primaryjoin=and_(
@@ -1740,6 +1752,10 @@ class ParticipantSummary(Base):
     Field indicating whether this is a pediatric participant or not. The API will display as 'UNSET'
     for adult participants, and will return a boolean value of true if it's a pediatric participant.
     """
+
+    def did_submit_environmental_health(self):
+        return any(data.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH for data in self.pediatricData)
+
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)
 Index("participant_summary_ln_dob", ParticipantSummary.lastName, ParticipantSummary.dateOfBirth)

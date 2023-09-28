@@ -785,20 +785,6 @@ class ParticipantSummaryDao(UpdatableDao):
         )
         enrollment_info = EnrollmentCalculation.get_enrollment_info(enrl_dependencies)
 
-        # DA-3777: Need to surface whether pid has valid height and weight measurement data
-        if enrl_dependencies.earliest_height_measurement_time and enrl_dependencies.earliest_weight_measurement_time:
-            satisfied_hw_time = max(enrl_dependencies.earliest_height_measurement_time,
-                                    enrl_dependencies.earliest_weight_measurement_time)
-            if not summary.hasHeightAndWeight or summary.hasHeightAndWeightTime != satisfied_hw_time:
-                summary.hasHeightAndWeight = True
-                summary.hasHeightAndWeightTime = satisfied_hw_time
-                summary.lastModified = clock.CLOCK.now()
-        elif summary.hasHeightAndWeight:
-            # Physical measurements may now have been cancelled, invalidating the hasHeightAndWeight status
-            summary.hasHeightAndWeight = False
-            summary.hasHeightAndWeightTime = None
-            summary.lastModified = clock.CLOCK.now()
-
         # Update enrollment status if it is upgrading
         legacy_dates = enrollment_info.version_legacy_dates
         version_3_0_dates = enrollment_info.version_3_0_dates
@@ -864,6 +850,23 @@ class ParticipantSummaryDao(UpdatableDao):
                     dependencies_snapshot=enrl_dependencies.to_json_dict()
                 )
             )
+
+        # DA-3777: Surface for HPRO whether pid has valid height and weight measurement data.
+        # This is not spelled out in the Goal 1 definitions as an official enrollment status flag and is not
+        # tracked independently in the enrollment status history; but the has_core_data definition is a superset of
+        # conditions which includes the requirement that has_height_and_weight is true
+        if enrl_dependencies.earliest_height_measurement_time and enrl_dependencies.earliest_weight_measurement_time:
+            satisfied_hw_time = max(enrl_dependencies.earliest_height_measurement_time,
+                                    enrl_dependencies.earliest_weight_measurement_time)
+            if not summary.hasHeightAndWeight or summary.hasHeightAndWeightTime != satisfied_hw_time:
+                summary.hasHeightAndWeight = True
+                summary.hasHeightAndWeightTime = satisfied_hw_time
+                summary.lastModified = clock.CLOCK.now()
+        elif summary.hasHeightAndWeight:
+            # PM may have been cancelled, so there are no longer valid core measurements / measurement times
+            summary.hasHeightAndWeight = False
+            summary.hasHeightAndWeightTime = None
+            summary.lastModified = clock.CLOCK.now()
 
         # Set enrollment status date fields
         if EnrollmentStatus.MEMBER in legacy_dates:
@@ -1402,6 +1405,15 @@ class ParticipantSummaryDao(UpdatableDao):
         result['isPediatric'] = UNSET
         if any(data.data_type == PediatricDataType.AGE_RANGE for data in obj.pediatricData):
             result['isPediatric'] = True
+
+        # EnvironmentalHealth module fields
+        result['questionnaireOnEnvironmentalHealth'] = UNSET
+        for env_health_data in [
+            data for data in obj.pediatricData if data.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH
+        ]:
+            result['questionnaireOnEnvironmentalHealth'] = str(QuestionnaireStatus.SUBMITTED)
+            result['questionnaireOnEnvironmentalHealthTime'] = env_health_data.created
+            result['questionnaireOnEnvironmentalHealthAuthored'] = env_health_data.value
 
         # Format other responses to default to UNSET when none
         field_names = [
