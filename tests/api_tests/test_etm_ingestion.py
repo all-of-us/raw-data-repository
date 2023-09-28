@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from typing import List, Optional, Union
 
@@ -56,20 +56,22 @@ class EtmIngestionTest(BaseTestCase):
             questionnaire_json = json.load(file)
             self.send_post('Questionnaire', questionnaire_json)
 
-        participant_id = self.data_generator.create_database_participant().participantId
-
+        participant = self.data_generator.create_database_participant()
+        self.data_generator.create_database_participant_summary(participant=participant)
         with open(data_path('etm_questionnaire_response.json')) as file:
             questionnaire_response_json = json.load(file)
-        questionnaire_response_json['subject']['reference'] = f'Patient/P{participant_id}'
-        response = self.send_post(f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json)
+        questionnaire_response_json['subject']['reference'] = f'Patient/P{participant.participantId}'
+        response = self.send_post(
+            f'Participant/P{participant.participantId}/QuestionnaireResponse', questionnaire_response_json
+        )
 
         saved_response: etm.EtmQuestionnaireResponse = self.session.query(etm.EtmQuestionnaireResponse).filter(
             etm.EtmQuestionnaireResponse.etm_questionnaire_response_id == response['id']
         ).one()
-        self.assertEqual(datetime(2023, 6, 23, 11, 56, 31), saved_response.authored)
+        self.assertEqual(datetime(2023, 6, 23, 11, 56, 30), saved_response.authored)
         self.assertEqual('emorecog', saved_response.questionnaire_type)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, saved_response.status)
-        self.assertEqual(participant_id, saved_response.participant_id)
+        self.assertEqual(participant.participantId, saved_response.participant_id)
         self.assertEqual(questionnaire_response_json, saved_response.resource)
         self.assert_has_answers(
             expected_answer_list=[
@@ -124,6 +126,40 @@ class EtmIngestionTest(BaseTestCase):
             ],
             actual_list=saved_response.extension_list
         )
+
+        # Confirm participant_summary record was updated with the task authored time
+        summary = self.send_get(f"Participant/P{participant.participantId}/Summary")
+        ps_etm_authored_str = summary.get('latestEtMTaskAuthored', None)
+        self.assertIsNotNone(ps_etm_authored_str)
+        ps_ts = datetime.strptime(ps_etm_authored_str, '%Y-%m-%dT%H:%M:%S')
+        self.assertEqual(ps_ts, saved_response.authored)
+
+    def test_multiple_etm_tasks_for_retention(self):
+        with open(data_path('etm_questionnaire.json')) as file:
+            questionnaire_json = json.load(file)
+            self.send_post('Questionnaire', questionnaire_json)
+
+        participant = self.data_generator.create_database_participant()
+        self.data_generator.create_database_participant_summary(participant=participant)
+        with open(data_path('etm_questionnaire_response.json')) as file:
+            questionnaire_response_json = json.load(file)
+        questionnaire_response_json['subject']['reference'] = f'Patient/P{participant.participantId}'
+        resp_authored = datetime.fromisoformat(questionnaire_response_json['authored']).replace(tzinfo=None)
+        # Creating 3 EtM task responses, confirming that we end up with the latest authored date in participant summary
+        # even if it is not the last response ingested
+        for etm_task_date in (resp_authored, resp_authored + timedelta(days=21), resp_authored + timedelta(days=10)):
+            questionnaire_response_json['authored'] = etm_task_date.strftime('%Y-%m-%dT%H:%M:%S+00:00')
+            self.send_post(
+                f'Participant/P{participant.participantId}/QuestionnaireResponse', questionnaire_response_json
+            )
+        etm_records: etm.EtmQuestionnaireResponse = self.session.query(etm.EtmQuestionnaireResponse).all()
+        # Confirm participant_summary record was updated with the task authored date
+        summary = self.send_get(f"Participant/P{participant.participantId}/Summary")
+        self.assertIsNotNone(summary)
+        self.assertIsNotNone(summary.get('latestEtMTaskAuthored', None))
+        ps_latest_etm_authored = datetime.fromisoformat(summary.get('latestEtMTaskAuthored'))
+        self.assertEqual(resp_authored + timedelta(days=21), ps_latest_etm_authored)
+
 
     def test_questionnaire_response_api_response(self):
         """Check that the QuestionnaireResponse data is returned by the API"""

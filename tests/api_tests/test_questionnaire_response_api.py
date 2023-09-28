@@ -13,8 +13,8 @@ from rdr_service.concepts import Concept
 from rdr_service import config
 from rdr_service.code_constants import (
     CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, CONSENT_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
-    EMAIL_QUESTION_CODE, EXTRA_CONSENT_NO, EXTRA_CONSENT_YES, FIRST_NAME_QUESTION_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE,
-    GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE, PPI_SYSTEM
+    EMAIL_QUESTION_CODE, EXTRA_CONSENT_NO, EXTRA_CONSENT_YES, FIRST_NAME_QUESTION_CODE, GENDER_MAN_CODE,
+    GENDER_WOMAN_CODE, GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE, PPI_SYSTEM
 )
 from rdr_service.dao.account_link_dao import AccountLinkDao
 from rdr_service.dao.code_dao import CodeDao
@@ -1753,6 +1753,61 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         ).one()
         self.assertIsNone(response_obj.externalId)
 
+    def test_wear_consent_responses(self):
+        participant = self.data_generator.create_database_participant()
+        participant_id = f'P{participant.participantId}'
+        authored = datetime.datetime.now()
+        self.data_generator.create_database_code(value='PMI_Skip')  # Resolves ResponseValidator warnings
+        self.send_consent(participant.participantId, authored=authored)
+
+        wear_yes_authored_str = '2023-05-20T09:00:00'
+        wear_no_authored_str = '2023-05-20T12:00:00'
+        wear_yes_earlier_authored_str = '2023-05-20T08:00:00'
+        questionnaire_id = self.create_questionnaire("wear_consent_questionnaire.json")
+        resource = self._load_response_json("wear_consent_questionnaire_response.json",
+                                            questionnaire_id,
+                                            participant_id)
+        self._save_codes(resource)
+        consent_question_index = None
+        for q_idx in range(0, len(resource['group']['question'])):
+            if resource['group']['question'][q_idx]['text'] == 'Consent':
+                resource['group']['question'][q_idx]['answer'][0]['valueCoding']['code'] = 'WEAR_Yes'
+                consent_question_index = q_idx
+                break
+        resource['authored'] = wear_yes_authored_str
+        resource['subject']['reference'] = f'Patient/{participant_id}'
+        resource['questionnaire']['reference'] = f'Questionnaire/{questionnaire_id}'
+
+        with FakeClock(datetime.datetime(2023, 9, 7, 1, 2, 3)):
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual(summary.get('consentForWearStudy', None), 'SUBMITTED')
+        self.assertEqual(summary.get('consentForWearStudyAuthored', None), '2023-05-20T09:00:00')
+        self.assertEqual(summary.get('consentForWearStudyTime', None), '2023-09-07T01:02:03')
+
+        resource['authored'] = wear_yes_earlier_authored_str
+        with FakeClock(datetime.datetime(2023, 9, 7, 1, 2, 4)):
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual(summary.get('consentForWearStudy', None), 'SUBMITTED')
+        # Test that participant summary retains the most recently authored consent vs. most recently received
+        self.assertEqual(summary.get('consentForWearStudyAuthored', None), wear_yes_authored_str)
+        self.assertEqual(summary.get('consentForWearStudyTime', None), '2023-09-07T01:02:03')
+
+        # Send a new/more recently authored WEAR consent response with "no"
+        resource['group']['question'][consent_question_index]['answer'][0]['valueCoding']['code'] = 'WEAR_No'
+        resource['authored'] = wear_no_authored_str
+
+        with FakeClock(datetime.datetime(2023, 9, 7, 2, 3, 4)):
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual(summary.get('consentForWearStudy', None), 'SUBMITTED_NO_CONSENT')
+        self.assertEqual(summary.get('consentForWearStudyAuthored', None), wear_no_authored_str)
+        self.assertEqual(summary.get('consentForWearStudyTime', None), '2023-09-07T02:03:04')
+
     def test_questionnaire_life_functioning_survey(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
@@ -1761,7 +1816,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         summary = self.send_get(f"Participant/{participant_id}/Summary")
         num_completed_ppi = summary.get('numCompletedPPIModules')
         questionnaire_id = self.create_questionnaire("questionnaire_life_functioning.json")
-        resource = self._load_response_json("questionnaire_life_functioning_resp.json", questionnaire_id, participant_id)
+        resource = self._load_response_json("questionnaire_life_functioning_resp.json", questionnaire_id,
+                                            participant_id)
         self._save_codes(resource)
         with FakeClock(datetime.datetime(2022, 9, 7, 1, 2, 3)):
             self.send_post(_questionnaire_response_url(participant_id), resource)

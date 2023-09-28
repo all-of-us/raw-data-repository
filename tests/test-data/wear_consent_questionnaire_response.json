@@ -1,0 +1,100 @@
+{
+  "group": {
+    "text": "You will receive a new Fitbit to wear at no cost to you.",
+    "title": "Join the WEAR Study",
+    "linkId": "root_group",
+    "question": [
+      {
+        "text": "Access to smartphone",
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "PMI_Yes",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "Yes"
+            }
+          }
+        ],
+        "linkId": "63586"
+      },
+      {
+        "text": "Able to receive emails",
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "PMI_Yes",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "Yes"
+            }
+          }
+        ],
+        "linkId": "63587"
+      },
+      {
+        "text": "mailing address",
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "PMI_Yes",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "Yes"
+            }
+          }
+        ],
+        "linkId": "63588"
+      },
+      {
+        "text": "Consent",
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "WEAR_Yes",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+            }
+          }
+        ],
+        "linkId": "63606"
+      },
+      {
+        "text": "Name",
+        "answer": [
+          {
+            "valueString": "Test participant"
+          }
+        ],
+        "linkId": "63607"
+      },
+      {
+        "text": "Today's date",
+        "answer": [
+          {
+            "valueDate": "2023-05-19"
+          }
+        ],
+        "linkId": "63608"
+      },
+      {
+        "text": "Email copy",
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "WEARConsent_EmailCopy_Yes",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "Email a copy to me"
+            }
+          }
+        ],
+        "linkId": "63611"
+      }
+    ]
+  },
+  "status": "completed",
+  "subject": {
+    "reference": "Patient/$participant_id"
+  },
+  "authored": "$wear_consent_authored",
+  "resourceType": "QuestionnaireResponse",
+  "questionnaire": {
+    "reference": "$questionnaire_id"
+  }
+}

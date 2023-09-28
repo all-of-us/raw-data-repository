@@ -1667,6 +1667,54 @@ class ParticipantSummary(Base):
                                                                    UTCDateTime)
     "UTC timestamp of time Behavioral Health survey was authored by participant"
 
+    # DA-3777: Following additional fields that impact enrollment status or retention eligibility
+    hasHeightAndWeight = Column("has_height_and_weight", Boolean, default=0)
+    """
+     Field indicating whether there are valid height and weight measurements recorded for a
+     participant.  This field can be false regardless of the  clinicPhysicalMeasurementsStatus and
+     selfReportedPhysicalMeasurementsStatus, since the height or weight measurement may not have been included with
+     those submissions. When true, the valid height and weight measurements may have come from separate physical
+     measurements submissions.
+     """
+
+    hasHeightAndWeightTime = Column("has_height_and_weight_time", UTCDateTime)
+    """
+    UTC time that both the height and weight measurements were first available.  This value often corresponds to
+    either the clinicPhysicalMeasurementsFinalizedTime or selfReportedPhyiscalMeasurementsAuthored time, provided the
+    submission contained both valid height and weight measurements.  Otherwise, this timestamp may reflect a
+    subsequent submission that contained a height or weight measurement that was not provided previously.
+    """
+
+    consentForWearStudy = Column("consent_for_wear_study", Enum(QuestionnaireStatus),
+                                 default=QuestionnaireStatus.UNSET)
+    """
+    Indicates whether the participant has consented to participate in the WEAR study
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+
+    consentForWearStudyTime = Column("consent_for_wear_study_time", UTCDateTime)
+    """
+       Indicates the time at which the RDR most recently received notice of consentForWearStudy,
+       which could be an update to a previously submitted consent response (e.g., revocation of earlier
+       consent)
+    """
+
+    consentForWearStudyAuthored = Column("consent_for_wear_study_authored", UTCDateTime)
+    """
+    Indicates the time at which the participant most recently completed a WEAR study consent form,
+    regardless of when it was sent to RDR
+    """
+
+    latestEtMTaskTime = Column("latest_etm_task_time", UTCDateTime)
+    """ Indicates the most recent time at which RDR received Exploring the Mind task data for this participant """
+
+    latestEtMTaskAuthored = Column("latest_etm_task_authored", UTCDateTime)
+    """
+    Indicates the most recent time at which the participant completed an Exploring the Mind task activity,
+    regardless of when it was sent to RDR
+    """
+
+
     relatedParticipants: List[AccountLink] = relationship(
         'AccountLink',
         primaryjoin=and_(
@@ -1692,7 +1740,6 @@ class ParticipantSummary(Base):
     Field indicating whether this is a pediatric participant or not. The API will display as 'UNSET'
     for adult participants, and will return a boolean value of true if it's a pediatric participant.
     """
-
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)
 Index("participant_summary_ln_dob", ParticipantSummary.lastName, ParticipantSummary.dateOfBirth)

@@ -1,6 +1,7 @@
 import datetime
 import json
 
+import unittest
 import mock
 
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg, submit_pipeline_pubsub_msg_from_model
@@ -154,8 +155,9 @@ class PubSubTest(BaseTestCase):
         self.assertIn('measurement', parents)
 
         self.assertTrue(mock_pub_func.called)
-        # We now get two extra calls due to participant enrollment re-calculations after PM is submitted.
-        self.assertEqual(mock_pub_func.call_count, 4)
+        # We now get four extra calls due to refactoring of how/when records are submitted and enrollment calculations
+        # are updated during processing of physical measurements data.
+        self.assertEqual(mock_pub_func.call_count, 6)
 
     @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
     def test_participant_enrollment_update_pubsub(self, mock_pub_func):

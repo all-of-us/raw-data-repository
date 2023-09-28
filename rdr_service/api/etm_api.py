@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 from typing import List
@@ -9,6 +10,7 @@ from rdr_service.lib_fhir.fhirclient_1_0_6.models.questionnaireresponse import \
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.clock import CLOCK
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.domain_model import etm as models
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.repository import etm as etm_repository
@@ -67,6 +69,21 @@ class EtmApi:
         if validation_result.success:
             response_repository = etm_repository.EtmResponseRepository()
             response_repository.store_response(response_obj)
+            # Some uncertainty about whether payload timestamps are always in UTC format?  So force it before
+            # comparing with current participant_summary value (if one exists), which is also given UTC tz
+            resp_authored = response_obj.authored.replace(tzinfo=datetime.timezone.utc)
+            ps_dao = ParticipantSummaryDao()
+            ps_obj = ps_dao.get_by_participant_id(response_obj.participant_id)
+            if not ps_obj:
+                logging.error(
+                    f'Unable to store EtM task activity in participant_summary for {response_obj.participant_id}'
+                )
+            elif (ps_obj.latestEtMTaskAuthored is None or
+                  ps_obj.latestEtMTaskAuthored.replace(tzinfo=datetime.timezone.utc) < resp_authored):
+                ps_obj.latestEtMTaskTime = response_obj.created
+                ps_obj.latestEtMTaskAuthored = response_obj.authored
+                ps_obj.lastModified = CLOCK.now()
+                ps_dao.update(ps_obj)
 
             # Support RDR to PDR pipeline.  All we need is just the pubsub message for the newly stored
             # etm_questionnaire_response record (don't need submit_pipeline_pubsub_msg_from_model())

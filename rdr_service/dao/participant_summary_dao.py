@@ -760,7 +760,7 @@ class ParticipantSummaryDao(UpdatableDao):
             participant_id=summary.participantId
         )
 
-        enrollment_dependencies = EnrollmentDependencies(
+        enrl_dependencies = EnrollmentDependencies(
             consent_cohort=summary.consentCohort,
             primary_consent_authored_time=summary.consentForStudyEnrollmentFirstYesAuthored,
             gror_authored_time=summary.consentForGenomicsRORAuthored,
@@ -783,7 +783,21 @@ class ParticipantSummaryDao(UpdatableDao):
             ),
             wgs_sequencing_time=wgs_sequencing_time
         )
-        enrollment_info = EnrollmentCalculation.get_enrollment_info(enrollment_dependencies)
+        enrollment_info = EnrollmentCalculation.get_enrollment_info(enrl_dependencies)
+
+        # DA-3777: Need to surface whether pid has valid height and weight measurement data
+        if enrl_dependencies.earliest_height_measurement_time and enrl_dependencies.earliest_weight_measurement_time:
+            satisfied_hw_time = max(enrl_dependencies.earliest_height_measurement_time,
+                                    enrl_dependencies.earliest_weight_measurement_time)
+            if not summary.hasHeightAndWeight or summary.hasHeightAndWeightTime != satisfied_hw_time:
+                summary.hasHeightAndWeight = True
+                summary.hasHeightAndWeightTime = satisfied_hw_time
+                summary.lastModified = clock.CLOCK.now()
+        elif summary.hasHeightAndWeight:
+            # Physical measurements may now have been cancelled, invalidating the hasHeightAndWeight status
+            summary.hasHeightAndWeight = False
+            summary.hasHeightAndWeightTime = None
+            summary.lastModified = clock.CLOCK.now()
 
         # Update enrollment status if it is upgrading
         legacy_dates = enrollment_info.version_legacy_dates
@@ -807,7 +821,7 @@ class ParticipantSummaryDao(UpdatableDao):
                     version='legacy',
                     status=str(summary.enrollmentStatus),
                     timestamp=legacy_dates[summary.enrollmentStatus],
-                    dependencies_snapshot=enrollment_dependencies.to_json_dict()
+                    dependencies_snapshot=enrl_dependencies.to_json_dict()
                 )
             )
 
@@ -820,7 +834,7 @@ class ParticipantSummaryDao(UpdatableDao):
                     version='3.0',
                     status=str(summary.enrollmentStatusV3_0),
                     timestamp=version_3_0_dates[summary.enrollmentStatusV3_0],
-                    dependencies_snapshot=enrollment_dependencies.to_json_dict()
+                    dependencies_snapshot=enrl_dependencies.to_json_dict()
                 )
             )
 
@@ -833,7 +847,7 @@ class ParticipantSummaryDao(UpdatableDao):
                     version='3.2',
                     status=str(summary.enrollmentStatusV3_2),
                     timestamp=version_3_2_dates[summary.enrollmentStatusV3_2],
-                    dependencies_snapshot=enrollment_dependencies.to_json_dict()
+                    dependencies_snapshot=enrl_dependencies.to_json_dict()
                 )
             )
 
@@ -847,7 +861,7 @@ class ParticipantSummaryDao(UpdatableDao):
                     version='core_data',
                     status="True",
                     timestamp=enrollment_info.core_data_time,
-                    dependencies_snapshot=enrollment_dependencies.to_json_dict()
+                    dependencies_snapshot=enrl_dependencies.to_json_dict()
                 )
             )
 

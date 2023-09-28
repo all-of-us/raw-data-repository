@@ -377,7 +377,8 @@ class DataGenerator:
             "consentForNphModule1": False,
             "nphWithdrawal": False,
             "nphDeactivation": False,
-            "hasCoreData": False
+            "hasCoreData": False,
+            "hasHeightAndWeight": False,
         }
 
         defaults.update(kwargs)
