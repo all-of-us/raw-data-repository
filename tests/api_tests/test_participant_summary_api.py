@@ -4590,6 +4590,52 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(created_date.isoformat(), response['questionnaireOnEnvironmentalHealthTime'])
         self.assertEqual(authored_date.isoformat(), response['questionnaireOnEnvironmentalHealthAuthored'])
 
+    def test_pediatric_environmental_health_sorting(self):
+        no_answer_participant_id = self.data_generator.create_database_participant_summary().participantId
+        first_participant_id = self.data_generator.create_database_participant_summary(lastName='Smith').participantId
+        second_participant_id = self.data_generator.create_database_participant_summary(lastName='Taylor').participantId
+
+        PediatricDataLogDao.insert(
+            PediatricDataLog(
+                participant_id=first_participant_id,
+                data_type=PediatricDataType.ENVIRONMENTAL_HEALTH,
+                created=datetime.datetime(2022, 9, 1),
+                value=datetime.datetime(2022, 7, 1).isoformat()
+            )
+        )
+        PediatricDataLogDao.insert(
+            PediatricDataLog(
+                participant_id=second_participant_id,
+                data_type=PediatricDataType.ENVIRONMENTAL_HEALTH,
+                created=datetime.datetime(2022, 8, 1),
+                value=datetime.datetime(2022, 8, 1).isoformat()
+            )
+        )
+
+        # sort by status
+        response = self.send_get(f'ParticipantSummary?_sort=questionnaireOnEnvironmentalHealth')
+        response_id_list = self._get_summary_response_id_list(response)
+        self.assertEqual(
+            [no_answer_participant_id, first_participant_id, second_participant_id],
+            response_id_list
+        )
+
+        # sort by received time
+        response = self.send_get(f'ParticipantSummary?_sort=questionnaireOnEnvironmentalHealthTime')
+        response_id_list = self._get_summary_response_id_list(response)
+        self.assertEqual(
+            [no_answer_participant_id, second_participant_id, first_participant_id],
+            response_id_list
+        )
+
+        # sort by authored time
+        response = self.send_get(f'ParticipantSummary?_sort=questionnaireOnEnvironmentalHealthAuthored')
+        response_id_list = self._get_summary_response_id_list(response)
+        self.assertEqual(
+            [no_answer_participant_id, first_participant_id, second_participant_id],
+            response_id_list
+        )
+
     def test_pediatric_flag(self):
         regular_participant = self.data_generator.create_database_participant_summary()
         pediatric_participant = self.data_generator.create_database_participant_summary()
@@ -4600,3 +4646,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         response = self.send_get(f'Participant/P{pediatric_participant.participantId}/Summary')
         self.assertEqual(True, response['isPediatric'])
+
+    @classmethod
+    def _get_summary_response_id_list(self, response):
+        return [from_client_participant_id(entry['resource']['participantId']) for entry in response['entry']]
