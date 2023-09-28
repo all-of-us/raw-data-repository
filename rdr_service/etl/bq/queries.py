@@ -1083,16 +1083,6 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.observation_period`
-                    (
-                      observation_period_id INT64,
-                      person_id INT64,
-                      observation_period_start_date DATE,
-                      observation_period_end_date DATE,
-                      period_type_concept_id INT64,
-                      src_id STRING
-                    )
-                    DEFAULT COLLATE 'und:ci';
                     CREATE TABLE `{dataset_id}.condition_era`
                     (
                       condition_era_id INT64,
@@ -1398,5 +1388,108 @@ queries = {
                                 ON stcm.target_concept_id = vc.concept_id
                                 AND vc.standard_concept = 'S'
                                 AND vc.invalid_reason IS NULL"""
+    },
+    "temp_obs_target": {
+        "destination": "temp_obs_target",
+        "append": False,
+        "query": """
+        SELECT
+          person_id,
+          visit_start_date AS start_date,
+          COALESCE(visit_end_date, visit_start_date) AS end_date
+        FROM
+          `{dataset_id}`.visit_occurrence
+        UNION ALL
+          -- CONDITION_OCCURRENCE
+        SELECT
+          person_id,
+          condition_start_date AS start_date,
+          COALESCE(condition_end_date, condition_start_date) AS end_date
+        FROM
+          `{dataset_id}`.condition_occurrence
+        UNION ALL
+          -- PROCEDURE_OCCURRENCE
+        SELECT
+          person_id,
+          procedure_date AS start_date,
+          procedure_date AS end_date
+        FROM
+          `{dataset_id}`.procedure_occurrence
+        UNION ALL
+          -- OBSERVATION
+        SELECT
+          person_id,
+          observation_date AS start_date,
+          observation_date AS end_date
+        FROM
+          `{dataset_id}`.observation
+        UNION ALL
+          -- MEASUREMENT
+        SELECT
+          person_id,
+          measurement_date AS start_date,
+          measurement_date AS end_date
+        FROM
+          `{dataset_id}`.measurement
+        UNION ALL
+          -- DEVICE_EXPOSURE
+        SELECT
+          person_id,
+          device_exposure_start_date AS start_date,
+          COALESCE( device_exposure_end_date, device_exposure_start_date) AS end_date
+        FROM
+          `{dataset_id}`.device_exposure
+        UNION ALL
+          -- DRUG_EXPOSURE
+        SELECT
+          person_id,
+          drug_exposure_start_date AS start_date,
+          COALESCE( drug_exposure_end_date, drug_exposure_start_date) AS end_date
+        FROM
+          `{dataset_id}`.drug_exposure
+        """
+    },
+    "temp_obs": {
+        "destination": "temp_obs",
+        "append": False,
+        "query": """
+        SELECT DISTINCT
+          person_id,
+          start_date AS observation_start_date,
+          (SELECT MIN(e) FROM UNNEST(ends) AS e WHERE e >= start_date) AS observation_end_date
+        FROM (
+          SELECT
+            person_id,
+            start_date,
+            ARRAY_AGG(end_date + INTERVAL 1 DAY) OVER(PARTITION BY person_id ORDER BY start_date) AS ends
+          FROM `{dataset_id}`.temp_obs_target
+        )
+
+        """
+    },
+    "observation_period": {
+        "destination": "observation_period",
+        "append": False,
+        "query": """
+            SELECT
+              ROW_NUMBER() OVER(ORDER BY tobs.person_id) AS observation_period_id,
+              tobs.person_id AS person_id,
+              MIN(observation_start_date) AS observation_period_start_date,
+              observation_end_date AS observation_period_end_date,
+              44814725 AS period_type_concept_id,
+              -- 44814725, Period inferred by algorithm
+              'observ_period' AS unit_id,
+              p.src_id AS src_id
+            FROM
+              `{dataset_id}`.temp_obs tobs
+            JOIN
+              `{dataset_id}`.person p
+            ON
+              tobs.person_id = p.person_id
+            GROUP BY
+              person_id,
+              observation_end_date,
+              src_id
+        """
     }
 }
