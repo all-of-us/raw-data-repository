@@ -56,7 +56,7 @@ from rdr_service.model.participant_summary import (
 )
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.participant import Participant
-from rdr_service.model.pediatric_data_log import PediatricDataType
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.model.utils import get_property_type, to_client_participant_id
 from rdr_service.participant_enums import (
@@ -532,6 +532,12 @@ class ParticipantSummaryDao(UpdatableDao):
             )
         elif order_by.field_name == 'state':
             return self._add_order_by_state(order_by, query)
+        elif order_by.field_name == 'questionnaireOnEnvironmentalHealth':
+            return self._add_env_health_order(query, order_by, PediatricDataLog.id.isnot(None))
+        elif order_by.field_name == 'questionnaireOnEnvironmentalHealthTime':
+            return self._add_env_health_order(query, order_by, PediatricDataLog.created)
+        elif order_by.field_name == 'questionnaireOnEnvironmentalHealthAuthored':
+            return self._add_env_health_order(query, order_by, PediatricDataLog.value)
         return super(ParticipantSummaryDao, self)._add_order_by(query, order_by, field_names, fields)
 
     @staticmethod
@@ -542,6 +548,19 @@ class ParticipantSummaryDao(UpdatableDao):
         else:
             return query.order_by(Code.display.desc())
 
+    @classmethod
+    def _add_env_health_order(cls, query, order_by, field):
+        if not order_by.ascending:
+            field = field.desc()
+
+        return query.outerjoin(
+            PediatricDataLog,
+            and_(
+                PediatricDataLog.participant_id == ParticipantSummary.participantId,
+                PediatricDataLog.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH
+            )
+        ).order_by(field)
+
     def _make_query(self, session, query_definition):
         query, order_by_field_names = super(ParticipantSummaryDao, self)._make_query(session, query_definition)
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
@@ -549,7 +568,7 @@ class ParticipantSummaryDao(UpdatableDao):
         # sql = self.query_to_text(query)
 
         if not query_definition.attributes:  # temporarily skip any joinloads if using result field filters
-            query.options(self._default_api_query_options())
+            query = query.options(*self._default_api_query_options())
         return query, order_by_field_names
 
     def make_query_filter(self, field_name, value):
