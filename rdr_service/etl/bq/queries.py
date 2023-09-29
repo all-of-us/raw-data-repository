@@ -729,78 +729,78 @@ queries = {
     },
     "observation": {
         "query": """
-            SELECT
-              ROW_NUMBER() OVER() AS observation_id,
-              src_m.participant_id AS person_id,
-              src_m.question_concept_id AS observation_concept_id,
-              DATE(src_m.date_of_survey) AS observation_date,
-              src_m.date_of_survey AS observation_datetime,
-              45905771 AS observation_type_concept_id,
-              -- 45905771, Observation Recorded from a Survey
-              src_m.value_number AS value_as_number,
-              CASE
-                WHEN src_m.value_ppi_code IS NOT NULL AND src_m.value_concept_id = 0 THEN src_m.value_string
-                WHEN src_m.value_string IS NOT NULL
-              AND src_m.value_ppi_code IS NULL THEN src_m.value_string
-              ELSE
-              NULL
-            END
-              AS value_as_string,
-              CASE
-                WHEN src_m.value_ppi_code IS NOT NULL THEN src_m.value_concept_id
-                WHEN src_m.value_boolean IS NOT NULL THEN src_m.value_boolean_concept_id
-              ELSE
-              0
-            END
-              AS value_as_concept_id,
-              0 AS qualifier_concept_id,
-              0 AS unit_concept_id,
-              NULL AS provider_id,
-              NULL AS visit_occurrence_id,
-              NULL AS visit_detail_id,
-              src_m.question_ppi_code AS observation_source_value,
-              src_m.question_source_concept_id AS observation_source_concept_id,
-              CAST(NULL AS STRING) AS unit_source_value,
-              NULL AS qualifier_source_value,
-              src_m.value_source_concept_id AS value_source_concept_id,
-              src_m.value_ppi_code AS value_source_value,
-              src_m.questionnaire_response_id AS questionnaire_response_id,
-              NULL AS meas_id,
-              src_m.src_id AS src_id
-            FROM
-              `{dataset_id}.src_mapped` src_m
-            WHERE
-              src_m.question_ppi_code IS NOT null
-              UNION ALL
-              SELECT
-              ROW_NUMBER() OVER() AS observation_id,
-              meas.participant_id AS person_id,
-              meas.cv_concept_id AS observation_concept_id,
-              DATE(meas.measurement_time) AS observation_date,
-              meas.measurement_time AS observation_datetime,
-              581413 AS observation_type_concept_id,
-              -- 581413, Observation from Measurement
-              CAST(NULL AS NUMERIC) AS value_as_number,
-              CAST(NULL AS STRING) AS value_as_string,
-              meas.vcv_concept_id AS value_as_concept_id,
-              0 AS qualifier_concept_id,
-              meas.vu_concept_id AS unit_concept_id,
-              NULL AS provider_id,
-              meas.physical_measurements_id AS visit_occurrence_id,
-              NULL AS visit_detail_id,
-              meas.code_value AS observation_source_value,
-              meas.cv_source_concept_id AS observation_source_concept_id,
-              meas.value_unit AS unit_source_value,
-              NULL AS qualifier_source_value,
-              meas.vcv_source_concept_id AS value_source_concept_id,
-              meas.value_code_value AS value_source_value,
-              NULL AS questionnaire_response_id,
-              meas.measurement_id AS meas_id,
-              meas.src_id AS src_id
-            FROM
-              `{dataset_id}.src_meas_mapped` meas
-            WHERE
-              meas.cv_domain_id = 'Observation'""",
+            SELECT ROW_NUMBER() OVER() AS observation_id, obs.* FROM (
+                SELECT
+                  src_m.participant_id AS person_id,
+                  src_m.question_concept_id AS observation_concept_id,
+                  DATE(src_m.date_of_survey) AS observation_date,
+                  src_m.date_of_survey AS observation_datetime,
+                  45905771 AS observation_type_concept_id,
+                  -- 45905771, Observation Recorded from a Survey
+                  src_m.value_number AS value_as_number,
+                  CASE
+                    WHEN src_m.value_ppi_code IS NOT NULL AND src_m.value_concept_id = 0 THEN src_m.value_string
+                    WHEN src_m.value_string IS NOT NULL
+                  AND src_m.value_ppi_code IS NULL THEN src_m.value_string
+                  ELSE
+                  NULL
+                END
+                  AS value_as_string,
+                  CASE
+                    WHEN src_m.value_ppi_code IS NOT NULL THEN src_m.value_concept_id
+                    WHEN src_m.value_boolean IS NOT NULL THEN src_m.value_boolean_concept_id
+                  ELSE
+                  0
+                END
+                  AS value_as_concept_id,
+                  0 AS qualifier_concept_id,
+                  0 AS unit_concept_id,
+                  NULL AS provider_id,
+                  NULL AS visit_occurrence_id,
+                  NULL AS visit_detail_id,
+                  src_m.question_ppi_code AS observation_source_value,
+                  src_m.question_source_concept_id AS observation_source_concept_id,
+                  CAST(NULL AS STRING) AS unit_source_value,
+                  NULL AS qualifier_source_value,
+                  src_m.value_source_concept_id AS value_source_concept_id,
+                  src_m.value_ppi_code AS value_source_value,
+                  src_m.questionnaire_response_id AS questionnaire_response_id,
+                  NULL AS meas_id,
+                  src_m.src_id AS src_id
+                FROM
+                  `{dataset_id}.src_mapped` src_m
+                WHERE
+                  src_m.question_ppi_code IS NOT null
+                  UNION ALL
+                  SELECT
+                  meas.participant_id AS person_id,
+                  meas.cv_concept_id AS observation_concept_id,
+                  DATE(meas.measurement_time) AS observation_date,
+                  meas.measurement_time AS observation_datetime,
+                  581413 AS observation_type_concept_id,
+                  -- 581413, Observation from Measurement
+                  CAST(NULL AS NUMERIC) AS value_as_number,
+                  CAST(NULL AS STRING) AS value_as_string,
+                  meas.vcv_concept_id AS value_as_concept_id,
+                  0 AS qualifier_concept_id,
+                  meas.vu_concept_id AS unit_concept_id,
+                  NULL AS provider_id,
+                  meas.physical_measurements_id AS visit_occurrence_id,
+                  NULL AS visit_detail_id,
+                  meas.code_value AS observation_source_value,
+                  meas.cv_source_concept_id AS observation_source_concept_id,
+                  meas.value_unit AS unit_source_value,
+                  NULL AS qualifier_source_value,
+                  meas.vcv_source_concept_id AS value_source_concept_id,
+                  meas.value_code_value AS value_source_value,
+                  NULL AS questionnaire_response_id,
+                  meas.measurement_id AS meas_id,
+                  meas.src_id AS src_id
+                FROM
+                  `{dataset_id}.src_meas_mapped` meas
+                WHERE
+                  meas.cv_domain_id = 'Observation'
+              ) obs""",
         "destination": "observation",
         "append": False,
     },
