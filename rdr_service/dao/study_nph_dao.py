@@ -477,6 +477,7 @@ class NphSiteDao(BaseDao):
 
 
 class NphOrderDao(UpdatableDao):
+
     def __init__(self):
         super(NphOrderDao, self).__init__(Order)
         self.study_category_dao = NphStudyCategoryDao()
@@ -1170,13 +1171,6 @@ class NphBiospecimenDao(BaseDao):
                     field_names) if query_definition.always_return_token else None
             )
             return Results(items, token, more_available=False, total=total)
-
-    # @staticmethod
-    # def _make_pagination_token(item_dict, field_names):
-    #     return super()._make_pagination_token(
-    #         item_dict={'participant_id': 'opaque_token'},
-    #         field_names=['participant_id']
-    #     )
 
 
 class NphSampleUpdateDao(BaseDao):
