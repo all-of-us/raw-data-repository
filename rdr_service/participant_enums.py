@@ -136,6 +136,7 @@ class QuestionnaireResponseClassificationType(messages.Enum):
     NO_ANSWER_VALUES = 3  # Isolated cases where payload had question data with no answer values
     AUTHORED_TIME_UPDATED = 4  # Known/expected retransmission of previous payloads, but with a corrected authored ts
     PARTIAL = 5  # Other cases (e.g., partial COPE surveys) where payload is not a completed survey
+    INVALID = 6  # Identify the invalid questionnaire responses
 
 
 class EnrollmentStatus(messages.Enum):

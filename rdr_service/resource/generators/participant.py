@@ -729,7 +729,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 QuestionnaireHistory.irbMapping). \
             join(QuestionnaireHistory). \
             filter(QuestionnaireResponse.participantId == p_id,
-                   QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE). \
+                   QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
+                   QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.INVALID). \
             order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc(),
                      QuestionnaireResponse.externalId.desc())
         # sql = self.ro_dao.query_to_text(query)
