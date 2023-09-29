@@ -156,6 +156,7 @@ class EtMValidator(Validator):
 
     def _check_with_url(self, field, url):
         # print(self.document)
+        # print(f"url: {url}")
         if "valueString" in self.document:
             answer_value = self.document["valueString"]
         elif "valueDecimal" in self.document:
@@ -174,8 +175,8 @@ class DigestBackfillTool(ToolBase):
     def run(self):
         super(DigestBackfillTool, self).run()
 
-        # self.validate_payload()
-        self.setup_schema()
+        self.validate_payload()
+        # self.setup_schema()
         # self.sync_consents()
 
     def setup_schema(self):
@@ -203,24 +204,29 @@ class DigestBackfillTool(ToolBase):
         import logging
         logging.info("Starting validation")
         dryrun=True
+        qtype = "GradCPT"
         client = bigquery.Client()
 
-        results_to_validate = client.query("SELECT * FROM rdr_etm_test.etm_questionnaire_response WHERE "
-                                           "questionnaire_type = 'emorecog'")
+        results_to_validate = client.query(f"SELECT * FROM rdr_etm_test.etm_questionnaire_response WHERE "
+                                           f"questionnaire_type = '{qtype}'")
         to_validate_list = results_to_validate.result()
         eqrs_to_validate = list(to_validate_list)
-        query_job = client.query("SELECT * FROM rdr_etm_test.etm_validation_schema WHERE questionnaire_type='emorecog'")
+        query_job = client.query(f"SELECT * FROM rdr_etm_test.etm_validation_schema WHERE questionnaire_type='{qtype}'")
         result = query_job.result()
         schemas = list(result)
         # print(schemas[0].get('schema'))
         fhir_schema_dict = json.loads(schemas[0].get('fhir_schema'))
         metadata_schema_dict = json.loads(schemas[0].get('metadata_schema'))
+        # print(metadata_schema_dict)
         v = EtMValidator(schema=fhir_schema_dict, metadata_schema=metadata_schema_dict)
         # v.setup_metadata_validator(metadata_schema_dict)
         print("Loaded schema dict")
         for eqr in eqrs_to_validate:
+            print(
+                f"Validating {eqr.get('etm_questionnaire_response_id')}, {eqr.get('questionnaire_type')}"
+            )
+            # print(repr(eqr.resource))
             resource_dict = json.loads(eqr.resource)
-            print(f"Validating {eqr.get('etm_questionnaire_response_id')}, {eqr.get('questionnaire_type')}")
             v.validate(resource_dict)
             validation_time = datetime.datetime.utcnow().isoformat()
             print(str(v.errors))
