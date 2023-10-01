@@ -56,6 +56,7 @@ from rdr_service.model.participant_summary import (
 )
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.participant import Participant
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.model.utils import get_property_type, to_client_participant_id
 from rdr_service.participant_enums import (
@@ -422,7 +423,8 @@ class ParticipantSummaryDao(UpdatableDao):
                 ParticipantSummary.participantId,
                 ParticipantSummary.firstName,
                 ParticipantSummary.lastName
-            )
+            ),
+            joinedload(ParticipantSummary.pediatricData)
         ]
 
     def get_by_hpo(self, hpo, session, yield_batch_size=1000):
@@ -530,6 +532,12 @@ class ParticipantSummaryDao(UpdatableDao):
             )
         elif order_by.field_name == 'state':
             return self._add_order_by_state(order_by, query)
+        elif order_by.field_name == 'questionnaireOnEnvironmentalHealth':
+            return self._add_env_health_order(query, order_by, PediatricDataLog.id.isnot(None))
+        elif order_by.field_name == 'questionnaireOnEnvironmentalHealthTime':
+            return self._add_env_health_order(query, order_by, PediatricDataLog.created)
+        elif order_by.field_name == 'questionnaireOnEnvironmentalHealthAuthored':
+            return self._add_env_health_order(query, order_by, PediatricDataLog.value)
         return super(ParticipantSummaryDao, self)._add_order_by(query, order_by, field_names, fields)
 
     @staticmethod
@@ -540,6 +548,19 @@ class ParticipantSummaryDao(UpdatableDao):
         else:
             return query.order_by(Code.display.desc())
 
+    @classmethod
+    def _add_env_health_order(cls, query, order_by, field):
+        if not order_by.ascending:
+            field = field.desc()
+
+        return query.outerjoin(
+            PediatricDataLog,
+            and_(
+                PediatricDataLog.participant_id == ParticipantSummary.participantId,
+                PediatricDataLog.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH
+            )
+        ).order_by(field)
+
     def _make_query(self, session, query_definition):
         query, order_by_field_names = super(ParticipantSummaryDao, self)._make_query(session, query_definition)
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
@@ -547,7 +568,7 @@ class ParticipantSummaryDao(UpdatableDao):
         # sql = self.query_to_text(query)
 
         if not query_definition.attributes:  # temporarily skip any joinloads if using result field filters
-            query.options(self._default_api_query_options())
+            query = query.options(*self._default_api_query_options())
         return query, order_by_field_names
 
     def make_query_filter(self, field_name, value):
@@ -758,7 +779,7 @@ class ParticipantSummaryDao(UpdatableDao):
             participant_id=summary.participantId
         )
 
-        enrollment_dependencies = EnrollmentDependencies(
+        enrl_dependencies = EnrollmentDependencies(
             consent_cohort=summary.consentCohort,
             primary_consent_authored_time=summary.consentForStudyEnrollmentFirstYesAuthored,
             gror_authored_time=summary.consentForGenomicsRORAuthored,
@@ -781,7 +802,7 @@ class ParticipantSummaryDao(UpdatableDao):
             ),
             wgs_sequencing_time=wgs_sequencing_time
         )
-        enrollment_info = EnrollmentCalculation.get_enrollment_info(enrollment_dependencies)
+        enrollment_info = EnrollmentCalculation.get_enrollment_info(enrl_dependencies)
 
         # Update enrollment status if it is upgrading
         legacy_dates = enrollment_info.version_legacy_dates
@@ -805,7 +826,7 @@ class ParticipantSummaryDao(UpdatableDao):
                     version='legacy',
                     status=str(summary.enrollmentStatus),
                     timestamp=legacy_dates[summary.enrollmentStatus],
-                    dependencies_snapshot=enrollment_dependencies.to_json_dict()
+                    dependencies_snapshot=enrl_dependencies.to_json_dict()
                 )
             )
 
@@ -818,7 +839,7 @@ class ParticipantSummaryDao(UpdatableDao):
                     version='3.0',
                     status=str(summary.enrollmentStatusV3_0),
                     timestamp=version_3_0_dates[summary.enrollmentStatusV3_0],
-                    dependencies_snapshot=enrollment_dependencies.to_json_dict()
+                    dependencies_snapshot=enrl_dependencies.to_json_dict()
                 )
             )
 
@@ -831,7 +852,7 @@ class ParticipantSummaryDao(UpdatableDao):
                     version='3.2',
                     status=str(summary.enrollmentStatusV3_2),
                     timestamp=version_3_2_dates[summary.enrollmentStatusV3_2],
-                    dependencies_snapshot=enrollment_dependencies.to_json_dict()
+                    dependencies_snapshot=enrl_dependencies.to_json_dict()
                 )
             )
 
@@ -845,9 +866,26 @@ class ParticipantSummaryDao(UpdatableDao):
                     version='core_data',
                     status="True",
                     timestamp=enrollment_info.core_data_time,
-                    dependencies_snapshot=enrollment_dependencies.to_json_dict()
+                    dependencies_snapshot=enrl_dependencies.to_json_dict()
                 )
             )
+
+        # DA-3777: Surface for HPRO whether pid has valid height and weight measurement data.
+        # This is not spelled out in the Goal 1 definitions as an official enrollment status flag and is not
+        # tracked independently in the enrollment status history; but the has_core_data definition is a superset of
+        # conditions which includes the requirement that has_height_and_weight is true
+        if enrl_dependencies.earliest_height_measurement_time and enrl_dependencies.earliest_weight_measurement_time:
+            satisfied_hw_time = max(enrl_dependencies.earliest_height_measurement_time,
+                                    enrl_dependencies.earliest_weight_measurement_time)
+            if not summary.hasHeightAndWeight or summary.hasHeightAndWeightTime != satisfied_hw_time:
+                summary.hasHeightAndWeight = True
+                summary.hasHeightAndWeightTime = satisfied_hw_time
+                summary.lastModified = clock.CLOCK.now()
+        elif summary.hasHeightAndWeight:
+            # PM may have been cancelled, so there are no longer valid core measurements / measurement times
+            summary.hasHeightAndWeight = False
+            summary.hasHeightAndWeightTime = None
+            summary.lastModified = clock.CLOCK.now()
 
         # Set enrollment status date fields
         if EnrollmentStatus.MEMBER in legacy_dates:
@@ -1381,6 +1419,20 @@ class ParticipantSummaryDao(UpdatableDao):
                 }
                 for related_summary in related_summary_list
             ]
+
+        # set the pediatric data flag
+        result['isPediatric'] = UNSET
+        if any(data.data_type == PediatricDataType.AGE_RANGE for data in obj.pediatricData):
+            result['isPediatric'] = True
+
+        # EnvironmentalHealth module fields
+        result['questionnaireOnEnvironmentalHealth'] = UNSET
+        for env_health_data in [
+            data for data in obj.pediatricData if data.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH
+        ]:
+            result['questionnaireOnEnvironmentalHealth'] = str(QuestionnaireStatus.SUBMITTED)
+            result['questionnaireOnEnvironmentalHealthTime'] = env_health_data.created
+            result['questionnaireOnEnvironmentalHealthAuthored'] = env_health_data.value
 
         # Format other responses to default to UNSET when none
         field_names = [

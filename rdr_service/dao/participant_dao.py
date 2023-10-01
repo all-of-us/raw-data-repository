@@ -190,12 +190,14 @@ class ParticipantDao(UpdatableDao):
                 and obj.withdrawalStatus != WithdrawalStatus.EARLY_OUT):
             raise Forbidden(f"Participant {obj.participantId} has withdrawn, cannot unwithdraw")
 
-    def get_for_update(self, session, obj_id):
+    def get_for_update(self, session, obj_id, options=None):
         # Fetch the participant summary at the same time as the participant, as we are potentially
         # updating both.
-        return self.get_with_session(
-            session, obj_id, for_update=True, options=joinedload(Participant.participantSummary)
-        )
+
+        if options is None:
+            options = joinedload(Participant.participantSummary)
+
+        return self.get_with_session(session, obj_id, for_update=True, options=options)
 
     def _do_update(self, session, obj, existing_obj):
         """Updates the associated ParticipantSummary, and extracts HPO ID from the provider link

@@ -42,8 +42,10 @@ from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept,
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseStatus
 from rdr_service.model.resource_data import ResourceData
-from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort,\
+from rdr_service.participant_enums import (
+    EnrollmentStatusV32, GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort,
     DigitalHealthSharingStatus
+)
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from tests import test_data
 from tests.test_data import (
@@ -639,8 +641,10 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
             wasEhrDataAvailable=False,
+            enrollmentStatusV3_2=EnrollmentStatusV32.ENROLLED_PARTICIPANT,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
             enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusEnrolledParticipantV3_2Time=TIME_2,
             healthDataStreamSharingStatus=DigitalHealthSharingStatus.NEVER_SHARED,
             aian=0
         )
@@ -1273,8 +1277,10 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
             wasEhrDataAvailable=False,
+            enrollmentStatusV3_2=EnrollmentStatusV32.ENROLLED_PARTICIPANT,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
             enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusEnrolledParticipantV3_2Time=TIME_2,
             healthDataStreamSharingStatus=DigitalHealthSharingStatus.NEVER_SHARED,
             aian=0
         )
@@ -1353,8 +1359,10 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
             wasEhrDataAvailable=False,
+            enrollmentStatusV3_2=EnrollmentStatusV32.ENROLLED_PARTICIPANT,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
             enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusEnrolledParticipantV3_2Time=TIME_2,
             healthDataStreamSharingStatus=DigitalHealthSharingStatus.NEVER_SHARED,
             aian=0
         )
@@ -1440,8 +1448,10 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
             wasEhrDataAvailable=False,
+            enrollmentStatusV3_2=EnrollmentStatusV32.ENROLLED_PARTICIPANT,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
             enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusEnrolledParticipantV3_2Time=TIME_2,
             healthDataStreamSharingStatus=DigitalHealthSharingStatus.NEVER_SHARED,
             aian=0
         )
@@ -1517,8 +1527,10 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             consentCohort=ParticipantCohort.COHORT_1,
             retentionEligibleStatus=None,
             wasEhrDataAvailable=False,
+            enrollmentStatusV3_2=EnrollmentStatusV32.ENROLLED_PARTICIPANT,
             enrollmentStatusParticipantV3_0Time=datetime.datetime(2016, 1, 2),
             enrollmentStatusParticipantV3_2Time=datetime.datetime(2016, 1, 2),
+            enrollmentStatusEnrolledParticipantV3_2Time=TIME_2,
             healthDataStreamSharingStatus=DigitalHealthSharingStatus.NEVER_SHARED,
             aian=0
         )

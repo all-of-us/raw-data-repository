@@ -625,3 +625,71 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
             f'ParticipantSummary?participantId={summary.participantId}'
         )['entry'][0]['resource']
         self.assertEqual(first_measurement_date_str, summary_json['enrollmentStatusCoreStoredSampleTime'])
+
+    @mock.patch('rdr_service.dao.participant_summary_dao.QuestionnaireResponseRepository')
+    def test_has_height_weight_status(self, response_repo_mock):
+        # Set up a participant that can be CORE after their physical measurements are in
+        generic_timestamp = datetime.datetime(2023, 1, 1)
+        summary: ParticipantSummary = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollmentFirstYesAuthored=generic_timestamp,
+            consentForGenomicsRORAuthored=generic_timestamp,
+            questionnaireOnTheBasicsAuthored=generic_timestamp,
+            questionnaireOnOverallHealthAuthored=generic_timestamp,
+            questionnaireOnLifestyleAuthored=generic_timestamp,
+            ehrReceiptTime=generic_timestamp,
+            samplesToIsolateDNA=SampleStatus.RECEIVED
+        )
+
+        self.data_generator.create_database_biobank_stored_sample(
+            biobankId=summary.biobankId,
+            test='1ED04',
+            confirmed=generic_timestamp
+        )
+        response_repo_mock.get_interest_in_sharing_ehr_ranges.return_value = [
+            DateRange(start=generic_timestamp)
+        ]
+
+        # Send the first PM
+        participant_id_str = f'P{summary.participantId}'
+        first_measurement_date_str = datetime.datetime(2023, 1, 5).isoformat()
+        measurement = load_measurement_json(participant_id_str, now=first_measurement_date_str)
+        path = f'Participant/{participant_id_str}/PhysicalMeasurements'
+        response = self.send_post(path, measurement)
+
+        # Check that the status info for has height and weight was set as expected
+        summary_json = self.send_get(
+            f'ParticipantSummary?participantId={summary.participantId}'
+        )['entry'][0]['resource']
+
+        self.assertTrue(summary_json['hasHeightAndWeight'])
+        self.assertEqual(first_measurement_date_str, summary_json['hasHeightAndWeightTime'])
+
+        # Cancel the first PM
+        path = path + "/" + response["id"]
+        cancel_info = BaseTestCase.get_restore_or_cancel_info()
+        self.send_patch(path, cancel_info)
+        summary_json = self.send_get(
+            f'ParticipantSummary?participantId={summary.participantId}'
+        )['entry'][0]['resource']
+
+        # Check that the height and weight status (as well as core data flag) was cleared as a result of cancelled PM.
+        # This means the null hasHeightAndWeightTime field will not be present at all in the response JSON
+        self.assertFalse(summary_json['hasCoreData'])
+        self.assertFalse(summary_json['hasHeightAndWeight'])
+        self.assertIsNone(summary_json.get('hasHeightAndWeightTime', None))
+
+        # send another PM
+        second_measurement_date_str = datetime.datetime(2023, 3, 11).isoformat()
+        measurement2 = load_measurement_json(participant_id_str, now=second_measurement_date_str)
+        path = "Participant/%s/PhysicalMeasurements" % participant_id_str
+        self.send_post(path, measurement2)
+
+        # Check that the Core Stored date remains the same
+        summary_json = self.send_get(
+            f'ParticipantSummary?participantId={summary.participantId}'
+        )['entry'][0]['resource']
+        self.assertEqual(first_measurement_date_str, summary_json['enrollmentStatusCoreStoredSampleTime'])
+
+        # Check that height and weight status were restored based on new PM record
+        self.assertTrue(summary_json['hasHeightAndWeight'])
+        self.assertEqual(second_measurement_date_str, summary_json['hasHeightAndWeightTime'])
