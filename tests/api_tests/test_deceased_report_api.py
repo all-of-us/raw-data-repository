@@ -32,10 +32,13 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         self.paired_participant_without_summary = self.data_generator.create_database_participant(hpoId=hpo.hpoId)
 
         self.paired_participant_with_summary = self.data_generator.create_database_participant(hpoId=hpo.hpoId)
-        self.data_generator.create_database_participant_summary(participant=self.paired_participant_with_summary)
+        self.data_generator.create_database_participant_summary(
+            participant=self.paired_participant_with_summary, lastModified=datetime.utcnow()
+        )
 
         self.unpaired_participant_with_summary = self.data_generator.create_database_participant()
-        self.data_generator.create_database_participant_summary(participant=self.unpaired_participant_with_summary)
+        self.data_generator.create_database_participant_summary(
+            participant=self.unpaired_participant_with_summary, lastModified=datetime.utcnow())
 
     def post_report(self, report_json, participant_id=None, expected_status=200):
         if participant_id is None:
@@ -593,6 +596,25 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         summary_response = self.send_get(f'Participant/P{participant_id}/Summary')
         self.assertEqual('123-456-7890', summary_response['phoneNumber'])
         self.assertEqual('NO_CONTACT', summary_response['recontactMethod'])
+
+    def test_last_modified_updates_after_status_changed_to_approved(self):
+        """LastModified column in PS should update when deceasedStatus is changed to approved"""
+
+        participant_id = self.unpaired_participant_with_summary.participantId
+        initial_last_modified = self.get_participant_summary_from_db(
+            participant_id
+        ).lastModified
+        self.assertIsNotNone(initial_last_modified)
+
+        report_json = self.build_deceased_report_json()
+        self.post_report(report_json, participant_id=participant_id)
+
+        participant_summary = self.get_participant_summary_from_db(participant_id)
+        updated_last_modified = participant_summary.lastModified
+
+        # Assert that the deceasedStatus changed to 'approved', and lastModified is updated
+        self.assertEqual(DeceasedStatus.APPROVED, participant_summary.deceasedStatus)
+        self.assertNotEquals(initial_last_modified, updated_last_modified)
 
 
 class ParticipantDeceasedReportApiTest(DeceasedReportTestBase):
