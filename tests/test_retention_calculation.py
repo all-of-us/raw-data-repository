@@ -1,90 +1,69 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import mock
+from pprint import pprint
 
-from rdr_service import config, code_constants
+from rdr_service import config
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
-from rdr_service.offline.retention_eligible_import import _supplement_with_rdr_calculations
-from rdr_service.participant_enums import QuestionnaireResponseStatus, QuestionnaireResponseClassificationType
-from rdr_service.services.retention_calculation import RetentionEligibilityDependencies
+from rdr_service.offline.retention_eligible_import import RetentionEligibility, _supplement_with_rdr_calculations
+from rdr_service.participant_enums import QuestionnaireStatus, EhrStatus, RetentionStatus, RetentionType
+from rdr_service.services.retention_calculation import RetentionEligibilityDependencies, Consent
 from tests.helpers.unittest_base import BaseTestCase
 
 
 class RetentionCalculationIntegrationTest(BaseTestCase):
     def setUp(self, *args, **kwargs):
         super().setUp(*args, **kwargs)
-        participant = self.data_generator.create_database_participant(participantOrigin='test_portal')
-        self.summary = self.data_generator.create_database_participant_summary(
-            participant=participant,
-            dateOfBirth=datetime(1982, 1, 9),
-            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10),
-            questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored=datetime(2023, 5, 15),
-            questionnaireOnBehavioralHealthAndPersonalityAuthored=datetime(2023, 6, 1)
+        self.participant = self.data_generator.create_database_participant()
+        self.first_ehr_intent_timestamp = datetime(2020, 1, 1, 0, 15, 0)
+        # Boundary date for maintaining active retention, tests can create dates with deltas relative to this
+        self.date_18_months_ago = RetentionEligibility._get_datetime_18_months_ago()
+        # Mocking the return for the earliest EHR intent so QuestionnaireResponse data setup is not needed
+        first_ehr_consent_patch = mock.patch(
+            'rdr_service.offline.retention_eligible_import._get_earliest_intent_for_ehr',
+            return_value=Consent(is_consent_provided=True,
+                                 authored_timestamp=self.first_ehr_intent_timestamp)
         )
+        self.retention_calc_mock = first_ehr_consent_patch.start()
+        self.addCleanup(first_ehr_consent_patch.stop)
 
-        self.wear_consent_question = self.data_generator.create_database_code(
-            value=code_constants.WEAR_CONSENT_QUESTION_CODE
+    def _create_retention_eligible_participant(self, **kwargs):
+        """
+         Create a participant summary with the activity details needed to be considered retention eligible, for
+         testing _supplement_with_rdr_calculations() results
+        """
+        # Set up defaults
+        ps_args = {
+            'consentCohort': 3,
+            'dateOfBirth': datetime(1982, 1, 9),
+            'consentForStudyEnrollmentFirstYesAuthored': datetime(2020, 1, 1, 0, 0, 0),
+            'consentForStudyEnrollmentAuthored': datetime(2020, 1, 1, 0, 0, 0),
+            'consentForStudyEnrollment': QuestionnaireStatus.SUBMITTED,
+            'consentForElectronicHealthRecordsFirstYesAuthored': self.first_ehr_intent_timestamp,
+            'consentForElectronicHealthRecords': QuestionnaireStatus.SUBMITTED,
+            'consentForElectronicHealthRecordsAuthored': self.first_ehr_intent_timestamp,
+            'questionnaireOnTheBasics': QuestionnaireStatus.SUBMITTED,
+            'questionnaireOnTheBasicsAuthored': datetime(2020, 1, 1, 1, 0, 0),
+            'questionnaireOnOverallHealth': QuestionnaireStatus.SUBMITTED,
+            'questionnaireOnOverallHealthAuthored': datetime(2020, 1, 1, 2, 0, 0),
+            'questionnaireOnLifestyle': QuestionnaireStatus.SUBMITTED,
+            'questionnaireOnLifestyleAuthored': datetime(2020, 1, 1, 3, 0, 0)
+        }
+        # Apply caller-provided values
+        if kwargs:
+            ps_args.update(**kwargs)
+        eligible_pid_summary = self.data_generator.create_database_participant_summary(**ps_args)
+
+        self.data_generator.create_database_biobank_stored_sample(
+            test='1ED04',
+            biobankId=eligible_pid_summary.biobankId,
+            confirmed=datetime(2020, 3, 4)
         )
-        self.wear_yes = self.data_generator.create_database_code(value=code_constants.WEAR_YES_ANSWER_CODE)
-        self.wear_no = self.data_generator.create_database_code(value=code_constants.WEAR_NO_ANSWER_CODE)
+        return eligible_pid_summary
 
-        self.etm_consent_question = self.data_generator.create_database_code(
-            value=code_constants.ETM_CONSENT_QUESTION_CODE
-        )
-        self.etm_yes = self.data_generator.create_database_code(value=code_constants.AGREE_YES)
-        self.etm_no = self.data_generator.create_database_code(value=code_constants.AGREE_NO)
-
-        self.etm_consent = self._create_consent_questionnaire('etm_consent_ut', self.etm_consent_question.codeId)
-        self.wear_consent = self._create_consent_questionnaire('wear_consent_ut', self.wear_consent_question.codeId)
-
+    @mock.patch('rdr_service.offline.retention_eligible_import.RetentionEligibility')
+    def test_get_earliest_dna_sample(self, calc_mock):
         # mock the retention calculation to see what it got passed
-        retention_calc_patch = mock.patch('rdr_service.offline.retention_eligible_import.RetentionEligibility')
-        self.retention_calc_mock = retention_calc_patch.start()
-        self.addCleanup(retention_calc_patch.stop)
-
-    def _create_consent_questionnaire(self, module: str, consent_question_code: int):
-        module_code = self.data_generator.create_database_code(value=module)
-
-        questionnaire = self.data_generator.create_database_questionnaire_history()
-        self.data_generator.create_database_questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                codeId=consent_question_code
-            )
-
-        self.data_generator.create_database_questionnaire_concept(
-            questionnaireId=questionnaire.questionnaireId,
-            questionnaireVersion=questionnaire.version,
-            codeId=module_code.codeId
-        )
-
-        return questionnaire
-
-    def _setup_consent_questionnaire_response(self, participant, questionnaire, answer_code,
-                                              authored=datetime(2023, 5, 15),
-                                              created=datetime(2023, 3, 15),
-                                              status=QuestionnaireResponseStatus.COMPLETED,
-                                              classification_type=QuestionnaireResponseClassificationType.COMPLETE):
-
-        questionnaire_response = self.data_generator.create_database_questionnaire_response(
-            participantId=participant,
-            questionnaireId=questionnaire.questionnaireId,
-            questionnaireVersion=questionnaire.version,
-            authored=authored,
-            created=created,
-            status=status,
-            classificationType=classification_type
-        )
-
-        question = questionnaire.questions[0]
-        self.data_generator.create_database_questionnaire_response_answer(
-                questionnaireResponseId=questionnaire_response.questionnaireResponseId,
-                questionId=question.questionnaireQuestionId,
-                **{'valueCodeId': answer_code.codeId}
-            )
-
-        return questionnaire_response
-
-    def test_get_earliest_dna_sample(self):
+        self.data_generator.create_database_participant_summary(participant=self.participant)
         self.temporarily_override_config_setting(
             key=config.DNA_SAMPLE_TEST_CODES,
             value=['1ED04', '1SAL2']
@@ -98,151 +77,185 @@ class RetentionCalculationIntegrationTest(BaseTestCase):
         ]:
             self.data_generator.create_database_biobank_stored_sample(
                 test=test,
-                biobankId=self.summary.biobankId,
+                biobankId=self.participant.biobankId,
                 confirmed=timestamp
             )
 
-        retention_parameters = self._get_retention_dependencies_found()
+        retention_parameters = self._get_retention_dependencies_found(mock_obj=calc_mock)
         self.assertEqual(first_dna_sample_timestamp, retention_parameters.dna_samples_timestamp)
 
-    def test_mhwb_surveys_detected(self):
-        # DA-3705:  Confirm the RetentionMetricsEligibility picks up new values for MHWB surveys
-        # Check for the default participant_summary setup authored times
-        retention_parameters = self._get_retention_dependencies_found()
-        self.assertEqual(self.summary.questionnaireOnBehavioralHealthAndPersonalityAuthored,
-                         retention_parameters.bhp_response_timestamp)
-        self.assertEqual(self.summary.questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored,
-                         retention_parameters.ehhwb_response_timestamp)
+    def test_mhwb_survey_activity(self):
+        ehhwb_survey_authored = self.date_18_months_ago + timedelta(300)
+        bhp_survey_authored = self.date_18_months_ago + timedelta(310)
+        # DA-3705:  Confirm the RetentionMetricsEligibility picks up new values for MHWB survey activity
+        ehhwb_summary = self._create_retention_eligible_participant(
+            participantId=self.participant.participantId,
+            questionnaireOnEmotionalHealthHistoryAndWellBeing=QuestionnaireStatus.SUBMITTED,
+            questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored=ehhwb_survey_authored
+        )
+        self._assert_expected_last_retention_activity_time(
+            ehhwb_summary,
+            ehhwb_summary.questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored
+        )
+        bhp_summary = self._create_retention_eligible_participant(
+            questionnaireOnBehavioralHealthAndPersonality=QuestionnaireStatus.SUBMITTED,
+            questionnaireOnBehavioralHealthAndPersonalityAuthored=bhp_survey_authored
+        )
+        self._assert_expected_last_retention_activity_time(
+            bhp_summary,
+            bhp_summary.questionnaireOnBehavioralHealthAndPersonalityAuthored
+        )
 
-    def test_nph1_consent_status(self):
-        # Test participant without an NPH1 authored time - use default paritcipant from test setup
-        retention_parameters = self._get_retention_dependencies_found()
-        self.assertIsNone(retention_parameters.nph_consent_timestamp)
-        # Create/test participant with NPH1 consent authored
-        nph_participant = self.data_generator.create_database_participant(participantOrigin='test_portal')
-        nph_pid_summary = self.data_generator.create_database_participant_summary(
-            participant=nph_participant,
-            dateOfBirth=datetime(1982, 1, 9),
-            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10),
-            questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored=datetime(2023, 5, 15),
-            questionnaireOnBehavioralHealthAndPersonalityAuthored=datetime(2023, 6, 1),
-            consentForNphModule1Authored=datetime(2023, 6, 30),
+    def test_nph1_consent_activity(self):
+        # Note:   this is theoretical, since currently, there are no participants in the RDR participant_summary in
+        # production who have a consentForNphModule1Authored timestamp but have a "false" consented status ("no"
+        # consents not recorded)
+        nph_mod1_authored = self.date_18_months_ago + timedelta(300)
+        nph_summary = self._create_retention_eligible_participant(
+            participantId=self.participant.participantId,
+            consentForNphModule1Authored=nph_mod1_authored,
             consentForNphModule1=True
         )
-        retention_parameters = self._get_retention_dependencies_found(participant=nph_participant)
-        self.assertEqual(nph_pid_summary.consentForNphModule1Authored, retention_parameters.nph_consent_timestamp)
+        self._assert_expected_last_retention_activity_time(nph_summary, nph_summary.consentForNphModule1Authored)
 
-    def test_wear_yes_timestamp(self):
-        # DA-3705: Confirm logic to find the WEAR consent response data
-        qr = self._setup_consent_questionnaire_response(self.summary.participantId,
-                                                        self.wear_consent, self.wear_yes)
-        self.assertIsNotNone(qr)
-        retention_parameters = self._get_retention_dependencies_found()
-        self.assertEqual(qr.authored, retention_parameters.wear_consent_timestamp)
-
-    def test_wear_no_response_no_timestamp(self):
-        # DA-3705:  Confirm WEAR consent "no" response is ignored
-        qr = self._setup_consent_questionnaire_response(self.summary.participantId,
-                                                        self.wear_consent, self.wear_no)
-        self.assertIsNotNone(qr)
-        retention_parameters = self._get_retention_dependencies_found()
-        self.assertEqual(None, retention_parameters.wear_consent_timestamp)
-
-    def test_multiple_wear_responses_latest_yes(self):
-        # DA-3705: Confirm if there are multiple WEAR consent responses, the latest "yes" is used
-        self._setup_consent_questionnaire_response(self.summary.participantId,
-                                                   self.wear_consent, self.wear_no)
-        qr_no_1 = self._setup_consent_questionnaire_response(self.summary.participantId, self.wear_consent,
-                                                             self.wear_no, authored=datetime(2023, 6, 1))
-        qr_yes_2 = self._setup_consent_questionnaire_response(self.summary.participantId,  self.wear_consent,
-                                                              self.wear_yes, authored=datetime(2023, 3, 1))
-        self.assertTrue(None not in [qr_no_1, qr_yes_2])
-        retention_parameters = self._get_retention_dependencies_found()
-        self.assertEqual(qr_yes_2.authored, retention_parameters.wear_consent_timestamp)
-
-    def test_etm_consent_yes(self):
-        # DA-3705: Confirm logic to find EtM consent response data
-        qr_yes = self._setup_consent_questionnaire_response(self.summary.participantId, self.etm_consent, self.etm_yes,
-                                                            authored=datetime(2023, 1, 1))
-        self.assertIsNotNone(qr_yes)
-        retention_parameters = self._get_retention_dependencies_found()
-        self.assertEqual(qr_yes.authored, retention_parameters.etm_consent_timestamp)
-
-    def test_etm_consent_no_response_no_timestamp(self):
-        # DA-3705: Confirm if EtM consent is "no" response, it's ignored
-        no_rsp = self._setup_consent_questionnaire_response(self.summary.participantId, self.etm_consent, self.etm_no,
-                                                            authored=datetime(2023, 1, 1))
-        self.assertIsNotNone(no_rsp)
-        retention_parameters = self._get_retention_dependencies_found()
-        self.assertEqual(None, retention_parameters.etm_consent_timestamp)
-
-    def test_multiple_etm_consent_yes_latest(self):
-        # DA-3705: Confirm if multiple EtM consent "yes" responses, latest authored is used
-        qr_first_yes = self._setup_consent_questionnaire_response(self.summary.participantId, self.etm_consent,
-                                                                  self.etm_yes, authored=datetime(2023, 1, 1))
-        qr_later_yes = self._setup_consent_questionnaire_response(self.summary.participantId, self.etm_consent,
-                                                                  self.etm_yes, authored=datetime(2023, 3, 1))
-        self.assertTrue(None not in [qr_first_yes, qr_later_yes])
-        retention_parameters = self._get_retention_dependencies_found()
-        self.assertEqual(qr_later_yes.authored, retention_parameters.etm_consent_timestamp)
-
-    def test_etm_task_timestamp(self):
-        # DA-3705: Confirm logic to find latest EtM task response authored.  Need EtM consent to process task
-        self._setup_consent_questionnaire_response(self.summary.participantId, self.etm_consent, self.etm_yes,
-                                                   authored=datetime(2023, 1, 1))
-        # Default EtM questionnaire created is emorecog
-        etm_rsp_1 = self.data_generator.create_etm_questionnaire_response(
-            authored=datetime(2023, 3, 1),
-            participant_id=self.summary.participantId
+    def test_wear_consent_activity(self):
+        # Test both yes and no responses for WEAR study are recognized for retention
+        wear_yes_authored = self.date_18_months_ago + timedelta(150)
+        wear_yes_summary = self._create_retention_eligible_participant(
+            participantId=self.participant.participantId,
+            consentForWearStudy=QuestionnaireStatus.SUBMITTED,
+            consentForWearStudyAuthored=wear_yes_authored
         )
-        self.assertIsNotNone(etm_rsp_1)
-        retention_parameters = self._get_retention_dependencies_found()
-        self.assertEqual(etm_rsp_1.authored, retention_parameters.latest_etm_response_timestamp)
+        self._assert_expected_last_retention_activity_time(wear_yes_summary,
+                                                           wear_yes_summary.consentForWearStudyAuthored)
 
-    def test_etm_multiple_tasks_latest(self):
-        self._setup_consent_questionnaire_response(self.summary.participantId, self.etm_consent, self.etm_yes,
-                                                   authored=datetime(2023, 1, 1))
-        q_emorecog = self.data_generator.create_database_etm_questionnaire(questionnaire_type='emorecog')
-        q_flanker = self.data_generator.create_database_etm_questionnaire(questionnaire_type='flanker')
-        emorecog_rsp = self.data_generator.create_etm_questionnaire_response(
-            participant_id=self.summary.participantId,
-            questionnaire_type='emorecog',
-            etm_questionnaire_id=q_emorecog.etm_questionnaire_id,
-            authored=datetime(2023, 5, 15)
+        wear_no_authored = self.date_18_months_ago + timedelta(200)
+        wear_no_summary = self._create_retention_eligible_participant(
+            consentForWearStudy=QuestionnaireStatus.SUBMITTED_NO_CONSENT,
+            consentForWearStudyAuthored=wear_no_authored
         )
-        flanker_rsp = self.data_generator.create_etm_questionnaire_response(
-            participant_id=self.summary.participantId,
-            questionnaire_type='flanker',
-            etm_questionnaire_id=q_flanker.etm_questionnaire_id,
-            authored=datetime(2023, 6, 30)
-        )
-        self.assertTrue(None not in [emorecog_rsp, flanker_rsp])
-        retention_parameters = self._get_retention_dependencies_found()
-        self.assertEqual(flanker_rsp.authored, retention_parameters.latest_etm_response_timestamp)
+        self._assert_expected_last_retention_activity_time(wear_no_summary, wear_no_summary.consentForWearStudyAuthored)
 
-    def test_etm_prt_excluded(self):
-        # DA-3705: Ignore prt response data for retention since it exists unexpectedly in RDR production
-        self._setup_consent_questionnaire_response(self.summary.participantId, self.etm_consent, self.etm_yes,
-                                                   authored=datetime(2023, 1, 1))
-        q_prt = self.data_generator.create_database_etm_questionnaire(questionnaire_type='prt')
-        prt_rsp = self.data_generator.create_etm_questionnaire_response(
-            participant_id=self.summary.participantId,
-            questionnaire_type='prt',
-            etm_questionnaire_id=q_prt.etm_questionnaire_id,
-            authored=datetime(2023, 6, 30)
+    def test_etm_consent_activity(self):
+        # EtM consent more recent than WEAR consent
+        wear_yes_authored = self.date_18_months_ago + timedelta(250)
+        etm_yes_authored = self.date_18_months_ago + timedelta(300)
+        etm_yes_summary = self._create_retention_eligible_participant(
+            participantId=self.participant.participantId,
+            consentForWearStudy=QuestionnaireStatus.SUBMITTED_NO_CONSENT,
+            consentForWearStudyAuthored=wear_yes_authored,
+            consentForEtM=QuestionnaireStatus.SUBMITTED,
+            consentForEtMAuthored=etm_yes_authored
         )
-        self.assertEqual(prt_rsp.authored, datetime(2023, 6, 30))
-        retention_parameters = self._get_retention_dependencies_found()
-        self.assertEqual(None,  retention_parameters.latest_etm_response_timestamp)
+        self._assert_expected_last_retention_activity_time(etm_yes_summary, etm_yes_summary.consentForEtMAuthored)
 
-    def _get_retention_dependencies_found(self, participant=None) -> RetentionEligibilityDependencies:
+        # EtM "no" more recent than WEAR "yes", confirm recognition of "no" EtM consent responses as latest
+        etm_no_authored = self.date_18_months_ago + timedelta(320)
+        etm_no_summary = self._create_retention_eligible_participant(
+            consentForWearStudy=QuestionnaireStatus.SUBMITTED,
+            consentForWearStudyAuthored=wear_yes_authored,
+            consentForEtM=QuestionnaireStatus.SUBMITTED_NO_CONSENT,
+            consentForEtMAuthored=etm_no_authored
+        )
+        self._assert_expected_last_retention_activity_time(etm_no_summary, etm_no_summary.consentForEtMAuthored)
+
+    def test_etm_task_activity(self):
+        # EtM task as most recent activity
+        surveys_authored = self.date_18_months_ago + timedelta(300)
+        etm_task_authored = self.date_18_months_ago + timedelta(330)
+        summary = self._create_retention_eligible_participant(
+            participantId=self.participant.participantId,
+            questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored=surveys_authored,
+            questionnaireOnBehavioralHealthAndPersonalityAuthored=surveys_authored,
+            latestEtMTaskAuthored=etm_task_authored
+        )
+        self._assert_expected_last_retention_activity_time(summary, summary.latestEtMTaskAuthored)
+
+    def test_no_longer_actively_retained(self):
+        # Set latest activity date to 18 months + 1 day ago,  to test for not actively retained
+        sdoh_authored = self.date_18_months_ago - timedelta(1)
+        summary = self._create_retention_eligible_participant(
+            participantId=self.participant.participantId,
+            questionnaireOnSocialDeterminantsOfHealthAuthored=sdoh_authored
+        )
+        obj = self._make_retention_eligible_metrics_rec(summary)
+        _supplement_with_rdr_calculations(
+            obj,
+            session=self.session
+        )
+        self.assertEqual(obj.rdr_is_actively_retained, False)
+
+    def test_passively_retained(self):
+        # Passive retention is based on last EHR upload being within last 18 months
+        ehr_upload = self.date_18_months_ago + timedelta(1)
+        summary = self._create_retention_eligible_participant(
+            participantId=self.participant.participantId,
+            ehrStatus=EhrStatus.PRESENT,
+            ehrUpdateTime=ehr_upload,
+        )
+        obj = self._make_retention_eligible_metrics_rec(summary)
+        _supplement_with_rdr_calculations(
+            obj,
+            session=self.session
+        )
+        self.assertEqual(obj.rdr_is_passively_retained, True)
+
+    def test_no_longer_passively_retained(self):
+        # Make last EHR upload > 18 months ago (no longer passively retained)
+        ehr_upload = self.date_18_months_ago - timedelta(1)
+        summary = self._create_retention_eligible_participant(
+            dateOfBirth=datetime(1982, 1, 9),
+            consentForStudyEnrollmentFirstYesAuthored=datetime(2020, 1, 10),
+            ehrStatus=EhrStatus.PRESENT,
+            ehrUpdateTime=ehr_upload
+        )
+        obj = self._make_retention_eligible_metrics_rec(summary)
+        _supplement_with_rdr_calculations(
+            obj,
+            session=self.session
+        )
+        self.assertEqual(obj.rdr_is_passively_retained, False)
+
+    def _get_retention_dependencies_found(self, mock_obj=None, participant=None) -> RetentionEligibilityDependencies:
         """
         Call the code responsible for collecting the retention calculation data.
         Return the data in provided to the calculation code.
         """
-        pid = participant.participantId if participant else self.summary.participantId
-        _supplement_with_rdr_calculations(
+        pid = participant.participantId if participant else self.participant.participantId
+        retention_data = _supplement_with_rdr_calculations(
             RetentionEligibleMetrics(participantId=pid),
             session=self.session
         )
-        return self.retention_calc_mock.call_args[0][0]
+        if mock_obj:
+            return mock_obj.call_args[0][0]
+
+        return retention_data
+
+    def _assert_expected_last_retention_activity_time(self, participant_summary, expected_date):
+        """
+        Invoke the retention calculation for the specified participant and confirm the expected active retention date
+        """
+        obj = self._make_retention_eligible_metrics_rec(participant_summary)
+        _supplement_with_rdr_calculations(
+            metrics_data=obj,
+            session=self.session
+        )
+        print(f'Expected date: {expected_date}')
+        pprint(obj.__dict__)
+        self.assertEqual(obj.rdr_last_retention_activity_time, expected_date)
+
+    def _make_retention_eligible_metrics_rec(self, summary):
+        return RetentionEligibleMetrics(
+            id=1,
+            created=None,
+            modified=None,
+            participantId=summary.participantId,
+            retentionEligible=True,
+            retentionEligibleTime=summary.questionnaireOnLifestyleAuthored,
+            lastActiveRetentionActivityTime=summary.questionnaireOnLifestyleAuthored,
+            activelyRetained=False,
+            passivelyRetained=False,
+            fileUploadDate=None,
+            retentionEligibleStatus=RetentionStatus.ELIGIBLE,
+            retentionType=RetentionType.ACTIVE_AND_PASSIVE
+        )
