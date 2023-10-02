@@ -1397,7 +1397,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
         with clock.FakeClock(fake_now):
             resp = self.send_get(
-                f'GenomicOutreachV2?FakeClock={fake_date_one}'
+                f'GenomicOutreachV2?start_date={fake_date_one}'
             )
 
         self.assertEqual(len(resp['data']), len(total_num_set) / 2)
