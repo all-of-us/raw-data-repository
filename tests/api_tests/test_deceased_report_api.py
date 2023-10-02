@@ -614,7 +614,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
 
         # Assert that the deceasedStatus changed to 'approved', and lastModified is updated
         self.assertEqual(DeceasedStatus.APPROVED, participant_summary.deceasedStatus)
-        self.assertNotEquals(initial_last_modified, updated_last_modified)
+        self.assertNotEqual(initial_last_modified, updated_last_modified)
 
 
 class ParticipantDeceasedReportApiTest(DeceasedReportTestBase):
