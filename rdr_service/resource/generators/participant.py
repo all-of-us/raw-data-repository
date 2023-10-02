@@ -10,8 +10,10 @@ from dateutil import parser, tz
 from dateutil.parser import ParserError
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import func, desc, exc, inspect, or_
+from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
 
+from rdr_service.model.pediatric_data_log import PediatricDataType
 from rdr_service import config
 from rdr_service.code_constants import (
     CONSENT_COPE_YES_CODE,
@@ -69,7 +71,7 @@ class ModuleLookupEnum(enum.Enum):
 
 _consent_module_question_map = {
     # { module: question code string }
-    'ConsentPII': None,
+    'ConsentPII': 'extraconsent_consent',
     'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
     'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
     'GROR': 'ResultsConsent_CheckDNA',
@@ -128,7 +130,17 @@ _consent_answer_status_map = {
     # Generic yes/no answer codes that apply to multiple consents (e.g., VA/non-VA reconsents and EtM consents)
     'agree_yes': BQModuleStatusEnum.SUBMITTED,
     'agree_no': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    # For the updated ConsentPII that allows yes or no reponses
+    'extraconsent_agreetoconsent': BQModuleStatusEnum.SUBMITTED,
+    'extraconsent_donotagreetoconsent': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
+}
 
+# PDR-2031: PDR decision to map new ConsentPII user-provided answer codes to codes we were already using
+# in PDR (and that users are used to querying).  I.e., until now every ConsentPII response data record was given a
+# default ConsentPermission_Yes answer code value.
+_replace_answer_codes = {
+    'extraconsent_agreetoconsent': 'ConsentPermission_Yes',
+    'extraconsent_donotagreetoconsent': 'ConsentPermission_No'
 }
 
 # PDR-252:  When RDR starts accepting QuestionnaireResponse payloads for withdrawal screens, AIAN participants
@@ -164,7 +176,7 @@ _enrollment_status_map = {
 }
 
 
-def get_ce_mediated_hpo_id():
+def get_ce_mediated_hpo_id_list():
     return config.getSettingJson(config.CE_MEDIATED_HPO_ID, default=None)
 
 
@@ -493,7 +505,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             ParticipantSummary, isouter=True
         ).filter(
             Participant.participantId == p_id
-        ).first()
+        ).options(joinedload(ParticipantSummary.pediatricData)).first()
 
         # For PDR, start with REGISTERED as the default enrollment status.  This identifies participants
         # who have not yet consented / should not have a participant_summary record
@@ -584,12 +596,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     ParticipantEhrReceipt.firstSeen,
                     ParticipantEhrReceipt.fileTimestamp
                 )
-            ce_hpo_id = get_ce_mediated_hpo_id()
-            if ce_hpo_id is not None:
+            ce_hpo_id_list = get_ce_mediated_hpo_id_list()
+            if ce_hpo_id_list is not None:
                 pehr_query = pehr_query.filter(
                     or_(
                         ParticipantEhrReceipt.hpo_id.is_(None),
-                        ParticipantEhrReceipt.hpo_id != ce_hpo_id
+                        ParticipantEhrReceipt.hpo_id.notin_(ce_hpo_id_list)
                     )
                 )
             pehr_results = pehr_query.all()
@@ -622,6 +634,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 _act(data['ehr_update'], ActivityGroupEnum.Profile, ParticipantEventEnum.EHRLastReceived)
             ]
 
+            # Check for Pediatric participant
+            data['is_pediatric'] = 1 \
+                if any(r.data_type == PediatricDataType.AGE_RANGE for r in ps.pediatricData) else 0
+
         return data
 
     def _prep_consentpii_answers(self, p_id):
@@ -634,7 +650,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # PDR-178:  Retrieve both the processed (layered) answers result, and the raw responses. This allows us to
         # do some extra processing of the ConsentPII data without having to query all over again.
         qnans, responses = self.get_module_answers(self.ro_dao, 'ConsentPII', p_id, return_responses=True)
-        if not qnans:
+
+        # PDR-2031:  Newer ConsentPII may have extraconsent_consent question code now with a "no" answer
+        if not qnans or ('extraconsent_consent' in qnans and \
+                         qnans['extraconsent_consent'] == 'extraconsent_donotagreetoconsent'):
             # return the minimum data required when we don't have the questionnaire data.
             return { 'is_ghost_id': 0}
 
@@ -851,9 +870,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                                 and module_status not in (BQModuleStatusEnum.SUBMITTED_NOT_VALIDATED,
                                                           BQModuleStatusEnum.SUBMITTED_INVALID)
                         ):
-                            activity.append(_act(row.authored, ActivityGroupEnum.QuestionnaireModule, en, **mod_ca))
-                            mod_found = True
-                            break
+                            # PDR-2031 Exclude ConsentPII activity/events if the status is SUBMITTED_NO_CONSENT
+                            if not (module_name == 'ConsentPII' and
+                                    module_status == BQModuleStatusEnum.SUBMITTED_NO_CONSENT):
+                                activity.append(_act(row.authored, ActivityGroupEnum.QuestionnaireModule, en, **mod_ca))
+                                mod_found = True
+                                break
+
                     if mod_found is False:
                         # The participant's module history often contains modules we aren't explicitly tracking as a
                         # ParticipantActivity yet.  Downgrade log message to debug to avoid noisy warnings
@@ -1039,10 +1062,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return:
         """
-        # PDR-1432: Workaround for an edge case where HPRO created an "orphaned" biobank order that should be ignored
-        # TODO: When DA-3150 is implemented, need to adjust the biobank table queries in this method to filter on
-        # ignore flags, as appropriate
-        ignore_biobank_orders = ['WEBF77CR2BX5',]
 
         def _get_stored_sample_row(stored_samples, ordered_sample):
             """
@@ -1135,7 +1154,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    bo.finalized_time,
                    case when bmko.id is not null then 1 else 2 end as collection_method
              from biobank_order bo left outer join biobank_mail_kit_order bmko on bmko.biobank_order_id = bo.biobank_order_id
-             where bo.participant_id = :p_id
+             where bo.participant_id = :p_id and bo.ignore_flag != 1
              order by bo.created desc;
          """
 
@@ -1144,7 +1163,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             select bo.participant_id, bo.biobank_order_id, bos.*
             from biobank_order bo
             inner join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
-            where bo.participant_id = :p_id and bo.biobank_order_id = :bo_id
+            where bo.participant_id = :p_id and bo.biobank_order_id = :bo_id and bo.ignore_flag != 1
             order by bos.order_id, test;
         """
 
@@ -1155,7 +1174,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             select
                 (select p.participant_id from participant p where p.biobank_id = bss.biobank_id) as participant_id,
                 (select distinct boi.biobank_order_id from biobank_order_identifier boi
-                   where boi.`value` = bss.biobank_order_identifier and boi.biobank_order_id not in :ignore_orders
+                   where boi.`value` = bss.biobank_order_identifier and boi.biobank_order_id not in
+                            (select biobank_order_id from biobank_order where ignore_flag = 1)
                 ) as biobank_order_id,
                 bss.*
             from biobank_stored_sample bss
@@ -1170,7 +1190,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # be excluded from the list due to rare occurrences of "orphaned" orders created by HPRO
         # TODO:  Update to use a new ignore column as filter when implemented for DA-3150 and backfill is completed
         cursor = ro_session.execute(_biobank_orders_sql, {'p_id': p_id})
-        biobank_orders = [r for r in cursor if r.biobank_order_id not in ignore_biobank_orders]
+        biobank_orders = [r for r in cursor]
         # Create a unique identifier for each biobank order. This uid must be repeatable, so we sort by 'created'.
         # This unique biobank order id will be used as the prefix of the unique id for each biobank sample record.
         # Note: This is why every database table should have an 'id' integer field as the primary key, so we don't
@@ -1184,8 +1204,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # Find stored samples associated with this participant. For any stored samples for which there
         # is no known biobank order, create a separate list that will be consolidated into a "pseudo" order record
-        cursor = ro_session.execute(_biobank_stored_samples_sql, {'bb_id': p_bb_id,
-                                                                  'ignore_orders': ignore_biobank_orders})
+        cursor = ro_session.execute(_biobank_stored_samples_sql, {'bb_id': p_bb_id})
         bss_results = [r for r in cursor]
         bss_missing_orders = list(filter(lambda r: r.biobank_order_id is None, bss_results))
 
@@ -1667,14 +1686,17 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                   answer_code:  answer code string value
                   consent_status:  BQModuleStatusEnum
         """
-        if module in _consent_module_question_map and _consent_module_question_map[module] is None:
-            # Defaults when a consent like ConsentPII doesn't have explicit consent question (implied "yes")
+        consent_question = _consent_module_question_map[module]
+        # For any consents without an explicit consent question in their codebook, default to implied "yes"
+        # PDR-2031: "or" clause retains previous behavior if this response predates the update of
+        # the ConsentPII codebook, such that the response received is missing the consent question code
+        if not consent_question or (module == 'ConsentPII' and isinstance(consent_question, str) and
+                                    not hasattr(response_rec, consent_question)):
             return 'ConsentPermission_Yes', BQModuleStatusEnum.SUBMITTED
 
         answer_code = None
 
-        consent_question_codes = _consent_module_question_map[module]
-        code_list = [consent_question_codes, ] if isinstance(consent_question_codes, str) else consent_question_codes
+        code_list = [consent_question] if isinstance(consent_question, str) else consent_question
         for code in code_list:
             answer_code = response_rec.get(code, None)
             if answer_code:
@@ -1690,7 +1712,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 # PDR-1625: SUBMITTED_INVALID has a revised meaning for PDF validation, so use UNSET for missing answers
                 consent_status = BQModuleStatusEnum.UNSET
 
-        return answer_code, consent_status
+        # Handle any special case, PDR-specific mapping of the answer code value (see PDR-2031)
+        return _replace_answer_codes.get(answer_code, answer_code), consent_status
 
     @staticmethod
     def is_replay(prev_data_dict, prev_answer_hash,

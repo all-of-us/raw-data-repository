@@ -1,6 +1,8 @@
 import datetime
+from typing import List
 
 from sqlalchemy import (
+    and_,
     Boolean,
     case,
     Column,
@@ -17,10 +19,12 @@ from sqlalchemy import (
     event)
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import foreign, relationship, remote
 from sqlalchemy.sql import expression
 
+from rdr_service.model.account_link import AccountLink
 from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import (
     EhrStatus,
@@ -1111,6 +1115,19 @@ class ParticipantSummary(Base):
     questionnaireOnLifeFunctioningAuthored = Column("questionnaire_on_life_functioning_authored", UTCDateTime)
     "The UTC Date time of when the participant completed the life functioning survey questionnaire"
 
+    questionnaireOnEnvironmentalHealth = None
+    """
+    Indicates status for the pediatric Environmental Health PPI module.
+
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+
+    questionnaireOnEnvironmentalHealthTime = None
+    "Indicates the time at which the RDR received notice of pediatric Environment Health questionnaire response"
+
+    questionnaireOnEnvironmentalHealthAuthored = None
+    "Indicates the time at which the participant completed the pediatric Environment Health questionnaire"
+
     numCompletedBaselinePPIModules = Column("num_completed_baseline_ppi_modules", SmallInteger, default=0)
     """
     The count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth, questionnaireOnLifestyle]
@@ -1662,6 +1679,82 @@ class ParticipantSummary(Base):
     questionnaireOnBehavioralHealthAndPersonalityAuthored = Column("questionnaire_on_behavioral_health_authored",
                                                                    UTCDateTime)
     "UTC timestamp of time Behavioral Health survey was authored by participant"
+
+    # DA-3777: Following additional fields that impact enrollment status or retention eligibility
+    hasHeightAndWeight = Column("has_height_and_weight", Boolean, default=0)
+    """
+     Field indicating whether there are valid height and weight measurements recorded for a
+     participant.  This field can be false regardless of the  clinicPhysicalMeasurementsStatus and
+     selfReportedPhysicalMeasurementsStatus, since the height or weight measurement may not have been included with
+     those submissions. When true, the valid height and weight measurements may have come from separate physical
+     measurements submissions.
+     """
+
+    hasHeightAndWeightTime = Column("has_height_and_weight_time", UTCDateTime)
+    """
+    UTC time that both the height and weight measurements were first available.  This value often corresponds to
+    either the clinicPhysicalMeasurementsFinalizedTime or selfReportedPhyiscalMeasurementsAuthored time, provided the
+    submission contained both valid height and weight measurements.  Otherwise, this timestamp may reflect a
+    subsequent submission that contained a height or weight measurement that was not provided previously.
+    """
+
+    consentForWearStudy = Column("consent_for_wear_study", Enum(QuestionnaireStatus),
+                                 default=QuestionnaireStatus.UNSET)
+    """
+    Indicates whether the participant has consented to participate in the WEAR study
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+
+    consentForWearStudyTime = Column("consent_for_wear_study_time", UTCDateTime)
+    """
+       Indicates the time at which the RDR most recently received notice of consentForWearStudy,
+       which could be an update to a previously submitted consent response (e.g., revocation of earlier
+       consent)
+    """
+
+    consentForWearStudyAuthored = Column("consent_for_wear_study_authored", UTCDateTime)
+    """
+    Indicates the time at which the participant most recently completed a WEAR study consent form,
+    regardless of when it was sent to RDR
+    """
+
+    latestEtMTaskTime = Column("latest_etm_task_time", UTCDateTime)
+    """ Indicates the most recent time at which RDR received Exploring the Mind task data for this participant """
+
+    latestEtMTaskAuthored = Column("latest_etm_task_authored", UTCDateTime)
+    """
+    Indicates the most recent time at which the participant completed an Exploring the Mind task activity,
+    regardless of when it was sent to RDR
+    """
+
+    relatedParticipants: List[AccountLink] = relationship(
+        'AccountLink',
+        primaryjoin=and_(
+            foreign(participantId) == remote(AccountLink.participant_id),
+            AccountLink.get_active_filter()
+        ),
+        uselist=True,
+        lazy='noload'
+    )
+
+    pediatricData: List[PediatricDataLog] = relationship(
+        'PediatricDataLog',
+        primaryjoin=and_(
+            foreign(participantId) == remote(PediatricDataLog.participant_id),
+            PediatricDataLog.replaced_by_id.is_(None)
+        ),
+        uselist=True,
+        lazy='noload'
+    )
+
+    isPediatric = None  # placeholder for docs, DAO sets on model
+    """
+    Field indicating whether this is a pediatric participant or not. The API will display as 'UNSET'
+    for adult participants, and will return a boolean value of true if it's a pediatric participant.
+    """
+
+    def did_submit_environmental_health(self):
+        return any(data.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH for data in self.pediatricData)
 
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)

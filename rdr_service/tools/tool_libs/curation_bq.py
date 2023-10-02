@@ -72,6 +72,9 @@ class CurationBQ(ToolBase):
         'create_empty_tables',
         'pid_rid_mapping',
         'cope_survey_semantic_version_map',
+        'temp_obs_target',
+        'temp_obs',
+        'observation_period',
         'finalize'
     ]
 
@@ -105,7 +108,8 @@ class CurationBQ(ToolBase):
         'survey_conduct',
         'cope_survey_semantic_version_map',
         'note',
-        'procedure_occurrence'
+        'procedure_occurrence',
+        'specimen'
     ]
 
     def __init__(self, args, gcp_env=None, tool_name=None, replica=False):

@@ -58,7 +58,6 @@ def load_measurement_json_amendment(participant_id, amended_id, now=None):
     return measurement
 
 
-
 class PhysicalMeasurementsDaoTest(BaseTestCase):
     def setUp(self):
         super(PhysicalMeasurementsDaoTest, self).setUp()

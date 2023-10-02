@@ -5,7 +5,7 @@ from sqlalchemy.dialects.mysql import MEDIUMTEXT
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import EnumZeroBased, UTCDateTime
-from rdr_service.participant_enums import QuestionnaireStatus
+from rdr_service.participant_enums import QuestionnaireResponseClassificationType, QuestionnaireStatus
 
 
 class ExtensionType(messages.Enum):
@@ -39,6 +39,14 @@ class EtmQuestionnaireResponse(Base):
     participant_id = sa.Column(sa.Integer, sa.ForeignKey("participant.participant_id"))
     resource = sa.Column(sa.JSON)
     version = sa.Column(sa.Integer)
+
+    classificationType = sa.Column(
+        'classification_type',
+        EnumZeroBased(QuestionnaireResponseClassificationType),
+        default=QuestionnaireResponseClassificationType.COMPLETE,
+        server_default=sa.text(str(QuestionnaireResponseClassificationType.COMPLETE.number))
+    )
+    """Classification of a response (e.g., COMPLETE or DUPLICATE) which can determine if it should be ignored"""
 
     extension_list = sa.orm.relationship(
         'EtmQuestionnaireResponseMetadata',
