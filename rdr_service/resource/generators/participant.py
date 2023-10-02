@@ -735,7 +735,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 QuestionnaireHistory.irbMapping). \
             join(QuestionnaireHistory). \
             filter(QuestionnaireResponse.participantId == p_id,
-                   QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE). \
+                   QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
+                   QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.INVALID). \
             order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc(),
                      QuestionnaireResponse.externalId.desc())
         # sql = self.ro_dao.query_to_text(query)
@@ -1561,7 +1562,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
                     INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
             WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
-                AND qr.classification_type != 1
+                AND qr.classification_type != 1 AND qr.classification_type != 6
             ORDER BY qr.created;
         """
 
