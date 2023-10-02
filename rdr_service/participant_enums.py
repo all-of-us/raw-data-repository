@@ -560,6 +560,7 @@ class OnSiteVerificationVisitType(messages.Enum):
     BIOSPECIMEN_COLLECTION_ONLY = 3
     BIOSPECIMEN_REDRAW_ONLY = 4
     RETENTION_ACTIVITIES = 5
+    PEDIATRIC_VISIT = 6
 
 
 class IdVerificationOriginType(messages.Enum):
