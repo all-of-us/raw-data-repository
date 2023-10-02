@@ -420,15 +420,6 @@ class BaseDao(object):
             query = self._add_filter(query, field_filter, f)
         return query
 
-    # def _set_filters(self, query, filters):
-    #     for field_filter in filters:
-    #         try:
-    #             f = getattr(self.model_type, field_filter.field_name)
-    #         except AttributeError:
-    #             raise BadRequest(f"No field named {field_filter.field_name} found on {self.model_type}.")
-    #         query = self._add_filter(query, field_filter, f)
-    #     return query
-
     @staticmethod
     def _add_filter(query, field_filter, f):
         try:

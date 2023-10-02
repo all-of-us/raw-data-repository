@@ -1,4 +1,4 @@
-from typing import Union, List
+from dateutil import parser
 
 from rdr_service import clock
 from rdr_service.ancillary_study_resources.nph.enums import StoredSampleStatus
@@ -33,27 +33,21 @@ class NphBiospecimenAPITest(BaseTestCase):
         num_orders = kwargs.get('num_orders', 2)
         num_ordered_samples = kwargs.get('num_order_samples', 4)
         num_stored_samples = kwargs.get('num_stored_samples', 1)
-        created_dates = kwargs.get('created_dates', clock.CLOCK.now())
+        created_date = kwargs.get('created_dates', clock.CLOCK.now())
 
         category = self.sms_data_gen.create_database_study_category(
             type_label="Test",
         )
 
-        def set_dates(dates: Union[List[int], int], idx: int):
-            if type(dates) is list:
-                return dates[idx]
-            return dates
-
         for participant in self.nph_participant.get_all():
             for i in range(num_orders):
-                set_date = set_dates(created_dates, idx=0 if i % 2 == 0 else 1)
                 order = self.sms_data_gen.create_database_order(
                     nph_order_id=f"10{participant.id + (i + 1) + participant.biobank_id}",
                     participant_id=participant.id,
                     notes="Test",
                     category_id=category.id,
-                    created=set_date,
-                    modified=set_date
+                    created=created_date,
+                    modified=created_date
                 )
                 for _ in range(num_ordered_samples):
                     self.sms_data_gen.create_database_ordered_sample(
@@ -106,16 +100,25 @@ class NphBiospecimenAPITest(BaseTestCase):
                 # should have for stored sample(s) for each ordered sample
                 self.assertEqual(len(response_ordered_sample.get('biobankStatus')), 1)
 
-    # def test_biospecimen_by_last_modified(self):
-    #     fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
-    #     fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
-    #     self.create_nph_biospecimen_data(
-    #         created_dates=[
-    #             fake_date_one,
-    #             fake_date_two
-    #         ]
-    #     )
-    #     response = self.send_get(f'nph/Biospecimen?last_modified={fake_date_one}')
+    def test_biospecimen_by_last_modified(self):
+        fake_date_one = parser.parse('2020-05-28T08:00:01-05:00')
+        fake_date_two = parser.parse('2020-05-30T08:00:01-05:00')
+        fake_date_three = parser.parse('2020-05-31T08:00:01-05:00')
+
+        with clock.FakeClock(fake_date_two):
+            self.create_nph_biospecimen_data(
+                num_orders=1,
+                created_date=fake_date_two
+            )
+
+        response = self.send_get(f'nph/Biospecimen?last_modified={fake_date_three}')
+        self.assertIsNotNone(response)
+        self.assertEqual(response.get('entry'), [])
+
+        response = self.send_get(f'nph/Biospecimen?last_modified={fake_date_one}')
+        self.assertIsNotNone(response)
+        self.assertIsNotNone(response.get('entry'))
+        self.assertEqual(len(response.get('entry')), 2)
 
     # def test_biospecimen_count_pagination(self):
     #     ...
