@@ -100,7 +100,7 @@ class NphBiospecimenAPITest(BaseTestCase):
                 # should have for stored sample(s) for each ordered sample
                 self.assertEqual(len(response_ordered_sample.get('biobankStatus')), 1)
 
-    def test_biospecimen_by_last_modified(self):
+    def test_biospecimen_by_last_modified_returns_correctly(self):
         fake_date_one = parser.parse('2020-05-28T08:00:01-05:00')
         fake_date_two = parser.parse('2020-05-30T08:00:01-05:00')
         fake_date_three = parser.parse('2020-05-31T08:00:01-05:00')
@@ -120,15 +120,60 @@ class NphBiospecimenAPITest(BaseTestCase):
         self.assertIsNotNone(response.get('entry'))
         self.assertEqual(len(response.get('entry')), 2)
 
-    # def test_biospecimen_count_pagination(self):
-    #     ...
-    #
-    # def test_biospecimen(self):
-    #     fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
-    #     # response = self.send_get('nph/Biospecimen/100000000')
-    #     response = self.send_get(f'nph/Biospecimen?last_modified={fake_date_one}&_count=1')
-    #     print('Darryl')
-    #
+    def test_biospecimen_last_modified_pagination(self):
+        fake_date_one = parser.parse('2020-05-28T08:00:01-05:00')
+        fake_date_two = parser.parse('2020-05-30T08:00:01-05:00')
+        first_nph_participant = self.nph_participant.get_all()[0]
+        second_nph_participant = self.nph_participant.get_all()[1]
+        num_count = 1
+
+        with clock.FakeClock(fake_date_two):
+            self.create_nph_biospecimen_data(
+                created_date=fake_date_two
+            )
+
+        response = self.send_get(f'nph/Biospecimen?last_modified={fake_date_one}&_count={num_count}')
+        self.assertIsNotNone(response)
+        self.assertIsNotNone(response.get('entry'))
+        self.assertEqual(len(response.get('entry')), num_count)
+
+        response_data = response.get('entry')[0]['resource'][0]
+        self.assertEqual(list(response_data.keys()), ['nph_participant_id', 'biospecimens'])
+        self.assertEqual(response_data.get('nph_participant_id'), first_nph_participant.id)
+
+        # should have next link
+        self.assertIsNotNone(response.get('link'))
+        self.assertEqual(response['link'][0]['relation'], 'next')
+
+        self.assertEqual(len(response['entry']), 1)
+        self.assertIsNotNone(response['entry'][0]['fullUrl'])
+
+        current_response_nph_pid = response['entry'][0]['resource'][0]['nph_participant_id']
+        self.assertEqual(current_response_nph_pid, first_nph_participant.id)
+        self.assertTrue(f'rdr/v1/nph/Biospecimen/{current_response_nph_pid}'
+                        in response['entry'][0]['fullUrl'])
+
+        next_pagination_link = response['link'][0]['url'].split('v1/')[-1]
+
+        next_response = self.send_get(next_pagination_link)
+        self.assertIsNotNone(next_response.get('entry'))
+        self.assertEqual(len(next_response.get('entry')), num_count)
+
+        response_data = next_response.get('entry')[0]['resource'][0]
+        self.assertEqual(list(response_data.keys()), ['nph_participant_id', 'biospecimens'])
+        self.assertEqual(response_data.get('nph_participant_id'), second_nph_participant.id)
+
+        # should not have next link
+        self.assertIsNone(next_response.get('link'))
+
+        self.assertEqual(len(next_response['entry']), 1)
+        self.assertIsNotNone(next_response['entry'][0]['fullUrl'])
+
+        current_response_nph_pid = next_response['entry'][0]['resource'][0]['nph_participant_id']
+        self.assertEqual(current_response_nph_pid, second_nph_participant.id)
+        self.assertTrue(f'rdr/v1/nph/Biospecimen/{current_response_nph_pid}'
+                        in next_response['entry'][0]['fullUrl'])
+
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("nph.participant")
