@@ -89,8 +89,12 @@ from rdr_service.code_constants import (
     REMOTE_ID_VERIFIED_CODE,
     REMOTE_ID_VERIFIED_ON_CODE,
     ETM_CONSENT_QUESTION_CODE,
-    PEDIATRICS_ENVIRONMENTAL_HEALTH,
-    PEDIATRIC_RACE_QUESTION_CODE
+    PEDIATRIC_CONSENT_NO,
+    PEDIATRIC_CONSENT_QUESTION_CODE,
+    PEDIATRIC_CONSENT_YES,
+    PEDIATRIC_PRIMARY_CONSENT_MODULE,
+    PEDIATRIC_RACE_QUESTION_CODE,
+    PEDIATRICS_ENVIRONMENTAL_HEALTH
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -752,11 +756,12 @@ class QuestionnaireResponseDao(BaseDao):
         # If no participant summary exists, make sure this is the study enrollment consent.
         if not participant_summary:
             consent_code = code_dao.get_code(PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE)
-            if not consent_code:
+            pediatric_consent_code = code_dao.get_code(PPI_SYSTEM, PEDIATRIC_PRIMARY_CONSENT_MODULE)
+            if not consent_code or not pediatric_consent_code:
                 raise BadRequest("No study enrollment consent code found; import codebook.")
 
             # Should only be receiving primary consent responses when there isn't yet a participant summary
-            is_primary_consent = consent_code.codeId in code_ids
+            is_primary_consent = consent_code.codeId in code_ids or pediatric_consent_code.codeId in code_ids
             if not is_primary_consent:
                 raise BadRequest(
                     f"Can't submit order for participant {questionnaire_response.participantId} without consent"
@@ -1043,10 +1048,13 @@ class QuestionnaireResponseDao(BaseDao):
                                 .format([CONSENT_GROR_YES_CODE, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE])
                             )
                         new_status = gror_consent
-                    elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
-                        self.consents_provided.append(ConsentType.PRIMARY)
-                        participant_summary.semanticVersionForPrimaryConsent = \
-                            questionnaire_response.questionnaireSemanticVersion
+                    elif self._code_in_list(
+                        code.value, [CONSENT_FOR_STUDY_ENROLLMENT_MODULE, PEDIATRIC_PRIMARY_CONSENT_MODULE]
+                    ):
+                        if code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
+                            self.consents_provided.append(ConsentType.PRIMARY)
+                            participant_summary.semanticVersionForPrimaryConsent = \
+                                questionnaire_response.questionnaireSemanticVersion
                         if participant_summary.consentCohort is None or \
                             participant_summary.consentCohort == ParticipantCohort.UNSET:
 
@@ -1713,11 +1721,11 @@ class QuestionnaireResponseDao(BaseDao):
             question = question_map.get(answer.questionId)
             question_code: Code = code_map.get(question.codeId)
 
-            if question_code and question_code.value_matches(CONSENT_QUESTION_CODE):
+            if cls._code_in_list(question_code.value, [CONSENT_QUESTION_CODE, PEDIATRIC_CONSENT_QUESTION_CODE]):
                 answer_code: Code = code_dao.get(answer.valueCodeId)
-                if answer_code.value_matches(EXTRA_CONSENT_YES):
+                if cls._code_in_list(answer_code.value, [EXTRA_CONSENT_YES, PEDIATRIC_CONSENT_YES]):
                     return True
-                elif answer_code.value_matches(EXTRA_CONSENT_NO):
+                elif cls._code_in_list(answer_code.value, [EXTRA_CONSENT_NO, PEDIATRIC_CONSENT_NO]):
                     return False
                 else:
                     logging.error(f'Unexpected consent answer "{answer_code.value}"')
