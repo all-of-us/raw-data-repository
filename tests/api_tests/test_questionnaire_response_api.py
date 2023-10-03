@@ -12,9 +12,10 @@ from rdr_service import config
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (
     CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, CONSENT_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
-    EMAIL_QUESTION_CODE, EXTRA_CONSENT_NO, EXTRA_CONSENT_YES, FIRST_NAME_QUESTION_CODE, GENDER_MAN_CODE,
-    GENDER_WOMAN_CODE, GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE, PEDIATRICS_OVERALL_HEALTH,
-    PEDIATRICS_ENVIRONMENTAL_HEALTH, PEDIATRICS_BASICS, PEDIATRIC_RACE_QUESTION_CODE, PPI_SYSTEM,
+    EHR_PEDIATRIC_CONSENT_QUESTION_CODE, EMAIL_QUESTION_CODE, EXTRA_CONSENT_NO, EXTRA_CONSENT_YES,
+    FIRST_NAME_QUESTION_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE,
+    PEDIATRICS_OVERALL_HEALTH, PEDIATRIC_EHR_CONSENT, PEDIATRICS_ENVIRONMENTAL_HEALTH, PEDIATRICS_BASICS,
+    PEDIATRIC_RACE_QUESTION_CODE, PPI_SYSTEM, PEDIATRIC_SHARE_AGREE, PEDIATRIC_SHARE_NOT_AGREE,
     PEDIATRIC_SEX_QUESTION_CODE, RACE_AIAN_CODE
 )
 from rdr_service.concepts import Concept
@@ -2164,6 +2165,70 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(1, participant_summary.numCompletedBaselinePPIModules)
 
         # TODO: sorting for the env health fields.... ?
+
+    def test_pediatric_ehr_consent(self):
+        """
+        Check that the pediatrics version of the EHR consent maps to the correct field on participant summary
+        """
+        module_code = self.data_generator.create_database_code(value=PEDIATRIC_EHR_CONSENT)
+        question_code = self.data_generator.create_database_code(value=EHR_PEDIATRIC_CONSENT_QUESTION_CODE)
+        CodeDao()._invalidate_cache()  # invalidate code cache so the new module code exists
+
+        # Set up questionnaire, inserting through DAO to get history to generate as well
+        questionnaire = self.data_generator._questionnaire()
+        questionnaire.concepts = [QuestionnaireConcept(codeId=module_code.codeId)]
+        questionnaire.questions = [
+            self.data_generator._questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                linkId='ehr_consent',
+                codeId=question_code.codeId
+            )
+        ]
+
+        questionnaire_dao = QuestionnaireDao()
+        questionnaire_dao.insert(questionnaire)
+
+        # Create and send a Yes response from a participant
+        participant_summary: ParticipantSummary = self.data_generator.create_database_participant_summary()
+        participant_id = participant_summary.participantId
+        authored_time = datetime.datetime(2023, 3, 27)
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire.questionnaireId,
+            authored=authored_time,
+            code_answers=[('ehr_consent', Concept(code=PEDIATRIC_SHARE_AGREE, system='test'))]
+        )
+        self.send_post(
+            f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json
+        )
+
+        # Verify that the fields for EHR consent were set
+        self.session.refresh(participant_summary)
+        self.assertEqual(
+            QuestionnaireStatus.SUBMITTED_NOT_VALIDATED,
+            participant_summary.consentForElectronicHealthRecords
+        )
+        self.assertEqual(authored_time, participant_summary.consentForElectronicHealthRecordsAuthored)
+
+        # Create and send a No response from a participant
+        participant_summary: ParticipantSummary = self.data_generator.create_database_participant_summary()
+        participant_id = participant_summary.participantId
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire.questionnaireId,
+            code_answers=[('ehr_consent', Concept(code=PEDIATRIC_SHARE_NOT_AGREE, system='test'))]
+        )
+        self.send_post(
+            f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json
+        )
+
+        # Verify that the fields for EHR consent were set
+        self.session.refresh(participant_summary)
+        self.assertEqual(
+            QuestionnaireStatus.SUBMITTED_NO_CONSENT,
+            participant_summary.consentForElectronicHealthRecords
+        )
 
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
