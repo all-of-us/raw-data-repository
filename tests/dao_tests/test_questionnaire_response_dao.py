@@ -22,7 +22,8 @@ from rdr_service.code_constants import (
     PPI_SYSTEM,
     PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
     THE_BASICS_PPI_MODULE, COPE_VACCINE_MINUTE_4_MODULE_CODE,
-    BASICS_PROFILE_UPDATE_QUESTION_CODES
+    BASICS_PROFILE_UPDATE_QUESTION_CODES,
+    PEDIATRIC_PRIMARY_CONSENT_MODULE
 )
 from rdr_service.concepts import Concept
 from rdr_service.dao.code_dao import CodeDao
@@ -130,6 +131,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             codeId=25,
             value=PRIMARY_CONSENT_UPDATE_QUESTION_CODE
         )
+        self.data_generator.create_database_code(codeId=345, value=PEDIATRIC_PRIMARY_CONSENT_MODULE)
 
         config.override_setting(config.COPE_FORM_ID_MAP, {
             'Form_13,Cope': 'May',

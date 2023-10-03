@@ -1721,7 +1721,10 @@ class QuestionnaireResponseDao(BaseDao):
             question = question_map.get(answer.questionId)
             question_code: Code = code_map.get(question.codeId)
 
-            if cls._code_in_list(question_code.value, [CONSENT_QUESTION_CODE, PEDIATRIC_CONSENT_QUESTION_CODE]):
+            if (
+                question_code and cls._code_in_list(
+                    question_code.value, [CONSENT_QUESTION_CODE, PEDIATRIC_CONSENT_QUESTION_CODE]
+            )):
                 answer_code: Code = code_dao.get(answer.valueCodeId)
                 if cls._code_in_list(answer_code.value, [EXTRA_CONSENT_YES, PEDIATRIC_CONSENT_YES]):
                     return True
