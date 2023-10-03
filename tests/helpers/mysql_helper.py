@@ -25,6 +25,7 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import event
 
 from rdr_service import config, model, singletons
+from rdr_service.code_constants import PEDIATRIC_PRIMARY_CONSENT_MODULE
 from rdr_service.dao import database_factory
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
@@ -312,6 +313,10 @@ def _setup_consent_codes():
 
         module = create_code("Module Name", "OverallHealth", CodeType.MODULE, None)
         session.add(module)
+
+        session.add(
+            create_code('Module Name', PEDIATRIC_PRIMARY_CONSENT_MODULE, CodeType.MODULE, None)
+        )
 
         session.commit()
 
