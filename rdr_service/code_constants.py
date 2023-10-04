@@ -34,6 +34,7 @@ EDUCATION_QUESTION_CODE = "EducationLevel_HighestGrade"
 INCOME_QUESTION_CODE = "Income_AnnualIncome"
 EHR_CONSENT_QUESTION_CODE = "EHRConsentPII_ConsentPermission"
 EHR_SENSITIVE_CONSENT_QUESTION_CODE = "ehrconsentpii_sensitivetype2"
+EHR_PEDIATRIC_CONSENT_QUESTION_CODE = 'ehrchildconsentpii_childjoinallofus'
 EHR_CONSENT_EXPIRED_QUESTION_CODE = "EHRConsentPII_ConsentExpired"
 DVEHR_SHARING_QUESTION_CODE = "DVEHRSharing_AreYouInterested"
 CABOR_SIGNATURE_QUESTION_CODE = "ExtraConsent_CABoRSignature"
@@ -121,6 +122,8 @@ EHR_CONSENT_EXPIRED_YES = "EHRConsentPII_ConsentExpired_Yes"
 SENSITIVE_EHR_YES = "sensitivetype2__agree"
 EXTRA_CONSENT_YES = 'extraconsent_agreetoconsent'
 EXTRA_CONSENT_NO = 'extraconsent_donotagreetoconsent'
+PEDIATRIC_SHARE_AGREE = 'ChildJoinAllOfUs_AgreeToShare'
+PEDIATRIC_SHARE_NOT_AGREE = 'ChildJoinAllOfUs_NotAgreeToShare'
 
 # Consent GROR Answer Codes
 CONSENT_GROR_YES_CODE = "CheckDNA_Yes"
@@ -199,6 +202,7 @@ BEHAVIORAL_HEALTH_MODULE = 'bhp'
 PEDIATRICS_BASICS = 'ped_basics'
 PEDIATRICS_OVERALL_HEALTH = 'ped_overall_health'
 PEDIATRICS_ENVIRONMENTAL_HEALTH = 'ped_environmental_health'
+PEDIATRIC_EHR_CONSENT = 'ehrchildconsentpii'
 
 VA_EHR_RECONSENT = 'vaehrreconsent'
 
