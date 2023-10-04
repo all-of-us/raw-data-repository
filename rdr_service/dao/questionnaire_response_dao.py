@@ -756,12 +756,15 @@ class QuestionnaireResponseDao(BaseDao):
         # If no participant summary exists, make sure this is the study enrollment consent.
         if not participant_summary:
             consent_code = code_dao.get_code(PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE)
-            pediatric_consent_code = code_dao.get_code(PPI_SYSTEM, PEDIATRIC_PRIMARY_CONSENT_MODULE)
-            if not consent_code or not pediatric_consent_code:
+            if not consent_code:
                 raise BadRequest("No study enrollment consent code found; import codebook.")
 
             # Should only be receiving primary consent responses when there isn't yet a participant summary
-            is_primary_consent = consent_code.codeId in code_ids or pediatric_consent_code.codeId in code_ids
+            pediatric_consent_code = code_dao.get_code(PPI_SYSTEM, PEDIATRIC_PRIMARY_CONSENT_MODULE)
+            is_primary_consent = (
+                consent_code.codeId in code_ids
+                or (pediatric_consent_code and pediatric_consent_code.codeId in code_ids)
+            )
             if not is_primary_consent:
                 raise BadRequest(
                     f"Can't submit order for participant {questionnaire_response.participantId} without consent"
