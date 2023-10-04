@@ -1018,6 +1018,7 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
                 participant_summary.remoteIdVerificationStatus = False
                 participant_summary.remoteIdVerifiedOn = None
+            participant_summary.lastModified = datetime.now()
 
         # Set summary fields to SUBMITTED for questionnaire concepts that are found in
         # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
