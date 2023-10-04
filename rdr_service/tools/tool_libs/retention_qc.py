@@ -38,7 +38,7 @@ class RetentionQC(ToolBase):
             for summaries in list_chunks(lst=participants, chunk_size=chunk_size):
                 for ps in summaries:
                     row = session.query(RetentionEligibleMetrics).filter(
-                        RetentionEligibleMetrics.participantId.in_(ps.participantId for ps in summaries)
+                        RetentionEligibleMetrics.participantId == ps.participantId
                     ).first()
                     if row.retentionEligible:
                         obj = RetentionEligibleMetrics(
@@ -56,6 +56,8 @@ class RetentionQC(ToolBase):
                         _supplement_with_rdr_calculations(obj, session)
                         if obj.rdr_retention_eligible != obj.retentionEligible:
                             logging.error(f'P{ps.participantId}: undiagnosed eligibility mismatch')
+                        elif obj.activelyRetained != obj.rdr_is_actively_retained:
+                            logging.error(f'P{ps.participantId}: undiagnosed actively retained mismatch')
                 count += 1
                 logging.info(f'Processed {min(count * chunk_size, len(participants))} of {len(participants)} pids...')
 
