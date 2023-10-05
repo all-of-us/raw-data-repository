@@ -326,11 +326,11 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
     metrics_data.rdr_is_actively_retained = retention_data.is_actively_retained
     metrics_data.rdr_is_passively_retained = retention_data.is_passively_retained
 
-
 def _get_earliest_intent_for_ehr(session, participant_id) -> Optional[Consent]:
     date_range_list = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
         participant_id=participant_id,
-        session=session
+        session=session,
+        validation_not_required=True
     )
     if not date_range_list:
         return None
