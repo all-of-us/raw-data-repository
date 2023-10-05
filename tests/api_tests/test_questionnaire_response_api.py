@@ -2187,7 +2187,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             const.PEDIATRIC_EMAIL,
             const.PEDIATRIC_CABOR_SIGNATURE
         ])
-
         CodeDao()._invalidate_cache()  # invalidate code cache so the new codes exists
 
         # Set up questionnaire, inserting through DAO to get history to generate as well
@@ -2195,74 +2194,22 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         questionnaire.concepts = [
             QuestionnaireConcept(codeId=code_id_map[const.PEDIATRIC_PRIMARY_CONSENT_MODULE])
         ]
-        questionnaire.questions = [
-            self.data_generator._questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                linkId='first_name',
-                codeId=code_id_map[const.PEDIATRIC_FIRST_NAME_QUESTION]
-            ),
-            self.data_generator._questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                linkId='middle_name',
-                codeId=code_id_map[const.PEDIATRIC_MIDDLE_NAME_QUESTION]
-            ),
-            self.data_generator._questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                linkId='last_name',
-                codeId=code_id_map[const.PEDIATRIC_LAST_NAME_QUESTION]
-            ),
-            self.data_generator._questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                linkId='email',
-                codeId=code_id_map[const.PEDIATRIC_EMAIL]
-            ),
-            self.data_generator._questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                linkId='street1',
-                codeId=code_id_map[const.PEDIATRIC_STREET1_ADDRESS]
-            ),
-            self.data_generator._questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                linkId='street2',
-                codeId=code_id_map[const.PEDIATRIC_STREET2_ADDRESS]
-            ),
-            self.data_generator._questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                linkId='city',
-                codeId=code_id_map[const.PEDIATRIC_CITY_ADDRESS]
-            ),
-            self.data_generator._questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                linkId='state',
-                codeId=code_id_map[const.PEDIATRIC_STATE_ADDRESS]
-            ),
-            self.data_generator._questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                linkId='zip',
-                codeId=code_id_map[const.PEDIATRIC_ZIP_ADDRESS]
-            ),
-            self.data_generator._questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                linkId='dob',
-                codeId=code_id_map[const.PEDIATRIC_BIRTH_DATE]
-            ),
-            self.data_generator._questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                linkId='cabor',
-                codeId=code_id_map[const.PEDIATRIC_CABOR_SIGNATURE]
-            )
-        ]
+        questionnaire.questions = self._create_questions(
+            questionnaire=questionnaire,
+            question_data_list=[
+                ('first_name', code_id_map[const.PEDIATRIC_FIRST_NAME_QUESTION]),
+                ('middle_name', code_id_map[const.PEDIATRIC_MIDDLE_NAME_QUESTION]),
+                ('last_name', code_id_map[const.PEDIATRIC_LAST_NAME_QUESTION]),
+                ('email', code_id_map[const.PEDIATRIC_EMAIL]),
+                ('street1', code_id_map[const.PEDIATRIC_STREET1_ADDRESS]),
+                ('street2', code_id_map[const.PEDIATRIC_STREET2_ADDRESS]),
+                ('city', code_id_map[const.PEDIATRIC_CITY_ADDRESS]),
+                ('state', code_id_map[const.PEDIATRIC_STATE_ADDRESS]),
+                ('zip', code_id_map[const.PEDIATRIC_ZIP_ADDRESS]),
+                ('dob', code_id_map[const.PEDIATRIC_BIRTH_DATE]),
+                ('cabor', code_id_map[const.PEDIATRIC_CABOR_SIGNATURE])
+            ]
+        )
 
         questionnaire_dao = QuestionnaireDao()
         questionnaire_dao.insert(questionnaire)
@@ -2481,6 +2428,17 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             code_str: self.data_generator.create_database_code(value=code_str).codeId
             for code_str in code_list
         }
+
+    def _create_questions(self, question_data_list, questionnaire):
+        return [
+            self.data_generator._questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                linkId=link_id,
+                codeId=code_id
+            )
+            for link_id, code_id in question_data_list
+        ]
 
     def submit_response(
         self,
