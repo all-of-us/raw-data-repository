@@ -17,10 +17,7 @@ from rdr_service.code_constants import (
     FIRST_NAME_QUESTION_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE,
     PEDIATRICS_OVERALL_HEALTH, PEDIATRIC_EHR_CONSENT, PEDIATRICS_ENVIRONMENTAL_HEALTH, PEDIATRICS_BASICS,
     PEDIATRIC_RACE_QUESTION_CODE, PPI_SYSTEM, PEDIATRIC_SHARE_AGREE, PEDIATRIC_SHARE_NOT_AGREE,
-    PEDIATRIC_CITY_ADDRESS, PEDIATRIC_CONSENT_NO, PEDIATRIC_CONSENT_QUESTION_CODE, PEDIATRIC_FIRST_NAME_QUESTION,
-    PEDIATRIC_MIDDLE_NAME_QUESTION, PEDIATRIC_LAST_NAME_QUESTION, PEDIATRIC_PRIMARY_CONSENT_MODULE,
-    PEDIATRIC_SEX_QUESTION_CODE, PEDIATRIC_STATE_ADDRESS, PEDIATRIC_STREET1_ADDRESS, PEDIATRIC_STREET2_ADDRESS,
-    PEDIATRIC_ZIP_ADDRESS, RACE_AIAN_CODE
+    PEDIATRIC_SEX_QUESTION_CODE, RACE_AIAN_CODE
 )
 from rdr_service.concepts import Concept
 from rdr_service.dao.account_link_dao import AccountLinkDao
@@ -2176,48 +2173,46 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         code_id_map = self._create_codes([
             CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
             EMAIL_QUESTION_CODE,
-            PEDIATRIC_PRIMARY_CONSENT_MODULE,
-            PEDIATRIC_FIRST_NAME_QUESTION,
-            PEDIATRIC_MIDDLE_NAME_QUESTION,
-            PEDIATRIC_LAST_NAME_QUESTION,
-            PEDIATRIC_STREET1_ADDRESS,
-            PEDIATRIC_STREET2_ADDRESS,
-            PEDIATRIC_CITY_ADDRESS,
-            PEDIATRIC_STATE_ADDRESS,
-            PEDIATRIC_ZIP_ADDRESS,
+            const.PEDIATRIC_PRIMARY_CONSENT_MODULE,
+            const.PEDIATRIC_FIRST_NAME_QUESTION,
+            const.PEDIATRIC_MIDDLE_NAME_QUESTION,
+            const.PEDIATRIC_LAST_NAME_QUESTION,
+            const.PEDIATRIC_STREET1_ADDRESS,
+            const.PEDIATRIC_STREET2_ADDRESS,
+            const.PEDIATRIC_CITY_ADDRESS,
+            const.PEDIATRIC_STATE_ADDRESS,
+            const.PEDIATRIC_ZIP_ADDRESS,
             'TestStateCode',
             const.PEDIATRIC_BIRTH_DATE,
-            const.PEDIATRIC_PHONE,
             const.PEDIATRIC_EMAIL,
             const.PEDIATRIC_CABOR_SIGNATURE
         ])
-        # todo: phone-number/email?, dob?
 
         CodeDao()._invalidate_cache()  # invalidate code cache so the new codes exists
 
         # Set up questionnaire, inserting through DAO to get history to generate as well
         questionnaire = self.data_generator._questionnaire()
         questionnaire.concepts = [
-            QuestionnaireConcept(codeId=code_id_map[PEDIATRIC_PRIMARY_CONSENT_MODULE])
+            QuestionnaireConcept(codeId=code_id_map[const.PEDIATRIC_PRIMARY_CONSENT_MODULE])
         ]
         questionnaire.questions = [
             self.data_generator._questionnaire_question(
                 questionnaireId=questionnaire.questionnaireId,
                 questionnaireVersion=questionnaire.version,
                 linkId='first_name',
-                codeId=code_id_map[PEDIATRIC_FIRST_NAME_QUESTION]
+                codeId=code_id_map[const.PEDIATRIC_FIRST_NAME_QUESTION]
             ),
             self.data_generator._questionnaire_question(
                 questionnaireId=questionnaire.questionnaireId,
                 questionnaireVersion=questionnaire.version,
                 linkId='middle_name',
-                codeId=code_id_map[PEDIATRIC_MIDDLE_NAME_QUESTION]
+                codeId=code_id_map[const.PEDIATRIC_MIDDLE_NAME_QUESTION]
             ),
             self.data_generator._questionnaire_question(
                 questionnaireId=questionnaire.questionnaireId,
                 questionnaireVersion=questionnaire.version,
                 linkId='last_name',
-                codeId=code_id_map[PEDIATRIC_LAST_NAME_QUESTION]
+                codeId=code_id_map[const.PEDIATRIC_LAST_NAME_QUESTION]
             ),
             self.data_generator._questionnaire_question(
                 questionnaireId=questionnaire.questionnaireId,
@@ -2229,43 +2224,37 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
                 questionnaireId=questionnaire.questionnaireId,
                 questionnaireVersion=questionnaire.version,
                 linkId='street1',
-                codeId=code_id_map[PEDIATRIC_STREET1_ADDRESS]
+                codeId=code_id_map[const.PEDIATRIC_STREET1_ADDRESS]
             ),
             self.data_generator._questionnaire_question(
                 questionnaireId=questionnaire.questionnaireId,
                 questionnaireVersion=questionnaire.version,
                 linkId='street2',
-                codeId=code_id_map[PEDIATRIC_STREET2_ADDRESS]
+                codeId=code_id_map[const.PEDIATRIC_STREET2_ADDRESS]
             ),
             self.data_generator._questionnaire_question(
                 questionnaireId=questionnaire.questionnaireId,
                 questionnaireVersion=questionnaire.version,
                 linkId='city',
-                codeId=code_id_map[PEDIATRIC_CITY_ADDRESS]
+                codeId=code_id_map[const.PEDIATRIC_CITY_ADDRESS]
             ),
             self.data_generator._questionnaire_question(
                 questionnaireId=questionnaire.questionnaireId,
                 questionnaireVersion=questionnaire.version,
                 linkId='state',
-                codeId=code_id_map[PEDIATRIC_STATE_ADDRESS]
+                codeId=code_id_map[const.PEDIATRIC_STATE_ADDRESS]
             ),
             self.data_generator._questionnaire_question(
                 questionnaireId=questionnaire.questionnaireId,
                 questionnaireVersion=questionnaire.version,
                 linkId='zip',
-                codeId=code_id_map[PEDIATRIC_ZIP_ADDRESS]
+                codeId=code_id_map[const.PEDIATRIC_ZIP_ADDRESS]
             ),
             self.data_generator._questionnaire_question(
                 questionnaireId=questionnaire.questionnaireId,
                 questionnaireVersion=questionnaire.version,
                 linkId='dob',
                 codeId=code_id_map[const.PEDIATRIC_BIRTH_DATE]
-            ),
-            self.data_generator._questionnaire_question(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                linkId='phone',
-                codeId=code_id_map[const.PEDIATRIC_PHONE]
             ),
             self.data_generator._questionnaire_question(
                 questionnaireId=questionnaire.questionnaireId,
@@ -2335,7 +2324,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual('12321', participant_summary.zipCode)
 
         self.assertEqual(birth_date, participant_summary.dateOfBirth)
-        self.assertEqual('123-456-7890', participant_summary.loginPhoneNumber)
         self.assertEqual('test@pediatric.com', participant_summary.email)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.consentForCABoR)
 
@@ -2346,23 +2334,23 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         # create necessary codes
         code_id_map = self._create_codes([
             CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
-            PEDIATRIC_PRIMARY_CONSENT_MODULE,
-            PEDIATRIC_CONSENT_QUESTION_CODE,
-            PEDIATRIC_CONSENT_NO
+            const.PEDIATRIC_PRIMARY_CONSENT_MODULE,
+            const.PEDIATRIC_CONSENT_QUESTION_CODE,
+            const.PEDIATRIC_CONSENT_NO
         ])
         CodeDao()._invalidate_cache()  # invalidate code cache so the new codes exists
 
         # Set up questionnaire, inserting through DAO to get history to generate as well
         questionnaire = self.data_generator._questionnaire()
         questionnaire.concepts = [
-            QuestionnaireConcept(codeId=code_id_map[PEDIATRIC_PRIMARY_CONSENT_MODULE])
+            QuestionnaireConcept(codeId=code_id_map[const.PEDIATRIC_PRIMARY_CONSENT_MODULE])
         ]
         questionnaire.questions = [
             self.data_generator._questionnaire_question(
                 questionnaireId=questionnaire.questionnaireId,
                 questionnaireVersion=questionnaire.version,
                 linkId='consent_agree',
-                codeId=code_id_map[PEDIATRIC_CONSENT_QUESTION_CODE]
+                codeId=code_id_map[const.PEDIATRIC_CONSENT_QUESTION_CODE]
             )
         ]
 
@@ -2377,7 +2365,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             questionnaire.questionnaireId,
             authored=authored_time,
             code_answers=[
-                ('consent_agree', Concept(PPI_SYSTEM, PEDIATRIC_CONSENT_NO))
+                ('consent_agree', Concept(PPI_SYSTEM, const.PEDIATRIC_CONSENT_NO))
             ],
             create_codes=False
         )

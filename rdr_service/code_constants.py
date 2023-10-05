@@ -61,7 +61,6 @@ PEDIATRIC_CITY_ADDRESS = 'childpermission_info_city'
 PEDIATRIC_STATE_ADDRESS = 'childpermission_info_state'
 PEDIATRIC_ZIP_ADDRESS = 'childpermission_info_zipcode'
 PEDIATRIC_BIRTH_DATE = 'childpermission_info_birthdate'
-PEDIATRIC_PHONE = 'childpermission_info_phone'
 PEDIATRIC_EMAIL = 'childpermission_info_email'
 
 GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
