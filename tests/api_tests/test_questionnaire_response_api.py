@@ -10,6 +10,7 @@ from sqlalchemy.orm.session import make_transient
 
 from rdr_service import config
 from rdr_service.clock import FakeClock
+from rdr_service import code_constants as const
 from rdr_service.code_constants import (
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, CONSENT_QUESTION_CODE,
     EHR_PEDIATRIC_CONSENT_QUESTION_CODE, EMAIL_QUESTION_CODE, EXTRA_CONSENT_NO, EXTRA_CONSENT_YES,
@@ -2184,7 +2185,11 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             PEDIATRIC_CITY_ADDRESS,
             PEDIATRIC_STATE_ADDRESS,
             PEDIATRIC_ZIP_ADDRESS,
-            'TestStateCode'
+            'TestStateCode',
+            const.PEDIATRIC_BIRTH_DATE,
+            const.PEDIATRIC_PHONE,
+            const.PEDIATRIC_EMAIL,
+            const.PEDIATRIC_CABOR_SIGNATURE
         ])
         # todo: phone-number/email?, dob?
 
@@ -2218,8 +2223,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
                 questionnaireId=questionnaire.questionnaireId,
                 questionnaireVersion=questionnaire.version,
                 linkId='email',
-                codeId=code_id_map[EMAIL_QUESTION_CODE]
-            ),  # TODO: are we actually getting this?
+                codeId=code_id_map[const.PEDIATRIC_EMAIL]
+            ),
             self.data_generator._questionnaire_question(
                 questionnaireId=questionnaire.questionnaireId,
                 questionnaireVersion=questionnaire.version,
@@ -2249,6 +2254,24 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
                 questionnaireVersion=questionnaire.version,
                 linkId='zip',
                 codeId=code_id_map[PEDIATRIC_ZIP_ADDRESS]
+            ),
+            self.data_generator._questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                linkId='dob',
+                codeId=code_id_map[const.PEDIATRIC_BIRTH_DATE]
+            ),
+            self.data_generator._questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                linkId='phone',
+                codeId=code_id_map[const.PEDIATRIC_PHONE]
+            ),
+            self.data_generator._questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                linkId='cabor',
+                codeId=code_id_map[const.PEDIATRIC_CABOR_SIGNATURE]
             )
         ]
 
@@ -2258,6 +2281,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         # Create and send response from a participant
         participant_id = self.data_generator.create_database_participant().participantId
         authored_time = datetime.datetime(2023, 3, 27)
+        birth_date = datetime.date(2020, 1, 1)
         questionnaire_response_json = self.make_questionnaire_response_json(
             participant_id,
             questionnaire.questionnaireId,
@@ -2266,14 +2290,19 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
                 ('first_name', 'Bob'),
                 ('middle_name', 'Foo'),
                 ('last_name', 'Bar'),
-                ('email', 'arewegettingthis@idontknow.com'),  # TODO: are we actually getting this?
+                ('email', 'test@pediatric.com'),
                 ('street1', '123 Main St.'),
                 ('street2', 'Apt C'),
                 ('city', 'Testville'),
-                ('zip', '12321')
+                ('zip', '12321'),
+                ('phone', '123-456-7890'),
+                ('cabor', 'Test Signature')
             ],
             code_answers=[
                 ('state', Concept(PPI_SYSTEM, 'TestStateCode'))
+            ],
+            date_answers=[
+                ('dob', birth_date)
             ],
             create_codes=False
         )
@@ -2304,6 +2333,11 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual('Testville', participant_summary.city)
         self.assertEqual(code_id_map['TestStateCode'], participant_summary.stateId)
         self.assertEqual('12321', participant_summary.zipCode)
+
+        self.assertEqual(birth_date, participant_summary.dateOfBirth)
+        self.assertEqual('123-456-7890', participant_summary.loginPhoneNumber)
+        self.assertEqual('test@pediatric.com', participant_summary.email)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.consentForCABoR)
 
     def test_pediatrics_no_consent_response(self):
         """

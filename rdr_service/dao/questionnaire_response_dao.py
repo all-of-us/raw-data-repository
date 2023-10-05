@@ -90,6 +90,7 @@ from rdr_service.code_constants import (
     REMOTE_ID_VERIFIED_CODE,
     REMOTE_ID_VERIFIED_ON_CODE,
     ETM_CONSENT_QUESTION_CODE,
+    PEDIATRIC_CABOR_SIGNATURE,
     PEDIATRIC_CONSENT_NO,
     PEDIATRIC_CONSENT_QUESTION_CODE,
     PEDIATRIC_CONSENT_YES,
@@ -886,7 +887,9 @@ class QuestionnaireResponseDao(BaseDao):
                             participant_summary.ehrConsentExpireAuthored = authored
                             participant_summary.ehrConsentExpireTime = questionnaire_response.created
                             something_changed = True
-                    elif code.value == CABOR_SIGNATURE_QUESTION_CODE:
+                    elif self._code_in_list(
+                        code.value, [CABOR_SIGNATURE_QUESTION_CODE, PEDIATRIC_CABOR_SIGNATURE]
+                    ):
                         if answer.valueUri or answer.valueString:
                             # TODO: validate the URI? [DA-326]
                             self.consents_provided.append(ConsentType.CABOR)

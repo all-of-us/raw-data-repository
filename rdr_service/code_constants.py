@@ -50,6 +50,7 @@ ETM_CONSENT_QUESTION_CODE = 'etm_consent'
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 CONSENT_QUESTION_CODE = 'extraconsent_consent'
 PEDIATRIC_CONSENT_QUESTION_CODE = 'childpermission_agree'
+PEDIATRIC_CABOR_SIGNATURE = 'ChildPermission_StateCABoR_CABoRSignature'
 
 PEDIATRIC_FIRST_NAME_QUESTION = 'childpermission_info_firstname'
 PEDIATRIC_MIDDLE_NAME_QUESTION = 'childpermission_info_middlename'
@@ -59,6 +60,9 @@ PEDIATRIC_STREET2_ADDRESS = 'childpermission_info_address2'
 PEDIATRIC_CITY_ADDRESS = 'childpermission_info_city'
 PEDIATRIC_STATE_ADDRESS = 'childpermission_info_state'
 PEDIATRIC_ZIP_ADDRESS = 'childpermission_info_zipcode'
+PEDIATRIC_BIRTH_DATE = 'childpermission_info_birthdate'
+PEDIATRIC_PHONE = 'childpermission_info_phone'
+PEDIATRIC_EMAIL = 'childpermission_info_email'
 
 GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
 RACE_QUESTION_CODE = "Race_WhatRaceEthnicity"
