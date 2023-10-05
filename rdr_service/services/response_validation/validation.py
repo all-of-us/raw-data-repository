@@ -1,3 +1,4 @@
+import datetime
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
@@ -794,7 +795,11 @@ class ResponseValidator:
                                             reason=f'Date answer expected, but found {str(answer.data_type)}'
                                         )
                                     )
-                                answer_value = parse(answer.value)
+                                # Check if datetime is epoch
+                                if answer.data_type == response_domain_model.DataType.STRING:
+                                    answer_value = datetime.datetime.fromtimestamp(int(answer.value) / 1000)
+                                else:
+                                    answer_value = parse(answer.value)
                                 if question.validation_min:
                                     min_value = parse(question.validation_min)
                                 if question.validation_max:
