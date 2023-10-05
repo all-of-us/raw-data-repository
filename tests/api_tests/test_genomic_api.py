@@ -3528,7 +3528,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
             "aw5_wgs_manifest": 1
         }
 
-        config.override_setting(config.GENOMIC_INGESTIONS, manifest_config)
+        self.temporarily_override_config_setting(config.GENOMIC_INGESTIONS, manifest_config)
 
         # add 3 calls tp path_count
         true_calls = [val for val in manifest_config.values() if val == 1]

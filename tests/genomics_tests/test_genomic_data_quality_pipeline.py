@@ -515,7 +515,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
                 "send_emails": 0
             }
         }
-        config.override_setting(config.GENOMIC_DAILY_VALIDATION_EMAILS, email_config)
+        self.temporarily_override_config_setting(config.GENOMIC_DAILY_VALIDATION_EMAILS, email_config)
 
         with DataQualityJobController(GenomicJob.DAILY_SEND_VALIDATION_EMAILS) as controller:
             controller.execute_workflow()

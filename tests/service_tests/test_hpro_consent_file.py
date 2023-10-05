@@ -166,7 +166,7 @@ class HealthProConsentFileTest(BaseTestCase):
         self.hpro_consents.get_consents_for_transfer()
         self.assertEqual(len(self.hpro_consents.consents_for_transfer), 1)
 
-        config.override_setting(config.HEALTHPRO_CONSENTS_TRANSFER_LIMIT, limit)
+        self.temporarily_override_config_setting(config.HEALTHPRO_CONSENTS_TRANSFER_LIMIT, limit)
         self.hpro_consents.transfer_limit = config.getSetting(config.HEALTHPRO_CONSENTS_TRANSFER_LIMIT)
         self.hpro_consents.get_consents_for_transfer()
         self.assertEqual(len(self.hpro_consents.consents_for_transfer), limit[0])

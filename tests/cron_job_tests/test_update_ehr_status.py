@@ -40,27 +40,27 @@ class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
         mock_build.return_value = "foo"
         mock_gae_project.return_value = "app_id"
 
-        config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, ["some_view"])
+        self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, ["some_view"])
         job = update_ehr_status.make_update_participant_summaries_job()
         self.assertNotEqual(job, None)
 
-        config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, ["a", "b"])
+        self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, ["a", "b"])
         job = update_ehr_status.make_update_participant_summaries_job()
         self.assertEqual(job, None)
 
-        config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [""])
+        self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [""])
         job = update_ehr_status.make_update_participant_summaries_job()
         self.assertEqual(job, None)
 
-        config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [None])
+        self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [None])
         job = update_ehr_status.make_update_participant_summaries_job()
         self.assertEqual(job, None)
 
-        config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [])
+        self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [])
         job = update_ehr_status.make_update_participant_summaries_job()
         self.assertEqual(job, None)
 
-        config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, None)
+        self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, None)
         job = update_ehr_status.make_update_participant_summaries_job()
         self.assertEqual(job, None)
 
@@ -70,27 +70,27 @@ class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
         mock_build.return_value = "foo"
         mock_gae_project.return_value = "app_id"
 
-        config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, ["some_view"])
+        self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, ["some_view"])
         job = update_ehr_status.make_update_organizations_job()
         self.assertNotEqual(job, None)
 
-        config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, ["a", "b"])
+        self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, ["a", "b"])
         job = update_ehr_status.make_update_organizations_job()
         self.assertEqual(job, None)
 
-        config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, [""])
+        self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, [""])
         job = update_ehr_status.make_update_organizations_job()
         self.assertEqual(job, None)
 
-        config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, [None])
+        self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, [None])
         job = update_ehr_status.make_update_organizations_job()
         self.assertEqual(job, None)
 
-        config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [])
+        self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [])
         job = update_ehr_status.make_update_participant_summaries_job()
         self.assertEqual(job, None)
 
-        config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, None)
+        self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, None)
         job = update_ehr_status.make_update_participant_summaries_job()
         self.assertEqual(job, None)
 

@@ -3967,7 +3967,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.send_consent(participant_id)
             self.send_consent(participant_id2)
 
-        config.override_setting(config.HPO_LITE_AWARDEE, ["PITT"])
+        self.temporarily_override_config_setting(config.HPO_LITE_AWARDEE, ["PITT"])
         self.overwrite_test_user_awardee('PITT', ['awardee_sa'])
         self.send_get("ParticipantSummary?_count=10&awardee=AZ_TUCSON", expected_status=403)
         ps = self.send_get("ParticipantSummary?_count=10&awardee=PITT")
