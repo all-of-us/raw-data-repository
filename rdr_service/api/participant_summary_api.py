@@ -80,6 +80,7 @@ class ParticipantSummaryApi(BaseApi):
                 pass
             elif requested_awardee != auth_awardee:
                 raise Forbidden
+
         return self._query("participantId")
 
     @auth_required(RDR_AND_PTC)
