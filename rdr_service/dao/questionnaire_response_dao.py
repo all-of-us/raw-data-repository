@@ -42,6 +42,7 @@ from rdr_service.code_constants import (
     EHR_CONSENT_QUESTION_CODE,
     EHR_SENSITIVE_CONSENT_QUESTION_CODE,
     EHR_CONSENT_EXPIRED_QUESTION_CODE,
+    EHR_PEDIATRIC_CONSENT_QUESTION_CODE,
     GENDER_IDENTITY_QUESTION_CODE,
     LANGUAGE_OF_CONSENT,
     PMI_SKIP_CODE,
@@ -92,8 +93,10 @@ from rdr_service.code_constants import (
     PEDIATRIC_CONSENT_NO,
     PEDIATRIC_CONSENT_QUESTION_CODE,
     PEDIATRIC_CONSENT_YES,
+    PEDIATRIC_EHR_CONSENT,
     PEDIATRIC_PRIMARY_CONSENT_MODULE,
     PEDIATRIC_RACE_QUESTION_CODE,
+    PEDIATRIC_SHARE_AGREE,
     PEDIATRICS_ENVIRONMENTAL_HEALTH
 )
 from rdr_service.dao.base_dao import BaseDao
@@ -853,14 +856,23 @@ class QuestionnaireResponseDao(BaseDao):
                             dvehr_consent = QuestionnaireStatus.SUBMITTED
                         elif code and code.value == DVEHRSHARING_CONSENT_CODE_NOT_SURE:
                             dvehr_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
-                    elif code.value in [EHR_CONSENT_QUESTION_CODE, EHR_SENSITIVE_CONSENT_QUESTION_CODE]:
+                    elif self._code_in_list(
+                        code.value,
+                        [
+                            EHR_CONSENT_QUESTION_CODE,
+                            EHR_SENSITIVE_CONSENT_QUESTION_CODE,
+                            EHR_PEDIATRIC_CONSENT_QUESTION_CODE
+                        ]
+                    ):
                         code = code_dao.get(answer.valueCodeId)
                         if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED and \
                             authored > participant_summary.ehrConsentExpireAuthored:
                             participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.UNSET
                             participant_summary.ehrConsentExpireAuthored = None
                             participant_summary.ehrConsentExpireTime = None
-                        if code and code.value in [CONSENT_PERMISSION_YES_CODE, SENSITIVE_EHR_YES]:
+                        if code and self._code_in_list(code.value, [
+                            CONSENT_PERMISSION_YES_CODE, SENSITIVE_EHR_YES, PEDIATRIC_SHARE_AGREE
+                        ]):
                             self.consents_provided.append(ConsentType.EHR)
                             ehr_consent = True
                             if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
@@ -1037,7 +1049,9 @@ class QuestionnaireResponseDao(BaseDao):
                     code.value.lower() if self._is_digital_health_share_code(code.value) else code.value)
                 if summary_field:
                     new_status = QuestionnaireStatus.SUBMITTED
-                    if code.value == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE:
+                    if self._code_in_list(
+                        code.value, [CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PEDIATRIC_EHR_CONSENT]
+                    ):
                         if ehr_consent:
                             new_status = QuestionnaireStatus.SUBMITTED_NOT_VALIDATED
                         else:
