@@ -6,7 +6,7 @@ version: 2.1
 
 job_defaults: &job_defaults
   docker:
-    - image: cimg/base:2022.09
+    - image: cimg/base:2023.09
       environment:
         RDR_UNITTEST_SQL_SERVER_PORT: 3306
         CIRCLECI_FLAG: 1
