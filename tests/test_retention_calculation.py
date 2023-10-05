@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import mock
-from pprint import pprint
+
 
 from rdr_service import config
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
@@ -240,8 +240,6 @@ class RetentionCalculationIntegrationTest(BaseTestCase):
             metrics_data=obj,
             session=self.session
         )
-        print(f'Expected date: {expected_date}')
-        pprint(obj.__dict__)
         self.assertEqual(obj.rdr_last_retention_activity_time, expected_date)
 
     def _make_retention_eligible_metrics_rec(self, summary):
