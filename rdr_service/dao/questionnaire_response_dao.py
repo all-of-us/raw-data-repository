@@ -935,9 +935,9 @@ class QuestionnaireResponseDao(BaseDao):
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value.lower() == WEAR_YES_ANSWER_CODE:
                             self.consents_provided.append(ConsentType.WEAR)
-                        # participant_summary should contain most recently authored WEAR consent details
-                        if (participant_summary.consentForWearStudyAuthored is None
-                                or questionnaire_response.authored > participant_summary.consentForWearStudyAuthored):
+                        # participant_summary should contain most recently authored WEAR consent details.
+                        curr_wear_authored = participant_summary.consentForWearStudyAuthored
+                        if curr_wear_authored is None or authored > curr_wear_authored:
                             participant_summary.consentForWearStudyTime = questionnaire_response.created
                             participant_summary.consentForWearStudyAuthored = authored
                             if answer_value.lower() == WEAR_YES_ANSWER_CODE:
@@ -953,6 +953,7 @@ class QuestionnaireResponseDao(BaseDao):
                         code.value,
                         [
                             VA_PRIMARY_RECONSENT_C1_C2_QUESTION,
+
                             VA_PRIMARY_RECONSENT_C3_QUESTION,
                             NON_VA_PRIMARY_RECONSENT_QUESTION
                         ]

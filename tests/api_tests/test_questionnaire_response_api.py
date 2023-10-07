@@ -1777,6 +1777,36 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(summary['questionnaireOnLifeFunctioningAuthored'], '2022-09-06T14:32:28')
         self.assertEqual(summary['questionnaireOnLifeFunctioningTime'], '2022-09-07T01:02:03')
 
+    def test_wear_consents(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id)
+
+        first_authored_str = '2023-09-07T09:07:01+00:00'
+        later_authored_str = '2023-09-07T09:07:45+00:00'
+
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual(summary.get('participantId', None), participant_id)
+        questionnaire_id = self.create_questionnaire("wear_consent_questionnaire.json")
+        resource = self._load_response_json("wear_consent_questionnaire_response.json", questionnaire_id,
+                                            participant_id)
+        resource['authored'] = first_authored_str
+        self._save_codes(resource)
+        with FakeClock(datetime.datetime(2023, 9, 7, 1, 2, 3)):
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        # Timestamp strings returned from GET ParticipantSummary have the UTC offset removed
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual(summary.get('consentForWearStudyAuthored', None), first_authored_str.split('+')[0])
+
+        # Confirm second WEAR consent payload w/different authored date is sucessfully processed (resolves DA-3892)
+        resource['authored'] = later_authored_str
+        with FakeClock(datetime.datetime(2023, 9, 7, 2, 3, 4)):
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual(summary.get('consentForWearStudyAuthored', None), later_authored_str.split('+')[0])
+
     def test_remote_id_verified(self):
         """ Test to see if a remote ID verification True Response saves successfully """
         # Set up participant, questionnaire, questionnaire response & send POST request to API
