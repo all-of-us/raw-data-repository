@@ -4506,6 +4506,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
         self.assertEqual(summary['remoteIdVerificationStatus'], 'True')
         self.assertEqual(summary['remoteIdVerifiedOn'], '2023-01-17')
+        initial_last_modified = summary['lastModified']
         # Change the date for remoteIdVerifiedOn to 1/18/2023
         resource['group']['question'][1]['answer'][0]['valueString'] = "1674066632000"
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
@@ -4543,6 +4544,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(summary['everIdVerified'], 'True')
         self.assertEqual(summary['firstIdVerifiedOn'], '2023-01-17')
         self.assertEqual(summary['idVerificationOrigin'], IdVerificationOriginType.REMOTE.name)
+        updated_last_modified = summary['lastModified']
+        self.assertNotEqual(initial_last_modified, updated_last_modified)
 
     def test_displaying_linked_accounts(self):
         first_parent = self.data_generator.create_database_participant_summary()
