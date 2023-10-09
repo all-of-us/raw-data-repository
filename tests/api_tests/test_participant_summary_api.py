@@ -47,6 +47,11 @@ TIME_4 = datetime.datetime(2016, 1, 4)
 TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
 TIME_6 = datetime.datetime(2015, 1, 1)
 
+# Kludge to fix failing tests where participants aged out of expected 35-44 ageRange as of 2023-10-09
+# Needs a better permanent solution that won't require future updates to this value, but should probably be done as
+# a broader refactor of the impacted test cases, to consolidate the code that needs changing
+TEST_AGE_BUCKET_DOB_DATE_OBJ = datetime.date(1980, 10, 9)
+
 participant_summary_default_values = {
     "ageRange": "UNSET",
     "race": "PMI_Skip",
@@ -1567,7 +1572,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -1616,7 +1621,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -1665,7 +1670,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -1730,7 +1735,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -1781,7 +1786,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": "en",
             "education": "highschool",
             "income": "lotsofmoney",
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
             "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
@@ -1829,7 +1834,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": "en",
             "education": "highschool",
             "income": "lotsofmoney",
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -3604,7 +3609,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": "en",
             "education": "highschool",
             "income": "lotsofmoney",
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
