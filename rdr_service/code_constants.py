@@ -49,6 +49,19 @@ NON_VA_PRIMARY_RECONSENT_QUESTION = 'nonvaprimaryreconsent_agree'
 ETM_CONSENT_QUESTION_CODE = 'etm_consent'
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 CONSENT_QUESTION_CODE = 'extraconsent_consent'
+PEDIATRIC_CONSENT_QUESTION_CODE = 'childpermission_agree'
+PEDIATRIC_CABOR_SIGNATURE = 'ChildPermission_StateCABoR_CABoRSignature'
+
+PEDIATRIC_FIRST_NAME_QUESTION = 'childpermission_info_firstname'
+PEDIATRIC_MIDDLE_NAME_QUESTION = 'childpermission_info_middlename'
+PEDIATRIC_LAST_NAME_QUESTION = 'childpermission_info_lastname'
+PEDIATRIC_STREET1_ADDRESS = 'childpermission_info_address1'
+PEDIATRIC_STREET2_ADDRESS = 'childpermission_info_address2'
+PEDIATRIC_CITY_ADDRESS = 'childpermission_info_city'
+PEDIATRIC_STATE_ADDRESS = 'childpermission_info_state'
+PEDIATRIC_ZIP_ADDRESS = 'childpermission_info_zipcode'
+PEDIATRIC_BIRTH_DATE = 'childpermission_info_birthdate'
+PEDIATRIC_EMAIL = 'childpermission_info_email'
 
 GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
 RACE_QUESTION_CODE = "Race_WhatRaceEthnicity"
@@ -122,6 +135,8 @@ EHR_CONSENT_EXPIRED_YES = "EHRConsentPII_ConsentExpired_Yes"
 SENSITIVE_EHR_YES = "sensitivetype2__agree"
 EXTRA_CONSENT_YES = 'extraconsent_agreetoconsent'
 EXTRA_CONSENT_NO = 'extraconsent_donotagreetoconsent'
+PEDIATRIC_CONSENT_YES = 'ChildPermission_agree_yes'
+PEDIATRIC_CONSENT_NO = 'ChildPermission_agree_no'
 PEDIATRIC_SHARE_AGREE = 'ChildJoinAllOfUs_AgreeToShare'
 PEDIATRIC_SHARE_NOT_AGREE = 'ChildJoinAllOfUs_NotAgreeToShare'
 
@@ -173,6 +188,7 @@ COPE_VACCINE_MINUTE_4_MODULE_CODE = "cope_vaccine4"
 # Module names for questionnaires / consent forms
 CONSENT_FOR_GENOMICS_ROR_MODULE = "GROR"
 CONSENT_FOR_STUDY_ENROLLMENT_MODULE = "ConsentPII"
+PEDIATRIC_PRIMARY_CONSENT_MODULE = 'consentpii_0to6'
 CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE = "EHRConsentPII"
 CONSENT_FOR_DVEHR_MODULE = "DVEHRSharing"
 OVERALL_HEALTH_PPI_MODULE = "OverallHealth"
