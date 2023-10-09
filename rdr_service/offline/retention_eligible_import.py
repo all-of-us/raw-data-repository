@@ -9,8 +9,7 @@ from rdr_service.clock import CLOCK
 from rdr_service.code_constants import (
     COHORT_1_REVIEW_CONSENT_YES_CODE, COPE_MODULE, COPE_NOV_MODULE, COPE_DEC_MODULE, COPE_FEB_MODULE,
     COPE_VACCINE_MINUTE_1_MODULE_CODE, COPE_VACCINE_MINUTE_2_MODULE_CODE, COPE_VACCINE_MINUTE_3_MODULE_CODE,
-    COPE_VACCINE_MINUTE_4_MODULE_CODE, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
-    WEAR_CONSENT_QUESTION_CODE, WEAR_YES_ANSWER_CODE, ETM_CONSENT_QUESTION_CODE, AGREE_YES
+    COPE_VACCINE_MINUTE_4_MODULE_CODE, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 )
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -266,18 +265,6 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
         logging.error(f'no summary for P{metrics_data.participantId}')
         return
 
-    # For WEAR and EtM consents, need to look for most recent "yes" response only
-    wear_consent_ts = _find_qualifying_response(session, metrics_data.participantId,
-                                                WEAR_CONSENT_QUESTION_CODE, WEAR_YES_ANSWER_CODE)
-    etm_consent_ts = _find_qualifying_response(session, metrics_data.participantId,
-                                               ETM_CONSENT_QUESTION_CODE, AGREE_YES)
-
-    # Get most recent EtM task response (if consented).  Note: prt tasks are not in plan currently, but RDR production
-    # has some unexpected prt payloads from early 2023.  Specify a list of valid tasks so prt data is excluded
-    etm_task_ts = _get_latest_etm_task_response_timestamp(
-        session, metrics_data.participantId, task_types=['GradCPT', 'flanker', 'delaydiscount', 'emorecog']
-    ) if etm_consent_ts else None
-
     dependencies = RetentionEligibilityDependencies(
         primary_consent=Consent(
             is_consent_provided=True,
@@ -325,11 +312,11 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
         gror_response_timestamp=summary.consentForGenomicsRORAuthored,
         # Additions for DA-3705 (only NPH module consent info currently available is NPH1)
         nph_consent_timestamp=summary.consentForNphModule1Authored,
-        etm_consent_timestamp=etm_consent_ts,
-        wear_consent_timestamp=wear_consent_ts,
+        etm_consent_timestamp=summary.consentForEtMAuthored,
+        wear_consent_timestamp=summary.consentForWearStudyAuthored,
         ehhwb_response_timestamp=summary.questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored,
         bhp_response_timestamp=summary.questionnaireOnBehavioralHealthAndPersonalityAuthored,
-        latest_etm_response_timestamp=etm_task_ts
+        latest_etm_response_timestamp=summary.latestEtMTaskAuthored
     )
     retention_data = RetentionEligibility(dependencies)
 
@@ -378,7 +365,7 @@ def _aggregate_response_timestamps(session, participant_id, survey_code_list, ag
 def _find_qualifying_response(session, participant_id: int, q_code: str, ans_code: str) -> Optional[datetime.datetime]:
     """
     Search for a specific question_code/answer relevant to RDR retention calculations.
-    For example, a "yes" response to a WEAR or EtM consent is a qualifying activity
+    For example, a "yes" response to EtM consent is a prerequisite to completing EtM tasks (a qualifying actifity)
     :param session: Session object
     :param participant_id:   Participant id (integer)
     :param q_code:  Question code string value, e.g., code_constants.WEAR_CONSENT_QUESTION_CODE
