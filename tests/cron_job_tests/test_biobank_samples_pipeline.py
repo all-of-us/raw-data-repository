@@ -22,6 +22,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.offline import biobank_samples_pipeline
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value,\
@@ -424,7 +425,8 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
                 None, None, None,  # notes info: collected, processed, finalized
                 None, None, None, None, None,  # cancelled_restored info: status_flag, name, name, time, reason
                 None,  # order origin
-                'example'  # Participant origin
+                'example',  # Participant origin
+                0  # is pediatric
             )])
 
     def test_demographic_flags_in_received_report(self):
@@ -448,6 +450,15 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             biobankOrderId=order.biobankOrderId,
             value='KIT-001',
             system=biobank_samples_pipeline._KIT_ID_SYSTEM
+        )
+
+        # set up data to show participant as pediatric
+        self.session.add(
+            PediatricDataLog(
+                participant_id=participant.participantId,
+                data_type=PediatricDataType.AGE_RANGE,
+                value='0_6'
+            )
         )
 
         ordered_sample = self.data_generator.create_database_biobank_ordered_sample(
@@ -495,7 +506,8 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
                 None,  # order origin
                 'example',  # Participant origin,
                 'Y',  # NY flag
-                'NA'  # sex at birth flag
+                'NA',  # sex at birth flag
+                1  # is pediatric flag
             )])
 
     def _generate_withdrawal_report(self):
