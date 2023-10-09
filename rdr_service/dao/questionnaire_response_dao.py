@@ -831,6 +831,7 @@ class QuestionnaireResponseDao(BaseDao):
                                 'date_of_birth': answer.valueDate
                             }
                         )
+                    # elif self._code_in_list(code.value, [PedDat])
 
                     summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
                     if summary_field:

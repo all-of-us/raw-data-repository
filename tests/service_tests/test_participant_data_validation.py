@@ -85,6 +85,47 @@ class ParticipantDataValidationTest(BaseTestCase):
             any_order=True
         )
 
+    def test_valid_pediatric_age(self):
+        self._set_consent_datetime(datetime.utcnow())
+        date_of_birth = datetime.utcnow() - timedelta(days=10)
+
+        ParticipantDataValidation.analyze_date_of_birth(
+            date_of_birth=date_of_birth,
+            participant_id=1234,
+            age_min=0,
+            age_max=6
+        )
+
+        self.slack_client_instance.send_message_to_webhook.assert_not_called()
+        self.logging_mock.warning.assert_not_called()
+
+    def test_invalid_pediatric_age(self):
+        self._set_consent_datetime(datetime.utcnow())
+        date_of_birth = datetime.utcnow() - timedelta(weeks=52 * 9)
+
+        ParticipantDataValidation.analyze_date_of_birth(
+            date_of_birth=date_of_birth,
+            participant_id=1234,
+            age_min=0,
+            age_max=6
+        )
+
+        self.slack_client_instance.send_message_to_webhook.assert_called_with(
+            message_data={'text': 'Invalid pediatric date of birth detected'}
+        )
+        self.assertEqual(2, self.logging_mock.warning.call_count)
+        self.logging_mock.warning.assert_has_calls(
+            calls=[
+                mock.call(
+                    'Unexpected date of birth for P1234: date of birth means age at consent was invalid for program'
+                ),
+                mock.call(
+                    'Unexpected date of birth for P1234: date of birth means current age is invalid for program'
+                )
+            ],
+            any_order=True
+        )
+
     def _set_consent_datetime(self, consent_datetime: datetime):
         self.summary_dao_instance.get_by_participant_id.return_value = ParticipantSummary(
             consentForStudyEnrollmentFirstYesAuthored=consent_datetime
