@@ -473,7 +473,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(len(summary2.get('entry')), 1)
 
     def test_enrollment_status_requires_valid_ehr(self):
-        config.override_setting('ENROLLMENT_STATUS_SKIP_VALIDATION', False)
+        self.temporarily_override_config_setting('ENROLLMENT_STATUS_SKIP_VALIDATION', False)
 
         # setup participant
         participant_id = self.create_participant()
