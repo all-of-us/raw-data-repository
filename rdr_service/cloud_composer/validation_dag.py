@@ -5,7 +5,9 @@ from airflow import models
 from airflow.operators import python
 from google.cloud import bigquery
 
+
 class EtMValidator(Validator):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.url_validator = Validator(kwargs.get("metadata_schema"))
@@ -29,6 +31,13 @@ default_dag_args = {
     "start_date": datetime.datetime(2023, 8, 1)
 }
 
+questionnaire_type_map = {
+    "emorecog": "emotion_recognition",
+    "delaydiscount": "delay_discount",
+    "flanker": "flanker",
+    "GradCPT": "grad_cpt"
+}
+
 with models.DAG(
     "etm_validation",
     schedule_interval=datetime.timedelta(days=1),
@@ -38,55 +47,74 @@ with models.DAG(
         import logging
         logging.info("Starting validation")
         client = bigquery.Client()
-
-        results_to_validate = client.query(
-            "SELECT * FROM rdr_etm_test.etm_questionnaire_response WHERE "
-            "questionnaire_type = 'emorecog'"
-            "AND etm_questionnaire_response_id NOT IN (SELECT "
-            "etm_questionnaire_response_id FROM rdr_etm_test.etm_validation_result) "
-        )
-        to_validate_list = results_to_validate.result()
-        eqrs_to_validate = list(to_validate_list)
-        query_job = client.query("SELECT * FROM rdr_etm_test.etm_validation_schema WHERE questionnaire_type='emorecog'")
-        result = query_job.result()
-        schemas = list(result)
-        schema_dict = json.loads(schemas[0].get('fhir_schema'))
-        metadata_dict = json.loads(schemas[0].get('metadata_schema'))
-        task_schema_version = schemas[0].get('task_schema_version')
-        v = EtMValidator(schema_dict, metadata_schema=metadata_dict)
-        for eqr in eqrs_to_validate:
-            resource_dict = json.loads(eqr.resource)
-            print(f"Validating {eqr.get('etm_questionnaire_response_id')}, {eqr.get('questionnaire_type')}")
-            v.validate(resource_dict)
-            validation_time = datetime.datetime.utcnow().isoformat()
-            logging.info(f"{eqr.etm_questionnaire_response_id} Errors: {v.errors}")
-            errors = str(v.errors) if v.errors else None
+        for questionnaire_type in questionnaire_type_map.keys():
             job_config = bigquery.QueryJobConfig(
                 query_parameters=[
-                    bigquery.ScalarQueryParameter("eqrid", "INT64", eqr.etm_questionnaire_response_id),
-                    bigquery.ScalarQueryParameter("q_type", "STRING", eqr.questionnaire_type),
-                    bigquery.ScalarQueryParameter("resource", "JSON", eqr.resource.replace('\n','')),
-                    bigquery.ScalarQueryParameter("validation_time", "TIMESTAMP", validation_time),
-                    bigquery.ScalarQueryParameter("errors", "STRING", errors),
-                    bigquery.ScalarQueryParameter("participant_id", "INT64", eqr.participant_id),
-                    bigquery.ScalarQueryParameter("task_schema_name", "STRING", task_schema_version),
-                    bigquery.ScalarQueryParameter("eqr_date", "TIMESTAMP", eqr.created)
+                    bigquery.ScalarQueryParameter("qtype", "STRING", questionnaire_type)
                 ]
             )
-            validation_insert_query = client.query("""
-            INSERT INTO rdr_etm_test.etm_validation_result
-                (id, created, etm_questionnaire_response_id, questionnaire_type, resource, validation_time,
-                validation_errors, participant_id, task_schema_version, questionnaire_response_date)
-                VALUES (GENERATE_UUID(), CURRENT_TIMESTAMP(), @eqrid, @q_type, @resource, @validation_time, @errors,
-                @participant_id, @task_schema_name, @eqr_date)""",
-                                                   job_config=job_config)
-            validation_insert_query.result()
+            results_to_validate = client.query(
+                """SELECT
+                          *
+                        FROM
+                          rdr_etm_test.etm_questionnaire_response eqr
+                        LEFT JOIN
+                          rdr_etm_test.participant p
+                        ON
+                          eqr.participant_id = p.participant_id
+                        WHERE
+                          eqr.questionnaire_type = @qtype
+                          AND eqr.etm_questionnaire_response_id NOT IN (
+                          SELECT
+                            etm_questionnaire_response_id
+                          FROM
+                            rdr_etm_test.etm_validation_result)""",
+                job_config=job_config
+            )
+            to_validate_list = results_to_validate.result()
+            eqrs_to_validate = list(to_validate_list)
+            query_job = client.query("SELECT * FROM rdr_etm_test.etm_validation_schema "
+                                     "WHERE questionnaire_type=@qtype "
+                                     "ORDER BY valid_from DESC LIMIT 1",
+                                     job_config=job_config)
+            result = query_job.result()
+            schemas = list(result)
+            schema_dict = json.loads(schemas[0].get('fhir_schema'))
+            metadata_dict = json.loads(schemas[0].get('metadata_schema'))
+            task_schema_version = schemas[0].get('task_schema_version')
+            v = EtMValidator(schema_dict, metadata_schema=metadata_dict)
+            for eqr in eqrs_to_validate:
+                resource_dict = json.loads(eqr.resource)
+                print(f"Validating {eqr.get('etm_questionnaire_response_id')}, {eqr.get('questionnaire_type')}")
+                v.validate(resource_dict)
+                logging.info(f"{eqr.etm_questionnaire_response_id} Errors: {v.errors}")
+                errors = str(v.errors) if v.errors else None
+                job_config = bigquery.QueryJobConfig(
+                    query_parameters=[
+                        bigquery.ScalarQueryParameter("eqrid", "INT64", eqr.etm_questionnaire_response_id),
+                        bigquery.ScalarQueryParameter("q_type", "STRING", eqr.questionnaire_type),
+                        bigquery.ScalarQueryParameter("resource", "JSON", eqr.resource.replace('\n','')),
+                        bigquery.ScalarQueryParameter("errors", "STRING", errors),
+                        bigquery.ScalarQueryParameter("participant_id", "INT64", eqr.participant_id),
+                        bigquery.ScalarQueryParameter("task_schema_name", "STRING", task_schema_version),
+                        bigquery.ScalarQueryParameter("eqr_date", "TIMESTAMP", eqr.created),
+                        bigquery.ScalarQueryParameter("eqr_authored", "TIMESTAMP", eqr.authored),
+                        bigquery.ScalarQueryParameter("research_id", "INT64", eqr.research_id),
+                        bigquery.ScalarQueryParameter("src_id", "STRING", eqr.participant_origin)
+                    ]
+                )
+                validation_insert_query = client.query("""
+                INSERT INTO rdr_etm_test.etm_validation_result
+                    (id, created, etm_questionnaire_response_id, questionnaire_type, resource,
+                    validation_errors, participant_id, task_schema_version, questionnaire_response_timestamp,
+                    questionnaire_response_authored, research_id, src_id)
+                    VALUES (GENERATE_UUID(), CURRENT_TIMESTAMP(), @eqrid, @q_type, @resource, @errors,
+                    @participant_id, @task_schema_name, @eqr_date, @eqr_authored, @research_id, @src_id)""",
+                                                       job_config=job_config)
+                validation_insert_query.result()
 
     def deliver_results():
         client = bigquery.Client()
-        questionnaire_type_map = {
-            'emorecog': 'emotion_recognition'
-        }
 
         for qt, task_name in questionnaire_type_map.items():
             select_job_config = bigquery.QueryJobConfig(
@@ -101,27 +129,27 @@ with models.DAG(
             AND id NOT IN (SELECT id FROM rdr_etm_test.{task_name})
             """, select_job_config)
             valid_results = valid_results_query.result()
-            research_id = 0
-            src_id = 'test'
             for res in valid_results:
                 job_config = bigquery.QueryJobConfig(
                     query_parameters=[
                         bigquery.ScalarQueryParameter("id", "STRING", res.id),
                         bigquery.ScalarQueryParameter("participant_id", "INT64", res.participant_id),
-                        bigquery.ScalarQueryParameter("research_id", "INT64", research_id),
-                        bigquery.ScalarQueryParameter("src_id", "STRING", src_id),
+                        bigquery.ScalarQueryParameter("research_id", "INT64", res.research_id),
+                        bigquery.ScalarQueryParameter("src_id", "STRING", res.src_id),
                         bigquery.ScalarQueryParameter("resource", "JSON", res.resource),
-                        bigquery.ScalarQueryParameter("qr_date", "TIMESTAMP",res.questionnaire_response_date),
+                        bigquery.ScalarQueryParameter("qr_date", "TIMESTAMP",res.questionnaire_response_timestamp),
                         bigquery.ScalarQueryParameter("task_schema_name", "STRING", res.task_schema_version),
-                        bigquery.ScalarQueryParameter("validated_time", "TIMESTAMP", res.validation_time)
+                        bigquery.ScalarQueryParameter("validated_time", "TIMESTAMP", res.created),
+                        bigquery.ScalarQueryParameter("qr_authored", "TIMESTAMP", res.questionnaire_response_authored),
+                        bigquery.ScalarQueryParameter("error", "STRING", res.validation_errors),
                     ]
                 )
                 insert_job = client.query(f"""
                 INSERT INTO rdr_etm_test.{task_name}
-                (id, participant_id, research_id, src_id, resource, questionnaire_response_date, task_schema_version,
-                validated_time, created)
-                VALUES (@id, @participant_id, @research_id, @src_id, @resource, @qr_date, @task_schema_name,
-                @validated_time, CURRENT_TIMESTAMP())
+                (validation_id, participant_id, research_id, data_origin_id, payload, questionnaire_response_timestamp,
+                drc_received_timestamp, task_schema_version, drc_validated_timestamp, created_timestamp)
+                VALUES (@id, @participant_id, @research_id, @src_id, @resource, @qr_authored, @qr_date,
+                @task_schema_name, @validated_time, CURRENT_TIMESTAMP())
                 """, job_config=job_config)
                 # wait for insert to finish
                 insert_job.result()
@@ -134,29 +162,33 @@ with models.DAG(
             AND id NOT IN (SELECT id FROM rdr_etm_test.{task_name}_error)
             """, select_job_config)
             error_results = error_results_query.result()
-            research_id = 0
-            src_id = 'test'
             for res in error_results:
                 job_config = bigquery.QueryJobConfig(
                     query_parameters=[
                         bigquery.ScalarQueryParameter("id", "STRING", res.id),
                         bigquery.ScalarQueryParameter("participant_id", "INT64", res.participant_id),
-                        bigquery.ScalarQueryParameter("research_id", "INT64", research_id),
-                        bigquery.ScalarQueryParameter("src_id", "STRING", src_id),
+                        bigquery.ScalarQueryParameter("research_id", "INT64", res.research_id),
+                        bigquery.ScalarQueryParameter("src_id", "STRING", res.src_id),
                         bigquery.ScalarQueryParameter("resource", "JSON", res.resource),
-                        bigquery.ScalarQueryParameter("qr_date", "TIMESTAMP",res.questionnaire_response_date),
-                        bigquery.ScalarQueryParameter("task_schema_name", "STRING", res.task_schema_version),
+                        bigquery.ScalarQueryParameter(
+                            "qr_date", "TIMESTAMP", res.questionnaire_response_timestamp
+                        ),
+                        bigquery.ScalarQueryParameter(
+                            "task_schema_name", "STRING", res.task_schema_version
+                        ),
+                        bigquery.ScalarQueryParameter("validated_time", "TIMESTAMP", res.created),
+                        bigquery.ScalarQueryParameter(
+                            "qr_authored", "TIMESTAMP", res.questionnaire_response_authored
+                        ),
                         bigquery.ScalarQueryParameter("error", "STRING", res.validation_errors),
-                        bigquery.ScalarQueryParameter("validation_time", "TIMESTAMP", res.validation_time)
-
                     ]
                 )
                 insert_job = client.query(f"""
                 INSERT INTO rdr_etm_test.{task_name}_error
-                (id, participant_id, research_id, src_id, resource, questionnaire_response_date, error,
-                task_schema_version, validated_time, created)
-                VALUES (@id, @participant_id, @research_id, @src_id, @resource, @qr_date, @error, @task_schema_name,
-                @validation_time, CURRENT_TIMESTAMP())
+                (validation_id, participant_id, research_id, data_origin_id, payload, questionnaire_response_timestamp,
+                drc_received_timestamp, task_schema_version, drc_validated_timestamp, created_timestamp, error)
+                VALUES (@id, @participant_id, @research_id, @src_id, @resource, @qr_authored, @qr_date,
+                @task_schema_name, @validated_time, CURRENT_TIMESTAMP(), @error)
                 """, job_config=job_config)
                 # wait for insert to finish
                 insert_job.result()
