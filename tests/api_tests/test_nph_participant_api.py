@@ -231,7 +231,7 @@ class NphParticipantAPITest(BaseTestCase):
                 created=later_time,
                 event_authored_time=later_time
             )
-        module_num = [mod for mod in ModuleTypes.numbers()]
+        module_num = list(ModuleTypes.numbers())
         for module in module_num:
             field_to_test = f'''nphModule{module}ConsentStatus {{value time optIn}}'''
             query = simple_query(field_to_test)
