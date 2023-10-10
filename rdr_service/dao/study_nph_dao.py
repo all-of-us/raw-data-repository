@@ -9,7 +9,7 @@ from protorpc import messages
 from werkzeug.exceptions import BadRequest, NotFound
 
 from sqlalchemy.orm import Query, aliased
-from sqlalchemy import exc, func, case, and_, literal, cast
+from sqlalchemy import exc, func, case, and_, literal
 from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.study_nph import (
@@ -76,72 +76,41 @@ class NphParticipantDao(BaseDao):
         """
         Returns a subquery that gets the latest consents for each participant grouped by event_type_id.
         """
+        ce2 = aliased(ConsentEvent)
         with self.session() as session:
-            # Subquery to fetch consent event info with JSON formatting
-            consent_event_subquery = (
+            return (
                 session.query(
                     Participant.id.label("consent_pid"),
-                    ConsentEvent.created,
-                    ConsentEvent.event_type_id,
                     func.json_object(
-                        "value",
-                        ConsentEventType.source_name,
-                        "time",
-                        ConsentEvent.event_authored_time,
-                        "opt_in",
-                        ConsentEvent.opt_in,
-                    ).label("consent_json"),
+                        "consent_json",
+                        func.json_arrayagg(
+                            func.json_object(
+                                "value",
+                                ConsentEventType.source_name,
+                                "time",
+                                ConsentEvent.event_authored_time,
+                                "opt_in",
+                                ConsentEvent.opt_in,
+                            )
+                        ),
+                        type_=JSON,
+                    ).label("consent_status"),
                 )
                 .join(ConsentEvent, ConsentEvent.participant_id == Participant.id)
                 .join(
                     ConsentEventType,
                     ConsentEventType.id == ConsentEvent.event_type_id,
                 )
-                .subquery()
-            )
-
-            # Subquery to find the latest 'created' datetime for each event_type_id for each pid
-            latest_created_subquery = (
-                session.query(
-                    consent_event_subquery.c.consent_pid,
-                    consent_event_subquery.c.event_type_id,
-                    func.max(consent_event_subquery.c.created).label("latest_created"),
+                .outerjoin(
+                    ce2,
+                    and_(
+                        ce2.participant_id == ConsentEvent.participant_id,
+                        ce2.event_type_id == ConsentEvent.event_type_id,
+                        ce2.id > ConsentEvent.id,
+                    ),
                 )
-                .group_by(
-                    consent_event_subquery.c.consent_pid, consent_event_subquery.c.event_type_id
-                )
-                .subquery()
-            )
-
-            # Subquery that fetches latest consents for each participant
-            latest_consent_status_subquery = (
-                session.query(
-                    consent_event_subquery.c.consent_pid, consent_event_subquery.c.consent_json
-                )
-                .distinct()
-                .filter(
-                    (consent_event_subquery.c.consent_pid == latest_created_subquery.c.consent_pid)
-                    & (
-                        consent_event_subquery.c.event_type_id
-                        == latest_created_subquery.c.event_type_id
-                    )
-                    & (consent_event_subquery.c.created == latest_created_subquery.c.latest_created)
-                )
-                .subquery()
-            )
-
-            return (
-                session.query(
-                    latest_consent_status_subquery.c.consent_pid,
-                    cast(
-                        func.json_object(
-                            'consent_json',
-                            func.json_arrayagg(latest_consent_status_subquery.c.consent_json),
-                        ),
-                        type_=JSON,
-                    ).label("consent_status"),
-                )
-                .group_by(latest_consent_status_subquery.c.consent_pid)
+                .filter(ce2.id.is_(None))
+                .group_by(Participant.id)
                 .subquery()
             )
 
