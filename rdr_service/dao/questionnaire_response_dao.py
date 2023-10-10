@@ -964,7 +964,6 @@ class QuestionnaireResponseDao(BaseDao):
                         code.value,
                         [
                             VA_PRIMARY_RECONSENT_C1_C2_QUESTION,
-
                             VA_PRIMARY_RECONSENT_C3_QUESTION,
                             NON_VA_PRIMARY_RECONSENT_QUESTION
                         ]
