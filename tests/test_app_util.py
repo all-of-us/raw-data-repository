@@ -7,6 +7,7 @@ import mock
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from rdr_service import app_util, clock, config
+from rdr_service.participant_enums import get_bucketed_age
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -433,6 +434,21 @@ class AppUtilTest(BaseTestCase):
             datetime(2021, 10, 6, 13, 57), datetime(2021, 10, 6, 13, 54), difference_allowed_seconds=300
         ))
 
+    def test_age_bucket_calculation(self):
+        """Test participant age bucket strings"""
+        reference_timestamp = datetime(2022, 3, 15)  # used as the current time for calculations
+
+        three_years_old = datetime(2019, 1, 1)
+        age_bucket = get_bucketed_age(date_of_birth=three_years_old, today=reference_timestamp)
+        self.assertEqual("0-6", age_bucket)
+
+        seven_years_old = datetime(2014, 3, 16)
+        age_bucket = get_bucketed_age(date_of_birth=seven_years_old, today=reference_timestamp)
+        self.assertEqual("7-12", age_bucket)
+
+        seven_years_old = datetime(2005, 3, 15)
+        age_bucket = get_bucketed_age(date_of_birth=seven_years_old, today=reference_timestamp)
+        self.assertEqual("13-17", age_bucket)
 
 
 if __name__ == "__main__":

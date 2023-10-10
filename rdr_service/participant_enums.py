@@ -584,7 +584,7 @@ class MetricsAPIVersion(messages.Enum):
 
 
 # The lower bounds of the age buckets.
-_AGE_LB = [0, 18, 25, 35, 45, 55, 65, 75, 85]
+_AGE_LB = [0, 7, 13, 18, 25, 35, 45, 55, 65, 75, 85]
 AGE_BUCKETS = ["{}-{}".format(b, e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [""])]
 
 
