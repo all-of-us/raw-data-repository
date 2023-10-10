@@ -990,6 +990,7 @@ class NphParticipantAPITest(BaseTestCase):
         self.clear_table_after_test("nph.enrollment_event_type")
         self.clear_table_after_test("nph.participant_ops_data_element")
         self.clear_table_after_test("nph.consent_event")
+        self.clear_table_after_test("nph.consent_event_type")
         self.clear_table_after_test("nph.diet_event")
 
 
