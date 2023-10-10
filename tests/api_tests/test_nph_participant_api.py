@@ -242,7 +242,7 @@ class NphParticipantAPITest(BaseTestCase):
             )
             values = [ele["value"] for ele in consents]
             self.assertEqual(
-                len(values), (len(set(values))), msg="Should return each event type once."
+                (len(set(values))), len(values), msg="Should return each event type once."
             )
             # Get event_authored_time, since it's equal to created time
             event_time = [ele["time"] for ele in consents][0]
