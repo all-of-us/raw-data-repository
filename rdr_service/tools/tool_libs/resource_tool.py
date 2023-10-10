@@ -227,10 +227,10 @@ class ParticipantResourceClass(object):
                     if not rdr_status and pdr_status == 'REGISTERED':
                         pass
                     elif rdr_status != pdr_status:
-                        print(f'P{pid} RDR {rdr_status} / PDR {pdr_status}')
-                        # self.qc_error_list.append(f'P{pid} RDR {rdr_status} / PDR {pdr_status}')
+                        _logger.error(f'P{pid} RDR {rdr_status} / PDR {pdr_status}')
+                        self.qc_error_list.append(f'P{pid} RDR {rdr_status} / PDR {pdr_status}')
                     elif rdr_status == 'CORE_PARTICIPANT' and rdr_core_time != pdr_core_time:
-                        print(f'P{pid} RDR {rdr_core_time} / PDR {pdr_core_time}')
+                        _logger.error(f'P{pid} RDR {rdr_core_time} / PDR {pdr_core_time}')
 
             if not self.args.no_modules and not self.args.qc:
                 mod_bqgen = BQPDRQuestionnaireResponseGenerator()

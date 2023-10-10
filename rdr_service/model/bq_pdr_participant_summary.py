@@ -251,6 +251,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
                                                        BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     health_datastream_sharing_status_v3_1_time = BQField('health_datastream_sharing_status_v3_1_time',
                                                          BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    is_pediatric = BQField('is_pediatric', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQPDRParticipantSummary(BQTable):

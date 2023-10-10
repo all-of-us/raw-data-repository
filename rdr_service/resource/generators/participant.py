@@ -10,8 +10,10 @@ from dateutil import parser, tz
 from dateutil.parser import ParserError
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import func, desc, exc, inspect, or_
+from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
 
+from rdr_service.model.pediatric_data_log import PediatricDataType
 from rdr_service import config
 from rdr_service.code_constants import (
     CONSENT_COPE_YES_CODE,
@@ -503,7 +505,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             ParticipantSummary, isouter=True
         ).filter(
             Participant.participantId == p_id
-        ).first()
+        ).options(joinedload(ParticipantSummary.pediatricData)).first()
 
         # For PDR, start with REGISTERED as the default enrollment status.  This identifies participants
         # who have not yet consented / should not have a participant_summary record
@@ -632,6 +634,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 _act(data['ehr_update'], ActivityGroupEnum.Profile, ParticipantEventEnum.EHRLastReceived)
             ]
 
+            # Check for Pediatric participant
+            data['is_pediatric'] = 1 \
+                if any(r.data_type == PediatricDataType.AGE_RANGE for r in ps.pediatricData) else 0
+
         return data
 
     def _prep_consentpii_answers(self, p_id):
@@ -711,6 +717,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :return: dict
         """
         activity = list()
+        # Unittest config setting to not enforce check for validated (EHR) consents
+        skip_validation_check = config.getSettingJson('ENROLLMENT_STATUS_SKIP_VALIDATION', False)
+
         code_id_query = ro_session.query(func.max(QuestionnaireConcept.codeId)). \
             filter(QuestionnaireResponse.questionnaireId ==
                    QuestionnaireConcept.questionnaireId).label('codeId')
@@ -729,7 +738,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 QuestionnaireHistory.irbMapping). \
             join(QuestionnaireHistory). \
             filter(QuestionnaireResponse.participantId == p_id,
-                   QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE). \
+                   QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
+                   QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.INVALID). \
             order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc(),
                      QuestionnaireResponse.externalId.desc())
         # sql = self.ro_dao.query_to_text(query)
@@ -830,10 +840,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
                         # DA-3278 : "Yes" EHR consents now have module_status determined by consent PDF validation state
                         # Make sure once a participant has a SUBMITTED EHR module_status in their history, that sticks.
-                        # Participants whose consent PDF validation failed prior to rolling out the new
-                        # DA-3278/PDR-1625 changes, should still keep a SUBMITTED status if they answered "Yes"
-                        if (module_name == 'EHRConsentPII' and module_status == BQModuleStatusEnum.SUBMITTED
-                                and not prior_ehr_submitted_status):
+                        if not skip_validation_check and module_name == 'EHRConsentPII'\
+                               and module_status == BQModuleStatusEnum.SUBMITTED and not prior_ehr_submitted_status:
                             module_status = self.get_consent_pdf_validation_status(p_id, row, module_name, ro_session)
                             prior_ehr_submitted_status = module_status == BQModuleStatusEnum.SUBMITTED
 
@@ -1148,7 +1156,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    bo.finalized_time,
                    case when bmko.id is not null then 1 else 2 end as collection_method
              from biobank_order bo left outer join biobank_mail_kit_order bmko on bmko.biobank_order_id = bo.biobank_order_id
-             where bo.participant_id = :p_id and bo.ignore_flag != 1
+             where bo.participant_id = :p_id and (bo.ignore_flag is null or bo.ignore_flag = 0)
              order by bo.created desc;
          """
 
@@ -1555,7 +1563,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
                     INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
             WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
-                AND qr.classification_type != 1
+                AND qr.classification_type != 1 AND qr.classification_type != 6
             ORDER BY qr.created;
         """
 
@@ -1885,52 +1893,68 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         pdf_validation_start_date = datetime.datetime(2023, 3, 11, 1, 34, 2)
         status = BQModuleStatusEnum.SUBMITTED  # Default, this method is only called for "Yes" consents that have PDF
         dao = None
-        if not ro_session:
-            dao = ResourceDataDao(backup=True)
-            ro_session = dao.session()
-
         # TODO:  If SUBMITTED_NOT_VALIDATED status is expanded to use for other non-EHR consents:
         # Reminder that Primary and CABOR consent types in the consent_file table have their own validation records,
         # but share the same questionnaire_response_id.  May need to add a match on consent_file.type
-        if module_name != 'EHRConsentPII':
-            logging.warning(f'PDF Validation status for consent {module_name} not currently supported')
-            return status
+        if module_name == 'EHRConsentPII':
+            if not ro_session:
+                dao = ResourceDataDao(backup=True)
+                ro_session = dao.session()
 
-        qr_ids = []
-        if consent_response_rec.answerHash:
-            # PDR-1795: Need to look for duplicates of this response to find relevant consent validation result
-            response_id_sql = f"""
-                select questionnaire_response_id from questionnaire_response
+            # Check for RDR overrides to SUBMITTED_NOT_VALIDATED/SUBMITTED_INVALID, which may have been manually
+            # applied to participant_summary to allow participants to continue to PM&B.   If the consent_response
+            # being checked matches what's in participant_summary on authored date, use participant_summary status
+            ps_sql = f"""
+                select consent_for_electronic_health_records,
+                       consent_for_electronic_health_records_authored,
+                       consent_for_electronic_health_records_first_yes_authored
+                from participant_summary
                 where participant_id = {p_id}
-                    and answer_hash = '{consent_response_rec.answerHash}'
+             """
+            result = ro_session.execute(ps_sql).first()
+            if result and (result.consent_for_electronic_health_records_authored and
+                           result.consent_for_electronic_health_records_authored == consent_response_rec.authored):
+                return BQModuleStatusEnum(result.consent_for_electronic_health_records)
+
+            # Look for consent validation results matching this EHR consent response
+            qr_ids = []
+            if consent_response_rec.answerHash:
+                # PDR-1795: Need to look for duplicates of this response to find relevant consent validation result
+                response_id_sql = f"""
+                    select questionnaire_response_id from questionnaire_response
+                    where participant_id = {p_id}
+                        and answer_hash = '{consent_response_rec.answerHash}'
+                """
+                qr_ids = [qr.questionnaire_response_id for qr in ro_session.execute(response_id_sql).fetchall()]
+
+            # Default to just this response (e.g., answerHash field may have been null/not backfilled if it's older)
+            if not qr_ids:
+                qr_ids = [consent_response_rec.questionnaireResponseId]
+
+            # Find consent validation result associated with this questionnaire response or its duplicates.
+            # Reverse-ordering by sync_status values and taking first result should yield the most up-to-date status
+            validation_status_sql = """
+                 select cf.created, cf.sync_status
+                 from consent_response cr
+                 join consent_file cf on cr.id = cf.consent_response_id
+                 where cr.questionnaire_response_id IN :qr_ids
+                 order by cf.sync_status desc
+                 limit 1
             """
-            qr_ids = [qr.questionnaire_response_id for qr in ro_session.execute(response_id_sql).fetchall()]
+            result = ro_session.execute(validation_status_sql, {'qr_ids': qr_ids}).fetchone()
+            if result:
+                if (result.created > pdf_validation_start_date and
+                       result.sync_status in (int(ConsentSyncStatus.NEEDS_CORRECTING),
+                                              int(ConsentSyncStatus.OBSOLETE))):
+                    status = BQModuleStatusEnum.SUBMITTED_INVALID
+            elif consent_response_rec.authored and consent_response_rec.authored > pdf_validation_start_date:
+                # No consent_file (consent_response) record yet to match to the questionnaire_response_id
+                status = BQModuleStatusEnum.SUBMITTED_NOT_VALIDATED
+        else:
+            logging.warning(f'PDF Validation status for consent {module_name} not currently supported')
 
-        # Default to just this response (e.g., answerHash field may have been null/not backfilled if it's older)
-        if not qr_ids:
-            qr_ids = [consent_response_rec.questionnaireResponseId]
-
-        # Find consent validation result associated with this questionnaire response or its duplicates.
-        # Reverse-ordering by sync_status values and taking first result should yield the most up-to-date status
-        validation_status_sql = """
-             select cf.created, cf.sync_status
-             from consent_response cr
-             join consent_file cf on cr.id = cf.consent_response_id
-             where cr.questionnaire_response_id IN :qr_ids
-             order by cf.sync_status desc
-             limit 1
-        """
-        result = ro_session.execute(validation_status_sql, {'qr_ids': qr_ids}).fetchone()
-        if result:
-            if (result.created > pdf_validation_start_date and
-                   result.sync_status in (int(ConsentSyncStatus.NEEDS_CORRECTING), int(ConsentSyncStatus.OBSOLETE))):
-                status = BQModuleStatusEnum.SUBMITTED_INVALID
-        elif consent_response_rec.authored and consent_response_rec.authored > pdf_validation_start_date:
-            # No consent_file (consent_response) record yet to match to the questionnaire_response_id
-            status = BQModuleStatusEnum.SUBMITTED_NOT_VALIDATED
-
-        if dao is not None:
-            dao.session().close()
+        if dao:
+            dao.session.close()
 
         return status
 

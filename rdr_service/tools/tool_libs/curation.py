@@ -396,6 +396,7 @@ class CurationExportClass(ToolBase):
         ).filter(
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
+            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.INVALID,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.PROFILE_UPDATE,
             QuestionnaireResponse.participantId.in_(pid_list)
         )
@@ -539,6 +540,7 @@ class CurationExportClass(ToolBase):
             ),
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
+            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.INVALID,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.PROFILE_UPDATE,
 
             not_(QuestionnaireConcept.codeId.in_(

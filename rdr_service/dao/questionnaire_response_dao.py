@@ -42,6 +42,7 @@ from rdr_service.code_constants import (
     EHR_CONSENT_QUESTION_CODE,
     EHR_SENSITIVE_CONSENT_QUESTION_CODE,
     EHR_CONSENT_EXPIRED_QUESTION_CODE,
+    EHR_PEDIATRIC_CONSENT_QUESTION_CODE,
     GENDER_IDENTITY_QUESTION_CODE,
     LANGUAGE_OF_CONSENT,
     PMI_SKIP_CODE,
@@ -58,6 +59,7 @@ from rdr_service.code_constants import (
     COPE_CONSENT_QUESTION_CODE,
     WEAR_CONSENT_QUESTION_CODE,
     WEAR_YES_ANSWER_CODE,
+    WEAR_NO_ANSWER_CODE,
     STREET_ADDRESS_QUESTION_CODE,
     STREET_ADDRESS2_QUESTION_CODE,
     EHR_CONSENT_EXPIRED_YES,
@@ -87,7 +89,16 @@ from rdr_service.code_constants import (
     AGREE_NO,
     REMOTE_ID_VERIFIED_CODE,
     REMOTE_ID_VERIFIED_ON_CODE,
-    ETM_CONSENT_QUESTION_CODE
+    ETM_CONSENT_QUESTION_CODE,
+    PEDIATRIC_CABOR_SIGNATURE,
+    PEDIATRIC_CONSENT_NO,
+    PEDIATRIC_CONSENT_QUESTION_CODE,
+    PEDIATRIC_CONSENT_YES,
+    PEDIATRIC_EHR_CONSENT,
+    PEDIATRIC_PRIMARY_CONSENT_MODULE,
+    PEDIATRIC_RACE_QUESTION_CODE,
+    PEDIATRIC_SHARE_AGREE,
+    PEDIATRICS_ENVIRONMENTAL_HEALTH
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -99,14 +110,17 @@ from rdr_service.dao.participant_summary_dao import (
     ParticipantRaceAnswersDao,
     ParticipantSummaryDao,
 )
-from rdr_service.model.log_position import LogPosition
 from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD, \
     QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
 from rdr_service.model.account_link import AccountLink
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
+from rdr_service.model.log_position import LogPosition
 from rdr_service.model.measurements import PhysicalMeasurements, Measurement
+from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseExtension, QuestionnaireResponseClassificationType
@@ -137,18 +151,26 @@ _GUARDIAN_EXTENSION = "http://all-of-us.org/fhir/forms/guardian-author"
 
 def count_completed_baseline_ppi_modules(participant_summary):
     baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
-    return sum(
+    result = sum(
         1
         for field in baseline_ppi_module_fields
         if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED
     )
+    if participant_summary.did_submit_environmental_health():
+        result += 1
+
+    return result
 
 
 def count_completed_ppi_modules(participant_summary):
     ppi_module_fields = config.getSettingList(config.PPI_QUESTIONNAIRE_FIELDS, [])
-    return sum(
+    result = sum(
         1 for field in ppi_module_fields if getattr(participant_summary, field, None) == QuestionnaireStatus.SUBMITTED
     )
+    if participant_summary.did_submit_environmental_health():
+        result += 1
+
+    return result
 
 
 def get_first_completed_baseline_time(participant_summary):
@@ -708,7 +730,11 @@ class QuestionnaireResponseDao(BaseDao):
     """
 
         # Block on other threads modifying the participant or participant summary.
-        participant = ParticipantDao().get_for_update(session, questionnaire_response.participantId)
+        participant = ParticipantDao().get_for_update(
+            session,
+            questionnaire_response.participantId,
+            options=joinedload(Participant.participantSummary).joinedload(ParticipantSummary.pediatricData)
+        )
 
         if participant is None:
             raise BadRequest(f"Participant with ID {questionnaire_response.participantId} is not found.")
@@ -738,7 +764,11 @@ class QuestionnaireResponseDao(BaseDao):
                 raise BadRequest("No study enrollment consent code found; import codebook.")
 
             # Should only be receiving primary consent responses when there isn't yet a participant summary
-            is_primary_consent = consent_code.codeId in code_ids
+            pediatric_consent_code = code_dao.get_code(PPI_SYSTEM, PEDIATRIC_PRIMARY_CONSENT_MODULE)
+            is_primary_consent = (
+                consent_code.codeId in code_ids
+                or (pediatric_consent_code and pediatric_consent_code.codeId in code_ids)
+            )
             if not is_primary_consent:
                 raise BadRequest(
                     f"Can't submit order for participant {questionnaire_response.participantId} without consent"
@@ -819,7 +849,7 @@ class QuestionnaireResponseDao(BaseDao):
                             something_changed = self._update_field(
                                 participant_summary, summary_field[0], summary_field[1], answer
                             )
-                    elif code.value == RACE_QUESTION_CODE:
+                    elif self._code_in_list(code.value, [RACE_QUESTION_CODE, PEDIATRIC_RACE_QUESTION_CODE]):
                         race_code_ids.append(answer.valueCodeId)
                     elif code.value == DVEHR_SHARING_QUESTION_CODE:
                         code = code_dao.get(answer.valueCodeId)
@@ -827,14 +857,23 @@ class QuestionnaireResponseDao(BaseDao):
                             dvehr_consent = QuestionnaireStatus.SUBMITTED
                         elif code and code.value == DVEHRSHARING_CONSENT_CODE_NOT_SURE:
                             dvehr_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
-                    elif code.value in [EHR_CONSENT_QUESTION_CODE, EHR_SENSITIVE_CONSENT_QUESTION_CODE]:
+                    elif self._code_in_list(
+                        code.value,
+                        [
+                            EHR_CONSENT_QUESTION_CODE,
+                            EHR_SENSITIVE_CONSENT_QUESTION_CODE,
+                            EHR_PEDIATRIC_CONSENT_QUESTION_CODE
+                        ]
+                    ):
                         code = code_dao.get(answer.valueCodeId)
                         if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED and \
                             authored > participant_summary.ehrConsentExpireAuthored:
                             participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.UNSET
                             participant_summary.ehrConsentExpireAuthored = None
                             participant_summary.ehrConsentExpireTime = None
-                        if code and code.value in [CONSENT_PERMISSION_YES_CODE, SENSITIVE_EHR_YES]:
+                        if code and self._code_in_list(code.value, [
+                            CONSENT_PERMISSION_YES_CODE, SENSITIVE_EHR_YES, PEDIATRIC_SHARE_AGREE
+                        ]):
                             self.consents_provided.append(ConsentType.EHR)
                             ehr_consent = True
                             if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
@@ -848,7 +887,9 @@ class QuestionnaireResponseDao(BaseDao):
                             participant_summary.ehrConsentExpireAuthored = authored
                             participant_summary.ehrConsentExpireTime = questionnaire_response.created
                             something_changed = True
-                    elif code.value == CABOR_SIGNATURE_QUESTION_CODE:
+                    elif self._code_in_list(
+                        code.value, [CABOR_SIGNATURE_QUESTION_CODE, PEDIATRIC_CABOR_SIGNATURE]
+                    ):
                         if answer.valueUri or answer.valueString:
                             # TODO: validate the URI? [DA-326]
                             self.consents_provided.append(ConsentType.CABOR)
@@ -905,6 +946,20 @@ class QuestionnaireResponseDao(BaseDao):
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value.lower() == WEAR_YES_ANSWER_CODE:
                             self.consents_provided.append(ConsentType.WEAR)
+                        # participant_summary should contain most recently authored WEAR consent details.
+                        curr_wear_authored = participant_summary.consentForWearStudyAuthored
+                        if curr_wear_authored is None or authored > curr_wear_authored:
+                            participant_summary.consentForWearStudyTime = questionnaire_response.created
+                            participant_summary.consentForWearStudyAuthored = authored
+                            if answer_value.lower() == WEAR_YES_ANSWER_CODE:
+                                participant_summary.consentForWearStudy = QuestionnaireStatus.SUBMITTED
+                            elif answer_value.lower() == WEAR_NO_ANSWER_CODE:
+                                participant_summary.consentForWearStudy = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+                            else:
+                                logging.warning(
+                                    f'Unrecognized/no answer value for WEAR consent question: {answer_value} ',
+                                )
+                                participant_summary.consentForWearStudy = QuestionnaireStatus.UNSET
                     elif self._code_in_list(
                         code.value,
                         [
@@ -936,7 +991,6 @@ class QuestionnaireResponseDao(BaseDao):
                             participant_summary.consentForEtM = QuestionnaireStatus.SUBMITTED
                         elif answer_value.lower() == AGREE_NO:
                             participant_summary.consentForEtM = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-
                         participant_summary.consentForEtMTime = questionnaire_response.created
                         participant_summary.consentForEtMAuthored = authored
 
@@ -987,6 +1041,7 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
                 participant_summary.remoteIdVerificationStatus = False
                 participant_summary.remoteIdVerifiedOn = None
+            participant_summary.lastModified = clock.CLOCK.now()
 
         # Set summary fields to SUBMITTED for questionnaire concepts that are found in
         # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
@@ -998,7 +1053,9 @@ class QuestionnaireResponseDao(BaseDao):
                     code.value.lower() if self._is_digital_health_share_code(code.value) else code.value)
                 if summary_field:
                     new_status = QuestionnaireStatus.SUBMITTED
-                    if code.value == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE:
+                    if self._code_in_list(
+                        code.value, [CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PEDIATRIC_EHR_CONSENT]
+                    ):
                         if ehr_consent:
                             new_status = QuestionnaireStatus.SUBMITTED_NOT_VALIDATED
                         else:
@@ -1012,10 +1069,13 @@ class QuestionnaireResponseDao(BaseDao):
                                 .format([CONSENT_GROR_YES_CODE, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE])
                             )
                         new_status = gror_consent
-                    elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
-                        self.consents_provided.append(ConsentType.PRIMARY)
-                        participant_summary.semanticVersionForPrimaryConsent = \
-                            questionnaire_response.questionnaireSemanticVersion
+                    elif self._code_in_list(
+                        code.value, [CONSENT_FOR_STUDY_ENROLLMENT_MODULE, PEDIATRIC_PRIMARY_CONSENT_MODULE]
+                    ):
+                        if code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
+                            self.consents_provided.append(ConsentType.PRIMARY)
+                            participant_summary.semanticVersionForPrimaryConsent = \
+                                questionnaire_response.questionnaireSemanticVersion
                         if participant_summary.consentCohort is None or \
                             participant_summary.consentCohort == ParticipantCohort.UNSET:
 
@@ -1094,14 +1154,22 @@ class QuestionnaireResponseDao(BaseDao):
                     mod_submitted = module['submitted']
                     mod_authored = module['authored']
 
-                    if getattr(participant_summary, mod_submitted) \
-                        != QuestionnaireStatus.SUBMITTED:
+                    if getattr(participant_summary, mod_submitted) != QuestionnaireStatus.SUBMITTED:
                         setattr(participant_summary, mod_submitted, QuestionnaireStatus.SUBMITTED)
                         setattr(participant_summary, mod_authored, authored)
                         module_changed = True
                 elif self._code_in_list(code.value, [VA_EHR_RECONSENT]) and not rejected_reconsent:
                     self.consents_provided.append(ConsentType.EHR_RECONSENT)
                     participant_summary.reconsentForElectronicHealthRecordsAuthored = authored
+                elif code.value.lower() == PEDIATRICS_ENVIRONMENTAL_HEALTH:
+                    participant_summary.pediatricData.append(
+                        PediatricDataLog(
+                            participant_id=participant.participantId,
+                            data_type=PediatricDataType.ENVIRONMENTAL_HEALTH,
+                            value=authored.isoformat()
+                        )
+                    )
+                    something_changed = module_changed = True
 
         if module_changed:
             participant_summary.numCompletedBaselinePPIModules = count_completed_baseline_ppi_modules(
@@ -1617,7 +1685,7 @@ class QuestionnaireResponseDao(BaseDao):
 
     @classmethod
     def _code_in_list(cls, code_value: str, code_list: List[str]):
-        return code_value.lower in [list_value.lower() for list_value in code_list]
+        return code_value.lower() in [list_value.lower() for list_value in code_list]
 
     @classmethod
     def find_consent_response_with_pdf(cls, participant_id: int, consent_type: ConsentType,
@@ -1674,11 +1742,15 @@ class QuestionnaireResponseDao(BaseDao):
             question = question_map.get(answer.questionId)
             question_code: Code = code_map.get(question.codeId)
 
-            if question_code and question_code.value_matches(CONSENT_QUESTION_CODE):
+            if (
+                question_code and cls._code_in_list(
+                    question_code.value, [CONSENT_QUESTION_CODE, PEDIATRIC_CONSENT_QUESTION_CODE]
+                )
+            ):
                 answer_code: Code = code_dao.get(answer.valueCodeId)
-                if answer_code.value_matches(EXTRA_CONSENT_YES):
+                if cls._code_in_list(answer_code.value, [EXTRA_CONSENT_YES, PEDIATRIC_CONSENT_YES]):
                     return True
-                elif answer_code.value_matches(EXTRA_CONSENT_NO):
+                elif cls._code_in_list(answer_code.value, [EXTRA_CONSENT_NO, PEDIATRIC_CONSENT_NO]):
                     return False
                 else:
                     logging.error(f'Unexpected consent answer "{answer_code.value}"')

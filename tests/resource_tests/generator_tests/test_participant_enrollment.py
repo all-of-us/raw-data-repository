@@ -281,16 +281,16 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin, PDRGeneratorTest
         ps_data = self.make_participant_resource(self.participant_id)
         self.assertEqual('CORE_PARTICIPANT', ps_data['enrollment_status'])
 
-    def test_unvalidated_ehr_stays_participant(self):
+    def test_pdr_unvalidated_ehr_stays_participant(self):
         # As of EHR consents authored on 2023-03-12 or later:
         # Upon initial receipt of EHR consent, it will now start out in SUBMITTED_NOT_VALIDATED.
-        # That should prevent PDR enrollment status from elevating to FULLY_CONSENTED or higher (stays PARTICIPANT)
+        # That should prevent PDR generator enrollment status from elevating to FULLY_CONSENTED (stays PARTICIPANT)
         self._set_up_participant_data(skip_ehr=True)
         # Force a specific authored time on the EHR consent instead of default test setup
         self._submit_ehrconsent(self.participant_id,
                                 response_code=CONSENT_PERMISSION_YES_CODE,
                                 response_time=datetime(2023, 3, 12))
+        # Force the EHR validation check in the PDR generator code for this unit test
+        self.temporarily_override_config_setting('ENROLLMENT_STATUS_SKIP_VALIDATION', False)
         ps_data = self.make_participant_resource(self.participant_id)
         self.assertEqual('PARTICIPANT', ps_data['enrollment_status'])
-
-

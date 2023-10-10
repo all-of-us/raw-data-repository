@@ -202,8 +202,8 @@ queries = {
               0 AS place_of_service_concept_id,
               NULL AS location_id,
               site.site_id AS care_site_source_value,
-              NULL AS place_of_service_source_value,
-              '' AS src_id
+              CAST(NULL AS STRING) AS place_of_service_source_value,
+              'vibrent' AS src_id
             FROM
               `{dataset_id}.site` site""",
         "destination": "care_site",
@@ -729,78 +729,78 @@ queries = {
     },
     "observation": {
         "query": """
-            SELECT
-              ROW_NUMBER() OVER() AS observation_id,
-              src_m.participant_id AS person_id,
-              src_m.question_concept_id AS observation_concept_id,
-              DATE(src_m.date_of_survey) AS observation_date,
-              src_m.date_of_survey AS observation_datetime,
-              45905771 AS observation_type_concept_id,
-              -- 45905771, Observation Recorded from a Survey
-              src_m.value_number AS value_as_number,
-              CASE
-                WHEN src_m.value_ppi_code IS NOT NULL AND src_m.value_concept_id = 0 THEN src_m.value_string
-                WHEN src_m.value_string IS NOT NULL
-              AND src_m.value_ppi_code IS NULL THEN src_m.value_string
-              ELSE
-              NULL
-            END
-              AS value_as_string,
-              CASE
-                WHEN src_m.value_ppi_code IS NOT NULL THEN src_m.value_concept_id
-                WHEN src_m.value_boolean IS NOT NULL THEN src_m.value_boolean_concept_id
-              ELSE
-              0
-            END
-              AS value_as_concept_id,
-              0 AS qualifier_concept_id,
-              0 AS unit_concept_id,
-              NULL AS provider_id,
-              NULL AS visit_occurrence_id,
-              NULL AS visit_detail_id,
-              src_m.question_ppi_code AS observation_source_value,
-              src_m.question_source_concept_id AS observation_source_concept_id,
-              CAST(NULL AS STRING) AS unit_source_value,
-              NULL AS qualifier_source_value,
-              src_m.value_source_concept_id AS value_source_concept_id,
-              src_m.value_ppi_code AS value_source_value,
-              src_m.questionnaire_response_id AS questionnaire_response_id,
-              NULL AS meas_id,
-              src_m.src_id AS src_id
-            FROM
-              `{dataset_id}.src_mapped` src_m
-            WHERE
-              src_m.question_ppi_code IS NOT null
-              UNION ALL
-              SELECT
-              ROW_NUMBER() OVER() AS observation_id,
-              meas.participant_id AS person_id,
-              meas.cv_concept_id AS observation_concept_id,
-              DATE(meas.measurement_time) AS observation_date,
-              meas.measurement_time AS observation_datetime,
-              581413 AS observation_type_concept_id,
-              -- 581413, Observation from Measurement
-              CAST(NULL AS NUMERIC) AS value_as_number,
-              CAST(NULL AS STRING) AS value_as_string,
-              meas.vcv_concept_id AS value_as_concept_id,
-              0 AS qualifier_concept_id,
-              meas.vu_concept_id AS unit_concept_id,
-              NULL AS provider_id,
-              meas.physical_measurements_id AS visit_occurrence_id,
-              NULL AS visit_detail_id,
-              meas.code_value AS observation_source_value,
-              meas.cv_source_concept_id AS observation_source_concept_id,
-              meas.value_unit AS unit_source_value,
-              NULL AS qualifier_source_value,
-              meas.vcv_source_concept_id AS value_source_concept_id,
-              meas.value_code_value AS value_source_value,
-              NULL AS questionnaire_response_id,
-              meas.measurement_id AS meas_id,
-              meas.src_id AS src_id
-            FROM
-              `{dataset_id}.src_meas_mapped` meas
-            WHERE
-              meas.cv_domain_id = 'Observation'""",
+            SELECT ROW_NUMBER() OVER() AS observation_id, obs.* FROM (
+                SELECT
+                  src_m.participant_id AS person_id,
+                  src_m.question_concept_id AS observation_concept_id,
+                  DATE(src_m.date_of_survey) AS observation_date,
+                  src_m.date_of_survey AS observation_datetime,
+                  45905771 AS observation_type_concept_id,
+                  -- 45905771, Observation Recorded from a Survey
+                  src_m.value_number AS value_as_number,
+                  CASE
+                    WHEN src_m.value_ppi_code IS NOT NULL AND src_m.value_concept_id = 0 THEN src_m.value_string
+                    WHEN src_m.value_string IS NOT NULL
+                  AND src_m.value_ppi_code IS NULL THEN src_m.value_string
+                  ELSE
+                  NULL
+                END
+                  AS value_as_string,
+                  CASE
+                    WHEN src_m.value_ppi_code IS NOT NULL THEN src_m.value_concept_id
+                    WHEN src_m.value_boolean IS NOT NULL THEN src_m.value_boolean_concept_id
+                  ELSE
+                  0
+                END
+                  AS value_as_concept_id,
+                  0 AS qualifier_concept_id,
+                  0 AS unit_concept_id,
+                  NULL AS provider_id,
+                  NULL AS visit_occurrence_id,
+                  NULL AS visit_detail_id,
+                  src_m.question_ppi_code AS observation_source_value,
+                  src_m.question_source_concept_id AS observation_source_concept_id,
+                  CAST(NULL AS STRING) AS unit_source_value,
+                  NULL AS qualifier_source_value,
+                  src_m.value_source_concept_id AS value_source_concept_id,
+                  src_m.value_ppi_code AS value_source_value,
+                  src_m.questionnaire_response_id AS questionnaire_response_id,
+                  NULL AS meas_id,
+                  src_m.src_id AS src_id
+                FROM
+                  `{dataset_id}.src_mapped` src_m
+                WHERE
+                  src_m.question_ppi_code IS NOT null
+                  UNION ALL
+                  SELECT
+                  meas.participant_id AS person_id,
+                  meas.cv_concept_id AS observation_concept_id,
+                  DATE(meas.measurement_time) AS observation_date,
+                  meas.measurement_time AS observation_datetime,
+                  581413 AS observation_type_concept_id,
+                  -- 581413, Observation from Measurement
+                  CAST(NULL AS NUMERIC) AS value_as_number,
+                  CAST(NULL AS STRING) AS value_as_string,
+                  meas.vcv_concept_id AS value_as_concept_id,
+                  0 AS qualifier_concept_id,
+                  meas.vu_concept_id AS unit_concept_id,
+                  NULL AS provider_id,
+                  meas.physical_measurements_id AS visit_occurrence_id,
+                  NULL AS visit_detail_id,
+                  meas.code_value AS observation_source_value,
+                  meas.cv_source_concept_id AS observation_source_concept_id,
+                  meas.value_unit AS unit_source_value,
+                  NULL AS qualifier_source_value,
+                  meas.vcv_source_concept_id AS value_source_concept_id,
+                  meas.value_code_value AS value_source_value,
+                  NULL AS questionnaire_response_id,
+                  meas.measurement_id AS meas_id,
+                  meas.src_id AS src_id
+                FROM
+                  `{dataset_id}.src_meas_mapped` meas
+                WHERE
+                  meas.cv_domain_id = 'Observation'
+              ) obs""",
         "destination": "observation",
         "append": False,
     },
@@ -970,7 +970,8 @@ queries = {
         "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
                        "SELECT DISTINCT 0 AS id, """
                        """qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, """
-                       """qr.non_participant_author as value, p.participant_origin src_id from """
+                       """qr.non_participant_author as value, CASE WHEN p.participant_origin = 'careevolution' """
+                       """THEN 'ce' ELSE p.participant_origin END src_id from """
                        """rdr.questionnaire_response qr JOIN (SELECT DISTINCT questionnaire_response_id from """
                        """cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id JOIN """
                        """rdr.participant p ON qr.participant_id = p.participant_id where qr.non_participant_author """
@@ -982,7 +983,8 @@ queries = {
         "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
                    "SELECT DISTINCT 0 AS id, """
                  """qr.questionnaire_response_id, 'LANGUAGE' as type, """
-                 """qr.language as value, p.participant_origin src_id from """
+                 """qr.language as value, CASE WHEN p.participant_origin = 'careevolution' THEN 'ce' ELSE """
+                 """p.participant_origin END src_id from """
                  """rdr.questionnaire_response qr JOIN (SELECT DISTINCT questionnaire_response_id from """
                  """cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id JOIN """
                  """rdr.participant p ON qr.participant_id = p.participant_id where qr.language """
@@ -993,7 +995,8 @@ queries = {
         "append": True,
         "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
                    "SELECT DISTINCT 0 AS id, """
-                   """qr.questionnaire_response_id, 'CODE' as type, c.value as value, p.participant_origin src_id """
+                   """qr.questionnaire_response_id, 'CODE' as type, c.value as value, CASE WHEN p.participant_origin """
+                   """= 'careevolution' THEN 'ce' ELSE p.participant_origin END src_id """
                    """from rdr.questionnaire_response qr JOIN rdr.questionnaire_concept qc ON qr.questionnaire_id = """
                    """qc.questionnaire_id AND qr.questionnaire_version = qc.questionnaire_version JOIN rdr.code c ON """
                    """qc.code_id = c.code_id JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as """
@@ -1018,7 +1021,13 @@ queries = {
         "query": """
                 SELECT tsc.questionnaire_response_id survey_conduct_id,
                         tsc.participant_id person_id,
-                        COALESCE(voc_c.concept_id, 0) survey_concept_id,
+                        CASE
+                            WHEN tsc.value = 'wear_consent' AND p.src_id = 'ce' THEN 2100000011
+                            -- Code for CE WEAR consent
+                            WHEN tsc.value = 'wear_consent' AND p.src_id = 'vibrent' THEN 2100000012
+                            -- Code for PTSC WEAR consent
+                            ELSE COALESCE(voc_c.concept_id, 0)
+                        END survey_concept_id,
                         NULL survey_start_date,
                         CAST(NULL AS TIMESTAMP) survey_start_datetime,
                         DATE(tsc.authored) survey_end_date,
@@ -1080,16 +1089,6 @@ queries = {
                       drug_era_end_date TIMESTAMP,
                       drug_exposure_count INT64,
                       gap_days INT64,
-                      src_id STRING
-                    )
-                    DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.observation_period`
-                    (
-                      observation_period_id INT64,
-                      person_id INT64,
-                      observation_period_start_date DATE,
-                      observation_period_end_date DATE,
-                      period_type_concept_id INT64,
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
@@ -1398,5 +1397,108 @@ queries = {
                                 ON stcm.target_concept_id = vc.concept_id
                                 AND vc.standard_concept = 'S'
                                 AND vc.invalid_reason IS NULL"""
+    },
+    "temp_obs_target": {
+        "destination": "temp_obs_target",
+        "append": False,
+        "query": """
+        SELECT
+          person_id,
+          visit_start_date AS start_date,
+          COALESCE(visit_end_date, visit_start_date) AS end_date
+        FROM
+          `{dataset_id}`.visit_occurrence
+        UNION ALL
+          -- CONDITION_OCCURRENCE
+        SELECT
+          person_id,
+          condition_start_date AS start_date,
+          COALESCE(condition_end_date, condition_start_date) AS end_date
+        FROM
+          `{dataset_id}`.condition_occurrence
+        UNION ALL
+          -- PROCEDURE_OCCURRENCE
+        SELECT
+          person_id,
+          procedure_date AS start_date,
+          procedure_date AS end_date
+        FROM
+          `{dataset_id}`.procedure_occurrence
+        UNION ALL
+          -- OBSERVATION
+        SELECT
+          person_id,
+          observation_date AS start_date,
+          observation_date AS end_date
+        FROM
+          `{dataset_id}`.observation
+        UNION ALL
+          -- MEASUREMENT
+        SELECT
+          person_id,
+          measurement_date AS start_date,
+          measurement_date AS end_date
+        FROM
+          `{dataset_id}`.measurement
+        UNION ALL
+          -- DEVICE_EXPOSURE
+        SELECT
+          person_id,
+          device_exposure_start_date AS start_date,
+          COALESCE( device_exposure_end_date, device_exposure_start_date) AS end_date
+        FROM
+          `{dataset_id}`.device_exposure
+        UNION ALL
+          -- DRUG_EXPOSURE
+        SELECT
+          person_id,
+          drug_exposure_start_date AS start_date,
+          COALESCE( drug_exposure_end_date, drug_exposure_start_date) AS end_date
+        FROM
+          `{dataset_id}`.drug_exposure
+        """
+    },
+    "temp_obs": {
+        "destination": "temp_obs",
+        "append": False,
+        "query": """
+        SELECT DISTINCT
+          person_id,
+          start_date AS observation_start_date,
+          (SELECT MIN(e) FROM UNNEST(ends) AS e WHERE e >= start_date) AS observation_end_date
+        FROM (
+          SELECT
+            person_id,
+            start_date,
+            ARRAY_AGG(end_date + INTERVAL 1 DAY) OVER(PARTITION BY person_id ORDER BY start_date) AS ends
+          FROM `{dataset_id}`.temp_obs_target
+        )
+
+        """
+    },
+    "observation_period": {
+        "destination": "observation_period",
+        "append": False,
+        "query": """
+            SELECT
+              ROW_NUMBER() OVER(ORDER BY tobs.person_id) AS observation_period_id,
+              tobs.person_id AS person_id,
+              MIN(observation_start_date) AS observation_period_start_date,
+              observation_end_date AS observation_period_end_date,
+              44814725 AS period_type_concept_id,
+              -- 44814725, Period inferred by algorithm
+              'observ_period' AS unit_id,
+              p.src_id AS src_id
+            FROM
+              `{dataset_id}`.temp_obs tobs
+            JOIN
+              `{dataset_id}`.person p
+            ON
+              tobs.person_id = p.person_id
+            GROUP BY
+              person_id,
+              observation_end_date,
+              src_id
+        """
     }
 }
