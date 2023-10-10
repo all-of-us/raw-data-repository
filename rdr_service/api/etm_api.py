@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import pytz
 from typing import List
 
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg
@@ -69,8 +70,11 @@ class EtmApi:
         if validation_result.success:
             response_repository = etm_repository.EtmResponseRepository()
             response_repository.store_response(response_obj)
-            # authored value in response should already be UTC, but confirm before comparing below
-            resp_authored = response_obj.authored.replace(tzinfo=datetime.timezone.utc)
+            resp_authored = response_obj.authored
+            # If authored is a datetime and has tzinfo, convert to utc and remove tzinfo.
+            # The authored timestamps in the participant summary will already be in utc, but lack tzinfo.
+            if resp_authored and isinstance(resp_authored, datetime.datetime) and resp_authored.tzinfo:
+                resp_authored = resp_authored.astimezone(pytz.utc).replace(tzinfo=None)
             ps_dao = ParticipantSummaryDao()
             ps_obj = ps_dao.get_by_participant_id(response_obj.participant_id)
             if not ps_obj:
@@ -78,9 +82,9 @@ class EtmApi:
                     f'Unable to store EtM task activity in participant_summary for {response_obj.participant_id}'
                 )
             elif (ps_obj.latestEtMTaskAuthored is None or
-                  ps_obj.latestEtMTaskAuthored.replace(tzinfo=datetime.timezone.utc) < resp_authored):
+                  ps_obj.latestEtMTaskAuthored < resp_authored):
                 ps_obj.latestEtMTaskTime = response_obj.created
-                ps_obj.latestEtMTaskAuthored = response_obj.authored
+                ps_obj.latestEtMTaskAuthored = resp_authored
                 ps_obj.lastModified = CLOCK.now()
                 ps_dao.update(ps_obj)
 

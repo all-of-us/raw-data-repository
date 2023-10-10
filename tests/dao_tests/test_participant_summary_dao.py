@@ -263,7 +263,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         # baseline_tests = ['BASELINE1', 'BASELINE2']
         baseline_tests = ["1PST8", "2PST8"]
 
-        config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
+        self.temporarily_override_config_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
         self.dao.update_from_biobank_stored_samples()  # safe noop
 
         p_baseline_samples = self._insert(Participant(participantId=1, biobankId=11))
@@ -334,7 +334,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
 
     def test_update_from_samples_changed_tests(self):
         baseline_tests = ["1PST8", "2PST8"]
-        config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
+        self.temporarily_override_config_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
         self.dao.update_from_biobank_stored_samples()  # safe noop
 
         participant = self._insert(Participant(participantId=1, biobankId=11))
@@ -364,7 +364,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         time.sleep(1)
         # Simulate removal of one of the baseline tests from config.json.
         baseline_tests.pop()
-        config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
+        self.temporarily_override_config_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
         self.dao.update_from_biobank_stored_samples()
 
         summary = self.dao.get(participant.participantId)
@@ -374,7 +374,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
     def test_only_update_dna_sample(self):
         dna_tests = ["1ED10", "1SAL2"]
 
-        config.override_setting(config.DNA_SAMPLE_TEST_CODES, dna_tests)
+        self.temporarily_override_config_setting(config.DNA_SAMPLE_TEST_CODES, dna_tests)
         self.dao.update_from_biobank_stored_samples()  # safe noop
 
         p_dna_samples = self._insert(Participant(participantId=1, biobankId=11))

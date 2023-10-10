@@ -11,11 +11,10 @@ from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElemen
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.rex_dao import RexStudyDao, RexParticipantMappingDao
-from sqlalchemy.orm import Query
 
-from rdr_service.dao.study_nph_dao import NphParticipantDao, NphDefaultBaseDao
+from rdr_service.dao.study_nph_dao import NphParticipantDao, NphDefaultBaseDao, NphSiteDao
 from rdr_service.model.study_nph import (
-    ConsentEventType, Participant as NphParticipant, Site as NphSite, OrderedSample, Order, WithdrawalEvent,
+    ConsentEventType, Participant as NphParticipant, OrderedSample, Order, WithdrawalEvent,
     DeactivationEvent
 )
 from rdr_service.participant_enums import QuestionnaireStatus
@@ -82,6 +81,7 @@ class NphParticipantAPITest(BaseTestCase):
         self.nph_consent_event_type_dao = NphDefaultBaseDao(model_type=ConsentEventType)
         self.nph_withdrawal_event_dao = NphDefaultBaseDao(model_type=WithdrawalEvent)
         self.nph_deactivation_event_dao = NphDefaultBaseDao(model_type=DeactivationEvent)
+        self.nph_site_dao = NphSiteDao()
 
         self.data_generator.create_database_hpo()
         self.data_generator.create_database_site()
@@ -851,7 +851,7 @@ class NphParticipantAPITest(BaseTestCase):
 
     def test_nph_biospecimen_for_participant(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
-        self._create_test_sample_updates()
+        generate_ordered_sample_data()
         field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID collectionDateUTC processingDateUTC " \
                         "timepointID biobankStatus { limsID biobankModified status } } "
         query = simple_query(field_to_test)
@@ -929,7 +929,7 @@ class NphParticipantAPITest(BaseTestCase):
 
     def test_nph_biospecimen_for_participant_with_pagination(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
-        self._create_test_sample_updates()
+        generate_ordered_sample_data()
         field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID timepointID biobankStatus { limsID biobankModified status } } "
         query_1 = simple_query_with_pagination(field_to_test, limit=1, offset=0)
         result_1 = app.test_client().post('/rdr/v1/nph_participant', data=query_1)
@@ -967,44 +967,6 @@ class NphParticipantAPITest(BaseTestCase):
         result = json.loads(executed.data.decode('utf-8'))
         self.assertEqual(2, result['participant']['totalCount'])  # assuming the two consented participants are returned
 
-    @staticmethod
-    def _group_ordered_samples_by_participant(
-        nph_participants: Iterable[NphParticipant],
-        grouped_orders: Dict[int, List[Order]],
-        grouped_ordered_samples: Dict[int, List[OrderedSample]],
-    ) -> List[OrderedSample]:
-        grouped_ordered_samples_by_participant = defaultdict(list)
-        for participant in nph_participants:
-            for order in grouped_orders[participant.id]:
-                grouped_ordered_samples_by_participant[participant.id].extend(grouped_ordered_samples[order.id])
-        return grouped_ordered_samples_by_participant
-
-    def _create_test_sample_updates(self):
-        participant_query = Query(NphParticipant)
-        participant_query.session = self.session
-        nph_participants = list(participant_query.all())
-
-        nph_sites_query = Query(NphSite)
-        nph_sites_query.session = self.session
-        sites = list(nph_sites_query.all())
-        study_categories = generate_fake_study_categories()
-        orders = generate_fake_orders(
-            fake_participants=nph_participants,
-            fake_study_categories=study_categories,
-            fake_sites=sites,
-        )
-        ordered_samples = generate_fake_ordered_samples(fake_orders=orders)
-        generate_fake_sample_updates(fake_ordered_samples=ordered_samples)
-        grouped_orders = defaultdict(list)
-        _grouped_ordered_samples = defaultdict(list)
-        for order in orders:
-            grouped_orders[order.participant_id].append(order)
-
-        for ordered_sample in ordered_samples:
-            _grouped_ordered_samples[ordered_sample.order_id].append(ordered_sample)
-        grouped_ordered_samples_by_participant = self._group_ordered_samples_by_participant(nph_participants, grouped_orders, _grouped_ordered_samples)
-        generate_fake_stored_samples(nph_participants, grouped_ordered_samples_by_participant)
-
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("rdr.code")
@@ -1029,6 +991,44 @@ class NphParticipantAPITest(BaseTestCase):
         self.clear_table_after_test("nph.participant_ops_data_element")
         self.clear_table_after_test("nph.consent_event")
         self.clear_table_after_test("nph.diet_event")
+
+
+def _group_ordered_samples_by_participant(
+    nph_participants: Iterable[NphParticipant],
+    grouped_orders: Dict[int, List[Order]],
+    grouped_ordered_samples: Dict[int, List[OrderedSample]],
+) -> List[OrderedSample]:
+    grouped_ordered_samples_by_participant = defaultdict(list)
+    for participant in nph_participants:
+        for order in grouped_orders[participant.id]:
+            grouped_ordered_samples_by_participant[participant.id].extend(grouped_ordered_samples[order.id])
+    return grouped_ordered_samples_by_participant
+
+
+def generate_ordered_sample_data():
+    nph_participants = NphParticipantDao().get_all()
+    sites = NphSiteDao().get_all()
+    study_categories = generate_fake_study_categories()
+    orders = generate_fake_orders(
+        fake_participants=nph_participants,
+        fake_study_categories=study_categories,
+        fake_sites=sites,
+    )
+    ordered_samples = generate_fake_ordered_samples(fake_orders=orders)
+    generate_fake_sample_updates(fake_ordered_samples=ordered_samples)
+    grouped_orders = defaultdict(list)
+    _grouped_ordered_samples = defaultdict(list)
+    for order in orders:
+        grouped_orders[order.participant_id].append(order)
+
+    for ordered_sample in ordered_samples:
+        _grouped_ordered_samples[ordered_sample.order_id].append(ordered_sample)
+    grouped_ordered_samples_by_participant = _group_ordered_samples_by_participant(
+        nph_participants,
+        grouped_orders,
+        _grouped_ordered_samples
+    )
+    generate_fake_stored_samples(nph_participants, grouped_ordered_samples_by_participant)
 
 
 class NphParticipantAPITestValidation(BaseTestCase):

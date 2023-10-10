@@ -47,6 +47,11 @@ TIME_4 = datetime.datetime(2016, 1, 4)
 TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
 TIME_6 = datetime.datetime(2015, 1, 1)
 
+# Kludge to fix failing tests where participants aged out of expected 35-44 ageRange as of 2023-10-09
+# Needs a better permanent solution that won't require future updates to this value, but should probably be done as
+# a broader refactor of the impacted test cases, to consolidate the code that needs changing
+TEST_AGE_BUCKET_DOB_DATE_OBJ = datetime.date(1980, 10, 9)
+
 participant_summary_default_values = {
     "ageRange": "UNSET",
     "race": "PMI_Skip",
@@ -1567,7 +1572,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -1616,7 +1621,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -1665,7 +1670,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -1730,7 +1735,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -1781,7 +1786,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": "en",
             "education": "highschool",
             "income": "lotsofmoney",
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
             "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
@@ -1829,7 +1834,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": "en",
             "education": "highschool",
             "income": "lotsofmoney",
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -3604,7 +3609,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": "en",
             "education": "highschool",
             "income": "lotsofmoney",
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -3967,7 +3972,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.send_consent(participant_id)
             self.send_consent(participant_id2)
 
-        config.override_setting(config.HPO_LITE_AWARDEE, ["PITT"])
+        self.temporarily_override_config_setting(config.HPO_LITE_AWARDEE, ["PITT"])
         self.overwrite_test_user_awardee('PITT', ['awardee_sa'])
         self.send_get("ParticipantSummary?_count=10&awardee=AZ_TUCSON", expected_status=403)
         ps = self.send_get("ParticipantSummary?_count=10&awardee=PITT")
@@ -4506,6 +4511,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
         self.assertEqual(summary['remoteIdVerificationStatus'], 'True')
         self.assertEqual(summary['remoteIdVerifiedOn'], '2023-01-17')
+        initial_last_modified = summary['lastModified']
         # Change the date for remoteIdVerifiedOn to 1/18/2023
         resource['group']['question'][1]['answer'][0]['valueString'] = "1674066632000"
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
@@ -4543,6 +4549,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(summary['everIdVerified'], 'True')
         self.assertEqual(summary['firstIdVerifiedOn'], '2023-01-17')
         self.assertEqual(summary['idVerificationOrigin'], IdVerificationOriginType.REMOTE.name)
+        updated_last_modified = summary['lastModified']
+        self.assertNotEqual(initial_last_modified, updated_last_modified)
 
     def test_displaying_linked_accounts(self):
         first_parent = self.data_generator.create_database_participant_summary()

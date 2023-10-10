@@ -203,7 +203,7 @@ class NphParticipantData:
                 {
                     "limsID": stored_sample.get('limsID'),
                     "biobankModified": stored_sample.get('biobankModified'),
-                    "status": StoredSampleStatus.lookup_by_number(stored_sample.get('status'))
+                    "status": str(StoredSampleStatus.lookup_by_number(stored_sample.get('status')))
                 } for stored_sample in stored_samples
             ]
         return order_samples
