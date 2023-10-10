@@ -116,11 +116,9 @@ class NphParticipantDao(BaseDao):
             # Subquery that fetches latest consents for each participant
             latest_consent_status_subquery = (
                 session.query(
-                    consent_event_subquery.c.consent_pid,
-                    consent_event_subquery.c.consent_json,
-                    consent_event_subquery.c.created,
-                    latest_created_subquery.c.latest_created
+                    consent_event_subquery.c.consent_pid, consent_event_subquery.c.consent_json
                 )
+                .distinct()
                 .filter(
                     (consent_event_subquery.c.consent_pid == latest_created_subquery.c.consent_pid)
                     & (
