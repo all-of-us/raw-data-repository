@@ -56,8 +56,7 @@ class EtmIngestionTest(BaseTestCase):
             questionnaire_json = json.load(file)
             self.send_post('Questionnaire', questionnaire_json)
 
-        participant = self.data_generator.create_database_participant()
-        self.data_generator.create_database_participant_summary(participant=participant)
+        participant = self.data_generator.create_database_participant_summary()
         with open(data_path('etm_questionnaire_response.json')) as file:
             questionnaire_response_json = json.load(file)
         questionnaire_response_json['subject']['reference'] = f'Patient/P{participant.participantId}'
@@ -139,8 +138,7 @@ class EtmIngestionTest(BaseTestCase):
             questionnaire_json = json.load(file)
             self.send_post('Questionnaire', questionnaire_json)
 
-        participant = self.data_generator.create_database_participant()
-        self.data_generator.create_database_participant_summary(participant=participant)
+        participant = self.data_generator.create_database_participant_summary()
         with open(data_path('etm_questionnaire_response.json')) as file:
             questionnaire_response_json = json.load(file)
         questionnaire_response_json['subject']['reference'] = f'Patient/P{participant.participantId}'
@@ -166,7 +164,7 @@ class EtmIngestionTest(BaseTestCase):
             questionnaire_json = json.load(file)
             self.send_post('Questionnaire', questionnaire_json)
 
-        participant_id = self.data_generator.create_database_participant().participantId
+        participant_id = self.data_generator.create_database_participant_summary().participantId
 
         with open(data_path('etm_questionnaire_response.json')) as file:
             questionnaire_response_json = json.load(file)
