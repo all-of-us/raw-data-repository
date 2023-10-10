@@ -584,7 +584,7 @@ class MetricsAPIVersion(messages.Enum):
 
 
 # The lower bounds of the age buckets.
-_AGE_LB = [0, 18, 25, 35, 45, 55, 65, 75, 85]
+_AGE_LB = [0, 7, 13, 18, 25, 35, 45, 55, 65, 75, 85]
 AGE_BUCKETS = ["{}-{}".format(b, e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [""])]
 
 
@@ -592,6 +592,7 @@ def get_bucketed_age(date_of_birth, today):
     if not date_of_birth:
         return UNSET
     age = relativedelta(today, date_of_birth).years
+    print(f'years: {age}')
     for begin, end in zip(_AGE_LB, [age_lb - 1 for age_lb in _AGE_LB[1:]] + [""]):
         if (age >= begin) and (not end or age <= end):
             return str(begin) + "-" + str(end)
