@@ -734,19 +734,22 @@ class ParticipantSummary(Base):
         "consent_for_study_enrollment", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
     """
-    Indicates whether enrollment consent has been received
+    Indicates whether enrollment consent, or pediatric permission, has been received
 
     :ref:`Enumerated values <questionnaire_status>`
     """
 
     consentForStudyEnrollmentTime = Column("consent_for_study_enrollment_time", UTCDateTime)
-    """UTC timestamp indicating the time at which enrollment consent has been received by RDR (ISO-8601 time)"""
+    """UTC timestamp indicating the time at which consent has been received by RDR (ISO-8601 time)"""
 
     consentForStudyEnrollmentAuthored = Column("consent_for_study_enrollment_authored", UTCDateTime)
-    """The UTC date time of the latest time participant completed the survey, regardless of when it was sent to RDR"""
+    """
+    The UTC date time of the latest time the participant, or a guardian, completed the survey,
+    regardless of when it was sent to RDR
+    """
 
     consentForStudyEnrollmentFirstYesAuthored = Column("consent_for_study_enrollment_first_yes_authored", UTCDateTime)
-    "The UTC date time of the first time the participant completed the survey, regardless of when it was sent to RDR"
+    "The UTC date time of the first time the consent was completed, regardless of when it was sent to RDR"
 
     semanticVersionForPrimaryConsent = Column("semantic_version_for_primary_consent", String(100))
     """The human readable version of primary consent the participant signed"""
@@ -878,7 +881,7 @@ class ParticipantSummary(Base):
         "questionnaire_on_overall_health", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
     """
-    Indicates status for Overall Health PPI module
+    Indicates status for Overall Health (or Pediatric Overall Health) PPI module
 
     :ref:`Enumerated values <questionnaire_status>`
     """
@@ -908,7 +911,7 @@ class ParticipantSummary(Base):
         "questionnaire_on_the_basics", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
     """
-    Indicates the status of a questionnaire on TheBasics that a participant can fill out.
+    Indicates the status of a questionnaire on TheBasics (or Pediatric Basics) that a participant can fill out.
 
     :ref:`Enumerated values <questionnaire_status>`
     """
@@ -1131,10 +1134,13 @@ class ParticipantSummary(Base):
     numCompletedBaselinePPIModules = Column("num_completed_baseline_ppi_modules", SmallInteger, default=0)
     """
     The count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth, questionnaireOnLifestyle]
-    the participant has completed.
+    the participant has completed. Or the count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth,
+    questionnaireOnEnvironmentalHealth] have been completed for a pediatric participant.
     """
     numCompletedPPIModules = Column("num_completed_ppi_modules", SmallInteger, default=0)
-    """The count of all PPI modules the participant has completed."""
+    """
+    The count of all PPI modules the participant has completed (or have been completed for pediatric participants).
+    """
 
     biospecimenStatus = Column("biospecimen_status", Enum(OrderStatus), default=OrderStatus.UNSET)
     """
