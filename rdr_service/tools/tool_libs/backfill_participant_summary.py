@@ -116,10 +116,14 @@ class BackfillParticipantSummary(ToolBase):
                 ).order_by(ParticipantSummary.participantId).all()
 
         chunk_size = 250
+        skipped_pids = 0
         for id_list_subset in list_chunks(lst=participant_id_list, chunk_size=chunk_size):
             pub_sub_pk_id_list = []
             recs_to_commit = False
-            logger.info(f'{datetime.now()}: Updated {count} of {len(participant_id_list)} (last id: {last_id})')
+            logger.info(
+                f'{datetime.now()}: Updated {count} of {len(participant_id_list)} (last id: {last_id}, ' +
+                f'total skipped: {skipped_pids})'
+            )
             count += chunk_size
             participants = session.query(
                 ParticipantSummary
@@ -134,7 +138,10 @@ class BackfillParticipantSummary(ToolBase):
                 # transaction.  Skip the problem pids.
                 if not (rec.email or rec.loginPhoneNumber):
                     logger.error(
-                        f'P{rec.participantId} has no email or phone number, would cause InvalidDataState exception')
+                        f'P{rec.participantId} has no email or phone number, would cause InvalidDataState exception.' +
+                        f' Skipping'
+                    )
+                    skipped_pids += 1
                     continue
                 # Note: Skip the checks if the participant_summary record already has values (no backfill needed)
                 if rec.consentForWearStudy is None:
