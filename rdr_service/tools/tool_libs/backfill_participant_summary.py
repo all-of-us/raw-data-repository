@@ -37,7 +37,7 @@ class BackfillParticipantSummary(ToolBase):
         pm_recs = PhysicalMeasurementsDao.get_core_measurements_for_participant(session, pid)
         # Borrowing logic from the update_enrollment_status() code
         earliest_height_time = min_or_none(
-            meas.finalized for meas in pm_recs if meas.satisfiedHeightRequirements
+            meas.finalized for meas in pm_recs if meas.satisfiesHeightRequirements
         )
         earliest_weight_time = min_or_none(
             meas.finalized for meas in pm_recs if meas.satisfiesWeightRequirements
@@ -128,6 +128,14 @@ class BackfillParticipantSummary(ToolBase):
             ).filter(ParticipantSummary.participantId.in_(id_list_subset)).all()
             for rec in participants:
                 rec_updated = False
+                # Defensive check because of running into records in lower environments that are missing both email
+                # and loginPhoneNumber.  Continuing/updating fields will hit a SA InvalidDataState exception in
+                # validate_participant_summary() in the ParticipantSummary model definition and rollback the entire
+                # transaction.  Skip the problem pids.
+                if not (rec.email or rec.loginPhoneNumber):
+                    logger.error(
+                        f'P{rec.participantId} has no email or phone number, would cause InvalidDataState exception')
+                    continue
                 # Note: Skip the checks if the participant_summary record already has values (no backfill needed)
                 if rec.consentForWearStudy is None:
                     wear_result, wear_status = self.get_last_wear_consent_details(session, rec.participantId)
