@@ -76,7 +76,7 @@ class NphParticipantDao(BaseDao):
         """
         Returns a subquery that gets the latest consents for each participant grouped by event_type_id.
         """
-        ce2 = aliased(ConsentEvent)
+        consent_event_alias = aliased(ConsentEvent)
         with self.session() as session:
             return (
                 session.query(
@@ -102,14 +102,14 @@ class NphParticipantDao(BaseDao):
                     ConsentEventType.id == ConsentEvent.event_type_id,
                 )
                 .outerjoin(
-                    ce2,
+                    consent_event_alias,
                     and_(
-                        ce2.participant_id == ConsentEvent.participant_id,
-                        ce2.event_type_id == ConsentEvent.event_type_id,
-                        ce2.id > ConsentEvent.id,
+                        ConsentEvent.participant_id == consent_event_alias.participant_id,
+                        ConsentEvent.event_type_id == consent_event_alias.event_type_id,
+                        ConsentEvent.id < consent_event_alias.id
                     ),
                 )
-                .filter(ce2.id.is_(None))
+                .filter(consent_event_alias.id.is_(None))
                 .group_by(Participant.id)
                 .subquery()
             )
