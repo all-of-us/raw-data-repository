@@ -2,6 +2,7 @@ import argparse
 
 from dateutil.parser import parse
 
+from rdr_service.dao.ppi_validation_errors_dao import PpiValidationErrorsDao
 from rdr_service.offline.response_validation import ResponseValidationController
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
@@ -16,9 +17,14 @@ class ResponseValidationScript(ToolBase):
         super(ResponseValidationScript, self).run()
 
         since_date = parse(self.args.since)
+        validation_dao = PpiValidationErrorsDao()
 
-        with self.get_session() as session:
-            controller = ResponseValidationController(session=session, since_date=since_date)
+        with validation_dao.session() as session:
+            controller = ResponseValidationController(
+                session=session,
+                validation_errors_dao=validation_dao,
+                since_date=since_date
+            )
             controller.run_validation()  # Controller will output validation errors using root logger
 
 

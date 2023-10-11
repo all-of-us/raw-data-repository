@@ -7,14 +7,22 @@ from sqlalchemy.orm import joinedload, Session
 
 from rdr_service.domain_model.response import Response
 from rdr_service.model.code import Code
+from rdr_service.model.ppi_validation_errors import PpiValidationErrors
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from rdr_service.services.response_validation.validation import BranchParsingError, ResponseValidator
 from rdr_service.services.slack_utils import SlackMessageHandler
+from rdr_service.dao.ppi_validation_errors_dao import PpiValidationErrorsDao
 
 
 class ResponseValidationController:
-    def __init__(self, session: Session, since_date: datetime, slack_webhook=None):
+    def __init__(
+        self,
+        session: Session,
+        validation_errors_dao: PpiValidationErrorsDao,
+        since_date: datetime,
+        slack_webhook=None
+    ):
         self._session = session
         self._since_date = since_date
         self._error_list = defaultdict(list)
@@ -22,6 +30,7 @@ class ResponseValidationController:
         self._summarize_results = slack_webhook is not None
 
         self._response_validator_map: Dict[str, ResponseValidator] = {}
+        self.validation_errors_dao = validation_errors_dao
 
     def run_validation(self):
         response_list = QuestionnaireResponseRepository.get_responses_to_surveys(
@@ -35,6 +44,7 @@ class ResponseValidationController:
                 except BranchParsingError:
                     logging.error(f'Error parsing branching logic for {response.survey_code}', exc_info=True)
 
+        self._insert_data()
         self._send_error_message()
 
     def _check_response(self, response: Response, participant_id):
@@ -49,7 +59,14 @@ class ResponseValidationController:
                 for error in error_list:
                     if response.survey_code != 'EHRConsentPII':
                         # TODO: implement a way to detect when validation needed for sensitive EHR
-                        self._error_list[(response.survey_code, error.question_code, error.reason)].append(
+                        self._error_list[(
+                            response.survey_code,
+                            error.question_code,
+                            error.reason,
+                            error.error_type,
+                            participant_id,
+                            error.answer_id[0]
+                        )].append(
                             f'{response.survey_code} - question "{error.question_code}" '
                             f'Error: {error.reason} (P{participant_id}, ansID {error.answer_id[0]})'
                         )
@@ -94,6 +111,24 @@ class ResponseValidationController:
 
         result_text += '\n'.join(sorted(result_list))
         self._output_result(result_text)
+
+    def _insert_data(self):
+        for key in self._error_list.items():
+            survey_code, question_code, error_str, error_type, pid, answer_id = key
+            logging.info(f'{survey_code}, {pid}')
+
+            data = PpiValidationErrors(
+                eval_date=self._since_date,
+                survey_code_value=survey_code,
+                question_code=question_code,
+                error_str=error_str,
+                error_type=error_type,
+                participant_id=pid,
+                questionnaire_response_answer_id=answer_id
+            )
+
+            # Insert data into PPI validation table
+            self.validation_errors_dao.insert(data)
 
     def _output_result(self, result_str):
         if self._slack_webhook:
