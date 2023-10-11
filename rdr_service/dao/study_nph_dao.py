@@ -73,26 +73,46 @@ class NphParticipantDao(BaseDao):
         pass
 
     def get_consents_subquery(self):
+        """
+        Returns a subquery that gets the latest consents for each participant grouped by event_type_id.
+        """
+        consent_event_alias = aliased(ConsentEvent)
         with self.session() as session:
-            return session.query(
-                Participant.id.label('consent_pid'),
-                func.json_object(
-                    'consent_json',
-                    func.json_arrayagg(
-                        func.json_object(
-                            "value", ConsentEventType.source_name,
-                            "time", ConsentEvent.event_authored_time,
-                            "opt_in", ConsentEvent.opt_in,
-                        )
-                    ), type_=JSON
-                ).label('consent_status'),
-            ).join(
-                ConsentEvent,
-                ConsentEvent.participant_id == Participant.id
-            ).join(
-                ConsentEventType,
-                ConsentEventType.id == ConsentEvent.event_type_id,
-            ).group_by(Participant.id).subquery()
+            return (
+                session.query(
+                    Participant.id.label("consent_pid"),
+                    func.json_object(
+                        "consent_json",
+                        func.json_arrayagg(
+                            func.json_object(
+                                "value",
+                                ConsentEventType.source_name,
+                                "time",
+                                ConsentEvent.event_authored_time,
+                                "opt_in",
+                                ConsentEvent.opt_in,
+                            )
+                        ),
+                        type_=JSON,
+                    ).label("consent_status"),
+                )
+                .join(ConsentEvent, ConsentEvent.participant_id == Participant.id)
+                .join(
+                    ConsentEventType,
+                    ConsentEventType.id == ConsentEvent.event_type_id,
+                )
+                .outerjoin(
+                    consent_event_alias,
+                    and_(
+                        ConsentEvent.participant_id == consent_event_alias.participant_id,
+                        ConsentEvent.event_type_id == consent_event_alias.event_type_id,
+                        ConsentEvent.id < consent_event_alias.id
+                    ),
+                )
+                .filter(consent_event_alias.id.is_(None))
+                .group_by(Participant.id)
+                .subquery()
+            )
 
     def get_enrollment_subquery(self):
         with self.session() as session:

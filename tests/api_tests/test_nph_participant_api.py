@@ -70,7 +70,6 @@ def condition_query(condition, sort_value, sort_field):
 
 
 class NphParticipantAPITest(BaseTestCase):
-
     def setUp(self):
         super().setUp()
         self.nph_data_gen = NphDataGenerator()
@@ -187,7 +186,9 @@ class NphParticipantAPITest(BaseTestCase):
                 self.nph_data_gen.create_database_consent_event(
                         participant_id=participant_id,
                         event_type_id=consent_event_type.id,
-                        opt_in=kwargs.get('opt_in', ConsentOptInTypes.PERMIT)
+                        opt_in=kwargs.get('opt_in', ConsentOptInTypes.PERMIT),
+                        event_authored_time=kwargs.get('event_authored_time', datetime.utcnow()),
+                        created=kwargs.get('created', datetime.utcnow())
                 )
 
     def test_client_single_result(self):
@@ -212,6 +213,44 @@ class NphParticipantAPITest(BaseTestCase):
             for _, v in each.get('node').items():
                 self.assertEqual(str(QuestionnaireStatus.UNSET), v.get('value'))
                 self.assertIsNone(v.get('time'))
+
+    def test_latest_event_consent_statuses(self):
+        initial_time = datetime(2023, 3, 1, 12, 1)
+        with clock.FakeClock(initial_time):
+            self.add_consents(
+                nph_participant_ids=[self.base_participant_ids[0]],
+                created=initial_time,
+                event_authored_time=initial_time
+            )
+
+        # Add again to create duplicates events type with different created and authored_time
+        later_time = initial_time + timedelta(days=2)
+        with clock.FakeClock(later_time):
+            self.add_consents(
+                nph_participant_ids=[self.base_participant_ids[0]],
+                created=later_time,
+                event_authored_time=later_time
+            )
+        module_num = list(ModuleTypes.numbers())
+        for module in module_num:
+            field_to_test = f'''nphModule{module}ConsentStatus {{value time optIn}}'''
+            query = simple_query(field_to_test)
+            executed = app.test_client().post("/rdr/v1/nph_participant", data=query)
+            result = json.loads(executed.data.decode("utf-8"))
+            consents = (
+                result.get("participant").get("edges")[0].get("node").get(f"nphModule{module}ConsentStatus")
+            )
+            values = [ele["value"] for ele in consents]
+            self.assertEqual(
+                (len(set(values))), len(values), msg="Should return each event type once."
+            )
+            # Get event_authored_time, since it's equal to created time
+            event_time = [ele["time"] for ele in consents][0]
+            self.assertEqual(
+                later_time.strftime("%Y-%m-%dT%H:%M:%S"),
+                event_time,
+                msg="Should return the value with the latest time",
+            )
 
     def test_client_nph_pair_site(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
@@ -951,6 +990,7 @@ class NphParticipantAPITest(BaseTestCase):
         self.clear_table_after_test("nph.enrollment_event_type")
         self.clear_table_after_test("nph.participant_ops_data_element")
         self.clear_table_after_test("nph.consent_event")
+        self.clear_table_after_test("nph.consent_event_type")
         self.clear_table_after_test("nph.diet_event")
 
 
