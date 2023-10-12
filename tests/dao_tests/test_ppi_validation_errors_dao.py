@@ -58,9 +58,9 @@ class PpiValidationErrorsDaoTest(BaseTestCase):
         self.assertEqual("TheBasics", self.ppi_validation_dao.get(1).survey_code_value)
         self.assertEqual("GROR", self.ppi_validation_dao.get(2).survey_code_value)
         self.assertEqual("TestSurvey", self.ppi_validation_dao.get(3).survey_code_value)
-        self.assertEqual(3, self.ppi_validation_dao.get(1).error_type.enum_type)
-        self.assertEqual(1, self.ppi_validation_dao.get(2).error_type.enum_type)
-        self.assertEqual(2, self.ppi_validation_dao.get(3).error_type.enum_type)
+        self.assertEqual(ValidationErrorType.BRANCHING_ERROR, self.ppi_validation_dao.get(1).error_type)
+        self.assertEqual(ValidationErrorType.INVALID_DATA_TYPE, self.ppi_validation_dao.get(2).error_type)
+        self.assertEqual(ValidationErrorType.INVALID_VALUE, self.ppi_validation_dao.get(3).error_type)
 
     def test_get_errors_since(self):
         # Insert errors in table
