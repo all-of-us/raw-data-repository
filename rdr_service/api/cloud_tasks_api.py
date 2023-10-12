@@ -374,11 +374,20 @@ class ValidateDateOfBirthApi(Resource):
     def post(self):
         task_data = request.get_json(force=True)
         date_of_birth = parse_date(task_data['date_of_birth'])
+        validation_params = {
+            'participant_id': task_data['participant_id'],
+            'date_of_birth': date_of_birth
+        }
 
-        ParticipantDataValidation.analyze_date_of_birth(
-            participant_id=task_data['participant_id'],
-            date_of_birth=date_of_birth
-        )
+        age_range_str = task_data.get('age_range')
+        if age_range_str:
+            age_min, age_max = age_range_str.split('_')
+            validation_params.update({
+                'age_min': int(age_min),
+                'age_max': int(age_max)
+            })
+
+        ParticipantDataValidation.analyze_date_of_birth(**validation_params)
 
 
 class UpdateEnrollmentStatus(Resource):

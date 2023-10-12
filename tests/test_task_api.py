@@ -25,6 +25,25 @@ class TaskApiTest(BaseTestCase):
             participant_id=1234,
             date_of_birth=datetime(2000, 3, 19)
         )
+
+    @mock.patch('rdr_service.api.cloud_tasks_api.ParticipantDataValidation')
+    def test_pediatric_dob_check(self, validation_mock):
+        self._call_task_endpoint(
+            task_path='ValidateDateOfBirth',
+            json={
+                'participant_id': 1234,
+                'date_of_birth': '2000-3-19',
+                'age_range': '0_6'
+            }
+        )
+
+        validation_mock.analyze_date_of_birth.assert_called_with(
+            participant_id=1234,
+            date_of_birth=datetime(2000, 3, 19),
+            age_min=0,
+            age_max=6
+        )
+
     @mock.patch('rdr_service.api.cloud_tasks_api.onsite_id_verification_build_task')
     def test_onsite_id_verification_build(self, onsite_build_task_mock):
         self._call_task_endpoint(
