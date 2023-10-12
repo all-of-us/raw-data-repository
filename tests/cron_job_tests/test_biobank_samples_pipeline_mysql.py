@@ -619,7 +619,7 @@ class MySqlReconciliationTest(BaseTestCase):
         # not includes orders/samples from more than 10 days ago;
         # Includes 1 Salivary order
         exporter.assertRowCount(received, 11)
-        exporter.assertColumnNamesEqual(received, _CSV_COLUMN_NAMES)
+        exporter.assertColumnNamesEqual(received, (*_CSV_COLUMN_NAMES, "ispediatric"))
         row = exporter.assertHasRow(
             received,
             {
@@ -1193,7 +1193,7 @@ class MySqlReconciliationTest(BaseTestCase):
         # sent-and-received: 4 on-time, 2 late, 2 edge, none of the missing/extra/repeated ones;
         # not includes orders/samples from more than 60 days ago
         exporter.assertRowCount(received, 12)
-        exporter.assertColumnNamesEqual(received, _CSV_COLUMN_NAMES)
+        exporter.assertColumnNamesEqual(received, (*_CSV_COLUMN_NAMES, "ispediatric"))
         row = exporter.assertHasRow(
             received,
             {

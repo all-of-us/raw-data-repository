@@ -531,6 +531,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             ehr_status = EhrStatus.NOT_PRESENT if ps.ehrStatus is None else ps.ehrStatus
             ehr_receipts = []
             data = {
+                'date_of_birth': ps.dateOfBirth,
                 'ehr_status': str(ehr_status),
                 'ehr_status_id': int(ehr_status),
                 'ehr_receipt': ps.ehrReceiptTime,
@@ -660,18 +661,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # TODO: Update this to a JSONObject instead of BQRecord object.
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent response.
 
-        # TODO: Should DOB be captured only from the first ConsentPII received?
-        try:
-            # Value can be None, 'PMISkip' or date string.
-            dob = parser.parse(qnan.get('PIIBirthInformation_BirthDate')).date()
-        except (ParserError, TypeError):
-            dob = None
-
         data = {
             'first_name': qnan.get('PIIName_First'),
             'middle_name': qnan.get('PIIName_Middle'),
             'last_name': qnan.get('PIIName_Last'),
-            'date_of_birth': dob,
             'primary_language': qnan.get('language'),
             'addresses': [
                 {
@@ -990,7 +983,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                                  PhysicalMeasurements.collectType, PhysicalMeasurements.origin,
                                  PhysicalMeasurements.originMeasurementUnit,
                                  PhysicalMeasurements.questionnaireResponseId,
-                                 PhysicalMeasurements.status, PhysicalMeasurements.amendedMeasurementsId). \
+                                 PhysicalMeasurements.status, PhysicalMeasurements.amendedMeasurementsId,
+                                 PhysicalMeasurements.satisfiesHeightRequirements,
+                                 PhysicalMeasurements.satisfiesWeightRequirements). \
             filter(PhysicalMeasurements.participantId == p_id). \
             order_by(desc(PhysicalMeasurements.created))
         # sql = self.dao.query_to_text(query)
@@ -1043,7 +1038,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'origin_measurement_unit_id': int(origin_measurements_type),
                     # If status == UNSET in data, then the record has been cancelled and then restored. PM status is
                     # only set to UNSET in this scenario.
-                    'restored': 1 if row.status == 0 else 0
+                    'restored': 1 if row.status == 0 else 0,
+                    'meets_height_reqs': 1 if row.satisfiesHeightRequirements else 0,
+                    'meets_weight_reqs': 1 if row.satisfiesWeightRequirements else 0
                 })
                 activity.append(_act(row.finalized or row.created, ActivityGroupEnum.Profile,
                                      ParticipantEventEnum.PhysicalMeasurements,

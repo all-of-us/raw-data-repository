@@ -249,9 +249,12 @@ def _query_and_write_received_report(exporter, report_path, query_params, report
     received_report_select = _RECONCILIATION_REPORT_SELECTS_SQL
     if config.getSettingJson(config.ENABLE_BIOBANK_MANIFEST_RECEIVED_FLAG, default=False):
         received_report_select += """,
-                group_concat(ny_flag) ny_flag,
-                group_concat(sex_at_birth_flag) sex_at_birth_flag
-            """
+            group_concat(ny_flag) ny_flag,
+            group_concat(sex_at_birth_flag) sex_at_birth_flag
+        """
+    received_report_select += """,
+        max(is_pediatric) ispediatric
+    """
     logging.info(f"Writing {report_path} report.")
     received_sql = replace_isodate(received_report_select + _RECONCILIATION_REPORT_SOURCE_SQL)
     exporter.run_export(
@@ -502,6 +505,15 @@ def _participant_answer_subquery(question_code_value):
     )
 
 
+_PEDIATRIC_SELECT_CLAUSE = 'pdl.id is not null is_pediatric'
+_PEDIATRIC_JOIN_CLAUSE = '''
+left join pediatric_data_log pdl
+    on pdl.participant_id = participant.participant_id
+    and pdl.replaced_by_id is null
+    and pdl.data_type = 1  -- is AGE_RANGE data
+'''
+
+
 # Joins orders and samples, and computes some derived values (elapsed_hours, counts).
 # MySQL does not support FULL OUTER JOIN, so instead we UNION ALL a LEFT OUTER JOIN
 # with a SELECT... WHERE NOT EXISTS (the latter for cases where we have a sample but no matching
@@ -597,9 +609,12 @@ _RECONCILIATION_REPORT_SOURCE_SQL = (
     case when sex_code.value like 'sexatbirth_male' then 'M'
        when sex_code.value like 'sexatbirth_female' then 'F'
        else 'NA'
-    end sex_at_birth_flag
-    FROM """
+    end sex_at_birth_flag,
+    """
+    + _PEDIATRIC_SELECT_CLAUSE
+    + """ FROM """
     + _ORDER_JOINS
+    + _PEDIATRIC_JOIN_CLAUSE
     + """
     LEFT OUTER JOIN
         participant_summary
@@ -677,16 +692,19 @@ _RECONCILIATION_REPORT_SOURCE_SQL = (
       case when sex_code.value like 'sexatbirth_male' then 'M'
            when sex_code.value like 'sexatbirth_female' then 'F'
            else 'NA'
-      end sex_at_birth_flag
-    FROM
+      end sex_at_birth_flag,
+    """
+    + _PEDIATRIC_SELECT_CLAUSE
+    + """ FROM
       biobank_stored_sample
       LEFT OUTER JOIN
         participant ON biobank_stored_sample.biobank_id = participant.biobank_id
       LEFT OUTER JOIN
         participant_summary ON participant_summary.participant_id = participant.participant_id
       LEFT OUTER JOIN
-        code sex_code ON participant_summary.sex_id = sex_code.code_id
-    WHERE biobank_stored_sample.confirmed IS NOT NULL AND NOT EXISTS (
+        code sex_code ON participant_summary.sex_id = sex_code.code_id """
+    + _PEDIATRIC_JOIN_CLAUSE
+    + """ WHERE biobank_stored_sample.confirmed IS NOT NULL AND NOT EXISTS (
       SELECT 0 FROM """
     + _ORDER_JOINS + """
       LEFT OUTER JOIN
