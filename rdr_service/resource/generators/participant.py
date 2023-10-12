@@ -531,6 +531,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             ehr_status = EhrStatus.NOT_PRESENT if ps.ehrStatus is None else ps.ehrStatus
             ehr_receipts = []
             data = {
+                'date_of_birth': ps.dateOfBirth,
                 'ehr_status': str(ehr_status),
                 'ehr_status_id': int(ehr_status),
                 'ehr_receipt': ps.ehrReceiptTime,
@@ -660,20 +661,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # TODO: Update this to a JSONObject instead of BQRecord object.
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent response.
 
-        # TODO: Should DOB be captured only from the first ConsentPII received?
-        try:
-            # Always use first ConsentPII submission when collecting DOB value. Get first key id from 'responses' dict.
-            first_resp = next(iter(responses))
-            # Value can be None, 'PMISkip' or date string.
-            dob = parser.parse(responses[first_resp].get('PIIBirthInformation_BirthDate')).date()
-        except (ParserError, TypeError):
-            dob = None
-
         data = {
             'first_name': qnan.get('PIIName_First'),
             'middle_name': qnan.get('PIIName_Middle'),
             'last_name': qnan.get('PIIName_Last'),
-            'date_of_birth': dob,
             'primary_language': qnan.get('language'),
             'addresses': [
                 {
