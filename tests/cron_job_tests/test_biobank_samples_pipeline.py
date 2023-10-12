@@ -366,7 +366,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
 
     def test_quest_samples_in_report(self):
         # Generate data for a Quest sample to be in the report
-        participant = self.data_generator.create_database_participant()
+        participant = self.data_generator.create_database_participant_summary(aian=True)
         order = self.data_generator.create_database_biobank_order(participantId=participant.participantId)
 
         # Setup order identifiers that CE would send for Quest order
@@ -420,7 +420,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
                 None,  # elapsed hours
                 'KIT-001',  # kit identifier
                 None,  # fedex tracking number
-                'N',  # is Native American
+                'Y',  # is Native American
                 None, None, None,  # notes info: collected, processed, finalized
                 None, None, None, None, None,  # cancelled_restored info: status_flag, name, name, time, reason
                 None,  # order origin
