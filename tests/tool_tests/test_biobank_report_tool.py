@@ -112,11 +112,10 @@ class BiobankReportToolTest(ToolTestMixin, BaseTestCase):
         # Create a participant that has a deceased status
         withdrawn_participant = self.data_generator.create_withdrawn_participant(
             withdrawal_reason_justification='deceased participant',
-            withdrawal_time=five_days_ago
-        )
-        self.data_generator.create_database_participant_summary(
-            deceasedStatus=DeceasedStatus.APPROVED,
-            participantId=withdrawn_participant.participantId
+            withdrawal_time=five_days_ago,
+            summary_kwargs={
+                'deceasedStatus': DeceasedStatus.APPROVED
+            }
         )
 
         rows_written = self.run_withdrawal_report()
