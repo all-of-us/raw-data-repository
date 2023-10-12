@@ -142,7 +142,8 @@ class GenomicDateGenCaseTemplateDao(BaseDao):
                 GenomicDataGenCaseTemplate
             ).filter(
                 GenomicDataGenCaseTemplate.project_name == project,
-                GenomicDataGenCaseTemplate.template_name == 'default'
+                GenomicDataGenCaseTemplate.template_name == 'default',
+                GenomicDataGenCaseTemplate.ignore_flag == 0
             ).all()
 
     def get_template_records_template(self, *, project, template_type):
@@ -151,7 +152,8 @@ class GenomicDateGenCaseTemplateDao(BaseDao):
                 GenomicDataGenCaseTemplate
             ).filter(
                 GenomicDataGenCaseTemplate.project_name == project,
-                GenomicDataGenCaseTemplate.template_name == template_type
+                GenomicDataGenCaseTemplate.template_name == template_type,
+                GenomicDataGenCaseTemplate.ignore_flag == 0
             ).all()
 
 
