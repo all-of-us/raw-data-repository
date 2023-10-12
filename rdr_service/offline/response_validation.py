@@ -115,7 +115,6 @@ class ResponseValidationController:
     def _insert_data(self):
         for key in self._error_list.items():
             survey_code, question_code, error_str, error_type, pid, answer_id = key
-            logging.info(f'{survey_code}, {pid}')
 
             data = PpiValidationErrors(
                 eval_date=self._since_date,
