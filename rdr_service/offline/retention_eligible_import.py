@@ -262,7 +262,9 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
     )
 
     if not summary:
-        logging.error(f'no summary for P{metrics_data.participantId}')
+        # PTSC currently included  REGISTERED participants without primary consent yet, so only emit warning if there
+        # is no participant_summary record found
+        logging.warning(f'no summary for P{metrics_data.participantId}')
         return
 
     dependencies = RetentionEligibilityDependencies(
