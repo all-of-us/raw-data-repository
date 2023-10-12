@@ -990,7 +990,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                                  PhysicalMeasurements.collectType, PhysicalMeasurements.origin,
                                  PhysicalMeasurements.originMeasurementUnit,
                                  PhysicalMeasurements.questionnaireResponseId,
-                                 PhysicalMeasurements.status, PhysicalMeasurements.amendedMeasurementsId). \
+                                 PhysicalMeasurements.status, PhysicalMeasurements.amendedMeasurementsId,
+                                 PhysicalMeasurements.satisfiesHeightRequirements,
+                                 PhysicalMeasurements.satisfiesWeightRequirements). \
             filter(PhysicalMeasurements.participantId == p_id). \
             order_by(desc(PhysicalMeasurements.created))
         # sql = self.dao.query_to_text(query)
@@ -1043,7 +1045,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'origin_measurement_unit_id': int(origin_measurements_type),
                     # If status == UNSET in data, then the record has been cancelled and then restored. PM status is
                     # only set to UNSET in this scenario.
-                    'restored': 1 if row.status == 0 else 0
+                    'restored': 1 if row.status == 0 else 0,
+                    'meets_height_reqs': 1 if row.satisfiesHeightRequirements else 0,
+                    'meets_weight_reqs': 1 if row.satisfiesWeightRequirements else 0
                 })
                 activity.append(_act(row.finalized or row.created, ActivityGroupEnum.Profile,
                                      ParticipantEventEnum.PhysicalMeasurements,
