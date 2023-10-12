@@ -14,6 +14,7 @@ from rdr_service.code_constants import PMI_SKIP_CODE
 from rdr_service.domain_model import response as response_domain_model
 from rdr_service.model.code import Code
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionType
+from rdr_service.model.ppi_validation_errors import ValidationErrorType
 
 
 class BranchParsingError(Exception):
@@ -87,7 +88,12 @@ class CanOnlyBeAnsweredIf(_Requirement):
         if answers and not self.condition.passes():
             for answer in answers:
                 answer.is_valid = False
-            return [ValidationError(question_code, [answer.id for answer in answers], reason='branching error')]
+            return [ValidationError(
+                question_code,
+                [answer.id for answer in answers],
+                reason='branching error',
+                error_type=ValidationErrorType.BRANCHING_ERROR
+            )]
 
         return []
 
@@ -334,6 +340,7 @@ class ValidationError:
     question_code: str
     answer_id: Sequence[int]
     reason: str
+    error_type: ValidationErrorType
 
 
 class ResponseRequirements:
@@ -739,7 +746,8 @@ class ResponseValidator:
                             ValidationError(
                                 question_code_str,
                                 answer_id=[answer.id for answer in answers],
-                                reason=f'more than one answer to question of type "{question.questionType}"'
+                                reason=f'more than one answer to question of type "{question.questionType}"',
+                                error_type=ValidationErrorType.INVALID_VALUE
                             )
                         )
 
@@ -749,7 +757,8 @@ class ResponseValidator:
                                 ValidationError(
                                     question_code_str,
                                     [answer.id],
-                                    reason=f'Code answer expected, but found {str(answer.data_type)}'
+                                    reason=f'Code answer expected, but found {str(answer.data_type)}',
+                                    error_type=ValidationErrorType.INVALID_DATA_TYPE
                                 )
                             )
                         elif answer.value not in [option.code.value for option in question.options]:
@@ -757,7 +766,8 @@ class ResponseValidator:
                                 ValidationError(
                                     question_code_str,
                                     [answer.id],
-                                    reason='Answer code value not found in question options'
+                                    reason='Answer code value not found in question options',
+                                    error_type=ValidationErrorType.INVALID_VALUE
                                 )
                             )
 
@@ -767,7 +777,8 @@ class ResponseValidator:
                             ValidationError(
                                 question_code_str,
                                 answer_id=[answer.id for answer in answers],
-                                reason=f'more than one answer to question of type "{question.questionType}"'
+                                reason=f'more than one answer to question of type "{question.questionType}"',
+                                error_type=ValidationErrorType.INVALID_VALUE
                             )
                         )
                     elif len(answers) == 1:
@@ -778,7 +789,8 @@ class ResponseValidator:
                                     ValidationError(
                                         question_code_str,
                                         [answer.id],
-                                        reason=f'Text answer expected, but found {str(answer.data_type)}'
+                                        reason=f'Text answer expected, but found {str(answer.data_type)}',
+                                        error_type=ValidationErrorType.INVALID_DATA_TYPE
                                     )
                                 )
                         else:
@@ -792,7 +804,8 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason=f'Date answer expected, but found {str(answer.data_type)}'
+                                            reason=f'Date answer expected, but found {str(answer.data_type)}',
+                                            error_type=ValidationErrorType.INVALID_DATA_TYPE
                                         )
                                     )
                                 # Check if datetime is epoch
@@ -810,7 +823,8 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason=f'Integer answer expected, but found {str(answer.data_type)}'
+                                            reason=f'Integer answer expected, but found {str(answer.data_type)}',
+                                            error_type=ValidationErrorType.INVALID_DATA_TYPE
                                         )
                                     )
                                 answer_value = None
@@ -821,7 +835,8 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason='Unable to parse answer as integer'
+                                            reason='Unable to parse answer as integer',
+                                            error_type=ValidationErrorType.INVALID_DATA_TYPE
                                         )
                                     )
                                 if answer_value:
@@ -836,7 +851,8 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason='Answer not recognized as a zip code'
+                                            reason='Answer not recognized as a zip code',
+                                            error_type=ValidationErrorType.INVALID_VALUE
                                         )
                                     )
                             elif question.validation == 'email':
@@ -846,7 +862,8 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason='Answer not recognized as a valid email'
+                                            reason='Answer not recognized as a valid email',
+                                            error_type=ValidationErrorType.INVALID_VALUE
                                         )
                                     )
                             elif question.validation == 'phone':
@@ -856,7 +873,8 @@ class ResponseValidator:
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason='Answer not recognized as a valid phone number'
+                                            reason='Answer not recognized as a valid phone number',
+                                            error_type=ValidationErrorType.INVALID_VALUE
                                         )
                                     )
                             else:
@@ -867,7 +885,8 @@ class ResponseValidator:
                                     ValidationError(
                                         question_code_str,
                                         [answer.id],
-                                        reason='Answer lower than minimum value'
+                                        reason='Answer lower than minimum value',
+                                        error_type=ValidationErrorType.INVALID_VALUE
                                     )
                                 )
                             if max_value is not None and answer_value > max_value:
@@ -875,7 +894,8 @@ class ResponseValidator:
                                     ValidationError(
                                         question_code_str,
                                         [answer.id],
-                                        reason='Answer higher than maximum value'
+                                        reason='Answer higher than maximum value',
+                                        error_type=ValidationErrorType.INVALID_VALUE
                                     )
                                 )
                 elif question.questionType == SurveyQuestionType.FILE:
