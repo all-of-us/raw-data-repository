@@ -147,7 +147,7 @@ with models.DAG(
                 insert_job = client.query(f"""
                 INSERT INTO rdr_etm_test.{task_name}
                 (validation_id, participant_id, research_id, data_origin_id, payload, questionnaire_response_timestamp,
-                drc_received_timestamp, task_schema_version, drc_validated_timestamp, created_timestamp)
+                drc_received_timestamp, source_schema_version, drc_validated_timestamp, created_timestamp)
                 VALUES (@id, @participant_id, @research_id, @src_id, @resource, @qr_authored, @qr_date,
                 @task_schema_name, @validated_time, CURRENT_TIMESTAMP())
                 """, job_config=job_config)
@@ -186,7 +186,7 @@ with models.DAG(
                 insert_job = client.query(f"""
                 INSERT INTO rdr_etm_test.{task_name}_error
                 (validation_id, participant_id, research_id, data_origin_id, payload, questionnaire_response_timestamp,
-                drc_received_timestamp, task_schema_version, drc_validated_timestamp, created_timestamp, error)
+                drc_received_timestamp, source_schema_version, drc_validated_timestamp, created_timestamp, error)
                 VALUES (@id, @participant_id, @research_id, @src_id, @resource, @qr_authored, @qr_date,
                 @task_schema_name, @validated_time, CURRENT_TIMESTAMP(), @error)
                 """, job_config=job_config)
