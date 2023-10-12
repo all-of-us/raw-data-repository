@@ -662,8 +662,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # TODO: Should DOB be captured only from the first ConsentPII received?
         try:
+            # Always use first ConsentPII submission when collecting DOB value. Get first key id from 'responses' dict.
+            first_resp = next(iter(responses))
             # Value can be None, 'PMISkip' or date string.
-            dob = parser.parse(qnan.get('PIIBirthInformation_BirthDate')).date()
+            dob = parser.parse(responses[first_resp].get('PIIBirthInformation_BirthDate')).date()
         except (ParserError, TypeError):
             dob = None
 
