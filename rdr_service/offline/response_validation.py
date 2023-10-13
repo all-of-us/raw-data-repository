@@ -117,7 +117,7 @@ class ResponseValidationController:
             survey_code, question_code, error_str, error_type, pid, answer_id = key
 
             data = PpiValidationErrors(
-                eval_date=self._since_date,
+                eval_date=datetime.utcnow(),
                 survey_code_value=survey_code,
                 question_code=question_code,
                 error_str=error_str,
