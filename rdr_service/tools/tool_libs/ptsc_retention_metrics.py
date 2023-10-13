@@ -119,9 +119,9 @@ class RetentionQCClass(RetentionBaseClass):
                         recalculated.append(pid)
                         _supplement_with_rdr_calculations(metrics_data=file_obj, session=session)
                         if file_obj.activelyRetained != file_obj.rdr_is_actively_retained:
-                           active_retention_mismatches.append(pid)
+                            active_retention_mismatches.append(pid)
                         if file_obj.passivelyRetained != file_obj.rdr_is_passively_retained:
-                           passive_retention_mismatches.append(pid)
+                            passive_retention_mismatches.append(pid)
 
                 count += 1
                 if count % 500 == 0:
@@ -145,11 +145,13 @@ class PTSCRetentionMetricsClass(object):
         self.gcp_env.activate_sql_proxy()
 
         # TODO: Glob the bucket and get the latest file or get file date from command line arg.
+        """
         task_payload = {
             'bucket': '...',  # removed hard coded bucket.
             'file_path': '...',  # removed hard coded path.
             'upload_date': '2021-07-26 11:24:21'
         }
+        """
 
         return 0
 
