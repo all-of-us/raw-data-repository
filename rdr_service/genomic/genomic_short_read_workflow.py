@@ -226,6 +226,31 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
 
         return self.file_ingester.member_dao.insert(new_member_obj)
 
+    def sequester_control_samples(self, row, gc_site):
+        # Check if this sample has a control sample parent tube
+        control_sample_parent = self.file_ingester.member_dao.get_control_sample_parent(
+            row['genometype'],
+            int(row['parentsampleid'])
+        )
+
+        if control_sample_parent:
+            logging.warning(f"Control sample found: {row['parentsampleid']}")
+
+            # Check if the control sample member exists for this GC, BID, collection tube, and sample ID
+            # Since the Biobank is reusing the sample and collection tube IDs (which are supposed to be unique)
+            cntrl_sample_member = self.file_ingester.member_dao.get_control_sample_for_gc_and_genome_type(
+                gc_site,
+                row['genometype'],
+                row['biobankid'],
+                row['collectiontubeid'],
+                row['sampleid']
+            )
+
+            if not cntrl_sample_member:
+                # Insert new GenomicSetMember record if none exists
+                # for this control sample, genome type, and gc site
+                self.create_new_member_from_aw1_control_sample(row)
+
     def run_ingestion(self, rows: List[OrderedDict]) -> str:
         """
         AW1 ingestion method: Updates the GenomicSetMember with AW1 data
@@ -237,78 +262,58 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
         sample_dao = BiobankStoredSampleDao()
         workflow_states = [GenomicWorkflowState.AW0, GenomicWorkflowState.EXTRACT_REQUESTED]
         gc_site = self._get_site_from_aw1()
+        cleaned_rows = [self.file_ingester.clean_row_keys(row) for row in rows]
+        genome_type = cleaned_rows[0].get('genometype')
+        control_samples = self.file_ingester.member_dao.get_all_control_sample_parent_from_sample_ids(
+            genome_type=genome_type,
+            sample_ids=[obj['parentsampleid'] for obj in cleaned_rows]
+        )
 
-        for row in rows:
-            row_copy = self.file_ingester.clean_row_keys(row)
-
-            row_copy['site_id'] = gc_site
+        for row in cleaned_rows:
+            row['site_id'] = gc_site
             # Skip rows if biobank_id is an empty string (row is empty well)
-            if row_copy['biobankid'] == "":
+            if row['biobankid'] == "":
                 continue
-
-            # Check if this sample has a control sample parent tube
-            control_sample_parent = self.file_ingester.member_dao.get_control_sample_parent(
-                row_copy['genometype'],
-                int(row_copy['parentsampleid'])
-            )
-
-            # Create new set member record if the sample
-            # has the investigation genome type
-            if row_copy['genometype'] in GENOMIC_INVESTIGATION_GENOME_TYPES:
-                self.create_investigation_member_record_from_aw1(row_copy)
-
-                # Move to next row in file
+            # Create new set member record if the sample has the investigation genome type
+            if row['genometype'] in GENOMIC_INVESTIGATION_GENOME_TYPES:
+                self.create_investigation_member_record_from_aw1(row)
                 continue
-
-            if control_sample_parent:
-                logging.warning(f"Control sample found: {row_copy['parentsampleid']}")
-
-                # Check if the control sample member exists for this GC, BID, collection tube, and sample ID
-                # Since the Biobank is reusing the sample and collection tube IDs (which are supposed to be unique)
-                cntrl_sample_member = self.file_ingester.member_dao.get_control_sample_for_gc_and_genome_type(
-                    gc_site,
-                    row_copy['genometype'],
-                    row_copy['biobankid'],
-                    row_copy['collectiontubeid'],
-                    row_copy['sampleid']
-                )
-
-                if not cntrl_sample_member:
-                    # Insert new GenomicSetMember record if none exists
-                    # for this control sample, genome type, and gc site
-                    self.create_new_member_from_aw1_control_sample(row_copy)
-                continue
+            # Control sample flow
+            if control_samples:
+                if list(filter(lambda x: x.sampleId == row.get('parentsampleid'), control_samples)):
+                    self.sequester_control_samples(row=row, gc_site=gc_site)
+                    continue
 
             # Find the existing GenomicSetMember
             if self.file_ingester.controller.job_id == GenomicJob.AW1F_MANIFEST:
                 # Set the member based on collection tube ID will null sample
                 member = self.file_ingester.member_dao.get_member_from_collection_tube(
-                    row_copy['collectiontubeid'],
-                    row_copy['genometype'],
+                    row['collectiontubeid'],
+                    row['genometype'],
                     state=GenomicWorkflowState.AW1
                 )
             else:
                 # Set the member based on collection tube ID will null sample
                 member = self.file_ingester.member_dao.get_member_from_collection_tube_with_null_sample_id(
-                    row_copy['collectiontubeid'],
-                    row_copy['genometype'])
+                    row['collectiontubeid'],
+                    row['genometype'])
 
             # Since member not found, and not a control sample,
             # check if collection tube id was swapped by Biobank
             if not member:
-                bid = row_copy['biobankid']
+                bid = row['biobankid']
 
                 # Strip biobank prefix if it's there
                 if bid[0] in [get_biobank_id_prefix(), 'T']:
                     bid = bid[1:]
                 member = self.file_ingester.member_dao.get_member_from_biobank_id_in_state(
                     bid,
-                    row_copy['genometype'],
+                    row['genometype'],
                     workflow_states
                 )
                 # If member found, validate new collection tube ID, set collection tube ID
                 if member:
-                    if self.file_ingester.validate_collection_tube_id(row_copy['collectiontubeid'], bid):
+                    if self.file_ingester.validate_collection_tube_id(row['collectiontubeid'], bid):
                         if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS]:
                             if member.collectionTubeId:
                                 with self.file_ingester.member_dao.session() as session:
@@ -317,13 +322,13 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
                                         failedInJob=self.file_ingester.controller.job_id
                                     ))
 
-                        member.collectionTubeId = row_copy['collectiontubeid']
+                        member.collectionTubeId = row['collectiontubeid']
                 else:
                     # Couldn't find genomic set member based on either biobank ID or collection tube
                     _message = f"{self.file_ingester.controller.job_id.name}: Cannot find genomic set member: " \
-                               f"collection_tube_id: {row_copy['collectiontubeid']}, " \
+                               f"collection_tube_id: {row['collectiontubeid']}, " \
                                f"biobank id: {bid}, " \
-                               f"genome type: {row_copy['genometype']}"
+                               f"genome type: {row['genometype']}"
 
                     self.file_ingester.controller.create_incident(
                         source_job_run_id=self.file_ingester.controller.job_run.id,
@@ -331,19 +336,19 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
                         code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
                         message=_message,
                         biobank_id=bid,
-                        collection_tube_id=row_copy['collectiontubeid'],
-                        sample_id=row_copy['sampleid'],
+                        collection_tube_id=row['collectiontubeid'],
+                        sample_id=row['sampleid'],
                     )
                     # Skip rest of iteration and continue processing file
                     continue
 
             # Check for diversion pouch site
-            div_pouch_site_id = sample_dao.get_diversion_pouch_site_id(row_copy['collectiontubeid'])
+            div_pouch_site_id = sample_dao.get_diversion_pouch_site_id(row['collectiontubeid'])
             if div_pouch_site_id:
                 member.diversionPouchSiteFlag = 1
 
             # Process the attribute data
-            member_changed, member = self._process_aw1_attribute_data(row_copy, member)
+            member_changed, member = self._process_aw1_attribute_data(row, member)
             if member_changed:
                 self.file_ingester.member_dao.update(member)
 

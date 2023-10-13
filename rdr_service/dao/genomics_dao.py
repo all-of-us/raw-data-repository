@@ -966,6 +966,22 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.genomeType == genome_type
             ).one_or_none()
 
+    def get_all_control_sample_parent_from_sample_ids(self, genome_type, sample_ids: List[int]):
+        """
+        Returns the GenomicSetMember parent record for a control sample
+        :param genome_type:
+        :param sample_ids:
+        :return: GenomicSetMember
+        """
+        with self.session() as session:
+            return session.query(
+                GenomicSetMember.sampleId
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CONTROL_SAMPLE,
+                GenomicSetMember.sampleId.in_(sample_ids),
+                GenomicSetMember.genomeType == genome_type
+            ).all()
+
     def get_control_sample_for_gc_and_genome_type(self, _site, genome_type, biobank_id,
                                                   collection_tube_id, sample_id):
         """
