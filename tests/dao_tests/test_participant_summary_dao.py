@@ -135,7 +135,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         summary = self.dao.get(1)
         initial_last_modified = summary.lastModified
 
-        # Add a delay to ensure a different timestamp
+        # Add a delay to ensure a different timestamp for lastModified
         time.sleep(1)
 
         # Update the participant's data
