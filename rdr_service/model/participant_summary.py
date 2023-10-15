@@ -1856,14 +1856,14 @@ def validate_participant_summary(_, __, summary: ParticipantSummary):
         raise InvalidDataState('Participant summary missing an email or phone number')
 
 
-def model_update_modified_listener(mapper, connection, summary: ParticipantSummary):
-    """ On update auto set `modified` column value """
-    validate_participant_summary(mapper, connection, summary)
+def model_update_lastModified_listener(_, __, summary: ParticipantSummary):
+    """Auto set `lastModified` column value on updates."""
+    validate_participant_summary(_, __, summary)
     summary.lastModified = clock.CLOCK.now()
 
 
 event.listen(ParticipantSummary, "before_insert", validate_participant_summary)
-event.listen(ParticipantSummary, "before_update", model_update_modified_listener)
+event.listen(ParticipantSummary, "before_update", model_update_lastModified_listener)
 
 
 class ParticipantGenderAnswers(Base):
