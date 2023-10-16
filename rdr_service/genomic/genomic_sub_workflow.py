@@ -1,10 +1,12 @@
+from abc import ABC, abstractmethod
+from enum import Enum
 from typing import List
 
 from rdr_service import clock
-from rdr_service.genomic_enums import GenomicJob
+from rdr_service.genomic_enums import GenomicJob, GenomicLongReadPlatform
 
 
-class GenomicSubWorkflow:
+class GenomicSubWorkflow(ABC):
 
     def __init__(self, dao, job_id, job_run_id):
         self.dao = dao()
@@ -22,7 +24,8 @@ class GenomicSubWorkflow:
             GenomicJob.PR_P1_WORKFLOW: self.run_sample_ingestion,
             GenomicJob.PR_P2_WORKFLOW: self.run_bypass,
             GenomicJob.RNA_RR_WORKFLOW: self.run_request_ingestion,
-            GenomicJob.RNA_R1_WORKFLOW: self.run_sample_ingestion
+            GenomicJob.RNA_R1_WORKFLOW: self.run_sample_ingestion,
+            GenomicJob.LR_LR_WORKFLOW: self.run_request_ingestion
         }[self.job_id]
 
     @classmethod
@@ -46,8 +49,13 @@ class GenomicSubWorkflow:
             ...
         return current_site_id
 
-    def build_defaulted_base_attributes(self, model_string_attributes: List[str]) -> dict:
-        defaulted_base_obj = {
+    @abstractmethod
+    def get_platform_value(self, attribute_name: str) -> None:
+        ...
+
+    @abstractmethod
+    def set_default_base_attributes(self) -> dict:
+        return {
             'created': clock.CLOCK.now(),
             'modified': clock.CLOCK.now(),
             'created_job_run_id': self.job_run_id,
@@ -55,10 +63,13 @@ class GenomicSubWorkflow:
             'sample_id': None,
             'ignore_flag': 0
         }
+
+    def build_defaulted_base_attributes(self, model_string_attributes: List[str]) -> dict:
         base_default_attributes_map = {
             '_site_id': self.site_id,
             '_set': self.increment_set_number
         }
+        defaulted_base_obj = self.set_default_base_attributes()
         current_base_attributes = {
             **defaulted_base_obj,
             **{'id': None, 'genomic_set_member_id': None}
@@ -130,3 +141,21 @@ class GenomicSubWorkflow:
             })
 
         self.dao.bulk_update(update_objs)
+
+
+class GenomicSubLongReadWorkflow(GenomicSubWorkflow):
+
+    def get_platform_value(self, attribute_name: str = 'long_read_platform') -> Enum:
+        row_long_read_platform = self.row_data[0].get(attribute_name)
+        return GenomicLongReadPlatform.lookup_by_name(row_long_read_platform.upper())
+
+    def set_default_base_attributes(self) -> dict:
+        return {
+            'created': clock.CLOCK.now(),
+            'modified': clock.CLOCK.now(),
+            'created_job_run_id': self.job_run_id,
+            'genome_type': self.genome_type,
+            'sample_id': None,
+            'ignore_flag': 0,
+            'long_read_platform': self.get_platform_value()
+        }
