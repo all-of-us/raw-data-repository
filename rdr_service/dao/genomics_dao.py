@@ -4739,15 +4739,13 @@ class GenomicLongReadDao(GenomicSubDao):
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
-                # GenomicSetMember.participantOrigin != 'careevolution',
                 GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
                 GenomicSetMember.diversionPouchSiteFlag != 1,
                 GenomicSetMember.blockResults != 1,
                 GenomicSetMember.blockResearch != 1,
                 GenomicSetMember.ignoreFlag != 1,
-                GenomicSetMember.biobankId.in_(biobank_ids),
-                # GenomicSetMember.gcManifestParentSampleId.in_(parent_tube_ids)
+                GenomicSetMember.biobankId.in_(biobank_ids)
             ).distinct().all()
 
     def get_zero_manifest_records_from_max_set(self):
