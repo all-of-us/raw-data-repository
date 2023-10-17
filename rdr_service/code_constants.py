@@ -261,6 +261,8 @@ AGREE_NO = "agree_no"
 
 BIOBANK_TESTS = [
     "1ED10",
+    "2ED02",
+    "2ED04",
     "2ED10",
     "1ED04",
     "1SST8",
