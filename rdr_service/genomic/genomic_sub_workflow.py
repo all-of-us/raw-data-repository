@@ -6,7 +6,7 @@ from rdr_service import clock
 from rdr_service.genomic_enums import GenomicJob, GenomicLongReadPlatform
 
 
-class GenomicSubWorkflow(ABC):
+class GenomicBaseSubWorkflow(ABC):
 
     def __init__(self, dao, job_id, job_run_id):
         self.dao = dao()
@@ -18,7 +18,7 @@ class GenomicSubWorkflow(ABC):
         self.site_id = None
         self.increment_set_number = None
 
-    def __get_subworkflow_method(self):
+    def get_sub_workflow_method(self):
         return {
             GenomicJob.PR_PR_WORKFLOW: self.run_request_ingestion,
             GenomicJob.PR_P1_WORKFLOW: self.run_sample_ingestion,
@@ -50,19 +50,8 @@ class GenomicSubWorkflow(ABC):
         return current_site_id
 
     @abstractmethod
-    def get_platform_value(self, attribute_name: str) -> None:
-        ...
-
-    @abstractmethod
     def set_default_base_attributes(self) -> dict:
-        return {
-            'created': clock.CLOCK.now(),
-            'modified': clock.CLOCK.now(),
-            'created_job_run_id': self.job_run_id,
-            'genome_type': self.genome_type,
-            'sample_id': None,
-            'ignore_flag': 0
-        }
+        ...
 
     def build_defaulted_base_attributes(self, model_string_attributes: List[str]) -> dict:
         base_default_attributes_map = {
@@ -105,7 +94,7 @@ class GenomicSubWorkflow(ABC):
     def run_workflow(self, *, row_data) -> None:
         self.row_data = row_data
         self.set_instance_attributes_from_data()
-        self.__get_subworkflow_method()()
+        self.get_sub_workflow_method()()
 
     def run_request_ingestion(self) -> None:
         model_string_attributes: List[str] = self.set_model_string_attributes()
@@ -143,7 +132,20 @@ class GenomicSubWorkflow(ABC):
         self.dao.bulk_update(update_objs)
 
 
-class GenomicSubLongReadWorkflow(GenomicSubWorkflow):
+class GenomicSubWorkflow(GenomicBaseSubWorkflow):
+
+    def set_default_base_attributes(self) -> dict:
+        return {
+            'created': clock.CLOCK.now(),
+            'modified': clock.CLOCK.now(),
+            'created_job_run_id': self.job_run_id,
+            'genome_type': self.genome_type,
+            'sample_id': None,
+            'ignore_flag': 0
+        }
+
+
+class GenomicSubLongReadWorkflow(GenomicBaseSubWorkflow):
 
     def get_platform_value(self, attribute_name: str = 'long_read_platform') -> Enum:
         row_long_read_platform = self.row_data[0].get(attribute_name)
