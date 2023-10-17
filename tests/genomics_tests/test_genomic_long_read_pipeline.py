@@ -6,7 +6,7 @@ from unittest import mock
 from rdr_service import config, clock
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestFileDao, GenomicLongReadDao, \
-    GenomicFileProcessedDao, GenomicJobRunDao
+    GenomicFileProcessedDao, GenomicJobRunDao, GenomicSetMemberDao
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicLongReadPlatform, \
     GenomicSubProcessStatus, GenomicSubProcessResult
@@ -28,6 +28,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             genomicSetVersion=1
         )
         self.long_read_dao = GenomicLongReadDao()
+        self.genomic_set_member_dao = GenomicSetMemberDao()
 
     def base_lr_data_insert(self, **kwargs):
         for num in range(1, kwargs.get('num_set_members', 4)):
@@ -98,9 +99,36 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.biobank_id is not None for obj in long_read_members))
         self.assertTrue(all(obj.sample_id is None for obj in long_read_members))
         self.assertTrue(all(obj.genome_type == 'aou_long_read' for obj in long_read_members))
+        self.assertTrue(all(obj.collection_tube_id is not None for obj in long_read_members))
         self.assertTrue(all(obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CSS for obj in long_read_members))
         self.assertTrue(all(obj.lr_site_id == 'bcm' for obj in long_read_members))
         self.assertTrue(all(obj.genomic_set_member_id is not None for obj in long_read_members))
+        self.assertTrue(all(obj.long_read_set == 1 for obj in long_read_members))
+        self.assertTrue(all(obj.created_job_run_id is not None for obj in long_read_members))
+
+        # check collection tube ids
+        correct_collection_tube_ids = [obj.collectionTubeId for obj in self.genomic_set_member_dao.get_all()]
+        self.assertTrue(all(obj.collection_tube_id in correct_collection_tube_ids for obj in long_read_members))
+
+        # check job run record
+        lr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LR_LR_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(lr_job_runs)
+        self.assertEqual(len(lr_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in lr_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in lr_job_runs))
+
+        self.clear_table_after_test('genomic_long_read')
+
+    def test_lr_manifest_ingestion_increments_set(self):
+
+        self.execute_base_lr_ingestion(
+            test_file='RDR_AoU_LR_Requests.csv',
+            job_id=GenomicJob.LR_LR_WORKFLOW,
+            manifest_type=GenomicManifestTypes.LR_LR
+        )
+
+        long_read_members = self.long_read_dao.get_all()
         self.assertTrue(all(obj.long_read_set == 1 for obj in long_read_members))
 
         # check job run record
@@ -108,6 +136,25 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         self.assertIsNotNone(lr_job_runs)
         self.assertEqual(len(lr_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in lr_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in lr_job_runs))
+
+        # rerun job should increment set correctly
+        self.execute_base_lr_ingestion(
+            test_file='RDR_AoU_LR_Requests.csv',
+            job_id=GenomicJob.LR_LR_WORKFLOW,
+            manifest_type=GenomicManifestTypes.LR_LR,
+            bypass_data_insert=True
+        )
+
+        long_read_members = self.long_read_dao.get_all()
+        self.assertTrue(any(obj.long_read_set == 2 for obj in long_read_members))
+
+        # check job run record
+        lr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LR_LR_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(lr_job_runs)
+        self.assertEqual(len(lr_job_runs), 2)
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in lr_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in lr_job_runs))
 
@@ -136,12 +183,9 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         lr_raw_records = lr_raw_dao.get_all()
 
         self.assertEqual(len(lr_raw_records), 3)
-        self.assertTrue(all(obj.file_path is not None for obj in lr_raw_records))
-        self.assertTrue(all(obj.biobank_id is not None for obj in lr_raw_records))
-        self.assertTrue(all(obj.genome_type is not None for obj in lr_raw_records))
-        self.assertTrue(all(obj.long_read_platform is not None for obj in lr_raw_records))
-        self.assertTrue(all(obj.lr_site_id is not None for obj in lr_raw_records))
-        self.assertTrue(all(obj.parent_tube_id is not None for obj in lr_raw_records))
+
+        for attribute in GenomicLRRaw.__table__.columns:
+            self.assertTrue(all(getattr(obj, str(attribute).split('.')[1]) is not None for obj in lr_raw_records))
 
         # check job run record
         l0_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_LR_TO_RAW_TABLE, self.job_run_dao.get_all()))
