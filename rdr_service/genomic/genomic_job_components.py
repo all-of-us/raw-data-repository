@@ -297,6 +297,7 @@ class GenomicFileIngester:
             GenomicJob.CVL_W4WR_WORKFLOW: self._ingest_cvl_w4wr_manifest,
             GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
             GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L1_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
@@ -1159,6 +1160,7 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
+    # Long Read
     def _ingest_lr_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
             GenomicSubLongReadWorkflow.create_genomic_sub_workflow(
@@ -1170,6 +1172,7 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
+    # Proteomics
     def _ingest_pr_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
             GenomicSubWorkflow.create_genomic_sub_workflow(
@@ -1181,6 +1184,7 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
+    # RNA Seq
     def _ingest_rna_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
             GenomicSubWorkflow.create_genomic_sub_workflow(
@@ -1559,6 +1563,39 @@ class GenomicFileValidator:
             "parenttubeid",
             "lrsiteid",
             "longreadplatform"
+        )
+
+        self.LR_L1_SCHEMA = (
+            "packageid",
+            "biobankidsampleid",
+            "boxstorageunitid",
+            "boxidplateid",
+            "wellposition",
+            "sampleid",
+            "parentsampleid",
+            "collectiontubeid",
+            "matrixid",
+            "collectiondate",
+            "biobankid",
+            "sexatbirth",
+            "age",
+            "nystateyn",
+            "sampletype",
+            "treatments",
+            "quantityul",
+            "visitdescription",
+            "samplesource",
+            "study",
+            "trackingnumber",
+            "contact",
+            "email",
+            "studypi",
+            "sitename",
+            "genometype",
+            "lrsiteid",
+            "longreadplatform",
+            "failuremode",
+            "failuremodedesc"
         )
 
         # PR pipeline
@@ -1951,6 +1988,18 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def lr_l1_manifest_name_rule():
+            """
+            LR L1 manifest name rule
+            """
+            return (
+                len(filename_components) == 4 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'l1' and
+                filename.lower().endswith('csv')
+            )
+
         # PR pipeline
         def pr_pr_manifest_name_rule():
             """
@@ -2034,6 +2083,7 @@ class GenomicFileValidator:
             GenomicJob.CVL_W4WR_WORKFLOW: cvl_w4wr_manifest_name_rule,
             GenomicJob.CVL_W5NF_WORKFLOW: cvl_w5nf_manifest_name_rule,
             GenomicJob.LR_LR_WORKFLOW: lr_lr_manifest_name_rule,
+            GenomicJob.LR_L1_WORKFLOW: lr_l1_manifest_name_rule,
             GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule,
             GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule,
             GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule,
@@ -2154,6 +2204,8 @@ class GenomicFileValidator:
                 return self.CVL_W5NF_SCHEMA
             if self.job_id == GenomicJob.LR_LR_WORKFLOW:
                 return self.LR_LR_SCHEMA
+            if self.job_id == GenomicJob.LR_L1_WORKFLOW:
+                return self.LR_L1_SCHEMA
             if self.job_id == GenomicJob.PR_PR_WORKFLOW:
                 return self.PR_PR_SCHEMA
             if self.job_id == GenomicJob.PR_P1_WORKFLOW:
