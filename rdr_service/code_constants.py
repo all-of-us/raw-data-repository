@@ -261,8 +261,6 @@ AGREE_NO = "agree_no"
 
 BIOBANK_TESTS = [
     "1ED10",
-    "2ED02",
-    "2ED04",
     "2ED10",
     "1ED04",
     "1SST8",
@@ -279,6 +277,8 @@ BIOBANK_TESTS = [
     "1ED02",
     "1CFD9",
     "1PXR2",
+    "2ED02",
+    "2ED04"
 ]
 BIOBANK_TESTS_SET = frozenset(BIOBANK_TESTS)
 
