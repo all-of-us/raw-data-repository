@@ -22,6 +22,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import foreign, relationship, remote
 from sqlalchemy.sql import expression
 
+from rdr_service import clock
 from rdr_service.model.account_link import AccountLink
 from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
 from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
@@ -1855,8 +1856,14 @@ def validate_participant_summary(_, __, summary: ParticipantSummary):
         raise InvalidDataState('Participant summary missing an email or phone number')
 
 
+def model_update_lastModified_listener(_, __, summary: ParticipantSummary):
+    """Auto set `lastModified` column value on updates."""
+    validate_participant_summary(_, __, summary)
+    summary.lastModified = clock.CLOCK.now()
+
+
 event.listen(ParticipantSummary, "before_insert", validate_participant_summary)
-event.listen(ParticipantSummary, "before_update", validate_participant_summary)
+event.listen(ParticipantSummary, "before_update", model_update_lastModified_listener)
 
 
 class ParticipantGenderAnswers(Base):
