@@ -38,13 +38,12 @@ class SiteHierarchyDao(BaseDao):
             for key, value in kwargs.items()
             if key in filter_map
         ]
-
         with self.session() as session:
             query_ = self._initialize_query(session)
             if filters:
                 query_ = query_.filter(*filters)
+            result = query_.all()
 
-        result = query_.all()
         response = {"data": [model._asdict() for model in result]}
         return jsonify(response)
 
