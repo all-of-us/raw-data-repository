@@ -1643,14 +1643,12 @@ class GenomicLongRead(Base):
     modified = Column(DateTime)
     genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"), nullable=False, index=True)
     biobank_id = Column(String(128), nullable=False, index=True)
-    collection_tube_id = Column(String(255), nullable=True, index=True)
     sample_id = Column(String(80), nullable=True, index=True)
     genome_type = Column(String(80), nullable=False, default='aou_long_read')
     lr_site_id = Column(String(11), nullable=False)
     long_read_platform = Column(Enum(GenomicLongReadPlatform), default=GenomicLongReadPlatform.UNSET)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
     long_read_set = Column(Integer, nullable=False, default=0)
-    created_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"), nullable=True)
 
 
 event.listen(GenomicLongRead, 'before_insert', model_insert_listener)

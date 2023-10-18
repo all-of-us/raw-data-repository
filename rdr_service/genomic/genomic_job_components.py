@@ -17,8 +17,9 @@ import sqlalchemy
 
 from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.genomic.genomic_long_read_workflow import GenomicLongReadWorkFlow
 from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow
-from rdr_service.genomic.genomic_sub_workflow import GenomicSubWorkflow, GenomicSubLongReadWorkflow
+from rdr_service.genomic.genomic_sub_workflow import GenomicSubWorkflow
 from rdr_service.genomic_enums import ResultsModuleType
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -296,7 +297,7 @@ class GenomicFileIngester:
             GenomicJob.CVL_W3SC_WORKFLOW: self._ingest_cvl_w3sc_manifest,
             GenomicJob.CVL_W4WR_WORKFLOW: self._ingest_cvl_w4wr_manifest,
             GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
-            GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_lr_manifest,
             GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
@@ -1159,13 +1160,10 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
-    def _ingest_lr_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
+    @classmethod
+    def _ingest_lr_lr_manifest(cls, rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
-            GenomicSubLongReadWorkflow.create_genomic_sub_workflow(
-                dao=GenomicLongReadDao,
-                job_id=self.job_id,
-                job_run_id=self.job_run_id
-            ).run_workflow(row_data=rows)
+            GenomicLongReadWorkFlow.run_lr_workflow(rows)
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
@@ -3154,7 +3152,7 @@ class ManifestDefinitionProvider:
                 'output_filename':
                     f'{LR_L0_MANIFEST_SUBFOLDER}/LongRead-Manifest-AoU-{self.kwargs.get("long_read_max_set")}'
                     f'-{now_formatted}.csv',
-                'query': self.long_read_dao.get_zero_manifest_records_from_max_set
+                'query': self.long_read_dao.get_l0_records_from_max_set
             },
             GenomicManifestTypes.PR_P0: {
                 'output_filename':
