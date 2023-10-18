@@ -126,7 +126,6 @@ class RetentionEligibility:
             self._participant.wear_consent_timestamp,
             self._participant.etm_consent_timestamp,
             self._participant.latest_etm_response_timestamp
-
         ]
 
         if self._participant.consent_cohort in [ParticipantCohort.COHORT_1, ParticipantCohort.COHORT_2]:
