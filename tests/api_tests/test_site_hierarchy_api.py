@@ -170,9 +170,3 @@ class SiteHierarchyApiTest(BaseTestCase):
             response,
             msg="Response structure does not match expected structure. Response should be empty.",
         )
-
-    def tearDown(self):
-        super().tearDown()
-        self.clear_table_after_test('rdr.site')
-        self.clear_table_after_test('rdr.organization')
-        self.clear_table_after_test('rdr.hpo')
