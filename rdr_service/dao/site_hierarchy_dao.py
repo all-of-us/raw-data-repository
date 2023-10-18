@@ -30,7 +30,7 @@ class SiteHierarchyDao(BaseDao):
         # Map query params in the URL to the corresponding col names
         filter_map = {
             "awardee_id": HPO.name,
-            "org_id": Organization.externalId,
+            "organization_id": Organization.externalId,
             "google_group": Site.googleGroup,
         }
         filters = [
