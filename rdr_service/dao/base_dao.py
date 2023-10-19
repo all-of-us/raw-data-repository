@@ -348,25 +348,26 @@ class BaseDao(object):
 
         with self.session() as session:
             total = None
-
             query, field_names = self._make_query(session, query_definition)
             items = query.with_session(session).all()
-
             if query_definition.include_total:
                 total = self._count_query(session, query_definition)
-
             if not items:
                 return Results([], total=total)
 
         if len(items) > query_definition.max_results:
             # Items, pagination token, and more are available
-            page = items[0 : query_definition.max_results]
-            token = self._make_pagination_token(items[query_definition.max_results - 1].asdict(), field_names)
+            page = items[0: query_definition.max_results]
+            token = self._make_pagination_token(
+                items[query_definition.max_results - 1].asdict(),
+                field_names
+            )
             return Results(page, token, more_available=True, total=total)
         else:
             token = (
-                self._make_pagination_token(items[-1].asdict(),
-                                            field_names) if query_definition.always_return_token else None
+                self._make_pagination_token(
+                    items[-1].asdict(),
+                    field_names) if query_definition.always_return_token else None
             )
             return Results(items, token, more_available=False, total=total)
 
@@ -409,12 +410,13 @@ class BaseDao(object):
             query = query.options(query_definition.options)
         return query, order_by_field_names
 
-    def _set_filters(self, query, filters):
+    def _set_filters(self, query, filters, model_type=None):
+        model_type = model_type or self.model_type
         for field_filter in filters:
             try:
-                f = getattr(self.model_type, field_filter.field_name)
+                f = getattr(model_type, field_filter.field_name)
             except AttributeError:
-                raise BadRequest(f"No field named {field_filter.field_name} found on {self.model_type}.")
+                raise BadRequest(f"No field named {field_filter.field_name} found on {model_type}.")
             query = self._add_filter(query, field_filter, f)
         return query
 

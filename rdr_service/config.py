@@ -281,6 +281,9 @@ RDR_GENOMICS_NOTIFICATION_EMAIL = "rdr_genomics_notification_email"
 
 SENSITIVE_EHR_RELEASE_DATE = 'sensitive_ehr_release_date'
 
+PM_HEIGHT_CODES = 'pm_height_codes'
+PM_WEIGHT_CODES = 'pm_weight_codes'
+
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
 

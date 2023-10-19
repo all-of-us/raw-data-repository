@@ -198,5 +198,7 @@
       "organization",
       "site"
     ]
-  }
+  },
+  "pm_height_codes": ["height", "8302-2"],
+  "pm_weight_codes": ["weight", "29463-7", "pre-pregnancy-weight"]
 }

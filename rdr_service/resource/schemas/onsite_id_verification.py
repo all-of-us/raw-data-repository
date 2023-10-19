@@ -18,6 +18,7 @@ class PDROnsiteVerificationType(Enum):
     PHOTO_AND_ONE_OF_PII = 1
     TWO_OF_PII = 2
 
+
 # RDR Enum class: OnsiteVerificationVisitType
 class PDROnsiteVerificationVisitType(Enum):
     """Types of on site visit"""
@@ -27,6 +28,7 @@ class PDROnsiteVerificationVisitType(Enum):
     BIOSPECIMEN_COLLECTION_ONLY = 3
     BIOSPECIMEN_REDRAW_ONLY = 4
     RETENTION_ACTIVITIES = 5
+    PEDIATRIC_VISIT = 6
 
 
 class OnSiteIdVerificationSchema(Schema):

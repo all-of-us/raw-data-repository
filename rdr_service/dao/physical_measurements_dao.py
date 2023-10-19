@@ -9,7 +9,7 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm.attributes import flag_modified
 from werkzeug.exceptions import BadRequest
 
-from rdr_service import clock
+from rdr_service import clock, config
 from rdr_service.api_util import parse_date
 from rdr_service.concepts import Concept
 from rdr_service.dao.base_dao import UpdatableDao
@@ -302,8 +302,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
                     session, inserted_obj.participantId, inserted_obj.finalizedSiteId
                 )
 
-        # Flush to assign an ID to the measurements, as the client doesn't provide one.
-        session.flush()
+        # Commit before recalculating the enrollment status-related details so DB queries to retrieve measurements
+        # data during the calculation will return what was just inserted
+        session.commit()
+        self._update_participant_enrollment_status(participant_summary, session)
         # Update the resource to contain the ID.
         resource_json["id"] = str(obj.physicalMeasurementsId)
         obj = self.store_record_fhir_doc(obj, resource_json)
@@ -373,10 +375,12 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 SelfReportedPhysicalMeasurementsStatus.COMPLETED
             participant_summary.selfReportedPhysicalMeasurementsAuthored = obj.finalized
 
-        participant_summary_dao.update_enrollment_status(participant_summary, session=session)
-        session.merge(participant_summary)
-
+        self._update_participant_enrollment_status(participant_summary, session)
         return participant_summary
+
+    def _update_participant_enrollment_status(self, participant_summary,  session):
+        ParticipantSummaryDao().update_enrollment_status(participant_summary, session=session)
+        session.merge(participant_summary)
 
     def get_latest_pm(self, session, participant):
         return (
@@ -435,7 +439,6 @@ class PhysicalMeasurementsDao(UpdatableDao):
         amended_measurement = self.store_record_fhir_doc(amended_measurement, amended_resource_json)
         session.merge(amended_measurement)
         obj.amendedMeasurementsId = amended_measurement_id
-
 
     def update_with_patch(self, id_, session, resource):
         record = self.get_with_children_with_session(session, id_, for_update=True)
@@ -988,8 +991,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
         """
         Analyzes the physical measurement data to determine if the Core Data flag should be set to True
         """
-        height_codes = ['height', '8302-2']
-        weight_codes = ['weight', '29463-7', 'pre-pregnancy-weight']
+        height_codes = config.getSettingJson(config.PM_HEIGHT_CODES)
+        weight_codes = config.getSettingJson(config.PM_WEIGHT_CODES)
 
         has_height = False
         has_weight = False

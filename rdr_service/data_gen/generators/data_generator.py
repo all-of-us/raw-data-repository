@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from rdr_service.code_constants import PPI_SYSTEM, WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES, \
-    WITHDRAWAL_CEREMONY_NO, RACE_QUESTION_CODE, RACE_AIAN_CODE
+    WITHDRAWAL_CEREMONY_NO
 from rdr_service.model.api_user import ApiUser
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankOrderHistory, \
@@ -59,9 +59,6 @@ class DataGenerator:
         self.ceremony_question_code = None
         self.ceremony_yes_answer_code = None
         self.ceremony_no_answer_code = None
-
-        self.race_question_code = None
-        self.native_answer_code = None
 
     def _commit_to_database(self, model):
         self.session.add(model)
@@ -377,7 +374,8 @@ class DataGenerator:
             "consentForNphModule1": False,
             "nphWithdrawal": False,
             "nphDeactivation": False,
-            "hasCoreData": False
+            "hasCoreData": False,
+            "hasHeightAndWeight": False,
         }
 
         defaults.update(kwargs)
@@ -958,12 +956,18 @@ class DataGenerator:
         return m
 
     def create_withdrawn_participant(self, withdrawal_reason_justification, is_native_american=False,
-                                     requests_ceremony=None, withdrawal_time=datetime.utcnow()):
+                                     requests_ceremony=None, withdrawal_time=datetime.utcnow(), summary_kwargs=None):
         participant = self.create_database_participant(
             withdrawalTime=withdrawal_time,
             withdrawalStatus=WithdrawalStatus.NO_USE,
             withdrawalReasonJustification=withdrawal_reason_justification
         )
+        if summary_kwargs or is_native_american:
+            self.create_database_participant_summary(
+                participant=participant,
+                aian=is_native_american,
+                **(summary_kwargs or {})
+            )
 
         # Withdrawal report only includes participants that have stored samples
         self.create_database_biobank_stored_sample(biobankId=participant.biobankId, test='test')
@@ -973,9 +977,7 @@ class DataGenerator:
         answers = []
         for question in questionnaire.questions:
             answer_code_id = None
-            if question.codeId == self.race_question_code.codeId and is_native_american:
-                answer_code_id = self.native_answer_code.codeId
-            elif question.codeId == self.ceremony_question_code.codeId and requests_ceremony:
+            if question.codeId == self.ceremony_question_code.codeId and requests_ceremony:
                 if requests_ceremony == WithdrawalAIANCeremonyStatus.REQUESTED:
                     answer_code_id = self.ceremony_yes_answer_code.codeId
                 elif requests_ceremony == WithdrawalAIANCeremonyStatus.DECLINED:
@@ -999,9 +1001,6 @@ class DataGenerator:
         if self.withdrawal_questionnaire is None:
             self.initialize_common_codes()
 
-            race_question = self.create_database_questionnaire_question(
-                codeId=self.race_question_code.codeId
-            )
             ceremony_question = self.create_database_questionnaire_question(
                 codeId=self.ceremony_question_code.codeId
             )
@@ -1009,13 +1008,13 @@ class DataGenerator:
             self.withdrawal_questionnaire = self.create_database_questionnaire_history(
                 # As of writing this, the pipeline only checks for the answers, regardless of questionnaire
                 # so putting them in the same questionnaire for convenience of the test code
-                questions=[race_question, ceremony_question]
+                questions=[ceremony_question]
             )
 
         return self.withdrawal_questionnaire
 
     def initialize_common_codes(self):
-        if self.race_question_code is None:
+        if self.ceremony_question_code is None:
             self.ceremony_question_code = self.create_database_code(
                 value=WITHDRAWAL_CEREMONY_QUESTION_CODE,
                 codeType=CodeType.QUESTION,
@@ -1029,13 +1028,3 @@ class DataGenerator:
                 codeType=CodeType.QUESTION,
             )
 
-            self.race_question_code = self.create_database_code(
-                value=RACE_QUESTION_CODE,
-                codeType=CodeType.QUESTION,
-                mapped=True
-            )
-            self.native_answer_code = self.create_database_code(
-                value=RACE_AIAN_CODE,
-                codeType=CodeType.ANSWER,
-                mapped=True
-            )
