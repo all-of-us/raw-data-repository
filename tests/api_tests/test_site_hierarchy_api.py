@@ -1,4 +1,10 @@
 from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.mysql_helper_data import (
+    ILLINOIS_HPO_ID,
+    ILLINOIS_ORG_ID,
+    ILLINOIS_SITE_ID,
+    OBSOLETE_ID,
+)
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
@@ -56,7 +62,7 @@ class SiteHierarchyApiTest(BaseTestCase):
         self.site_dao = SiteDao()
         self.hpo_dao.insert(
             HPO(
-                hpoId=60,
+                hpoId=ILLINOIS_HPO_ID,
                 name="ILLINOIS",
                 displayName="illinois",
                 organizationType=OrganizationType.HPO,
@@ -64,29 +70,29 @@ class SiteHierarchyApiTest(BaseTestCase):
         )
         self.org_dao.insert(
             Organization(
-                organizationId=5,
+                organizationId=ILLINOIS_ORG_ID,
                 externalId="ILLINOIS_1",
                 displayName="Illinois 1",
-                hpoId=60,
+                hpoId=ILLINOIS_HPO_ID,
             )
         )
         self.site_dao.insert(
             Site(
-                siteId=4,
+                siteId=ILLINOIS_SITE_ID,
                 siteName="Illinois Site 1",
                 googleGroup="illinois-site-1",
-                organizationId=5,
-                hpoId=60,
+                organizationId=ILLINOIS_ORG_ID,
+                hpoId=ILLINOIS_HPO_ID,
                 isObsolete=ObsoleteStatus.ACTIVE,
             )
         )
         self.site_dao.insert(
             Site(
-                siteId=5,
+                siteId=OBSOLETE_ID,
                 siteName="Illinois Site 2",
                 googleGroup="illinois-site-2",
-                organizationId=5,
-                hpoId=60,
+                organizationId=ILLINOIS_ORG_ID,
+                hpoId=ILLINOIS_HPO_ID,
                 isObsolete=ObsoleteStatus.OBSOLETE,
             )
         )
