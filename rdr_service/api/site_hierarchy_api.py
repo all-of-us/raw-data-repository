@@ -1,13 +1,21 @@
 from flask import request
 
+from rdr_service import app_util
 from rdr_service.api.base_api import BaseApi
 from rdr_service.dao.site_hierarchy_dao import SiteHierarchyDao
+from rdr_service.api_util import CURATION
 
 
 class SiteHierarchyApi(BaseApi):
     def __init__(self):
         super().__init__(SiteHierarchyDao())
 
+    @app_util.auth_required(CURATION)
+    def get(self, id_=None, p_id=None):
+        """This will call the list method below"""
+        return super().get(id_=id_, participant_id=p_id)
+
+    @app_util.auth_required(CURATION)
     def list(self, participant_id=None):
         """Handle a GET request."""
         kwargs = request.args
