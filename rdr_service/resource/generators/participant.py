@@ -1910,7 +1910,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
              """
             result = ro_session.execute(ps_sql).first()
             if result and (result.consent_for_electronic_health_records_authored and
-                           result.consent_for_electronic_health_records_authored == consent_response_rec.authored):
+                           result.consent_for_electronic_health_records_authored == consent_response_rec.authored and
+                           consent_response_rec.authored > pdf_validation_start_date
+            ):
                 return BQModuleStatusEnum(result.consent_for_electronic_health_records)
 
             # Look for consent validation results matching this EHR consent response

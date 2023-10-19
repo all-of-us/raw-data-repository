@@ -197,9 +197,9 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             self.assertEqual(hpo_id, record.hpo_id)
 
         # The first_seen and last_seen fields are set with mysql's NOW function,
-        #   so check that the time is close to what is expected
-        self.assertAlmostEquals(first_seen, record.firstSeen, delta=datetime.timedelta(seconds=1))
-        self.assertAlmostEquals(last_seen, record.lastSeen, delta=datetime.timedelta(seconds=1))
+        #   so check that the time is close to what is expected (for resolution in seconds, up to 2 seconds)
+        self.assertAlmostEquals(first_seen, record.firstSeen, delta=datetime.timedelta(seconds=2))
+        self.assertAlmostEquals(last_seen, record.lastSeen, delta=datetime.timedelta(seconds=2))
 
         # Check generated data.
         ps_data = self.make_participant_resource(participant_id)
@@ -212,8 +212,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
             last_seen_timedelta = generated_ehr_receipt['last_seen'] - last_seen
             return all([
                 generated_ehr_receipt['file_timestamp'] == file_timestamp,
-                first_seen_timedelta <= datetime.timedelta(seconds=1),
-                last_seen_timedelta <= datetime.timedelta(seconds=1)
+                first_seen_timedelta < datetime.timedelta(seconds=2),
+                last_seen_timedelta < datetime.timedelta(seconds=2)
             ])
         self.assertTrue(any([ehr_receipt_matches_expected(ehr_receipt) for ehr_receipt in ps_data['ehr_receipts']]))
 
