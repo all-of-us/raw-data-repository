@@ -158,7 +158,7 @@ class RetentionEligibility:
 
     @classmethod
     def _is_less_than_18_months_ago(cls, timestamp: datetime) -> bool:
-        return None if timestamp is None else timestamp >= cls._get_datetime_18_months_ago()
+        return False if timestamp is None else timestamp >= cls._get_datetime_18_months_ago()
 
     @classmethod
     def _get_datetime_18_months_ago(cls) -> datetime:
