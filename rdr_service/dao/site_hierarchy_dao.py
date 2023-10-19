@@ -3,6 +3,7 @@ from typing import Dict
 from flask import jsonify, Response
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, query
+from werkzeug.exceptions import BadRequest
 
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.site import Site
@@ -12,6 +13,12 @@ from rdr_service.model.site_enums import ObsoleteStatus
 
 
 class SiteHierarchyDao(BaseDao):
+    _QUERY_PARAM_MAPPING = {
+        "awardee_id": {"col": HPO.name},
+        "organization_id": {"col": Organization.externalId},
+        "google_group": {"col": Site.googleGroup},
+    }
+
     def __init__(self):
         super(SiteHierarchyDao, self).__init__(Site)
 
@@ -21,25 +28,22 @@ class SiteHierarchyDao(BaseDao):
 
         :param kwargs: Contains the query params extracted from the URL.
         :return: A dictionary representing the response to be sent to the client.
+        :raises BadRequest: If a client provides an incorrect query param.
 
         **Note:**
         - Currently handles 3 query params: awardee_id, organization_id, google_group
             Any query parameters not listed above will be ignored.
         - The function returns a list of site hierarchy models that match the specified query parameters.
         """
-        # Map query params in the URL to the corresponding col names
-        filter_map = {
-            "awardee_id": HPO.name,
-            "organization_id": Organization.externalId,
-            "google_group": Site.googleGroup,
-        }
+        self._validate_query_params(**kwargs)
+
         filters = [
-            filter_map[key] == value
+            self._QUERY_PARAM_MAPPING[key]["col"] == value
             for key, value in kwargs.items()
-            if key in filter_map
+            if key in self._QUERY_PARAM_MAPPING.keys()
         ]
         with self.session() as session:
-            query_ = self._initialize_query(session)
+            query_ = self.get_site_hierarchy_query(session)
             if filters:
                 query_ = query_.filter(*filters)
             result = query_.all()
@@ -47,7 +51,15 @@ class SiteHierarchyDao(BaseDao):
         response = {"data": [model._asdict() for model in result]}
         return jsonify(response)
 
-    def _initialize_query(self, session: Session) -> query.Query:
+    def _validate_query_params(self, **kwargs: Dict[str, str]):
+        for key, _ in kwargs.items():
+            if key not in self._QUERY_PARAM_MAPPING.keys():
+                raise BadRequest(
+                    f"Invalid query parameter(s). "
+                    f"Supported parameters are: {', '.join(self._QUERY_PARAM_MAPPING.keys())}"
+                )
+
+    def get_site_hierarchy_query(self, session: Session) -> query.Query:
         """Initialize and return a SQLAlchemy query for active sites, their organizations, and HPOs.
         The query is designed to retrieve data from the 'Site', 'Organization', and 'HPO' tables and filter for active
         sites. It returns information labeled as 'awardee_id' (HPO name), 'organization_id' (Organization external ID),
