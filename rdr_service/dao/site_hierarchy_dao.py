@@ -20,7 +20,7 @@ class SiteHierarchyDao(BaseDao):
     }
 
     def __init__(self):
-        super(SiteHierarchyDao, self).__init__(Site)
+        super().__init__(Site)
 
     def handle_list_queries(self, **kwargs: Dict[str, str]) -> Response:
         """
@@ -40,7 +40,7 @@ class SiteHierarchyDao(BaseDao):
         filters = [
             self._QUERY_PARAM_MAPPING[key]["col"] == value
             for key, value in kwargs.items()
-            if key in self._QUERY_PARAM_MAPPING.keys()
+            if key in self._QUERY_PARAM_MAPPING
         ]
         with self.session() as session:
             query_ = self.get_site_hierarchy_query(session)
@@ -53,7 +53,7 @@ class SiteHierarchyDao(BaseDao):
 
     def _validate_query_params(self, **kwargs: Dict[str, str]):
         for key, _ in kwargs.items():
-            if key not in self._QUERY_PARAM_MAPPING.keys():
+            if key not in self._QUERY_PARAM_MAPPING:
                 raise BadRequest(
                     f"Invalid query parameter(s). "
                     f"Supported parameters are: {', '.join(self._QUERY_PARAM_MAPPING.keys())}"

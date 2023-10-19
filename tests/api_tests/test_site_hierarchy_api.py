@@ -56,7 +56,7 @@ def _make_expected_response(**kwargs):
 
 class SiteHierarchyApiTest(BaseTestCase):
     def setUp(self):
-        super(SiteHierarchyApiTest, self).setUp()
+        super().setUp()
         self.hpo_dao = HPODao()
         self.org_dao = OrganizationDao()
         self.site_dao = SiteDao()
