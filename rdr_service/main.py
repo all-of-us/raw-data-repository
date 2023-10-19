@@ -95,6 +95,7 @@ api.add_resource(
 api.add_resource(
     SiteHierarchyApi,
     API_PREFIX + "SiteHierarchy",
+    endpoint="sitehierarchy",
     methods=["GET"]
 )
 
