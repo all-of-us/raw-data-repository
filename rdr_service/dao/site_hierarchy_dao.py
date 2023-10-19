@@ -22,6 +22,9 @@ class SiteHierarchyDao(BaseDao):
     def __init__(self):
         super().__init__(Site)
 
+    def get_id(self, obj):
+        pass
+
     def handle_list_queries(self, **kwargs: Dict[str, str]) -> Response:
         """
         Return information on site hierarchy based on query parameters.
