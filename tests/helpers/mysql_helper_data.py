@@ -11,6 +11,9 @@ PITT_SITE_ID = 1
 AZ_HPO_ID = 4
 AZ_ORG_ID = 4
 OBSOLETE_ID = 5
+ILLINOIS_HPO_ID = 6
+ILLINOIS_ORG_ID = 5
+ILLINOIS_SITE_ID = 4
 
 @contextlib.contextmanager
 def random_ids(ids):
