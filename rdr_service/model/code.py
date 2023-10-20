@@ -71,7 +71,7 @@ class _CodeBase(object):
         return Column("parent_id", Integer, ForeignKey("code.code_id"))
 
     def value_matches(self, value: str):
-        return self.value and self.value.lower() == value
+        return self.value and self.value.lower() == value.lower()
 
 
 class Code(_CodeBase, Base):
