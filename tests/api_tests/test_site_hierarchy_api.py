@@ -5,12 +5,6 @@ from tests.helpers.mysql_helper_data import (
     ILLINOIS_SITE_ID,
     OBSOLETE_ID,
 )
-from rdr_service.dao.hpo_dao import HPODao
-from rdr_service.dao.organization_dao import OrganizationDao
-from rdr_service.dao.site_dao import SiteDao
-from rdr_service.model.hpo import HPO
-from rdr_service.model.organization import Organization
-from rdr_service.model.site import Site
 from rdr_service.model.site_enums import ObsoleteStatus
 from rdr_service.participant_enums import OrganizationType
 
@@ -57,44 +51,33 @@ def _make_expected_response(**kwargs):
 class SiteHierarchyApiTest(BaseTestCase):
     def setUp(self):
         super().setUp()
-        self.hpo_dao = HPODao()
-        self.org_dao = OrganizationDao()
-        self.site_dao = SiteDao()
-        self.hpo_dao.insert(
-            HPO(
-                hpoId=ILLINOIS_HPO_ID,
-                name="ILLINOIS",
-                displayName="illinois",
-                organizationType=OrganizationType.HPO,
-            )
+        self.data_generator.create_database_hpo(
+            hpoId=ILLINOIS_HPO_ID,
+            name="ILLINOIS",
+            displayName="illinois",
+            organizationType=OrganizationType.HPO,
         )
-        self.org_dao.insert(
-            Organization(
-                organizationId=ILLINOIS_ORG_ID,
-                externalId="ILLINOIS_1",
-                displayName="Illinois 1",
-                hpoId=ILLINOIS_HPO_ID,
-            )
+        self.data_generator.create_database_organization(
+            organizationId=ILLINOIS_ORG_ID,
+            externalId="ILLINOIS_1",
+            displayName="Illinois 1",
+            hpoId=ILLINOIS_HPO_ID,
         )
-        self.site_dao.insert(
-            Site(
-                siteId=ILLINOIS_SITE_ID,
-                siteName="Illinois Site 1",
-                googleGroup="illinois-site-1",
-                organizationId=ILLINOIS_ORG_ID,
-                hpoId=ILLINOIS_HPO_ID,
-                isObsolete=ObsoleteStatus.ACTIVE,
-            )
+        self.data_generator.create_database_site(
+            siteId=ILLINOIS_SITE_ID,
+            siteName="Illinois Site 1",
+            googleGroup="illinois-site-1",
+            organizationId=ILLINOIS_ORG_ID,
+            hpoId=ILLINOIS_HPO_ID,
+            isObsolete=ObsoleteStatus.ACTIVE,
         )
-        self.site_dao.insert(
-            Site(
-                siteId=OBSOLETE_ID,
-                siteName="Illinois Site 2",
-                googleGroup="illinois-site-2",
-                organizationId=ILLINOIS_ORG_ID,
-                hpoId=ILLINOIS_HPO_ID,
-                isObsolete=ObsoleteStatus.OBSOLETE,
-            )
+        self.data_generator.create_database_site(
+            siteId=OBSOLETE_ID,
+            siteName="Illinois Site 2",
+            googleGroup="illinois-site-2",
+            organizationId=ILLINOIS_ORG_ID,
+            hpoId=ILLINOIS_HPO_ID,
+            isObsolete=ObsoleteStatus.OBSOLETE,
         )
 
     def test_get_full_hierarchy(self):
