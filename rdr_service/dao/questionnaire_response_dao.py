@@ -90,6 +90,7 @@ from rdr_service.code_constants import (
     REMOTE_ID_VERIFIED_CODE,
     REMOTE_ID_VERIFIED_ON_CODE,
     ETM_CONSENT_QUESTION_CODE,
+    PEDIATRIC_BIRTH_DATE,
     PEDIATRIC_CABOR_SIGNATURE,
     PEDIATRIC_CONSENT_NO,
     PEDIATRIC_CONSENT_QUESTION_CODE,
@@ -838,6 +839,15 @@ class QuestionnaireResponseDao(BaseDao):
                             payload={
                                 'participant_id': participant.participantId,
                                 'date_of_birth': answer.valueDate
+                            }
+                        )
+                    elif self._code_in_list(code.value, [PEDIATRIC_BIRTH_DATE]):
+                        dispatch_task(
+                            endpoint='check_date_of_birth',
+                            payload={
+                                'participant_id': participant.participantId,
+                                'date_of_birth': answer.valueDate,
+                                'age_range': '0_6'
                             }
                         )
 

@@ -22,6 +22,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import foreign, relationship, remote
 from sqlalchemy.sql import expression
 
+from rdr_service import clock
 from rdr_service.model.account_link import AccountLink
 from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
 from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
@@ -282,7 +283,8 @@ class ParticipantSummary(Base):
 
     Is the latest date from the list of:
 
-    * The earliest date of sampleStatus...Time (any of the DNA sample tests: ed10, 2ed10, 1ed04, 1sal, 1sal2))
+    * The earliest date of sampleStatus...Time (any of the DNA sample tests:
+        ed10, 2ed02, 2ed04, 2ed10, 1ed04, 1sal, 1sal2)
     * enrollmentStatusMemberTime
     * questionnaireOnTheBasicsTime
     * questionnaireOnLifestyleTime
@@ -299,7 +301,8 @@ class ParticipantSummary(Base):
 
     Is the latest date from the list of:
 
-    * The earliest date of sampleOrderStatus...Time (any of the DNA sample tests: ed10, 2ed10, 1ed04, 1sal, 1sal2)
+    * The earliest date of sampleOrderStatus...Time (any of the DNA sample tests:
+        ed10, 2ed02, 2ed04, 2ed10, 1ed04, 1sal, 1sal2)
     * enrollmentStatusMemberTime
     * questionnaireOnTheBasicsTime
     * questionnaireOnLifestyleTime
@@ -734,19 +737,22 @@ class ParticipantSummary(Base):
         "consent_for_study_enrollment", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
     """
-    Indicates whether enrollment consent has been received
+    Indicates whether enrollment consent, or pediatric permission, has been received
 
     :ref:`Enumerated values <questionnaire_status>`
     """
 
     consentForStudyEnrollmentTime = Column("consent_for_study_enrollment_time", UTCDateTime)
-    """UTC timestamp indicating the time at which enrollment consent has been received by RDR (ISO-8601 time)"""
+    """UTC timestamp indicating the time at which consent has been received by RDR (ISO-8601 time)"""
 
     consentForStudyEnrollmentAuthored = Column("consent_for_study_enrollment_authored", UTCDateTime)
-    """The UTC date time of the latest time participant completed the survey, regardless of when it was sent to RDR"""
+    """
+    The UTC date time of the latest time the participant, or a guardian, completed the survey,
+    regardless of when it was sent to RDR
+    """
 
     consentForStudyEnrollmentFirstYesAuthored = Column("consent_for_study_enrollment_first_yes_authored", UTCDateTime)
-    "The UTC date time of the first time the participant completed the survey, regardless of when it was sent to RDR"
+    "The UTC date time of the first time the consent was completed, regardless of when it was sent to RDR"
 
     semanticVersionForPrimaryConsent = Column("semantic_version_for_primary_consent", String(100))
     """The human readable version of primary consent the participant signed"""
@@ -878,7 +884,7 @@ class ParticipantSummary(Base):
         "questionnaire_on_overall_health", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
     """
-    Indicates status for Overall Health PPI module
+    Indicates status for Overall Health (or Pediatric Overall Health) PPI module
 
     :ref:`Enumerated values <questionnaire_status>`
     """
@@ -908,7 +914,7 @@ class ParticipantSummary(Base):
         "questionnaire_on_the_basics", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
     """
-    Indicates the status of a questionnaire on TheBasics that a participant can fill out.
+    Indicates the status of a questionnaire on TheBasics (or Pediatric Basics) that a participant can fill out.
 
     :ref:`Enumerated values <questionnaire_status>`
     """
@@ -1131,10 +1137,13 @@ class ParticipantSummary(Base):
     numCompletedBaselinePPIModules = Column("num_completed_baseline_ppi_modules", SmallInteger, default=0)
     """
     The count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth, questionnaireOnLifestyle]
-    the participant has completed.
+    the participant has completed. Or the count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth,
+    questionnaireOnEnvironmentalHealth] have been completed for a pediatric participant.
     """
     numCompletedPPIModules = Column("num_completed_ppi_modules", SmallInteger, default=0)
-    """The count of all PPI modules the participant has completed."""
+    """
+    The count of all PPI modules the participant has completed (or have been completed for pediatric participants).
+    """
 
     biospecimenStatus = Column("biospecimen_status", Enum(OrderStatus), default=OrderStatus.UNSET)
     """
@@ -1359,6 +1368,26 @@ class ParticipantSummary(Base):
     sampleStatusDV1SAL2Time = Column("sample_status_dv_1sal2_time", UTCDateTime)
     "The datetime in UTC in which the biobank processed the sample."
 
+    sampleStatus2ED02 = Column("sample_status_2ed02", Enum(SampleStatus), default=SampleStatus.UNSET)
+    """
+    The result of biobank processing on sample 2ED02.
+
+    :ref:`Enumerated values <sample_status>`
+    """
+
+    sampleStatus2ED02Time = Column("sample_status_2ed02_time", UTCDateTime)
+    "The datetime in UTC in which the biobank processed the sample."
+
+    sampleStatus2ED04 = Column("sample_status_2ed04", Enum(SampleStatus), default=SampleStatus.UNSET)
+    """
+    The result of biobank processing on sample 2ED04.
+
+    :ref:`Enumerated values <sample_status>`
+    """
+
+    sampleStatus2ED04Time = Column("sample_status_2ed04_time", UTCDateTime)
+    "The datetime in UTC in which the biobank processed the sample."
+
     sampleOrderStatusDV1SAL2 = Column("sample_order_status_dv_1sal2", Enum(OrderStatus), default=OrderStatus.UNSET)
     """
     The individual order status of sample DV1SAL2.
@@ -1539,13 +1568,33 @@ class ParticipantSummary(Base):
     sampleOrderStatus1PXR2Time = Column("sample_order_status_1pxr2_time", UTCDateTime)
     "The time the sample was marked as finalized by the processing site."
 
+    sampleOrderStatus2ED02 = Column("sample_order_status_2ed02", Enum(OrderStatus), default=OrderStatus.UNSET)
+    """
+    The individual order status of sample 2ED02.
+
+    :ref:`Enumerated values <sample_order_status>`
+    """
+
+    sampleOrderStatus2ED02Time = Column("sample_order_status_2ed02_time", UTCDateTime)
+    "The time the sample was marked as finalized by the processing site."
+
+    sampleOrderStatus2ED04 = Column("sample_order_status_2ed04", Enum(OrderStatus), default=OrderStatus.UNSET)
+    """
+    The individual order status of sample 2ED04.
+
+    :ref:`Enumerated values <sample_order_status>`
+    """
+
+    sampleOrderStatus2ED04Time = Column("sample_order_status_2ed04_time", UTCDateTime)
+    "The time the sample was marked as finalized by the processing site."
+
     # The number of BiobankStoredSamples recorded for this participant, limited to those samples
     # where testCode is one of the baseline tests (listed in the config).
     numBaselineSamplesArrived = Column("num_baseline_samples_arrived", SmallInteger, default=0)
     """
     The count of samples the biobank has recorded from baseline sample list [
-        1ED04, 1ED10, 1HEP4, 1PST8, 2PST8, 1SST8, 2SST8,
-        1PS08, 1SS08, 1UR10, 1CFD9, 1PXR2, 1UR90, 2ED10
+        1ED04, 1ED10, 1HEP4, 1PST8, 2PST8, 1SST8, 2SST8, 1PS08
+        1SS08, 1UR10, 1CFD9, 1PXR2, 1UR90, 2ED02, 2ED04, 2ED10
     ]
     """
 
@@ -1558,6 +1607,8 @@ class ParticipantSummary(Base):
     DNA sample test codes
 
     * 1ED10
+    * 2ED02
+    * 2ED04
     * 2ED10
     * 1ED04
     * 1SAL
@@ -1805,8 +1856,14 @@ def validate_participant_summary(_, __, summary: ParticipantSummary):
         raise InvalidDataState('Participant summary missing an email or phone number')
 
 
+def model_update_lastModified_listener(_, __, summary: ParticipantSummary):
+    """Auto set `lastModified` column value on updates."""
+    validate_participant_summary(_, __, summary)
+    summary.lastModified = clock.CLOCK.now()
+
+
 event.listen(ParticipantSummary, "before_insert", validate_participant_summary)
-event.listen(ParticipantSummary, "before_update", validate_participant_summary)
+event.listen(ParticipantSummary, "before_update", model_update_lastModified_listener)
 
 
 class ParticipantGenderAnswers(Base):
