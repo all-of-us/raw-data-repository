@@ -31,6 +31,7 @@ from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.model.consent_file import ConsentType
 from rdr_service.model.enrollment_status_history import EnrollmentStatusHistory
 from rdr_service.model.hpo import HPO
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import (
     ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType,
@@ -45,6 +46,11 @@ TIME_3 = datetime.datetime(2016, 1, 3)
 TIME_4 = datetime.datetime(2016, 1, 4)
 TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
 TIME_6 = datetime.datetime(2015, 1, 1)
+
+# Kludge to fix failing tests where participants aged out of expected 35-44 ageRange as of 2023-10-09
+# Needs a better permanent solution that won't require future updates to this value, but should probably be done as
+# a broader refactor of the impacted test cases, to consolidate the code that needs changing
+TEST_AGE_BUCKET_DOB_DATE_OBJ = datetime.date(1980, 10, 9)
 
 participant_summary_default_values = {
     "ageRange": "UNSET",
@@ -121,6 +127,8 @@ participant_summary_default_values = {
     "sampleOrderStatus1PXR2": "UNSET",
     "sampleOrderStatus1ED02": "UNSET",
     "sampleOrderStatusDV1SAL2": "UNSET",
+    "sampleOrderStatus2ED02": "UNSET",
+    "sampleOrderStatus2ED04": "UNSET",
     "sampleStatus1ED04": "UNSET",
     "sampleStatus1ED10": "UNSET",
     "sampleStatus1HEP4": "UNSET",
@@ -139,6 +147,8 @@ participant_summary_default_values = {
     "sampleStatus1ED02": "UNSET",
     "sampleStatus1PXR2": "UNSET",
     "sampleStatusDV1SAL2": "UNSET",
+    "sampleStatus2ED02": "UNSET",
+    "sampleStatus2ED04": "UNSET",
     "withdrawalStatus": "NOT_WITHDRAWN",
     "withdrawalReason": "UNSET",
     "suspensionStatus": "NOT_SUSPENDED",
@@ -178,8 +188,11 @@ participant_summary_default_values = {
     "hasCoreData": False,
     "questionnaireOnEmotionalHealthHistoryAndWellBeing": "UNSET",
     "questionnaireOnBehavioralHealthAndPersonality": "UNSET",
+    'questionnaireOnEnvironmentalHealth': 'UNSET',
     'relatedParticipants': 'UNSET',
-    'isPediatric': 'UNSET'
+    'isPediatric': 'UNSET',
+    'hasHeightAndWeight': False,
+    'consentForWearStudy': 'UNSET'
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
@@ -1563,7 +1576,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -1612,7 +1625,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -1661,7 +1674,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -1726,7 +1739,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -1777,7 +1790,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": "en",
             "education": "highschool",
             "income": "lotsofmoney",
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
             "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
             "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
@@ -1825,7 +1838,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": "en",
             "education": "highschool",
             "income": "lotsofmoney",
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -3600,7 +3613,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": "en",
             "education": "highschool",
             "income": "lotsofmoney",
-            "dateOfBirth": datetime.date(1978, 10, 9),
+            "dateOfBirth": TEST_AGE_BUCKET_DOB_DATE_OBJ,
             "CABoRSignature": "signature.pdf",
         }
 
@@ -3963,7 +3976,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.send_consent(participant_id)
             self.send_consent(participant_id2)
 
-        config.override_setting(config.HPO_LITE_AWARDEE, ["PITT"])
+        self.temporarily_override_config_setting(config.HPO_LITE_AWARDEE, ["PITT"])
         self.overwrite_test_user_awardee('PITT', ['awardee_sa'])
         self.send_get("ParticipantSummary?_count=10&awardee=AZ_TUCSON", expected_status=403)
         ps = self.send_get("ParticipantSummary?_count=10&awardee=PITT")
@@ -4502,6 +4515,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(summary['remoteIdVerificationOrigin'], 'example')
         self.assertEqual(summary['remoteIdVerificationStatus'], 'True')
         self.assertEqual(summary['remoteIdVerifiedOn'], '2023-01-17')
+        initial_last_modified = summary['lastModified']
         # Change the date for remoteIdVerifiedOn to 1/18/2023
         resource['group']['question'][1]['answer'][0]['valueString'] = "1674066632000"
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, resource)
@@ -4539,6 +4553,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(summary['everIdVerified'], 'True')
         self.assertEqual(summary['firstIdVerifiedOn'], '2023-01-17')
         self.assertEqual(summary['idVerificationOrigin'], IdVerificationOriginType.REMOTE.name)
+        updated_last_modified = summary['lastModified']
+        self.assertNotEqual(initial_last_modified, updated_last_modified)
 
     def test_displaying_linked_accounts(self):
         first_parent = self.data_generator.create_database_participant_summary()
@@ -4566,6 +4582,75 @@ class ParticipantSummaryApiTest(BaseTestCase):
             response.get('relatedParticipants')
         )
 
+    def test_pediatric_environmental_health(self):
+        participant = self.data_generator.create_database_participant_summary()
+
+        # Check that it's UNSET by default
+        response = self.send_get(f'Participant/P{participant.participantId}/Summary')
+        self.assertEqual('UNSET', response['questionnaireOnEnvironmentalHealth'])
+
+        authored_date = datetime.datetime(2022, 7, 8)
+        created_date = datetime.datetime(2022, 7, 10)
+        PediatricDataLogDao.insert(
+            PediatricDataLog(
+                participant_id=participant.participantId,
+                data_type=PediatricDataType.ENVIRONMENTAL_HEALTH,
+                created=created_date,
+                value=authored_date.isoformat()
+            )
+        )
+
+        response = self.send_get(f'Participant/P{participant.participantId}/Summary')
+        self.assertEqual('SUBMITTED', response['questionnaireOnEnvironmentalHealth'])
+        self.assertEqual(created_date.isoformat(), response['questionnaireOnEnvironmentalHealthTime'])
+        self.assertEqual(authored_date.isoformat(), response['questionnaireOnEnvironmentalHealthAuthored'])
+
+    def test_pediatric_environmental_health_sorting(self):
+        no_answer_participant_id = self.data_generator.create_database_participant_summary().participantId
+        first_participant_id = self.data_generator.create_database_participant_summary(lastName='Smith').participantId
+        second_participant_id = self.data_generator.create_database_participant_summary(lastName='Taylor').participantId
+
+        PediatricDataLogDao.insert(
+            PediatricDataLog(
+                participant_id=first_participant_id,
+                data_type=PediatricDataType.ENVIRONMENTAL_HEALTH,
+                created=datetime.datetime(2022, 9, 1),
+                value=datetime.datetime(2022, 7, 1).isoformat()
+            )
+        )
+        PediatricDataLogDao.insert(
+            PediatricDataLog(
+                participant_id=second_participant_id,
+                data_type=PediatricDataType.ENVIRONMENTAL_HEALTH,
+                created=datetime.datetime(2022, 8, 1),
+                value=datetime.datetime(2022, 8, 1).isoformat()
+            )
+        )
+
+        # sort by status
+        response = self.send_get(f'ParticipantSummary?_sort=questionnaireOnEnvironmentalHealth')
+        response_id_list = self._get_summary_response_id_list(response)
+        self.assertEqual(
+            [no_answer_participant_id, first_participant_id, second_participant_id],
+            response_id_list
+        )
+
+        # sort by received time
+        response = self.send_get(f'ParticipantSummary?_sort=questionnaireOnEnvironmentalHealthTime')
+        response_id_list = self._get_summary_response_id_list(response)
+        self.assertEqual(
+            [no_answer_participant_id, second_participant_id, first_participant_id],
+            response_id_list
+        )
+
+        # sort by authored time
+        response = self.send_get(f'ParticipantSummary?_sort=questionnaireOnEnvironmentalHealthAuthored')
+        response_id_list = self._get_summary_response_id_list(response)
+        self.assertEqual(
+            [no_answer_participant_id, first_participant_id, second_participant_id],
+            response_id_list
+        )
+
     def test_pediatric_flag(self):
         regular_participant = self.data_generator.create_database_participant_summary()
         pediatric_participant = self.data_generator.create_database_participant_summary()
@@ -4576,3 +4661,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         response = self.send_get(f'Participant/P{pediatric_participant.participantId}/Summary')
         self.assertEqual(True, response['isPediatric'])
+
+    @classmethod
+    def _get_summary_response_id_list(self, response):
+        return [from_client_participant_id(entry['resource']['participantId']) for entry in response['entry']]

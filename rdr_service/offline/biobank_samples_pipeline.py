@@ -16,11 +16,11 @@ from typing import Dict
 
 from rdr_service import config
 from rdr_service.api_util import list_blobs
-from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES,\
-    WITHDRAWAL_CEREMONY_NO, WITHDRAWAL_CEREMONY_QUESTION_CODE
+from rdr_service.code_constants import (
+    WITHDRAWAL_CEREMONY_YES, WITHDRAWAL_CEREMONY_NO, WITHDRAWAL_CEREMONY_QUESTION_CODE
+)
 from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, \
     BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN, RDR_SLACK_WEBHOOKS
-from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import MYSQL_ISO_DATE_FORMAT, parse_datetime, replace_isodate
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
@@ -201,14 +201,13 @@ def get_withdrawal_report_query(start_date: datetime):
             Participant.participantId.label('participant_id'),
             Participant.biobankId.label('biobank_id'),
             func.date_format(Participant.withdrawalTime, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
-            case([(_participant_has_answer(RACE_QUESTION_CODE, RACE_AIAN_CODE), 'Y')], else_='N')
-                .label('is_native_american'),
-            case([
-                (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_YES, 'Y'),
-                (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_NO, 'N'),
-            ], else_=(
-                case([(_participant_has_answer(RACE_QUESTION_CODE, RACE_AIAN_CODE), 'U')], else_='NA')
-            )
+            case([(ParticipantSummary.aian, 'Y')], else_='N').label('is_native_american'),
+            case(
+                [
+                    (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_YES, 'Y'),
+                    (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_NO, 'N'),
+                ],
+                else_=case([(ParticipantSummary.aian, 'U')], else_='NA')
             ).label('needs_disposal_ceremony'),
             Participant.participantOrigin.label('participant_origin'),
             HPO.name.label('paired_hpo'),
@@ -235,13 +234,7 @@ def get_withdrawal_report_query(start_date: datetime):
 
 
 def _build_query_params(start_date: datetime):
-    code_dao = CodeDao()
-    race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)
-    native_american_race_code = code_dao.get_code(PPI_SYSTEM, RACE_AIAN_CODE)
-
     return {
-        "race_question_code_id": race_question_code.codeId,
-        "native_american_race_code_id": native_american_race_code.codeId,
         "biobank_id_prefix": get_biobank_id_prefix(),
         "pmi_ops_system": _PMI_OPS_SYSTEM,
         "ce_quest_system": _CE_QUEST_SYSTEM,
@@ -256,9 +249,13 @@ def _query_and_write_received_report(exporter, report_path, query_params, report
     received_report_select = _RECONCILIATION_REPORT_SELECTS_SQL
     if config.getSettingJson(config.ENABLE_BIOBANK_MANIFEST_RECEIVED_FLAG, default=False):
         received_report_select += """,
-                group_concat(ny_flag) ny_flag,
-                group_concat(sex_at_birth_flag) sex_at_birth_flag
-            """
+            group_concat(ny_flag) ny_flag,
+            group_concat(sex_at_birth_flag) sex_at_birth_flag
+        """
+    if config.getSettingJson('enable_biobank_report_pediatric_flag', default=False):
+        received_report_select += """,
+            max(is_pediatric) ispediatric
+        """
     logging.info(f"Writing {report_path} report.")
     received_sql = replace_isodate(received_report_select + _RECONCILIATION_REPORT_SOURCE_SQL)
     exporter.run_export(
@@ -487,16 +484,7 @@ def _get_status_flag_sql():
 # Used in the context of queries where "participant" is the table for the participant being
 # selected.
 _NATIVE_AMERICAN_SQL = """
-  (SELECT (CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END)
-       FROM questionnaire_response qr
-       INNER JOIN questionnaire_response_answer qra
-         ON qra.questionnaire_response_id = qr.questionnaire_response_id
-       INNER JOIN questionnaire_question qq
-         ON qra.question_id = qq.questionnaire_question_id
-      WHERE qr.participant_id = participant.participant_id
-        AND qq.code_id = :race_question_code_id
-        AND qra.value_code_id = :native_american_race_code_id
-        AND qra.end_time IS NULL) is_native_american"""
+  (CASE WHEN participant_summary.aian THEN 'Y' ELSE 'N' END) is_native_american"""
 
 
 def _participant_answer_subquery(question_code_value):
@@ -518,22 +506,13 @@ def _participant_answer_subquery(question_code_value):
     )
 
 
-def _participant_has_answer(question_code_value, answer_value):
-    question_code = aliased(Code)
-    answer_code = aliased(Code)
-    return (
-        Query([QuestionnaireResponse])
-        .join(QuestionnaireResponseAnswer)
-        .join(QuestionnaireQuestion)
-        .join(question_code, question_code.codeId == QuestionnaireQuestion.codeId)
-        .join(answer_code, answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId)
-        .filter(
-            QuestionnaireResponse.participantId == Participant.participantId,  # Expected from outer query
-            question_code.value == question_code_value,
-            answer_code.value == answer_value,
-            QuestionnaireResponseAnswer.endTime.is_(None)
-        ).exists()
-    )
+_PEDIATRIC_SELECT_CLAUSE = 'pdl.id is not null is_pediatric'
+_PEDIATRIC_JOIN_CLAUSE = '''
+left join pediatric_data_log pdl
+    on pdl.participant_id = participant.participant_id
+    and pdl.replaced_by_id is null
+    and pdl.data_type = 1  -- is AGE_RANGE data
+'''
 
 
 # Joins orders and samples, and computes some derived values (elapsed_hours, counts).
@@ -631,9 +610,12 @@ _RECONCILIATION_REPORT_SOURCE_SQL = (
     case when sex_code.value like 'sexatbirth_male' then 'M'
        when sex_code.value like 'sexatbirth_female' then 'F'
        else 'NA'
-    end sex_at_birth_flag
-    FROM """
+    end sex_at_birth_flag,
+    """
+    + _PEDIATRIC_SELECT_CLAUSE
+    + """ FROM """
     + _ORDER_JOINS
+    + _PEDIATRIC_JOIN_CLAUSE
     + """
     LEFT OUTER JOIN
         participant_summary
@@ -711,16 +693,19 @@ _RECONCILIATION_REPORT_SOURCE_SQL = (
       case when sex_code.value like 'sexatbirth_male' then 'M'
            when sex_code.value like 'sexatbirth_female' then 'F'
            else 'NA'
-      end sex_at_birth_flag
-    FROM
+      end sex_at_birth_flag,
+    """
+    + _PEDIATRIC_SELECT_CLAUSE
+    + """ FROM
       biobank_stored_sample
       LEFT OUTER JOIN
         participant ON biobank_stored_sample.biobank_id = participant.biobank_id
       LEFT OUTER JOIN
         participant_summary ON participant_summary.participant_id = participant.participant_id
       LEFT OUTER JOIN
-        code sex_code ON participant_summary.sex_id = sex_code.code_id
-    WHERE biobank_stored_sample.confirmed IS NOT NULL AND NOT EXISTS (
+        code sex_code ON participant_summary.sex_id = sex_code.code_id """
+    + _PEDIATRIC_JOIN_CLAUSE
+    + """ WHERE biobank_stored_sample.confirmed IS NOT NULL AND NOT EXISTS (
       SELECT 0 FROM """
     + _ORDER_JOINS + """
       LEFT OUTER JOIN

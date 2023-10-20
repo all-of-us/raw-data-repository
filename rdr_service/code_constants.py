@@ -28,11 +28,13 @@ EMAIL_QUESTION_CODE = "ConsentPII_EmailAddress"
 RECONTACT_METHOD_QUESTION_CODE = "PIIContactInformation_RecontactMethod"
 LANGUAGE_QUESTION_CODE = "Language_SpokenWrittenLanguage"
 SEX_QUESTION_CODE = "BiologicalSexAtBirth_SexAtBirth"
+PEDIATRIC_SEX_QUESTION_CODE = "biologicalsexatbirth_sexatbirth_ped"
 SEXUAL_ORIENTATION_QUESTION_CODE = "TheBasics_SexualOrientation"
 EDUCATION_QUESTION_CODE = "EducationLevel_HighestGrade"
 INCOME_QUESTION_CODE = "Income_AnnualIncome"
 EHR_CONSENT_QUESTION_CODE = "EHRConsentPII_ConsentPermission"
 EHR_SENSITIVE_CONSENT_QUESTION_CODE = "ehrconsentpii_sensitivetype2"
+EHR_PEDIATRIC_CONSENT_QUESTION_CODE = 'ehrchildconsentpii_childjoinallofus'
 EHR_CONSENT_EXPIRED_QUESTION_CODE = "EHRConsentPII_ConsentExpired"
 DVEHR_SHARING_QUESTION_CODE = "DVEHRSharing_AreYouInterested"
 CABOR_SIGNATURE_QUESTION_CODE = "ExtraConsent_CABoRSignature"
@@ -47,9 +49,23 @@ NON_VA_PRIMARY_RECONSENT_QUESTION = 'nonvaprimaryreconsent_agree'
 ETM_CONSENT_QUESTION_CODE = 'etm_consent'
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 CONSENT_QUESTION_CODE = 'extraconsent_consent'
+PEDIATRIC_CONSENT_QUESTION_CODE = 'childpermission_agree'
+PEDIATRIC_CABOR_SIGNATURE = 'ChildPermission_StateCABoR_CABoRSignature'
+
+PEDIATRIC_FIRST_NAME_QUESTION = 'childpermission_info_firstname'
+PEDIATRIC_MIDDLE_NAME_QUESTION = 'childpermission_info_middlename'
+PEDIATRIC_LAST_NAME_QUESTION = 'childpermission_info_lastname'
+PEDIATRIC_STREET1_ADDRESS = 'childpermission_info_address1'
+PEDIATRIC_STREET2_ADDRESS = 'childpermission_info_address2'
+PEDIATRIC_CITY_ADDRESS = 'childpermission_info_city'
+PEDIATRIC_STATE_ADDRESS = 'childpermission_info_state'
+PEDIATRIC_ZIP_ADDRESS = 'childpermission_info_zipcode'
+PEDIATRIC_BIRTH_DATE = 'childpermission_info_birthdate'
+PEDIATRIC_EMAIL = 'childpermission_info_email'
 
 GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
 RACE_QUESTION_CODE = "Race_WhatRaceEthnicity"
+PEDIATRIC_RACE_QUESTION_CODE = "race_whatraceethnicity_ped"
 
 # DA-2419: TheBasics possible partial survey content for profile/secondary contact updates.
 BASICS_PROFILE_UPDATE_QUESTION_CODES = [
@@ -119,6 +135,10 @@ EHR_CONSENT_EXPIRED_YES = "EHRConsentPII_ConsentExpired_Yes"
 SENSITIVE_EHR_YES = "sensitivetype2__agree"
 EXTRA_CONSENT_YES = 'extraconsent_agreetoconsent'
 EXTRA_CONSENT_NO = 'extraconsent_donotagreetoconsent'
+PEDIATRIC_CONSENT_YES = 'ChildPermission_agree_yes'
+PEDIATRIC_CONSENT_NO = 'ChildPermission_agree_no'
+PEDIATRIC_SHARE_AGREE = 'ChildJoinAllOfUs_AgreeToShare'
+PEDIATRIC_SHARE_NOT_AGREE = 'ChildJoinAllOfUs_NotAgreeToShare'
 
 # Consent GROR Answer Codes
 CONSENT_GROR_YES_CODE = "CheckDNA_Yes"
@@ -168,6 +188,7 @@ COPE_VACCINE_MINUTE_4_MODULE_CODE = "cope_vaccine4"
 # Module names for questionnaires / consent forms
 CONSENT_FOR_GENOMICS_ROR_MODULE = "GROR"
 CONSENT_FOR_STUDY_ENROLLMENT_MODULE = "ConsentPII"
+PEDIATRIC_PRIMARY_CONSENT_MODULE = 'consentpii_0to6'
 CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE = "EHRConsentPII"
 CONSENT_FOR_DVEHR_MODULE = "DVEHRSharing"
 OVERALL_HEALTH_PPI_MODULE = "OverallHealth"
@@ -194,6 +215,10 @@ PRIMARY_CONSENT_UPDATE_MODULE = 'PrimaryConsentUpdate'
 WEAR_CONSENT_MODULE = 'wear_consent'
 EMOTIONAL_HEALTH_MODULE = 'ehhwb'
 BEHAVIORAL_HEALTH_MODULE = 'bhp'
+PEDIATRICS_BASICS = 'ped_basics'
+PEDIATRICS_OVERALL_HEALTH = 'ped_overall_health'
+PEDIATRICS_ENVIRONMENTAL_HEALTH = 'ped_environmental_health'
+PEDIATRIC_EHR_CONSENT = 'ehrchildconsentpii'
 
 VA_EHR_RECONSENT = 'vaehrreconsent'
 
@@ -252,6 +277,8 @@ BIOBANK_TESTS = [
     "1ED02",
     "1CFD9",
     "1PXR2",
+    "2ED02",
+    "2ED04"
 ]
 BIOBANK_TESTS_SET = frozenset(BIOBANK_TESTS)
 

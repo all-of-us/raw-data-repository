@@ -22,6 +22,7 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.ppi_validation_errors_dao import PpiValidationErrorsDao
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.offline import biobank_samples_pipeline, sync_consent_files, update_ehr_status, \
     antibody_study_pipeline, export_va_workqueue
@@ -420,11 +421,12 @@ def validate_responses():
     since_date = datetime(year=a_day_ago.year, month=a_day_ago.month, day=a_day_ago.day)
 
     slack_webhooks = config.getSettingJson(config.RDR_SLACK_WEBHOOKS)
+    validation_dao = PpiValidationErrorsDao()
 
-    dao = BaseDao(None)
-    with dao.session() as session:
+    with validation_dao.session() as session:
         controller = ResponseValidationController(
             session=session,
+            validation_errors_dao=validation_dao,
             since_date=since_date,
             slack_webhook=slack_webhooks[config.RDR_VALIDATION_WEBHOOK]
         )

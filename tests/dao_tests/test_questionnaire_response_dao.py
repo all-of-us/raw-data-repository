@@ -1088,7 +1088,8 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
     def test_ppi_questionnaire_count_field_not_found(self):
         """Make sure QuestionnaireResponseDao doesn't fail when an unknown field is part of the list"""
 
-        config.override_setting(config.PPI_QUESTIONNAIRE_FIELDS, ['questionnaireOnTheBasics', 'nonExistentField'])
+        self.temporarily_override_config_setting(config.PPI_QUESTIONNAIRE_FIELDS,
+                                                 ['questionnaireOnTheBasics', 'nonExistentField'])
 
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)

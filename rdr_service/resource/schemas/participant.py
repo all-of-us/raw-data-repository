@@ -209,6 +209,8 @@ class PhysicalMeasurementsSchema(Schema):
     origin_measurement_unit = fields.EnumString(enum=OriginMeasurementUnit)
     origin_measurement_unit_id = fields.EnumInteger(enum=OriginMeasurementUnit)
     restored = fields.Boolean()
+    meets_height_reqs = fields.Boolean()
+    meets_weight_reqs = fields.Boolean()
 
     class Meta:
         schema_id = SchemaID.participant_physical_measurements
@@ -512,6 +514,7 @@ class ParticipantSchema(Schema):
     ubr_age_at_consent = fields.UInt8()
     ubr_disability = fields.UInt8()
     ubr_overall = fields.UInt8()
+    is_pediatric = fields.UInt8()
 
     class Meta:
         schema_id = SchemaID.participant

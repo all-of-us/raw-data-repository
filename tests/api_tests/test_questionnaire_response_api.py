@@ -8,14 +8,18 @@ from dateutil.parser import parse
 from sqlalchemy import or_
 from sqlalchemy.orm.session import make_transient
 
-from rdr_service.clock import FakeClock
-from rdr_service.concepts import Concept
 from rdr_service import config
+from rdr_service.clock import FakeClock
+from rdr_service import code_constants as const
 from rdr_service.code_constants import (
-    CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, CONSENT_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
-    EMAIL_QUESTION_CODE, EXTRA_CONSENT_NO, EXTRA_CONSENT_YES, FIRST_NAME_QUESTION_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE,
-    GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE, PPI_SYSTEM
+    CONSENT_FOR_STUDY_ENROLLMENT_MODULE, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, CONSENT_QUESTION_CODE,
+    EHR_PEDIATRIC_CONSENT_QUESTION_CODE, EMAIL_QUESTION_CODE, EXTRA_CONSENT_NO, EXTRA_CONSENT_YES,
+    FIRST_NAME_QUESTION_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_TRANSGENDER_CODE, LAST_NAME_QUESTION_CODE,
+    PEDIATRICS_OVERALL_HEALTH, PEDIATRIC_EHR_CONSENT, PEDIATRICS_ENVIRONMENTAL_HEALTH, PEDIATRICS_BASICS,
+    PEDIATRIC_RACE_QUESTION_CODE, PPI_SYSTEM, PEDIATRIC_SHARE_AGREE, PEDIATRIC_SHARE_NOT_AGREE,
+    PEDIATRIC_SEX_QUESTION_CODE, RACE_AIAN_CODE
 )
+from rdr_service.concepts import Concept
 from rdr_service.dao.account_link_dao import AccountLinkDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao, \
@@ -25,23 +29,25 @@ from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao, QuestionnaireResponseDao
-from rdr_service.model.code import Code
+from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.participant_summary import ParticipantSummary, WithdrawalStatus
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
-from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
-    ParticipantCohort, ParticipantCohortPilotFlag
+from rdr_service.participant_enums import (
+    ParticipantCohort, ParticipantCohortPilotFlag, QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,
+    QuestionnaireStatus, Race
+)
 
 
 from tests.api_tests.test_participant_summary_api import participant_summary_default_values,\
     participant_summary_default_values_no_basics
 from tests.test_data import data_path, load_biobank_order_json
 from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin, BiobankTestMixin
-from rdr_service.concepts import Concept
 from rdr_service.code_constants import RACE_NONE_OF_THESE_CODE
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -467,7 +473,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(len(summary2.get('entry')), 1)
 
     def test_enrollment_status_requires_valid_ehr(self):
-        config.override_setting('ENROLLMENT_STATUS_SKIP_VALIDATION', False)
+        self.temporarily_override_config_setting('ENROLLMENT_STATUS_SKIP_VALIDATION', False)
 
         # setup participant
         participant_id = self.create_participant()
@@ -1772,6 +1778,36 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(summary['questionnaireOnLifeFunctioningAuthored'], '2022-09-06T14:32:28')
         self.assertEqual(summary['questionnaireOnLifeFunctioningTime'], '2022-09-07T01:02:03')
 
+    def test_wear_consents(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id)
+
+        first_authored_str = '2023-09-07T09:07:01+00:00'
+        later_authored_str = '2023-09-07T09:07:45+00:00'
+
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual(summary.get('participantId', None), participant_id)
+        questionnaire_id = self.create_questionnaire("wear_consent_questionnaire.json")
+        resource = self._load_response_json("wear_consent_questionnaire_response.json", questionnaire_id,
+                                            participant_id)
+        resource['authored'] = first_authored_str
+        self._save_codes(resource)
+        with FakeClock(datetime.datetime(2023, 9, 7, 1, 2, 3)):
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        # Timestamp strings returned from GET ParticipantSummary have the UTC offset removed
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual(summary.get('consentForWearStudyAuthored', None), first_authored_str.split('+')[0])
+
+        # Confirm second WEAR consent payload w/different authored date is sucessfully processed (resolves DA-3892)
+        resource['authored'] = later_authored_str
+        with FakeClock(datetime.datetime(2023, 9, 7, 2, 3, 4)):
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get(f"Participant/{participant_id}/Summary")
+        self.assertEqual(summary.get('consentForWearStudyAuthored', None), later_authored_str.split('+')[0])
+
     def test_remote_id_verified(self):
         """ Test to see if a remote ID verification True Response saves successfully """
         # Set up participant, questionnaire, questionnaire response & send POST request to API
@@ -1939,7 +1975,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         questionnaire_dao = QuestionnaireDao()
         questionnaire_dao.insert(questionnaire)
 
-
         # Create and send response of a participant providing consent
         consented_participant = self.data_generator.create_database_participant()
         questionnaire_response_json = self.make_questionnaire_response_json(
@@ -2013,6 +2048,377 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(mod_data[0]['status'], 'SUBMITTED_NO_CONSENT')
         self.assertEqual(pdr_rsc.get('enrollment_status', None), 'REGISTERED')
 
+    def test_pediatrics_overall_health(self):
+        """
+        Check that the pediatrics version of the OverallHealth survey maps to the correct field on participant summary
+        """
+        module_code = self.data_generator.create_database_code(
+            system=PPI_SYSTEM,
+            value=PEDIATRICS_OVERALL_HEALTH
+        )
+        CodeDao()._invalidate_cache()  # invalidate code cache so the new module code exists
+
+        # Set up questionnaire, inserting through DAO to get history to generate as well
+        questionnaire = self.data_generator._questionnaire()
+        questionnaire.concepts = [QuestionnaireConcept(codeId=module_code.codeId)]
+
+        questionnaire_dao = QuestionnaireDao()
+        questionnaire_dao.insert(questionnaire)
+
+        # Create and send response from a participant
+        participant_summary: ParticipantSummary = self.data_generator.create_database_participant_summary()
+        participant_id = participant_summary.participantId
+        authored_time = datetime.datetime(2023, 3, 27)
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire.questionnaireId,
+            authored=authored_time
+        )
+
+        submission_time = datetime.datetime(2023, 4, 1)
+        with FakeClock(submission_time):
+            self.send_post(
+                f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json
+            )
+
+        # Verify that the fields for OverallHealth were set
+        self.session.refresh(participant_summary)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnOverallHealth)
+        self.assertEqual(submission_time, participant_summary.questionnaireOnOverallHealthTime)
+        self.assertEqual(authored_time, participant_summary.questionnaireOnOverallHealthAuthored)
+
+    def test_pediatrics_basics(self):
+        """
+        Check that the pediatrics version of TheBasics survey maps to the correct fields on participant summary
+        """
+        module_code = self.data_generator.create_database_code(
+            system=PPI_SYSTEM, value=PEDIATRICS_BASICS
+        )
+        race_question_code = self.data_generator.create_database_code(value=PEDIATRIC_RACE_QUESTION_CODE)
+        sex_question_code = self.data_generator.create_database_code(value=PEDIATRIC_SEX_QUESTION_CODE)
+        female_code = self.data_generator.create_database_code(
+            value='sexatbirth_female',
+            codeType=CodeType.ANSWER,
+            mapped=True
+        )
+        CodeDao()._invalidate_cache()  # invalidate code cache so the new codes exists
+
+        # Set up questionnaire, inserting through DAO to get history to generate as well
+        questionnaire = self.data_generator._questionnaire()
+        questionnaire.concepts = [QuestionnaireConcept(codeId=module_code.codeId)]
+        questionnaire.questions = [
+            self.data_generator._questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                linkId='race_question',
+                codeId=race_question_code.codeId
+            ),
+            self.data_generator._questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                linkId='sex_question',
+                codeId=sex_question_code.codeId
+            )
+        ]
+
+        questionnaire_dao = QuestionnaireDao()
+        questionnaire_dao.insert(questionnaire)
+
+        # Create and send response from a participant
+        participant_summary: ParticipantSummary = self.data_generator.create_database_participant_summary()
+        participant_id = participant_summary.participantId
+        authored_time = datetime.datetime(2023, 3, 27)
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire.questionnaireId,
+            authored=authored_time,
+            code_answers=[
+                ('race_question', Concept(code=RACE_AIAN_CODE, system='test')),
+                ('sex_question', Concept(code=female_code.value, system=female_code.system))
+            ]
+        )
+
+        submission_time = datetime.datetime(2023, 4, 1)
+        with FakeClock(submission_time):
+            self.send_post(
+                f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json
+            )
+
+        # Verify that the fields for TheBasics were set
+        self.session.refresh(participant_summary)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnTheBasics)
+        self.assertEqual(submission_time, participant_summary.questionnaireOnTheBasicsTime)
+        self.assertEqual(authored_time, participant_summary.questionnaireOnTheBasicsAuthored)
+
+        self.assertEqual(Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE, participant_summary.race)
+        self.assertTrue(participant_summary.aian)
+        self.assertEqual(female_code.codeId, participant_summary.sexId)
+
+    def test_pediatrics_environmental_health(self):
+        """
+        Check that the pediatrics version of the OverallHealth survey maps to the correct field on participant summary
+        """
+        module_code = self.data_generator.create_database_code(
+            system=PPI_SYSTEM,
+            value=PEDIATRICS_ENVIRONMENTAL_HEALTH
+        )
+        CodeDao()._invalidate_cache()  # invalidate code cache so the new module code exists
+
+        # Set up questionnaire, inserting through DAO to get history to generate as well
+        questionnaire = self.data_generator._questionnaire()
+        questionnaire.concepts = [QuestionnaireConcept(codeId=module_code.codeId)]
+
+        questionnaire_dao = QuestionnaireDao()
+        questionnaire_dao.insert(questionnaire)
+
+        # Create and send response from a participant
+        participant_summary: ParticipantSummary = self.data_generator.create_database_participant_summary()
+        participant_id = participant_summary.participantId
+        authored_time = datetime.datetime(2023, 3, 27)
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire.questionnaireId,
+            authored=authored_time
+        )
+        self.send_post(
+            f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json
+        )
+
+        # Verify that a datalog entry was created
+        data_log: PediatricDataLog = self.session.query(PediatricDataLog).filter(
+            PediatricDataLog.participant_id == participant_id,
+            PediatricDataLog.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH
+        ).one()
+        self.assertEqual(authored_time.isoformat(), data_log.value)
+
+        self.session.refresh(participant_summary)
+        self.assertEqual(1, participant_summary.numCompletedPPIModules)
+        self.assertEqual(1, participant_summary.numCompletedBaselinePPIModules)
+
+    def test_pediatrics_permission(self):
+        """
+        Check that the pediatrics version of primary consent maps to the correct fields on participant summary
+        """
+        # create necessary codes
+        code_id_map = self._create_codes([
+            CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
+            EMAIL_QUESTION_CODE,
+            const.PEDIATRIC_PRIMARY_CONSENT_MODULE,
+            const.PEDIATRIC_FIRST_NAME_QUESTION,
+            const.PEDIATRIC_MIDDLE_NAME_QUESTION,
+            const.PEDIATRIC_LAST_NAME_QUESTION,
+            const.PEDIATRIC_STREET1_ADDRESS,
+            const.PEDIATRIC_STREET2_ADDRESS,
+            const.PEDIATRIC_CITY_ADDRESS,
+            const.PEDIATRIC_STATE_ADDRESS,
+            const.PEDIATRIC_ZIP_ADDRESS,
+            'TestStateCode',
+            const.PEDIATRIC_BIRTH_DATE,
+            const.PEDIATRIC_EMAIL,
+            const.PEDIATRIC_CABOR_SIGNATURE
+        ])
+        CodeDao()._invalidate_cache()  # invalidate code cache so the new codes exists
+
+        # Set up questionnaire, inserting through DAO to get history to generate as well
+        questionnaire = self.data_generator._questionnaire()
+        questionnaire.concepts = [
+            QuestionnaireConcept(codeId=code_id_map[const.PEDIATRIC_PRIMARY_CONSENT_MODULE])
+        ]
+        questionnaire.questions = self._create_questions(
+            questionnaire=questionnaire,
+            question_data_list=[
+                ('first_name', code_id_map[const.PEDIATRIC_FIRST_NAME_QUESTION]),
+                ('middle_name', code_id_map[const.PEDIATRIC_MIDDLE_NAME_QUESTION]),
+                ('last_name', code_id_map[const.PEDIATRIC_LAST_NAME_QUESTION]),
+                ('email', code_id_map[const.PEDIATRIC_EMAIL]),
+                ('street1', code_id_map[const.PEDIATRIC_STREET1_ADDRESS]),
+                ('street2', code_id_map[const.PEDIATRIC_STREET2_ADDRESS]),
+                ('city', code_id_map[const.PEDIATRIC_CITY_ADDRESS]),
+                ('state', code_id_map[const.PEDIATRIC_STATE_ADDRESS]),
+                ('zip', code_id_map[const.PEDIATRIC_ZIP_ADDRESS]),
+                ('dob', code_id_map[const.PEDIATRIC_BIRTH_DATE]),
+                ('cabor', code_id_map[const.PEDIATRIC_CABOR_SIGNATURE])
+            ]
+        )
+
+        questionnaire_dao = QuestionnaireDao()
+        questionnaire_dao.insert(questionnaire)
+
+        # Create and send response from a participant
+        participant_id = self.data_generator.create_database_participant().participantId
+        authored_time = datetime.datetime(2023, 3, 27)
+        birth_date = datetime.date(2020, 1, 1)
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire.questionnaireId,
+            authored=authored_time,
+            string_answers=[
+                ('first_name', 'Bob'),
+                ('middle_name', 'Foo'),
+                ('last_name', 'Bar'),
+                ('email', 'test@pediatric.com'),
+                ('street1', '123 Main St.'),
+                ('street2', 'Apt C'),
+                ('city', 'Testville'),
+                ('zip', '12321'),
+                ('phone', '123-456-7890'),
+                ('cabor', 'Test Signature')
+            ],
+            code_answers=[
+                ('state', Concept(PPI_SYSTEM, 'TestStateCode'))
+            ],
+            date_answers=[
+                ('dob', birth_date)
+            ],
+            create_codes=False
+        )
+
+        submission_time = datetime.datetime(2023, 4, 1)
+        with FakeClock(submission_time):
+            self.send_post(
+                f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json
+            )
+
+        # Verify that the fields for primary consent were set
+        participant_summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant_id
+        ).one()
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.consentForStudyEnrollment)
+        self.assertEqual(submission_time, participant_summary.consentForStudyEnrollmentTime)
+        self.assertEqual(authored_time, participant_summary.consentForStudyEnrollmentAuthored)
+
+        self.assertEqual('Bob', participant_summary.firstName)
+        self.assertEqual('Foo', participant_summary.middleName)
+        self.assertEqual('Bar', participant_summary.lastName)
+
+        # we won't be receiving cohort info for pediatrics, for now it should default to 3
+        self.assertEqual(ParticipantCohort.COHORT_3, participant_summary.consentCohort)
+
+        self.assertEqual('123 Main St.', participant_summary.streetAddress)
+        self.assertEqual('Apt C', participant_summary.streetAddress2)
+        self.assertEqual('Testville', participant_summary.city)
+        self.assertEqual(code_id_map['TestStateCode'], participant_summary.stateId)
+        self.assertEqual('12321', participant_summary.zipCode)
+
+        self.assertEqual(birth_date, participant_summary.dateOfBirth)
+        self.assertEqual('test@pediatric.com', participant_summary.email)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.consentForCABoR)
+
+    def test_pediatrics_no_consent_response(self):
+        """
+        Check that the pediatrics version of primary consent stores a No response
+        """
+        # create necessary codes
+        code_id_map = self._create_codes([
+            CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
+            const.PEDIATRIC_PRIMARY_CONSENT_MODULE,
+            const.PEDIATRIC_CONSENT_QUESTION_CODE,
+            const.PEDIATRIC_CONSENT_NO
+        ])
+        CodeDao()._invalidate_cache()  # invalidate code cache so the new codes exists
+
+        # Set up questionnaire, inserting through DAO to get history to generate as well
+        questionnaire = self.data_generator._questionnaire()
+        questionnaire.concepts = [
+            QuestionnaireConcept(codeId=code_id_map[const.PEDIATRIC_PRIMARY_CONSENT_MODULE])
+        ]
+        questionnaire.questions = [
+            self.data_generator._questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                linkId='consent_agree',
+                codeId=code_id_map[const.PEDIATRIC_CONSENT_QUESTION_CODE]
+            )
+        ]
+
+        questionnaire_dao = QuestionnaireDao()
+        questionnaire_dao.insert(questionnaire)
+
+        # Create and send response from a participant
+        participant_id = self.data_generator.create_database_participant().participantId
+        authored_time = datetime.datetime(2023, 3, 27)
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire.questionnaireId,
+            authored=authored_time,
+            code_answers=[
+                ('consent_agree', Concept(PPI_SYSTEM, const.PEDIATRIC_CONSENT_NO))
+            ],
+            create_codes=False
+        )
+
+        self.send_post(f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json)
+
+        # Verify that the fields for primary consent were set
+        participant_summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant_id
+        ).one_or_none()
+        self.assertIsNone(participant_summary)
+
+    def test_pediatric_ehr_consent(self):
+        """
+        Check that the pediatrics version of the EHR consent maps to the correct field on participant summary
+        """
+        module_code = self.data_generator.create_database_code(value=PEDIATRIC_EHR_CONSENT)
+        question_code = self.data_generator.create_database_code(value=EHR_PEDIATRIC_CONSENT_QUESTION_CODE)
+        CodeDao()._invalidate_cache()  # invalidate code cache so the new module code exists
+
+        # Set up questionnaire, inserting through DAO to get history to generate as well
+        questionnaire = self.data_generator._questionnaire()
+        questionnaire.concepts = [QuestionnaireConcept(codeId=module_code.codeId)]
+        questionnaire.questions = [
+            self.data_generator._questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                linkId='ehr_consent',
+                codeId=question_code.codeId
+            )
+        ]
+
+        questionnaire_dao = QuestionnaireDao()
+        questionnaire_dao.insert(questionnaire)
+
+        # Create and send a Yes response from a participant
+        participant_summary: ParticipantSummary = self.data_generator.create_database_participant_summary()
+        participant_id = participant_summary.participantId
+        authored_time = datetime.datetime(2023, 3, 27)
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire.questionnaireId,
+            authored=authored_time,
+            code_answers=[('ehr_consent', Concept(code=PEDIATRIC_SHARE_AGREE, system='test'))]
+        )
+        self.send_post(
+            f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json
+        )
+
+        # Verify that the fields for EHR consent were set
+        self.session.refresh(participant_summary)
+        self.assertEqual(
+            QuestionnaireStatus.SUBMITTED_NOT_VALIDATED,
+            participant_summary.consentForElectronicHealthRecords
+        )
+        self.assertEqual(authored_time, participant_summary.consentForElectronicHealthRecordsAuthored)
+
+        # Create and send a No response from a participant
+        participant_summary: ParticipantSummary = self.data_generator.create_database_participant_summary()
+        participant_id = participant_summary.participantId
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire.questionnaireId,
+            code_answers=[('ehr_consent', Concept(code=PEDIATRIC_SHARE_NOT_AGREE, system='test'))]
+        )
+        self.send_post(
+            f'Participant/P{participant_id}/QuestionnaireResponse', questionnaire_response_json
+        )
+
+        # Verify that the fields for EHR consent were set
+        self.session.refresh(participant_summary)
+        self.assertEqual(
+            QuestionnaireStatus.SUBMITTED_NO_CONSENT,
+            participant_summary.consentForElectronicHealthRecords
+        )
+
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
         with open(data_path(template_file_name)) as fd:
@@ -2046,6 +2452,23 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
                 confirmed=time,
             )
         )
+
+    def _create_codes(self, code_list):
+        return {
+            code_str: self.data_generator.create_database_code(value=code_str).codeId
+            for code_str in code_list
+        }
+
+    def _create_questions(self, question_data_list, questionnaire):
+        return [
+            self.data_generator._questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                linkId=link_id,
+                codeId=code_id
+            )
+            for link_id, code_id in question_data_list
+        ]
 
     def submit_response(
         self,

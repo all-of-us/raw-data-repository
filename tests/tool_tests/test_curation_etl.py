@@ -401,6 +401,30 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             for answer_record in src_clean_answers
         ))
 
+    def test_invalid_record_in_temp_questionnaire_response_filtered_out(self):
+        """
+        Test that invalid record in cdm.tmp_questionnaire_response is not included in export
+        """
+
+        # Create a new questionnaire response
+        participant = self.data_generator.create_database_participant()
+        invalid_response = self._setup_questionnaire_response(
+            participant,
+            self.questionnaire,
+            classification_type=QuestionnaireResponseClassificationType.INVALID
+        )
+
+        self.run_cdm_data_generation()
+
+        # Make sure no answers from the response made it into SrcClean
+        src_clean_answers = self.session.query(SrcClean).filter(
+            SrcClean.participant_id == participant.participantId
+        ).all()
+        self.assertFalse(any(
+            answer_record.questionnaire_response_id == invalid_response.questionnaireResponseId
+            for answer_record in src_clean_answers
+        ))
+
     def test_zip_code_maps_to_string_field(self):
         """
         There are some questionnaire responses that have the zip code transmitted to us in the valueInteger

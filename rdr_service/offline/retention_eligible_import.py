@@ -9,8 +9,7 @@ from rdr_service.clock import CLOCK
 from rdr_service.code_constants import (
     COHORT_1_REVIEW_CONSENT_YES_CODE, COPE_MODULE, COPE_NOV_MODULE, COPE_DEC_MODULE, COPE_FEB_MODULE,
     COPE_VACCINE_MINUTE_1_MODULE_CODE, COPE_VACCINE_MINUTE_2_MODULE_CODE, COPE_VACCINE_MINUTE_3_MODULE_CODE,
-    COPE_VACCINE_MINUTE_4_MODULE_CODE, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
-    WEAR_CONSENT_QUESTION_CODE, WEAR_YES_ANSWER_CODE, ETM_CONSENT_QUESTION_CODE, AGREE_YES
+    COPE_VACCINE_MINUTE_4_MODULE_CODE, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 )
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -18,7 +17,8 @@ from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
-from rdr_service.participant_enums import DeceasedStatus, RetentionType, RetentionStatus, WithdrawalStatus
+from rdr_service.participant_enums import DeceasedStatus, RetentionType, RetentionStatus, WithdrawalStatus, \
+    QuestionnaireResponseStatus
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from rdr_service.repository.etm import EtmResponseRepository
 from rdr_service.services.retention_calculation import Consent, RetentionEligibility, RetentionEligibilityDependencies
@@ -263,20 +263,10 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
     )
 
     if not summary:
-        logging.error(f'no summary for P{metrics_data.participantId}')
+        # PTSC currently included  REGISTERED participants without primary consent yet, so only emit warning if there
+        # is no participant_summary record found
+        logging.warning(f'no summary for P{metrics_data.participantId}')
         return
-
-    # For WEAR and EtM consents, need to look for most recent "yes" response only
-    wear_consent_ts = _find_qualifying_response(session, metrics_data.participantId,
-                                                WEAR_CONSENT_QUESTION_CODE, WEAR_YES_ANSWER_CODE)
-    etm_consent_ts = _find_qualifying_response(session, metrics_data.participantId,
-                                               ETM_CONSENT_QUESTION_CODE, AGREE_YES)
-
-    # Get most recent EtM task response (if consented).  Note: prt tasks are not in plan currently, but RDR production
-    # has some unexpected prt payloads from early 2023.  Specify a list of valid tasks so prt data is excluded
-    etm_task_ts = _get_latest_etm_task_response_timestamp(
-        session, metrics_data.participantId, task_types=['GradCPT', 'flanker', 'delaydiscount', 'emorecog']
-    ) if etm_consent_ts else None
 
     dependencies = RetentionEligibilityDependencies(
         primary_consent=Consent(
@@ -325,11 +315,11 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
         gror_response_timestamp=summary.consentForGenomicsRORAuthored,
         # Additions for DA-3705 (only NPH module consent info currently available is NPH1)
         nph_consent_timestamp=summary.consentForNphModule1Authored,
-        etm_consent_timestamp=etm_consent_ts,
-        wear_consent_timestamp=wear_consent_ts,
+        etm_consent_timestamp=summary.consentForEtMAuthored,
+        wear_consent_timestamp=summary.consentForWearStudyAuthored,
         ehhwb_response_timestamp=summary.questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored,
         bhp_response_timestamp=summary.questionnaireOnBehavioralHealthAndPersonalityAuthored,
-        latest_etm_response_timestamp=etm_task_ts
+        latest_etm_response_timestamp=summary.latestEtMTaskAuthored
     )
     retention_data = RetentionEligibility(dependencies)
 
@@ -339,11 +329,11 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
     metrics_data.rdr_is_actively_retained = retention_data.is_actively_retained
     metrics_data.rdr_is_passively_retained = retention_data.is_passively_retained
 
-
 def _get_earliest_intent_for_ehr(session, participant_id) -> Optional[Consent]:
     date_range_list = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
         participant_id=participant_id,
-        session=session
+        session=session,
+        validation_not_required=True
     )
     if not date_range_list:
         return None
@@ -356,29 +346,35 @@ def _get_earliest_intent_for_ehr(session, participant_id) -> Optional[Consent]:
 
 def _aggregate_response_timestamps(session, participant_id, survey_code_list, aggregate_function) -> datetime:
     """Process all the responses to the given modules, and return a single datetime"""
-    revised_consent_time_list = []
+    authored_timestamp_list = []
     response_collection = QuestionnaireResponseRepository.get_responses_to_surveys(
         session=session,
         survey_codes=survey_code_list,
         participant_ids=[participant_id]
     )
     if participant_id in response_collection:
-        program_update_response_list = response_collection[participant_id].responses.values()
-        for response in program_update_response_list:
-            reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE)
-            if reconsent_answer and reconsent_answer.value.lower() == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
-                revised_consent_time_list.append(response.authored_datetime)
+        response_list = response_collection[participant_id].responses.values()
+        for response in response_list:
+            # Special case for confirming primary consent reconsent:  check the consent question answer code
+            # NOTE: This may need more extensive changes when VA/Non-VA reconsent modules go live?
+            if response.survey_code == PRIMARY_CONSENT_UPDATE_MODULE:
+                reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE)
+                if reconsent_answer and reconsent_answer.value.lower() == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
+                    authored_timestamp_list.append(response.authored_datetime)
+            elif response.status == QuestionnaireResponseStatus.COMPLETED:
+                # Assume for other modules, we can use the authored date as long as it's a COMPLETED response
+                authored_timestamp_list.append(response.authored_datetime)
 
-    if not revised_consent_time_list:
+    if not authored_timestamp_list:
         return None
 
     # Process the dates (excluding any that might be None)
-    return aggregate_function(timestamp for timestamp in revised_consent_time_list if timestamp)
+    return aggregate_function(timestamp for timestamp in authored_timestamp_list if timestamp)
 
 def _find_qualifying_response(session, participant_id: int, q_code: str, ans_code: str) -> Optional[datetime.datetime]:
     """
     Search for a specific question_code/answer relevant to RDR retention calculations.
-    For example, a "yes" response to a WEAR or EtM consent is a qualifying activity
+    For example, a "yes" response to EtM consent is a prerequisite to completing EtM tasks (a qualifying actifity)
     :param session: Session object
     :param participant_id:   Participant id (integer)
     :param q_code:  Question code string value, e.g., code_constants.WEAR_CONSENT_QUESTION_CODE

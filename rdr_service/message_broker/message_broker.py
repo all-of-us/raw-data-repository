@@ -40,7 +40,14 @@ class BaseMessageBroker:
     @backoff.on_exception(backoff.constant, HTTPException, max_tries=3)
     def _request_new_token(self, auth_info: MessageBrokerDestAuthInfo):
         token_endpoint = auth_info.tokenEndpoint
-        payload = f'grant_type=client_credentials&client_id={auth_info.key}&client_secret={auth_info.secret}'
+        payload = {
+            'grant_type': 'client_credentials',
+            'client_id': auth_info.key,
+            "client_secret": auth_info.secret
+        }
+        if auth_info.destination == 'careevolution':
+            payload["scope"] = "drc"
+
         response = requests.post(token_endpoint, data=payload,
                                  headers={"Content-type": "application/x-www-form-urlencoded"})
 

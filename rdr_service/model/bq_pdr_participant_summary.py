@@ -38,6 +38,10 @@ class BQPDRPhysicalMeasurements(BQSchema):
                                          BQFieldModeEnum.NULLABLE)
     pm_origin_measurement_unit_id = BQField('pm_origin_measurement_unit_id', BQFieldTypeEnum.INTEGER,
                                             BQFieldModeEnum.NULLABLE)
+    pm_meets_height_reqs = BQField('pm_meets_height_reqs', BQFieldTypeEnum.INTEGER,
+                                   BQFieldModeEnum.NULLABLE)
+    pm_meets_weight_reqs = BQField('pm_meets_weight_reqs', BQFieldTypeEnum.INTEGER,
+                                   BQFieldModeEnum.NULLABLE)
 
 
 
@@ -251,6 +255,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
                                                        BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     health_datastream_sharing_status_v3_1_time = BQField('health_datastream_sharing_status_v3_1_time',
                                                          BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    is_pediatric = BQField('is_pediatric', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQPDRParticipantSummary(BQTable):

@@ -17,7 +17,7 @@
             "valueString": "{\"score\":13,\"accuracy\":0.2708333333333333,\"meanRTc\":380.18,\"medianRTc\":302.6,\"sdRTc\":310.4,\"happy_accuracy\":0.08333333333333333,\"happy_meanRTc\":264.9,\"happy_medianRTc\":264.9,\"happy_sdRTc\":null,\"angry_accuracy\":0.25,\"angry_meanRTc\":206.63,\"angry_medianRTc\":253.5,\"angry_sdRTc\":135.33,\"fearful_accuracy\":0.5833333333333334,\"fearful_meanRTc\":496.19,\"fearful_medianRTc\":306.2,\"fearful_sdRTc\":388.6,\"sad_accuracy\":0.16666666666666666,\"sad_meanRTc\":292.15,\"sad_medianRTc\":292.15,\"sad_sdRTc\":12.94,\"any_timeouts\":0,\"flag_medianRTc\":1,\"flag_sameResponse\":0,\"flag_trialFlags\":1}"
         }
     ],
-    "authored": "2023-06-23T11:56:30.760Z",
+    "authored": "2023-06-23T11:56:30+00:00",
     "group": {
         "linkId": "1",
         "question": [

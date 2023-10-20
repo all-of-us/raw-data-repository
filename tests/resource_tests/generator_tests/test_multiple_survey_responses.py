@@ -88,4 +88,7 @@ class MultipleQuestionnaireResponsesTest(BaseTestCase):
 
             # Verify data from second submission has been added.
             self.assertEqual(ps_data['login_phone_number'], '(555)-555-5555')
-            self.assertEqual(ps_data['date_of_birth'], datetime(year=1960, month=10, day=1).date())
+            # Date of birth is now pulled from the 'participant_summary' table in the generator. Since DOB
+            # was NULL in the first submission, we would expect DOB to stay NULL when an additional ConsentPII
+            # response are sent because 'participant_summary' is only updated on the first submission.
+            self.assertIsNone(ps_data['date_of_birth'])

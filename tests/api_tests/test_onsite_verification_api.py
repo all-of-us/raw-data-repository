@@ -15,12 +15,16 @@ class OnsiteVerificationApiTest(BaseTestCase):
         self.site = self.data_generator.create_database_site(hpoId=self.hpo.hpoId,
                                                              organizationId=self.org.organizationId,
                                                              googleGroup='test-group')
+
         self.p = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
         self.p2 = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
         self.p3 = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
+        self.p4 = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
+
         self.data_generator.create_database_participant_summary(participant=self.p)
         self.data_generator.create_database_participant_summary(participant=self.p2)
         self.data_generator.create_database_participant_summary(participant=self.p3)
+        self.data_generator.create_database_participant_summary(participant=self.p4)
 
         self.ps_dao = ParticipantSummaryDao()
 
@@ -51,7 +55,7 @@ class OnsiteVerificationApiTest(BaseTestCase):
     def test_onsite_verification(self, mock_pdr_resource_generator):
         path = 'Onsite/Id/Verification'
         payload_1 = {
-          "participantId": 'P' + str(self.p.participantId),
+          "participantId": f'P{str(self.p.participantId)}',
           "userEmail": "test@mail.com",
           "verifiedTime": "2022-03-22T06:07:08Z",
           "siteGoogleGroup": self.site.googleGroup,
@@ -59,7 +63,7 @@ class OnsiteVerificationApiTest(BaseTestCase):
           "visitType": "PMB_INITIAL_VISIT"
         }
         payload_2 = {
-            "participantId": 'P' + str(self.p.participantId),
+            "participantId": f'P{str(self.p.participantId)}',
             "userEmail": "test@mail.com",
             "verifiedTime": "2022-02-22T06:07:08Z",
             "siteGoogleGroup": self.site.googleGroup,
@@ -67,7 +71,7 @@ class OnsiteVerificationApiTest(BaseTestCase):
             "visitType": "PHYSICAL_MEASUREMENTS_ONLY"
         }
         payload_3 = {
-            "participantId": 'P' + str(self.p2.participantId),
+            "participantId": f'P{str(self.p2.participantId)}',
             "userEmail": "test2@mail.com",
             "verifiedTime": "2022-01-22T06:07:08Z",
             "siteGoogleGroup": self.site.googleGroup,
@@ -75,16 +79,24 @@ class OnsiteVerificationApiTest(BaseTestCase):
             "visitType": "BIOSPECIMEN_COLLECTION_ONLY"
         }
         payload_4 = {
-            "participantId": 'P' + str(self.p3.participantId),
+            "participantId": f'P{str(self.p3.participantId)}',
             "verifiedTime": "2022-02-03T04:05:06Z",
         }
-
+        payload_5 = {
+            "participantId": f'P{str(self.p4.participantId)}',
+            "userEmail": "test@mail.com",
+            "verifiedTime": "2022-03-22T06:07:08Z",
+            "siteGoogleGroup": self.site.googleGroup,
+            "verificationType": "PHOTO_AND_ONE_OF_PII",
+            "visitType": "PEDIATRIC_VISIT"
+        }
         response1 = self.send_post(path, payload_1)
         response2 = self.send_post(path, payload_2)
         response3 = self.send_post(path, payload_3)
         response4 = self.send_post(path, payload_4)
+        response5 = self.send_post(path, payload_5)
         self.assertEqual(response1,
-                         {'participantId': 'P' + str(self.p.participantId),
+                         {'participantId': f'P{str(self.p.participantId)}',
                           'verifiedTime': '2022-03-22T06:07:08',
                           'userEmail': 'test@mail.com',
                           'siteGoogleGroup': self.site.googleGroup,
@@ -93,7 +105,7 @@ class OnsiteVerificationApiTest(BaseTestCase):
                           'visitType': 'PMB_INITIAL_VISIT'}
                          )
         self.assertEqual(response2,
-                         {'participantId': 'P' + str(self.p.participantId),
+                         {'participantId': f'P{str(self.p.participantId)}',
                           'verifiedTime': '2022-02-22T06:07:08',
                           'userEmail': 'test@mail.com',
                           'siteGoogleGroup': self.site.googleGroup,
@@ -102,7 +114,7 @@ class OnsiteVerificationApiTest(BaseTestCase):
                           'visitType': 'PHYSICAL_MEASUREMENTS_ONLY'}
                          )
         self.assertEqual(response3,
-                         {'participantId': 'P' + str(self.p2.participantId),
+                         {'participantId': f'P{str(self.p2.participantId)}',
                           'verifiedTime': '2022-01-22T06:07:08',
                           'userEmail': 'test2@mail.com',
                           'siteGoogleGroup': self.site.googleGroup,
@@ -111,7 +123,7 @@ class OnsiteVerificationApiTest(BaseTestCase):
                           'visitType': 'BIOSPECIMEN_COLLECTION_ONLY'}
                          )
         self.assertEqual(response4,
-                         {'participantId': 'P' + str(self.p3.participantId),
+                         {'participantId': f'P{str(self.p3.participantId)}',
                           'verifiedTime': '2022-02-03T04:05:06',
                           'userEmail': None,
                           'siteGoogleGroup': None,
@@ -119,19 +131,28 @@ class OnsiteVerificationApiTest(BaseTestCase):
                           'verificationType': 'UNSET',
                           'visitType': 'UNSET'}
                          )
+        self.assertEqual(response5,
+                         {'participantId': f'P{str(self.p4.participantId)}',
+                          'verifiedTime': '2022-03-22T06:07:08',
+                          'userEmail': 'test@mail.com',
+                          'siteGoogleGroup': self.site.googleGroup,
+                          'siteName': self.site.siteName,
+                          'verificationType': 'PHOTO_AND_ONE_OF_PII',
+                          'visitType': 'PEDIATRIC_VISIT'}
+                         )
 
-        get_path = 'Onsite/Id/Verification/P' + str(self.p.participantId)
+        get_path = f'Onsite/Id/Verification/P{str(self.p.participantId)}'
         result = self.send_get(get_path)
         self.assertEqual(result,
                          {'entry': [
-                             {'participantId': 'P' + str(self.p.participantId),
+                             {'participantId': f'P{str(self.p.participantId)}',
                               'verifiedTime': '2022-03-22T06:07:08',
                               'userEmail': 'test@mail.com',
                               'siteGoogleGroup': self.site.googleGroup,
                               'siteName': self.site.siteName,
                               'verificationType': 'PHOTO_AND_ONE_OF_PII',
                               'visitType': 'PMB_INITIAL_VISIT'},
-                             {'participantId': 'P' + str(self.p.participantId),
+                             {'participantId': f'P{str(self.p.participantId)}',
                               'verifiedTime': '2022-02-22T06:07:08',
                               'userEmail': 'test@mail.com',
                               'siteGoogleGroup': self.site.googleGroup,
@@ -139,11 +160,11 @@ class OnsiteVerificationApiTest(BaseTestCase):
                               'verificationType': 'TWO_OF_PII',
                               'visitType': 'PHYSICAL_MEASUREMENTS_ONLY'}
                          ]})
-        get_path = 'Onsite/Id/Verification/P' + str(self.p2.participantId)
+        get_path = f'Onsite/Id/Verification/P{str(self.p2.participantId)}'
         result = self.send_get(get_path)
         self.assertEqual(result,
                          {'entry': [
-                             {'participantId': 'P' + str(self.p2.participantId),
+                             {'participantId': f'P{str(self.p2.participantId)}',
                               'verifiedTime': '2022-01-22T06:07:08',
                               'userEmail': 'test2@mail.com',
                               'siteGoogleGroup': self.site.googleGroup,
@@ -151,17 +172,29 @@ class OnsiteVerificationApiTest(BaseTestCase):
                               'verificationType': 'TWO_OF_PII',
                               'visitType': 'BIOSPECIMEN_COLLECTION_ONLY'}
                          ]})
-        get_path = 'Onsite/Id/Verification/P' + str(self.p3.participantId)
+        get_path = f'Onsite/Id/Verification/P{str(self.p3.participantId)}'
         result = self.send_get(get_path)
         self.assertEqual(result,
                          {'entry': [
-                             {'participantId': 'P' + str(self.p3.participantId),
+                             {'participantId': f'P{str(self.p3.participantId)}',
                               'verifiedTime': '2022-02-03T04:05:06',
                               'userEmail': None,
                               'siteGoogleGroup': None,
                               'siteName': None,
                               'verificationType': 'UNSET',
                               'visitType': 'UNSET'}
+                         ]})
+        get_path = f'Onsite/Id/Verification/P{str(self.p4.participantId)}'
+        result = self.send_get(get_path)
+        self.assertEqual(result,
+                         {'entry': [
+                             {'participantId': f'P{str(self.p4.participantId)}',
+                              'verifiedTime': '2022-03-22T06:07:08',
+                              'userEmail': 'test@mail.com',
+                              'siteGoogleGroup': self.site.googleGroup,
+                              'siteName': self.site.siteName,
+                              'verificationType': 'PHOTO_AND_ONE_OF_PII',
+                              'visitType': 'PEDIATRIC_VISIT'}
                          ]})
 
         participant_summary = self.ps_dao.get_by_participant_id(self.p.participantId)
@@ -177,8 +210,8 @@ class OnsiteVerificationApiTest(BaseTestCase):
 
         # Verify the data dict arg from each mocked ResourceRecordSet(schema, data) created by the PDR generator,
         # triggered by POST /OnSite/Id/Verification requests
-        self.assertEqual(mock_pdr_resource_generator.call_count, 4)
-        payload_list = [payload_1, payload_2, payload_3, payload_4]
+        self.assertEqual(mock_pdr_resource_generator.call_count, 5)
+        payload_list = [payload_1, payload_2, payload_3, payload_4, payload_5]
         for i in range(4):
             resource_dict = mock_pdr_resource_generator.call_args_list[i].args[1]
             self.verify_pdr_resource_data(resource_dict, payload_list[i])

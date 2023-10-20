@@ -129,6 +129,25 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.dao.insert(summary)
         return participant
 
+    def test_lastModified_updates_on_change(self):
+        participant = Participant(participantId=1, biobankId=2)
+        self._insert(participant)
+        summary = self.dao.get(1)
+        initial_last_modified = summary.lastModified
+
+        # Add a delay to ensure a different timestamp for lastModified
+        time.sleep(1)
+
+        # Update the participant's data
+        summary.firstName = "Bob"
+        self.dao.update(summary)
+
+        summary = self.dao.get(1)
+        updated_last_modified = summary.lastModified
+
+        self.assertNotEqual(initial_last_modified, updated_last_modified)
+        self.assertGreater(updated_last_modified, initial_last_modified)
+
     def testQuery_oneSummary(self):
         participant = Participant(participantId=1, biobankId=2)
         self._insert(participant)
@@ -190,41 +209,48 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         )
 
     def testQuery_fourFullSummaries_paginate(self):
-        participant_1 = Participant(participantId=1, biobankId=4)
-        self._insert(participant_1, "Bob", "Jones")
-        participant_2 = Participant(participantId=2, biobankId=1)
-        self._insert(participant_2, "Bob", "Jones")
-        participant_3 = Participant(participantId=3, biobankId=3)
-        self._insert(participant_3, "Bob", "Jones")
-        participant_4 = Participant(participantId=4, biobankId=2)
-        self._insert(participant_4, "Bob", "Jones")
+        with clock.FakeClock(TIME_1):
+            participant_1 = Participant(participantId=1, biobankId=4)
+            self._insert(participant_1, "Bob", "Jones")
+            participant_2 = Participant(participantId=2, biobankId=1)
+            self._insert(participant_2, "Bob", "Jones")
+            participant_3 = Participant(participantId=3, biobankId=3)
+            self._insert(participant_3, "Bob", "Jones")
+            participant_4 = Participant(participantId=4, biobankId=2)
+            self._insert(participant_4, "Bob", "Jones")
+            ps_1 = self.dao.get(1)
+            ps_2 = self.dao.get(2)
+            ps_3 = self.dao.get(3)
+            ps_4 = self.dao.get(4)
+
+        with clock.FakeClock(TIME_2):
+            ps_1.lastName = "Jones"
+            ps_1.firstName = "Bob"
+            ps_1.dateOfBirth = datetime.date(1978, 10, 9)
+            ps_1.hpoId = PITT_HPO_ID
+            self.dao.update(ps_1)
+
+            ps_2.lastName = "Aardvark"
+            ps_2.firstName = "Bob"
+            ps_2.dateOfBirth = datetime.date(1978, 10, 10)
+            ps_2.enrollmentStatusV3_2 = EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
+            self.dao.update(ps_2)
+
+            ps_3.lastName = "Jones"
+            ps_3.firstName = "Bob"
+            ps_3.dateOfBirth = datetime.date(1978, 10, 10)
+            ps_3.hpoId = PITT_HPO_ID
+            ps_3.enrollmentStatusV3_2 = EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
+            self.dao.update(ps_3)
+
+            ps_4.lastName = "Jones"
+            ps_4.enrollmentStatusV3_2 = EnrollmentStatusV32.CORE_PARTICIPANT
+            self.dao.update(ps_4)
+
         ps_1 = self.dao.get(1)
         ps_2 = self.dao.get(2)
         ps_3 = self.dao.get(3)
         ps_4 = self.dao.get(4)
-
-        ps_1.lastName = "Jones"
-        ps_1.firstName = "Bob"
-        ps_1.dateOfBirth = datetime.date(1978, 10, 9)
-        ps_1.hpoId = PITT_HPO_ID
-        self.dao.update(ps_1)
-
-        ps_2.lastName = "Aardvark"
-        ps_2.firstName = "Bob"
-        ps_2.dateOfBirth = datetime.date(1978, 10, 10)
-        ps_2.enrollmentStatusV3_2 = EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
-        self.dao.update(ps_2)
-
-        ps_3.lastName = "Jones"
-        ps_3.firstName = "Bob"
-        ps_3.dateOfBirth = datetime.date(1978, 10, 10)
-        ps_3.hpoId = PITT_HPO_ID
-        ps_3.enrollmentStatusV3_2 = EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
-        self.dao.update(ps_3)
-
-        ps_4.lastName = "Jones"
-        ps_4.enrollmentStatusV3_2 = EnrollmentStatusV32.CORE_PARTICIPANT
-        self.dao.update(ps_4)
 
         self.assert_results(self.no_filter_query, [ps_2, ps_4])
         self.assert_results(self.one_filter_query, [ps_1])
@@ -263,7 +289,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         # baseline_tests = ['BASELINE1', 'BASELINE2']
         baseline_tests = ["1PST8", "2PST8"]
 
-        config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
+        self.temporarily_override_config_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
         self.dao.update_from_biobank_stored_samples()  # safe noop
 
         p_baseline_samples = self._insert(Participant(participantId=1, biobankId=11))
@@ -334,7 +360,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
 
     def test_update_from_samples_changed_tests(self):
         baseline_tests = ["1PST8", "2PST8"]
-        config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
+        self.temporarily_override_config_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
         self.dao.update_from_biobank_stored_samples()  # safe noop
 
         participant = self._insert(Participant(participantId=1, biobankId=11))
@@ -364,7 +390,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         time.sleep(1)
         # Simulate removal of one of the baseline tests from config.json.
         baseline_tests.pop()
-        config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
+        self.temporarily_override_config_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
         self.dao.update_from_biobank_stored_samples()
 
         summary = self.dao.get(participant.participantId)
@@ -374,7 +400,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
     def test_only_update_dna_sample(self):
         dna_tests = ["1ED10", "1SAL2"]
 
-        config.override_setting(config.DNA_SAMPLE_TEST_CODES, dna_tests)
+        self.temporarily_override_config_setting(config.DNA_SAMPLE_TEST_CODES, dna_tests)
         self.dao.update_from_biobank_stored_samples()  # safe noop
 
         p_dna_samples = self._insert(Participant(participantId=1, biobankId=11))
@@ -596,14 +622,14 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         test_dt = datetime.datetime(2018, 11, 1)
 
         def reset_summary():
-            # change summary so enrollment status will be changed from INTERESTED to MEMBER.
-            summary.enrollmentStatusV3_2 = EnrollmentStatusV32.PARTICIPANT
-            summary.lastModified = test_dt
-            summary.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED
-            summary.consentForElectronicHealthRecords = QuestionnaireStatus.SUBMITTED
-            summary.clinicPhysicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
-            summary.samplesToIsolateDNA = SampleStatus.RECEIVED
-            self.dao.update(summary)
+            with clock.FakeClock(test_dt):
+                # change summary so enrollment status will be changed from INTERESTED to MEMBER.
+                summary.enrollmentStatusV3_2 = EnrollmentStatusV32.PARTICIPANT
+                summary.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED
+                summary.consentForElectronicHealthRecords = QuestionnaireStatus.SUBMITTED
+                summary.clinicPhysicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+                summary.samplesToIsolateDNA = SampleStatus.RECEIVED
+                self.dao.update(summary)
 
         ## Test Step 1: Validate update_from_biobank_stored_samples() changes lastModified.
         self.mock_ehr_interest_ranges.return_value = [

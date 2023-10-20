@@ -1,0 +1,436 @@
+{
+  "date": "2023-05-18T07:04:44+00:00",
+  "group": {
+    "title": "Join the WEAR Study",
+    "linkId": "root_group",
+    "concept": [
+      {
+        "code": "wear_consent",
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+      }
+    ],
+    "repeats": false,
+    "question": [
+      {
+        "text": "Do you have a smartphone",
+        "type": "choice",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "¿Tiene acceso a un teléfono inteligente o tableta?"
+                }
+              ]
+            }
+          ]
+        },
+        "linkId": "63586",
+        "option": [
+          {
+            "code": "PMI_Yes",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "display": "Yes",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "Sí"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "code": "PMI_No",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "display": "No",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "No"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "concept": [
+          {
+            "code": "havesmartphone",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "repeats": false
+      },
+      {
+        "text": "Are you willing and able to receive emails and SMS messages from All of Us?",
+        "type": "choice",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "¿Está dispuesto a recibir correos electrónicos y mensajes SMS de All of Us</em>?"
+                }
+              ]
+            }
+          ]
+        },
+        "linkId": "63587",
+        "option": [
+          {
+            "code": "PMI_Yes",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "display": "Yes",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "Sí"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "code": "PMI_No",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "display": "No",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "No"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "concept": [
+          {
+            "code": "receivesms",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "repeats": false
+      },
+      {
+        "text": "Do you have a mailing address at which you can receive a package from Fitbit?",
+        "type": "choice",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "¿Tiene una dirección postal en la que pueda recibir un paquete de Fitbit?"
+                }
+              ]
+            }
+          ]
+        },
+        "linkId": "63588",
+        "option": [
+          {
+            "code": "PMI_Yes",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "display": "Yes",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "Sí"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "code": "PMI_No",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "display": "No",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "No"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "concept": [
+          {
+            "code": "haveaddress",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "repeats": false
+      },
+      {
+        "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+        "type": "choice",
+        "linkId": "63606",
+        "option": [
+          {
+            "code": "WEAR_Yes",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "display": "Yes",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "Sí"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "code": "WEAR_No",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "display": "No. I understand I can change my mind any time.",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "No. Sé que yo puedo cambiar de opinión más tarde."
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "concept": [
+          {
+            "code": "resultsconsent_wear",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "repeats": false
+      },
+      {
+        "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+        "type": "attachment",
+        "linkId": "63607",
+        "concept": [
+          {
+            "code": "wearconsent_signature",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "repeats": false
+      },
+      {
+        "text": "Today's date",
+        "type": "date",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "Fecha de hoy"
+                }
+              ]
+            }
+          ]
+        },
+        "linkId": "63608",
+        "concept": [
+          {
+            "code": "wearconsent_todaysDate",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "repeats": false
+      },
+      {
+        "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+        "type": "choice",
+        "linkId": "63611",
+        "option": [
+          {
+            "code": "HelpMeWithConsent_Yes",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "display": "Someone from All of Us helped me with completing this consent process.",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "Alguien de All of Us me ayudó a completar este proceso de consentimiento."
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "code": "WEARConsent_EmailCopy_Yes",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "display": "Email a copy to me",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "Envíeme una copia por correo electrónico"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "concept": [
+          {
+            "code": "email_help_consent",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "repeats": true
+      },
+      {
+        "text": "Name of the person who helped you",
+        "type": "text",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "Nombre de la persona que lo ayudó:"
+                }
+              ]
+            }
+          ]
+        },
+        "linkId": "63612",
+        "concept": [
+          {
+            "code": "helpmewithconsent_name",
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
+          }
+        ],
+        "repeats": false
+      }
+    ],
+    "required": true
+  },
+  "status": "published",
+  "version": "V2023.04.27",
+  "identifier": [
+    {
+      "value": "Vibrent_FORM_ID_1634"
+    }
+  ],
+  "resourceType": "Questionnaire"
+}

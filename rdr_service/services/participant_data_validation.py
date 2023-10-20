@@ -14,24 +14,30 @@ class ParticipantDataValidation:
     def analyze_date_of_birth(
         cls,
         participant_id: int,
-        date_of_birth: datetime
+        date_of_birth: datetime,
+        age_min: int = 18,
+        age_max: int = 125
     ):
+        is_invalid_func = cls._build_invalid_age_check(age_min, age_max)
+
         is_age_at_consent_valid = cls._is_age_at_consent_valid(
             date_of_birth=date_of_birth,
-            participant_id=participant_id
+            participant_id=participant_id,
+            is_age_invalid=is_invalid_func
         )
         is_current_age_valid = cls._is_current_age_valid(
             date_of_birth=date_of_birth,
-            participant_id=participant_id
+            participant_id=participant_id,
+            is_age_invalid=is_invalid_func
         )
 
         if not (is_age_at_consent_valid and is_current_age_valid):
-            cls._send_notification()
+            cls._send_notification(is_pediatric=age_min < 18)
 
     @classmethod
-    def _is_current_age_valid(cls, date_of_birth: datetime, participant_id: int):
+    def _is_current_age_valid(cls, date_of_birth: datetime, participant_id: int, is_age_invalid):
         current_age_years = relativedelta(datetime.utcnow(), date_of_birth).years
-        if cls._is_outside_expected_bounds(current_age_years):
+        if is_age_invalid(current_age_years):
             logging.warning(
                 f'Unexpected date of birth for P{participant_id}: '
                 f'date of birth means current age is invalid for program'
@@ -41,7 +47,7 @@ class ParticipantDataValidation:
         return True
 
     @classmethod
-    def _is_age_at_consent_valid(cls, date_of_birth: datetime, participant_id: int):
+    def _is_age_at_consent_valid(cls, date_of_birth: datetime, participant_id: int, is_age_invalid):
         summary_dao = ParticipantSummaryDao()
         participant_summary: ParticipantSummary = summary_dao.get_by_participant_id(participant_id)
 
@@ -53,7 +59,7 @@ class ParticipantDataValidation:
             participant_summary.consentForStudyEnrollmentFirstYesAuthored,
             date_of_birth
         ).years
-        if cls._is_outside_expected_bounds(age_at_consent_years):
+        if is_age_invalid(age_at_consent_years):
             logging.warning(
                 f'Unexpected date of birth for P{participant_id}: '
                 f'date of birth means age at consent was invalid for program'
@@ -63,18 +69,21 @@ class ParticipantDataValidation:
         return True
 
     @classmethod
-    def _is_outside_expected_bounds(cls, age_years: int):
-        return age_years < 18 or age_years > 125
+    def _build_invalid_age_check(cls, age_min: int, age_max: int):
+        """
+        Given a min and a max, return a function that returns true when something is outside that range
+        """
+        return lambda age: age < age_min or age > age_max
 
     @classmethod
-    def _send_notification(cls):
+    def _send_notification(cls, is_pediatric):
         validation_webhook = cls._get_slack_webhook_url()
         if validation_webhook is None:
             logging.warning('Webhook not found. Skipping slack notification for validation error.')
 
         handler = SlackMessageHandler(webhook_url=validation_webhook)
         handler.send_message_to_webhook(message_data={
-            'text': 'Invalid date of birth detected'
+            'text': f'Invalid {"pediatric " if is_pediatric else ""}date of birth detected'
         })
 
     @classmethod
