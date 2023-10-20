@@ -13,10 +13,10 @@ from rdr_service.model.site_enums import ObsoleteStatus
 
 
 class SiteHierarchyDao(BaseDao):
-    _QUERY_PARAM_MAPPING = {
-        "awardee_id": {"col": HPO.name},
-        "organization_id": {"col": Organization.externalId},
-        "google_group": {"col": Site.googleGroup},
+    _QUERY_PARAM_TO_COLUMN_MAPPING = {
+        "awardee_id": HPO.name,
+        "organization_id": Organization.externalId,
+        "google_group": Site.googleGroup,
     }
 
     def __init__(self):
@@ -41,9 +41,9 @@ class SiteHierarchyDao(BaseDao):
         self._validate_query_params(**kwargs)
 
         filters = [
-            self._QUERY_PARAM_MAPPING[key]["col"] == value
+            self._QUERY_PARAM_TO_COLUMN_MAPPING[key] == value
             for key, value in kwargs.items()
-            if key in self._QUERY_PARAM_MAPPING
+            if key in self._QUERY_PARAM_TO_COLUMN_MAPPING
         ]
         with self.session() as session:
             query_ = self.get_site_hierarchy_query(session)
@@ -57,10 +57,10 @@ class SiteHierarchyDao(BaseDao):
     def _validate_query_params(self, **kwargs: Dict[str, str]):
         """Check if client uses valid query params listed in _QUERY_PARAM_MAPPING."""
         for key in kwargs:
-            if key not in self._QUERY_PARAM_MAPPING:
+            if key not in self._QUERY_PARAM_TO_COLUMN_MAPPING:
                 raise BadRequest(
                     f"Invalid query parameter(s). "
-                    f"Supported parameters are: {', '.join(self._QUERY_PARAM_MAPPING.keys())}"
+                    f"Supported parameters are: {', '.join(self._QUERY_PARAM_TO_COLUMN_MAPPING.keys())}"
                 )
 
     def get_site_hierarchy_query(self, session: Session) -> query.Query:
