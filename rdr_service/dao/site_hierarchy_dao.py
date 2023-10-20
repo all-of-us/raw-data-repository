@@ -55,7 +55,8 @@ class SiteHierarchyDao(BaseDao):
         return jsonify(response)
 
     def _validate_query_params(self, **kwargs: Dict[str, str]):
-        for key, _ in kwargs.items():
+        """Check if client uses valid query params listed in _QUERY_PARAM_MAPPING."""
+        for key in kwargs:
             if key not in self._QUERY_PARAM_MAPPING:
                 raise BadRequest(
                     f"Invalid query parameter(s). "
