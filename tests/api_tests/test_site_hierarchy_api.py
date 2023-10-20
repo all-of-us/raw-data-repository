@@ -1,3 +1,5 @@
+import http.client
+
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.mysql_helper_data import (
     ILLINOIS_HPO_ID,
@@ -158,4 +160,16 @@ class SiteHierarchyApiTest(BaseTestCase):
             expected_response,
             response,
             msg="Response structure does not match expected structure. Response should be empty.",
+        )
+
+    def test_bad_request_error_on_invalid_param_key(self):
+        invalid_key = "awardee"
+        response = self.send_get(
+            f"SiteHierarchy?{invalid_key}=PITT", expected_status=http.client.BAD_REQUEST
+        )
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
+        self.assertIn(
+            "Invalid query parameter(s)",
+            response.json["message"],
+            msg="Error message does not match",
         )
