@@ -11,11 +11,6 @@ class SiteHierarchyApi(BaseApi):
         super().__init__(SiteHierarchyDao())
 
     @app_util.auth_required([CURATION, RDR])
-    def get(self, id_=None, participant_id=None):
-        """This will call the list method below"""
-        return super().get(id_=id_, participant_id=participant_id)
-
-    @app_util.auth_required([CURATION, RDR])
     def list(self, participant_id=None):
         """Handle a GET request."""
         kwargs = request.args
