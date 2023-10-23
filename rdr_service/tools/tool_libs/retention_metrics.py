@@ -6,6 +6,7 @@ import argparse
 import csv
 import datetime
 import logging
+import os
 import sys
 
 from typing import List
@@ -85,6 +86,14 @@ class RetentionBaseClass(object):
         ).filter(ParticipantSummary.participantId == pid).first()
         return True if ps_rec else False
 
+    @staticmethod
+    def get_int_ids_from_file(file_path):
+        """ Ingest a file of integer ids, such as participant_id or table record ids """
+        with open(os.path.expanduser(file_path)) as id_list:
+            ids = id_list.readlines()
+            # convert ids from a list of strings to a list of integers.
+            return [int(i) for i in ids if i.strip()]
+
 class RetentionRecalcClass(RetentionBaseClass):
     """
     A tool class to force an update to a retention_eligible_metrics record and the RDR calculated fields
@@ -132,10 +141,16 @@ class RetentionRecalcClass(RetentionBaseClass):
 
         dao = RetentionEligibleMetricsDao()
         with dao.session() as session:
-            for pid in participant_id_list:
-                _logger.info(f'Recalculating P{pid}...')
-                # Error messages will be emitted if there are mismatches after recalculation
-                self.recalculate_rdr_retention(session, self.get_retention_db_record(session, pid))
+            count = 0
+            for pid_list in list_chunks(participant_id_list, chunk_size=500):
+                for pid in pid_list:
+                    _logger.info(f'Recalculating P{pid}...')
+                    # Error messages will be emitted if there are mismatches after recalculation
+                    self.recalculate_rdr_retention(session, self.get_retention_db_record(session, pid))
+                    count += 1
+
+                session.commit()
+                _logger.info(f'-----Processed {count} of {len(participant_id_list)} participants')
         return 0
 
 class RetentionQCClass(RetentionBaseClass):
