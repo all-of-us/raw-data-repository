@@ -4778,7 +4778,15 @@ class GenomicLongReadDao(GenomicSubDao):
             ).distinct().all()
 
     def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
-        ...
+        with self.session() as session:
+            return session.query(
+                GenomicLongRead.id,
+                GenomicLongRead.biobank_id
+            ).filter(
+                GenomicLongRead.sample_id.is_(None),
+                GenomicLongRead.biobank_id.in_(biobank_ids),
+                GenomicLongRead.collection_tube_id.in_(collection_tube_ids),
+            ).distinct().all()
 
 
 class GenomicPRDao(GenomicSubDao):
