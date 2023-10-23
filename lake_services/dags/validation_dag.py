@@ -64,6 +64,7 @@ with models.DAG(
                           eqr.participant_id = p.participant_id
                         WHERE
                           eqr.questionnaire_type = @qtype
+                          AND eqr.classification_type = 0
                           AND eqr.etm_questionnaire_response_id NOT IN (
                           SELECT
                             etm_questionnaire_response_id
