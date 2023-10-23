@@ -98,6 +98,10 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 'manifest_type': 'lr',
                 'task_endpoint': 'IngestSubManifestTaskApi'
             },
+            '_AoU_l1_': {
+                'manifest_type': 'l1',
+                'task_endpoint': 'IngestSubManifestTaskApi'
+            }
         }
         pr_tasks = {
             '_pr_requests_': {
