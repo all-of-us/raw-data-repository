@@ -1166,7 +1166,8 @@ class GenomicFileIngester:
             GenomicSubLongReadWorkflow.create_genomic_sub_workflow(
                 dao=GenomicLongReadDao,
                 job_id=self.job_id,
-                job_run_id=self.job_run_id
+                job_run_id=self.job_run_id,
+                manifest_file_name=self.file_obj.fileName
             ).run_workflow(row_data=rows)
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
@@ -1178,7 +1179,8 @@ class GenomicFileIngester:
             GenomicSubWorkflow.create_genomic_sub_workflow(
                 dao=GenomicPRDao,
                 job_id=self.job_id,
-                job_run_id=self.job_run_id
+                job_run_id=self.job_run_id,
+                manifest_file_name=self.file_obj.fileName
             ).run_workflow(row_data=rows)
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
@@ -1190,7 +1192,8 @@ class GenomicFileIngester:
             GenomicSubWorkflow.create_genomic_sub_workflow(
                 dao=GenomicRNADao,
                 job_id=self.job_id,
-                job_run_id=self.job_run_id
+                job_run_id=self.job_run_id,
+                manifest_file_name=self.file_obj.fileName
             ).run_workflow(row_data=rows)
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):

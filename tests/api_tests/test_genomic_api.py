@@ -23,10 +23,10 @@ from rdr_service.dao.genomics_dao import (
     GenomicMemberReportStateDao,
     GenomicGcDataFileDao,
     GenomicResultViewedDao,
-    GenomicAppointmentEventDao
+    GenomicAppointmentEventDao, GenomicIncidentDao
 )
 from rdr_service.genomic_enums import GenomicJob, GenomicReportState, GenomicWorkflowState, GenomicManifestTypes, \
-    GenomicQcStatus, GenomicSampleSwapCategory
+    GenomicQcStatus, GenomicSampleSwapCategory, GenomicIncidentCode
 from rdr_service.model.participant import Participant
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -3812,3 +3812,33 @@ class GenomicCloudTasksApiTest(BaseTestCase):
                 call_json['file_data']['manifest_type'],
                 pr_data['manifest_type']
             )
+
+    def test_execute_genomic_incident_cloud_task(self):
+
+        from rdr_service.resource import main as resource_main
+
+        incident_dao = GenomicIncidentDao()
+
+        data = {
+                'slack': True,
+                'source_job_run_id': 1,
+                'code': GenomicIncidentCode.REQUEST_MANIFEST_VALIDATION_FAIL.name,
+                'message': 'Hello There',
+                'manifest_file_name': 'test_lr_manifest.csv',
+            }
+
+        self.send_post(
+            local_path='GenomicIncidentApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        all_incidents = incident_dao.get_all()
+
+        self.assertEqual(len(all_incidents), 1)
+        current_request_fail_incidents = [obj for obj in all_incidents if
+                                          obj.code == GenomicIncidentCode.REQUEST_MANIFEST_VALIDATION_FAIL.name]
+        self.assertEqual(len(current_request_fail_incidents), 1)
+        self.assertEqual(current_request_fail_incidents[0].slack_notification, 1)
+        self.assertEqual(current_request_fail_incidents[0].manifest_file_name, 'test_lr_manifest.csv')

@@ -3,16 +3,19 @@ from enum import Enum
 from typing import List
 
 from rdr_service import clock
-from rdr_service.genomic_enums import GenomicJob, GenomicLongReadPlatform
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.config import GAE_PROJECT
+from rdr_service.genomic_enums import GenomicJob, GenomicLongReadPlatform, GenomicIncidentCode
 
 
 class GenomicBaseSubWorkflow(ABC):
 
-    def __init__(self, dao, job_id, job_run_id):
+    def __init__(self, dao, job_id, job_run_id, **kwargs):
         self.dao = dao()
         self.job_id = job_id
         self.job_run_id = job_run_id
         self.row_data = []
+        self.current_manifest_file_name = kwargs.get('manifest_file_name', None)
 
         self.genome_type = None
         self.site_id = None
@@ -30,8 +33,18 @@ class GenomicBaseSubWorkflow(ABC):
         }[self.job_id]
 
     @classmethod
-    def create_genomic_sub_workflow(cls, *, dao, job_id, job_run_id):
-        return cls(dao, job_id, job_run_id)
+    def create_genomic_sub_workflow(cls, *, dao, job_id, job_run_id, **kwargs):
+        return cls(dao, job_id, job_run_id, **kwargs)
+
+    @classmethod
+    def execute_cloud_task(cls, payload: dict, endpoint: str, task_queue='genomics'):
+        if GAE_PROJECT != 'localhost':
+            cloud_task = GCPCloudTask()
+            cloud_task.execute(
+                endpoint=endpoint,
+                payload=payload,
+                queue=task_queue
+            )
 
     def run_bypass(self) -> None:
         ...
@@ -97,10 +110,37 @@ class GenomicBaseSubWorkflow(ABC):
         self.set_instance_attributes_from_data()
         self.get_sub_workflow_method()()
 
+    def handle_request_differences(self, *, request_biobank_ids: List[str], returned_biobank_ids: List[str]) -> None:
+        missing_in_returned = list(set(request_biobank_ids) - set(returned_biobank_ids))
+        if not missing_in_returned:
+            return
+
+        message = (f'{self.job_id.name}: Biobank IDs [{",".join(missing_in_returned)}] failed request manifest '
+                   f'validation')
+        self.execute_cloud_task(
+            payload={
+                'slack': True,
+                'source_job_run_id': self.job_run_id,
+                'code': GenomicIncidentCode.REQUEST_MANIFEST_VALIDATION_FAIL.name,
+                'message': message,
+                'manifest_file_name': self.current_manifest_file_name,
+            },
+            endpoint='genomic_incident'
+        )
+
     def run_request_ingestion(self) -> None:
         model_string_attributes: List[str] = self.set_model_string_attributes()
+        request_biobank_ids = [row.get('biobank_id')[1:] for row in self.row_data]
+
         new_pipeline_members = self.dao.get_new_pipeline_members(
-            biobank_ids=[row.get('biobank_id')[1:] for row in self.row_data],
+            biobank_ids=request_biobank_ids,
+        )
+
+        returned_biobank_ids = [obj.biobank_id for obj in new_pipeline_members]
+
+        self.handle_request_differences(
+            request_biobank_ids=request_biobank_ids,
+            returned_biobank_ids=returned_biobank_ids
         )
 
         pipeline_objs = []

@@ -812,3 +812,21 @@ class GenerateManifestApi(BaseGenomicTaskApi):
         except KeyError:
             logging.warning(f'Genomics Manifest {manifest_type} is not available for generation.')
             return {"success": False}
+
+
+class GenomicIncidentApi(BaseGenomicTaskApi):
+    """
+    Cloud task endpoint: Handle Genomic Incidents
+    """
+    def post(self):
+        super().post()
+
+        with GenomicJobController(
+            GenomicJob.CREATE_INCIDENT_FROM_CLOUD_TASK,
+        ) as controller:
+            controller.create_incident(**self.data)
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
