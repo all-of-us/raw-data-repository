@@ -193,3 +193,15 @@ class InsertNphIncidentTaskApi(BaseAncillaryTaskApi):
         json_payload: Dict[str, Any] = self.data
         create_nph_incident(save_incident=True, slack=True, **json_payload)
         return {"success": True}
+
+
+class WithdrawalParticipantNotifierTaskApi(BaseAncillaryTaskApi):
+    """
+    Cloud Task endpoint: Sends a slack alert to rdr-nph-alerts if the
+    payload sent by RTI contains information about a participant that
+    has withdrawn from AOU program.
+    """
+    def post(self):
+        super().post()
+        msg = f"Payload received with withdrawn participant data: {self.data}"
+        create_nph_incident(save_incident=False, slack=True, message=msg)

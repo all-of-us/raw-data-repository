@@ -227,6 +227,11 @@ def _build_resource_app():
                       TASK_PREFIX + "InsertNphIncidentTaskApi",
                       endpoint="insert_nph_incident_task", methods=["POST"])
 
+    # Cloud Task for Sending Slack Alerts if withdrawn PIDs sent in payload to NPH Intake Api
+    _api.add_resource(ancillary_study_cloud_tasks_api.WithdrawalParticipantNotifierTaskApi,
+                      TASK_PREFIX + "WithdrawalParticipantNotifierTaskApi",
+                      endpoint="withdrawal_participant_notifier_task", methods=["POST"])
+
     #
     # End Ancillary Studies Cloud Task API endpoints
     #
