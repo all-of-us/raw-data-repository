@@ -2651,58 +2651,6 @@ class GenomicPipelineTest(BaseTestCase):
         a1_members = [x for x in members if x.genomicWorkflowState == GenomicWorkflowState.A1]
         self.assertEqual(2, len(a1_members))
 
-    # def test_gem_a2_manifest_workflow(self):
-    #     # Create A1 manifest job run: id = 1
-    #     self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.GEM_A1_MANIFEST,
-    #                                           startTime=clock.CLOCK.now(),
-    #                                           runStatus=GenomicSubProcessStatus.COMPLETED,
-    #                                           runResult=GenomicSubProcessResult.SUCCESS))
-    #     # Create genomic set members
-    #     self._create_fake_datasets_for_gc_tests(3, arr_override=True,
-    #                                             array_participants=range(1, 4),
-    #                                             gem_a1_run_id=1,
-    #                                             genomic_workflow_state=GenomicWorkflowState.A1)
-    #
-    #     self._update_test_sample_ids()
-    #
-    #     # Set up test A2 manifest
-    #     bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
-    #     sub_folder = config.GENOMIC_GEM_A2_MANIFEST_SUBFOLDER
-    #     create_ingestion_test_file('AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv',
-    #                                bucket_name, folder=sub_folder,
-    #                                include_timestamp=False)
-    #
-    #     # Run Workflow at fake time
-    #     fake_now = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)
-    #     with clock.FakeClock(fake_now):
-    #         genomic_pipeline.gem_a2_manifest_workflow()  # run_id 2
-    #
-    #     # Test A2 fields and genomic state
-    #     members = self.member_dao.get_all()
-    #     for member in members:
-    #         self.assertEqual(datetime.datetime(2020, 4, 29, 0, 0, 0), member.gemDateOfImport)
-    #         self.assertEqual(fake_now, member.genomicWorkflowStateModifiedTime)
-    #
-    #         if member.id in (1, 2):
-    #             self.assertEqual("Y", member.gemPass)
-    #             self.assertEqual(2, member.gemA2ManifestJobRunId)
-    #             self.assertEqual(GenomicWorkflowState.GEM_RPT_READY, member.genomicWorkflowState)
-    #             self.assertEqual('GEM_RPT_READY', member.genomicWorkflowStateStr)
-    #         if member.id == 3:
-    #             self.assertEqual("N", member.gemPass)
-    #             self.assertEqual(GenomicWorkflowState.A2F, member.genomicWorkflowState)
-    #             self.assertEqual('A2F', member.genomicWorkflowStateStr)
-    #
-    #     # Test Files Processed
-    #     file_record = self.file_processed_dao.get(1)
-    #     self.assertEqual(2, file_record.runId)
-    #     self.assertEqual(f'{bucket_name}/{sub_folder}/AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv', file_record.filePath)
-    #     self.assertEqual('AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv', file_record.fileName)
-    #
-    #     # Test the job result
-    #     run_obj = self.job_run_dao.get(2)
-    #     self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
-
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_gem_a3_manifest_workflow(self, cloud_task):
         # Create A1 manifest job run: id = 1
