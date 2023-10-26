@@ -2,8 +2,10 @@ from typing import Set
 
 from sqlalchemy.orm import Session
 
+from rdr_service.clock import CLOCK
 from rdr_service.dao.base_dao import with_session
 from rdr_service.model.account_link import AccountLink
+from rdr_service.model.participant_summary import ParticipantSummary
 
 
 class AccountLinkDao:
@@ -16,6 +18,12 @@ class AccountLinkDao:
         ).all()
         if not results:
             session.add(account_link)
+
+            summary: ParticipantSummary = session.query(ParticipantSummary).filter(
+                ParticipantSummary.participantId == account_link.participant_id
+            ).one_or_none()
+            if summary:
+                summary.lastModified = CLOCK.now()
 
     @classmethod
     @with_session

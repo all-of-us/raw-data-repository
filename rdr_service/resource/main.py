@@ -201,6 +201,10 @@ def _build_resource_app():
                       TASK_PREFIX + "GenerateManifestApi",
                       endpoint="genomic_generate_manifest", methods=["POST"])
 
+    _api.add_resource(genomic_cloud_tasks_api.GenomicIncidentApi,
+                      TASK_PREFIX + "GenomicIncidentApi",
+                      endpoint="genomic_incident", methods=["POST"])
+
     #
     # End Genomic Cloud Task API endpoints
     #

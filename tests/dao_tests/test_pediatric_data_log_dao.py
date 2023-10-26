@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from rdr_service.clock import FakeClock
 from rdr_service.dao.pediatric_data_log_dao import PediatricDataLogDao
 from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from tests.helpers.unittest_base import BaseTestCase
@@ -69,3 +70,20 @@ class PediatricDataLogDaoTest(BaseTestCase):
         ).all()
         self.assertEqual(1, len(pediatric_data))
         self.assertEqual(existing_record.id, pediatric_data[0].id)
+
+    def test_age_sets_last_modified(self):
+        """
+        Setting a new pediatric age range on a participant will set the summary's value of is_pediatric to True.
+        So we should update the lastModified time as well.
+        """
+        pediatric_summary = self.data_generator.create_database_participant_summary()
+
+        timestamp = datetime(2018, 7, 10)
+        with FakeClock(timestamp):
+            PediatricDataLogDao.record_age_range(
+                participant_id=pediatric_summary.participantId,
+                age_range_str='SIX_AND_BELOW',
+                session=self.session
+            )
+
+        self.assertEqual(timestamp, pediatric_summary.lastModified)

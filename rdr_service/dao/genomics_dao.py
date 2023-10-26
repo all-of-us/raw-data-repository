@@ -4698,12 +4698,19 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
         ...
 
     @abstractmethod
-    def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
-        ...
-
-    @abstractmethod
     def get_max_set_subquery(self):
         ...
+
+    def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
+        with self.session() as session:
+            return session.query(
+                self.model_type.id,
+                self.model_type.biobank_id
+            ).filter(
+                self.model_type.sample_id.is_(None),
+                self.model_type.biobank_id.in_(biobank_ids),
+                self.model_type.collection_tube_id.in_(collection_tube_ids),
+            ).distinct().all()
 
 
 class GenomicLongReadDao(GenomicSubDao):
@@ -4777,17 +4784,6 @@ class GenomicLongReadDao(GenomicSubDao):
                 self.get_max_set_subquery().c.long_read_set
             ).distinct().all()
 
-    def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
-        with self.session() as session:
-            return session.query(
-                GenomicLongRead.id,
-                GenomicLongRead.biobank_id
-            ).filter(
-                GenomicLongRead.sample_id.is_(None),
-                GenomicLongRead.biobank_id.in_(biobank_ids),
-                GenomicLongRead.collection_tube_id.in_(collection_tube_ids),
-            ).distinct().all()
-
 
 class GenomicPRDao(GenomicSubDao):
 
@@ -4856,22 +4852,6 @@ class GenomicPRDao(GenomicSubDao):
                 self.get_max_set_subquery().c.proteomics_set
             ).distinct().all()
 
-    def get_pipeline_members_missing_sample_id(
-        self,
-        *,
-        biobank_ids: List[str],
-        collection_tube_ids: List[str]
-    ):
-        with self.session() as session:
-            return session.query(
-                GenomicProteomics.id,
-                GenomicProteomics.biobank_id
-            ).filter(
-                GenomicProteomics.sample_id.is_(None),
-                GenomicProteomics.biobank_id.in_(biobank_ids),
-                GenomicProteomics.collection_tube_id.in_(collection_tube_ids),
-            ).distinct().all()
-
 
 class GenomicRNADao(GenomicSubDao):
 
@@ -4938,20 +4918,4 @@ class GenomicRNADao(GenomicSubDao):
             ).filter(
                 GenomicRNA.rna_set ==
                 self.get_max_set_subquery().c.rna_set
-            ).distinct().all()
-
-    def get_pipeline_members_missing_sample_id(
-        self,
-        *,
-        biobank_ids: List[str],
-        collection_tube_ids: List[str]
-    ):
-        with self.session() as session:
-            return session.query(
-                GenomicRNA.id,
-                GenomicRNA.biobank_id
-            ).filter(
-                GenomicRNA.sample_id.is_(None),
-                GenomicRNA.biobank_id.in_(biobank_ids),
-                GenomicRNA.collection_tube_id.in_(collection_tube_ids),
             ).distinct().all()

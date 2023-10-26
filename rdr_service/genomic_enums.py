@@ -133,6 +133,7 @@ class GenomicJob(messages.Enum):
     CHECK_APPOINTMENT_GROR_CHANGED = 76
     CHECK_GCR_OUTREACH_ESCALATION = 77
     CHECK_GCR_CE_OUTREACH_ESCALATION = 78
+    CREATE_INCIDENT_FROM_CLOUD_TASK = 79
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
@@ -389,6 +390,7 @@ class GenomicIncidentCode(messages.Enum):
     INFORMING_LOOP_TO_EVENTS_MISMATCH = 11
     UNABLE_TO_RESOLVE_MESSAGE_BROKER_RECORD = 12
     MANIFEST_INGESTION_EXCEPTION = 13
+    REQUEST_MANIFEST_VALIDATION_FAIL = 14
 
 
 class GenomicIncidentStatus(messages.Enum):
