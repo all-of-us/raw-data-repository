@@ -153,7 +153,7 @@ class Participant(ParticipantBase, Base):
     )
     __table_args__ = (UniqueConstraint("external_id"), UniqueConstraint("research_id"),)
 
-    organization = relationship("Organization", foreign_keys='Participant.organizationId')
+    organization = relationship("Organization", foreign_keys='Participant.organizationId', viewonly=True)
     """
     Organ doc string on actual class
     """
