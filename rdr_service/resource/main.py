@@ -196,6 +196,11 @@ def _build_resource_app():
                       TASK_PREFIX + "GenerateManifestApi",
                       endpoint="genomic_generate_manifest", methods=["POST"])
 
+    # Ingest GEM manifest
+    _api.add_resource(genomic_cloud_tasks_api.IngestGemManifestTaskApi,
+                      TASK_PREFIX + "IngestGemManifestTaskApi",
+                      endpoint="ingest_gem_manifest_task", methods=["POST"])
+
     #
     # End Genomic Cloud Task API endpoints
     #

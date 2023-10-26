@@ -3812,3 +3812,45 @@ class GenomicCloudTasksApiTest(BaseTestCase):
                 call_json['file_data']['manifest_type'],
                 pr_data['manifest_type']
             )
+
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
+    def test_ingest_gem_job_task_api(self, ingest_mock):
+
+        from rdr_service.resource import main as resource_main
+
+        gem_map = {
+            'a2': {
+                'job': GenomicJob.GEM_A2_MANIFEST,
+                'manifest_type': GenomicManifestTypes.GEM_A2
+            }
+        }
+
+        test_bucket = 'test_gem_bucket'
+
+        for gem_key, gem_data in gem_map.items():
+            gem_type_file_path = f"{test_bucket}/test_pr_{gem_key}_file.csv"
+
+            data = {
+                "file_path": gem_type_file_path,
+                "bucket_name": gem_type_file_path.split('/')[0],
+                "upload_date": '2020-09-13T20:52:12+00:00',
+                "file_type": gem_key
+            }
+
+            self.send_post(
+                local_path='IngestGemManifestTaskApi',
+                request_data=data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+            call_json = ingest_mock.call_args[0][0]
+
+            self.assertEqual(ingest_mock.called, True)
+            self.assertEqual(call_json['bucket'], data['bucket_name'])
+            self.assertEqual(call_json['job'], gem_data['job'])
+            self.assertIsNotNone(call_json['file_data'])
+            self.assertEqual(
+                call_json['file_data']['manifest_type'],
+                gem_data['manifest_type']
+            )

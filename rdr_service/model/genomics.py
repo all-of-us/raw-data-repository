@@ -1980,3 +1980,31 @@ class GenomicR1Raw(Base):
     failure_mode = Column(String(255), nullable=True)
     failure_mode_desc = Column(String(255), nullable=True)
     genome_type = Column(String(80), nullable=True, index=True)
+
+
+event.listen(GenomicR1Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicR1Raw, 'before_update', model_update_listener)
+
+
+class GenomicA2Raw(Base):
+    """
+    Raw data from A2 files
+    """
+    __tablename__ = 'genomic_a2_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    success = Column(String(255), nullable=True)
+    date_of_import = Column(String(255), nullable=True)
+
+
+event.listen(GenomicA2Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicA2Raw, 'before_update', model_update_listener)
