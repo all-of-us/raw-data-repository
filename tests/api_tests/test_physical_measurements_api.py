@@ -8,6 +8,8 @@ from rdr_service.clock import FakeClock
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.measurements import Measurement
+from rdr_service.model.organization import Organization
+from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import SampleStatus, UNSET_HPO_ID
@@ -693,3 +695,31 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         # Check that height and weight status were restored based on new PM record
         self.assertTrue(summary_json['hasHeightAndWeight'])
         self.assertEqual(second_measurement_date_str, summary_json['hasHeightAndWeightTime'])
+
+    def test_pairing_update(self):
+        """
+        There's a bug when PM updates pairing and then the enrollment status is recalculated.
+        Merging the participant summary seems to be resetting the paired organization back to what
+        it was.
+
+        This checks that when pairing gets changed, the organization doesn't revert back.
+        """
+
+        # Create a participant summary that has no pairing
+        summary = self.data_generator.create_database_participant_summary()
+
+        # Send PM data that will pair the participant to PITT
+        self.send_post(
+            f'Participant/P{summary.participantId}/PhysicalMeasurements',
+            load_measurement_json(summary.participantId)
+        )
+
+        # The participant's organization should be set to PITT on the summary and participant tables
+        # (PITT is the org used in the PM json)
+        pitt_org = self.session.query(Organization).filter(Organization.externalId == 'PITT_BANNER_HEALTH').one()
+
+        self.session.refresh(summary)
+        self.assertEqual(pitt_org.organizationId, summary.organizationId)
+
+        participant = self.session.query(Participant).filter(Participant.participantId == summary.participantId).one()
+        self.assertEqual(pitt_org.organizationId, participant.organizationId)
