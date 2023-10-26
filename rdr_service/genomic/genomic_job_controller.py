@@ -1578,20 +1578,20 @@ class GenomicJobController:
                     )
                     self.result_viewed_dao.insert(new_result_viewed_record)
 
-    def run_general_ingestion_workflow(self):
-        """
-        Ingests A single genomic file
-        Depending on job_id, bucket_name, etc.
-        """
-        self.ingester = GenomicFileIngester(job_id=self.job_id,
-                                            job_run_id=self.job_run.id,
-                                            bucket=self.bucket_name,
-                                            sub_folder=self.sub_folder_name,
-                                            _controller=self)
-        try:
-            self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
-        except RuntimeError:
-            self.job_result = GenomicSubProcessResult.ERROR
+    # def run_general_ingestion_workflow(self):
+    #     """
+    #     Ingests A single genomic file
+    #     Depending on job_id, bucket_name, etc.
+    #     """
+    #     self.ingester = GenomicFileIngester(job_id=self.job_id,
+    #                                         job_run_id=self.job_run.id,
+    #                                         bucket=self.bucket_name,
+    #                                         sub_folder=self.sub_folder_name,
+    #                                         _controller=self)
+    #     try:
+    #         self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
+    #     except RuntimeError:
+    #         self.job_result = GenomicSubProcessResult.ERROR
 
     def run_aw1c_workflow(self):
         """

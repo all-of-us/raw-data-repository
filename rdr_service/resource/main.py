@@ -142,6 +142,11 @@ def _build_resource_app():
                       TASK_PREFIX + "IngestSubManifestTaskApi",
                       endpoint="ingest_sub_manifest_task", methods=["POST"])
 
+    # Ingest GEM manifest
+    _api.add_resource(genomic_cloud_tasks_api.IngestGemManifestTaskApi,
+                      TASK_PREFIX + "IngestGemManifestTaskApi",
+                      endpoint="ingest_gem_manifest_task", methods=["POST"])
+
     # Ingest member samples from raw models
     _api.add_resource(genomic_cloud_tasks_api.IngestSamplesFromRawTaskAPI,
                       TASK_PREFIX + "IngestSamplesFromRawTaskAPI",

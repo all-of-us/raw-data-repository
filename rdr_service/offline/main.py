@@ -544,11 +544,11 @@ def genomic_gem_a1_workflow():
     return '{"success": "true"}'
 
 
-@app_util.auth_required_cron
-@check_genomic_cron_job('a2_manifest_workflow')
-def genomic_gem_a2_workflow():
-    genomic_pipeline.gem_a2_manifest_workflow()
-    return '{"success": "true"}'
+# @app_util.auth_required_cron
+# @check_genomic_cron_job('a2_manifest_workflow')
+# def genomic_gem_a2_workflow():
+#     genomic_pipeline.gem_a2_manifest_workflow()
+#     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
@@ -1108,12 +1108,12 @@ def _build_pipeline_app():
         view_func=genomic_gem_a1_workflow,
         methods=["GET"]
     )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicGemA2Workflow",
-        endpoint="genomic_gem_a2_workflow",
-        view_func=genomic_gem_a2_workflow,
-        methods=["GET"]
-    )
+    # offline_app.add_url_rule(
+    #     OFFLINE_PREFIX + "GenomicGemA2Workflow",
+    #     endpoint="genomic_gem_a2_workflow",
+    #     view_func=genomic_gem_a2_workflow,
+    #     methods=["GET"]
+    # )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicGemA3Workflow",
         endpoint="genomic_gem_a3_workflow",
