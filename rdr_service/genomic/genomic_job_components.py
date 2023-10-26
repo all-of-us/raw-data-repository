@@ -448,9 +448,11 @@ class GenomicFileIngester:
         try:
             for row in rows:
                 sample_id = row['sample_id']
-                member = self.member_dao.get_member_from_sample_id_with_state(sample_id,
-                                                                              GENOME_TYPE_ARRAY,
-                                                                              GenomicWorkflowState.A1)
+                member = self.member_dao.get_member_from_sample_id_with_state(
+                    sample_id,
+                    GENOME_TYPE_ARRAY,
+                    GenomicWorkflowState.A1
+                )
                 if member is None:
                     logging.warning(f'Invalid sample ID: {sample_id}')
                     continue

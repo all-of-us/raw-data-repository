@@ -191,6 +191,10 @@ class GenomicJob(messages.Enum):
     LOAD_RO_TO_RAW_TABLE = 551
     LOAD_R1_TO_RAW_TABLE = 552
 
+    LOAD_A1_TO_RAW_TABLE = 600
+    LOAD_A2_TO_RAW_TABLE = 601
+    LOAD_A3_TO_RAW_TABLE = 602
+
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
 

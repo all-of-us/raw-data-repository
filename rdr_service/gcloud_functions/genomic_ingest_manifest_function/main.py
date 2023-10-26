@@ -67,6 +67,12 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 'task_endpoint': 'IngestAW5ManifestTaskApi'
             },
         }
+        gem_tasks = {
+            'gem_a2': {
+                'manifest_type': 'a2',
+                'task_endpoint': ''
+            }
+        }
         cvl_tasks = {
             '_w2sc_': {
                 'manifest_type': 'w2sc',
@@ -130,6 +136,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
         task_key_map = {
             **short_read_tasks,
+            **gem_tasks,
             **cvl_tasks,
             **long_read_tasks,
             **pr_tasks,

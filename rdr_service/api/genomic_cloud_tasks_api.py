@@ -333,6 +333,48 @@ class IngestCVLManifestTaskApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
+class IngestGemManifestTaskApi(BaseGenomicTaskApi):
+    """
+    Cloud Task endpoint: Ingest GEM Manifest(s).
+    """
+    def post(self):
+        super().post()
+
+        gem_map = {
+            'a2': {
+                'job': GenomicJob.GEM_A2_MANIFEST,
+                'manifest_type': GenomicManifestTypes.GEM_A2
+            }
+        }
+
+        for file_path in self.file_paths:
+            logging.info(f'Ingesting GEM Manifest File: {self.data.get("filename")}')
+
+            task_type = self.data.get("file_type")
+            workflow_data = gem_map[task_type]
+
+            # Set up file/JSON
+            task_data = {
+                "job": workflow_data.get('job'),
+                "bucket": self.data["bucket_name"],
+                "file_data": {
+                    "create_feedback_record": False,
+                    "upload_date": self.data["upload_date"],
+                    "manifest_type": workflow_data.get('manifest_type'),
+                    "file_path": file_path,
+                }
+            }
+
+            logging.info(f'{task_type.upper()} task data: {task_data}')
+
+            self.execute_manifest_ingestion(task_data, task_type.upper())
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
 class IngestSubManifestTaskApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Ingest Sub-workflow Manifest(s).
