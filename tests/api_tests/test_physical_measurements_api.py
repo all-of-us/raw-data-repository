@@ -693,3 +693,25 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         # Check that height and weight status were restored based on new PM record
         self.assertTrue(summary_json['hasHeightAndWeight'])
         self.assertEqual(second_measurement_date_str, summary_json['hasHeightAndWeightTime'])
+
+    def test_organization_updated(self):
+        pid_numeric = from_client_participant_id(self.participant_id)
+        participant_dao = ParticipantDao()
+        self.send_consent(self.participant_id)
+        self.send_consent(self.participant_id_2)
+        self.assertEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
+        participant = self.send_get(f"Participant/P{pid_numeric}")
+        participant["awardee"] = "AZ_TUCSON"
+        awardee_response = self.send_put(
+            f"Participant/P{pid_numeric}", participant, headers={"If-Match": 'W/"1"'}
+        )
+        awardee_response["organization"] = "AZ_TUCSON_BANNER_HEALTH"
+        awardee_response["awardee"] = "UNSET"
+        self.send_put(
+            f"Participant/P{pid_numeric}",
+            awardee_response,
+            headers={"If-Match": 'W/"2"'},
+        )
+        self._insert_measurements(datetime.datetime.utcnow().isoformat())
+        participant_org = participant_dao.get_with_session(self.session, pid_numeric).organization
+        self.assertEqual(participant_org.externalId, "PITT_BANNER_HEALTH")
