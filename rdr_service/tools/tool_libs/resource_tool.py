@@ -7,11 +7,13 @@ import argparse
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
 import datetime
+import json
 import logging
 import math
 import os
 import sys
 
+from collections.abc import Iterable
 from time import sleep
 from werkzeug.exceptions import NotFound
 
@@ -219,18 +221,24 @@ class ParticipantResourceClass(object):
                     rebuild_bq_participant(pid, project_id=self.gcp_env.project)
                 res = generators.participant.rebuild_participant_summary_resource(pid, qc_mode=self.args.qc)
                 if self.args.qc:
-                    pid_dict = res.get_data()
-                    rdr_status = pid_dict.get('enrollment_status_legacy_v2', None)
-                    pdr_status = pid_dict.get('enrollment_status', None)
-                    rdr_core_time = pid_dict.get('enrollment_core_stored', None)
-                    pdr_core_time = pid_dict.get('enrl_core_participant_time', None)
-                    if not rdr_status and pdr_status == 'REGISTERED':
-                        pass
-                    elif rdr_status != pdr_status:
-                        _logger.error(f'P{pid} RDR {rdr_status} / PDR {pdr_status}')
-                        self.qc_error_list.append(f'P{pid} RDR {rdr_status} / PDR {pdr_status}')
-                    elif rdr_status == 'CORE_PARTICIPANT' and rdr_core_time != pdr_core_time:
-                        _logger.error(f'P{pid} RDR {rdr_core_time} / PDR {pdr_core_time}')
+                    # We didn't rebuild for BQ, but check the previously built record against the new generator output
+                    w_dao = BigQuerySyncDao()
+                    with w_dao.session() as session:
+                        sql = f"""
+                            select resource from resource_data
+                            where resource_pk_id = {pid} and resource_type_id = 2
+                        """
+                        old_gen_data = session.execute(sql).first()
+                        if old_gen_data:
+                            old_dict = json.loads(old_gen_data.resource)
+                            pid_dict = res.get_data()
+                            for k, v in old_dict.items():
+                                if isinstance(v, list) or isinstance(v, dict) or k.endswith('_time'):
+                                    # Don't bother checking nested arrays, dicts, or obviously named timestamps
+                                    continue
+                                if pid_dict.get(k) != v:
+                                    # Will still be some diffs in date/time strings that can be ognored
+                                    print(f'P{pid}: {k} (old/new), {v}/{pid_dict.get(k)}')
 
             if not self.args.no_modules and not self.args.qc:
                 mod_bqgen = BQPDRQuestionnaireResponseGenerator()
