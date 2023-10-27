@@ -16,11 +16,11 @@ import sys
 from time import sleep
 from werkzeug.exceptions import NotFound
 
+from rdr_service.model.code import Code
 from rdr_service.model.genomics import UserEventMetrics
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
-from rdr_service.dao.code_dao import Code
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_set_member_update, \
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update, \
@@ -219,8 +219,10 @@ class ParticipantResourceClass(object):
                     # Skip the BQ build in QC mode;  will just test the resource data return
                     rebuild_bq_participant(pid, project_id=self.gcp_env.project)
                 res = generators.participant.rebuild_participant_summary_resource(pid, qc_mode=self.args.qc)
+
                 if self.args.qc and self.args.project == 'all-of-us-rdr-prod':
-                    # We didn't rebuild for BQ, but check the previously built record against the new generator output
+                    # We didn't rebuild for BQ, but check the previously built participant record against the updated
+                    # generator code output
                     w_dao = BigQuerySyncDao()
                     with w_dao.session() as session:
                         sql = f"""
@@ -236,7 +238,8 @@ class ParticipantResourceClass(object):
                                     # Don't bother checking nested arrays, dicts, or obviously named timestamps
                                     continue
                                 if pid_dict.get(k) != v:
-                                    # Will still be some diffs in date/time fields (str vs. date or datetime diff)
+                                    # Will still be some diffs in date/time strings that can be ignored
+                                    # Typing differences and/or string formatting that can be verified visually
                                     print(f'P{pid}: {k} (old/new), {v}/{pid_dict.get(k)}')
 
             if not self.args.no_modules and not self.args.qc:
