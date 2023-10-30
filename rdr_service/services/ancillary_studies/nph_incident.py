@@ -11,10 +11,10 @@ def get_slack_message_handler() -> SlackMessageHandler:
     if slack_config is None:
         logging.warning("'slack_config' for 'NPH_SLACK_WEBHOOKS' is empty")
 
-    webbook_url = slack_config.get('nph_incident_alerts', None)
-    if webbook_url is None:
+    webhook_url = slack_config.get('nph_incident_alerts', None)
+    if webhook_url is None:
         logging.warning("'nph_incident_alerts' is not available in slack config. 'webhook_url' is None")
-    return SlackMessageHandler(webhook_url=webbook_url)
+    return SlackMessageHandler(webhook_url=webhook_url)
 
 
 def create_nph_incident(**kwargs):
