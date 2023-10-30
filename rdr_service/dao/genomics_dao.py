@@ -867,7 +867,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
 
     def get_blocklist_members_from_date(self, *, attributes, from_days=1):
         from_date = (clock.CLOCK.now() - timedelta(days=from_days)).replace(microsecond=0)
-        attributes.add('GenomicSetMember.id')
+        attributes.update({'GenomicSetMember.id', 'GenomicSetMember.genomeType'})
         eval_attrs = [eval(obj) for obj in attributes]
         members = sqlalchemy.orm.Query(eval_attrs)
 

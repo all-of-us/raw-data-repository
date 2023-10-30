@@ -141,7 +141,7 @@
   },
   "genomic_set_member_blocklists": {
     "block_research": [
-       {
+      {
         "attribute": "ai_an",
         "value": "Y",
         "reason_string": "aian"
