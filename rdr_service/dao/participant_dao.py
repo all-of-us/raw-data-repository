@@ -599,17 +599,18 @@ class ParticipantDao(UpdatableDao):
                 .all()
             )
 
-    def get_withdrawn_participant(
-        self, *columns: list[str], participant_ids: list[int]
-    ) -> list[tuple]:
+    def get_withdrawn_participant_ids(self, participant_ids: list[int]) -> list:
+        """Return a list of withdrawn pids, given a list of pids."""
         with self.session() as session:
-            return (
-                session.query([getattr(Participant, col) for col in columns]).filter(
+            result = (
+                session.query(Participant.participantId).filter(
                     Participant.participantId.in_(participant_ids),
                     (Participant.withdrawalStatus == WithdrawalStatus.NO_USE)
                     | (Participant.withdrawalStatus == WithdrawalStatus.EARLY_OUT),
                 )
             ).all()
+
+        return [item[0] for item in result]
 
 
 def _get_primary_provider_link(participant):

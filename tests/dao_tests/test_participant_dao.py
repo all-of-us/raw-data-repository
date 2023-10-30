@@ -506,6 +506,31 @@ class ParticipantDaoTest(BaseTestCase):
             f'Un-consented participant {participant.participantId} was withdrawn with NO_USE'
         )
 
+    def test_return_withdrawn_ids_only(self):
+        participants_status = {
+            1: WithdrawalStatus.NO_USE,
+            2: WithdrawalStatus.NOT_WITHDRAWN,
+            3: WithdrawalStatus.NOT_WITHDRAWN,
+            4: WithdrawalStatus.EARLY_OUT
+        }
+        expected_result = [
+            pid
+            for pid, status in participants_status.items()
+            if status in [WithdrawalStatus.NO_USE, WithdrawalStatus.EARLY_OUT]
+        ]
+
+        # Insert into database
+        for pid, status in participants_status.items():
+            bid = pid
+            self.dao.insert(
+                Participant(
+                    participantId=pid, biobankId=bid, withdrawalStatus=status
+                )
+            )
+        result = self.dao.get_withdrawn_participant_ids(list(participants_status.keys()))
+
+        self.assertEqual(result, expected_result)
+
     def test_update_not_exists(self):
         p = self.data_generator._participant_with_defaults(participantId=1, biobankId=2)
         with self.assertRaises(NotFound):

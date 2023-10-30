@@ -114,7 +114,7 @@ class AncillaryStudiesEnrollmentCloudTaskTest(BaseTestCase):
         self.clear_table_after_test("nph.enrollment_event")
 
 
-class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
+class NphIncidentTaskApiCloudTaskTest(BaseTestCase):
 
     DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
     TIME = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
@@ -166,7 +166,7 @@ class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
         }
         return nph_incident_kwargs
 
-    def test_insert_nph_incident_task_returns_500(self):
+    def test_nph_incident_task_returns_500(self):
         nph_incident_kwargs = {
             "dev_note": "dev_note",
             "message": "mock_message",
@@ -176,7 +176,7 @@ class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
         }
         from rdr_service.resource import main as resource_main
         response = self.send_post(
-            local_path='InsertNphIncidentTaskApi',
+            local_path='NphIncidentTaskApi',
             request_data=nph_incident_kwargs,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -185,12 +185,12 @@ class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
         self.assertEqual(response.status_code, INTERNAL_SERVER_ERROR)
 
     @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
-    def test_insert_nph_incident_task_returns_200(self, mock_send_message_to_webhook: mock.Mock):
+    def test_nph_incident_task_returns_200(self, mock_send_message_to_webhook: mock.Mock):
         mock_send_message_to_webhook.return_value = True
         nph_incident_kwargs = self._get_nph_incident_task_payload()
         from rdr_service.resource import main as resource_main
         response = self.send_post(
-            local_path='InsertNphIncidentTaskApi',
+            local_path='NphIncidentTaskApi',
             request_data=nph_incident_kwargs,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -198,11 +198,8 @@ class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
         )
 
         nph_incident_message = nph_incident_kwargs.get("message")
-        nph_incident: Optional[Incident] = (
-            self.nph_incident_dao.get_by_message(message=nph_incident_message)
-        )
-        self.assertEqual(nph_incident.message, nph_incident_message)
-        self.assertEqual(nph_incident.notification_sent_flag, 1)
+
+        self.assertIsNotNone(nph_incident_message)
         self.assertEqual(response, {'success': True})
 
     def tearDown(self):

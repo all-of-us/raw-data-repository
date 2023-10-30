@@ -17,18 +17,11 @@ def get_slack_message_handler() -> SlackMessageHandler:
     return SlackMessageHandler(webhook_url=webbook_url)
 
 
-def create_nph_incident(
-    save_incident: bool = True,
-    slack: bool = False,
-    **kwargs
-):
+def create_nph_incident(**kwargs):
     """
-        Creates an NphIncident and sends alert via Slack if default
-        for slack arg is True and saves an incident record to NphIncident
-        if save_incident arg is True.
-        :param save_incident: bool
-        :param slack: bool
-        :return:
+    Creates an NphIncident and sends alert to Slack if default
+    for slack arg is True and saves an incident record to NphIncident
+    if save_incident arg is True.
     """
     nph_incident_dao = NphIncidentDao()
     nph_incident_alert_slack = get_slack_message_handler()
@@ -41,11 +34,11 @@ def create_nph_incident(
     if created_incident and (today.date() - created_incident.created.date()).days <= num_days:
         return
 
-    if save_incident:
+    if kwargs.get('save_incident', False):
         insert_obj = nph_incident_dao.get_model_obj_from_items(kwargs.items())
         incident: NphIncident = nph_incident_dao.insert(insert_obj)
 
-    if slack:
+    if kwargs.get('slack', False):
         message_data = {'text': message}
         slack_alert = nph_incident_alert_slack.send_message_to_webhook(
             message_data=message_data

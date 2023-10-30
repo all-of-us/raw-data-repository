@@ -222,10 +222,12 @@ def _build_resource_app():
                       TASK_PREFIX + "NphSmsGenerationTaskApi",
                       endpoint="nph_sms_generation_task", methods=["POST"])
 
-    # Cloud Task for NPH Incidents
-    _api.add_resource(ancillary_study_cloud_tasks_api.InsertNphIncidentTaskApi,
-                      TASK_PREFIX + "InsertNphIncidentTaskApi",
-                      endpoint="insert_nph_incident_task", methods=["POST"])
+    # Cloud Task for NPH Incidents; currently used to send slack alerts if
+    # withdrawn PIDs sent in NPH Intake Api payload
+    _api.add_resource(ancillary_study_cloud_tasks_api.NphIncidentTaskApi,
+                      TASK_PREFIX + "NphIncidentTaskApi",
+                      endpoint="nph_incident_task", methods=["POST"])
+
 
     # Cloud Task for Sending Slack Alerts if withdrawn PIDs sent in payload to NPH Intake Api
     _api.add_resource(ancillary_study_cloud_tasks_api.WithdrawalParticipantNotifierTaskApi,
