@@ -1,8 +1,9 @@
 import logging
-from typing import Dict, Any
 
 from flask import request
 from flask_restful import Resource
+
+from rdr_service.clock import CLOCK
 from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.study_nph_dao import NphConsentEventDao, NphPairingEventDao, NphEnrollmentEventDao, \
@@ -171,37 +172,21 @@ class NphSmsGenerationTaskApi(BaseAncillaryTaskApi):
         workflow.execute_workflow()
 
 
-class InsertNphIncidentTaskApi(BaseAncillaryTaskApi):
+class NphIncidentTaskApi(BaseAncillaryTaskApi):
 
     """
-    Cloud Task endpoint: Inserts an incident into a Nph Incident table
-    Mandatory Fields are:
-        dev_note: i.e. "Created a New Incident"
-        message: i.e. "A New Incident"
-        notification_date: i.e. "2023-02-07T13:28:17.239+02:00"
-    Optional Fields are:
-        event_id
-        participant_id
-        src_event_id
-        trace_id
-    """
-    def post(self):
-        super(InsertNphIncidentTaskApi, self).post()
-        log_msg = f'Insert a new incident with {self.data} for ' \
-                  f'PID: {self.data.get("participant_id")}'
-        logging.info(log_msg)
-        json_payload: Dict[str, Any] = self.data
-        create_nph_incident(save_incident=True, slack=True, **json_payload)
-        return {"success": True}
-
-
-class WithdrawalParticipantNotifierTaskApi(BaseAncillaryTaskApi):
-    """
-    Cloud Task endpoint: Sends a slack alert to rdr-nph-alerts if the
-    payload sent by RTI contains information about a participant that
-    has withdrawn from AOU program.
+    Cloud Task endpoint: Can insert an incident into a Nph Incident table.
+    Also send a slack alert to rdr-nph-alerts if the payload sent by partner
+    contains information about participants who have withdrawn from AOU program.
     """
     def post(self):
         super().post()
-        msg = f"Payload received with withdrawn participant data: {self.data}"
-        create_nph_incident(save_incident=False, slack=True, message=msg)
+        withdrawn_pids = self.data.get("withdrawn_pids")
+        log_msg = f"{len(withdrawn_pids)} withdrawn PIDs received in NPH intake payload."
+        logging.info(log_msg)
+
+        ts = CLOCK.now().strftime('%Y-%m-%d %H:%M:%S')
+        msg = (f"NPH Intake API Payload received on {ts} contains {len(withdrawn_pids)} withdrawn participant IDs:"
+               f" {', '.join(withdrawn_pids)}")
+        create_nph_incident(slack=True, message=msg)
+        return {"success": True}
