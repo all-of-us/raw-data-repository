@@ -141,9 +141,9 @@ class MailKitOrderApi(UpdatableApi):
         From October 2023, partner reported intermittent 502 errors when POSTing to /SupplyRequest.
         Even though we saved their data in our DB on their receiving a 502, they weren't aware of this.
         Due to their uncertainty about the first POST's success, they'd POST again with an updated payload,
-        to which we'd respond with a 500, since we expect them to send a PUT when updating. This includes a
-        workaround: if they POST again with the same order_id after they get 502, we treat the subsequent POST as a PUT,
-        updating the existing resource with their new payload. For more details, refer to ROC-1740.
+        to which we'd respond with a 500, since we expect them to send a PUT when updating. The try/except is
+        workaround: if they POST again with the same order_id after they get 502, we treat the subsequent POST
+        as a PUT, updating the existing resource with their new payload. For more details, refer to ROC-1740.
         """
         fhir_resource = SimpleFhirR4Reader(resource)
         patient = fhir_resource.contained.get(resourceType="Patient")
