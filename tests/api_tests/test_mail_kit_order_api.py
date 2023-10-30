@@ -2,6 +2,7 @@ import copy
 import datetime
 import http.client
 import mock
+from sqlalchemy.exc import IntegrityError
 
 from rdr_service import clock
 from rdr_service.dao.code_dao import CodeDao
@@ -159,19 +160,27 @@ class MailKitOrderApiTestPostSupplyRequest(MailKitOrderApiTestBase):
         self.assertNotEqual(updated_order.supplierStatus, initial_order.supplierStatus)
 
     def test_subsequent_post_with_unknown_constraint_violations(self):
+        """Test if a user tries to violate constraints (other than 'uidx_partic_id_order_id'), an error is raised."""
+
         # Initial POST
         self.send_post(
             "SupplyRequest",
             request_data=self.get_payload("dv_order_api_post_supply_request.json"),
             expected_status=http.client.CREATED,
         )
-        # Second POST with a PUT payload
-        with clock.FakeClock(clock.CLOCK.now() + datetime.timedelta(minutes=1)):
-            self.send_post(
+
+        # Second POST with a PUT payload. Simulate an IntegrityError during the POST operation.
+        orig = "IntegrityError"
+        with mock.patch(
+            "rdr_service.api.base_api.BaseApi.post",
+            side_effect=IntegrityError("SomeOtherIntegrityError", params=None, orig=orig),
+        ):
+            response = self.send_post(
                 "SupplyRequest",
                 request_data=self.get_payload("dv_order_api_put_supply_request.json"),
-                expected_status=http.client.CREATED,
+                expected_status=http.client.CONFLICT,
             )
+            self.assertIn(orig, response.json.get("message"))
 
 
 class MailKitOrderApiTestPutSupplyRequest(MailKitOrderApiTestBase):
