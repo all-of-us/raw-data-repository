@@ -230,8 +230,8 @@ class PostIntakePayload(ABC):
         entry_obj: EntryObjData = self.iterate_entries()
 
         pids = [ele["nph_participant_id"] for ele in self.participant_response]
-        withdrawn_pids = self.rdr_participant_dao.get_withdrawn_participant(
-            ["participant_id"], participant_ids=pids
+        withdrawn_pids: List = self.rdr_participant_dao.get_withdrawn_participant_ids(
+            participant_ids=pids
         )
 
         self.handle_data_inserts(
@@ -250,8 +250,8 @@ class PostIntakePayload(ABC):
                     )
             if withdrawn_pids:
                 cloud_task.execute(
-                    endpoint="withdrawal_participant_notifier_task",
-                    payload=withdrawn_pids,
+                    endpoint="nph_incident_task",
+                    payload={"withdrawn_pids": withdrawn_pids},
                     queue="nph"
                 )
 
