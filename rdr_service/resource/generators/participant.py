@@ -330,29 +330,40 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             logging.error(msg)
             raise NotFound(msg)
 
-        hpo = ro_session.query(HPO.name).filter(HPO.hpoId == p.hpoId).first()
-        organization = ro_session.query(Organization.externalId). \
-            filter(Organization.organizationId == p.organizationId).first()
+        # Workaround for mismatches between participant and participant_summary table values:  grab both records,
+        # and use ParticipantSummary values for as much as possible here (including pairing details)
+        ps: ParticipantSummary = ro_session.query(ParticipantSummary
+                                                  ).filter(ParticipantSummary.participantId == p_id).first()
 
-        # See DeceasedReportDao._update_participant_summary() for the logic for populating
-        # the deceased status details in participant_summary.  DENIED reports are not reflected in
-        # participant_summary, only PENDING and APPROVED.  Also, when records are inserted into the deceased_report
-        # table there is a check to ensure each participant only has one report that is PENDING or APPROVED
-        deceased = ro_session.query(DeceasedReport) \
-            .filter(DeceasedReport.participantId == p_id,
-                    DeceasedReport.status != DeceasedReportStatus.DENIED).one_or_none()
-        if deceased:
-            deceased_status = DeceasedStatus(str(deceased.status))
-            deceased_authored = deceased.reviewed if deceased_status == DeceasedStatus.APPROVED else deceased.authored
-            deceased_date_of_death = deceased.dateOfDeath
+        rec = ps if ps else p
+        hpo = ro_session.query(HPO.name).filter(HPO.hpoId == rec.hpoId).first() \
+            if rec.hpoId is not None else None
+        organization = ro_session.query(Organization.externalId
+                                        ).filter(Organization.organizationId == rec.organizationId
+                                                 ).first() if rec.organizationId else None
+
+        if ps:
+            # Get DeceasedStatus-related fields directly from participant_summary
+            deceased_status = ps.deceasedStatus
+            deceased_authored = ps.deceasedAuthored
+            deceased_date_of_death = ps.dateOfDeath
         else:
-            deceased_status = DeceasedStatus.UNSET
-            deceased_authored = None
-            deceased_date_of_death = None
+            deceased = ro_session.query(DeceasedReport) \
+                .filter(DeceasedReport.participantId == p_id,
+                        DeceasedReport.status != DeceasedReportStatus.DENIED).one_or_none()
+            if deceased:
+                deceased_status = DeceasedStatus(str(deceased.status))
+                deceased_authored = deceased.reviewed \
+                    if deceased_status == DeceasedStatus.APPROVED else deceased.authored
+                deceased_date_of_death = deceased.dateOfDeath
+            else:
+                deceased_status = DeceasedStatus.UNSET
+                deceased_authored = None
+                deceased_date_of_death = None
 
-        withdrawal_status = WithdrawalStatus(p.withdrawalStatus)
-        withdrawal_reason = WithdrawalReason(p.withdrawalReason if p.withdrawalReason else 0)
-        suspension_status = SuspensionStatus(p.suspensionStatus)
+        withdrawal_status = WithdrawalStatus(rec.withdrawalStatus)
+        withdrawal_reason = WithdrawalReason(rec.withdrawalReason if rec.withdrawalReason else 0)
+        suspension_status = SuspensionStatus(rec.suspensionStatus)
 
         # PDR-252:  The AIAN withdrawal ceremony decision needs to be made available to PDR.  Look for the latest
         # authored answer code, if one exists
@@ -382,57 +393,57 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         #
         # Note this query assumes participant_cohort_pilot only contains entries for the cohort 2 pilot
         # participants for genomics and has not been used for identifying participants in more recent pilots
-        cohort_2_pilot = ro_session.query(ParticipantCohortPilot.participantCohortPilot). \
-            filter(ParticipantCohortPilot.participantId == p_id).first()
+        if ps:
+            cohort_2_pilot_flag = rec.cohort2PilotFlag if rec.cohort2PilotFlag else ParticipantCohortPilotFlag.UNSET
+        else:
+            cohort_2_pilot = ro_session.query(ParticipantCohortPilot.participantCohortPilot). \
+                filter(ParticipantCohortPilot.participantId == p_id).first()
 
-        cohort_2_pilot_flag = \
-            ParticipantCohortPilotFlag.COHORT_2_PILOT if cohort_2_pilot else ParticipantCohortPilotFlag.UNSET
+            cohort_2_pilot_flag = \
+                ParticipantCohortPilotFlag.COHORT_2_PILOT if cohort_2_pilot else ParticipantCohortPilotFlag.UNSET
 
-        # If RDR paired the pid to hpo TEST or flagged as either ghost or test participant, treat as test participant
-        # An additional check will be made later at the end of the participant summary data setup, after we've
-        # added details like email and phone numbers to the summary data dict, in case they have fake participant
-        # credentials but are not correctly flagged in the participant table
+        # Need to get the ghost/test settings directly from participant record.  hpo value will be from participant
+        # summary if that record existed
         test_participant = p.isGhostId == 1 or p.isTestParticipant == 1 or (hpo and hpo.name == TEST_HPO_NAME)
 
         # TODO: Workaround for PDR-364 is to pull cohort value from participant_summary. LIMITED USE CASE ONLY
-        cohort = ConsentCohortEnum.UNSET if not p or not p.participantSummary \
-                    or p.participantSummary.consentCohort is None \
+        cohort = ConsentCohortEnum.UNSET if not ps or not ps.consentCohort \
                     else ConsentCohortEnum(int(p.participantSummary.consentCohort))
 
         data = {
             'participant_id': f'P{p_id}',
-            'biobank_id': p.biobankId,
-            'research_id': p.researchId,
-            'participant_origin': p.participantOrigin,
+            'biobank_id': rec.biobankId,
+            'research_id': p.researchId,   # This needs to come directly from the participant record
+            'participant_origin': rec.participantOrigin,
             'consent_cohort': cohort.name,
             'consent_cohort_id': cohort.value,
-            'last_modified': p.lastModified,
-            'sign_up_time': p.signUpTime,
-            'hpo': hpo.name if hpo else None,
-            'hpo_id': p.hpoId,
+            'last_modified': rec.lastModified,
+            'sign_up_time': rec.signUpTime,
+            'hpo': hpo.name if hpo is not None else None,
+            'hpo_id': rec.hpoId,
             'organization': organization.externalId if organization else None,
-            'organization_id': p.organizationId,
+            'organization_id': rec.organizationId,
 
             'withdrawal_status': str(withdrawal_status),
             'withdrawal_status_id': int(withdrawal_status),
             'withdrawal_reason': str(withdrawal_reason),
             'withdrawal_reason_id': int(withdrawal_reason),
-            'withdrawal_time': p.withdrawalTime,
-            'withdrawal_authored': p.withdrawalAuthored,
-            'withdrawal_reason_justification': p.withdrawalReasonJustification,
+            'withdrawal_time': rec.withdrawalTime,
+            'withdrawal_authored': rec.withdrawalAuthored,
+            'withdrawal_reason_justification': rec.withdrawalReasonJustification,
             'withdrawal_aian_ceremony_status': str(withdrawal_aian_ceremony_status),
             'withdrawal_aian_ceremony_status_id': int(withdrawal_aian_ceremony_status),
 
             'suspension_status': str(suspension_status),
             'suspension_status_id': int(suspension_status),
-            'suspension_time': p.suspensionTime,
+            'suspension_time': rec.suspensionTime,
 
-            'site': self._lookup_site_name(p.siteId, ro_session),
-            'site_id': p.siteId,
+            'site': self._lookup_site_name(rec.siteId, ro_session),
+            'site_id': rec.siteId,
             'is_ghost_id': 1 if p.isGhostId is True else 0,
             'test_participant': 1 if test_participant else 0,
-            'cohort_2_pilot_flag': str(cohort_2_pilot_flag),
-            'cohort_2_pilot_flag_id': int(cohort_2_pilot_flag),
+            'cohort_2_pilot_flag': str(cohort_2_pilot_flag) if cohort_2_pilot_flag else None,
+            'cohort_2_pilot_flag_id': int(cohort_2_pilot_flag) if cohort_2_pilot_flag else None,
             'deceased_status': str(deceased_status),
             'deceased_status_id': int(deceased_status),
             'deceased_authored': deceased_authored,
