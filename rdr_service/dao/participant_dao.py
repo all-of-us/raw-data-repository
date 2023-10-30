@@ -599,7 +599,7 @@ class ParticipantDao(UpdatableDao):
                 .all()
             )
 
-    def get_withdrawn_participant_ids(self, participant_ids: list[int]) -> list:
+    def get_withdrawn_participant_ids(self, participant_ids: list[str | int]) -> list[int]:
         """Return a list of withdrawn pids, given a list of pids."""
         with self.session() as session:
             result = (
