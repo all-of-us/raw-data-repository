@@ -83,6 +83,7 @@ class TestNphIncident(BaseTestCase):
             "participant_id": nph_participant.id,
             "event_id": nph_participant_event_activity.id,
             "trace_id": mock_trace_id,
+            "save_incident": True,
         }
         create_nph_incident(**nph_incident_kwargs)
         with self.nph_participant_dao.session() as session:
@@ -127,16 +128,18 @@ class TestNphIncident(BaseTestCase):
             "participant_id": nph_participant.id,
             "event_id": nph_participant_event_activity.id,
             "trace_id": mock_trace_id,
+            "save_incident": True,
+            "slack": True
         }
         with FakeClock(TIME):
-            create_nph_incident(slack=True, **nph_incident_kwargs)
+            create_nph_incident(**nph_incident_kwargs)
 
         with self.nph_participant_dao.session() as session:
             incident: Optional[Incident] = session.query(Incident).first()
 
-        # self.assertIsNotNone(incident)
-        # self.assertEqual(incident.notification_sent_flag, 1)
-        # self.assertEqual(incident.notification_date, TIME)
+        self.assertIsNotNone(incident)
+        self.assertEqual(incident.notification_sent_flag, 1)
+        self.assertEqual(incident.notification_date, TIME)
 
     def tearDown(self):
         self.clear_table_after_test("nph.incident")
