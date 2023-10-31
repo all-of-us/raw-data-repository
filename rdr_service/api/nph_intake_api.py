@@ -230,7 +230,7 @@ class PostIntakePayload(ABC):
         entry_obj: EntryObjData = self.iterate_entries()
 
         pids = [ele["nph_participant_id"] for ele in self.participant_response]
-        withdrawn_pids: List[int] = self.rdr_participant_dao.get_withdrawn_participant_ids(
+        withdrawn_pids: List[str] = self.rdr_participant_dao.get_withdrawn_participant_ids(
             participant_ids=pids
         )
 

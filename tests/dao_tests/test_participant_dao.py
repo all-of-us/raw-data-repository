@@ -514,7 +514,7 @@ class ParticipantDaoTest(BaseTestCase):
             4: WithdrawalStatus.EARLY_OUT
         }
         expected_result = [
-            pid
+            str(pid)
             for pid, status in participants_status.items()
             if status in [WithdrawalStatus.NO_USE, WithdrawalStatus.EARLY_OUT]
         ]
