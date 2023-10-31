@@ -1,5 +1,5 @@
 import mock
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
 from uuid import uuid4
 from dateutil import parser
@@ -12,7 +12,6 @@ from rdr_service.data_gen.generators.nph import NphDataGenerator
 from tests.helpers.unittest_base import BaseTestCase
 
 from rdr_service.dao.study_nph_dao import NphIncidentDao
-from rdr_service.model.study_nph import Incident
 
 
 class AncillaryStudiesEnrollmentCloudTaskTest(BaseTestCase):
@@ -187,19 +186,14 @@ class NphIncidentTaskApiCloudTaskTest(BaseTestCase):
     @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
     def test_nph_incident_task_returns_200(self, mock_send_message_to_webhook: mock.Mock):
         mock_send_message_to_webhook.return_value = True
-        nph_incident_kwargs = self._get_nph_incident_task_payload()
         from rdr_service.resource import main as resource_main
         response = self.send_post(
             local_path='NphIncidentTaskApi',
-            request_data=nph_incident_kwargs,
+            request_data={"withdrawn_pids": ["1", "2"]},
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
             expected_status=OK
         )
-
-        nph_incident_message = nph_incident_kwargs.get("message")
-
-        self.assertIsNotNone(nph_incident_message)
         self.assertEqual(response, {'success': True})
 
     def tearDown(self):
