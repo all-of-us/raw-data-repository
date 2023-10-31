@@ -239,7 +239,6 @@ class MailKitOrderDao(UpdatableDao):
                 order.order_date = parse_date(fhir_resource.authoredOn)
 
             order.supplier = fhir_resource.contained.get(resourceType="Organization").id
-            order.created = clock.CLOCK.now()
             order.supplierStatus = fhir_resource.extension.get(url=DV_FULFILLMENT_URL).valueString
 
             fhir_device = fhir_resource.contained.get(resourceType="Device")
