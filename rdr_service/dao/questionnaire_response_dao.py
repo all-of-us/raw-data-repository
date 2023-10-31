@@ -157,7 +157,7 @@ def count_completed_baseline_ppi_modules(participant_summary):
         for field in baseline_ppi_module_fields
         if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED
     )
-    if participant_summary.did_submit_environmental_health():
+    if participant_summary.did_submit_environmental_exposures():
         result += 1
 
     return result
@@ -168,7 +168,7 @@ def count_completed_ppi_modules(participant_summary):
     result = sum(
         1 for field in ppi_module_fields if getattr(participant_summary, field, None) == QuestionnaireStatus.SUBMITTED
     )
-    if participant_summary.did_submit_environmental_health():
+    if participant_summary.did_submit_environmental_exposures():
         result += 1
 
     return result
@@ -1175,7 +1175,7 @@ class QuestionnaireResponseDao(BaseDao):
                     participant_summary.pediatricData.append(
                         PediatricDataLog(
                             participant_id=participant.participantId,
-                            data_type=PediatricDataType.ENVIRONMENTAL_HEALTH,
+                            data_type=PediatricDataType.ENVIRONMENTAL_EXPOSURES,
                             value=authored.isoformat()
                         )
                     )
