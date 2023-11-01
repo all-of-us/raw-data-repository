@@ -271,9 +271,9 @@ class NphParticipantData:
             participant_obj.update(
                 cls.get_values_from_obj(
                     obj=nph_site,
-                    values={'externalId',
-                            'organizationExternalId',
-                            'awardeeExternalId'}
+                    values={'nphPairedSite': 'externalId',
+                            'nphPairedOrg': 'organizationExternalId',
+                            'nphPairedAwardee': 'awardeeExternalId'}
                 ))
             results.append(participant_obj)
         return results

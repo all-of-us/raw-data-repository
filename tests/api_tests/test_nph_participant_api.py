@@ -275,6 +275,35 @@ class NphParticipantAPITest(BaseTestCase):
         for index, each in enumerate(result.get('participant').get('edges')):
             self.assertEqual(expected_site_name[index], each.get('node').get(field_to_test))
 
+    # def test_client_filter_nph_pair_site(self):
+    #     self.add_consents(nph_participant_ids=self.base_participant_ids)
+    #     self.nph_data_gen.create_database_pairing_event(
+    #         participant_id=self.base_participant_ids[0],
+    #         event_authored_time=datetime(2023, 1, 1, 12, 1),
+    #         site_id=1
+    #     )
+    #     self.nph_data_gen.create_database_pairing_event(
+    #         participant_id=self.base_participant_ids[1],
+    #         event_authored_time=datetime(2023, 1, 1, 12, 1),
+    #         site_id=2
+    #     )
+    #     # field_to_test = "nphPairedSite"
+    #     # query = simple_query(field_to_test)
+    #     # expected_site_name = ["nph-test-site-1", "nph-test-site-2"]
+    #     # executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
+    #
+    #     executed = app.test_client().post(
+    #         '/rdr/v1/nph_participant',
+    #         data='{participant (nphPairedSite: "%s") { edges { node { participantNphId nphPairedSite } } } }' %
+    #              'nph-test-site-4'
+    #     )
+    #     result = json.loads(executed.data.decode('utf-8'))
+    #
+    #     self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
+    #
+    #     for index, each in enumerate(result.get('participant').get('edges')):
+    #         self.assertEqual(expected_site_name[index], each.get('node').get(field_to_test))
+
     def test_client_nph_awardee_external_id(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
         self.nph_data_gen.create_database_pairing_event(

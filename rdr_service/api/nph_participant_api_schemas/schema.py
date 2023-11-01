@@ -313,14 +313,25 @@ class ParticipantField(ObjectType):
         '''
     )
     # NPH
-    externalId = SortableField(String, name="nphPairedSite", description='Sourced from NPH Schema.',
-                               sort_modifier=lambda context: context.set_order_expression(nphSite.external_id))
-    organizationExternalId = SortableField(String, name="nphPairedOrg", description='Sourced from NPH Schema.',
-                                           sort_modifier=lambda context: context.set_order_expression(
-                                               nphSite.organization_external_id))
-    awardeeExternalId = SortableField(String, name="nphPairedAwardee", description='Sourced from NPH Schema.',
-                                      sort_modifier=lambda context: context.set_order_expression(
-                                          nphSite.awardee_external_id))
+    nphPairedSite = SortableField(
+        String,
+        description='Sourced from NPH Schema.',
+        sort_modifier=lambda context: context.set_order_expression(nphSite.external_id),
+        filter_modifier=lambda context, value: context.add_filter(nphSite.external_id == value)
+    )
+    nphPairedOrg = SortableField(
+        String,
+        description='Sourced from NPH Schema.',
+        sort_modifier=lambda context: context.set_order_expression(nphSite.organization_external_id),
+        filter_modifier=lambda context, value: context.add_filter(nphSite.organization_external_id == value)
+    )
+    nphPairedAwardee = SortableField(
+        String,
+        description='Sourced from NPH Schema.',
+        sort_modifier=lambda context: context.set_order_expression(
+                                          nphSite.awardee_external_id),
+        filter_modifier = lambda context, value: context.add_filter(nphSite.awardee_external_id == value)
+    )
     nphEnrollmentStatus = List(Event, name="nphEnrollmentStatus", description='Sourced from NPH Schema.')
     nphModule1ConsentStatus = List(
         GraphQLConsentEvent, name="nphModule1ConsentStatus", description="Sourced from NPH Schema"
