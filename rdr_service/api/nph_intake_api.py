@@ -250,7 +250,7 @@ class PostIntakePayload(ABC):
                     )
             if withdrawn_pids:
                 cloud_task.execute(
-                    endpoint="nph_incident_task",
+                    endpoint="withdrawn_participant_notifier_task",
                     payload={"withdrawn_pids": withdrawn_pids},
                     queue="nph"
                 )
