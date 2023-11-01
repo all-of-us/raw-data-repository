@@ -400,12 +400,16 @@ class BiobankOrderDao(UpdatableDao):
 
     def _update_participant_summary(self, session, obj):
         """ called on insert"""
-        participant_summary_dao = ParticipantSummaryDao()
-        participant_summary = participant_summary_dao.get_for_update(session, obj.participantId)
+        participant_summary = ParticipantSummaryDao.get_for_update_with_linked_data(
+            session=session,
+            participant_id=obj.participantId
+        )
         if not participant_summary:
             raise BadRequest(f"Can't submit biospecimens for participant {obj.participantId} without consent")
         raise_if_withdrawn(participant_summary)
+
         self._set_participant_summary_fields(obj, participant_summary)
+        participant_summary_dao = ParticipantSummaryDao()
         participant_summary_dao.update_enrollment_status(participant_summary, session=session)
 
         finalized_time = self.get_random_sample_finalized_time(obj)
@@ -453,7 +457,10 @@ class BiobankOrderDao(UpdatableDao):
     def _refresh_participant_summary(self, session, obj):
         # called when cancelled/restored/amended
         participant_summary_dao = ParticipantSummaryDao()
-        participant_summary = participant_summary_dao.get_for_update(session, obj.participantId)
+        participant_summary = ParticipantSummaryDao.get_for_update_with_linked_data(
+            participant_id=obj.participantId,
+            session=session
+        )
         non_cancelled_orders = self._get_non_cancelled_biobank_orders(session, obj.participantId)
         participant_summary.biospecimenStatus = OrderStatus.UNSET
         participant_summary.biospecimenOrderTime = None

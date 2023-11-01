@@ -763,8 +763,8 @@ class UpdatableDao(BaseDao):
         """Perform the update of the specified object. Subclasses can override to alter things."""
         session.merge(obj)
 
-    def get_for_update(self, session, obj_id):
-        return self.get_with_session(session, obj_id, for_update=True)
+    def get_for_update(self, session, obj_id, options=None):
+        return self.get_with_session(session, obj_id, for_update=True, options=options)
 
     def update_with_session(self, session, obj):
         """Updates the object in the database with the specified session. Will fail if the object

@@ -415,6 +415,21 @@ class ParticipantSummaryDao(UpdatableDao):
             ).options(self._default_api_query_options()).one_or_none()
 
     @classmethod
+    def get_for_update_with_linked_data(cls, participant_id, session) -> ParticipantSummary:
+        dao = ParticipantSummaryDao()
+        return dao.get_for_update(
+            session=session,
+            obj_id=participant_id,
+            options=[
+                joinedload(ParticipantSummary.relatedParticipants).load_only(),
+                # NOTE: only loading existence of account linkage for now, since that's all
+                # that's needed for enrollment status calculations
+
+                joinedload(ParticipantSummary.pediatricData)
+            ]
+        )
+
+    @classmethod
     def _default_api_query_options(cls):
         return [
             joinedload(ParticipantSummary.relatedParticipants).load_only()
@@ -700,14 +715,16 @@ class ParticipantSummaryDao(UpdatableDao):
         session.commit()
 
         if biobank_ids:
-            summary_list = session.query(ParticipantSummary).filter(
+            query = session.query(ParticipantSummary.participantId).filter(
                 ParticipantSummary.biobankId.in_(biobank_ids)
-            ).all()
-            for summary in summary_list:
-                self.update_enrollment_status(
-                    summary=summary,
-                    session=session
+            )
+            participant_id_list = [summary.participantId for summary in query.all()]
+            for participant_id in participant_id_list:
+                summary = ParticipantSummaryDao.get_for_update_with_linked_data(
+                    session=session,
+                    participant_id=participant_id
                 )
+                self.update_enrollment_status(summary=summary, session=session)
                 session.commit()
 
     def _get_num_baseline_ppi_modules(self):
@@ -1421,9 +1438,7 @@ class ParticipantSummaryDao(UpdatableDao):
             ]
 
         # set the pediatric data flag
-        result['isPediatric'] = UNSET
-        if any(data.data_type == PediatricDataType.AGE_RANGE for data in obj.pediatricData):
-            result['isPediatric'] = True
+        result['isPediatric'] = True if obj.isPediatric else UNSET
 
         # EnvironmentalHealth module fields
         result['questionnaireOnEnvironmentalHealth'] = UNSET

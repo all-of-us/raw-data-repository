@@ -207,7 +207,10 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
             )
             for participant_id in participants_with_new_files:
                 # Update the enrollment status of any participants that didn't recently have ehr files
-                summary = summary_dao.get_for_update(session=session, obj_id=participant_id)
+                summary = ParticipantSummaryDao.get_for_update_with_linked_data(
+                    participant_id=participant_id,
+                    session=session
+                )
                 if summary is None:
                     LOG.error(f'No summary found for P{participant_id}')
                 else:

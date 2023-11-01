@@ -305,7 +305,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         # Commit before recalculating the enrollment status-related details so DB queries to retrieve measurements
         # data during the calculation will return what was just inserted
         session.commit()
-        self._update_participant_enrollment_status(participant_summary, session)
+        self._update_participant_enrollment_status(participant_id=inserted_obj.participantId, session=session)
         # Update the resource to contain the ID.
         resource_json["id"] = str(obj.physicalMeasurementsId)
         obj = self.store_record_fhir_doc(obj, resource_json)
@@ -375,12 +375,15 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 SelfReportedPhysicalMeasurementsStatus.COMPLETED
             participant_summary.selfReportedPhysicalMeasurementsAuthored = obj.finalized
 
-        self._update_participant_enrollment_status(participant_summary, session)
+        self._update_participant_enrollment_status(participant_id=participant_id, session=session)
         return participant_summary
 
-    def _update_participant_enrollment_status(self, participant_summary,  session):
-        ParticipantSummaryDao().update_enrollment_status(participant_summary, session=session)
-        session.merge(participant_summary)
+    def _update_participant_enrollment_status(self, participant_id,  session):
+        summary = ParticipantSummaryDao.get_for_update_with_linked_data(
+            participant_id=participant_id,
+            session=session
+        )
+        ParticipantSummaryDao().update_enrollment_status(summary, session=session)
 
     def get_latest_pm(self, session, participant):
         return (
