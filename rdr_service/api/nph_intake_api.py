@@ -229,7 +229,7 @@ class PostIntakePayload(ABC):
         self.event_dao_map: dict = self.build_event_dao_map()
         entry_obj: EntryObjData = self.iterate_entries()
 
-        pids = [ele["nph_participant_id"] for ele in self.participant_response]
+        pids = [ele.get("nph_participant_id") for ele in self.participant_response]
         withdrawn_pids: List[str] = self.rdr_participant_dao.get_withdrawn_participant_ids(
             participant_ids=pids
         )
