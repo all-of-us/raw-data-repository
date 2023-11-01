@@ -10,6 +10,26 @@ from rdr_service.model.utils import to_client_participant_id
 class ParticipantIncentivesDao(UpdatableDao):
     validate_version_match = False
 
+    INCENTIVE_SELECT_FIELDS = (
+        ParticipantIncentives.id.label('incentiveId'),
+        ParticipantIncentives.participantId,
+        ParticipantIncentives.site,
+        ParticipantIncentives.createdBy,
+        ParticipantIncentives.dateGiven,
+        ParticipantIncentives.incentiveType,
+        ParticipantIncentives.amount,
+        ParticipantIncentives.occurrence,
+        ParticipantIncentives.giftcardType,
+        ParticipantIncentives.notes,
+        ParticipantIncentives.cancelled,
+        ParticipantIncentives.cancelledBy,
+        ParticipantIncentives.cancelledDate,
+        ParticipantIncentives.declined,
+        ParticipantIncentives.incentiveRecipient,
+        ParticipantIncentives.appreciationItemType,
+        ParticipantIncentives.appreciationItemCount
+    )
+
     def __init__(self):
         super(ParticipantIncentivesDao, self).__init__(
             ParticipantIncentives, order_by_ending=['id'])
@@ -53,20 +73,7 @@ class ParticipantIncentivesDao(UpdatableDao):
 
         with self.session() as session:
             return session.query(
-                ParticipantIncentives.id.label('incentiveId'),
-                ParticipantIncentives.participantId,
-                ParticipantIncentives.site,
-                ParticipantIncentives.createdBy,
-                ParticipantIncentives.dateGiven,
-                ParticipantIncentives.incentiveType,
-                ParticipantIncentives.amount,
-                ParticipantIncentives.occurrence,
-                ParticipantIncentives.giftcardType,
-                ParticipantIncentives.notes,
-                ParticipantIncentives.cancelled,
-                ParticipantIncentives.cancelledBy,
-                ParticipantIncentives.cancelledDate,
-                ParticipantIncentives.declined
+                *self.INCENTIVE_SELECT_FIELDS
             ).filter(
                 ParticipantIncentives.participantId.in_(participant_ids)
             ).all()
@@ -74,20 +81,7 @@ class ParticipantIncentivesDao(UpdatableDao):
     def get_by_incentive_id(self, incentive_id):
         with self.session() as session:
             return session.query(
-                ParticipantIncentives.id.label('incentiveId'),
-                ParticipantIncentives.participantId,
-                ParticipantIncentives.site,
-                ParticipantIncentives.createdBy,
-                ParticipantIncentives.incentiveType,
-                ParticipantIncentives.dateGiven,
-                ParticipantIncentives.amount,
-                ParticipantIncentives.occurrence,
-                ParticipantIncentives.giftcardType,
-                ParticipantIncentives.notes,
-                ParticipantIncentives.cancelled,
-                ParticipantIncentives.cancelledBy,
-                ParticipantIncentives.cancelledDate,
-                ParticipantIncentives.declined
+                *self.INCENTIVE_SELECT_FIELDS
             ).filter(
                 ParticipantIncentives.id == incentive_id
             ).one_or_none()

@@ -1,6 +1,7 @@
 
 from rdr_service.dao.participant_incentives_dao import ParticipantIncentivesDao
 from rdr_service.dao.site_dao import SiteDao
+from rdr_service.model.participant_incentives import ParticipantIncentives
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -459,3 +460,31 @@ class ParticipantIncentivesApiTest(BaseTestCase):
         # added fields in PUT
         self.assertEqual(updated_response['giftcardType'], added_giftcard_type)
         self.assertEqual(updated_response['notes'], added_notes)
+
+    def test_ingesting_pediatric_fields(self):
+        """
+        A few new fields are being added to incentive tracking. This tests that they are stored when we receive them.
+        """
+        site = self.site_dao.get(1)
+
+        date_given = '2022-02-07 21:15:35'
+        recipient = 'pediatric_participant'
+        item_type = 'Puzzle'
+        item_count = '2'
+
+        data = {
+            'site': site.googleGroup,
+            'dateGiven': date_given,
+            'incentiveRecipient': recipient,
+            'appreciationItemType': item_type,
+            'appreciationItemCount': item_count
+        }
+
+        response = self.send_post(f"Participant/P{self.participant.participantId}/Incentives", request_data=data)
+
+        incentive: ParticipantIncentives = self.session.query(ParticipantIncentives).filter(
+            ParticipantIncentives.id == response['incentiveId']
+        ).one()
+        self.assertEqual(recipient, incentive.incentiveRecipient)
+        self.assertEqual(item_type, incentive.appreciationItemType)
+        self.assertEqual(item_count, str(incentive.appreciationItemCount))
