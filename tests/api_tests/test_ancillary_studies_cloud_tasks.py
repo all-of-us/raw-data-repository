@@ -184,11 +184,11 @@ class NphIncidentTaskApiCloudTaskTest(BaseTestCase):
         self.assertEqual(response.status_code, INTERNAL_SERVER_ERROR)
 
     @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
-    def test_nph_incident_task_returns_200(self, mock_send_message_to_webhook: mock.Mock):
+    def test_nph_withdrawn_pid_notifier_task_returns_200(self, mock_send_message_to_webhook: mock.Mock):
         mock_send_message_to_webhook.return_value = True
         from rdr_service.resource import main as resource_main
         response = self.send_post(
-            local_path='NphIncidentTaskApi',
+            local_path='WithdrawnParticipantNotifierTaskApi',
             request_data={"withdrawn_pids": ["1", "2"]},
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),

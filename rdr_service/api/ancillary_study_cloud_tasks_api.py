@@ -1,4 +1,5 @@
 import logging
+from typing import Dict, Any
 
 from flask import request
 from flask_restful import Resource
@@ -175,8 +176,30 @@ class NphSmsGenerationTaskApi(BaseAncillaryTaskApi):
 class NphIncidentTaskApi(BaseAncillaryTaskApi):
 
     """
-    Cloud Task endpoint: Can insert an incident into a Nph Incident table.
-    Also send a slack alert to rdr-nph-alerts if the payload sent by partner
+    Cloud Task endpoint: Inserts an incident into a Nph Incident table
+    Mandatory Fields are:
+        dev_note: i.e. "Created a New Incident"
+        message: i.e. "A New Incident"
+        notification_date: i.e. "2023-02-07T13:28:17.239+02:00"
+    Optional Fields are:
+        event_id
+        participant_id
+        src_event_id
+        trace_id
+    """
+    def post(self):
+        super(NphIncidentTaskApi, self).post()
+        log_msg = f'Insert a new incident with {self.data} for ' \
+                  f'PID: {self.data.get("participant_id")}'
+        logging.info(log_msg)
+        json_payload: Dict[str, Any] = {"message": self.data, "slack": True, "save_incident": True}
+        create_nph_incident(**json_payload)
+        return {"success": True}
+
+
+class WithdrawnParticipantNotifierTaskApi(BaseAncillaryTaskApi):
+    """
+    Cloud Task endpoint: Send a slack alert to rdr-nph-alerts if the payload sent by partner
     contains information about participants who have withdrawn from AOU program.
     """
     def post(self):
