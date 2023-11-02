@@ -817,7 +817,10 @@ class ParticipantSummaryDao(UpdatableDao):
             earliest_weight_measurement_time=min_or_none(
                 meas.finalized for meas in core_measurements if meas.satisfiesWeightRequirements
             ),
-            wgs_sequencing_time=wgs_sequencing_time
+            wgs_sequencing_time=wgs_sequencing_time,
+            exposures_authored_time=,
+            is_pediatric_participant=summary.isPediatric,
+            has_linked_guardian_accounts=(summary.relatedParticipants and len(summary.relatedParticipants) > 0)
         )
         enrollment_info = EnrollmentCalculation.get_enrollment_info(enrl_dependencies)
 
@@ -860,7 +863,19 @@ class ParticipantSummaryDao(UpdatableDao):
                 )
             )
 
-        if allow_downgrade or summary.enrollmentStatusV3_2 < enrollment_info.version_3_2_status:
+        status_rank_map_v32 = {  # Re-orders the status values so we can quickly see if the current status is higher
+            EnrollmentStatusV32.PARTICIPANT: 0,
+            EnrollmentStatusV32.PARTICIPANT_PLUS_EHR: 1,
+            EnrollmentStatusV32.ENROLLED_PARTICIPANT: 2,
+            EnrollmentStatusV32.PMB_ELIGIBLE: 3,
+            EnrollmentStatusV32.CORE_MINUS_PM: 4,
+            EnrollmentStatusV32.CORE_PARTICIPANT: 5
+        }
+        if (
+            allow_downgrade
+            or status_rank_map_v32[summary.enrollmentStatusV3_2] <
+                status_rank_map_v32[enrollment_info.version_3_2_status]
+        ):
             summary.enrollmentStatusV3_2 = enrollment_info.version_3_2_status
             summary.lastModified = clock.CLOCK.now()
             session.add(
@@ -989,6 +1004,15 @@ class ParticipantSummaryDao(UpdatableDao):
             )
         elif allow_downgrade:
             self._clear_timestamp_if_set(summary, 'enrollmentStatusEnrolledParticipantV3_2Time')
+
+        if EnrollmentStatusV32.PMB_ELIGIBLE in version_3_2_dates:
+            self._update_timestamp_value(
+                summary,
+                'enrollmentStatusPmbEligibleV3_2Time',
+                version_3_2_dates[EnrollmentStatusV32.PMB_ELIGIBLE]
+            )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusPmbEligibleV3_2Time')
 
         if EnrollmentStatusV32.CORE_MINUS_PM in version_3_2_dates:
             self._update_timestamp_value(

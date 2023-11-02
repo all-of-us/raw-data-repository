@@ -368,6 +368,12 @@ class ParticipantSummary(Base):
     enrollment status defined by the 3.2 data glossary
     """
 
+    enrollmentStatusPmbEligibleV3_2Time = Column("enrollment_status_pmb_eligible_v_3_2_time", UTCDateTime)
+    """
+    UTC time the participant has reached the 'PARTICIPANT_PMB_ELIGIBLE'
+    enrollment status defined by the 3.3 data glossary
+    """
+
     enrollmentStatusCoreMinusPmV3_2Time = Column("enrollment_status_core_minus_pm_v_3_2_time", UTCDateTime)
     """UTC time the participant has reached the 'CORE_MINUS_PM' enrollment status defined by the 3.2 data glossary"""
 
