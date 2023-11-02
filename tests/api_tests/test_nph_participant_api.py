@@ -275,34 +275,50 @@ class NphParticipantAPITest(BaseTestCase):
         for index, each in enumerate(result.get('participant').get('edges')):
             self.assertEqual(expected_site_name[index], each.get('node').get(field_to_test))
 
-    # def test_client_filter_nph_pair_site(self):
-    #     self.add_consents(nph_participant_ids=self.base_participant_ids)
-    #     self.nph_data_gen.create_database_pairing_event(
-    #         participant_id=self.base_participant_ids[0],
-    #         event_authored_time=datetime(2023, 1, 1, 12, 1),
-    #         site_id=1
-    #     )
-    #     self.nph_data_gen.create_database_pairing_event(
-    #         participant_id=self.base_participant_ids[1],
-    #         event_authored_time=datetime(2023, 1, 1, 12, 1),
-    #         site_id=2
-    #     )
-    #     # field_to_test = "nphPairedSite"
-    #     # query = simple_query(field_to_test)
-    #     # expected_site_name = ["nph-test-site-1", "nph-test-site-2"]
-    #     # executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-    #
-    #     executed = app.test_client().post(
-    #         '/rdr/v1/nph_participant',
-    #         data='{participant (nphPairedSite: "%s") { edges { node { participantNphId nphPairedSite } } } }' %
-    #              'nph-test-site-4'
-    #     )
-    #     result = json.loads(executed.data.decode('utf-8'))
-    #
-    #     self.assertEqual(2, len(result.get('participant').get('edges')), "Should return 2 records back")
-    #
-    #     for index, each in enumerate(result.get('participant').get('edges')):
-    #         self.assertEqual(expected_site_name[index], each.get('node').get(field_to_test))
+    def test_client_filter_nph_pair_site(self):
+        self.add_consents(nph_participant_ids=self.base_participant_ids)
+        first_site_map = {
+            'participant_id': self.base_participant_ids[0],
+            'site_id': 1
+        }
+        self.nph_data_gen.create_database_pairing_event(
+            participant_id=first_site_map.get('participant_id'),
+            event_authored_time=datetime(2023, 1, 1, 12, 1),
+            site_id=first_site_map.get('site_id')
+        )
+        self.nph_data_gen.create_database_pairing_event(
+            participant_id=self.base_participant_ids[1],
+            event_authored_time=datetime(2023, 1, 1, 12, 1),
+            site_id=2
+        )
+
+        current_sites = self.nph_site_dao.get_all()
+        current_site = [obj for obj in current_sites if obj.id == first_site_map.get('site_id')][0]
+
+        # nphPairedSite -> external_id
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (nphPairedSite: "%s") { edges { node { participantNphId nphPairedSite } } } }' %
+                 f'{current_site.external_id}'
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+
+        self.assertEqual(len(result.get('participant').get('edges')), 1)
+
+        for result in result.get('participant').get('edges'):
+            self.assertEqual(result.get('node').get('nphPairedSite'), current_site.external_id)
+            self.assertEqual(result.get('node').get('participantNphId'), str(first_site_map.get('participant_id')))
+
+        non_existent_site_external_id = 'nph-test-site-4'
+
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (nphPairedSite: "%s") { edges { node { participantNphId nphPairedSite } } } }' %
+                 f'{non_existent_site_external_id}'
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+
+        self.assertEqual(len(result.get('participant').get('edges')), 0)
 
     def test_client_nph_awardee_external_id(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
@@ -326,6 +342,48 @@ class NphParticipantAPITest(BaseTestCase):
         for each in result.get('participant').get('edges'):
             self.assertEqual('nph-test-hpo', each.get('node').get('nphPairedAwardee'))
 
+    def test_client_filter_nph_awardee_external_id(self):
+        self.add_consents(nph_participant_ids=self.base_participant_ids)
+        self.nph_data_gen.create_database_pairing_event(
+            participant_id=self.base_participant_ids[0],
+            event_authored_time=datetime(2023, 1, 1, 12, 1),
+            site_id=1
+        )
+        self.nph_data_gen.create_database_pairing_event(
+            participant_id=self.base_participant_ids[1],
+            event_authored_time=datetime(2023, 1, 1, 12, 1),
+            site_id=1
+        )
+
+        current_sites = self.nph_site_dao.get_all()
+        current_site = current_sites[0]
+
+        # nphPairedAwardee -> awardee_external_id
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (nphPairedAwardee: "%s") { edges { node { participantNphId nphPairedAwardee } } } }' %
+                 f'{current_site.awardee_external_id}'
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+
+        self.assertEqual(len(result.get('participant').get('edges')), 2)
+
+        for result in result.get('participant').get('edges'):
+            self.assertEqual(result.get('node').get('nphPairedAwardee'), current_site.awardee_external_id)
+            self.assertTrue(result.get('node').get('participantNphId') in [str(obj) for obj
+                                                                           in self.base_participant_ids])
+
+        non_existent_site_awardee_external_id = 'nph-test-fake'
+
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (nphPairedAwardee: "%s") { edges { node { participantNphId nphPairedAwardee } } } }' %
+                 f'{non_existent_site_awardee_external_id}'
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+
+        self.assertEqual(len(result.get('participant').get('edges')), 0)
+
     def test_client_nph_organization_external_id(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
         self.nph_data_gen.create_database_pairing_event(
@@ -347,6 +405,48 @@ class NphParticipantAPITest(BaseTestCase):
 
         for each in result.get('participant').get('edges'):
             self.assertEqual('nph-test-org', each.get('node').get(field_to_test))
+
+    def test_client_filter_nph_organization_external_id(self):
+        self.add_consents(nph_participant_ids=self.base_participant_ids)
+        self.nph_data_gen.create_database_pairing_event(
+            participant_id=self.base_participant_ids[0],
+            event_authored_time=datetime(2023, 1, 1, 12, 1),
+            site_id=1
+        )
+        self.nph_data_gen.create_database_pairing_event(
+            participant_id=self.base_participant_ids[1],
+            event_authored_time=datetime(2023, 1, 1, 12, 1),
+            site_id=1
+        )
+
+        current_sites = self.nph_site_dao.get_all()
+        current_site = current_sites[0]
+
+        # nphPairedOrg -> organization_external_id
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (nphPairedOrg: "%s") { edges { node { participantNphId nphPairedOrg } } } }' %
+                 f'{current_site.organization_external_id}'
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+
+        self.assertEqual(len(result.get('participant').get('edges')), 2)
+
+        for result in result.get('participant').get('edges'):
+            self.assertEqual(result.get('node').get('nphPairedOrg'), current_site.organization_external_id)
+            self.assertTrue(result.get('node').get('participantNphId') in [str(obj) for obj
+                                                                           in self.base_participant_ids])
+
+        non_existent_site_awardee_external_id = 'nph-test-fake'
+
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (nphPairedAwardee: "%s") { edges { node { participantNphId nphPairedAwardee } } } }' %
+                 f'{non_existent_site_awardee_external_id}'
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+
+        self.assertEqual(len(result.get('participant').get('edges')), 0)
 
     def test_client_biobank_id_prefix(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
