@@ -192,8 +192,8 @@ class NphIncidentTaskApi(BaseAncillaryTaskApi):
         log_msg = f'Insert a new incident with {self.data} for ' \
                   f'PID: {self.data.get("participant_id")}'
         logging.info(log_msg)
-        json_payload: Dict[str, Any] = {"message": self.data, "slack": True, "save_incident": True}
-        create_nph_incident(**json_payload)
+        kwargs: Dict[str, Any] = {"message": self.data, "slack": True, "save_incident": True}
+        create_nph_incident(**kwargs)
         return {"success": True}
 
 
