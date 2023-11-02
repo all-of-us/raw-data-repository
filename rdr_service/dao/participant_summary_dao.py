@@ -1,5 +1,6 @@
 import datetime
 
+from dateutil.parser import parse
 import faker
 import re
 import threading
@@ -795,6 +796,12 @@ class ParticipantSummaryDao(UpdatableDao):
             session=session,
             participant_id=summary.participantId
         )
+        first_exposures_response_time = None
+        for data in (summary.pediatricData or []):
+            if data.data_type == PediatricDataType.ENVIRONMENTAL_EXPOSURES:
+                timestamp = parse(data.value)
+                if first_exposures_response_time is None or timestamp < first_exposures_response_time:
+                    first_exposures_response_time = timestamp
 
         enrl_dependencies = EnrollmentDependencies(
             consent_cohort=summary.consentCohort,
@@ -818,7 +825,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 meas.finalized for meas in core_measurements if meas.satisfiesWeightRequirements
             ),
             wgs_sequencing_time=wgs_sequencing_time,
-            exposures_authored_time=,
+            exposures_authored_time=first_exposures_response_time,
             is_pediatric_participant=summary.isPediatric,
             has_linked_guardian_accounts=(summary.relatedParticipants and len(summary.relatedParticipants) > 0)
         )
