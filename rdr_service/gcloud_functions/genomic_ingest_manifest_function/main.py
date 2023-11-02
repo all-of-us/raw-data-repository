@@ -70,7 +70,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         gem_tasks = {
             'gem_a2': {
                 'manifest_type': 'a2',
-                'task_endpoint': ''
+                'task_endpoint': 'IngestGemManifestTaskApi'
             }
         }
         cvl_tasks = {
