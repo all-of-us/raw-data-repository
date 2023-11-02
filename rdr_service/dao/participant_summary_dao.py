@@ -1430,6 +1430,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 'enrollmentStatusParticipantV3_2Time',
                 'enrollmentStatusParticipantPlusEhrV3_2Time',
                 'enrollmentStatusEnrolledParticipantV3_2Time',
+                'enrollmentStatusPmbEligibleV3_2Time',
                 'enrollmentStatusCoreMinusPmV3_2Time',
                 'enrollmentStatusCoreV3_2Time',
                 'hasCoreData',
