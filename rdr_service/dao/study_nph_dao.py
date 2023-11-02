@@ -201,7 +201,12 @@ class NphParticipantDao(BaseDao):
                             'studyID', parent_study_category_module.name,
                             'timepointID', StudyCategory.name,
                             'clientID', Order.client_id,
-                            'specimenCode', OrderedSample.identifier,
+                            'specimenCode', case(
+                                [
+                                    (OrderedSample.identifier.isnot(None), OrderedSample.identifier),
+                                ],
+                                else_=OrderedSample.test
+                            ),
                             'volume', OrderedSample.volume,
                             'volumeUOM', OrderedSample.volumeUnits,
                             'orderedSampleStatus', case(
