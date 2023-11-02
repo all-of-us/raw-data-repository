@@ -1739,10 +1739,14 @@ class GenomicJobController:
             for member in members:
                 member_dict = {'id': member.id}
                 for block_map_type, block_map_type_config in blocklists_map.items():
-                    blocklist_config_items = member_blocklists_config.get(block_map_type, None)
-
+                    blocklist_config_items = member_blocklists_config.get(block_map_type, [])
                     for item in blocklist_config_items:
+                        # check attributes in member obj
                         if not hasattr(member, item.get('attribute')):
+                            continue
+                        # check genome filter in config and matches attribute in member obj
+                        genome_type_filter = item.get('genome_type')
+                        if genome_type_filter and member.genomeType != genome_type_filter:
                             continue
                         current_attr_value, evaluate_value = getattr(member, item.get('attribute')), item.get('value')
                         if (isinstance(item.get('value'), list) and

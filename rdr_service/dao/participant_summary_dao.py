@@ -547,12 +547,12 @@ class ParticipantSummaryDao(UpdatableDao):
             )
         elif order_by.field_name == 'state':
             return self._add_order_by_state(order_by, query)
-        elif order_by.field_name == 'questionnaireOnEnvironmentalHealth':
-            return self._add_env_health_order(query, order_by, PediatricDataLog.id.isnot(None))
-        elif order_by.field_name == 'questionnaireOnEnvironmentalHealthTime':
-            return self._add_env_health_order(query, order_by, PediatricDataLog.created)
-        elif order_by.field_name == 'questionnaireOnEnvironmentalHealthAuthored':
-            return self._add_env_health_order(query, order_by, PediatricDataLog.value)
+        elif order_by.field_name == 'questionnaireOnEnvironmentalExposures':
+            return self._add_env_exposures_order(query, order_by, PediatricDataLog.id.isnot(None))
+        elif order_by.field_name == 'questionnaireOnEnvironmentalExposuresTime':
+            return self._add_env_exposures_order(query, order_by, PediatricDataLog.created)
+        elif order_by.field_name == 'questionnaireOnEnvironmentalExposuresAuthored':
+            return self._add_env_exposures_order(query, order_by, PediatricDataLog.value)
         return super(ParticipantSummaryDao, self)._add_order_by(query, order_by, field_names, fields)
 
     @staticmethod
@@ -564,7 +564,7 @@ class ParticipantSummaryDao(UpdatableDao):
             return query.order_by(Code.display.desc())
 
     @classmethod
-    def _add_env_health_order(cls, query, order_by, field):
+    def _add_env_exposures_order(cls, query, order_by, field):
         if not order_by.ascending:
             field = field.desc()
 
@@ -572,7 +572,7 @@ class ParticipantSummaryDao(UpdatableDao):
             PediatricDataLog,
             and_(
                 PediatricDataLog.participant_id == ParticipantSummary.participantId,
-                PediatricDataLog.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH
+                PediatricDataLog.data_type == PediatricDataType.ENVIRONMENTAL_EXPOSURES
             )
         ).order_by(field)
 
@@ -1464,14 +1464,14 @@ class ParticipantSummaryDao(UpdatableDao):
         # set the pediatric data flag
         result['isPediatric'] = True if obj.isPediatric else UNSET
 
-        # EnvironmentalHealth module fields
-        result['questionnaireOnEnvironmentalHealth'] = UNSET
-        for env_health_data in [
-            data for data in obj.pediatricData if data.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH
+        # EnvironmentalExposures module fields
+        result['questionnaireOnEnvironmentalExposures'] = UNSET
+        for env_exposures_data in [
+            data for data in obj.pediatricData if data.data_type == PediatricDataType.ENVIRONMENTAL_EXPOSURES
         ]:
-            result['questionnaireOnEnvironmentalHealth'] = str(QuestionnaireStatus.SUBMITTED)
-            result['questionnaireOnEnvironmentalHealthTime'] = env_health_data.created
-            result['questionnaireOnEnvironmentalHealthAuthored'] = env_health_data.value
+            result['questionnaireOnEnvironmentalExposures'] = str(QuestionnaireStatus.SUBMITTED)
+            result['questionnaireOnEnvironmentalExposuresTime'] = env_exposures_data.created
+            result['questionnaireOnEnvironmentalExposuresAuthored'] = env_exposures_data.value
 
         # Format other responses to default to UNSET when none
         field_names = [
