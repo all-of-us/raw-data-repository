@@ -1743,6 +1743,8 @@ class GenomicL1Raw(Base):
     sample_type = Column(String(255), nullable=True)
     treatments = Column(String(255), nullable=True)
     quantity_ul = Column(String(255), nullable=True)
+    total_concentration_ng_ul = Column(String(255), nullable=True)
+    total_dna_ng = Column(String(255), nullable=True)
     visit_description = Column(String(255), nullable=True)
     sample_source = Column(String(255), nullable=True)
     study = Column(String(255), nullable=True)
