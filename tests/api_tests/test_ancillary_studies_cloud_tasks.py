@@ -1,5 +1,5 @@
 import mock
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
 from uuid import uuid4
 from dateutil import parser
@@ -12,7 +12,6 @@ from rdr_service.data_gen.generators.nph import NphDataGenerator
 from tests.helpers.unittest_base import BaseTestCase
 
 from rdr_service.dao.study_nph_dao import NphIncidentDao
-from rdr_service.model.study_nph import Incident
 
 
 class AncillaryStudiesEnrollmentCloudTaskTest(BaseTestCase):
@@ -114,7 +113,7 @@ class AncillaryStudiesEnrollmentCloudTaskTest(BaseTestCase):
         self.clear_table_after_test("nph.enrollment_event")
 
 
-class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
+class NphIncidentTaskApiCloudTaskTest(BaseTestCase):
 
     DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
     TIME = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
@@ -166,7 +165,7 @@ class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
         }
         return nph_incident_kwargs
 
-    def test_insert_nph_incident_task_returns_500(self):
+    def test_nph_incident_task_returns_500(self):
         nph_incident_kwargs = {
             "dev_note": "dev_note",
             "message": "mock_message",
@@ -176,7 +175,7 @@ class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
         }
         from rdr_service.resource import main as resource_main
         response = self.send_post(
-            local_path='InsertNphIncidentTaskApi',
+            local_path='NphIncidentTaskApi',
             request_data=nph_incident_kwargs,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -185,24 +184,16 @@ class InsertNphIncidentTaskApiCloudTaskTest(BaseTestCase):
         self.assertEqual(response.status_code, INTERNAL_SERVER_ERROR)
 
     @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
-    def test_insert_nph_incident_task_returns_200(self, mock_send_message_to_webhook: mock.Mock):
+    def test_nph_withdrawn_pid_notifier_task_returns_200(self, mock_send_message_to_webhook: mock.Mock):
         mock_send_message_to_webhook.return_value = True
-        nph_incident_kwargs = self._get_nph_incident_task_payload()
         from rdr_service.resource import main as resource_main
         response = self.send_post(
-            local_path='InsertNphIncidentTaskApi',
-            request_data=nph_incident_kwargs,
+            local_path='WithdrawnParticipantNotifierTaskApi',
+            request_data={"withdrawn_pids": ["1", "2"]},
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
             expected_status=OK
         )
-
-        nph_incident_message = nph_incident_kwargs.get("message")
-        nph_incident: Optional[Incident] = (
-            self.nph_incident_dao.get_by_message(message=nph_incident_message)
-        )
-        self.assertEqual(nph_incident.message, nph_incident_message)
-        self.assertEqual(nph_incident.notification_sent_flag, 1)
         self.assertEqual(response, {'success': True})
 
     def tearDown(self):
