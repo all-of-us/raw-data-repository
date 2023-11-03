@@ -7,12 +7,12 @@ import rdr_service.config as config
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg
-from rdr_service.services.system_utils import list_chunks
 
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 tool_cmd = 'backfill-enrollment'
 tool_desc = 'Backfill enrollment status fields for version 3 of data glossary'
+
 
 class BackfillEnrollment(ToolBase):
     logger_name = None
@@ -36,32 +36,30 @@ class BackfillEnrollment(ToolBase):
             count = 0
             last_id = None
 
-            chunk_size = 50
-            for id_list_subset in list_chunks(lst=participant_id_list, chunk_size=chunk_size):
-                logging.info(f'{datetime.now()}: {count} of {len(participant_id_list)} (last id: {last_id})')
-                count += chunk_size
+            for participant_id in participant_id_list:
+                if count % 50 == 0:
+                    logging.info(f'{datetime.now()}: {count} of {len(participant_id_list)} (last id: {last_id})')
+                count += 1
 
-                summary_list = session.query(
-                    ParticipantSummary
-                ).filter(
-                    ParticipantSummary.participantId.in_(id_list_subset)
-                ).with_for_update().all()
-
-                for summary in summary_list:
-                    summary_dao.update_enrollment_status(
-                        summary=summary,
-                        session=session,
-                        allow_downgrade=self.args.allow_downgrade,
-                        # Don't trigger pubsub for PDR pipeline until after the commit
-                        pdr_pubsub=False
-                    )
-                    last_id = summary.participantId
+                summary = ParticipantSummaryDao.get_for_update_with_linked_data(
+                    participant_id=participant_id,
+                    session=session
+                )
+                summary_dao.update_enrollment_status(
+                    summary=summary,
+                    session=session,
+                    allow_downgrade=self.args.allow_downgrade,
+                    # Don't trigger pubsub for PDR pipeline until after the commit
+                    pdr_pubsub=False
+                )
+                last_id = summary.participantId
 
                 session.commit()
 
-                submit_pipeline_pubsub_msg(database='rdr', table='participant_summary', action='upsert',
-                                           pk_columns=['participant_id'], pk_values=id_list_subset,
-                                           project=self.gcp_env.project)
+                submit_pipeline_pubsub_msg(
+                    database='rdr', table='participant_summary', action='upsert',
+                    pk_columns=['participant_id'], pk_values=[participant_id], project=self.gcp_env.project
+                )
 
 
 def add_additional_arguments(parser):

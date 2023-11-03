@@ -69,9 +69,10 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
         return any([result.sync_status == ConsentSyncStatus.READY_FOR_SYNC for result in result_list])
 
     def _update_status(self, participant_id, has_valid_file):
-        participant_summary: ParticipantSummary = self._session.query(ParticipantSummary).filter(
-            ParticipantSummary.participantId == participant_id
-        ).with_for_update().one()
+        participant_summary = ParticipantSummaryDao.get_for_update_with_linked_data(
+            participant_id=participant_id,
+            session=self._session
+        )
         did_modify_status = False
 
         if participant_summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED_NOT_VALIDATED:

@@ -1,5 +1,6 @@
 import datetime
 
+from dateutil.parser import parse
 import faker
 import re
 import threading
@@ -415,6 +416,21 @@ class ParticipantSummaryDao(UpdatableDao):
             ).options(self._default_api_query_options()).one_or_none()
 
     @classmethod
+    def get_for_update_with_linked_data(cls, participant_id, session) -> ParticipantSummary:
+        dao = ParticipantSummaryDao()
+        return dao.get_for_update(
+            session=session,
+            obj_id=participant_id,
+            options=[
+                joinedload(ParticipantSummary.relatedParticipants).load_only(),
+                # NOTE: only loading existence of account linkage for now, since that's all
+                # that's needed for enrollment status calculations
+
+                joinedload(ParticipantSummary.pediatricData)
+            ]
+        )
+
+    @classmethod
     def _default_api_query_options(cls):
         return [
             joinedload(ParticipantSummary.relatedParticipants).load_only()
@@ -700,14 +716,16 @@ class ParticipantSummaryDao(UpdatableDao):
         session.commit()
 
         if biobank_ids:
-            summary_list = session.query(ParticipantSummary).filter(
+            query = session.query(ParticipantSummary.participantId).filter(
                 ParticipantSummary.biobankId.in_(biobank_ids)
-            ).all()
-            for summary in summary_list:
-                self.update_enrollment_status(
-                    summary=summary,
-                    session=session
+            )
+            participant_id_list = [summary.participantId for summary in query.all()]
+            for participant_id in participant_id_list:
+                summary = ParticipantSummaryDao.get_for_update_with_linked_data(
+                    session=session,
+                    participant_id=participant_id
                 )
+                self.update_enrollment_status(summary=summary, session=session)
                 session.commit()
 
     def _get_num_baseline_ppi_modules(self):
@@ -778,6 +796,12 @@ class ParticipantSummaryDao(UpdatableDao):
             session=session,
             participant_id=summary.participantId
         )
+        first_exposures_response_time = None
+        for data in (summary.pediatricData or []):
+            if data.data_type == PediatricDataType.ENVIRONMENTAL_EXPOSURES:
+                timestamp = parse(data.value)
+                if first_exposures_response_time is None or timestamp < first_exposures_response_time:
+                    first_exposures_response_time = timestamp
 
         enrl_dependencies = EnrollmentDependencies(
             consent_cohort=summary.consentCohort,
@@ -800,7 +824,10 @@ class ParticipantSummaryDao(UpdatableDao):
             earliest_weight_measurement_time=min_or_none(
                 meas.finalized for meas in core_measurements if meas.satisfiesWeightRequirements
             ),
-            wgs_sequencing_time=wgs_sequencing_time
+            wgs_sequencing_time=wgs_sequencing_time,
+            exposures_authored_time=first_exposures_response_time,
+            is_pediatric_participant=summary.isPediatric,
+            has_linked_guardian_accounts=(summary.relatedParticipants and len(summary.relatedParticipants) > 0)
         )
         enrollment_info = EnrollmentCalculation.get_enrollment_info(enrl_dependencies)
 
@@ -843,7 +870,19 @@ class ParticipantSummaryDao(UpdatableDao):
                 )
             )
 
-        if allow_downgrade or summary.enrollmentStatusV3_2 < enrollment_info.version_3_2_status:
+        status_rank_map_v32 = {  # Re-orders the status values so we can quickly see if the current status is higher
+            EnrollmentStatusV32.PARTICIPANT: 0,
+            EnrollmentStatusV32.PARTICIPANT_PLUS_EHR: 1,
+            EnrollmentStatusV32.ENROLLED_PARTICIPANT: 2,
+            EnrollmentStatusV32.PMB_ELIGIBLE: 3,
+            EnrollmentStatusV32.CORE_MINUS_PM: 4,
+            EnrollmentStatusV32.CORE_PARTICIPANT: 5
+        }
+        if (
+            allow_downgrade
+            or status_rank_map_v32[summary.enrollmentStatusV3_2] <
+                status_rank_map_v32[enrollment_info.version_3_2_status]
+        ):
             summary.enrollmentStatusV3_2 = enrollment_info.version_3_2_status
             summary.lastModified = clock.CLOCK.now()
             session.add(
@@ -972,6 +1011,15 @@ class ParticipantSummaryDao(UpdatableDao):
             )
         elif allow_downgrade:
             self._clear_timestamp_if_set(summary, 'enrollmentStatusEnrolledParticipantV3_2Time')
+
+        if EnrollmentStatusV32.PMB_ELIGIBLE in version_3_2_dates:
+            self._update_timestamp_value(
+                summary,
+                'enrollmentStatusPmbEligibleV3_2Time',
+                version_3_2_dates[EnrollmentStatusV32.PMB_ELIGIBLE]
+            )
+        elif allow_downgrade:
+            self._clear_timestamp_if_set(summary, 'enrollmentStatusPmbEligibleV3_2Time')
 
         if EnrollmentStatusV32.CORE_MINUS_PM in version_3_2_dates:
             self._update_timestamp_value(
@@ -1382,6 +1430,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 'enrollmentStatusParticipantV3_2Time',
                 'enrollmentStatusParticipantPlusEhrV3_2Time',
                 'enrollmentStatusEnrolledParticipantV3_2Time',
+                'enrollmentStatusPmbEligibleV3_2Time',
                 'enrollmentStatusCoreMinusPmV3_2Time',
                 'enrollmentStatusCoreV3_2Time',
                 'hasCoreData',
@@ -1421,9 +1470,7 @@ class ParticipantSummaryDao(UpdatableDao):
             ]
 
         # set the pediatric data flag
-        result['isPediatric'] = UNSET
-        if any(data.data_type == PediatricDataType.AGE_RANGE for data in obj.pediatricData):
-            result['isPediatric'] = True
+        result['isPediatric'] = True if obj.isPediatric else UNSET
 
         # EnvironmentalExposures module fields
         result['questionnaireOnEnvironmentalExposures'] = UNSET

@@ -108,7 +108,8 @@ class TestEnrollmentInfo(BaseTestCase):
                 v32_data=[
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
-                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time)
+                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time),
+                    (EnrollmentStatusV32.PMB_ELIGIBLE, participant_info.basics_authored_time)
                 ]
             ),
             EnrollmentCalculation.get_enrollment_info(participant_info)
@@ -144,6 +145,7 @@ class TestEnrollmentInfo(BaseTestCase):
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
                     (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time),
+                    (EnrollmentStatusV32.PMB_ELIGIBLE, participant_info.basics_authored_time),
                     (EnrollmentStatusV32.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time)
                 ]
             ),
@@ -193,6 +195,7 @@ class TestEnrollmentInfo(BaseTestCase):
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
                     (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time),
+                    (EnrollmentStatusV32.PMB_ELIGIBLE, participant_info.basics_authored_time),
                     (EnrollmentStatusV32.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
                     (EnrollmentStatusV32.CORE_PARTICIPANT, participant_info.earliest_physical_measurements_time)
                 ]
@@ -236,6 +239,7 @@ class TestEnrollmentInfo(BaseTestCase):
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
                     (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time),
+                    (EnrollmentStatusV32.PMB_ELIGIBLE, participant_info.basics_authored_time),
                     (EnrollmentStatusV32.CORE_MINUS_PM, participant_info.earliest_biobank_received_dna_time),
                     (EnrollmentStatusV32.CORE_PARTICIPANT, participant_info.earliest_physical_measurements_time)
                 ]
@@ -289,6 +293,78 @@ class TestEnrollmentInfo(BaseTestCase):
         self.assertTrue(enrollment_status.has_core_data)
         self.assertEqual(wgs_processed_time, enrollment_status.core_data_time)
 
+    def test_pediatric_requires_guardian(self):
+        """
+        Any escalation of enrollment status for a pediatric participant requires that they have a linked guardian.
+        """
+        participant_info = self._build_participant_info(
+            consent_cohort=ParticipantCohort.COHORT_2,
+            primary_authored_time=datetime(2018, 1, 17),
+            ehr_consent_ranges=[
+                DateRange(start=datetime(2018, 1, 17), end=datetime(2018, 4, 13))
+            ],
+            basics_time=datetime(2018, 1, 17),
+            overall_health_time=datetime(2018, 1, 17),
+            biobank_received_dna_sample_time=datetime(2018, 2, 21),
+            physical_measurements_time=datetime(2018, 3, 1),
+            is_pediatric=True,
+            has_guardian=False
+        )
+        self.assertEnrollmentInfoEqual(
+            self._build_expected_enrollment_info(
+                legacy_data=[],
+                v30_data=[],
+                v32_data=[]
+            ),
+            EnrollmentCalculation.get_enrollment_info(participant_info)
+        )
+
+    def test_pediatric_pmb_eligible(self):
+        """
+        Participants should get PM&B Eligible status when completing The Basics and consenting to share EHR
+        """
+        participant_info = self._build_participant_info(
+            primary_authored_time=datetime(2018, 1, 17),
+            ehr_consent_ranges=[DateRange(start=datetime(2018, 1, 17))],
+            is_pediatric=True,
+            has_guardian=True
+        )
+
+        current_state = EnrollmentCalculation.get_enrollment_info(participant_info)
+        self.assertEqual(EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, current_state.version_3_2_status)
+
+        participant_info.basics_authored_time = datetime(2018, 1, 17)
+        current_state = EnrollmentCalculation.get_enrollment_info(participant_info)
+        self.assertEqual(EnrollmentStatusV32.PMB_ELIGIBLE, current_state.version_3_2_status)
+
+    def test_pediatric_core(self):
+        """
+        Test that Exposures survey replaces Lifestyle requirement for Core status for pediatrics,
+        and that pediatrics requires height and weight measurements.
+        """
+        participant_info = self._build_participant_info(
+            consent_cohort=ParticipantCohort.COHORT_2,
+            primary_authored_time=datetime(2018, 1, 17),
+            ehr_consent_ranges=[
+                DateRange(start=datetime(2018, 1, 17), end=datetime(2018, 4, 13))
+            ],
+            basics_time=datetime(2018, 1, 17),
+            overall_health_time=datetime(2018, 1, 17),
+            biobank_received_dna_sample_time=datetime(2018, 2, 21),
+            physical_measurements_time=datetime(2018, 3, 1),
+            is_pediatric=True,
+            has_guardian=True
+        )
+
+        current_state = EnrollmentCalculation.get_enrollment_info(participant_info)
+        self.assertEqual(EnrollmentStatusV32.PMB_ELIGIBLE, current_state.version_3_2_status)
+
+        participant_info.exposures_authored_time = datetime(2018, 1, 17)
+        participant_info.earliest_height_measurement_time = datetime(2018, 1, 17)
+        participant_info.earliest_weight_measurement_time = datetime(2018, 1, 17)
+        current_state = EnrollmentCalculation.get_enrollment_info(participant_info)
+        self.assertEqual(EnrollmentStatusV32.CORE_PARTICIPANT, current_state.version_3_2_status)
+
     @classmethod
     def _build_expected_enrollment_info(cls, legacy_data, v30_data, v32_data):
         enrollment = EnrollmentInfo()
@@ -309,6 +385,7 @@ class TestEnrollmentInfo(BaseTestCase):
         basics_time=None,
         overall_health_time=None,
         lifestyle_time=None,
+        exposures_time=None,
         ehr_consent_ranges: List[DateRange] = None,
         biobank_received_dna_sample_time=None,
         physical_measurements_time=None,
@@ -317,7 +394,9 @@ class TestEnrollmentInfo(BaseTestCase):
         dna_update_time=None,
         current_enrollment: EnrollmentInfo = None,
         earliest_core_pm_time: datetime = None,
-        wgs_sequencing_time: datetime = None
+        wgs_sequencing_time: datetime = None,
+        is_pediatric: bool = False,
+        has_guardian: bool = False
     ):
         if not ehr_consent_ranges:
             ehr_consent_ranges = []
@@ -335,6 +414,7 @@ class TestEnrollmentInfo(BaseTestCase):
             basics_authored_time=basics_time,
             overall_health_authored_time=overall_health_time,
             lifestyle_authored_time=lifestyle_time,
+            exposures_authored_time=exposures_time,
             ehr_consent_date_range_list=ehr_consent_ranges,
             earliest_biobank_received_dna_time=biobank_received_dna_sample_time,
             earliest_physical_measurements_time=physical_measurements_time,
@@ -343,7 +423,9 @@ class TestEnrollmentInfo(BaseTestCase):
             earliest_mediated_ehr_receipt_time=earliest_mediated_ehr_receipt_time,
             earliest_height_measurement_time=earliest_core_pm_time,
             earliest_weight_measurement_time=earliest_core_pm_time,
-            wgs_sequencing_time=wgs_sequencing_time
+            wgs_sequencing_time=wgs_sequencing_time,
+            is_pediatric_participant=is_pediatric,
+            has_linked_guardian_accounts=has_guardian
         )
 
     @classmethod

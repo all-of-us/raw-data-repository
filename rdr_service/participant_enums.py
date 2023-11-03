@@ -175,6 +175,7 @@ class EnrollmentStatusV32(messages.Enum):
     PARTICIPANT = 1
     PARTICIPANT_PLUS_EHR = 2
     ENROLLED_PARTICIPANT = 3
+    PMB_ELIGIBLE = 6
     CORE_MINUS_PM = 4
     CORE_PARTICIPANT = 5
 

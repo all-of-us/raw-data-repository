@@ -399,7 +399,10 @@ class UpdateEnrollmentStatus(Resource):
 
         dao = ParticipantSummaryDao()
         with dao.session() as session:
-            summary = dao.get_with_session(session=session, obj_id=participant_id)
+            summary = ParticipantSummaryDao.get_for_update_with_linked_data(
+                session=session,
+                participant_id=participant_id
+            )
             dao.update_enrollment_status(
                 summary=summary,
                 session=session

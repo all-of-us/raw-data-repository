@@ -368,6 +368,12 @@ class ParticipantSummary(Base):
     enrollment status defined by the 3.2 data glossary
     """
 
+    enrollmentStatusPmbEligibleV3_2Time = Column("enrollment_status_pmb_eligible_v_3_2_time", UTCDateTime)
+    """
+    UTC time the participant has reached the 'PARTICIPANT_PMB_ELIGIBLE'
+    enrollment status defined by the 3.3 data glossary
+    """
+
     enrollmentStatusCoreMinusPmV3_2Time = Column("enrollment_status_core_minus_pm_v_3_2_time", UTCDateTime)
     """UTC time the participant has reached the 'CORE_MINUS_PM' enrollment status defined by the 3.2 data glossary"""
 
@@ -1798,11 +1804,13 @@ class ParticipantSummary(Base):
         lazy='noload'
     )
 
-    isPediatric = None  # placeholder for docs, DAO sets on model
-    """
-    Field indicating whether this is a pediatric participant or not. The API will display as 'UNSET'
-    for adult participants, and will return a boolean value of true if it's a pediatric participant.
-    """
+    @property
+    def isPediatric(self) -> bool:
+        """
+        Field indicating whether this is a pediatric participant or not. The API will display as 'UNSET'
+        for adult participants, and will return a boolean value of true if it's a pediatric participant.
+        """
+        return any(data.data_type == PediatricDataType.AGE_RANGE for data in self.pediatricData)
 
     def did_submit_environmental_exposures(self):
         return any(data.data_type == PediatricDataType.ENVIRONMENTAL_EXPOSURES for data in self.pediatricData)

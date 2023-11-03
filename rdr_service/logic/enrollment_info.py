@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
@@ -56,6 +57,7 @@ class EnrollmentDependencies:
     basics_authored_time: datetime
     overall_health_authored_time: datetime
     lifestyle_authored_time: datetime
+    exposures_authored_time: datetime
 
     ehr_consent_date_range_list: List[DateRange]
     """DateRanges of when the participant expressed interest in sharing EHR data. Must be in chronological order"""
@@ -68,6 +70,9 @@ class EnrollmentDependencies:
     earliest_weight_measurement_time: datetime  # Earliest physical measurement that meets core data reqs
     earliest_height_measurement_time: datetime  # Earliest physical measurement that meets core data reqs
     wgs_sequencing_time: datetime
+
+    is_pediatric_participant: bool
+    has_linked_guardian_accounts: bool
 
     @property
     def first_ehr_consent_date(self):
@@ -126,6 +131,12 @@ class EnrollmentCalculation:
         # RDR currently only displays enrollment status for participants that have consented to the Primary consent.
         # So if this is called for any participant, it is assumed they have provided Primary consent.
         enrollment = EnrollmentInfo()
+
+        if participant_info.is_pediatric_participant and not participant_info.has_linked_guardian_accounts:
+            # Pediatric participants must have a linked guardian account
+            logging.error('Pediatric participant found without guardian account')
+            return enrollment
+
         enrollment.upgrade_legacy_status(EnrollmentStatus.INTERESTED, participant_info.primary_consent_authored_time)
         enrollment.upgrade_3_0_status(EnrollmentStatusV30.PARTICIPANT, participant_info.primary_consent_authored_time)
         enrollment.upgrade_3_2_status(EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time)
@@ -201,14 +212,16 @@ class EnrollmentCalculation:
                 participant_info.first_ehr_consent_date
             )
 
-        if not participant_info.has_completed_the_basics_survey:
-            return  # stop here without TheBasics, any more upgrades to the enrollment status require it
-
-        # Upgrading 3.2 to ENROLLED_PARTICIPANT requires TheBasics
         if participant_info.basics_authored_time:
             enrollment.upgrade_3_2_status(
                 EnrollmentStatusV32.ENROLLED_PARTICIPANT,
                 participant_info.basics_authored_time
+            )
+
+        if participant_info.ever_expressed_interest_in_sharing_ehr and participant_info.basics_authored_time:
+            enrollment.upgrade_3_2_status(
+                EnrollmentStatusV32.PMB_ELIGIBLE,
+                max(participant_info.first_ehr_consent_date, participant_info.basics_authored_time)
             )
 
         if cls._meets_requirements_for_core_minus_pm(participant_info):
@@ -259,11 +272,18 @@ class EnrollmentCalculation:
             participant_info.first_ehr_consent_date,
             participant_info.basics_authored_time,
             participant_info.overall_health_authored_time,
-            participant_info.lifestyle_authored_time,
             participant_info.earliest_biobank_received_dna_time
         ]
-        if participant_info.consent_cohort == ParticipantCohort.COHORT_3:
+        if (
+            participant_info.consent_cohort == ParticipantCohort.COHORT_3
+            and not participant_info.is_pediatric_participant
+        ):
             dates_needed.append(participant_info.gror_authored_time)
+
+        if participant_info.is_pediatric_participant:
+            dates_needed.append(participant_info.exposures_authored_time)
+        else:
+            dates_needed.append(participant_info.lifestyle_authored_time)
 
         return dates_needed
 
@@ -276,10 +296,15 @@ class EnrollmentCalculation:
 
     @classmethod
     def _get_dates_needed_for_core(cls, participant_info: EnrollmentDependencies):
-        return [
-            participant_info.earliest_physical_measurements_time,
-            *cls._get_dates_needed_for_core_minus_pm(participant_info)
-        ]
+        required_dates = cls._get_dates_needed_for_core_minus_pm(participant_info)
+        required_dates.append(participant_info.earliest_physical_measurements_time)
+
+        if participant_info.is_pediatric_participant:
+            required_dates.extend([
+                participant_info.earliest_weight_measurement_time,
+                participant_info.earliest_height_measurement_time
+            ])
+        return required_dates
 
     @classmethod
     def _get_requirements_met_date(cls, required_date_list: List[datetime]) -> Optional[datetime]:

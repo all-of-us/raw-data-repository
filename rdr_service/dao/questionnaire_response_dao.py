@@ -538,7 +538,10 @@ class QuestionnaireResponseDao(BaseDao):
             answer.endTime = questionnaire_response.created
             session.merge(answer)
 
-        summary = ParticipantSummaryDao().get_for_update(session, questionnaire_response.participantId)
+        summary = ParticipantSummaryDao.get_for_update_with_linked_data(
+            participant_id=questionnaire_response.participantId,
+            session=session
+        )
         if summary:
             ParticipantSummaryDao().update_enrollment_status(summary, session=session)
 
