@@ -24,23 +24,23 @@ flask==3.0.0              # via -r requirements.in, flask-basicauth, flask-restf
 flask-limiter==1.4
 gevent==23.9.1            # via geventhttpclient, locust
 geventhttpclient==2.0.2   # via locust
-google-api-core[grpc]==1.17.0  # via google-api-python-client, google-cloud-bigquery, google-cloud-core, google-cloud-datastore, google-cloud-firestore, google-cloud-logging, google-cloud-tasks
-google-api-python-client==1.8.3  # via -r requirements.in, google-python-cloud-debugger
-google-auth-httplib2==0.0.3  # via google-api-python-client, google-python-cloud-debugger
-google-auth==1.28.0       # via google-api-core, google-api-python-client, google-auth-httplib2, google-cloud-bigquery, google-cloud-storage, google-python-cloud-debugger
-google-cloud-bigquery==1.24.0  # via -r requirements.in
-google-cloud-core==1.3.0  # via google-cloud-bigquery, google-cloud-datastore, google-cloud-firestore, google-cloud-logging, google-cloud-storage
-google-cloud-datastore==1.12.0  # via -r requirements.in
-google-cloud-firestore==1.7.0  # via -r requirements.in
-google-cloud-logging==1.15.0  # via -r requirements.in
-google-cloud-storage==1.28.1  # via -r requirements.in
-google-cloud-tasks==1.5.0  # via -r requirements.in
-google-resumable-media==0.5.0  # via google-cloud-bigquery, google-cloud-storage
-googleapis-common-protos[grpc]==1.51.0  # via google-api-core, grpc-google-iam-v1
+google-api-core[grpc]==2.12.0  # via google-api-python-client, google-cloud-bigquery, google-cloud-core, google-cloud-datastore, google-cloud-firestore, google-cloud-logging, google-cloud-tasks
+google-api-python-client==2.106.0  # via -r requirements.in, google-python-cloud-debugger
+google-auth-httplib2==0.1.1  # via google-api-python-client, google-python-cloud-debugger
+google-auth==2.23.4       # via google-api-core, google-api-python-client, google-auth-httplib2, google-cloud-bigquery, google-cloud-storage, google-python-cloud-debugger
+google-cloud-bigquery==3.13.0  # via -r requirements.in
+google-cloud-core==2.3.3  # via google-cloud-bigquery, google-cloud-datastore, google-cloud-firestore, google-cloud-logging, google-cloud-storage
+google-cloud-datastore==2.18.0  # via -r requirements.in
+google-cloud-firestore==2.13.0  # via -r requirements.in
+google-cloud-logging==3.8.0  # via -r requirements.in
+google-cloud-storage==2.13.0  # via -r requirements.in
+google-cloud-tasks==2.14.2  # via -r requirements.in
+google-resumable-media==2.6.0  # via google-cloud-bigquery, google-cloud-storage
+googleapis-common-protos[grpc]==1.61.0  # via google-api-core, grpc-google-iam-v1
 googlemaps==4.4.1         # via -r requirements.in
 greenlet==3.0.1          # via gevent
-grpc-google-iam-v1==0.12.3  # via google-cloud-tasks
-grpcio==1.59.0           # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
+grpc-google-iam-v1==0.12.6  # via google-cloud-tasks
+grpcio==1.59.2           # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
 gspread==5.12.0
 gunicorn==21.2.0          # via -r requirements.in
 httplib2==0.19.1          # via google-api-python-client, google-auth-httplib2, oauth2client
@@ -59,7 +59,7 @@ marshmallow==3.6.0        # via -r requirements.in, marshmallow-jsonschema
 mccabe==0.6.1             # via pylint
 mock==4.0.3               # via -r requirements.in
 msgpack==1.0.0            # via locust
-netaddr==0.7.19           # via -r requirements.in
+netaddr==0.9.0           # via -r requirements.in
 oauth2client==4.1.3       # via -r requirements.in
 oauthlib[signedtoken]==3.1.0  # via jira, requests-oauthlib
 #pandas==1.3.1
@@ -67,19 +67,19 @@ parameterized==0.7.4      # via -r requirements.in
 pbr==5.4.5                # via jira
 pdfminer.six==20221105
 # pip-tools==5.1.2          # via -r requirements.in
-protobuf==3.20.3          # via -r requirements.in, google-api-core, google-cloud-bigquery, googleapis-common-protos
+protobuf==4.25.0          # via -r requirements.in, google-api-core, google-cloud-bigquery, googleapis-common-protos
 protorpc==0.12.0          # via -r requirements.in
-psutil==5.7.0             # via locust
+psutil==5.9.6             # via locust
 psycopg2-binary==2.9.6
 pyasn1-modules==0.2.8     # via google-auth, oauth2client
 pyasn1==0.4.8             # via oauth2client, pyasn1-modules, rsa
 pycparser==2.20           # via cffi
 pygments==2.15.1           # via sphinx
-pyjwt==2.4.0              # via oauthlib
+pyjwt==2.8.0              # via oauthlib
 pylint==2.17.4            # via -r requirements.in
 pyopenssl==23.3.0         # via requests
 pyparsing==2.4.7          # via packaging
-python-dateutil==2.8.1    # via alembic, faker
+python-dateutil==2.8.2    # via alembic, faker
 python-editor==1.0.4      # via alembic
 python-http-client==3.2.7  # via sendgrid
 pytz==2020.1              # via babel, flask-restful, google-api-core, google-cloud-firestore
@@ -89,11 +89,11 @@ redis==4.5.4              # via flask-limiter
 requests-oauthlib==1.3.0  # via jira
 requests-toolbelt==0.9.1  # via jira
 requests[security]==2.31.0  # via -r requirements.in, fhirclient, google-api-core, googlemaps, jira, locust, requests-oauthlib, requests-toolbelt, sphinx
-rsa==4.7.2                  # via google-auth, oauth2client
+rsa==4.9                  # via google-auth, oauth2client
 sendgrid==6.9.1           # via -r requirements.in
 simple-geometry==0.1.4  # geometry
 simplejson==3.17.0        # via -r requirements.in
-six==1.15.0               # via astroid, cryptography, flask-restful, geventhttpclient, google-api-core, google-api-python-client, google-auth, google-cloud-bigquery, google-python-cloud-debugger, google-resumable-media, grpcio, isodate, jira, oauth2client, packaging, pip-tools, protobuf, protorpc, pyopenssl, python-dateutil
+six==1.16.0               # via astroid, cryptography, flask-restful, geventhttpclient, google-api-core, google-api-python-client, google-auth, google-cloud-bigquery, google-python-cloud-debugger, google-resumable-media, grpcio, isodate, jira, oauth2client, packaging, pip-tools, protobuf, protorpc, pyopenssl, python-dateutil
 snowballstemmer==2.0.0    # via sphinx
 sphinx==6.2.1
 sqlalchemy==1.3.17        # via -r requirements.in, alembic, dictalchemy
