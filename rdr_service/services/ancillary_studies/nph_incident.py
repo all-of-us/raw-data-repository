@@ -11,24 +11,17 @@ def get_slack_message_handler() -> SlackMessageHandler:
     if slack_config is None:
         logging.warning("'slack_config' for 'NPH_SLACK_WEBHOOKS' is empty")
 
-    webbook_url = slack_config.get('nph_incident_alerts', None)
-    if webbook_url is None:
+    webhook_url = slack_config.get('nph_incident_alerts', None)
+    if webhook_url is None:
         logging.warning("'nph_incident_alerts' is not available in slack config. 'webhook_url' is None")
-    return SlackMessageHandler(webhook_url=webbook_url)
+    return SlackMessageHandler(webhook_url=webhook_url)
 
 
-def create_nph_incident(
-    save_incident: bool = True,
-    slack: bool = False,
-    **kwargs
-):
+def create_nph_incident(**kwargs):
     """
-        Creates an NphIncident and sends alert via Slack if default
-        for slack arg is True and saves an incident record to NphIncident
-        if save_incident arg is True.
-        :param save_incident: bool
-        :param slack: bool
-        :return:
+    Creates an NphIncident and sends alert to Slack if default
+    for slack arg is True and saves an incident record to NphIncident
+    if save_incident arg is True.
     """
     nph_incident_dao = NphIncidentDao()
     nph_incident_alert_slack = get_slack_message_handler()
@@ -41,11 +34,11 @@ def create_nph_incident(
     if created_incident and (today.date() - created_incident.created.date()).days <= num_days:
         return
 
-    if save_incident:
+    if kwargs.get('save_incident', False):
         insert_obj = nph_incident_dao.get_model_obj_from_items(kwargs.items())
         incident: NphIncident = nph_incident_dao.insert(insert_obj)
 
-    if slack:
+    if kwargs.get('slack', False):
         message_data = {'text': message}
         slack_alert = nph_incident_alert_slack.send_message_to_webhook(
             message_data=message_data

@@ -1,7 +1,10 @@
 import copy
+import datetime
 import http.client
 import mock
+from sqlalchemy.exc import IntegrityError
 
+from rdr_service import clock
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.hpo_dao import HPODao
@@ -108,6 +111,77 @@ class MailKitOrderApiTestPostSupplyRequest(MailKitOrderApiTestBase):
             BiobankMailKitOrder.participantId == paired_participant.participantId
         ).one()
         self.assertEqual(hpo.hpoId, order.associatedHpoId)
+
+    def test_subsequent_post_requests(self):
+        """
+        Test that two successive POSTs work as intended. The first POST creates data,
+        while the second, acting as a PUT, updates it. This scenario arises from partners
+        receiving a 502 on their initial POST and repeatedly sending updated POSTs.
+        """
+        # Initial POST
+        self.send_post(
+            "SupplyRequest",
+            request_data=self.get_payload("dv_order_api_post_supply_request.json"),
+            expected_status=http.client.CREATED,
+        )
+        initial_order = self.get_orders()[0]
+
+        # Second POST with a PUT payload
+        with clock.FakeClock(clock.CLOCK.now() + datetime.timedelta(minutes=1)):
+            response = self.send_post(
+                "SupplyRequest",
+                request_data=self.get_payload("dv_order_api_put_supply_request.json"),
+                expected_status=http.client.CREATED,
+            )
+
+        updated_order = self.get_orders()[0]
+
+        self.assertEqual(response.status_code, 201, msg="Subsequent POST should succeed")
+
+        # Compare values from the 1st and 2nd POST requests
+        self.assertEqual(
+            updated_order.created,
+            initial_order.created,
+            msg="Second POST should not update the 'created' timestamp",
+        )
+        self.assertEqual(
+            updated_order.order_id, initial_order.order_id, msg="OrderId should be the same"
+        )
+        self.assertGreater(
+            updated_order.modified,
+            initial_order.modified,
+            msg="'modified' timestamp should update and be greater after the second POST.",
+        )
+        self.assertGreater(
+            updated_order.version,
+            initial_order.version,
+            msg="The 'version' of the updated order should be greater than the initial order.",
+        )
+        self.assertNotEqual(updated_order.supplierStatus, initial_order.supplierStatus)
+
+    def test_subsequent_post_with_unknown_constraint_violations(self):
+        """Test if a user tries to violate constraints (other than 'uidx_partic_id_order_id'), an error is raised."""
+
+        # Initial POST
+        self.send_post(
+            "SupplyRequest",
+            request_data=self.get_payload("dv_order_api_post_supply_request.json"),
+            expected_status=http.client.CREATED,
+        )
+
+        # Second POST with a PUT payload. Simulate an IntegrityError during the POST operation.
+        orig = "IntegrityError"
+        with mock.patch(
+            "rdr_service.api.base_api.BaseApi.post",
+            side_effect=IntegrityError("SomeOtherIntegrityError", params=None, orig=orig),
+        ):
+            response = self.send_post(
+                "SupplyRequest",
+                request_data=self.get_payload("dv_order_api_put_supply_request.json"),
+                expected_status=http.client.CONFLICT,
+            )
+            self.assertIn(orig, response.json.get("message"))
+
 
 class MailKitOrderApiTestPutSupplyRequest(MailKitOrderApiTestBase):
     mayolink_response = {

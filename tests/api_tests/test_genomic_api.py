@@ -23,10 +23,10 @@ from rdr_service.dao.genomics_dao import (
     GenomicMemberReportStateDao,
     GenomicGcDataFileDao,
     GenomicResultViewedDao,
-    GenomicAppointmentEventDao
+    GenomicAppointmentEventDao, GenomicIncidentDao
 )
 from rdr_service.genomic_enums import GenomicJob, GenomicReportState, GenomicWorkflowState, GenomicManifestTypes, \
-    GenomicQcStatus, GenomicSampleSwapCategory
+    GenomicQcStatus, GenomicSampleSwapCategory, GenomicIncidentCode
 from rdr_service.model.participant import Participant
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -3812,3 +3812,76 @@ class GenomicCloudTasksApiTest(BaseTestCase):
                 call_json['file_data']['manifest_type'],
                 pr_data['manifest_type']
             )
+
+    @mock.patch('rdr_service.offline.genomics.genomic_dispatch.execute_genomic_manifest_file_pipeline')
+    def test_ingest_gem_job_task_api(self, ingest_mock):
+
+        from rdr_service.resource import main as resource_main
+
+        gem_map = {
+            'a2': {
+                'job': GenomicJob.GEM_A2_MANIFEST,
+                'manifest_type': GenomicManifestTypes.GEM_A2
+            }
+        }
+
+        test_bucket = 'test_gem_bucket'
+
+        for gem_key, gem_data in gem_map.items():
+            gem_type_file_path = f"{test_bucket}/test_pr_{gem_key}_file.csv"
+
+            data = {
+                "file_path": gem_type_file_path,
+                "bucket_name": gem_type_file_path.split('/')[0],
+                "upload_date": '2020-09-13T20:52:12+00:00',
+                "file_type": gem_key
+            }
+
+            self.send_post(
+                local_path='IngestGemManifestTaskApi',
+                request_data=data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+            call_json = ingest_mock.call_args[0][0]
+
+            self.assertEqual(ingest_mock.called, True)
+            self.assertEqual(call_json['bucket'], data['bucket_name'])
+            self.assertEqual(call_json['job'], gem_data['job'])
+            self.assertIsNotNone(call_json['file_data'])
+            self.assertEqual(
+                call_json['file_data']['manifest_type'],
+                gem_data['manifest_type']
+            )
+
+    def test_execute_genomic_incident_cloud_task(self):
+
+        from rdr_service.resource import main as resource_main
+
+        incident_dao = GenomicIncidentDao()
+
+        data = {
+                'slack': True,
+                'source_job_run_id': 1,
+                'code': GenomicIncidentCode.REQUEST_MANIFEST_VALIDATION_FAIL.name,
+                'message': 'Hello There',
+                'manifest_file_name': 'test_lr_manifest.csv',
+            }
+
+        self.send_post(
+            local_path='GenomicIncidentApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        all_incidents = incident_dao.get_all()
+
+        self.assertEqual(len(all_incidents), 1)
+        current_request_fail_incidents = [obj for obj in all_incidents if
+                                          obj.code == GenomicIncidentCode.REQUEST_MANIFEST_VALIDATION_FAIL.name]
+        self.assertEqual(len(current_request_fail_incidents), 1)
+        self.assertEqual(current_request_fail_incidents[0].slack_notification, 1)
+        self.assertEqual(current_request_fail_incidents[0].manifest_file_name, 'test_lr_manifest.csv')
+

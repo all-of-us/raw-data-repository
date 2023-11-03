@@ -22,6 +22,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import foreign, relationship, remote
 from sqlalchemy.sql import expression
 
+from rdr_service import clock
 from rdr_service.model.account_link import AccountLink
 from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
 from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
@@ -1120,24 +1121,24 @@ class ParticipantSummary(Base):
     questionnaireOnLifeFunctioningAuthored = Column("questionnaire_on_life_functioning_authored", UTCDateTime)
     "The UTC Date time of when the participant completed the life functioning survey questionnaire"
 
-    questionnaireOnEnvironmentalHealth = None
+    questionnaireOnEnvironmentalExposures = None
     """
-    Indicates status for the pediatric Environmental Health PPI module.
+    Indicates status for the pediatric Environmental Exposures PPI module.
 
     :ref:`Enumerated values <questionnaire_status>`
     """
 
-    questionnaireOnEnvironmentalHealthTime = None
-    "Indicates the time at which the RDR received notice of pediatric Environment Health questionnaire response"
+    questionnaireOnEnvironmentalExposuresTime = None
+    "Indicates the time at which the RDR received notice of pediatric Environmental Exposures questionnaire response"
 
-    questionnaireOnEnvironmentalHealthAuthored = None
-    "Indicates the time at which the participant completed the pediatric Environment Health questionnaire"
+    questionnaireOnEnvironmentalExposuresAuthored = None
+    "Indicates the time at which the participant completed the pediatric Environmental Exposures questionnaire"
 
     numCompletedBaselinePPIModules = Column("num_completed_baseline_ppi_modules", SmallInteger, default=0)
     """
     The count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth, questionnaireOnLifestyle]
     the participant has completed. Or the count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth,
-    questionnaireOnEnvironmentalHealth] have been completed for a pediatric participant.
+    questionnaireOnEnvironmentalExposures] have been completed for a pediatric participant.
     """
     numCompletedPPIModules = Column("num_completed_ppi_modules", SmallInteger, default=0)
     """
@@ -1803,8 +1804,8 @@ class ParticipantSummary(Base):
     for adult participants, and will return a boolean value of true if it's a pediatric participant.
     """
 
-    def did_submit_environmental_health(self):
-        return any(data.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH for data in self.pediatricData)
+    def did_submit_environmental_exposures(self):
+        return any(data.data_type == PediatricDataType.ENVIRONMENTAL_EXPOSURES for data in self.pediatricData)
 
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)
@@ -1855,8 +1856,14 @@ def validate_participant_summary(_, __, summary: ParticipantSummary):
         raise InvalidDataState('Participant summary missing an email or phone number')
 
 
+def model_update_lastModified_listener(_, __, summary: ParticipantSummary):
+    """Auto set `lastModified` column value on updates."""
+    validate_participant_summary(_, __, summary)
+    summary.lastModified = clock.CLOCK.now()
+
+
 event.listen(ParticipantSummary, "before_insert", validate_participant_summary)
-event.listen(ParticipantSummary, "before_update", validate_participant_summary)
+event.listen(ParticipantSummary, "before_update", model_update_lastModified_listener)
 
 
 class ParticipantGenderAnswers(Base):

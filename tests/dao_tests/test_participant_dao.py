@@ -506,6 +506,21 @@ class ParticipantDaoTest(BaseTestCase):
             f'Un-consented participant {participant.participantId} was withdrawn with NO_USE'
         )
 
+    def test_return_withdrawn_ids_only(self):
+        withdrawn_participants = [
+            self.data_generator.create_withdrawn_participant(withdrawal_reason_justification=""),
+            self.data_generator.create_withdrawn_participant(withdrawal_reason_justification="")
+        ]
+
+        active_participant = self.data_generator.create_database_participant()
+
+        all_participant_ids = [p.participantId for p in withdrawn_participants] + [active_participant.participantId]
+        expected_withdrawn_ids = [str(p.participantId) for p in withdrawn_participants]
+
+        result = self.dao.get_withdrawn_participant_ids(all_participant_ids)
+
+        self.assertEqual(result, expected_withdrawn_ids)
+
     def test_update_not_exists(self):
         p = self.data_generator._participant_with_defaults(participantId=1, biobankId=2)
         with self.assertRaises(NotFound):

@@ -169,7 +169,6 @@ class DeceasedReportDao(UpdatableDao):
             ParticipantSummary.participantId == report.participantId
         ).one_or_none()
         if participant_summary:
-            participant_summary.lastModified = CLOCK.now()
             if report.status == DeceasedReportStatus.DENIED:
                 participant_summary.deceasedStatus = DeceasedStatus.UNSET
                 participant_summary.deceasedAuthored = None

@@ -3,6 +3,8 @@ from typing import Dict, Any
 
 from flask import request
 from flask_restful import Resource
+
+from rdr_service.clock import CLOCK
 from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.study_nph_dao import NphConsentEventDao, NphPairingEventDao, NphEnrollmentEventDao, \
@@ -171,7 +173,7 @@ class NphSmsGenerationTaskApi(BaseAncillaryTaskApi):
         workflow.execute_workflow()
 
 
-class InsertNphIncidentTaskApi(BaseAncillaryTaskApi):
+class NphIncidentTaskApi(BaseAncillaryTaskApi):
 
     """
     Cloud Task endpoint: Inserts an incident into a Nph Incident table
@@ -186,10 +188,28 @@ class InsertNphIncidentTaskApi(BaseAncillaryTaskApi):
         trace_id
     """
     def post(self):
-        super(InsertNphIncidentTaskApi, self).post()
+        super(NphIncidentTaskApi, self).post()
         log_msg = f'Insert a new incident with {self.data} for ' \
                   f'PID: {self.data.get("participant_id")}'
         logging.info(log_msg)
-        json_payload: Dict[str, Any] = self.data
-        create_nph_incident(save_incident=True, slack=True, **json_payload)
+        kwargs: Dict[str, Any] = {"message": self.data, "slack": True, "save_incident": True}
+        create_nph_incident(**kwargs)
+        return {"success": True}
+
+
+class WithdrawnParticipantNotifierTaskApi(BaseAncillaryTaskApi):
+    """
+    Cloud Task endpoint: Send a slack alert to rdr-nph-alerts if the payload sent by partner
+    contains information about participants who have withdrawn from AOU program.
+    """
+    def post(self):
+        super().post()
+        withdrawn_pids = self.data.get("withdrawn_pids")
+        log_msg = f"{len(withdrawn_pids)} withdrawn PIDs received in NPH intake payload."
+        logging.info(log_msg)
+
+        ts = CLOCK.now().strftime('%Y-%m-%d %H:%M:%S')
+        msg = (f"NPH Intake API Payload received on {ts} contains {len(withdrawn_pids)} withdrawn participant IDs:"
+               f" {', '.join(withdrawn_pids)}")
+        create_nph_incident(slack=True, message=msg)
         return {"success": True}

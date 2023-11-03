@@ -133,6 +133,7 @@ class GenomicJob(messages.Enum):
     CHECK_APPOINTMENT_GROR_CHANGED = 76
     CHECK_GCR_OUTREACH_ESCALATION = 77
     CHECK_GCR_CE_OUTREACH_ESCALATION = 78
+    CREATE_INCIDENT_FROM_CLOUD_TASK = 79
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
@@ -166,9 +167,11 @@ class GenomicJob(messages.Enum):
 
     LR_LR_WORKFLOW = 300
     LR_L0_WORKFLOW = 301
+    LR_L1_WORKFLOW = 302
 
     LOAD_LR_TO_RAW_TABLE = 350
     LOAD_L0_TO_RAW_TABLE = 351
+    LOAD_L1_TO_RAW_TABLE = 352
 
     PR_PR_WORKFLOW = 400
     PR_P0_WORKFLOW = 401
@@ -187,6 +190,10 @@ class GenomicJob(messages.Enum):
     LOAD_RR_TO_RAW_TABLE = 550
     LOAD_RO_TO_RAW_TABLE = 551
     LOAD_R1_TO_RAW_TABLE = 552
+
+    LOAD_A1_TO_RAW_TABLE = 600
+    LOAD_A2_TO_RAW_TABLE = 601
+    LOAD_A3_TO_RAW_TABLE = 602
 
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
@@ -342,6 +349,7 @@ class GenomicManifestTypes(messages.Enum):
 
     LR_LR = 28
     LR_L0 = 29
+    LR_L1 = 30
 
     PR_PR = 40
     PR_P0 = 41
@@ -382,6 +390,7 @@ class GenomicIncidentCode(messages.Enum):
     INFORMING_LOOP_TO_EVENTS_MISMATCH = 11
     UNABLE_TO_RESOLVE_MESSAGE_BROKER_RECORD = 12
     MANIFEST_INGESTION_EXCEPTION = 13
+    REQUEST_MANIFEST_VALIDATION_FAIL = 14
 
 
 class GenomicIncidentStatus(messages.Enum):

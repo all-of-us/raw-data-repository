@@ -16,6 +16,7 @@ from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.study_nph_dao import NphIntakeDao, NphParticipantEventActivityDao, NphActivityDao, \
     NphPairingEventDao, NphSiteDao, NphDefaultBaseDao, NphEnrollmentEventTypeDao, NphConsentEventTypeDao, \
     NphParticipantDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.study_nph import WithdrawalEvent, DeactivationEvent, ConsentEvent, EnrollmentEvent, \
     ParticipantOpsDataElement, DietEvent
 
@@ -44,6 +45,7 @@ class PostIntakePayload(ABC):
         self.nph_participant_dao = NphParticipantDao()
         self.nph_participant_activity_dao = NphParticipantEventActivityDao()
         self.nph_site_dao = NphSiteDao()
+        self.rdr_participant_dao = ParticipantDao()
 
         self.nph_consent_type_dao = NphConsentEventTypeDao()
         self.nph_enrollment_type_dao = NphEnrollmentEventTypeDao()
@@ -227,19 +229,30 @@ class PostIntakePayload(ABC):
         self.event_dao_map: dict = self.build_event_dao_map()
         entry_obj: EntryObjData = self.iterate_entries()
 
+        pids = [ele.get("nph_participant_id") for ele in self.participant_response]
+        withdrawn_pids: List[str] = self.rdr_participant_dao.get_withdrawn_participant_ids(
+            participant_ids=pids
+        )
+
         self.handle_data_inserts(
             participant_event_objs=entry_obj.participant_event_objs,
             all_event_objs=entry_obj.all_event_objs,
             all_participant_ops_data=entry_obj.all_participant_ops_data
         )
-
-        if GAE_PROJECT != 'localhost' and entry_obj.summary_updates:
+        if GAE_PROJECT != 'localhost':
             cloud_task = GCPCloudTask()
-            for summary_update in entry_obj.summary_updates:
+            if entry_obj.summary_updates:
+                for summary_update in entry_obj.summary_updates:
+                    cloud_task.execute(
+                        endpoint='update_participant_summary_for_nph_task',
+                        payload=summary_update,
+                        queue='nph'
+                    )
+            if withdrawn_pids:
                 cloud_task.execute(
-                    endpoint='update_participant_summary_for_nph_task',
-                    payload=summary_update,
-                    queue='nph'
+                    endpoint="withdrawn_participant_notifier_task",
+                    payload={"withdrawn_pids": withdrawn_pids},
+                    queue="nph"
                 )
 
 
