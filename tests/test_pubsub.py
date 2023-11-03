@@ -36,7 +36,8 @@ class PubSubTest(BaseTestCase):
         self.temporarily_override_config_setting(
             'pdr_pipeline', {
                 "allowed_projects": [
-                       "localhost"
+                       "localhost",
+                       "missing_project_name"
                 ],
                 "excluded_table_list": [
                     "log_position",
@@ -49,6 +50,16 @@ class PubSubTest(BaseTestCase):
                 ]
             }
         )
+
+    @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
+    def test_missing_project_instance(self, mock_pub_func):
+        """ Test PDR-2194 fix to catch KeyError if project is not defined in pubsub instance map """
+
+        resp = submit_pipeline_pubsub_msg(table='participant', action='update', pk_columns=['participant_id'],
+                                          pk_values=['123456789'], project='missing_project_name')
+        self.assertIsInstance(resp, dict)
+        self.assertIn('error', resp)
+        self.assertFalse(mock_pub_func.called)
 
     @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
     def test_simple_valid_pubsub_msg(self, mock_pub_func):
