@@ -2187,7 +2187,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         # Verify that a datalog entry was created
         data_log: PediatricDataLog = self.session.query(PediatricDataLog).filter(
             PediatricDataLog.participant_id == participant_id,
-            PediatricDataLog.data_type == PediatricDataType.ENVIRONMENTAL_HEALTH
+            PediatricDataLog.data_type == PediatricDataType.ENVIRONMENTAL_EXPOSURES
         ).one()
         self.assertEqual(authored_time.isoformat(), data_log.value)
 

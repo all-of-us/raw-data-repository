@@ -31,6 +31,9 @@ class ParticipantIncentives(Base):
     cancelledBy = Column('cancelled_by', String(255), nullable=True)
     cancelledDate = Column('cancelled_date', String(255), nullable=True)
     declined = Column(SmallInteger, nullable=False, default=0)
+    incentiveRecipient = Column('incentive_recipient', String(255), nullable=True)
+    appreciationItemType = Column('appreciation_item_type', String(255), nullable=True)
+    appreciationItemCount = Column('appreciation_item_count', Integer, nullable=True)
 
 
 event.listen(ParticipantIncentives, "before_insert", model_insert_listener)

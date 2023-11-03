@@ -150,7 +150,6 @@ class MessageBrokerFactory:
 
     @classmethod
     def create(cls, message):
-
         try:
             broker_factory = {
                 'vibrent': PtscMessageBroker,

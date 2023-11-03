@@ -9,7 +9,7 @@ from rdr_service.model.utils import UTCDateTime
 
 class PediatricDataType(Enum):
     AGE_RANGE = 1
-    ENVIRONMENTAL_HEALTH = 2
+    ENVIRONMENTAL_EXPOSURES = 2
 
 
 class PediatricDataLog(Base):

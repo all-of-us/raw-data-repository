@@ -1,5 +1,6 @@
 from dateutil.parser import parse
 from flask import request
+from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, Conflict, MethodNotAllowed
 
 from rdr_service.api.base_api import UpdatableApi
@@ -134,12 +135,32 @@ class MailKitOrderApi(UpdatableApi):
         return response
 
     def _post_supply_request(self, resource):
+        """
+        Return response when POSTed to /SupplyRequest, handling scenarios where partners POST again after receiving 502.
+
+        From October 2023, partner reported intermittent 502 errors when POSTing to /SupplyRequest.
+        Even though we saved their data in our DB on their receiving a 502, they weren't aware of this.
+        Due to their uncertainty about the first POST's success, they'd POST again with an updated payload,
+        to which we'd respond with a 500, since we expect them to send a PUT when updating. The try/except is
+        workaround: if they POST again with the same order_id after they get 502, we treat the subsequent POST
+        as a PUT, updating the existing resource with their new payload. For more details, refer to ROC-1740.
+        """
         fhir_resource = SimpleFhirR4Reader(resource)
         patient = fhir_resource.contained.get(resourceType="Patient")
         pid = patient.identifier.get(system=DV_FHIR_URL + "participantId").value
         p_id = from_client_participant_id(pid)
-        response = super(MailKitOrderApi, self).post(participant_id=p_id)
         order_id = fhir_resource.identifier.get(system=DV_FHIR_URL + "orderId").value
+        try:
+            response = super(MailKitOrderApi, self).post(participant_id=p_id)
+        except IntegrityError as e:
+            constraint_name = "uidx_partic_id_order_id"
+            if constraint_name in str(e):
+                # Catch error due to repeated POSTs with the same order_id for a pid.
+                # Treat as a PUT, since 'supplier_status' in the payload is updated, as seen in logs.
+                response = self.put(bo_id=order_id)
+            else:
+                raise Conflict(e.orig)
+
         response[2]["Location"] = "/rdr/v1/SupplyRequest/{}".format(order_id)
         response[2]['auth_user'] = resource['auth_user']
         if response[1] == 200:

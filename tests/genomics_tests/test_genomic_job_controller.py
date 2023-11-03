@@ -301,7 +301,7 @@ class GenomicJobControllerTest(BaseTestCase):
         blocklisted = list(filter(lambda x: x.blockResults == 1 or x.blockResearch == 1, created_members))
         self.assertTrue(ids_should_be_updated.sort() == [obj.id for obj in blocklisted].sort())
 
-        # should be RESEARCH blocked
+        # should be RESEARCH blocked IF have aou_array as genome_type
         self.assertTrue(all(
             obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'aian'
             for obj in created_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW0)
@@ -392,6 +392,57 @@ class GenomicJobControllerTest(BaseTestCase):
         )
 
         run_result = self.job_run_dao.get(2)
+
+        self.assertEqual(run_result.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(run_result.runResult, GenomicSubProcessResult.SUCCESS)
+
+        # clear current set member records
+        with self.member_dao.session() as session:
+            session.query(GenomicSetMember).delete()
+
+        updated_genome_map = {
+            'block_research': [
+                {
+                    'attribute': 'ai_an',
+                    'value': 'Y',
+                    'reason_string': 'aian_aou_array',
+                    'genome_type': 'aou_array'
+                }
+            ]
+        }
+
+        config.override_setting(config.GENOMIC_MEMBER_BLOCKLISTS, updated_genome_map)
+
+        for i in range(4):
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType='aou_array' if i & 2 != 0 else 'aou_wgs',
+                genomicWorkflowState=GenomicWorkflowState.AW0,
+                ai_an='Y'
+            )
+
+        with GenomicJobController(GenomicJob.UPDATE_MEMBERS_BLOCKLISTS) as controller:
+            controller.update_members_blocklists()
+
+        updated_members = self.member_dao.get_all()
+
+        # should be RESEARCH blocked
+        self.assertTrue(all(
+            obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'aian_aou_array'
+            for obj in updated_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW0
+            and obj.genomeType == 'aou_array')
+        )
+
+        # should NOT be RESULTS blocked
+        self.assertTrue(all(
+            obj.blockResults == 0 and obj.blockResultsReason is None
+            for obj in updated_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW0
+            and obj.genomeType == 'aou_wgs')
+        )
+
+        run_result = self.job_run_dao.get(3)
 
         self.assertEqual(run_result.runStatus, GenomicSubProcessStatus.COMPLETED)
         self.assertEqual(run_result.runResult, GenomicSubProcessResult.SUCCESS)

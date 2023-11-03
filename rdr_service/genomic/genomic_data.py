@@ -166,8 +166,9 @@ class GenomicQueryClass:
                     (GenomicSetMember.aw2fManifestJobRunID.is_(None)) &
                     (GenomicGCValidationMetrics.ignoreFlag == 0) &
                     (GenomicGCValidationMetrics.contamination.isnot(None)) &
+                    (GenomicGCValidationMetrics.pipelineId.in_([config.GENOMIC_UPDATED_WGS_DRAGEN, 'cidr_egt_1'])) &
                     (GenomicGCValidationMetrics.contamination != '') &
-                    (GenomicFileProcessed.genomicManifestFileId == (self.input_manifest and self.input_manifest.id))
+                    (GenomicFileProcessed.genomicManifestFileId == getattr(self.input_manifest, 'id', 0))
                 )
             )
         }

@@ -17,7 +17,8 @@ from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
-from rdr_service.participant_enums import DeceasedStatus, RetentionType, RetentionStatus, WithdrawalStatus
+from rdr_service.participant_enums import DeceasedStatus, RetentionType, RetentionStatus, WithdrawalStatus, \
+    QuestionnaireResponseStatus
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from rdr_service.repository.etm import EtmResponseRepository
 from rdr_service.services.retention_calculation import Consent, RetentionEligibility, RetentionEligibilityDependencies
@@ -262,7 +263,9 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
     )
 
     if not summary:
-        logging.error(f'no summary for P{metrics_data.participantId}')
+        # PTSC currently included  REGISTERED participants without primary consent yet, so only emit warning if there
+        # is no participant_summary record found
+        logging.warning(f'no summary for P{metrics_data.participantId}')
         return
 
     dependencies = RetentionEligibilityDependencies(
@@ -343,24 +346,30 @@ def _get_earliest_intent_for_ehr(session, participant_id) -> Optional[Consent]:
 
 def _aggregate_response_timestamps(session, participant_id, survey_code_list, aggregate_function) -> datetime:
     """Process all the responses to the given modules, and return a single datetime"""
-    revised_consent_time_list = []
+    authored_timestamp_list = []
     response_collection = QuestionnaireResponseRepository.get_responses_to_surveys(
         session=session,
         survey_codes=survey_code_list,
         participant_ids=[participant_id]
     )
     if participant_id in response_collection:
-        program_update_response_list = response_collection[participant_id].responses.values()
-        for response in program_update_response_list:
-            reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE)
-            if reconsent_answer and reconsent_answer.value.lower() == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
-                revised_consent_time_list.append(response.authored_datetime)
+        response_list = response_collection[participant_id].responses.values()
+        for response in response_list:
+            # Special case for confirming primary consent reconsent:  check the consent question answer code
+            # NOTE: This may need more extensive changes when VA/Non-VA reconsent modules go live?
+            if response.survey_code == PRIMARY_CONSENT_UPDATE_MODULE:
+                reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE)
+                if reconsent_answer and reconsent_answer.value.lower() == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
+                    authored_timestamp_list.append(response.authored_datetime)
+            elif response.status == QuestionnaireResponseStatus.COMPLETED:
+                # Assume for other modules, we can use the authored date as long as it's a COMPLETED response
+                authored_timestamp_list.append(response.authored_datetime)
 
-    if not revised_consent_time_list:
+    if not authored_timestamp_list:
         return None
 
     # Process the dates (excluding any that might be None)
-    return aggregate_function(timestamp for timestamp in revised_consent_time_list if timestamp)
+    return aggregate_function(timestamp for timestamp in authored_timestamp_list if timestamp)
 
 def _find_qualifying_response(session, participant_id: int, q_code: str, ans_code: str) -> Optional[datetime.datetime]:
     """

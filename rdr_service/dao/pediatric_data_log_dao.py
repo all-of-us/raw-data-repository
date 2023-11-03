@@ -3,7 +3,9 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from rdr_service.clock import CLOCK
 from rdr_service.dao.base_dao import with_session
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.participant_enums import PediatricAgeRange
 
@@ -26,7 +28,8 @@ class PediatricDataLogDao:
                 data_type=PediatricDataType.AGE_RANGE,
                 value=age_range_str
             ),
-            session=session
+            session=session,
+            callback=cls._check_new_pediatric_participant
         )
 
     @classmethod
@@ -46,7 +49,7 @@ class PediatricDataLogDao:
 
     @classmethod
     @with_session
-    def insert(cls, data: PediatricDataLog, session: Optional[Session] = None):
+    def insert(cls, data: PediatricDataLog, session: Optional[Session] = None, callback=None):
         latest_data = cls.get_latest(
             participant_id=data.participant_id,
             data_type=data.data_type,
@@ -61,3 +64,17 @@ class PediatricDataLogDao:
         if latest_data:
             latest_data.replaced_by = data
 
+        if callback:
+            callback(session=session, existing_data=latest_data, participant_id=data.participant_id)
+
+    @classmethod
+    def _check_new_pediatric_participant(cls, session: Session, existing_data: PediatricDataLog, participant_id: int):
+        # If we're receiving our first age_range value for the participant, then they would switch to is_pediatric.
+        # So then the last_modified date should be updated.
+        if not existing_data:
+            summary: ParticipantSummary = session.query(ParticipantSummary).filter(
+                ParticipantSummary.participantId == participant_id
+            ).one_or_none()
+
+            if summary:
+                summary.lastModified = CLOCK.now()

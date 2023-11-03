@@ -90,6 +90,7 @@ from rdr_service.code_constants import (
     REMOTE_ID_VERIFIED_CODE,
     REMOTE_ID_VERIFIED_ON_CODE,
     ETM_CONSENT_QUESTION_CODE,
+    PEDIATRIC_BIRTH_DATE,
     PEDIATRIC_CABOR_SIGNATURE,
     PEDIATRIC_CONSENT_NO,
     PEDIATRIC_CONSENT_QUESTION_CODE,
@@ -156,7 +157,7 @@ def count_completed_baseline_ppi_modules(participant_summary):
         for field in baseline_ppi_module_fields
         if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED
     )
-    if participant_summary.did_submit_environmental_health():
+    if participant_summary.did_submit_environmental_exposures():
         result += 1
 
     return result
@@ -167,7 +168,7 @@ def count_completed_ppi_modules(participant_summary):
     result = sum(
         1 for field in ppi_module_fields if getattr(participant_summary, field, None) == QuestionnaireStatus.SUBMITTED
     )
-    if participant_summary.did_submit_environmental_health():
+    if participant_summary.did_submit_environmental_exposures():
         result += 1
 
     return result
@@ -840,6 +841,15 @@ class QuestionnaireResponseDao(BaseDao):
                                 'date_of_birth': answer.valueDate
                             }
                         )
+                    elif self._code_in_list(code.value, [PEDIATRIC_BIRTH_DATE]):
+                        dispatch_task(
+                            endpoint='check_date_of_birth',
+                            payload={
+                                'participant_id': participant.participantId,
+                                'date_of_birth': answer.valueDate,
+                                'age_range': '0_6'
+                            }
+                        )
 
                     summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
                     if summary_field:
@@ -1165,7 +1175,7 @@ class QuestionnaireResponseDao(BaseDao):
                     participant_summary.pediatricData.append(
                         PediatricDataLog(
                             participant_id=participant.participantId,
-                            data_type=PediatricDataType.ENVIRONMENTAL_HEALTH,
+                            data_type=PediatricDataType.ENVIRONMENTAL_EXPOSURES,
                             value=authored.isoformat()
                         )
                     )

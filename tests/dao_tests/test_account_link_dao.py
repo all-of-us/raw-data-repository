@@ -60,3 +60,16 @@ class AccountLinkDaoTest(BaseTestCase):
         with FakeClock(datetime(2020, 12, 1)):
             results = AccountLinkDao.get_linked_ids(child_id, session=self.session)
             self.assertEqual({first_parent_id}, results)
+
+    def test_linking_sets_modified_time(self):
+        pediatric_summary = self.data_generator.create_database_participant_summary()
+        guardian_id = self.data_generator.create_database_participant().participantId
+
+        timestamp = datetime(2023, 4, 8)
+        with FakeClock(timestamp):
+            AccountLinkDao.save_account_link(
+                account_link=AccountLink(participant_id=pediatric_summary.participantId, related_id=guardian_id),
+                session=self.session
+            )
+
+        self.assertEqual(timestamp, pediatric_summary.lastModified)

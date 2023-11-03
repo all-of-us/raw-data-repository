@@ -155,17 +155,6 @@ def gem_a1_manifest_workflow():
         )
 
 
-def gem_a2_manifest_workflow():
-    """
-    Entrypoint for GEM A2 Workflow
-    """
-    with GenomicJobController(GenomicJob.GEM_A2_MANIFEST,
-                              bucket_name=config.GENOMIC_GEM_BUCKET_NAME,
-                              sub_folder_name=config.GENOMIC_GEM_A2_MANIFEST_SUBFOLDER) as controller:
-        controller.reconcile_report_states(genome_type=config.GENOME_TYPE_ARRAY)
-        controller.run_general_ingestion_workflow()
-
-
 def gem_a3_manifest_workflow():
     """
     Entrypoint for GEM A3 Workflow
@@ -177,15 +166,6 @@ def gem_a3_manifest_workflow():
             GenomicManifestTypes.GEM_A3,
             genome_type=config.GENOME_TYPE_ARRAY
         )
-
-
-def gem_metrics_ingest():
-    """
-    Entrypoint for the GEM Metrics ingestion from Color
-    """
-    with GenomicJobController(GenomicJob.GEM_METRICS_INGEST,
-                              bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
-        controller.run_general_ingestion_workflow()
 
 
 def update_report_state_for_consent_removal():

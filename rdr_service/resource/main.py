@@ -142,6 +142,11 @@ def _build_resource_app():
                       TASK_PREFIX + "IngestSubManifestTaskApi",
                       endpoint="ingest_sub_manifest_task", methods=["POST"])
 
+    # Ingest GEM manifest
+    _api.add_resource(genomic_cloud_tasks_api.IngestGemManifestTaskApi,
+                      TASK_PREFIX + "IngestGemManifestTaskApi",
+                      endpoint="ingest_gem_manifest_task", methods=["POST"])
+
     # Ingest member samples from raw models
     _api.add_resource(genomic_cloud_tasks_api.IngestSamplesFromRawTaskAPI,
                       TASK_PREFIX + "IngestSamplesFromRawTaskAPI",
@@ -196,6 +201,10 @@ def _build_resource_app():
                       TASK_PREFIX + "GenerateManifestApi",
                       endpoint="genomic_generate_manifest", methods=["POST"])
 
+    _api.add_resource(genomic_cloud_tasks_api.GenomicIncidentApi,
+                      TASK_PREFIX + "GenomicIncidentApi",
+                      endpoint="genomic_incident", methods=["POST"])
+
     #
     # End Genomic Cloud Task API endpoints
     #
@@ -223,9 +232,14 @@ def _build_resource_app():
                       endpoint="nph_sms_generation_task", methods=["POST"])
 
     # Cloud Task for NPH Incidents
-    _api.add_resource(ancillary_study_cloud_tasks_api.InsertNphIncidentTaskApi,
-                      TASK_PREFIX + "InsertNphIncidentTaskApi",
-                      endpoint="insert_nph_incident_task", methods=["POST"])
+    _api.add_resource(ancillary_study_cloud_tasks_api.NphIncidentTaskApi,
+                      TASK_PREFIX + "NphIncidentTaskApi",
+                      endpoint="nph_incident_task", methods=["POST"])
+
+    # Cloud Task for sending Slack Alerts if withdrawn PIDs found in NPH Intake Api payload
+    _api.add_resource(ancillary_study_cloud_tasks_api.WithdrawnParticipantNotifierTaskApi,
+                      TASK_PREFIX + "WithdrawnParticipantNotifierTaskApi",
+                      endpoint="withdrawn_participant_notifier_task", methods=["POST"])
 
     #
     # End Ancillary Studies Cloud Task API endpoints

@@ -46,6 +46,7 @@ from rdr_service.api.message_broker_api import MessageBrokerApi
 from rdr_service.api.onsite_verification_api import OnsiteVerificationApi
 from rdr_service.api.nph_participant_biobank_order_api import NphOrderApi
 from rdr_service.api.nph_participant_api import nph_participant
+from rdr_service.api.site_hierarchy_api import SiteHierarchyApi
 
 from rdr_service.services.flask import app, API_PREFIX, flask_warmup, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
@@ -89,6 +90,13 @@ api.add_resource(
     API_PREFIX + "ParticipantId/ResearchId/Mapping",
     endpoint="participant.researchId",
     methods=["GET"],
+)
+
+api.add_resource(
+    SiteHierarchyApi,
+    API_PREFIX + "SiteHierarchy",
+    endpoint="sitehierarchy",
+    methods=["GET"]
 )
 
 

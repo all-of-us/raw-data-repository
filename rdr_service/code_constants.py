@@ -277,6 +277,8 @@ BIOBANK_TESTS = [
     "1ED02",
     "1CFD9",
     "1PXR2",
+    "2ED02",
+    "2ED04"
 ]
 BIOBANK_TESTS_SET = frozenset(BIOBANK_TESTS)
 
