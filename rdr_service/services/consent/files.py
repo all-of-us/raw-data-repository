@@ -267,10 +267,10 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         return 'exploring_the_mind_consent_form' in basename(blob_wrapper.blob.name)
 
     def _is_pediatric_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        return 'idontknowhowtofindthis' in basename(blob_wrapper.blob.name)
+        return 'consentpii_0to6' in basename(blob_wrapper.blob.name)
 
     def _is_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        return 'whatamidoinghere' in basename(blob_wrapper.blob.name)
+        return 'ehrchildconsentpii' in basename(blob_wrapper.blob.name)
 
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return VibrentPrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
