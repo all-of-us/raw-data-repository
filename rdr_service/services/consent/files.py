@@ -374,10 +374,10 @@ class CeConsentFactory(ConsentFileAbstractFactory):
         return False
 
     def _is_pediatric_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        raise NotImplemented('Pediatric consent validation not implemented for CE')
+        raise NotImplementedError('Pediatric consent validation not implemented for CE')
 
     def _is_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        raise NotImplemented('Pediatric consent validation not implemented for CE')
+        raise NotImplementedError('Pediatric consent validation not implemented for CE')
 
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return CePrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
@@ -402,10 +402,10 @@ class CeConsentFactory(ConsentFileAbstractFactory):
         pass
 
     def _build_pediatric_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PediatricPrimaryConsentFile':
-        raise NotImplemented('Pediatric consent validation not implemented for CE')
+        raise NotImplementedError('Pediatric consent validation not implemented for CE')
 
     def _build_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PediatricEhrConsentFile':
-        raise NotImplemented('Pediatric consent validation not implemented for CE')
+        raise NotImplementedError('Pediatric consent validation not implemented for CE')
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['careevolution']
