@@ -25,6 +25,7 @@ from rdr_service.services.system_utils import retry_func, list_chunks
 _INSTANCE_MAPPING = {
     'all-of-us-rdr-prod': 'all-of-us-rdr-prod:us-central1:rdrbackupdb-d',
     'all-of-us-rdr-stable': 'all-of-us-rdr-stable:us-central1:rdrbackupdb',
+    'all-of-us-rdr-ptsc-1-test': 'all-of-us-rdr-ptsc-1-test:us-central1:rdrbackupdb',
     'pmi-drc-api-test': 'pmi-drc-api-test:us-central1:rdrmaindb',
     'all-of-us-rdr-sandbox': 'all-of-us-rdr-sandbox:us-central1:rdrmaindb'
 }
@@ -166,23 +167,27 @@ def submit_pipeline_pubsub_msg(database: str = 'rdr', table: str = None, action:
     count = 0
     last_response = {'error': 'pipeline: should not ever see this message'}
     for pk_values_batch in list_chunks(validated_pk_values, 500):
-        # Warning: Do not change this structure without changing the defined schema in the pub/sub topic in GCP.
-        data = {
-            "instance": _INSTANCE_MAPPING[project],
-            "database": database,
-            "table": table,
-            "timestamp": datetime.utcnow().isoformat(),
-            "action": action,
-            "pk_columns": pk_columns,
-            "pk_values": pk_values_batch
-        }
         try:
+            # Warning: Do not change this structure without changing the defined schema in the pub/sub topic in GCP.
+            data = {
+                "instance": _INSTANCE_MAPPING[project],
+                "database": database,
+                "table": table,
+                "timestamp": datetime.utcnow().isoformat(),
+                "action": action,
+                "pk_columns": pk_columns,
+                "pk_values": pk_values_batch
+            }
             # sample response: {'messageIds': ['6516999682321403']}
             last_response = retry_func(publish_pubsub_message, backoff_amount=0.1, project_id=project,
                                        topic='data-pipeline', message=data)
             count += 1
-        except errors.HttpError as e:
-            return log_pipeline_error(str(e))
+        except (errors.HttpError, KeyError) as e:
+            if isinstance(e, KeyError):
+                msg = f'{e} not found in project instance map'
+            else:
+                msg = str(e)
+            return log_pipeline_error(msg)
 
     logging.info(f'pipeline: submitted {count} pubsub messages.')
     return last_response
