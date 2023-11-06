@@ -887,7 +887,11 @@ class QuestionnaireResponseDao(BaseDao):
                         if code and self._code_in_list(code.value, [
                             CONSENT_PERMISSION_YES_CODE, SENSITIVE_EHR_YES, PEDIATRIC_SHARE_AGREE
                         ]):
-                            self.consents_provided.append(ConsentType.EHR)
+                            if code.value_matches(PEDIATRIC_SHARE_AGREE):
+                                consent_type = ConsentType.PEDIATRIC_EHR
+                            else:
+                                consent_type = ConsentType.EHR
+                            self.consents_provided.append(consent_type)
                             ehr_consent = True
                             if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
                                 participant_summary.consentForElectronicHealthRecordsFirstYesAuthored = authored
@@ -1089,6 +1093,9 @@ class QuestionnaireResponseDao(BaseDao):
                             self.consents_provided.append(ConsentType.PRIMARY)
                             participant_summary.semanticVersionForPrimaryConsent = \
                                 questionnaire_response.questionnaireSemanticVersion
+                        elif code.value_matches(PEDIATRIC_PRIMARY_CONSENT_MODULE):
+                            self.consents_provided.append(ConsentType.PEDIATRIC_PRIMARY)
+
                         if participant_summary.consentCohort is None or \
                             participant_summary.consentCohort == ParticipantCohort.UNSET:
 

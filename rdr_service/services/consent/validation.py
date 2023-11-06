@@ -98,7 +98,8 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
                 'rebuild_one_participant_task',
                 queue='resource-tasks',
                 payload={'p_id': participant_id},
-                in_seconds=30
+                in_seconds=30,
+                project_id=self._project_name
             )
 
         self._session.commit()  # release the for_update lock obtained on the participant_summary
@@ -136,6 +137,7 @@ class ValidationOutputStrategy(ABC):
         def participant_results():
             return defaultdict(lambda: [])
         return defaultdict(participant_results)
+
 
 class StoreResultStrategy(ValidationOutputStrategy):
     def __init__(self, session, consent_dao: ConsentDao, project_id=None):
@@ -185,6 +187,7 @@ class StoreResultStrategy(ValidationOutputStrategy):
     def set_consent_response_ids_for_results(self):
         # TODO:  Is this functionality only needed in the ReplacementStoringStrategy class, or here as well?
         ...
+
 
 class ReplacementStoringStrategy(ValidationOutputStrategy):
     def __init__(self, session, consent_dao: ConsentDao, project_id=None):
@@ -523,7 +526,9 @@ class ConsentValidationController:
             ConsentType.GROR: validator.get_gror_validation_results,
             ConsentType.PRIMARY_UPDATE: validator.get_primary_update_validation_results,
             ConsentType.WEAR: validator.get_wear_validation_results,
-            ConsentType.ETM: validator.get_etm_validation_results
+            ConsentType.ETM: validator.get_etm_validation_results,
+            ConsentType.PEDIATRIC_PRIMARY: validator.get_pediatric_primary_validation_results,
+            ConsentType.PEDIATRIC_EHR: validator.get_pediatric_ehr_validation_results
         }
 
         for consent_response in consent_responses:
@@ -862,6 +867,26 @@ class ConsentValidator:
         return self._generate_validation_results(
             consent_files=self.factory.get_etm_consents(),
             consent_type=ConsentType.ETM,
+            expected_sign_datetime=expected_signing_date
+        )
+
+    def get_pediatric_primary_validation_results(self, expected_signing_date: datetime = None) -> List[ParsingResult]:
+        if expected_signing_date is None:
+            expected_signing_date = self.participant_summary.consentForStudyEnrollmentFirstYesAuthored
+
+        return self._generate_validation_results(
+            consent_files=self.factory.get_pediatric_primary_consents(),
+            consent_type=ConsentType.PEDIATRIC_PRIMARY,
+            expected_sign_datetime=expected_signing_date
+        )
+
+    def get_pediatric_ehr_validation_results(self, expected_signing_date: datetime = None) -> List[ParsingResult]:
+        if expected_signing_date is None:
+            expected_signing_date = self.participant_summary.consentForElectronicHealthRecordsAuthored
+
+        return self._generate_validation_results(
+            consent_files=self.factory.get_pediatric_ehr_consents(),
+            consent_type=ConsentType.PEDIATRIC_EHR,
             expected_sign_datetime=expected_signing_date
         )
 

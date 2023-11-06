@@ -106,6 +106,20 @@ class ConsentFileAbstractFactory(ABC):
             if self._is_etm_consent(blob_wrapper)
         ]
 
+    def get_pediatric_primary_consents(self) -> List['PediatricPrimaryConsentFile']:
+        return [
+            self._build_pediatric_primary_consent(blob_wrapper)
+            for blob_wrapper in self.consent_blobs
+            if self._is_pediatric_primary_consent(blob_wrapper)
+        ]
+
+    def get_pediatric_ehr_consents(self) -> List['PediatricEhrConsentFile']:
+        return [
+            self._build_pediatric_ehr_consent(blob_wrapper)
+            for blob_wrapper in self.consent_blobs
+            if self._is_pediatric_ehr_consent(blob_wrapper)
+        ]
+
     def get_from_path(self, file_path: str, consent_date=None) -> 'ConsentFile':
         wrapper = None
         for consent in self.consent_blobs:
@@ -156,6 +170,14 @@ class ConsentFileAbstractFactory(ABC):
         ...
 
     @abstractmethod
+    def _is_pediatric_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        ...
+
+    @abstractmethod
+    def _is_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        ...
+
+    @abstractmethod
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         ...
 
@@ -182,6 +204,14 @@ class ConsentFileAbstractFactory(ABC):
 
     @abstractmethod
     def _build_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EtmConsentFile':
+        ...
+
+    @abstractmethod
+    def _build_pediatric_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PediatricPrimaryConsentFile':
+        ...
+
+    @abstractmethod
+    def _build_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PediatricEhrConsentFile':
         ...
 
     @abstractmethod
@@ -236,6 +266,12 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
     def _is_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         return 'exploring_the_mind_consent_form' in basename(blob_wrapper.blob.name)
 
+    def _is_pediatric_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        return 'consentpii_0to6' in basename(blob_wrapper.blob.name)
+
+    def _is_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        return 'ehrchildconsentpii' in basename(blob_wrapper.blob.name)
+
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return VibrentPrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
@@ -264,6 +300,12 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
 
     def _build_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EtmConsentFile':
         return VibrentEtmConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
+
+    def _build_pediatric_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PediatricPrimaryConsentFile':
+        return VibrentPediatricPrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
+
+    def _build_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PediatricEhrConsentFile':
+        return VibrentPediatricEhrConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['vibrent']
@@ -331,6 +373,12 @@ class CeConsentFactory(ConsentFileAbstractFactory):
     def _is_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         return False
 
+    def _is_pediatric_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        raise NotImplementedError('Pediatric consent validation not implemented for CE')
+
+    def _is_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        raise NotImplementedError('Pediatric consent validation not implemented for CE')
+
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return CePrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
@@ -352,6 +400,12 @@ class CeConsentFactory(ConsentFileAbstractFactory):
 
     def _build_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EtmConsentFile':
         pass
+
+    def _build_pediatric_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PediatricPrimaryConsentFile':
+        raise NotImplementedError('Pediatric consent validation not implemented for CE')
+
+    def _build_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PediatricEhrConsentFile':
+        raise NotImplementedError('Pediatric consent validation not implemented for CE')
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['careevolution']
@@ -470,6 +524,14 @@ class GrorConsentFile(ConsentFile, ABC):
 
 
 class EtmConsentFile(ConsentFile, ABC):
+    ...
+
+
+class PediatricPrimaryConsentFile(PrimaryConsentFile, ABC):
+    ...
+
+
+class PediatricEhrConsentFile(EhrConsentFile, ABC):
     ...
 
 
@@ -745,6 +807,14 @@ class VibrentEtmConsentFile(EtmConsentFile):
             Rect.from_edges(left=350, right=500, bottom=45, top=50),
             page=self._SIGNATURE_PAGE
         )
+
+
+class VibrentPediatricPrimaryConsentFile(PediatricPrimaryConsentFile, VibrentPrimaryConsentFile):
+    ...
+
+
+class VibrentPediatricEhrConsentFile(PediatricEhrConsentFile, VibrentEhrConsentFile):
+    ...
 
 
 class VibrentWearConsentFile(WearConsentFile):

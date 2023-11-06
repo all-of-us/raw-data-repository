@@ -29,6 +29,8 @@ class ConsentType(messages.Enum):
     PRIMARY_RECONSENT = 8
     EHR_RECONSENT = 9
     ETM = 10
+    PEDIATRIC_PRIMARY = 11
+    PEDIATRIC_EHR = 12
 
 # DA-3423: Map ConsentType values to their possible module strings, for use in QuestionnaireResponse query filtering
 CONSENT_TYPE_MODULE_NAMES = {
