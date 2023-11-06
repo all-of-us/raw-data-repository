@@ -513,6 +513,10 @@ class ConsentValidationController:
                     storage_strategy.add_all(validator.get_primary_update_validation_results())
                 elif consent_type == ConsentType.ETM:
                     storage_strategy.add_all(validator.get_etm_validation_results())
+                elif consent_type == ConsentType.PEDIATRIC_PRIMARY:
+                    storage_strategy.add_all(validator.get_pediatric_primary_validation_results())
+                elif consent_type == ConsentType.PEDIATRIC_EHR:
+                    storage_strategy.add_all(validator.get_pediatric_ehr_validation_results())
 
     def validate_consent_responses(self, summary: ParticipantSummary, output_strategy: ValidationOutputStrategy,
                                    consent_responses: Collection[ConsentResponse]):
@@ -598,6 +602,22 @@ class ConsentValidationController:
             output_strategy.add_all(self._process_validation_results(validator.get_etm_validation_results()))
         if self._check_consent_type(ConsentType.WEAR, types_to_validate):
             output_strategy.add_all(self._process_validation_results(validator.get_wear_validation_results()))
+        if self._check_consent_type(ConsentType.PEDIATRIC_PRIMARY, types_to_validate) and self._has_consent(
+            consent_status=summary.consentForStudyEnrollment,
+            authored=summary.consentForStudyEnrollmentFirstYesAuthored,
+            min_authored=min_authored_date,
+            max_authored=max_authored_date
+        ):
+            output_strategy.add_all(
+                self._process_validation_results(validator.get_pediatric_primary_validation_results())
+            )
+        if self._check_consent_type(ConsentType.PEDIATRIC_EHR, types_to_validate) and self._has_consent(
+            consent_status=summary.consentForElectronicHealthRecords,
+            authored=summary.consentForElectronicHealthRecordsAuthored,
+            min_authored=min_authored_date,
+            max_authored=max_authored_date
+        ):
+            output_strategy.add_all(self._process_validation_results(validator.get_pediatric_ehr_validation_results()))
 
         # DA-3423:  Populate the consent_response_id values for the ConsentFile validation results as needed
         output_strategy.set_consent_response_ids_for_results()
