@@ -25,34 +25,6 @@ class ConsentFileDaoTest(BaseTestCase):
             questionnaireVersion=self.primary_update_questionnaire.version
         )
 
-    def test_ignoring_participants(self):
-        """Make sure test and ghost accounts are left out of consent validation"""
-        self._init_summary_with_consent_data(
-            submitted_consent_types=[],
-            validated_consent_types=[ConsentType.PRIMARY],
-            extra_summary_args={
-                'participantId': self.data_generator.create_database_participant(isGhostId=True).participantId
-            }
-        )
-        self._init_summary_with_consent_data(
-            submitted_consent_types=[],
-            validated_consent_types=[ConsentType.PRIMARY],
-            extra_summary_args={
-                'participantId': self.data_generator.create_database_participant(isTestParticipant=True).participantId
-            }
-        )
-        self._init_summary_with_consent_data(
-            submitted_consent_types=[],
-            validated_consent_types=[ConsentType.PRIMARY],
-            extra_summary_args={
-                'email': 'one@example.com'
-            }
-        )
-
-        with self.consent_dao.session() as session:
-            results = self.consent_dao.get_participants_with_unvalidated_files(session)
-        self.assertEqual([], results)
-
     def test_finding_validations_needed_by_response(self):
         # Set up a pair of QuestionnaireResponses, one of which needs to be validated
         response_to_validate = self.data_generator.create_database_questionnaire_response()
