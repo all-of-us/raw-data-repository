@@ -3,7 +3,7 @@ from flask import request
 from werkzeug.exceptions import NotFound
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api.nph_participant_api_schemas.util import NphParticipantData
-from rdr_service.api_util import RTI, RDR
+from rdr_service.api_util import RTI, RDR_AND_HEALTHPRO
 from rdr_service.app_util import auth_required
 from rdr_service.dao.study_nph_dao import NphBiospecimenDao, NphParticipantDao
 
@@ -13,7 +13,7 @@ class NphBiospecimenAPI(BaseApi):
         super().__init__(NphBiospecimenDao())
         self.nph_participant_dao = NphParticipantDao()
 
-    @auth_required([RTI, RDR])
+    @auth_required(RDR_AND_HEALTHPRO + [RTI])
     def get(self, nph_participant_id=None):
         log_api_request(log=request.log_record)
         if nph_participant_id:
