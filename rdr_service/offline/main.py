@@ -1,5 +1,5 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
-
+import rdr_service.offline.genomics.genomic_gem_pipeline
 from rdr_service.genomic_enums import GenomicJob
 
 import json
@@ -540,14 +540,14 @@ def genomic_aw2f_remainder_workflow():
 @app_util.auth_required_cron
 @check_genomic_cron_job('a1_manifest_workflow')
 def genomic_gem_a1_workflow():
-    genomic_pipeline.gem_a1_manifest_workflow()
+    rdr_service.offline.genomics.genomic_gem_pipeline.gem_a1_manifest_workflow()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
 @check_genomic_cron_job('a3_manifest_workflow')
 def genomic_gem_a3_workflow():
-    genomic_pipeline.gem_a3_manifest_workflow()
+    rdr_service.offline.genomics.genomic_gem_pipeline.gem_a3_manifest_workflow()
     return '{"success": "true"}'
 
 

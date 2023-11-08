@@ -9,7 +9,7 @@ from rdr_service.model.genomics import (GenomicLRRaw, GenomicL0Raw, GenomicPRRaw
                                         GenomicW3SSRaw, GenomicW4WRRaw,
                                         GenomicW5NFRaw, GenomicAW4Raw, GenomicAW3Raw, GenomicP1Raw, GenomicP2Raw,
                                         GenomicRRRaw, GenomicR0Raw,
-                                        GenomicR1Raw, GenomicL1Raw, GenomicA2Raw)
+                                        GenomicR1Raw, GenomicL1Raw, GenomicA2Raw, GenomicA3Raw, GenomicA1Raw)
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -39,9 +39,17 @@ def load_manifest_into_raw_table(
         }
     }
     gem_map = {
+        "a1": {
+            'job_id': GenomicJob.LOAD_A1_TO_RAW_TABLE,
+            'model': GenomicA1Raw
+        },
         "a2": {
             'job_id': GenomicJob.LOAD_A2_TO_RAW_TABLE,
             'model': GenomicA2Raw
+        },
+        "a3": {
+            'job_id': GenomicJob.LOAD_A3_TO_RAW_TABLE,
+            'model': GenomicA3Raw
         }
     }
     cvl_raw_map = {
