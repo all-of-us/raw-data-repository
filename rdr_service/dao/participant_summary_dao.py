@@ -1261,10 +1261,12 @@ class ParticipantSummaryDao(UpdatableDao):
             return record.all()
 
     def get_hpro_consent_paths(self, result):
-        consents_map = {
+        type_to_field_name_map = {  # Maps types to the prefix of the field name they populate in the resulting JSON
             ConsentType.PRIMARY: 'consentForStudyEnrollment',
+            ConsentType.PEDIATRIC_PRIMARY: 'consentForStudyEnrollment',
             ConsentType.CABOR: 'consentForCABoR',
             ConsentType.EHR: 'consentForElectronicHealthRecords',
+            ConsentType.PEDIATRIC_EHR: 'consentForElectronicHealthRecords',
             ConsentType.GROR: 'consentForGenomicsROR',
             ConsentType.PRIMARY_RECONSENT: 'reconsentForStudyEnrollment',
             ConsentType.EHR_RECONSENT: 'reconsentForElectronicHealthRecords'
@@ -1272,12 +1274,12 @@ class ParticipantSummaryDao(UpdatableDao):
         participant_id = result['participantId']
         records = list(filter(lambda obj: obj.participant_id == participant_id, self.hpro_consents))
 
-        for consent_type, consent_name in consents_map.items():
-            value_path_key = f'{consent_name}FilePath'
-            has_consent_path = [obj for obj in records if consent_type == obj.consent_type]
+        for consent_type, field_name_prefix in type_to_field_name_map.items():
+            field_name = f'{field_name_prefix}FilePath'
+            matching_consent_list = [obj for obj in records if consent_type == obj.consent_type]
 
-            if has_consent_path:
-                result[value_path_key] = has_consent_path[0].file_path
+            if matching_consent_list:
+                result[field_name] = matching_consent_list[0].file_path
 
         return result
 
