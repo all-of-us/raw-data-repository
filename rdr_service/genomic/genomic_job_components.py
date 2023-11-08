@@ -1588,6 +1588,8 @@ class GenomicFileValidator:
             "sampletype",
             "treatments",
             "quantityul",
+            "totalconcentrationngul",
+            "totaldnang",
             "visitdescription",
             "samplesource",
             "study",
