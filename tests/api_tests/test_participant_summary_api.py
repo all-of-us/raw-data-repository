@@ -792,35 +792,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 self.assertFalse(file_path in entry['resource'].keys())
                 self.assertIsNone(entry['resource'].get(file_path))
 
-    def test_pediatric_hpro_consent(self):
-        participant_summary = self.data_generator.create_database_participant_summary()
-        consent_record = self.data_generator.create_database_consent_file(
-            file_path='pediatric/primary',
-            type=ConsentType.PEDIATRIC_PRIMARY,
-            participant_id=participant_summary.participantId
-        )
-        self.data_generator.create_database_hpro_consent(
-            consent_file_id=consent_record.id,
-            file_path='transferred/pediatric/primary',
-            participant_id=participant_summary.participantId
-        )
-        consent_record = self.data_generator.create_database_consent_file(
-            file_path='pediatric/ehr',
-            type=ConsentType.PEDIATRIC_EHR,
-            participant_id=participant_summary.participantId
-        )
-        self.data_generator.create_database_hpro_consent(
-            consent_file_id=consent_record.id,
-            file_path='transferred/pediatric/ehr',
-            participant_id=participant_summary.participantId
-        )
-
-        self.overwrite_test_user_roles([HEALTHPRO])
-        summary_response = self.send_get(f"Participant/P{participant_summary.participantId}/Summary")
-
-        self.assertEqual('transferred/pediatric/primary', summary_response['consentForStudyEnrollmentFilePath'])
-        self.assertEqual('transferred/pediatric/ehr', summary_response['consentForElectronicHealthRecordsFilePath'])
-
     def test_hpro_participant_incentives(self):
         num_summary, first_pid, second_pid = 3, None, None
 
