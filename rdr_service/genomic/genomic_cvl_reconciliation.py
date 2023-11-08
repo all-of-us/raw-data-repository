@@ -27,7 +27,7 @@ class GenomicCVLReconcile:
 
         def _process_sample_data(*, dao, sample):
             sample = sample._asdict()
-            sample['cvlSiteId'] = 'co' if sample.get('cvlSiteId') == 'bi' else sample.get('cvlSiteId')
+            sample['cvlSiteId'] = 'co' if sample.get('cvlSiteId').lower() == 'bi' else sample.get('cvlSiteId')
             past_due_sample_obj = dao.get_model_obj_from_items(
                 {self.result_dao.camel_to_snake(k): v for k, v in sample.items()}.items()
             )
