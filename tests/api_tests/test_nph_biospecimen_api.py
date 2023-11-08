@@ -71,8 +71,6 @@ class NphBiospecimenAPITest(BaseTestCase):
 
     def test_biospecimen_by_participant_id(self):
         self.create_nph_biospecimen_data()
-        # generate_ordered_sample_data()
-
         first_nph_participant = self.nph_participant.get_all()[0]
         response = self.send_get(f'nph/Biospecimen/{first_nph_participant.id}')
         self.assertIsNotNone(response)
