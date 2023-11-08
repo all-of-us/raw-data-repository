@@ -30,8 +30,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
     """
     ro_dao = None
     # Retrieve module and sample test lists from config.
+    # Need to add the peds mods since they don't have separate fields in participant_summary / aren't in the config item
     _baseline_modules = [mod.replace('questionnaireOn', '')
-                         for mod in config.getSettingList('baseline_ppi_questionnaire_fields')]
+                         for mod in config.getSettingList('baseline_ppi_questionnaire_fields')] + \
+                        ['ped_basics', 'ped_overall_health', 'ped_environmental_exposures']
     _baseline_sample_test_codes = config.getSettingList('baseline_sample_test_codes')
     _dna_sample_test_codes = config.getSettingList('dna_sample_test_codes')
 

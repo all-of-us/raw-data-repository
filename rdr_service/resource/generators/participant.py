@@ -201,8 +201,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
     """
     ro_dao = None
     # Retrieve module and sample test lists from config.
+    # Need to add the peds mods since they don't have separate fields in participant_summary / aren't in the config item
     _baseline_modules = [mod.replace('questionnaireOn', '')
-                         for mod in config.getSettingList('baseline_ppi_questionnaire_fields')]
+                         for mod in config.getSettingList('baseline_ppi_questionnaire_fields')] + \
+                        ['ped_basics', 'ped_overall_health', 'ped_environmental_exposures']
+
     _baseline_sample_test_codes = config.getSettingList('baseline_sample_test_codes')
     _dna_sample_test_codes = config.getSettingList('dna_sample_test_codes')
 
@@ -772,6 +775,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 if (module_name == 'EHRConsentPII'
                         and row.classificationType == QuestionnaireResponseClassificationType.PARTIAL):
                     continue
+                elif module_name == 'ped_environmental_health':
+                    # PDR-2210: NIH wants this nomenclature instead of the defined module name in codebook
+                    module_name = 'ped_environmental_exposures'
 
                 # Consent modules with a configured consent question start in UNSET status pending answer evaluation
                 if module_name in _consent_module_question_map and _consent_module_question_map[module_name]:
