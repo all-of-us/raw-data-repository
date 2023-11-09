@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from rdr_service import clock, code_constants
 from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicQueriesDao, GenomicSetMemberDao
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicIncidentCode, GenomicIncidentStatus
+from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import GenomicIncident
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.helpers.unittest_base import BaseTestCase
@@ -175,6 +176,28 @@ class GenomicDaoTest(BaseTestCase):
         new_incident_obj = self.incident_dao.get(new_incident.id)
 
         self.assertTrue(new_incident_obj.email_notification_sent == 1)
+
+    def test_get_wgs_pass_date(self):
+        with clock.FakeClock(datetime(2023, 11, 1)):
+            self.data_generator.create_database_genomic_aw4_raw(
+                pipeline_id='dragen_3.4.12',
+                qc_status='PASS',
+                genome_type='aou_wgs',
+                biobank_id=f'{get_biobank_id_prefix()}1234'
+            )
+
+        with clock.FakeClock(datetime(2023, 11, 2)):
+            self.data_generator.create_database_genomic_aw4_raw(
+                pipeline_id='dragen_3.7.8',
+                qc_status='PASS',
+                genome_type='aou_wgs',
+                biobank_id=f'{get_biobank_id_prefix()}1234'
+            )
+
+        with self.member_dao.session() as session:
+            wgs_pass_date = self.member_dao.get_wgs_pass_date(session, biobank_id=1234)
+
+        self.assertEqual(datetime(2023, 11, 1), wgs_pass_date)
 
     def test_batch_update_resolved_incidents(self):
 

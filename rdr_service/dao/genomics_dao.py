@@ -49,7 +49,7 @@ from rdr_service.model.genomics import (
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead,
-    GenomicProteomics, GenomicRNA)
+    GenomicProteomics, GenomicRNA, GenomicAW4Raw)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -1339,22 +1339,19 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             return members.all()
 
     @classmethod
-    def get_wgs_pass_date(cls, session, participant_id) -> Optional[datetime]:
-        aw4_job_run = session.query(
-            GenomicJobRun.startTime
+    def get_wgs_pass_date(cls, session, biobank_id) -> Optional[datetime]:
+        aw4_record = session.query(
+            GenomicAW4Raw.created
         ).select_from(
-            GenomicSetMember
-        ).join(
-            GenomicJobRun,
-            GenomicJobRun.id == GenomicSetMember.aw4ManifestJobRunID
+            GenomicAW4Raw
         ).filter(
-            GenomicSetMember.participantId == participant_id,
-            GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
-            GenomicSetMember.qcStatus == GenomicQcStatus.PASS
-        ).first()
+            GenomicAW4Raw.biobank_id == f'{get_biobank_id_prefix()}{biobank_id}',
+            GenomicAW4Raw.genome_type == config.GENOME_TYPE_WGS,
+            GenomicAW4Raw.qc_status == "PASS"
+        ).order_by(GenomicAW4Raw.created).first()
 
-        if aw4_job_run:
-            return aw4_job_run.startTime
+        if aw4_record:
+            return aw4_record.created
 
         return None
 

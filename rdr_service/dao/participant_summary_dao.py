@@ -794,7 +794,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
         wgs_sequencing_time = GenomicSetMemberDao.get_wgs_pass_date(
             session=session,
-            participant_id=summary.participantId
+            biobank_id=summary.biobankId
         )
         first_exposures_response_time = None
         for data in (summary.pediatricData or []):
