@@ -151,7 +151,7 @@ class QuestionnaireResponseRepository:
             session.query(ConsentResponse.questionnaire_response_id)
             .join(ConsentFile)
             .filter(
-                ConsentFile.type == ConsentType.EHR,
+                ConsentFile.type.in_([ConsentType.EHR, ConsentType.PEDIATRIC_EHR]),
                 ConsentFile.sync_status.in_([ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE]),
                 ConsentFile.participant_id == participant_id
             )
@@ -230,6 +230,28 @@ class QuestionnaireResponseRepository:
                         current_date_range = DateRange(start=response.authored_datetime)
                     if (
                         consent_answer.value.lower() != code_constants.CONSENT_PERMISSION_YES_CODE.lower()
+                        and current_date_range is not None
+                    ):
+                        current_date_range.end = response.authored_datetime
+                        ehr_interest_date_ranges.append(current_date_range)
+                        current_date_range = None
+
+                consent_answer = response.get_single_answer_for(code_constants.EHR_PEDIATRIC_CONSENT_QUESTION_CODE)
+                if consent_answer:
+                    if (
+                        response.id not in validated_ehr_id_list
+                        and not skip_validation_check
+                        and response.authored_datetime != default_authored_datetime
+                    ):
+                        continue
+
+                    if (
+                        consent_answer.value.lower() == code_constants.PEDIATRIC_SHARE_AGREE.lower()
+                        and current_date_range is None
+                    ):
+                        current_date_range = DateRange(start=response.authored_datetime)
+                    if (
+                        consent_answer.value.lower() != code_constants.PEDIATRIC_SHARE_AGREE.lower()
                         and current_date_range is not None
                     ):
                         current_date_range.end = response.authored_datetime

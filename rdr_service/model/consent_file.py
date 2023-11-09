@@ -2,6 +2,7 @@ from protorpc import messages
 from sqlalchemy import Boolean, Column, Date, event, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
+from rdr_service import code_constants
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import Enum, UTCDateTime
@@ -43,7 +44,9 @@ CONSENT_TYPE_MODULE_NAMES = {
     ConsentType.PRIMARY_RECONSENT: ['vaprimaryreconsent_c1_2', 'vaprimaryreconsent_c3', 'nonvaprimaryreconsent'],
     ConsentType.EHR_RECONSENT: ['vaehrreconsent'],
     # TODO: Currently seeing both ETM module strings in lower env test payloads.  Confirm if both will be needed
-    ConsentType.ETM: ['welcome_to_etm', 'english_exploring_the_mind_consent_form']
+    ConsentType.ETM: ['welcome_to_etm', 'english_exploring_the_mind_consent_form'],
+    ConsentType.PEDIATRIC_PRIMARY: code_constants.PEDIATRIC_PRIMARY_CONSENT_MODULE,
+    ConsentType.PEDIATRIC_EHR: code_constants.PEDIATRIC_EHR_CONSENT
     # ConsentType.UNKNOWN intentionally omitted
 }
 
