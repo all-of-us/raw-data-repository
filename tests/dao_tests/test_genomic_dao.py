@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from rdr_service import clock, code_constants
 from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicQueriesDao, GenomicSetMemberDao
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicIncidentCode, GenomicIncidentStatus
-from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import GenomicIncident
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.helpers.unittest_base import BaseTestCase
@@ -183,7 +182,7 @@ class GenomicDaoTest(BaseTestCase):
                 pipeline_id='dragen_3.4.12',
                 qc_status='PASS',
                 genome_type='aou_wgs',
-                biobank_id=f'{get_biobank_id_prefix()}1234'
+                biobank_id=f'1234'
             )
 
         with clock.FakeClock(datetime(2023, 11, 2)):
@@ -191,7 +190,7 @@ class GenomicDaoTest(BaseTestCase):
                 pipeline_id='dragen_3.7.8',
                 qc_status='PASS',
                 genome_type='aou_wgs',
-                biobank_id=f'{get_biobank_id_prefix()}1234'
+                biobank_id=f'1234'
             )
 
         with self.member_dao.session() as session:
