@@ -129,4 +129,3 @@ class GenomicGEMPipelineTest(BaseTestCase):
         self.assertEqual(len(a2_raw_job_runs), 1)
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in a2_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in a2_raw_job_runs))
-

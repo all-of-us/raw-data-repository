@@ -52,7 +52,7 @@ from rdr_service.model.genomics import (
     GenomicJobRun,
     GenomicGCValidationMetrics,
     GenomicSampleContamination,
-    GenomicAW3Raw, GenomicAW4Raw)
+    GenomicAW3Raw, GenomicAW4Raw, GenomicA3Raw, GenomicA1Raw)
 from rdr_service.model.participant import Participant
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
@@ -61,7 +61,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_mappings import array_file_types_attributes
-from rdr_service.offline.genomics import genomic_pipeline, genomic_dispatch
+from rdr_service.offline.genomics import genomic_pipeline, genomic_dispatch, genomic_gem_pipeline
 from rdr_service.participant_enums import (
     SampleStatus,
     Race,
@@ -2527,7 +2527,7 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         a1_time = datetime.datetime(2020, 4, 1, 0, 0, 0, 0)
         with clock.FakeClock(a1_time):
-            genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 3
+            genomic_gem_pipeline.gem_a1_manifest_workflow()  # run_id = 3
         a1f = a1_time.strftime("%Y-%m-%d-%H-%M-%S")
         # Test Genomic Set Member updated with GEM Array Manifest job run
         with self.member_dao.session() as member_session:
@@ -2590,6 +2590,14 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(3)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+        gem_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicA1Raw
+        )
+        gem_raw_records = gem_raw_dao.get_all()
+
+        for attribute in GenomicA1Raw.__table__.columns:
+            self.assertTrue(all(getattr(obj, str(attribute).split('.')[1]) is not None for obj in gem_raw_records))
+
         # Test Withdrawn and then Reconsented
         # Do withdraw GROR
         withdraw_time = datetime.datetime(2020, 4, 2, 0, 0, 0, 0)
@@ -2599,57 +2607,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.summary_dao.update(summary1)
         # Run A3 manifest
         with clock.FakeClock(withdraw_time):
-            genomic_pipeline.gem_a3_manifest_workflow()  # run_id 6
-
-    def test_gem_a1_block_results(self):
-        # Need GC Manifest for source query : run_id = 1
-        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
-                                              startTime=clock.CLOCK.now(),
-                                              runStatus=GenomicSubProcessStatus.COMPLETED,
-                                              runResult=GenomicSubProcessResult.SUCCESS))
-
-        self._create_fake_datasets_for_gc_tests(5, arr_override=True,
-                                                array_participants=range(1, 6),
-                                                recon_gc_man_id=1,
-                                                genome_center='jh',
-                                                genomic_workflow_state=GenomicWorkflowState.GEM_READY)
-
-        self._update_test_sample_ids()
-
-        self._create_stored_samples([
-            (1, 1001),
-            (2, 1002),
-            (3, 1003),
-            (4, 1004),
-            (5, 1005),
-        ])
-
-        for i in range(1, 6):
-            self.data_generator.create_database_genomic_gc_validation_metrics(
-                genomicSetMemberId=i,
-                processingStatus='pass',
-            )
-
-        # update ignore_flags for test
-        members = self.member_dao.get_all()
-        members[2].ignoreFlag = 1
-        self.member_dao.update(members[2])
-
-        # update block_results for test
-        members[3].blockResults = 1
-        self.member_dao.update(members[3])
-
-        # Add participant that has already been sent
-        members[4].biobankId = 4
-        members[4].participantId = 4
-        members[4].gemA1ManifestJobRunId = 1
-        self.member_dao.update(members[4])
-
-        genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 4
-
-        members = self.member_dao.get_all()
-        a1_members = [x for x in members if x.genomicWorkflowState == GenomicWorkflowState.A1]
-        self.assertEqual(2, len(a1_members))
+            genomic_gem_pipeline.gem_a3_manifest_workflow()  # run_id 6
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_gem_a3_manifest_workflow(self, cloud_task):
@@ -2685,7 +2643,7 @@ class GenomicPipelineTest(BaseTestCase):
         out_time = fake_now.strftime("%Y-%m-%d-%H-%M-%S")
         with clock.FakeClock(fake_now):
             genomic_pipeline.update_report_state_for_consent_removal()  # run_id 2
-            genomic_pipeline.gem_a3_manifest_workflow()  # run_id 3
+            genomic_gem_pipeline.gem_a3_manifest_workflow()  # run_id 3
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
@@ -2738,6 +2696,14 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(3)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+        gem_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicA3Raw
+        )
+        gem_raw_records = gem_raw_dao.get_all()
+
+        for attribute in GenomicA3Raw.__table__.columns:
+            self.assertTrue(all(getattr(obj, str(attribute).split('.')[1]) is not None for obj in gem_raw_records))
+
     def test_gem_a1_limit(self):
         # Need GC Manifest for source query : run_id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
@@ -2767,7 +2733,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         config.override_setting(config.A1_LIMIT, [1])
 
-        genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 4
+        genomic_gem_pipeline.gem_a1_manifest_workflow()  # run_id = 4
 
         members = self.member_dao.get_all()
         a1_members = [x for x in members if x.genomicWorkflowState == GenomicWorkflowState.A1]

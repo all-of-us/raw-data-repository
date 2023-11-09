@@ -2036,6 +2036,32 @@ event.listen(GenomicR1Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicR1Raw, 'before_update', model_update_listener)
 
 
+class GenomicA1Raw(Base):
+    """
+    Raw data from A1 files
+    """
+    __tablename__ = 'genomic_a1_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    consent_for_ror = Column(String(255), nullable=True)
+    chipwellbarcode = Column(String(255), nullable=True)
+    genome_center = Column(String(255), nullable=True)
+
+
+event.listen(GenomicA1Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicA1Raw, 'before_update', model_update_listener)
+
+
 class GenomicA2Raw(Base):
     """
     Raw data from A2 files
@@ -2058,3 +2084,26 @@ class GenomicA2Raw(Base):
 
 event.listen(GenomicA2Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicA2Raw, 'before_update', model_update_listener)
+
+
+class GenomicA3Raw(Base):
+    """
+    Raw data from A3 files
+    """
+    __tablename__ = 'genomic_a3_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    date_of_consent_removal = Column(String(255), nullable=True)
+
+
+event.listen(GenomicA3Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicA3Raw, 'before_update', model_update_listener)

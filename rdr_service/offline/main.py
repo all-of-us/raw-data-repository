@@ -1,7 +1,4 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
-
-from rdr_service.genomic_enums import GenomicJob
-
 import json
 import logging
 import traceback
@@ -23,10 +20,12 @@ from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.ppi_validation_errors_dao import PpiValidationErrorsDao
+from rdr_service.genomic_enums import GenomicJob
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.offline import biobank_samples_pipeline, sync_consent_files, update_ehr_status, \
     antibody_study_pipeline, export_va_workqueue
-from rdr_service.offline.genomics import genomic_pipeline, genomic_cvl_pipeline, genomic_data_quality_pipeline
+from rdr_service.offline.genomics import genomic_pipeline, genomic_cvl_pipeline, genomic_data_quality_pipeline, \
+    genomic_gem_pipeline
 from rdr_service.offline.ce_health_data_reconciliation_pipeline import CeHealthDataReconciliationPipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
@@ -540,14 +539,14 @@ def genomic_aw2f_remainder_workflow():
 @app_util.auth_required_cron
 @check_genomic_cron_job('a1_manifest_workflow')
 def genomic_gem_a1_workflow():
-    genomic_pipeline.gem_a1_manifest_workflow()
+    genomic_gem_pipeline.gem_a1_manifest_workflow()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
 @check_genomic_cron_job('a3_manifest_workflow')
 def genomic_gem_a3_workflow():
-    genomic_pipeline.gem_a3_manifest_workflow()
+    genomic_gem_pipeline.gem_a3_manifest_workflow()
     return '{"success": "true"}'
 
 
