@@ -1347,7 +1347,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         ).filter(
             GenomicAW4Raw.biobank_id == f'{get_biobank_id_prefix()}{biobank_id}',
             GenomicAW4Raw.genome_type == config.GENOME_TYPE_WGS,
-            GenomicAW4Raw.qc_status == "PASS"
+            GenomicAW4Raw.qc_status.ilike('pass')
         ).order_by(GenomicAW4Raw.created).first()
 
         if aw4_record:
