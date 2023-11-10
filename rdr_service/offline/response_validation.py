@@ -113,7 +113,7 @@ class ResponseValidationController:
         self._output_result(result_text)
 
     def _insert_data(self):
-        for key in self._error_list.items():
+        for key, error_list in self._error_list.items():  # pylint: disable=unused-variable
             survey_code, question_code, error_str, error_type, pid, answer_id = key
 
             data = PpiValidationErrors(
@@ -126,8 +126,9 @@ class ResponseValidationController:
                 questionnaire_response_answer_id=answer_id
             )
 
-            # Insert data into PPI validation table
-            self.validation_errors_dao.insert(data)
+            # Insert data into PPI validation table if offline job is running
+            if self._summarize_results:
+                self.validation_errors_dao.insert(data)
 
     def _output_result(self, result_str):
         if self._slack_webhook:
