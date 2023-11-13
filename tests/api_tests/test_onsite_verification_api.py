@@ -247,7 +247,6 @@ class OnsiteVerificationApiTest(BaseTestCase):
         payload_list = [payload_1, payload_2, payload_3, payload_4, payload_5, payload_6]
         for i in range(len(payload_list)):
             resource_dict = mock_pdr_resource_generator.call_args_list[i].args[1]
-            print(resource_dict)
             self.verify_pdr_resource_data(resource_dict, payload_list[i])
 
 
