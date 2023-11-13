@@ -320,7 +320,7 @@ class BaseApi(Resource, ApiUtilMixin):
         entries = []
         for item in results.items:
             response_json = self._make_response(item)
-            self._append_response_to_bundle(entries, response_json, False, id_field, participant_id)
+            self._append_response_to_bundle(entries, response_json, True, id_field, participant_id)
         bundle_dict["entry"] = entries
         if results.total is not None:
             bundle_dict["total"] = results.total
