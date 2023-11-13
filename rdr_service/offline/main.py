@@ -786,9 +786,30 @@ def genomic_reconcile_appointment_events():
 
 
 @app_util.auth_required_cron
-@check_genomic_cron_job('daily_ingestion_summary')
+@check_genomic_cron_job('daily_ingestion_short_read_summary')
 def genomic_data_quality_daily_ingestion_summary():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
+    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_SHORT_READ_REPORT_INGESTIONS)
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@check_genomic_cron_job('daily_ingestion_long_read_summary')
+def genomic_data_quality_daily_ingestion_summary():
+    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_LONG_READ_REPORT_INGESTIONS)
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@check_genomic_cron_job('daily_ingestion_proteomics_summary')
+def genomic_data_quality_daily_ingestion_summary():
+    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_PROTEOMICS_REPORT_INGESTIONS)
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@check_genomic_cron_job('daily_ingestion_rna_summary')
+def genomic_data_quality_daily_ingestion_summary():
+    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_RNA_REPORT_INGESTIONS)
     return '{"success": "true"}'
 
 

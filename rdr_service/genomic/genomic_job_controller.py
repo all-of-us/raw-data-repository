@@ -2158,7 +2158,7 @@ class DataQualityJobController:
         job_registry = {
             GenomicJob.DAILY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
             GenomicJob.WEEKLY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
-            GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS: self.get_report,
+            GenomicJob.DAILY_SUMMARY_SHORT_READ_REPORT_INGESTIONS: self.get_report,
             GenomicJob.WEEKLY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS: self.get_report,
             GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED: self.get_report,

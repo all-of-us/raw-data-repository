@@ -4919,3 +4919,69 @@ class GenomicRNADao(GenomicSubDao):
                 GenomicRNA.rna_set ==
                 self.get_max_set_subquery().c.rna_set
             ).distinct().all()
+
+
+class GenomicReportingDao(ABC, BaseDao):
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    @abstractmethod
+    def get_request_manifest_reporting_records(self):
+        ...
+
+    @abstractmethod
+    def get_one_manifest_reporting_records(self):
+        ...
+
+    @abstractmethod
+    def get_two_manifest_reporting_records(self):
+        ...
+
+
+class GenomicLongReadReportingDao(GenomicReportingDao):
+
+    def __init__(self):
+        super().__init__(GenomicLongRead, order_by_ending=['id'])
+
+    def get_request_manifest_reporting_records(self):
+        ...
+
+    def get_one_manifest_reporting_records(self):
+        ...
+
+    def get_two_manifest_reporting_records(self):
+        ...
+
+
+class GenomicPRReportingDao(GenomicReportingDao):
+
+    def __init__(self):
+        super().__init__(GenomicProteomics, order_by_ending=['id'])
+
+    def get_request_manifest_reporting_records(self):
+        ...
+
+    def get_one_manifest_reporting_records(self):
+        ...
+
+    def get_two_manifest_reporting_records(self):
+        ...
+
+
+class GenomicRNAReportingDao(GenomicReportingDao):
+
+    def __init__(self):
+        super().__init__(GenomicRNA, order_by_ending=['id'])
+
+    def get_request_manifest_reporting_records(self):
+        ...
+
+    def get_one_manifest_reporting_records(self):
+        ...
+
+    def get_two_manifest_reporting_records(self):
+        ...

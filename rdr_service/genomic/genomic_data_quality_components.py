@@ -62,22 +62,25 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
     def get_report_parameters(self, **kwargs):
 
-        # Set report level (SUMMARY, DETAIL, etc)
-        try:
-            report_level = kwargs['report_level']
-        except KeyError:
-            report_level = self.controller.job.name.split('_')[1]
-        # Set report target (INGESTION, RUNS, etc)
-        try:
-            report_target = kwargs['report_target']
-        except KeyError:
-            report_target = self.controller.job.name.split('_')[-1]
-        # Set report time frame (D, W, etc.)
-        try:
-            time_frame = kwargs['time_frame']
-        except KeyError:
-            time_frame = self.controller.job.name[0]
+        # # Set report level (SUMMARY, DETAIL, etc)
+        # try:
+        #     report_level = kwargs['report_level']
+        # except KeyError:
+        #     report_level = self.controller.job.name.split('_')[1]
+        # # Set report target (INGESTION, RUNS, etc)
+        # try:
+        #     report_target = kwargs['report_target']
+        # except KeyError:
+        #     report_target = self.controller.job.name.split('_')[-1]
+        # # Set report time frame (D, W, etc.)
+        # try:
+        #     time_frame = kwargs['time_frame']
+        # except KeyError:
+        #     time_frame = self.controller.job.name[0]
 
+        report_level = kwargs.get('report_level', self.controller.job.name.split('_')[1])
+        report_target = kwargs.get('report_target', self.controller.job.name.split('_')[1])
+        time_frame = kwargs.get('time_frame', self.controller.job.name[0])
         display_name = self.get_report_display_name()
 
         report_params = {
