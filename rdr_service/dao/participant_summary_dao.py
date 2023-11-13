@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 from dateutil.parser import parse
 import faker
@@ -1460,8 +1461,18 @@ class ParticipantSummaryDao(UpdatableDao):
 
         # Find any linked accounts to display
         result['relatedParticipants'] = UNSET
-        if obj.relatedParticipants:
+        if obj.isPediatric:
+            if not obj.relatedParticipants:
+                logging.error('Pediatric participant does not have a guardian account linked')
+                return None
+
             related_summary_list = [link.related.participantSummary for link in obj.relatedParticipants]
+            if any(summary is None for summary in related_summary_list):
+                # If any of the guardians of a pediatric participant are not yet consented,
+                # don't return the pediatric participant's data
+                logging.error('Pediatric participant has unconsented guardian')
+                return None
+
             result['relatedParticipants'] = [
                 {
                     'participantId': to_client_participant_id(related_summary.participantId),

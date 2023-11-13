@@ -4691,6 +4691,27 @@ class ParticipantSummaryApiTest(BaseTestCase):
         response = self.send_get(f'Participant/P{pediatric_participant.participantId}/Summary')
         self.assertEqual(True, response['isPediatric'])
 
+    @mock.patch('rdr_service.dao.participant_summary_dao.logging')
+    def test_invalid_link(self, logging_mock):
+        """
+        We need to gracefully handle when a guardian participant isn't consented (regardless of whether the
+        "pediatric" participant is actually a pediatric participant).
+        """
+        unconsented_guardian = self.data_generator.create_database_participant()
+        pediatric_participant = self.data_generator.create_database_participant_summary()
+        PediatricDataLogDao.record_age_range(participant_id=pediatric_participant.participantId, age_range_str='TEEN')
+        self.session.add(
+            AccountLink(
+                participant_id=pediatric_participant.participantId,
+                related_id=unconsented_guardian.participantId
+            )
+        )
+        self.session.commit()
+
+        response = self.send_get(f'ParticipantSummary')
+        self.assertEqual([], response['entry'])
+        logging_mock.error.assert_called_with('Pediatric participant has unconsented guardian')
+
     @classmethod
     def _get_summary_response_id_list(self, response):
         return [from_client_participant_id(entry['resource']['participantId']) for entry in response['entry']]

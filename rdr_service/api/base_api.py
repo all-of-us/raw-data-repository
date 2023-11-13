@@ -320,23 +320,31 @@ class BaseApi(Resource, ApiUtilMixin):
         entries = []
         for item in results.items:
             response_json = self._make_response(item)
-            full_url = self._make_resource_url(response_json, id_field, participant_id)
-            entries.append({"fullUrl": full_url, "resource": response_json})
+            self._append_response_to_bundle(entries, response_json, False, id_field, participant_id)
         bundle_dict["entry"] = entries
         if results.total is not None:
             bundle_dict["total"] = results.total
         return bundle_dict
 
-    def _make_resource_url(self, response_json, id_field, participant_id):
+    @classmethod
+    def _append_response_to_bundle(cls, entries, response, include_url, id_field, participant_id):
+        resource = {"resource": response}
+        if include_url:
+            resource['fullUrl'] = cls._make_resource_url(response, id_field, participant_id)
+
+        entries.append(resource)
+
+    @classmethod
+    def _make_resource_url(cls, response_json, id_field, participant_id):
         from rdr_service import main
 
         if participant_id:
             return main.api.url_for(
-                self.__class__, id_=response_json[id_field],
+                cls, id_=response_json[id_field],
                 p_id=to_client_participant_id(participant_id), _external=True
             )
         else:
-            return main.api.url_for(self.__class__, p_id=response_json[id_field], _external=True)
+            return main.api.url_for(cls, p_id=response_json[id_field], _external=True)
 
     def _archive_request_log(self):
         if GAE_PROJECT == RdrEnvironment.TEST.value:
@@ -346,6 +354,31 @@ class BaseApi(Resource, ApiUtilMixin):
             }
             self._task.execute('archive_request_log', queue='resource-tasks', payload=payload, in_seconds=60)
             logging.info('...task created')
+
+    @classmethod
+    def get_sync_results_for_request(cls, dao, max_results):
+        token = request.args.get("_token")
+        count_str = request.args.get("_count")
+        count = int(count_str) if count_str else max_results
+
+        results = dao.query(Query([], OrderBy("logPositionId", True), count, token, always_return_token=True))
+        return cls.make_sync_results_for_request(dao, results)
+
+    @classmethod
+    def make_sync_results_for_request(cls, dao, results):
+        bundle_dict = {"resourceType": "Bundle", "type": "history"}
+        if results.pagination_token:
+            query_params = request.args.copy()
+            query_params["_token"] = results.pagination_token
+            link_type = "next" if results.more_available else "sync"
+            next_url = url_for(request.url_rule.endpoint, _external=True, **query_params)
+            bundle_dict["link"] = [{"relation": link_type, "url": next_url}]
+        entries = []
+        for item in results.items:
+            response = dao.to_client_json(item)
+            cls._append_response_to_bundle(entries, response, include_url=False, id_field=None, participant_id=None)
+        bundle_dict["entry"] = entries
+        return jsonify(bundle_dict)
 
 
 class UpdatableApi(BaseApi):
@@ -481,27 +514,3 @@ def _parse_etag(etag):
         except ValueError:
             raise BadRequest(f"Invalid version: {version_str}")
     raise BadRequest(f"Invalid ETag: {etag}")
-
-
-def get_sync_results_for_request(dao, max_results):
-    token = request.args.get("_token")
-    count_str = request.args.get("_count")
-    count = int(count_str) if count_str else max_results
-
-    results = dao.query(Query([], OrderBy("logPositionId", True), count, token, always_return_token=True))
-    return make_sync_results_for_request(dao, results)
-
-
-def make_sync_results_for_request(dao, results):
-    bundle_dict = {"resourceType": "Bundle", "type": "history"}
-    if results.pagination_token:
-        query_params = request.args.copy()
-        query_params["_token"] = results.pagination_token
-        link_type = "next" if results.more_available else "sync"
-        next_url = url_for(request.url_rule.endpoint, _external=True, **query_params)
-        bundle_dict["link"] = [{"relation": link_type, "url": next_url}]
-    entries = []
-    for item in results.items:
-        entries.append({"resource": dao.to_client_json(item)})
-    bundle_dict["entry"] = entries
-    return jsonify(bundle_dict)

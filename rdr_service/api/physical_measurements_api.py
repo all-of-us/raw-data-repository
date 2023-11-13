@@ -1,7 +1,7 @@
 from flask import request
 
 from rdr_service import app_util, config
-from rdr_service.api.base_api import BaseApi, DEFAULT_MAX_RESULTS, get_sync_results_for_request, log_api_request
+from rdr_service.api.base_api import BaseApi, DEFAULT_MAX_RESULTS, log_api_request
 from rdr_service.api_util import HEALTHPRO, PTC, PTC_AND_HEALTHPRO
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.query import FieldFilter, Operator, Query
@@ -40,4 +40,4 @@ class PhysicalMeasurementsApi(BaseApi):
 @app_util.auth_required(PTC)
 def sync_physical_measurements():
     max_results = config.getSetting(config.MEASUREMENTS_ENTITIES_PER_SYNC, 100)
-    return get_sync_results_for_request(PhysicalMeasurementsDao(), max_results)
+    return BaseApi.get_sync_results_for_request(PhysicalMeasurementsDao(), max_results)
