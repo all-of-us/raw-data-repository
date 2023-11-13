@@ -9,7 +9,8 @@ from rdr_service.model.genomics import (GenomicLRRaw, GenomicL0Raw, GenomicPRRaw
                                         GenomicW3SSRaw, GenomicW4WRRaw,
                                         GenomicW5NFRaw, GenomicAW4Raw, GenomicAW3Raw, GenomicP1Raw, GenomicP2Raw,
                                         GenomicRRRaw, GenomicR0Raw,
-                                        GenomicR1Raw, GenomicL1Raw, GenomicA2Raw, GenomicA3Raw, GenomicA1Raw)
+                                        GenomicR1Raw, GenomicL1Raw, GenomicA2Raw, GenomicA3Raw, GenomicA1Raw,
+                                        GenomicR2Raw)
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -138,6 +139,10 @@ def load_manifest_into_raw_table(
                 '260_230': 'two_sixty_two_thirty',
                 '260_280': 'two_sixty_two_eighty'
             }
+        },
+        "r2": {
+            'job_id': GenomicJob.LOAD_R2_TO_RAW_TABLE,
+            'model': GenomicR2Raw
         }
     }
 
@@ -200,6 +205,7 @@ def dispatch_genomic_job_from_task(
         GenomicJob.PR_P2_WORKFLOW,
         GenomicJob.RNA_RR_WORKFLOW,
         GenomicJob.RNA_R1_WORKFLOW,
+        GenomicJob.RNA_R2_WORKFLOW,
     )
 
     if _task_data.job in ingestion_workflows:

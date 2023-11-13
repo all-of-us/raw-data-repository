@@ -302,7 +302,8 @@ class GenomicFileIngester:
             GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.RNA_RR_WORKFLOW: self._ingest_rna_manifest,
-            GenomicJob.RNA_R1_WORKFLOW: self._ingest_rna_manifest
+            GenomicJob.RNA_R1_WORKFLOW: self._ingest_rna_manifest,
+            GenomicJob.RNA_R2_WORKFLOW: self._ingest_rna_manifest
         }
 
         current_ingestion_workflow = current_ingestion_map.get(self.job_id)
@@ -1700,6 +1701,42 @@ class GenomicFileValidator:
             "failuremodedesc"
         )
 
+        self.RNA_R2_SCHEMA = (
+            "packageid",
+            "biobankidsampleid",
+            "boxstorageunitid",
+            "boxidplateid",
+            "wellposition",
+            "sampleid",
+            "parentsampleid",
+            "collectiontubeid",
+            "matrixid",
+            "collectiondate",
+            "biobankid",
+            "sexatbirth",
+            "age",
+            "nystateyn",
+            "sampletype",
+            "treatments",
+            "quantityul",
+            "totalconcentrationngul",
+            "totalyieldng",
+            "rqs",
+            "260230",
+            "260280",
+            "visitdescription",
+            "samplesource",
+            "study",
+            "trackingnumber",
+            "contact",
+            "email",
+            "studypi",
+            "sitename",
+            "genometype",
+            "failuremode",
+            "failuremodedesc"
+        )
+
         self.values_for_validation = {
             GenomicJob.METRICS_INGESTION: {
                 GENOME_TYPE_ARRAY: {
@@ -2039,7 +2076,7 @@ class GenomicFileValidator:
             PR P2 manifest name rule
             """
             return (
-                len(filename_components) == 4 and
+                len(filename_components) >= 4 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'p2' and
@@ -2073,6 +2110,18 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def rna_r2_manifest_name_rule():
+            """
+            RNA R2 manifest name rule
+            """
+            return (
+                len(filename_components) >= 4 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'r2' and
+                filename.lower().endswith('csv')
+            )
+
         ingestion_name_rules = {
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
             GenomicJob.AW1_MANIFEST: bb_to_gc_manifest_name_rule,
@@ -2095,7 +2144,8 @@ class GenomicFileValidator:
             GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule,
             GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule,
             GenomicJob.RNA_RR_WORKFLOW: rna_rr_manifest_name_rule,
-            GenomicJob.RNA_R1_WORKFLOW: rna_r1_manifest_name_rule
+            GenomicJob.RNA_R1_WORKFLOW: rna_r1_manifest_name_rule,
+            GenomicJob.RNA_R2_WORKFLOW: rna_r2_manifest_name_rule
         }
 
         try:

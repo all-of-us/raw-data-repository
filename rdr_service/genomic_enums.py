@@ -186,10 +186,12 @@ class GenomicJob(messages.Enum):
     RNA_RR_WORKFLOW = 500
     RNA_R0_WORKFLOW = 501
     RNA_R1_WORKFLOW = 502
+    RNA_R2_WORKFLOW = 503
 
     LOAD_RR_TO_RAW_TABLE = 550
     LOAD_RO_TO_RAW_TABLE = 551
     LOAD_R1_TO_RAW_TABLE = 552
+    LOAD_R2_TO_RAW_TABLE = 553
 
     LOAD_A1_TO_RAW_TABLE = 600
     LOAD_A2_TO_RAW_TABLE = 601
@@ -359,6 +361,7 @@ class GenomicManifestTypes(messages.Enum):
     RNA_RR = 50
     RNA_R0 = 51
     RNA_R1 = 52
+    RNA_R2 = 53
 
 
 class GenomicContaminationCategory(messages.Enum):

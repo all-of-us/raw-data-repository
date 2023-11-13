@@ -132,6 +132,10 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 'manifest_type': 'r1',
                 'task_endpoint': 'IngestSubManifestTaskApi'
             },
+            '_r2_': {
+                'manifest_type': 'r2',
+                'task_endpoint': 'IngestSubManifestTaskApi'
+            }
         }
 
         task_key_map = {
