@@ -8,7 +8,7 @@ from typing import List, Optional, Union
 from geometry import Rect
 from google.cloud.storage.blob import Blob
 from pdfminer.high_level import extract_pages, extract_text
-from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTTextBox
+from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTRect, LTTextBox
 
 from rdr_service import config
 from rdr_service.storage import GoogleCloudStorageProvider
@@ -458,16 +458,11 @@ class ConsentFile(ABC):
 
     def get_printed_name(self):
         printed_name_elements = self._get_printed_name_elements()
-        for element in printed_name_elements:
-            if isinstance(element, LTFigure) and len(element) > 0:
-                return ''.join([char_child.get_text() for char_child in element]).strip()
+        return self._parse_input_string(printed_name_elements)
 
     def _get_date_signed_str(self):
         date_elements = self._get_date_elements()
-        for element in date_elements:
-            if isinstance(element, LTFigure) and len(element) > 0:
-                # Some files have empty Figures in the same place as the date
-                return ''.join([char_child.get_text() for char_child in element]).strip()
+        return self._parse_input_string(date_elements)
 
     def _get_signature_elements(self):
         return []
@@ -477,6 +472,25 @@ class ConsentFile(ABC):
 
     def _get_printed_name_elements(self):
         return []
+
+    def _parse_input_string(self, pdf_element_list) -> Optional[str]:
+        for element in pdf_element_list:
+            if isinstance(element, LTFigure) and len(element) > 0:
+                return ''.join([char_child.get_text() for char_child in element]).strip()
+
+        return None
+
+    def _has_checkmark_at_location(self, search_rect: Rect, page_number: int):
+        possible_element_list = self.pdf.get_elements_intersecting_box(search_rect, page=page_number)
+
+        for element in possible_element_list:
+            if isinstance(element, LTRect):
+                continue  # Skip any rectangle graphics we might have captured
+            for child in element:
+                if isinstance(child, LTChar) and child.get_text() == '4':
+                    return True
+
+        return False
 
 
 class PrimaryConsentFile(ConsentFile, ABC):
@@ -528,11 +542,19 @@ class EtmConsentFile(ConsentFile, ABC):
 
 
 class PediatricPrimaryConsentFile(PrimaryConsentFile, ABC):
-    ...
+    @abstractmethod
+    def get_guardian_name(self):
+        ...
 
 
 class PediatricEhrConsentFile(EhrConsentFile, ABC):
-    ...
+    @abstractmethod
+    def get_guardian_name(self) -> str:
+        ...
+
+    @abstractmethod
+    def get_guardian_relationship(self) -> str:
+        ...
 
 
 class PrimaryConsentUpdateFile(PrimaryConsentFile, ABC):
@@ -768,17 +790,10 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
         if self.wrapped_consent_file:
             return True  # TODO: implement and use checkbox validation of Primary consent
         else:
-            agreement_elements = self.pdf.get_elements_intersecting_box(
-                Rect.from_edges(left=38, right=40, bottom=676, top=678),
-                page=self._get_signature_page()
+            return self._has_checkmark_at_location(
+                search_rect=Rect.from_edges(left=38, right=40, bottom=676, top=678),
+                page_number=self._get_signature_page()
             )
-
-            for element in agreement_elements:
-                for child in element:
-                    if isinstance(child, LTChar) and child.get_text() == '4':
-                        return True
-
-            return False
 
     def _get_printed_name_elements(self):
         return self.pdf.get_elements_intersecting_box(
@@ -810,11 +825,90 @@ class VibrentEtmConsentFile(EtmConsentFile):
 
 
 class VibrentPediatricPrimaryConsentFile(PediatricPrimaryConsentFile, VibrentPrimaryConsentFile):
-    ...
+    def _get_signature_page(self):
+        return self.pdf.get_page_number_of_text([
+            ('I freely and willingly choose', 'Decido participar libremente y por voluntad propia')
+        ])
+
+    def _get_signature_elements(self):
+        signature_page = self._get_signature_page()
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=125, right=500, bottom=215, top=220),
+            page=signature_page
+        )
+
+    def _get_date_elements(self):
+        signature_page = self._get_signature_page()
+
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=145, right=250, bottom=185, top=190),
+            page=signature_page
+        )
+
+    def _get_printed_name_elements(self):
+        signature_page = self._get_signature_page()
+
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=120, right=400, bottom=465, top=470),
+            page=signature_page
+        )
+
+    def get_guardian_name(self):
+        signature_page = self._get_signature_page()
+
+        elements = self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=125, right=500, bottom=280, top=285),
+            page=signature_page
+        )
+        return self._parse_input_string(elements)
 
 
 class VibrentPediatricEhrConsentFile(PediatricEhrConsentFile, VibrentEhrConsentFile):
-    ...
+    def _get_signature_elements(self):
+        signature_page_number = self._get_signature_page_number()
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=100, right=400, bottom=265, top=270),
+            page=signature_page_number
+        )
+
+    def _get_date_elements(self):
+        signature_page_number = self._get_signature_page_number()
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=175, right=280, bottom=85, top=90),
+            page=signature_page_number
+        )
+
+    def get_guardian_name(self) -> str:
+        signature_page_number = self._get_signature_page_number()
+
+        elements = self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=100, right=400, bottom=190, top=195),
+            page=signature_page_number
+        )
+        return self._parse_input_string(elements)
+
+    def get_guardian_relationship(self) -> Optional[str]:
+        signature_page_number = self._get_signature_page_number()
+
+        if self._has_checkmark_at_location(
+            search_rect=Rect.from_edges(left=84, right=87, bottom=145, top=150),
+            page_number=signature_page_number
+        ):
+            return 'parent'
+
+        if self._has_checkmark_at_location(
+            search_rect=Rect.from_edges(left=84, right=87, bottom=125, top=130),
+            page_number=signature_page_number
+        ):
+            return 'guardian'
+
+        if self._has_checkmark_at_location(
+            search_rect=Rect.from_edges(left=84, right=87, bottom=105, top=110),
+            page_number=signature_page_number
+        ):
+            return 'other: ' + self._parse_input_string(
+                self.pdf.get_elements_intersecting_box(Rect.from_edges(left=140, right=400, bottom=105, top=110))
+            )
 
 
 class VibrentWearConsentFile(WearConsentFile):

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from rdr_service import code_constants, config
 from rdr_service.config import MissingConfigException
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.dao.account_link_dao import AccountLinkDao
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -933,6 +934,10 @@ class ConsentValidator:
             return self._check_for_checkmark
         elif consent_type == ConsentType.PRIMARY_UPDATE:
             return self._additional_primary_update_checks
+        elif consent_type == ConsentType.PEDIATRIC_PRIMARY:
+            return self._additional_pediatric_primary_checks
+        elif consent_type == ConsentType.PEDIATRIC_EHR:
+            return self._additional_pediatric_ehr_checks
         else:
             return None
 
@@ -954,6 +959,26 @@ class ConsentValidator:
     def _check_for_checkmark(self, consent: files.GrorConsentFile, result: ParsingResult):
         if not consent.is_confirmation_selected():
             self._append_other_error(ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK, result)
+            result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
+
+    def _additional_pediatric_primary_checks(self, consent: files.PediatricPrimaryConsentFile, result: ParsingResult):
+        self._validate_is_va_file(consent, result)
+        result.guardian_printed_name = consent.get_guardian_name()
+
+        # load the guardian summary
+        guardian_summary = None
+        guardian_id_list = AccountLinkDao.get_linked_ids(session=self._session, participant_id=result.participant_id)
+        if guardian_id_list:
+            guardian_summary = self._session.query(
+                ParticipantSummary.firstName, ParticipantSummary.lastName
+            ).filter(ParticipantSummary.participantId == guardian_id_list.pop()).one()
+
+        # compare first and last name to parsed string
+        if (
+            not guardian_summary
+            or f'{guardian_summary.firstName} {guardian_summary.lastName}' != result.guardian_printed_name
+        ):
+            self._append_other_error(ConsentOtherErrors.UNEXPECTED_GUARDIAN_NAME, result)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
     def _additional_ehr_checks(self, consent: files.EhrConsentFile, result: ParsingResult):
@@ -992,6 +1017,11 @@ class ConsentValidator:
         elif consent.is_sensitive_form():
             self._append_other_error(ConsentOtherErrors.NONSENSITIVE_EHR_EXPECTED, result)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
+
+    def _additional_pediatric_ehr_checks(self, consent: files.PediatricEhrConsentFile, result: ParsingResult):
+        result.guardian_printed_name = consent.get_guardian_name()
+        result.guardian_relationship = consent.get_guardian_relationship()
+        self._additional_ehr_checks(consent, result)
 
     def _additional_primary_update_checks(self, consent: files.PrimaryConsentUpdateFile, result: ParsingResult):
         self._validate_is_va_file(consent, result)

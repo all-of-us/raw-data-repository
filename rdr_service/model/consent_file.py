@@ -17,6 +17,7 @@ class ConsentOtherErrors:
     SENSITIVE_EHR_EXPECTED = 'non-sensitive ehr consent given when sensitive version expected'
     NONSENSITIVE_EHR_EXPECTED = 'sensitive ehr consent given when non-sensitive version expected'
     INITIALS_MISSING_ON_SENSITIVE_EHR = 'missing expected initials on sensitive ehr'
+    UNEXPECTED_GUARDIAN_NAME = 'name on pdf does not match previously identified guardian'
 
 
 class ConsentType(messages.Enum):
@@ -80,6 +81,8 @@ class ConsentFile(Base):
     signing_date = Column(Date, nullable=True)
     printed_name = Column(String(200), nullable=True)
     expected_sign_date = Column(Date, nullable=True)
+    guardian_printed_name = Column(String(200), nullable=True)
+    guardian_relationship = Column(String(32))
 
     file_upload_time = Column(UTCDateTime, nullable=True)
     file_path = Column(String(250), nullable=True)
@@ -94,6 +97,7 @@ class ConsentFile(Base):
 
     consent_response = relationship('ConsentResponse')
     consent_error_report = relationship('ConsentErrorReport')
+
 
 # DA-2611:  Track which consent_file records with validation errors already had error reports generated.
 # Table schema may expand to include other details as warranted
