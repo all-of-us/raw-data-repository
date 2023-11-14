@@ -1,5 +1,6 @@
 import abc
 from datetime import timedelta
+from typing import List
 
 from rdr_service import clock
 from rdr_service.api_util import open_cloud_file
@@ -57,50 +58,30 @@ class ReportingComponent(GenomicDataQualityComponentBase):
             }
 
             dd = timedelta(days=interval_mappings[time_frame])
-
             return clock.CLOCK.now() - dd
 
     def get_report_parameters(self, **kwargs):
-
-        # # Set report level (SUMMARY, DETAIL, etc)
-        # try:
-        #     report_level = kwargs['report_level']
-        # except KeyError:
-        #     report_level = self.controller.job.name.split('_')[1]
-        # # Set report target (INGESTION, RUNS, etc)
-        # try:
-        #     report_target = kwargs['report_target']
-        # except KeyError:
-        #     report_target = self.controller.job.name.split('_')[-1]
-        # # Set report time frame (D, W, etc.)
-        # try:
-        #     time_frame = kwargs['time_frame']
-        # except KeyError:
-        #     time_frame = self.controller.job.name[0]
-
-        report_level = kwargs.get('report_level', self.controller.job.name.split('_')[1])
-        report_target = kwargs.get('report_target', self.controller.job.name.split('_')[1])
-        time_frame = kwargs.get('time_frame', self.controller.job.name[0])
         display_name = self.get_report_display_name()
-
-        report_params = {
-            "level": report_level,
-            "target": report_target,
-            "time_frame": time_frame,
+        return {
+            "level": kwargs.get('report_level', self.controller.job.name.split('_')[1]),
+            "target": kwargs.get('report_target', self.controller.job.name.split('_')[-1]),
+            "time_frame": kwargs.get('time_frame', self.controller.job.name[0]),
             "display_name": display_name,
             "empty_report_string": self.get_empty_report_string(display_name),
         }
 
-        return report_params
-
     def get_report_display_name(self):
 
+        def check_is_ingestion(name_list: List[str]) -> bool:
+            return name_list[-1].lower() == 'ingestions' and len(job_name_list) > 4
+
         job_name_list = self.controller.job.name.split('_')
-
-        display_name = job_name_list[0].capitalize() + " "
-        display_name += job_name_list[-1].capitalize() + " "
+        is_ingestion_type = check_is_ingestion(job_name_list)
+        display_name = f'{job_name_list[0].capitalize()} '
+        display_name += f'{job_name_list[-1].capitalize()} '
+        if is_ingestion_type:
+            display_name += f'({job_name_list[2].capitalize()}) '
         display_name += job_name_list[1].capitalize()
-
         return display_name
 
     @staticmethod
@@ -129,9 +110,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         # Leaning into dao method
         else:
             report_def.source_data_query = returned_from_method
-
         self.report_def = report_def
-
         return report_def
 
     def get_report_data(self):

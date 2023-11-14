@@ -2093,7 +2093,7 @@ class DataQualityJobController:
     Executes jobs as cloud tasks or via tools ran locally
     """
 
-    def __init__(self, job, bq_project_id=None):
+    def __init__(self, job: GenomicJob, bq_project_id: str = None):
         super().__init__()
 
         # Job attributes
@@ -2155,17 +2155,15 @@ class DataQualityJobController:
         :param job:
         :return:
         """
-        job_registry = {
-            GenomicJob.DAILY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
+        return {
             GenomicJob.WEEKLY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
-            GenomicJob.DAILY_SUMMARY_SHORT_READ_REPORT_INGESTIONS: self.get_report,
             GenomicJob.WEEKLY_SUMMARY_REPORT_INGESTIONS: self.get_report,
+            GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS: self.get_report,
+            GenomicJob.DAILY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
             GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS: self.get_report,
             GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED: self.get_report,
             GenomicJob.DAILY_SEND_VALIDATION_EMAILS: self.send_validation_emails,
-        }
-
-        return job_registry[job]
+        }[job]
 
     def execute_workflow(self, **kwargs):
         """

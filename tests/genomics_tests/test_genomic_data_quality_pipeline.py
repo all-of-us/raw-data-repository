@@ -223,10 +223,10 @@ class GenomicDataQualityReportTest(BaseTestCase):
             fileName=aw2_file_name,
         )
 
-        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORT_READ_REPORT_INGESTIONS) as controller:
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS) as controller:
             report_output = controller.execute_workflow()
 
-        expected_report = "```Daily Ingestions Summary\n"
+        expected_report = "```Daily Ingestions (Shortread) Summary\n"
         expected_report += "record_count    ingested_count    incident_count    "
         expected_report += "file_type    gc_site_id    genome_type    file_path\n"
         expected_report += "1    0    0    aw1    rdr    aou_wgs    "
@@ -253,17 +253,17 @@ class GenomicDataQualityReportTest(BaseTestCase):
         format_mock.return_value = expected_report
 
         # Run the workflow
-        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORT_READ_REPORT_INGESTIONS) as controller:
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS) as controller:
             controller.execute_workflow(slack=True)
 
         # Test the slack API was called correctly
         slack_handler_mock.assert_called_with(message_data={'text': expected_report})
 
     def test_daily_ingestion_summary_no_files(self):
-        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORT_READ_REPORT_INGESTIONS) as controller:
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS) as controller:
             report_output = controller.execute_workflow()
 
-        expected_report = "No data to display for Daily Ingestions Summary"
+        expected_report = "No data to display for Daily Ingestions (Shortread) Summary"
 
         self.assertEqual(expected_report, report_output)
 
@@ -272,7 +272,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
         expected_report = "test\n" * 30
         format_mock.return_value = expected_report
 
-        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORT_READ_REPORT_INGESTIONS) as controller:
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS) as controller:
             report_output = controller.execute_workflow(slack=True)
 
         with open_cloud_file(report_output, 'r') as report_file:
