@@ -361,7 +361,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                 )
 
         self.execute_base_lr_ingestion(
-            test_file='RDR_AoU_l1_123456.csv',
+            test_file='RDR_AoU_LR_PKG-0101-123456.csv',
             job_id=GenomicJob.LR_L1_WORKFLOW,
             manifest_type=GenomicManifestTypes.LR_L1,
             include_timestamp=False
@@ -387,7 +387,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
     def test_l1_manifest_to_raw_ingestion(self):
 
         self.execute_base_lr_ingestion(
-            test_file='RDR_AoU_l1_123456.csv',
+            test_file='RDR_AoU_LR_PKG-0101-123456.csv',
             job_id=GenomicJob.LR_L1_WORKFLOW,
             manifest_type=GenomicManifestTypes.LR_L1,
             include_timestamp=False
