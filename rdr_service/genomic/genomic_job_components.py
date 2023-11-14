@@ -1597,7 +1597,6 @@ class GenomicFileValidator:
             "contact",
             "email",
             "studypi",
-            "sitename",
             "genometype",
             "lrsiteid",
             "longreadplatform",
