@@ -1598,7 +1598,6 @@ class GenomicFileValidator:
             "contact",
             "email",
             "studypi",
-            "sitename",
             "genometype",
             "lrsiteid",
             "longreadplatform",
@@ -2040,7 +2039,8 @@ class GenomicFileValidator:
                 len(filename_components) == 4 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
-                filename_components[2] == 'l1' and
+                filename_components[2] == 'lr' and
+                'pkg' in filename_components[3] and
                 filename.lower().endswith('csv')
             )
 

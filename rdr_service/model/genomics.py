@@ -1752,7 +1752,6 @@ class GenomicL1Raw(Base):
     contact = Column(String(255), nullable=True)
     email = Column(String(255), nullable=True)
     study_pi = Column(String(255), nullable=True)
-    site_name = Column(String(255), nullable=True, index=True)
     genome_type = Column(String(80), nullable=True, index=True)
     lr_site_id = Column(String(80), nullable=True, index=True)
     long_read_platform = Column(String(80), nullable=True, index=True)
