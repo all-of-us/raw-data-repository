@@ -4,9 +4,10 @@ import mock, datetime, pytz
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.config import GENOMIC_INGESTION_REPORT_PATH, GENOMIC_INCIDENT_REPORT_PATH, GENOMIC_RESOLVED_REPORT_PATH
-from rdr_service.dao.genomics_dao import GenomicIncidentDao
+from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicJobRunDao
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
     GenomicManifestTypes, GenomicIncidentCode
+from rdr_service.offline.genomics import genomic_data_quality_pipeline
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.genomic.genomic_job_controller import DataQualityJobController
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
@@ -236,6 +237,25 @@ class GenomicDataQualityReportTest(BaseTestCase):
         expected_report += "\n```"
 
         self.assertEqual(expected_report, report_output)
+
+    def test_all_daily_summary_job_runs(self):
+
+        # init entry method called from cron
+        genomic_data_quality_pipeline.daily_data_quality_workflow()
+
+        daily_job_runs = [
+            GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS,
+            GenomicJob.DAILY_SUMMARY_LONGREAD_REPORT_INGESTIONS,
+            GenomicJob.DAILY_SUMMARY_PROTEOMICS_REPORT_INGESTIONS,
+            GenomicJob.DAILY_SUMMARY_RNA_REPORT_INGESTIONS
+        ]
+        current_job_runs = GenomicJobRunDao().get_all()
+
+        self.assertEqual(len(current_job_runs), len(daily_job_runs))
+        self.assertTrue(all(obj.jobId in daily_job_runs for obj in current_job_runs))
+
+    def test_long_read_ingestion_summary(self):
+        ...
 
     @mock.patch('rdr_service.services.slack_utils.SlackMessageHandler.send_message_to_webhook')
     @mock.patch('rdr_service.genomic.genomic_data_quality_components.ReportingComponent.get_report_data')
