@@ -260,6 +260,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
 
     def test_proteomics_ingestion_summary(self):
         ...
+
         # with DataQualityJobController(GenomicJob.DAILY_SUMMARY_PROTEOMICS_REPORT_INGESTIONS) as controller:
         #     report_output = controller.execute_workflow()
         #

@@ -2215,7 +2215,7 @@ class DataQualityJobController:
             file_path = rc.create_report_file(
                 report_string=report_string,
                 display_name=report_params['display_name'],
-                report_type=report_params['target']
+                report_type=report_params['report_type']
             )
             message = report_params['display_name'] + " too long for output.\n"
             message += f"Report too long for Slack Output, download the report here:" \
