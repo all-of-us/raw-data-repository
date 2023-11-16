@@ -4590,6 +4590,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         second_parent = self.data_generator.create_database_participant_summary()
         child_id = self.data_generator.create_database_participant_summary().participantId
 
+        PediatricDataLogDao.record_age_range(participant_id=child_id, age_range_str='TEEN')
         self.session.add(AccountLink(participant_id=child_id, related_id=first_parent.participantId))
         self.session.add(AccountLink(participant_id=child_id, related_id=second_parent.participantId))
         self.session.commit()
@@ -4682,14 +4683,43 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
     def test_pediatric_flag(self):
         regular_participant = self.data_generator.create_database_participant_summary()
+
         pediatric_participant = self.data_generator.create_database_participant_summary()
         PediatricDataLogDao.record_age_range(participant_id=pediatric_participant.participantId, age_range_str='TEEN')
+        self.session.add(
+            AccountLink(
+                participant_id=pediatric_participant.participantId,
+                related_id=regular_participant.participantId
+            )
+        )
+        self.session.commit()
 
         response = self.send_get(f'Participant/P{regular_participant.participantId}/Summary')
         self.assertEqual('UNSET', response['isPediatric'])
 
         response = self.send_get(f'Participant/P{pediatric_participant.participantId}/Summary')
         self.assertEqual(True, response['isPediatric'])
+
+    @mock.patch('rdr_service.dao.participant_summary_dao.logging')
+    def test_invalid_link(self, logging_mock):
+        """
+        We need to gracefully handle when a guardian participant isn't consented (regardless of whether the
+        "pediatric" participant is actually a pediatric participant).
+        """
+        unconsented_guardian = self.data_generator.create_database_participant()
+        pediatric_participant = self.data_generator.create_database_participant_summary()
+        PediatricDataLogDao.record_age_range(participant_id=pediatric_participant.participantId, age_range_str='TEEN')
+        self.session.add(
+            AccountLink(
+                participant_id=pediatric_participant.participantId,
+                related_id=unconsented_guardian.participantId
+            )
+        )
+        self.session.commit()
+
+        response = self.send_get(f'ParticipantSummary')
+        self.assertEqual([], response['entry'])
+        logging_mock.error.assert_called_with('Pediatric participant has unconsented guardian')
 
     @classmethod
     def _get_summary_response_id_list(self, response):

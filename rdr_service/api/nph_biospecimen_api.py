@@ -41,11 +41,8 @@ class NphBiospecimenAPI(BaseApi):
             payload_response.append(updated_payload)
         return self.dao.to_client_json(payload_response)
 
-    def _make_resource_url(self, response_json, id_field, participant_id):
+    @classmethod
+    def _make_resource_url(cls, response_json, id_field, participant_id):
         from rdr_service import main
-        return main.api.url_for(
-            self.__class__,
-            nph_participant_id=response_json[0][id_field],
-            _external=True
-        )
+        return main.api.url_for(cls, nph_participant_id=response_json[0][id_field], _external=True)
 
