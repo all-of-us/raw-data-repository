@@ -174,6 +174,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
             package_id="PKG-2104-026571",
             biobank_id="A10001",
         )
+
         # Create genomic_aw2_raw record
         self.data_generator.create_database_genomic_aw2_raw(
             file_path=aw2_manifest_path,
@@ -234,9 +235,9 @@ class GenomicDataQualityReportTest(BaseTestCase):
             report_output = controller.execute_workflow()
 
         expected_report = "```Daily Ingestions (Shortread) Summary\n"
-        expected_report += "record_count    ingested_count    incident_count    "
+        expected_report += "record_count    ingested_count    delta_count    "
         expected_report += "file_type    gc_site_id    genome_type    file_path\n"
-        expected_report += "1    0    0    aw1    rdr    aou_wgs    "
+        expected_report += "1    0    1    aw1    rdr    aou_wgs    "
         expected_report += f"{aw1_manifest_path}\n"
         expected_report += "1    0    0    aw2    rdr    aou_wgs    "
         expected_report += f"{aw2_manifest_path}"
@@ -259,6 +260,19 @@ class GenomicDataQualityReportTest(BaseTestCase):
 
     def test_proteomics_ingestion_summary(self):
         ...
+        # with DataQualityJobController(GenomicJob.DAILY_SUMMARY_PROTEOMICS_REPORT_INGESTIONS) as controller:
+        #     report_output = controller.execute_workflow()
+        #
+        # expected_report = "```Daily Ingestions (Shortread) Summary\n"
+        # expected_report += "record_count    ingested_count    incident_count    "
+        # expected_report += "file_type    gc_site_id    genome_type    file_path\n"
+        # expected_report += "1    0    0    aw1    rdr    aou_wgs    "
+        # expected_report += f"{aw1_manifest_path}\n"
+        # expected_report += "1    0    0    aw2    rdr    aou_wgs    "
+        # expected_report += f"{aw2_manifest_path}"
+        # expected_report += "\n```"
+        #
+        # self.assertEqual(expected_report, report_output)
 
     def test_rna_ingestion_summary(self):
         ...
@@ -302,6 +316,33 @@ class GenomicDataQualityReportTest(BaseTestCase):
         format_mock.return_value = expected_report
 
         with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS) as controller:
+            report_output = controller.execute_workflow(slack=True)
+
+        with open_cloud_file(report_output, 'r') as report_file:
+            report_file_data = report_file.read()
+
+        self.assertTrue(GENOMIC_INGESTION_REPORT_PATH in report_output)
+        self.assertEqual(expected_report, report_file_data)
+
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_LONGREAD_REPORT_INGESTIONS) as controller:
+            report_output = controller.execute_workflow(slack=True)
+
+        with open_cloud_file(report_output, 'r') as report_file:
+            report_file_data = report_file.read()
+
+        self.assertTrue(GENOMIC_INGESTION_REPORT_PATH in report_output)
+        self.assertEqual(expected_report, report_file_data)
+
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_PROTEOMICS_REPORT_INGESTIONS) as controller:
+            report_output = controller.execute_workflow(slack=True)
+
+        with open_cloud_file(report_output, 'r') as report_file:
+            report_file_data = report_file.read()
+
+        self.assertTrue(GENOMIC_INGESTION_REPORT_PATH in report_output)
+        self.assertEqual(expected_report, report_file_data)
+
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_RNA_REPORT_INGESTIONS) as controller:
             report_output = controller.execute_workflow(slack=True)
 
         with open_cloud_file(report_output, 'r') as report_file:
