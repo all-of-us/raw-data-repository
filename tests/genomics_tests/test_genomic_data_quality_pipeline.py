@@ -138,6 +138,12 @@ class GenomicDataQualityReportTest(BaseTestCase):
     def setUp(self, with_data=False, with_consent_codes=False) -> None:
         super().setUp()
         self.incident_dao = GenomicIncidentDao()
+        self.daily_job_runs = [
+            GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS,
+            GenomicJob.DAILY_SUMMARY_LONGREAD_REPORT_INGESTIONS,
+            GenomicJob.DAILY_SUMMARY_PROTEOMICS_REPORT_INGESTIONS,
+            GenomicJob.DAILY_SUMMARY_RNA_REPORT_INGESTIONS
+        ]
 
     def test_daily_short_read_ingestion_summary(self):
         # Set up test data
@@ -243,18 +249,18 @@ class GenomicDataQualityReportTest(BaseTestCase):
         # init entry method called from cron
         genomic_data_quality_pipeline.daily_data_quality_workflow()
 
-        daily_job_runs = [
-            GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS,
-            GenomicJob.DAILY_SUMMARY_LONGREAD_REPORT_INGESTIONS,
-            GenomicJob.DAILY_SUMMARY_PROTEOMICS_REPORT_INGESTIONS,
-            GenomicJob.DAILY_SUMMARY_RNA_REPORT_INGESTIONS
-        ]
         current_job_runs = GenomicJobRunDao().get_all()
 
-        self.assertEqual(len(current_job_runs), len(daily_job_runs))
-        self.assertTrue(all(obj.jobId in daily_job_runs for obj in current_job_runs))
+        self.assertEqual(len(current_job_runs), len(self.daily_job_runs))
+        self.assertTrue(all(obj.jobId in self.daily_job_runs for obj in current_job_runs))
 
     def test_long_read_ingestion_summary(self):
+        ...
+
+    def test_proteomics_ingestion_summary(self):
+        ...
+
+    def test_rna_ingestion_summary(self):
         ...
 
     @mock.patch('rdr_service.services.slack_utils.SlackMessageHandler.send_message_to_webhook')
@@ -280,12 +286,15 @@ class GenomicDataQualityReportTest(BaseTestCase):
         slack_handler_mock.assert_called_with(message_data={'text': expected_report})
 
     def test_daily_ingestion_summary_no_files(self):
-        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS) as controller:
-            report_output = controller.execute_workflow()
 
-        expected_report = "No data to display for Daily Ingestions (Shortread) Summary"
+        for daily_job_type in self.daily_job_runs:
+            with DataQualityJobController(daily_job_type) as controller:
+                report_output = controller.execute_workflow()
 
-        self.assertEqual(expected_report, report_output)
+            expected_name = daily_job_type.name.split('_')[2].capitalize()
+            expected_report = f"No data to display for Daily Ingestions ({expected_name}) Summary"
+
+            self.assertEqual(expected_report, report_output)
 
     @mock.patch('rdr_service.genomic.genomic_data_quality_components.ReportingComponent.format_report')
     def test_daily_ingestion_summary_long_report(self, format_mock):

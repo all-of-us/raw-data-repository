@@ -528,7 +528,7 @@ class GenomicQueryClass:
         return query_sql, query_params
 
     @staticmethod
-    def dq_report_ingestions_summary(from_date):
+    def short_read_ingestions_summary(from_date):
         query_sql = """
                 # AW1 Ingestions
                 SELECT count(distinct raw.id) as record_count

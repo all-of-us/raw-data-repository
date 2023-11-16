@@ -49,7 +49,7 @@ from rdr_service.model.genomics import (
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead,
-    GenomicProteomics, GenomicRNA)
+    GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, GenomicLRRaw, GenomicL1Raw, GenomicRRRaw, GenomicR1Raw)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -4930,15 +4930,7 @@ class GenomicReportingDao(ABC, BaseDao):
         pass
 
     @abstractmethod
-    def get_request_manifest_reporting_records(self):
-        ...
-
-    @abstractmethod
-    def get_one_manifest_reporting_records(self):
-        ...
-
-    @abstractmethod
-    def get_two_manifest_reporting_records(self):
+    def get_reporting_counts(self, *, from_date):
         ...
 
 
@@ -4947,14 +4939,46 @@ class GenomicLongReadReportingDao(GenomicReportingDao):
     def __init__(self):
         super().__init__(GenomicLongRead, order_by_ending=['id'])
 
-    def get_request_manifest_reporting_records(self):
-        ...
-
-    def get_one_manifest_reporting_records(self):
-        ...
-
-    def get_two_manifest_reporting_records(self):
-        ...
+    def get_reporting_counts(self, *, from_date):
+        with self.session() as session:
+            ingested_query = (
+                session.query(
+                    functions.count(GenomicLRRaw).label('raw_count'),
+                    functions.count(self.model_type).label('ingested_count'),
+                    literal('lr'),
+                    GenomicLRRaw.file_path
+                ).join(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.runId == self.model_type.created_job_run_id
+                ).join(
+                    GenomicLRRaw,
+                    GenomicLRRaw.file_path == GenomicFileProcessed.filePath
+                ).filter(
+                    GenomicLRRaw.created >= from_date,
+                    GenomicLRRaw.ignore_flag != 1,
+                    GenomicLRRaw.biobank_id != "",
+                    GenomicLRRaw.biobank_id.isnot(None)
+                ).group_by(
+                    GenomicLRRaw.file_path
+                ).distinct()
+                .union(
+                    session.query(
+                        functions.count(GenomicL1Raw).label('raw_count'),
+                        functions.count(self.model_type).label('ingested_count'),
+                        literal('p1'),
+                        GenomicL1Raw.file_path
+                    ).join(
+                        GenomicL1Raw,
+                        GenomicL1Raw.sample_id == self.model_type.sample_id
+                    ).filter(
+                        GenomicL1Raw.created >= from_date,
+                        GenomicL1Raw.ignore_flag != 1
+                    ).group_by(
+                        GenomicL1Raw.file_path
+                    ).distinct()
+                )
+            )
+            return ingested_query.all()
 
 
 class GenomicPRReportingDao(GenomicReportingDao):
@@ -4962,14 +4986,46 @@ class GenomicPRReportingDao(GenomicReportingDao):
     def __init__(self):
         super().__init__(GenomicProteomics, order_by_ending=['id'])
 
-    def get_request_manifest_reporting_records(self):
-        ...
-
-    def get_one_manifest_reporting_records(self):
-        ...
-
-    def get_two_manifest_reporting_records(self):
-        ...
+    def get_reporting_counts(self, *, from_date):
+        with self.session() as session:
+            ingested_query = (
+                session.query(
+                    functions.count(GenomicPRRaw).label('raw_count'),
+                    functions.count(self.model_type).label('ingested_count'),
+                    literal('pr'),
+                    GenomicPRRaw.file_path
+                ).join(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.runId == self.model_type.created_job_run_id
+                ).join(
+                    GenomicPRRaw,
+                    GenomicPRRaw.file_path == GenomicFileProcessed.filePath
+                ).filter(
+                    GenomicPRRaw.created >= from_date,
+                    GenomicPRRaw.ignore_flag != 1,
+                    GenomicPRRaw.biobank_id != "",
+                    GenomicPRRaw.biobank_id.isnot(None)
+                ).group_by(
+                    GenomicPRRaw.file_path
+                ).distinct()
+                .union(
+                    session.query(
+                        functions.count(GenomicP1Raw).label('raw_count'),
+                        functions.count(self.model_type).label('ingested_count'),
+                        literal('p1'),
+                        GenomicP1Raw.file_path
+                    ).join(
+                        GenomicP1Raw,
+                        GenomicP1Raw.sample_id == self.model_type.sample_id
+                    ).filter(
+                        GenomicP1Raw.created >= from_date,
+                        GenomicP1Raw.ignore_flag != 1
+                    ).group_by(
+                        GenomicP1Raw.file_path
+                    ).distinct()
+                )
+            )
+            return ingested_query.all()
 
 
 class GenomicRNAReportingDao(GenomicReportingDao):
@@ -4977,11 +5033,44 @@ class GenomicRNAReportingDao(GenomicReportingDao):
     def __init__(self):
         super().__init__(GenomicRNA, order_by_ending=['id'])
 
-    def get_request_manifest_reporting_records(self):
-        ...
+    def get_reporting_counts(self, *, from_date):
+        with self.session() as session:
+            ingested_query = (
+                session.query(
+                    functions.count(GenomicRRRaw).label('raw_count'),
+                    functions.count(self.model_type).label('ingested_count'),
+                    literal('pr'),
+                    GenomicRRRaw.file_path
+                ).join(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.runId == self.model_type.created_job_run_id
+                ).join(
+                    GenomicRRRaw,
+                    GenomicRRRaw.file_path == GenomicFileProcessed.filePath
+                ).filter(
+                    GenomicRRRaw.created >= from_date,
+                    GenomicRRRaw.ignore_flag != 1,
+                    GenomicRRRaw.biobank_id != "",
+                    GenomicRRRaw.biobank_id.isnot(None)
+                ).group_by(
+                    GenomicRRRaw.file_path
+                ).distinct()
+                .union(
+                    session.query(
+                        functions.count(GenomicR1Raw).label('raw_count'),
+                        functions.count(self.model_type).label('ingested_count'),
+                        literal('p1'),
+                        GenomicR1Raw.file_path
+                    ).join(
+                        GenomicR1Raw,
+                        GenomicR1Raw.sample_id == self.model_type.sample_id
+                    ).filter(
+                        GenomicR1Raw.created >= from_date,
+                        GenomicR1Raw.ignore_flag != 1
+                    ).group_by(
+                        GenomicR1Raw.file_path
+                    ).distinct()
+                )
+            )
+            return ingested_query.all()
 
-    def get_one_manifest_reporting_records(self):
-        ...
-
-    def get_two_manifest_reporting_records(self):
-        ...

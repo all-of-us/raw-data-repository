@@ -4,7 +4,8 @@ from typing import List
 
 from rdr_service import clock
 from rdr_service.api_util import open_cloud_file
-from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicJobRunDao
+from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicJobRunDao, GenomicPRReportingDao, \
+    GenomicLongReadReportingDao, GenomicRNAReportingDao
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.config import GENOMIC_INGESTION_REPORT_PATH, GENOMIC_INCIDENT_REPORT_PATH, GENOMIC_RESOLVED_REPORT_PATH
 
@@ -26,6 +27,10 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         self.query = GenomicQueryClass()
         self.incident_dao = GenomicIncidentDao()
+        self.pr_reporting_dao = GenomicPRReportingDao()
+        self.long_read_reporting_dao = GenomicLongReadReportingDao()
+        self.rna_reporting_dao = GenomicRNAReportingDao()
+
         self.report_def = None
 
     class ReportDef:
@@ -73,15 +78,15 @@ class ReportingComponent(GenomicDataQualityComponentBase):
     def get_report_display_name(self):
 
         def check_is_ingestion(name_list: List[str]) -> bool:
-            return name_list[-1].lower() == 'ingestions' and len(job_name_list) > 4
+            return name_list[-1].lower() == 'ingestions' and len(name_list) > 4
 
-        job_name_list = self.controller.job.name.split('_')
-        is_ingestion_type = check_is_ingestion(job_name_list)
-        display_name = f'{job_name_list[0].capitalize()} '
-        display_name += f'{job_name_list[-1].capitalize()} '
+        job_type_list = self.controller.job.name.split('_')
+        is_ingestion_type = check_is_ingestion(job_type_list)
+        display_name = f'{job_type_list[0].capitalize()} '
+        display_name += f'{job_type_list[-1].capitalize()} '
         if is_ingestion_type:
-            display_name += f'({job_name_list[2].capitalize()}) '
-        display_name += job_name_list[1].capitalize()
+            display_name += f'({job_type_list[2].capitalize()}) '
+        display_name += job_type_list[1].capitalize()
         return display_name
 
     @staticmethod
@@ -98,7 +103,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         # Map report targets to source data queries
         target_mappings = {
             ("SUMMARY", "RUNS"): self.query.dq_report_runs_summary(report_def.from_date),
-            ("SUMMARY", "INGESTIONS"): self.query.dq_report_ingestions_summary(report_def.from_date),
+            ("SUMMARY", "INGESTIONS"): self.query.short_read_ingestions_summary(report_def.from_date),
             ("SUMMARY", "INCIDENTS"): self.incident_dao.get_daily_report_incidents(report_def.from_date),
             ("SUMMARY", "RESOLVED"): self.incident_dao.get_daily_report_resolved_manifests(report_def.from_date)
         }
