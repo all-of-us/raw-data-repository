@@ -1760,6 +1760,10 @@ class GenomicL1Raw(Base):
     failure_mode_desc = Column(String(255), nullable=True)
 
 
+event.listen(GenomicL1Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicL1Raw, 'before_update', model_update_listener)
+
+
 class GenomicProteomics(Base):
     """
     Used for storing the member records that are being

@@ -49,7 +49,7 @@ from rdr_service.model.genomics import (
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead,
-    GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, GenomicRRRaw, GenomicR1Raw)
+    GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, GenomicRRRaw, GenomicR1Raw, GenomicLRRaw, GenomicL1Raw)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -4943,45 +4943,45 @@ class GenomicLongReadReportingDao(GenomicReportingDao):
         with self.session() as session:
             ingested_query = (
                 session.query(
-                    functions.count(distinct(GenomicPRRaw.id)).label('record_count'),
+                    functions.count(distinct(GenomicLRRaw.id)).label('record_count'),
                     functions.count(distinct(self.model_type.id)).label('ingested_count'),
-                    (functions.count(distinct(GenomicPRRaw.id)) - functions.count(distinct(
+                    (functions.count(distinct(GenomicLRRaw.id)) - functions.count(distinct(
                         self.model_type.id))).label('delta_count'),
-                    literal('pr').label('file_type'),
-                    GenomicPRRaw.genome_type,
-                    GenomicPRRaw.file_path
+                    literal('lr').label('file_type'),
+                    GenomicLRRaw.genome_type,
+                    GenomicLRRaw.file_path
                 ).join(
                     GenomicFileProcessed,
                     GenomicFileProcessed.runId == self.model_type.created_job_run_id
                 ).join(
-                    GenomicPRRaw,
-                    GenomicPRRaw.file_path == GenomicFileProcessed.filePath
+                    GenomicLRRaw,
+                    GenomicLRRaw.file_path == GenomicFileProcessed.filePath
                 ).filter(
-                    GenomicPRRaw.created >= from_date,
-                    GenomicPRRaw.ignore_flag != 1
+                    GenomicLRRaw.created >= from_date,
+                    GenomicLRRaw.ignore_flag != 1
                 ).group_by(
-                    GenomicPRRaw.genome_type,
-                    GenomicPRRaw.file_path
+                    GenomicLRRaw.genome_type,
+                    GenomicLRRaw.file_path
                 ).union(
                     session.query(
-                        functions.count(distinct(GenomicP1Raw.id)).label('record_count'),
+                        functions.count(distinct(GenomicL1Raw.id)).label('record_count'),
                         functions.count(distinct(self.model_type.id)).label('ingested_count'),
-                        (functions.count(distinct(GenomicP1Raw.id)) - functions.count(distinct(
+                        (functions.count(distinct(GenomicL1Raw.id)) - functions.count(distinct(
                             self.model_type.id))).label('delta_count'),
-                        literal('p1').label('file_type'),
-                        GenomicP1Raw.genome_type,
-                        GenomicP1Raw.file_path
+                        literal('l1').label('file_type'),
+                        GenomicL1Raw.genome_type,
+                        GenomicL1Raw.file_path
                     ).join(
-                        GenomicP1Raw,
-                        GenomicP1Raw.sample_id == self.model_type.sample_id
+                        GenomicL1Raw,
+                        GenomicL1Raw.sample_id == self.model_type.sample_id
                     ).filter(
-                        GenomicP1Raw.created >= from_date,
-                        GenomicP1Raw.ignore_flag != 1,
-                        GenomicP1Raw.biobank_id != "",
-                        GenomicP1Raw.biobank_id.isnot(None)
+                        GenomicL1Raw.created >= from_date,
+                        GenomicL1Raw.ignore_flag != 1,
+                        GenomicL1Raw.biobank_id != "",
+                        GenomicL1Raw.biobank_id.isnot(None)
                     ).group_by(
-                        GenomicP1Raw.genome_type,
-                        GenomicP1Raw.file_path
+                        GenomicL1Raw.genome_type,
+                        GenomicL1Raw.file_path
                     )
                 )
             )
