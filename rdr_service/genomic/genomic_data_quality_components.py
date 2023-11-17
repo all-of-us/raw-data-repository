@@ -65,6 +65,8 @@ class ReportingComponent(GenomicDataQualityComponentBase):
             return clock.CLOCK.now() - dd
 
     def set_ingestion_type(self) -> Union[str, None]:
+        if not self.controller:
+            return None
         job_type_list = self.controller.job.name.split('_')
         if job_type_list[-1].lower() == 'ingestions' and len(job_type_list) > 4:
             return job_type_list[2]
@@ -116,7 +118,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
             ("SUMMARY", "INCIDENTS"): self.incident_dao.get_daily_report_incidents(report_def.from_date),
             ("SUMMARY", "RESOLVED"): self.incident_dao.get_daily_report_resolved_manifests(report_def.from_date),
             ("SUMMARY", "SHORTREAD"): self.query.short_read_ingestions_summary(report_def.from_date),
-            ("SUMMARY", "PROTEOMICS"): self.query.short_read_ingestions_summary(report_def.from_date),
+            ("SUMMARY", "PROTEOMICS"): self.pr_reporting_dao.get_reporting_counts(report_def.from_date),
             ("SUMMARY", "LONGREAD"): self.query.short_read_ingestions_summary(report_def.from_date),
             ("SUMMARY", "RNA"): self.query.short_read_ingestions_summary(report_def.from_date),
         }

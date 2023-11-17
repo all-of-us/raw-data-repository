@@ -1834,6 +1834,10 @@ class GenomicP0Raw(Base):
     p_site_id = Column(String(255), nullable=True)
 
 
+event.listen(GenomicP0Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicP0Raw, 'before_update', model_update_listener)
+
+
 class GenomicP1Raw(Base):
     """
     Raw Data from P1 files
@@ -1878,6 +1882,10 @@ class GenomicP1Raw(Base):
     genome_type = Column(String(80), nullable=True, index=True)
 
 
+event.listen(GenomicP1Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicP1Raw, 'before_update', model_update_listener)
+
+
 class GenomicP2Raw(Base):
     """
     Raw Data from P2 files
@@ -1903,6 +1911,10 @@ class GenomicP2Raw(Base):
     analysis_report_path = Column(String(255), nullable=True)
     kit_type = Column(String(255), nullable=True)
     notes = Column(String(1028), nullable=True)
+
+
+event.listen(GenomicP2Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicP2Raw, 'before_update', model_update_listener)
 
 
 class GenomicRNA(Base):
