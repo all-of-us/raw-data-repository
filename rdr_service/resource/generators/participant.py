@@ -130,7 +130,10 @@ _consent_answer_status_map = {
     # Generic yes/no answer codes that apply to multiple consents (e.g., VA/non-VA reconsents and EtM consents)
     'agree_yes': BQModuleStatusEnum.SUBMITTED,
     'agree_no': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
-    # For the updated ConsentPII that allows yes or no reponses
+    # For the updated ConsentPII that allows yes or no reponses.
+    'ExtraConsent_AgreeToConsent': BQModuleStatusEnum.SUBMITTED,
+    'ExtraConsent_DoNotAgreeToConsent': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    # Need to support all lowercase values for unit test setups
     'extraconsent_agreetoconsent': BQModuleStatusEnum.SUBMITTED,
     'extraconsent_donotagreetoconsent': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
 }
@@ -139,6 +142,9 @@ _consent_answer_status_map = {
 # in PDR (and that users are used to querying).  I.e., until now every ConsentPII response data record was given a
 # default ConsentPermission_Yes answer code value.
 _replace_answer_codes = {
+    'ExtraConsent_AgreeToConsent': 'ConsentPermission_Yes',
+    'ExtraConsent_DoNotAgreeToConsent': 'ConsentPermission_No',
+    # Need to support all lowercase values for unit test setups
     'extraconsent_agreetoconsent': 'ConsentPermission_Yes',
     'extraconsent_donotagreetoconsent': 'ConsentPermission_No'
 }
