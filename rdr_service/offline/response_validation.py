@@ -99,10 +99,17 @@ class ResponseValidationController:
         result_text = f'Validation errors for survey responses received since {self._since_date.date()}\n'
         result_list = []
         if self._summarize_results:
-            for key, error_list in self._error_list.items():
-                survey_code, question_code, error_str = key
+            error_counts = defaultdict(lambda: 0)
+
+            # Condense the list into the number of times a specific error string was seen for a question in a survey
+            for key in self._error_list:
+                survey_code, question_code, error_str, *_ = key
+                error_counts[(survey_code, question_code, error_str)] += 1
+
+            for error_info, count in error_counts.items():
+                survey_code, question_code, error_str = error_info
                 result_list.append(
-                    f'{survey_code} "{question_code}" Error: {error_str}, number affected answers: {len(error_list)}'
+                    f'{survey_code} "{question_code}" Error: {error_str}, number affected answers: {count}'
                 )
         else:
             for error_list in self._error_list.values():
@@ -113,7 +120,7 @@ class ResponseValidationController:
         self._output_result(result_text)
 
     def _insert_data(self):
-        for key in self._error_list.items():
+        for key in self._error_list:
             survey_code, question_code, error_str, error_type, pid, answer_id = key
 
             data = PpiValidationErrors(
@@ -126,8 +133,9 @@ class ResponseValidationController:
                 questionnaire_response_answer_id=answer_id
             )
 
-            # Insert data into PPI validation table
-            self.validation_errors_dao.insert(data)
+            # Insert data into PPI validation table if offline job is running
+            if self._summarize_results:
+                self.validation_errors_dao.insert_with_session(session=self._session, obj=data)
 
     def _output_result(self, result_str):
         if self._slack_webhook:

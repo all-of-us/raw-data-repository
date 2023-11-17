@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 from dateutil.parser import parse
 import faker
@@ -794,7 +795,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
         wgs_sequencing_time = GenomicSetMemberDao.get_wgs_pass_date(
             session=session,
-            participant_id=summary.participantId
+            biobank_id=summary.biobankId
         )
         first_exposures_response_time = None
         for data in (summary.pediatricData or []):
@@ -1261,10 +1262,12 @@ class ParticipantSummaryDao(UpdatableDao):
             return record.all()
 
     def get_hpro_consent_paths(self, result):
-        consents_map = {
+        type_to_field_name_map = {  # Maps types to the prefix of the field name they populate in the resulting JSON
             ConsentType.PRIMARY: 'consentForStudyEnrollment',
+            ConsentType.PEDIATRIC_PRIMARY: 'consentForStudyEnrollment',
             ConsentType.CABOR: 'consentForCABoR',
             ConsentType.EHR: 'consentForElectronicHealthRecords',
+            ConsentType.PEDIATRIC_EHR: 'consentForElectronicHealthRecords',
             ConsentType.GROR: 'consentForGenomicsROR',
             ConsentType.PRIMARY_RECONSENT: 'reconsentForStudyEnrollment',
             ConsentType.EHR_RECONSENT: 'reconsentForElectronicHealthRecords'
@@ -1272,12 +1275,12 @@ class ParticipantSummaryDao(UpdatableDao):
         participant_id = result['participantId']
         records = list(filter(lambda obj: obj.participant_id == participant_id, self.hpro_consents))
 
-        for consent_type, consent_name in consents_map.items():
-            value_path_key = f'{consent_name}FilePath'
-            has_consent_path = [obj for obj in records if consent_type == obj.consent_type]
+        for consent_type, field_name_prefix in type_to_field_name_map.items():
+            field_name = f'{field_name_prefix}FilePath'
+            matching_consent_list = [obj for obj in records if consent_type == obj.consent_type]
 
-            if has_consent_path:
-                result[value_path_key] = has_consent_path[0].file_path
+            if matching_consent_list:
+                result[field_name] = matching_consent_list[0].file_path
 
         return result
 
@@ -1458,8 +1461,18 @@ class ParticipantSummaryDao(UpdatableDao):
 
         # Find any linked accounts to display
         result['relatedParticipants'] = UNSET
-        if obj.relatedParticipants:
+        if obj.isPediatric:
+            if not obj.relatedParticipants:
+                logging.error('Pediatric participant does not have a guardian account linked')
+                return None
+
             related_summary_list = [link.related.participantSummary for link in obj.relatedParticipants]
+            if any(summary is None for summary in related_summary_list):
+                # If any of the guardians of a pediatric participant are not yet consented,
+                # don't return the pediatric participant's data
+                logging.error('Pediatric participant has unconsented guardian')
+                return None
+
             result['relatedParticipants'] = [
                 {
                     'participantId': to_client_participant_id(related_summary.participantId),

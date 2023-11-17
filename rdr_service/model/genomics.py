@@ -1752,7 +1752,6 @@ class GenomicL1Raw(Base):
     contact = Column(String(255), nullable=True)
     email = Column(String(255), nullable=True)
     study_pi = Column(String(255), nullable=True)
-    site_name = Column(String(255), nullable=True, index=True)
     genome_type = Column(String(80), nullable=True, index=True)
     lr_site_id = Column(String(80), nullable=True, index=True)
     long_read_platform = Column(String(80), nullable=True, index=True)
@@ -2052,6 +2051,71 @@ event.listen(GenomicR1Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicR1Raw, 'before_update', model_update_listener)
 
 
+class GenomicR2Raw(Base):
+    """
+    Raw Data from R2 files
+    """
+    __tablename__ = 'genomic_r2_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    lims_id = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    alignment_rate_pct = Column(String(255), nullable=True)
+    duplication_pct = Column(String(255), nullable=True)
+    mrna_bases_pct = Column(String(255), nullable=True)
+    reads_aligned_in_pairs = Column(String(255), nullable=True)
+    ribosomal_bases_pct = Column(String(255), nullable=True)
+    median_cv_coverage = Column(String(255), nullable=True)
+    mean_insert_size = Column(String(255), nullable=True)
+    rqs = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    processing_status = Column(String(255), nullable=True)
+    pipeline_id = Column(String(255), nullable=True)
+    cram_path = Column(String(255), nullable=True)
+    cram_md5_path = Column(String(255), nullable=True)
+    notes = Column(String(1028), nullable=True)
+
+
+event.listen(GenomicR2Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicR2Raw, 'before_update', model_update_listener)
+
+
+class GenomicA1Raw(Base):
+    """
+    Raw data from A1 files
+    """
+    __tablename__ = 'genomic_a1_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    consent_for_ror = Column(String(255), nullable=True)
+    chipwellbarcode = Column(String(255), nullable=True)
+    genome_center = Column(String(255), nullable=True)
+
+
+event.listen(GenomicA1Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicA1Raw, 'before_update', model_update_listener)
+
+
 class GenomicA2Raw(Base):
     """
     Raw data from A2 files
@@ -2074,3 +2138,26 @@ class GenomicA2Raw(Base):
 
 event.listen(GenomicA2Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicA2Raw, 'before_update', model_update_listener)
+
+
+class GenomicA3Raw(Base):
+    """
+    Raw data from A3 files
+    """
+    __tablename__ = 'genomic_a3_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    date_of_consent_removal = Column(String(255), nullable=True)
+
+
+event.listen(GenomicA3Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicA3Raw, 'before_update', model_update_listener)

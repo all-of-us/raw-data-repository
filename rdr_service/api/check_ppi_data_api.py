@@ -1,4 +1,5 @@
 import json
+import re
 
 from flask import request
 
@@ -115,11 +116,15 @@ def _list_of_expected_answers_match_actual(expected_answers: set, actual_answers
 def _get_validation_result(key, codes_to_answers):
     result = _ValidationResult()
     with ParticipantSummaryDao().session() as session:
-        # Get summary by email or phone
-        if "@" not in key:
-            summaries = session.query(ParticipantSummary).filter(ParticipantSummary.loginPhoneNumber == key).all()
+        # Get summary by participant id, email, or phone
+        query = session.query(ParticipantSummary)
+        if re.compile('P[0-9]{9}$').match(key):
+            query = query.filter(ParticipantSummary.participantId == key[1:])
+        elif "@" not in key:
+            query = query.filter(ParticipantSummary.loginPhoneNumber == key)
         else:
-            summaries = session.query(ParticipantSummary).filter(ParticipantSummary.email == key).all()
+            query = query.filter(ParticipantSummary.email == key)
+        summaries = query.all()
 
     if not summaries:
         result.add_error(f"No ParticipantSummary found for {key}.")

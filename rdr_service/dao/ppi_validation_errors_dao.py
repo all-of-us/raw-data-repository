@@ -8,10 +8,6 @@ class PpiValidationErrorsDao(BaseDao):
     def __init__(self):
         super(PpiValidationErrorsDao, self).__init__(PpiValidationErrors)
 
-    def insert(self, obj):
-        response = super(PpiValidationErrorsDao, self).insert(obj)
-        return response
-
     def get(self, validation_error_id):
         with self.session() as session:
             query = session.query(PpiValidationErrors).filter(

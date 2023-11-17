@@ -5,7 +5,7 @@ from flask import request
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 from rdr_service import config
-from rdr_service.api.base_api import BaseApi, make_sync_results_for_request
+from rdr_service.api.base_api import BaseApi
 from rdr_service.api_util import AWARDEE, DEV_MAIL, RDR_AND_PTC, PTC_HEALTHPRO_AWARDEE_CURATION, SUPPORT
 from rdr_service.app_util import auth_required, get_validated_user_info, restrict_to_gae_project
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
@@ -113,8 +113,13 @@ class ParticipantSummaryApi(BaseApi):
 
     def _make_bundle(self, results, id_field, participant_id):
         if self._get_request_arg_bool("_sync"):
-            return make_sync_results_for_request(self.dao, results)
+            return self.make_sync_results_for_request(self.dao, results)
         return super(ParticipantSummaryApi, self)._make_bundle(results, id_field, participant_id)
+
+    @classmethod
+    def _append_response_to_bundle(cls, entries, response, include_url, id_field, participant_id):
+        if response:  # Skip any responses that are empty (like when pediatric participants are excluded)
+            super()._append_response_to_bundle(entries, response, include_url, id_field, participant_id)
 
     def _check_constraints(self):
         message = None

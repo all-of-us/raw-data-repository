@@ -104,7 +104,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 'manifest_type': 'lr',
                 'task_endpoint': 'IngestSubManifestTaskApi'
             },
-            '_AoU_l1_': {
+            '_lr_pkg': {
                 'manifest_type': 'l1',
                 'task_endpoint': 'IngestSubManifestTaskApi'
             }
@@ -132,6 +132,10 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 'manifest_type': 'r1',
                 'task_endpoint': 'IngestSubManifestTaskApi'
             },
+            '_r2_': {
+                'manifest_type': 'r2',
+                'task_endpoint': 'IngestSubManifestTaskApi'
+            }
         }
 
         task_key_map = {

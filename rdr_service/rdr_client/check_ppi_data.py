@@ -25,6 +25,9 @@ from rdr_service.main_util import configure_logging, get_parser
 from rdr_service.rdr_client.client import Client
 
 
+PARTICIPANT_ID_COLUMN = 'ParticipantId'
+
+
 def check_ppi_data(client, args):
     """
   Fetch and process spreadsheet, then call CheckPpiData for results
@@ -32,7 +35,7 @@ def check_ppi_data(client, args):
   :param args: program arguments
   """
     # See if we have filter criteria
-    if not args.email and not args.phone:
+    if not args.email and not args.phone and not args.participantId:
         do_filter = False
     else:
         do_filter = True
@@ -51,9 +54,18 @@ def check_ppi_data(client, args):
         email = row_dict[EQC] if EQC in row_dict else None
         phone_no = row_dict[PNQC] if PNQC in row_dict else None
 
-        if do_filter is False or (email in args.email or phone_no in args.phone):
-            # prioritize using email value over phone number for key
-            key = email if email else phone_no
+        participant_id = None
+        if PARTICIPANT_ID_COLUMN in row_dict:
+            participant_id = row_dict[PARTICIPANT_ID_COLUMN]
+            del row_dict[PARTICIPANT_ID_COLUMN]
+
+        if do_filter is False or (
+            email in args.email
+            or phone_no in args.phone
+            or participant_id in args.participantId
+        ):
+            key = email if email else phone_no  # prioritize using email value over phone number for key
+            key = participant_id if participant_id else key  # prioritize using participant id over anything else
             ppi_data[key] = row_dict
 
     if len(ppi_data) == 0:
@@ -156,6 +168,13 @@ if __name__ == "__main__":
         "--phone",
         help=(
             "Only validate the given phone number. " " This flag may be repeated to specify multiple phone numbers."
+        ),
+        action="append",
+    )
+    parser.add_argument(
+        "--participantId",
+        help=(
+            "Only validate the given participant id. " " This flag may be repeated to specify multiple ids."
         ),
         action="append",
     )

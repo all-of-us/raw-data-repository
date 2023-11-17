@@ -538,13 +538,6 @@ class QuestionnaireResponseDao(BaseDao):
             answer.endTime = questionnaire_response.created
             session.merge(answer)
 
-        summary = ParticipantSummaryDao.get_for_update_with_linked_data(
-            participant_id=questionnaire_response.participantId,
-            session=session
-        )
-        if summary:
-            ParticipantSummaryDao().update_enrollment_status(summary, session=session)
-
         # Create any account links based on extensions
         for extension in questionnaire_response.extensions:
             if extension.url == _GUARDIAN_EXTENSION:
@@ -555,6 +548,13 @@ class QuestionnaireResponseDao(BaseDao):
                     ),
                     session=session
                 )
+
+        summary = ParticipantSummaryDao.get_for_update_with_linked_data(
+            participant_id=questionnaire_response.participantId,
+            session=session
+        )
+        if summary:
+            ParticipantSummaryDao().update_enrollment_status(summary, session=session)
 
         return questionnaire_response
 
