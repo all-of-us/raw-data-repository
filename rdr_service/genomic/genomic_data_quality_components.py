@@ -119,8 +119,8 @@ class ReportingComponent(GenomicDataQualityComponentBase):
             ("SUMMARY", "RESOLVED"): self.incident_dao.get_daily_report_resolved_manifests(report_def.from_date),
             ("SUMMARY", "SHORTREAD"): self.query.short_read_ingestions_summary(report_def.from_date),
             ("SUMMARY", "PROTEOMICS"): self.pr_reporting_dao.get_reporting_counts(report_def.from_date),
-            ("SUMMARY", "LONGREAD"): self.query.short_read_ingestions_summary(report_def.from_date),
-            ("SUMMARY", "RNA"): self.query.short_read_ingestions_summary(report_def.from_date),
+            ("SUMMARY", "LONGREAD"): self.long_read_reporting_dao.get_reporting_counts(report_def.from_date),
+            ("SUMMARY", "RNA"): self.rna_reporting_dao.get_reporting_counts(report_def.from_date),
         }
 
         returned_from_method = target_mappings[(report_def.level, report_def.target)]
