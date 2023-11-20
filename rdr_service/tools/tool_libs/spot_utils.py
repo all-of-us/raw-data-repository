@@ -20,12 +20,15 @@ from sqlalchemy import case
 
 from rdr_service.dao import database_factory
 from rdr_service.clock import Clock
+from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrder
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.site import Site
 from rdr_service.participant_enums import QuestionnaireResponseClassificationType
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.spot.value_normalizer import ValueNormalizer
@@ -530,10 +533,23 @@ class SpotTool(ToolBase):
         ).join(
             GenomicGCValidationMetrics,
             GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+        ).join(
+            BiobankStoredSample,
+            BiobankStoredSample.biobankStoredSampleId == GenomicSetMember.collectionTubeId
+        ).join(
+            BiobankOrderIdentifier,
+            BiobankStoredSample.biobankOrderIdentifier == BiobankOrderIdentifier.value
+        ).join(
+            BiobankOrder,
+            BiobankOrderIdentifier.biobankOrderId == BiobankOrder.biobankOrderId
+        ).join(
+            Site,
+            BiobankOrder.collectedSiteId == Site.siteId
         ).filter(
             GenomicSetMember.aw4ManifestJobRunID.isnot(None),
             GenomicSetMember.ignoreFlag == 0,
             GenomicGCValidationMetrics.ignoreFlag == 0,
+            BiobankOrder.is_not_ignored(),
             or_(
                 GenomicSetMember.modified > last_update_date,
                 GenomicGCValidationMetrics.modified > last_update_date,
