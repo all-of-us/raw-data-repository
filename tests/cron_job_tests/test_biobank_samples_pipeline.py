@@ -426,6 +426,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
                 None, None, None, None, None,  # cancelled_restored info: status_flag, name, name, time, reason
                 None,  # order origin
                 'example',  # Participant origin
+                0  # pediatric flag
             )])
 
     def test_demographic_flags_in_received_report(self):
