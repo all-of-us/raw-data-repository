@@ -415,4 +415,4 @@ class GenomicSampleSwapCategory(messages.Enum):
 class GenomicLongReadPlatform(messages.Enum):
     UNSET = 0
     ONT = 1
-    PACBIO_CSS = 2
+    PACBIO_CCS = 2
