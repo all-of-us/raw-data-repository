@@ -252,10 +252,9 @@ def _query_and_write_received_report(exporter, report_path, query_params, report
             group_concat(ny_flag) ny_flag,
             group_concat(sex_at_birth_flag) sex_at_birth_flag
         """
-    if config.getSettingJson('enable_biobank_report_pediatric_flag', default=False):
-        received_report_select += """,
-            max(is_pediatric) ispediatric
-        """
+    received_report_select += """,
+        max(is_pediatric) ispediatric
+    """
     logging.info(f"Writing {report_path} report.")
     received_sql = replace_isodate(received_report_select + _RECONCILIATION_REPORT_SOURCE_SQL)
     exporter.run_export(
