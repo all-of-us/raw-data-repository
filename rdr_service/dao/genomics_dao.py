@@ -49,7 +49,8 @@ from rdr_service.model.genomics import (
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead,
-    GenomicProteomics, GenomicRNA, GenomicAW4Raw)
+    GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, GenomicRRRaw, GenomicR1Raw, GenomicLRRaw,
+     GenomicL1Raw, GenomicAW4Raw)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -4916,3 +4917,179 @@ class GenomicRNADao(GenomicSubDao):
                 GenomicRNA.rna_set ==
                 self.get_max_set_subquery().c.rna_set
             ).distinct().all()
+
+
+class GenomicReportingDao(ABC, BaseDao):
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    @abstractmethod
+    def get_reporting_counts(self, *, from_date):
+        ...
+
+
+class GenomicLongReadReportingDao(GenomicReportingDao):
+
+    def __init__(self):
+        super().__init__(GenomicLongRead, order_by_ending=['id'])
+
+    def get_reporting_counts(self, from_date):
+        with self.session() as session:
+            ingested_query = (
+                session.query(
+                    functions.count(distinct(GenomicLRRaw.id)).label('record_count'),
+                    functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                    (functions.count(distinct(GenomicLRRaw.id)) - functions.count(distinct(
+                        self.model_type.id))).label('delta_count'),
+                    literal('lr').label('file_type'),
+                    GenomicLRRaw.genome_type,
+                    GenomicLRRaw.file_path
+                ).join(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.runId == self.model_type.created_job_run_id
+                ).join(
+                    GenomicLRRaw,
+                    GenomicLRRaw.file_path == GenomicFileProcessed.filePath
+                ).filter(
+                    GenomicLRRaw.created >= from_date,
+                    GenomicLRRaw.ignore_flag != 1
+                ).group_by(
+                    GenomicLRRaw.genome_type,
+                    GenomicLRRaw.file_path
+                ).union(
+                    session.query(
+                        functions.count(distinct(GenomicL1Raw.id)).label('record_count'),
+                        functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                        (functions.count(distinct(GenomicL1Raw.id)) - functions.count(distinct(
+                            self.model_type.id))).label('delta_count'),
+                        literal('l1').label('file_type'),
+                        GenomicL1Raw.genome_type,
+                        GenomicL1Raw.file_path
+                    ).join(
+                        GenomicL1Raw,
+                        GenomicL1Raw.sample_id == self.model_type.sample_id
+                    ).filter(
+                        GenomicL1Raw.created >= from_date,
+                        GenomicL1Raw.ignore_flag != 1,
+                        GenomicL1Raw.biobank_id != "",
+                        GenomicL1Raw.biobank_id.isnot(None)
+                    ).group_by(
+                        GenomicL1Raw.genome_type,
+                        GenomicL1Raw.file_path
+                    )
+                )
+            )
+            return ingested_query.all()
+
+
+class GenomicPRReportingDao(GenomicReportingDao):
+
+    def __init__(self):
+        super().__init__(GenomicProteomics, order_by_ending=['id'])
+
+    def get_reporting_counts(self, from_date):
+        with self.session() as session:
+            ingested_query = (
+                session.query(
+                    functions.count(distinct(GenomicPRRaw.id)).label('record_count'),
+                    functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                    (functions.count(distinct(GenomicPRRaw.id)) - functions.count(distinct(
+                        self.model_type.id))).label('delta_count'),
+                    literal('pr').label('file_type'),
+                    GenomicPRRaw.genome_type,
+                    GenomicPRRaw.file_path
+                ).join(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.runId == self.model_type.created_job_run_id
+                ).join(
+                    GenomicPRRaw,
+                    GenomicPRRaw.file_path == GenomicFileProcessed.filePath
+                ).filter(
+                    GenomicPRRaw.created >= from_date,
+                    GenomicPRRaw.ignore_flag != 1
+                ).group_by(
+                    GenomicPRRaw.genome_type,
+                    GenomicPRRaw.file_path
+                ).union(
+                    session.query(
+                        functions.count(distinct(GenomicP1Raw.id)).label('record_count'),
+                        functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                        (functions.count(distinct(GenomicP1Raw.id)) - functions.count(distinct(
+                            self.model_type.id))).label('delta_count'),
+                        literal('p1').label('file_type'),
+                        GenomicP1Raw.genome_type,
+                        GenomicP1Raw.file_path
+                    ).join(
+                        GenomicP1Raw,
+                        GenomicP1Raw.sample_id == self.model_type.sample_id
+                    ).filter(
+                        GenomicP1Raw.created >= from_date,
+                        GenomicP1Raw.ignore_flag != 1,
+                        GenomicP1Raw.biobank_id != "",
+                        GenomicP1Raw.biobank_id.isnot(None)
+                    ).group_by(
+                        GenomicP1Raw.genome_type,
+                        GenomicP1Raw.file_path
+                    )
+                )
+            )
+            return ingested_query.all()
+
+
+class GenomicRNAReportingDao(GenomicReportingDao):
+
+    def __init__(self):
+        super().__init__(GenomicRNA, order_by_ending=['id'])
+
+    def get_reporting_counts(self, from_date):
+        with self.session() as session:
+            ingested_query = (
+                session.query(
+                    functions.count(distinct(GenomicRRRaw.id)).label('record_count'),
+                    functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                    (functions.count(distinct(GenomicRRRaw.id)) - functions.count(distinct(
+                        self.model_type.id))).label('delta_count'),
+                    literal('rr').label('file_type'),
+                    GenomicRRRaw.genome_type,
+                    GenomicRRRaw.file_path
+                ).join(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.runId == self.model_type.created_job_run_id
+                ).join(
+                    GenomicRRRaw,
+                    GenomicRRRaw.file_path == GenomicFileProcessed.filePath
+                ).filter(
+                    GenomicRRRaw.created >= from_date,
+                    GenomicRRRaw.ignore_flag != 1
+                ).group_by(
+                    GenomicRRRaw.genome_type,
+                    GenomicRRRaw.file_path
+                ).union(
+                    session.query(
+                        functions.count(distinct(GenomicR1Raw.id)).label('record_count'),
+                        functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                        (functions.count(distinct(GenomicR1Raw.id)) - functions.count(distinct(
+                            self.model_type.id))).label('delta_count'),
+                        literal('r1').label('file_type'),
+                        GenomicR1Raw.genome_type,
+                        GenomicR1Raw.file_path
+                    ).join(
+                        GenomicR1Raw,
+                        GenomicR1Raw.sample_id == self.model_type.sample_id
+                    ).filter(
+                        GenomicR1Raw.created >= from_date,
+                        GenomicR1Raw.ignore_flag != 1,
+                        GenomicR1Raw.biobank_id != "",
+                        GenomicR1Raw.biobank_id.isnot(None)
+                    ).group_by(
+                        GenomicR1Raw.genome_type,
+                        GenomicR1Raw.file_path
+                    )
+                )
+            )
+            return ingested_query.all()
+

@@ -787,7 +787,7 @@ def genomic_reconcile_appointment_events():
 @app_util.auth_required_cron
 @check_genomic_cron_job('daily_ingestion_summary')
 def genomic_data_quality_daily_ingestion_summary():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
+    genomic_data_quality_pipeline.daily_data_quality_workflow()
     return '{"success": "true"}'
 
 

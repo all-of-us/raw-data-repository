@@ -4,9 +4,11 @@ import mock, datetime, pytz
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.config import GENOMIC_INGESTION_REPORT_PATH, GENOMIC_INCIDENT_REPORT_PATH, GENOMIC_RESOLVED_REPORT_PATH
-from rdr_service.dao.genomics_dao import GenomicIncidentDao
+from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicJobRunDao
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
     GenomicManifestTypes, GenomicIncidentCode
+from rdr_service.offline.genomics import genomic_data_quality_pipeline
+from rdr_service.participant_enums import QuestionnaireStatus
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.genomic.genomic_job_controller import DataQualityJobController
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
@@ -137,8 +139,19 @@ class GenomicDataQualityReportTest(BaseTestCase):
     def setUp(self, with_data=False, with_consent_codes=False) -> None:
         super().setUp()
         self.incident_dao = GenomicIncidentDao()
+        self.daily_job_runs = [
+            GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS,
+            GenomicJob.DAILY_SUMMARY_LONGREAD_REPORT_INGESTIONS,
+            GenomicJob.DAILY_SUMMARY_PROTEOMICS_REPORT_INGESTIONS,
+            GenomicJob.DAILY_SUMMARY_RNA_REPORT_INGESTIONS
+        ]
+        self.gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
 
-    def test_daily_ingestion_summary(self):
+    def test_daily_short_read_ingestion_summary(self):
         # Set up test data
         bucket_name = "test-bucket"
         aw1_file_name = "AW1_wgs_sample_manifests/RDR_AoU_SEQ_PKG-2104-026571.csv"
@@ -167,6 +180,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
             package_id="PKG-2104-026571",
             biobank_id="A10001",
         )
+
         # Create genomic_aw2_raw record
         self.data_generator.create_database_genomic_aw2_raw(
             file_path=aw2_manifest_path,
@@ -223,16 +237,398 @@ class GenomicDataQualityReportTest(BaseTestCase):
             fileName=aw2_file_name,
         )
 
-        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS) as controller:
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS) as controller:
             report_output = controller.execute_workflow()
 
-        expected_report = "```Daily Ingestions Summary\n"
-        expected_report += "record_count    ingested_count    incident_count    "
+        expected_report = "```Daily Ingestions (Shortread) Summary\n"
+        expected_report += "record_count    ingested_count    delta_count    "
         expected_report += "file_type    gc_site_id    genome_type    file_path\n"
-        expected_report += "1    0    0    aw1    rdr    aou_wgs    "
+        expected_report += "1    0    1    aw1    rdr    aou_wgs    "
         expected_report += f"{aw1_manifest_path}\n"
         expected_report += "1    0    0    aw2    rdr    aou_wgs    "
         expected_report += f"{aw2_manifest_path}"
+        expected_report += "\n```"
+
+        self.assertEqual(expected_report, report_output)
+
+    def test_all_daily_summary_job_runs(self):
+
+        # init entry method called from cron
+        genomic_data_quality_pipeline.daily_data_quality_workflow()
+
+        current_job_runs = GenomicJobRunDao().get_all()
+
+        self.assertEqual(len(current_job_runs), len(self.daily_job_runs))
+        self.assertTrue(all(obj.jobId in self.daily_job_runs for obj in current_job_runs))
+
+    def test_long_read_ingestion_summary(self):
+        bucket_name = 'lr_raw_file_bucket'
+        lr_raw_file_name = "RDR_AoU_PR_2104-026571.csv"
+        l1_raw_file_name = "RDR_AoU_P1_2104-026571.csv"
+        lr_raw_file_path = f"{bucket_name}/{lr_raw_file_name}"
+        l1_raw_file_path = f"{bucket_name}/{l1_raw_file_name}"
+
+        # LR -> Long Read Record
+        lr_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.LR_LR_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        lr_manifest_file = self.data_generator.create_database_genomic_manifest_file(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            uploadDate=clock.CLOCK.now(),
+            manifestTypeId=GenomicManifestTypes.LR_LR,
+            filePath=lr_raw_file_path,
+            fileName=lr_raw_file_name,
+            bucketName=bucket_name,
+            recordCount=1,
+            rdrProcessingComplete=1,
+            rdrProcessingCompleteDate=clock.CLOCK.now(),
+        )
+
+        self.data_generator.create_database_genomic_file_processed(
+            runId=lr_job_run.id,
+            startTime=clock.CLOCK.now(),
+            genomicManifestFileId=lr_manifest_file.id,
+            filePath=lr_raw_file_path,
+            bucketName=bucket_name,
+            fileName=lr_raw_file_name,
+        )
+
+        # L1 -> Updated Long Read Record
+        l1_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.LR_L1_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        l1_manifest_file = self.data_generator.create_database_genomic_manifest_file(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            uploadDate=clock.CLOCK.now(),
+            manifestTypeId=GenomicManifestTypes.LR_L1,
+            filePath=l1_raw_file_path,
+            fileName=l1_raw_file_name,
+            bucketName=bucket_name,
+            recordCount=1,
+            rdrProcessingComplete=1,
+            rdrProcessingCompleteDate=clock.CLOCK.now(),
+        )
+
+        self.data_generator.create_database_genomic_file_processed(
+            runId=l1_job_run.id,
+            startTime=clock.CLOCK.now(),
+            genomicManifestFileId=l1_manifest_file.id,
+            filePath=l1_raw_file_path,
+            bucketName=bucket_name,
+            fileName=l1_raw_file_name,
+        )
+
+        for num in range(3):
+            participant_summary = self.data_generator.create_database_participant_summary(
+                consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
+                consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
+            )
+            genomic_set_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                participantId=participant_summary.participantId,
+                biobankId=f"100{num}",
+                genomeType="aou_array",
+                collectionTubeId=num,
+                ai_an="N"
+            )
+            self.data_generator.create_database_genomic_longread_lr_raw(
+                file_path=lr_raw_file_path,
+                biobank_id=f"A{genomic_set_member.biobankId}",
+                genome_type='aou_long_read',
+                lr_site_id='bi'
+            )
+
+            if num < 2:
+                # should have a delta of 1 on LR flow
+                self.data_generator.create_database_genomic_long_read(
+                    genomic_set_member_id=genomic_set_member.id,
+                    biobank_id=genomic_set_member.biobankId,
+                    collection_tube_id=f'{num}11111',
+                    genome_type="aou_long_read",
+                    lr_site_id="bi",
+                    long_read_set=1,
+                    created_job_run_id=lr_job_run.id,
+                    sample_id=f'22200{num}'
+                )
+
+                # should have no deltas on L1 flow
+                self.data_generator.create_database_genomic_longread_l1_raw(
+                    file_path=l1_raw_file_path,
+                    biobank_id=f"A{genomic_set_member.biobankId}",
+                    genome_type='aou_long_read',
+                    sample_id=f'22200{num}'
+                )
+
+        with DataQualityJobController(
+            GenomicJob.DAILY_SUMMARY_LONGREAD_REPORT_INGESTIONS
+        ) as controller:
+            report_output = controller.execute_workflow()
+
+        expected_report = "```Daily Ingestions (Longread) Summary\n"
+        # LR -> LongRead Record
+        expected_report += "record_count    ingested_count    delta_count    "
+        expected_report += "file_type    genome_type    file_path\n"
+        expected_report += "3    2    1    lr    aou_long_read    "
+        expected_report += f"{lr_raw_file_path}\n"
+        # L1 -> Updated LongRead Record
+        expected_report += "2    2    0    l1    aou_long_read    "
+        expected_report += f"{l1_raw_file_path}"
+        expected_report += "\n```"
+
+        self.assertEqual(expected_report, report_output)
+
+    def test_proteomics_ingestion_summary(self):
+        bucket_name = 'pr_raw_file_bucket'
+        pr_raw_file_name = "RDR_AoU_PR_2104-026571.csv"
+        p1_raw_file_name = "RDR_AoU_P1_2104-026571.csv"
+        pr_raw_file_path = f"{bucket_name}/{pr_raw_file_name}"
+        p1_raw_file_path = f"{bucket_name}/{p1_raw_file_name}"
+
+        # PR -> Proteomics Record
+        pr_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.PR_PR_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        pr_manifest_file = self.data_generator.create_database_genomic_manifest_file(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            uploadDate=clock.CLOCK.now(),
+            manifestTypeId=GenomicManifestTypes.PR_PR,
+            filePath=pr_raw_file_path,
+            fileName=pr_raw_file_name,
+            bucketName=bucket_name,
+            recordCount=1,
+            rdrProcessingComplete=1,
+            rdrProcessingCompleteDate=clock.CLOCK.now(),
+        )
+
+        self.data_generator.create_database_genomic_file_processed(
+            runId=pr_job_run.id,
+            startTime=clock.CLOCK.now(),
+            genomicManifestFileId=pr_manifest_file.id,
+            filePath=pr_raw_file_path,
+            bucketName=bucket_name,
+            fileName=pr_raw_file_name,
+        )
+
+        # P1 -> Updated Proteomics Record
+        p1_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.PR_P1_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        p1_manifest_file = self.data_generator.create_database_genomic_manifest_file(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            uploadDate=clock.CLOCK.now(),
+            manifestTypeId=GenomicManifestTypes.PR_P1,
+            filePath=p1_raw_file_path,
+            fileName=p1_raw_file_name,
+            bucketName=bucket_name,
+            recordCount=1,
+            rdrProcessingComplete=1,
+            rdrProcessingCompleteDate=clock.CLOCK.now(),
+        )
+
+        self.data_generator.create_database_genomic_file_processed(
+            runId=p1_job_run.id,
+            startTime=clock.CLOCK.now(),
+            genomicManifestFileId=p1_manifest_file.id,
+            filePath=p1_raw_file_path,
+            bucketName=bucket_name,
+            fileName=p1_raw_file_name,
+        )
+
+        for num in range(3):
+            participant_summary = self.data_generator.create_database_participant_summary(
+                consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
+                consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
+            )
+            genomic_set_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                participantId=participant_summary.participantId,
+                biobankId=f"100{num}",
+                genomeType="aou_array",
+                collectionTubeId=num,
+                ai_an="N"
+            )
+            self.data_generator.create_database_genomic_proteomics_pr_raw(
+                file_path=pr_raw_file_path,
+                biobank_id=f"A{genomic_set_member.biobankId}",
+                genome_type='aou_proteomics',
+                p_site_id='bi'
+            )
+
+            if num < 2:
+                # should have a delta of 1 on PR flow
+                self.data_generator.create_database_genomic_proteomics(
+                    genomic_set_member_id=genomic_set_member.id,
+                    biobank_id=genomic_set_member.biobankId,
+                    collection_tube_id=f'{num}11111',
+                    genome_type="aou_proteomics",
+                    p_site_id="bi",
+                    proteomics_set=1,
+                    created_job_run_id=pr_job_run.id,
+                    sample_id=f'22200{num}'
+                )
+
+                # should have no deltas on P1 flow
+                self.data_generator.create_database_genomic_proteomics_p1_raw(
+                    file_path=p1_raw_file_path,
+                    biobank_id=f"A{genomic_set_member.biobankId}",
+                    genome_type='aou_proteomics',
+                    sample_id=f'22200{num}'
+                )
+
+        with DataQualityJobController(
+            GenomicJob.DAILY_SUMMARY_PROTEOMICS_REPORT_INGESTIONS
+        ) as controller:
+            report_output = controller.execute_workflow()
+
+        expected_report = "```Daily Ingestions (Proteomics) Summary\n"
+        # PR -> Proteomics Record
+        expected_report += "record_count    ingested_count    delta_count    "
+        expected_report += "file_type    genome_type    file_path\n"
+        expected_report += "3    2    1    pr    aou_proteomics    "
+        expected_report += f"{pr_raw_file_path}\n"
+        # P1 -> Updated Proteomics Record
+        expected_report += "2    2    0    p1    aou_proteomics    "
+        expected_report += f"{p1_raw_file_path}"
+        expected_report += "\n```"
+
+        self.assertEqual(expected_report, report_output)
+
+    def test_rna_ingestion_summary(self):
+        bucket_name = 'rna_raw_file_bucket'
+        rr_raw_file_name = "RDR_AoU_RR_2104-026571.csv"
+        r1_raw_file_name = "RDR_AoU_R1_2104-026571.csv"
+        rr_raw_file_path = f"{bucket_name}/{rr_raw_file_name}"
+        r1_raw_file_path = f"{bucket_name}/{r1_raw_file_name}"
+
+        # RR -> RNA Record
+        rr_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.RNA_RR_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        rr_manifest_file = self.data_generator.create_database_genomic_manifest_file(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            uploadDate=clock.CLOCK.now(),
+            manifestTypeId=GenomicManifestTypes.RNA_RR,
+            filePath=rr_raw_file_path,
+            fileName=rr_raw_file_name,
+            bucketName=bucket_name,
+            recordCount=1,
+            rdrProcessingComplete=1,
+            rdrProcessingCompleteDate=clock.CLOCK.now(),
+        )
+
+        self.data_generator.create_database_genomic_file_processed(
+            runId=rr_job_run.id,
+            startTime=clock.CLOCK.now(),
+            genomicManifestFileId=rr_manifest_file.id,
+            filePath=rr_raw_file_path,
+            bucketName=bucket_name,
+            fileName=rr_raw_file_name,
+        )
+
+        # R1 -> Updated RNA Record
+        r1_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.RNA_R1_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        r1_manifest_file = self.data_generator.create_database_genomic_manifest_file(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            uploadDate=clock.CLOCK.now(),
+            manifestTypeId=GenomicManifestTypes.RNA_R1,
+            filePath=r1_raw_file_path,
+            fileName=r1_raw_file_name,
+            bucketName=bucket_name,
+            recordCount=1,
+            rdrProcessingComplete=1,
+            rdrProcessingCompleteDate=clock.CLOCK.now(),
+        )
+
+        self.data_generator.create_database_genomic_file_processed(
+            runId=r1_job_run.id,
+            startTime=clock.CLOCK.now(),
+            genomicManifestFileId=r1_manifest_file.id,
+            filePath=r1_raw_file_path,
+            bucketName=bucket_name,
+            fileName=r1_raw_file_name,
+        )
+
+        for num in range(3):
+            participant_summary = self.data_generator.create_database_participant_summary(
+                consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
+                consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
+            )
+            genomic_set_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                participantId=participant_summary.participantId,
+                biobankId=f"100{num}",
+                genomeType="aou_array",
+                collectionTubeId=num,
+                ai_an="N"
+            )
+            self.data_generator.create_database_genomic_rna_rr_raw(
+                file_path=rr_raw_file_path,
+                biobank_id=f"A{genomic_set_member.biobankId}",
+                genome_type='aou_rna_seq',
+                r_site_id='bi'
+            )
+
+            if num < 2:
+                # should have a delta of 1 on RR flow
+                self.data_generator.create_database_genomic_rna(
+                    genomic_set_member_id=genomic_set_member.id,
+                    biobank_id=genomic_set_member.biobankId,
+                    collection_tube_id=f'{num}11111',
+                    genome_type="aou_rna_seq",
+                    r_site_id="bi",
+                    rna_set=1,
+                    created_job_run_id=rr_job_run.id,
+                    sample_id=f'22200{num}'
+                )
+
+                # should have no deltas on R1 flow
+                self.data_generator.create_database_genomic_rna_r1_raw(
+                    file_path=r1_raw_file_path,
+                    biobank_id=f"A{genomic_set_member.biobankId}",
+                    genome_type='aou_rna_seq',
+                    sample_id=f'22200{num}'
+                )
+
+        with DataQualityJobController(
+            GenomicJob.DAILY_SUMMARY_RNA_REPORT_INGESTIONS
+        ) as controller:
+            report_output = controller.execute_workflow()
+
+        expected_report = "```Daily Ingestions (Rna) Summary\n"
+        # RR -> RNA Record
+        expected_report += "record_count    ingested_count    delta_count    "
+        expected_report += "file_type    genome_type    file_path\n"
+        expected_report += "3    2    1    rr    aou_rna_seq    "
+        expected_report += f"{rr_raw_file_path}\n"
+        # R1 -> Updated RNA Record
+        expected_report += "2    2    0    r1    aou_rna_seq    "
+        expected_report += f"{r1_raw_file_path}"
         expected_report += "\n```"
 
         self.assertEqual(expected_report, report_output)
@@ -253,26 +649,56 @@ class GenomicDataQualityReportTest(BaseTestCase):
         format_mock.return_value = expected_report
 
         # Run the workflow
-        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS) as controller:
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS) as controller:
             controller.execute_workflow(slack=True)
 
         # Test the slack API was called correctly
         slack_handler_mock.assert_called_with(message_data={'text': expected_report})
 
     def test_daily_ingestion_summary_no_files(self):
-        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS) as controller:
-            report_output = controller.execute_workflow()
 
-        expected_report = "No data to display for Daily Ingestions Summary"
+        for daily_job_type in self.daily_job_runs:
+            with DataQualityJobController(daily_job_type) as controller:
+                report_output = controller.execute_workflow()
 
-        self.assertEqual(expected_report, report_output)
+            expected_name = daily_job_type.name.split('_')[2].capitalize()
+            expected_report = f"No data to display for Daily Ingestions ({expected_name}) Summary"
+
+            self.assertEqual(expected_report, report_output)
 
     @mock.patch('rdr_service.genomic.genomic_data_quality_components.ReportingComponent.format_report')
     def test_daily_ingestion_summary_long_report(self, format_mock):
         expected_report = "test\n" * 30
         format_mock.return_value = expected_report
 
-        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS) as controller:
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS) as controller:
+            report_output = controller.execute_workflow(slack=True)
+
+        with open_cloud_file(report_output, 'r') as report_file:
+            report_file_data = report_file.read()
+
+        self.assertTrue(GENOMIC_INGESTION_REPORT_PATH in report_output)
+        self.assertEqual(expected_report, report_file_data)
+
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_LONGREAD_REPORT_INGESTIONS) as controller:
+            report_output = controller.execute_workflow(slack=True)
+
+        with open_cloud_file(report_output, 'r') as report_file:
+            report_file_data = report_file.read()
+
+        self.assertTrue(GENOMIC_INGESTION_REPORT_PATH in report_output)
+        self.assertEqual(expected_report, report_file_data)
+
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_PROTEOMICS_REPORT_INGESTIONS) as controller:
+            report_output = controller.execute_workflow(slack=True)
+
+        with open_cloud_file(report_output, 'r') as report_file:
+            report_file_data = report_file.read()
+
+        self.assertTrue(GENOMIC_INGESTION_REPORT_PATH in report_output)
+        self.assertEqual(expected_report, report_file_data)
+
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_RNA_REPORT_INGESTIONS) as controller:
             report_output = controller.execute_workflow(slack=True)
 
         with open_cloud_file(report_output, 'r') as report_file:
@@ -354,15 +780,13 @@ class GenomicDataQualityReportTest(BaseTestCase):
         from_date = clock.CLOCK.now() - datetime.timedelta(days=1)
 
         with clock.FakeClock(from_date):
-            gen_job_run = \
-                self.data_generator.create_database_genomic_job_run(
+            gen_job_run = self.data_generator.create_database_genomic_job_run(
                     jobId=GenomicJob.METRICS_INGESTION,
                     startTime=clock.CLOCK.now(),
                     runResult=GenomicSubProcessResult.SUCCESS
                 )
 
-            gen_processed_file = \
-                self.data_generator.create_database_genomic_file_processed(
+            gen_processed_file = self.data_generator.create_database_genomic_file_processed(
                     runId=gen_job_run.id,
                     startTime=clock.CLOCK.now(),
                     filePath=f"{bucket_name}/{sub_folder}/{file_name}",
