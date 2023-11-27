@@ -101,7 +101,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.sample_id is None for obj in long_read_members))
         self.assertTrue(all(obj.genome_type == 'aou_long_read' for obj in long_read_members))
         self.assertTrue(all(obj.collection_tube_id is not None for obj in long_read_members))
-        self.assertTrue(all(obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CSS for obj in long_read_members))
+        self.assertTrue(all(obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS for obj in long_read_members))
         self.assertTrue(all(obj.lr_site_id == 'bcm' for obj in long_read_members))
         self.assertTrue(all(obj.genomic_set_member_id is not None for obj in long_read_members))
         self.assertTrue(all(obj.long_read_set == 1 for obj in long_read_members))
@@ -287,7 +287,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                 self.assertEqual(row['genome_type'], config.GENOME_TYPE_LR)
                 self.assertEqual(row['lr_site_id'], 'bcm')
                 self.assertEqual(row['ai_an'], 'Y')
-                self.assertEqual(row['long_read_platform'], GenomicLongReadPlatform.PACBIO_CSS.name)
+                self.assertEqual(row['long_read_platform'], GenomicLongReadPlatform.PACBIO_CCS.name)
                 self.assertEqual(row['validation_passed'], 'Y')
 
         lr_files_processed = self.file_processed_dao.get_all()
@@ -323,7 +323,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.genome_type == config.GENOME_TYPE_LR for obj in l0_raw_records))
         self.assertTrue(all(obj.ai_an == 'Y' for obj in l0_raw_records))
         self.assertTrue(all(obj.lr_site_id == 'bcm' for obj in l0_raw_records))
-        self.assertTrue(all(obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CSS.name for obj in
+        self.assertTrue(all(obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS.name for obj in
                             l0_raw_records))
 
         # check job run record
@@ -356,7 +356,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                     collection_tube_id=f'{num}11111',
                     genome_type="aou_long_read",
                     lr_site_id="bi",
-                    long_read_platform=GenomicLongReadPlatform.PACBIO_CSS,
+                    long_read_platform=GenomicLongReadPlatform.PACBIO_CCS,
                     long_read_set=1
                 )
 
