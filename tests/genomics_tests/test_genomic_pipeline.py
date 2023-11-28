@@ -6887,38 +6887,59 @@ class GenomicPipelineTest(BaseTestCase):
                                               runStatus=GenomicSubProcessStatus.COMPLETED,
                                               runResult=GenomicSubProcessResult.SUCCESS))
 
-        self._create_fake_datasets_for_gc_tests(3, arr_override=False,
+        self._create_fake_datasets_for_gc_tests(2, arr_override=False,
                                                 recon_gc_man_id=1,
                                                 genome_center='rdr',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1,
                                                 sample_source="Whole Blood",
                                                 ai_an='N')
 
+        self._create_fake_datasets_for_gc_tests(1, arr_override=True,
+                                                id_start_from=2,
+                                                array_participants=range(3, 4),
+                                                recon_gc_man_id=1,
+                                                genome_center='rdr',
+                                                genomic_workflow_state=GenomicWorkflowState.AW1)
+
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
 
-        test_file = create_ingestion_test_file(
+        wgs_test_file = create_ingestion_test_file(
             'RDR_AoU_SEQ_TestDataManifest.csv',
             bucket_name,
             folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
         )
 
+        array_test_file = create_ingestion_test_file(
+            'RDR_AoU_GEN_TestDataManifest.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
+        )
+
         self._update_test_sample_ids()
-        self._create_stored_samples([(3, 1003)])
+        self._create_stored_samples([(1, 1001)])
         self._create_stored_samples([(2, 1002)])
+        self._create_stored_samples([(3, 1003)])
 
         self.aw2_raw_dao.insert_bulk([{
             'id': 1,
             'created': parse('2022-11-01T14:13:12'),
             'modified': parse('2022-11-01T14:13:12'),
-            'sample_id': 1003,
-            'file_path': test_file
+            'sample_id': 1001,
+            'file_path': wgs_test_file
         },
         {
             'id': 2,
             'created': parse('2022-11-01T14:13:13'),
             'modified': parse('2022-11-01T14:13:13'),
             'sample_id': 1002,
-            'file_path': test_file
+            'file_path': wgs_test_file
+        },
+        {
+            'id': 3,
+            'created': parse('2022-11-01T14:13:14'),
+            'modified': parse('2022-11-01T14:13:14'),
+            'sample_id': 1003,
+            'file_path': array_test_file
         }
         ])
 
@@ -6937,9 +6958,9 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
         # metrics insert called via cloud task
-        self.assertEqual(metric_cloud_task.call_count, 2)
+        self.assertEqual(metric_cloud_task.call_count, 5)
         call_args = metric_cloud_task.call_args_list
-        self.assertEqual(len(call_args), 2)
+        self.assertEqual(len(call_args), 5)
 
         # assimilate cloud task ingestion via call args for tests
         for i, call_arg_data in enumerate(call_args):
@@ -6950,27 +6971,42 @@ class GenomicPipelineTest(BaseTestCase):
             )
 
         # Test sequencing file (required for AW3 WGS)
-        sequencing_test_files = (
+        wgs_sequencing_test_files = (
+            'test_data_folder/RDR_1_1001_10001_1.hard-filtered.vcf.gz',
+            'test_data_folder/RDR_1_1001_10001_1.hard-filtered.vcf.gz.tbi',
+            'test_data_folder/RDR_1_1001_10001_1.hard-filtered.vcf.gz.md5sum',
+            'test_data_folder/RDR_1_1001_10001_1.cram',
+            'test_data_folder/RDR_1_1001_10001_1.cram.md5sum',
+            'test_data_folder/RDR_1_1001_10001_1.cram.crai',
+            'test_data_folder/RDR_1_1001_10001_1.hard-filtered.gvcf.gz',
+            'test_data_folder/RDR_1_1001_10001_1.hard-filtered.gvcf.gz.md5sum',
             'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
-            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
             'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
             'test_data_folder/RDR_2_1002_10002_1.cram',
             'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
             'test_data_folder/RDR_2_1002_10002_1.cram.crai',
-            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
             'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
-            'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz',
-            'test_data_folder/RDR_3_1003_10003_1.hard-filtered.vcf.gz.md5sum',
-            'test_data_folder/RDR_3_1003_10003_1.cram',
-            'test_data_folder/RDR_3_1003_10003_1.cram.md5sum',
-            'test_data_folder/RDR_3_1003_10003_1.cram.crai',
-            'test_data_folder/RDR_3_1003_10003_1.hard-filtered.gvcf.gz.md5sum',
         )
+
+        # Test sequencing file (required for GEM)
+        array_sequencing_test_files = (
+            f'test_data_folder/10003_R01C03.vcf.gz',
+            f'test_data_folder/10003_R01C03.vcf.gz.tbi',
+            f'test_data_folder/10003_R01C03.vcf.gz.md5sum',
+            f'test_data_folder/10003_R01C03_Red.idat.md5sum',
+            f'test_data_folder/10003_R01C03_Grn.idat.md5sum',
+            f'test_data_folder/10004_R01C04.vcf.gz',
+            f'test_data_folder/10004_R01C04.vcf.gz.tbi',
+            f'test_data_folder/10004_R01C04.vcf.gz.md5sum',
+            f'test_data_folder/10004_R01C04_Red.idat',
+            f'test_data_folder/10004_R01C04_Grn.idat'
+        )
+
         test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
 
         # create test records in GenomicGcDataFile
         with clock.FakeClock(test_date):
-            for f in sequencing_test_files:
+            for f in wgs_sequencing_test_files:
                 if "cram" in f:
                     file_prefix = "CRAMs_CRAIs"
                 else:
@@ -6989,103 +7025,9 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
-        config.override_setting(config.RDR_GENOMICS_NOTIFICATION_EMAIL, ['email@test.com', 'email2@test.com'])
-        with GenomicJobController(GenomicJob.AW3_MISSING_DATA_FILE_REPORT) as controller:
-            controller.check_aw3_ready_missing_files()
-
-        # mock checks
-        self.assertEqual(email_mock.call_count, 1)
-        self.assertEqual(email_mock.call_args[0][0].recipients, ['email@test.com', 'email2@test.com'])
-        self.assertIn(f'2022-11-01 14:13:12, 1003, rdr, {test_file}, Missing hard-filtered.vcf.gz.tbi, '
-                      f'hard-filtered.gvcf.gz files for these samples', email_mock.call_args[0][0].plain_text_content)
-
-    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
-    @mock.patch('rdr_service.services.email_service.EmailService.send_email')
-    def test_aw3_ready_missing_data_files_report_array(self, email_mock, metric_cloud_task):
-        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
-                                              startTime=clock.CLOCK.now(),
-                                              runStatus=GenomicSubProcessStatus.COMPLETED,
-                                              runResult=GenomicSubProcessResult.SUCCESS))
-
-        self._create_fake_datasets_for_gc_tests(2, arr_override=True,
-                                                array_participants=range(1, 3),
-                                                recon_gc_man_id=1,
-                                                genome_center='rdr',
-                                                genomic_workflow_state=GenomicWorkflowState.AW1)
-
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
-
-        test_file = create_ingestion_test_file(
-            'RDR_AoU_GEN_TestDataManifest.csv',
-            bucket_name,
-            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
-        )
-
-        self._update_test_sample_ids()
-        self._create_stored_samples([(1, 1001)])
-        self._create_stored_samples([(2, 1002)])
-
-        self.aw2_raw_dao.insert_bulk([{
-            'id': 1,
-            'created': parse('2022-11-01T14:13:12'),
-            'modified': parse('2022-11-01T14:13:12'),
-            'sample_id': 1001,
-            'file_path': test_file
-        },
-        {
-            'id': 2,
-            'created': parse('2022-11-01T14:13:13'),
-            'modified': parse('2022-11-01T14:13:13'),
-            'sample_id': 1002,
-            'file_path': test_file
-        }
-        ])
-
-        # Create corresponding array genomic_set_members
-        for i in range(1, 4):
-            self.data_generator.create_database_genomic_set_member(
-                participantId=i,
-                genomicSetId=1,
-                biobankId=i,
-                gcManifestParentSampleId=1000 + i,
-                genomeType="aou_array",
-                aw3ManifestJobRunID=1,
-                ai_an='N'
-            )
-
-        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
-
-        # metrics insert called via cloud task
-        self.assertEqual(metric_cloud_task.call_count, 2)
-        call_args = metric_cloud_task.call_args_list
-        self.assertEqual(len(call_args), 2)
-
-        # assimilate cloud task ingestion via call args for tests
-        for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                data_to_upsert=call_arg_data.get('payload_dict'),
-                existing_id=call_arg_data.get('metric_id')
-            )
-
-        # Test sequencing file (required for GEM)
-        sequencing_test_files = (
-            f'test_data_folder/10001_R01C01.vcf.gz',
-            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
-            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
-            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
-            f'test_data_folder/10001_R01C01_Grn.idat.md5sum',
-            f'test_data_folder/10002_R01C02.vcf.gz',
-            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
-            f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
-            f'test_data_folder/10002_R01C02_Red.idat',
-            f'test_data_folder/10002_R01C02_Grn.idat'
-        )
-        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
-
         # create test records in GenomicGcDataFile
         with clock.FakeClock(test_date):
-            for f in sequencing_test_files:
+            for f in array_sequencing_test_files:
                 # Set file type
                 if "idat" in f.lower():
                     file_type = f.split('/')[-1].split("_")[-1]
@@ -7113,7 +7055,7 @@ class GenomicPipelineTest(BaseTestCase):
         # mock checks
         self.assertEqual(email_mock.call_count, 1)
         self.assertEqual(email_mock.call_args[0][0].recipients, ['email@test.com', 'email2@test.com'])
-        self.assertIn(f'2022-11-01 14:13:12, 1001, rdr, {test_file}, Missing Red.idat, Grn.idat files for these '
-                      f'samples', email_mock.call_args[0][0].plain_text_content)
-        self.assertIn(f'2022-11-01 14:13:13, 1002, rdr, {test_file}, Missing Red.idat.md5sum, Grn.idat.md5sum '
-                      f'files for these samples', email_mock.call_args[0][0].plain_text_content)
+        self.assertIn(f'2022-11-01 14:13:13, 1002, rdr, {wgs_test_file}, Missing hard-filtered.vcf.gz.tbi, '
+                      f'hard-filtered.gvcf.gz files for these samples', email_mock.call_args[0][0].plain_text_content)
+        self.assertIn(f'2022-11-01 14:13:14, 1003, rdr, {array_test_file}, Missing Red.idat, Grn.idat files for '
+                      f'these samples', email_mock.call_args[0][0].plain_text_content)
