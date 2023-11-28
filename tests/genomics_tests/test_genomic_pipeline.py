@@ -7022,8 +7022,8 @@ class GenomicPipelineTest(BaseTestCase):
         )
 
         self._update_test_sample_ids()
-        self._create_stored_samples([(2, 1002)])
         self._create_stored_samples([(1, 1001)])
+        self._create_stored_samples([(2, 1002)])
 
         self.aw2_raw_dao.insert_bulk([{
             'id': 1,
@@ -7104,7 +7104,7 @@ class GenomicPipelineTest(BaseTestCase):
                     'ignore_flag': 0,
                 }
 
-                records = self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
         config.override_setting(config.RDR_GENOMICS_NOTIFICATION_EMAIL, ['email@test.com', 'email2@test.com'])
         with GenomicJobController(GenomicJob.AW3_MISSING_DATA_FILE_REPORT) as controller:

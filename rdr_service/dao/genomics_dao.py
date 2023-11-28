@@ -3737,8 +3737,6 @@ class GenomicQueriesDao(BaseDao):
         return site_id_map[site_id]
 
     def get_missing_array_data_files_for_aw3(self, genome_type):
-        t = genome_type
-
         with self.session() as session:
             idat_red_path = aliased(GenomicGcDataFile)
             idat_green_path = aliased(GenomicGcDataFile)
