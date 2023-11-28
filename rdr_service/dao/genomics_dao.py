@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from dateutil import parser
 
-from sqlalchemy import and_, or_, func
+from sqlalchemy import and_, or_, func, case
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import functions
@@ -3736,81 +3736,224 @@ class GenomicQueriesDao(BaseDao):
 
         return site_id_map[site_id]
 
-    def get_missing_data_files_for_aw3(self, genome_type):
-        missing_files_map = {
-            config.GENOME_TYPE_ARRAY: array_file_types_attributes,
-            config.GENOME_TYPE_WGS: wgs_file_types_attributes
-        }[genome_type]
-        required_file_types = [file_type['file_type'] for file_type in missing_files_map
-                               if file_type['required']]
+    def get_missing_array_data_files_for_aw3(self, genome_type):
+        t = genome_type
 
         with self.session() as session:
-            if genome_type == config.GENOME_TYPE_ARRAY:
-                subquery = session.query(
-                    GenomicSetMember.id,
-                    func.count(GenomicGcDataFile.file_type).label("file_count")
-                ).join(
-                    ParticipantSummary,
-                    ParticipantSummary.participantId == GenomicSetMember.participantId
-                ).join(
-                    GenomicGCValidationMetrics,
-                    GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
-                ).outerjoin(
-                    GenomicGcDataFile,
-                    GenomicGcDataFile.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
-                ).filter(
-                    GenomicSetMember.genomeType == genome_type,
-                    GenomicSetMember.aw3ManifestJobRunID.is_(None),
-                    GenomicSetMember.ignoreFlag != 1,
-                    GenomicGCValidationMetrics.processingStatus.ilike('pass'),
-                    GenomicGCValidationMetrics.ignoreFlag != 1,
-                    GenomicGcDataFile.ignore_flag != 1,
-                    GenomicGcDataFile.file_type.in_(required_file_types),
-                    ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                    ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                ).group_by(GenomicSetMember.id).subquery()
-
-            elif genome_type == config.GENOME_TYPE_WGS:
-                subquery = session.query(
-                    GenomicSetMember.id,
-                    func.count(GenomicGcDataFile.file_type).label("file_count")
-                ).join(
-                    ParticipantSummary,
-                    ParticipantSummary.participantId == GenomicSetMember.participantId
-                ).join(
-                    GenomicGCValidationMetrics,
-                    GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
-                ).outerjoin(
-                    GenomicGcDataFile,
-                    GenomicGcDataFile.identifier_value == GenomicSetMember.sampleId
-                ).filter(
-                    GenomicSetMember.genomeType == genome_type,
-                    GenomicSetMember.aw3ManifestJobRunID.is_(None),
-                    GenomicSetMember.ignoreFlag != 1,
-                    GenomicGCValidationMetrics.processingStatus.ilike('pass'),
-                    GenomicGCValidationMetrics.ignoreFlag != 1,
-                    GenomicGcDataFile.ignore_flag != 1,
-                    GenomicGcDataFile.file_type.in_(required_file_types),
-                    ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                    ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                ).group_by(GenomicSetMember.id).subquery()
+            idat_red_path = aliased(GenomicGcDataFile)
+            idat_green_path = aliased(GenomicGcDataFile)
+            idat_red_md5_path = aliased(GenomicGcDataFile)
+            idat_green_md5_path = aliased(GenomicGcDataFile)
+            vcf_path = aliased(GenomicGcDataFile)
+            vcf_tbi_path = aliased(GenomicGcDataFile)
+            vcf_md5_path = aliased(GenomicGcDataFile)
 
             records = session.query(
-                GenomicSetMember.sampleId,
-                GenomicAW2Raw.created
+                GenomicAW2Raw.created.label('date_reported'),
+                GenomicSetMember.sampleId.label('sample_id'),
+                GenomicSetMember.gcSiteId.label('gc'),
+                GenomicAW2Raw.file_path.label('aw2_file_path'),
+                sqlalchemy.func.concat_ws(', ',
+                                          case([(idat_red_path.file_type.is_(None), 'Red.idat')]),
+                                          case([(idat_red_md5_path.file_type.is_(None), 'Red.idat.md5sum')]),
+                                          case([(idat_green_path.file_type.is_(None), 'Grn.idat')]),
+                                          case([(idat_green_md5_path.file_type.is_(None), 'Grn.idat.md5sum')]),
+                                          case([(vcf_path.file_type.is_(None), 'vcf.gz')]),
+                                          case([(vcf_tbi_path.file_type.is_(None), 'vcf.gz.tbi')]),
+                                          case([(vcf_md5_path.file_type.is_(None), 'vcf.gz.md5sum')])
+                                          ).label('missing_files')
             ).join(
-                subquery,
-                and_(
-                    subquery.c.id == GenomicSetMember.id
-                )
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
             ).join(
                 GenomicAW2Raw,
                 GenomicSetMember.sampleId == GenomicAW2Raw.sample_id
+            ).outerjoin(
+                idat_red_path,
+                and_(
+                    idat_red_path.file_type == 'Red.idat',
+                    idat_red_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    idat_red_path.ignore_flag != 1
+                )
+            ).outerjoin(
+                idat_green_path,
+                and_(
+                    idat_green_path.file_type == 'Grn.idat',
+                    idat_green_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    idat_green_path.ignore_flag != 1
+                )
+            ).outerjoin(
+                idat_red_md5_path,
+                and_(
+                    idat_red_md5_path.file_type == 'Red.idat.md5sum',
+                    idat_red_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    idat_red_md5_path.ignore_flag != 1
+                )
+            ).outerjoin(
+                idat_green_md5_path,
+                and_(
+                    idat_green_md5_path.file_type == 'Grn.idat.md5sum',
+                    idat_green_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    idat_green_md5_path.ignore_flag != 1
+                )
+            ).outerjoin(
+                vcf_path,
+                and_(
+                    vcf_path.file_type == 'vcf.gz',
+                    vcf_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    vcf_path.ignore_flag != 1
+                )
+            ).outerjoin(
+                vcf_tbi_path,
+                and_(
+                    vcf_tbi_path.file_type == 'vcf.gz.tbi',
+                    vcf_tbi_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    vcf_tbi_path.ignore_flag != 1
+                )
+            ).outerjoin(
+                vcf_md5_path,
+                and_(
+                    vcf_md5_path.file_type == 'vcf.gz.md5sum',
+                    vcf_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                    vcf_md5_path.ignore_flag != 1
+                )
             ).filter(
-                subquery.c.file_count !=
-                len(required_file_types)
+                GenomicSetMember.genomeType == genome_type,
+                GenomicSetMember.aw3ManifestJobRunID.is_(None),
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+                GenomicGCValidationMetrics.ignoreFlag != 1,
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                or_(
+                    idat_red_path.file_type.is_(None),
+                    idat_red_md5_path.file_type.is_(None),
+                    idat_green_path.file_type.is_(None),
+                    idat_green_md5_path.file_type.is_(None),
+                    vcf_path.file_type.is_(None),
+                    vcf_tbi_path.file_type.is_(None),
+                    vcf_md5_path.file_type.is_(None)
+                )
             )
-            return records.distinct().all()
+        return records.distinct().all()
+
+    def get_missing_wgs_data_files_for_aw3(self, genome_type):
+        with self.session() as session:
+            hard_filtered_vcf_gz = aliased(GenomicGcDataFile)
+            hard_filtered_vcf_gz_tbi = aliased(GenomicGcDataFile)
+            hard_filtered_vcf_gz_md5_sum = aliased(GenomicGcDataFile)
+            cram = aliased(GenomicGcDataFile)
+            cram_md5_sum = aliased(GenomicGcDataFile)
+            cram_crai = aliased(GenomicGcDataFile)
+            hard_filtered_gvcf_gz = aliased(GenomicGcDataFile)
+            hard_filtered_gvcf_gz_md5_sum = aliased(GenomicGcDataFile)
+
+            records = session.query(
+                GenomicAW2Raw.created.label('date_reported'),
+                GenomicSetMember.sampleId.label('sample_id'),
+                GenomicSetMember.gcSiteId.label('gc'),
+                GenomicAW2Raw.file_path.label('aw2_file_path'),
+                sqlalchemy.func.concat_ws(', ',
+                                          case([(hard_filtered_vcf_gz.file_type.is_(None), 'hard-filtered.vcf.gz')]),
+                                          case([(hard_filtered_vcf_gz_tbi.file_type.is_(None),
+                                                 'hard-filtered.vcf.gz.tbi')]),
+                                          case([(hard_filtered_vcf_gz_md5_sum.file_type.is_(None),
+                                                 'hard-filtered.vcf.gz.md5sum')]),
+                                          case([(cram.file_type.is_(None), 'cram')]),
+                                          case([(cram_md5_sum.file_type.is_(None), 'cram.crai')]),
+                                          case([(cram_crai.file_type.is_(None), 'cram.md5sum')]),
+                                          case([(hard_filtered_gvcf_gz.file_type.is_(None), 'hard-filtered.gvcf.gz')]),
+                                          case([(hard_filtered_gvcf_gz_md5_sum.file_type.is_(None),
+                                                 'hard-filtered.gvcf.gz.md5sum')])
+                                          ).label('missing_files')
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).join(
+                GenomicAW2Raw,
+                GenomicSetMember.sampleId == GenomicAW2Raw.sample_id
+            ).outerjoin(
+                hard_filtered_vcf_gz,
+                and_(
+                    hard_filtered_vcf_gz.file_type == 'hard-filtered.vcf.gz',
+                    hard_filtered_vcf_gz.identifier_value == GenomicSetMember.sampleId,
+                    hard_filtered_vcf_gz.ignore_flag != 1
+                )
+            ).outerjoin(
+                hard_filtered_vcf_gz_tbi,
+                and_(
+                    hard_filtered_vcf_gz_tbi.file_type == 'hard-filtered.vcf.gz.tbi',
+                    hard_filtered_vcf_gz_tbi.identifier_value == GenomicSetMember.sampleId,
+                    hard_filtered_vcf_gz_tbi.ignore_flag != 1
+                )
+            ).outerjoin(
+                hard_filtered_vcf_gz_md5_sum,
+                and_(
+                    hard_filtered_vcf_gz_md5_sum.file_type == 'hard-filtered.vcf.gz.md5sum',
+                    hard_filtered_vcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
+                    hard_filtered_vcf_gz_md5_sum.ignore_flag != 1
+                )
+            ).outerjoin(
+                cram,
+                and_(
+                    cram.file_type == 'cram',
+                    cram.identifier_value == GenomicSetMember.sampleId,
+                    cram.ignore_flag != 1
+                )
+            ).outerjoin(
+                cram_md5_sum,
+                and_(
+                    cram_md5_sum.file_type == 'cram.md5sum',
+                    cram_md5_sum.identifier_value == GenomicSetMember.sampleId,
+                    cram_md5_sum.ignore_flag != 1
+                )
+            ).outerjoin(
+                cram_crai,
+                and_(
+                    cram_crai.file_type == 'cram.crai',
+                    cram_crai.identifier_value == GenomicSetMember.sampleId,
+                    cram_crai.ignore_flag != 1
+                )
+            ).outerjoin(
+                hard_filtered_gvcf_gz,
+                and_(
+                    hard_filtered_gvcf_gz.file_type == 'hard-filtered.gvcf.gz',
+                    hard_filtered_gvcf_gz.identifier_value == GenomicSetMember.sampleId,
+                    hard_filtered_gvcf_gz.ignore_flag != 1
+                )
+            ).outerjoin(
+                hard_filtered_gvcf_gz_md5_sum,
+                and_(
+                    hard_filtered_gvcf_gz_md5_sum.file_type == 'hard-filtered.gvcf.gz.md5sum',
+                    hard_filtered_gvcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
+                    hard_filtered_gvcf_gz_md5_sum.ignore_flag != 1
+                )
+            ).filter(
+                GenomicSetMember.genomeType == genome_type,
+                GenomicSetMember.aw3ManifestJobRunID.is_(None),
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+                GenomicGCValidationMetrics.ignoreFlag != 1,
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                or_(
+                    hard_filtered_vcf_gz.file_type.is_(None),
+                    hard_filtered_vcf_gz_tbi.file_type.is_(None),
+                    hard_filtered_vcf_gz_md5_sum.file_type.is_(None),
+                    cram.file_type.is_(None),
+                    cram_md5_sum.file_type.is_(None),
+                    cram_crai.file_type.is_(None),
+                    hard_filtered_gvcf_gz.file_type.is_(None),
+                    hard_filtered_gvcf_gz_md5_sum.file_type.is_(None)
+                )
+            )
+        return records.distinct().all()
 
     def get_aw3_array_records(self, **kwargs):
         # should be only array genome but query also

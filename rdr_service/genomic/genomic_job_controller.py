@@ -1902,18 +1902,21 @@ class GenomicJobController:
         """ Runs report to email list of samples that are ready for AW3 manifest generation but missing data files"""
         notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
 
-        array_missing_data = self.query_dao.get_missing_data_files_for_aw3(
+        array_missing_data = self.query_dao.get_missing_array_data_files_for_aw3(
             genome_type=config.GENOME_TYPE_ARRAY
         )
-        wgs_missing_data = self.query_dao.get_missing_data_files_for_aw3(
+        wgs_missing_data = self.query_dao.get_missing_wgs_data_files_for_aw3(
             genome_type=config.GENOME_TYPE_WGS
         )
+
         if notification_email_address and any((array_missing_data, wgs_missing_data)):
-            message = 'The following samples matched AW3 manifest criteria except for the data file count:\n\n'
-            message += 'sample_id, aw2 manifest date, genome_type\n'
-            message += '\n'.join([f'{sample[0]}, {sample[1]}, aou_array' for sample in array_missing_data])
+            message = 'The following samples matched AW3 manifest criteria except for these data files:\n\n'
+            message += 'date_reported, sample_id, gc, aw2_file_path, missing_files\n'
+            message += '\n'.join([f'{sample[0]}, {sample[1]}, {sample[2]}, {sample[3]}, Missing {sample[4]} files for '
+                                  f'these samples' for sample in array_missing_data])
             message += '\n'
-            message += '\n'.join([f'{sample[0]}, {sample[1]}, aou_wgs' for sample in wgs_missing_data])
+            message += '\n'.join([f'{sample[0]}, {sample[1]}, {sample[2]}, {sample[3]}, Missing {sample[4]} files for '
+                                  f'these samples' for sample in wgs_missing_data])
             message += '\n'
             EmailService.send_email(
                 Email(
