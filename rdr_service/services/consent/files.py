@@ -476,6 +476,10 @@ class ConsentFile(ABC):
     def _parse_input_string(self, pdf_element_list) -> Optional[str]:
         for element in pdf_element_list:
             if isinstance(element, LTFigure) and len(element) > 0:
+                # skip image figures
+                if any(isinstance(child, LTImage) for child in element):
+                    continue
+
                 return ''.join([char_child.get_text() for char_child in element]).strip()
 
         return None
