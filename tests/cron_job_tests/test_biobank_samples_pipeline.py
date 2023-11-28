@@ -426,11 +426,11 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
                 None, None, None, None, None,  # cancelled_restored info: status_flag, name, name, time, reason
                 None,  # order origin
                 'example',  # Participant origin
+                0  # pediatric flag
             )])
 
     def test_demographic_flags_in_received_report(self):
         self.temporarily_override_config_setting(config.ENABLE_BIOBANK_MANIFEST_RECEIVED_FLAG, 1)
-        self.temporarily_override_config_setting('enable_biobank_report_pediatric_flag', 1)
 
         # Generate data for a New York sample to be in the report
         participant = self.data_generator.create_database_participant()
