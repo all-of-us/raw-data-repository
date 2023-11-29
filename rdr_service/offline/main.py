@@ -57,6 +57,7 @@ from rdr_service.services.gcp_logging import begin_request_logging, end_request_
     flask_restful_log_exception_error
 from rdr_service.services.ghost_check_service import GhostCheckService
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
+from rdr_service.services.email_service import Email, EmailService
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.offline.study_nph_biobank_file_export import main as study_nph_biobank_file_export_job
 from rdr_service.offline.study_nph_biobank_import_inventory_file import main as study_nph_biobank_inventory_import_job
@@ -889,6 +890,35 @@ def nph_sms_n1_generation():
     return '{"success": "true"}'
 
 
+@app_util.auth_required_cron
+def ptsc_ytest_participant_cleanup_request():
+    date = datetime.today()
+    if date.month == 12:
+        month = 1
+    else:
+        month = date.month + 1
+    email_message = ("Dear PTSC Team,\n\nPlease begin the quarterly Test Account Maintenance process to ensure that "
+                     "any existing test accounts are flagged in PTSC systems and communicated to DRC in time for this "
+                     "quarters EHR Submission Cycle and subsequent curation work.\n\nPer Scott’s request, we have been "
+                     "advised to provide one month’s notice for this process, making the target completion date {0}/{1}."
+                     "\n\nThanks,\nDRC Team".format(str(month), date.strftime("%d/%Y")))
+
+    email = Email(
+        recipients=["david.konopka@vumc.org"],
+        cc_recipients=config.getSetting("participant_cleanup_cc_list"),
+        subject="Test Participant Cleanup Reminder",
+        plain_text_content=email_message
+    )
+    try:
+        logging.info("Sending ptsc cleanup email...")
+        EmailService.send_email(email)
+        logging.info("Success!")
+        return '{"success": "true"}'
+    except:
+        logging.error("Failed to send ptsc cleanup email")
+        return '{"success": "false"}'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
@@ -1452,6 +1482,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'NphSmsN1Generation',
         endpoint="nph_sms_n1_generation",
         view_func=nph_sms_n1_generation,
+        methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'PTSCTestParticipantCleanupRequest',
+        endpoint="ptsc_test_participant_cleanup_request",
+        view_func=ptsc_participant_cleanup_email,
         methods=["GET"]
     )
 

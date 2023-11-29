@@ -3,12 +3,24 @@ import logging
 
 from protorpc import messages
 
+from rdr_service import config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.study_nph_sms_dao import SmsJobRunDao, SmsSampleDao, SmsN0Dao, SmsN1Mc1Dao
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.workflow_management.general_job_controller import JobController
 from rdr_service.services.ancillary_studies.nph_incident import NphIncidentDao
+from rdr_service.services.slack_utils import SlackMessageHandler
 
+
+def get_slack_message_handler() -> SlackMessageHandler:
+    slack_config = config.getSettingJson(config.NPH_SLACK_WEBHOOKS, {})
+    if slack_config is None:
+        logging.warning("'slack_config' for 'NPH_SLACK_WEBHOOKS' is empty")
+
+    webhook_url = slack_config.get('rdr_nph_alerts', None)
+    if webhook_url is None:
+        logging.warning("'rdr_nph_alerts' is not available in slack config. 'webhook_url' is None")
+    return SlackMessageHandler(webhook_url=webhook_url)
 
 class SmsJobId(messages.Enum):
     UNSET = 0
@@ -144,6 +156,14 @@ class SmsWorkflow:
         """
         Main method for ingestion jobs.
         """
+
+        #Ensure file is CSV
+        if not str(self.file_path).endswith(".csv"):
+            nph_slack = get_slack_message_handler()
+            slack_alert = nph_slack.send_message_to_webhook(
+                message_data="Error ingesting nph file of type {0}. File does not conform to csv format.".format(self.file_type)
+            )
+            return
 
         # Map a file type to a DAO
         if self.file_type == SmsFileTypes.SAMPLE_LIST:

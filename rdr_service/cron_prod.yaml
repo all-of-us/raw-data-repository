@@ -134,3 +134,8 @@ cron:
   schedule: every day 08:30
   target: offline
   timezone: America/New_York
+- description: Test Participant Cleanup Reminder
+  url: /offline/PTSCTestParticipantCleanupRequest
+  schedule: 1 of december, march, june, september, 09:00
+  target: offline
+  timezone: America/New_York

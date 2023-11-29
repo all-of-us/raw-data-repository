@@ -6,6 +6,7 @@ from io import BytesIO
 
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.participant import Participant
 from rdr_service.services.system_utils import list_chunks
 
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
@@ -20,7 +21,6 @@ def upload_to_gcs(df, filename):
     filename = f'ops_data_api/{filename}'
     blob = bucket.blob(filename)
     df_csv = df.to_csv(index=False)
-    print(df_csv)
     blob.upload_from_file(BytesIO(df_csv.encode('utf-8')), content_type='text/csv')
 
 class ParticipantSummaryDataDump(ToolBase):
@@ -29,7 +29,9 @@ class ParticipantSummaryDataDump(ToolBase):
     def run(self):
         summary_list = []
         super(ParticipantSummaryDataDump, self).run()
+        print("starting")
         with (self.get_session() as session):
+            print("session made")
             summary_dao = ParticipantSummaryDao()
             # --id option takes precedence over --from-file option
             if self.args.id:
@@ -39,24 +41,28 @@ class ParticipantSummaryDataDump(ToolBase):
             else:
                 # Default to all participant_summary ids
                 participant_id_list = session.query(
-                    ParticipantSummary.participantId
-                ).order_by(ParticipantSummary.participantId).first()
+                    ParticipantSummary.participantId,
+                ).filter(
+                    Participant.isTestParticipant == 1
+                ).order_by(ParticipantSummary.participantId).all()
 
+            print("first query done: ", len(participant_id_list))
+            print(session.query(ParticipantSummary.participantId,).filter(Participant.isTestParticipant == True))
             count = 0
             last_id = None
-
+            total_rows = len(participant_id_list)
             chunk_size = 10000
+            print("chunking")
             for id_list_subset in list_chunks(lst=participant_id_list, chunk_size=chunk_size):
                 logging.info(f'{datetime.now()}: {count} of {len(participant_id_list)} (last id: {last_id})')
-                count += chunk_size
 
                 summary_list = session.query(
                     ParticipantSummary
                 ).filter(
                     ParticipantSummary.participantId.in_(id_list_subset),
-                    ParticipantSummary.participantOrigin == 'vibrent'
+                    Participant.isTestParticipant == 1
                 ).all()
-                total_rows = len(summary_list)
+                results = [summary_dao.to_client_json(result) for result in summary_list]
                 ignored_columns = [
                     'biobankId',
                     'firstName',
@@ -72,24 +78,19 @@ class ParticipantSummaryDataDump(ToolBase):
                     'email',
                     'dateOfBirth'
                 ]
+                for row in results:
+                    for i in ignored_columns:
+                        if i in row:
+                            del row[i]
                 columns = []
-                for chunk_start in range(0, total_rows, chunk_size):
-                    chunk_end = min(chunk_start + chunk_size, total_rows)
-                    df = pd.DataFrame(summary_list)
-                    values = []
-                    for i in df.values[0]:
-                        if i[0] not in ignored_columns:
-                            columns.append(i[0])
-                    for row in df.values:
-                        row_vals = []
-                        for i in row:
-                            if i[0] not in ignored_columns:
-                                row_vals.append(i[1])
-                        values.append(row_vals)
-                    df2 = pd.DataFrame(values, columns = columns)
-                    filename = f'chunk_{chunk_start + 1}_{chunk_end}.csv'
-                    # Upload the chunk to Google Cloud Storage
-                    upload_to_gcs(df2, filename)
+                chunk_end = min(count + chunk_size, total_rows)
+                df = pd.DataFrame(results)
+                filename = f'chunk_{count + 1}_{chunk_end}.csv'
+                count += chunk_size
+                print("results: ", chunk_size)
+                print(df)
+                # Upload the chunk to Google Cloud Storage
+                #upload_to_gcs(df, filename)
             return summary_list
 
 
@@ -103,4 +104,4 @@ def add_additional_arguments(parser):
 
 
 def run():
-    return cli_run(tool_cmd, tool_desc, ParticipantSummaryDataDump, add_additional_arguments, replica=False)
+    return cli_run(tool_cmd, tool_desc, ParticipantSummaryDataDump, add_additional_arguments, replica=True)
