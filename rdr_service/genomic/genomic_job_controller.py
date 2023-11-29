@@ -1902,10 +1902,10 @@ class GenomicJobController:
         """ Runs report to email list of samples that are ready for AW3 manifest generation but missing data files"""
         notification_email_address = config.getSettingJson(config.RDR_GENOMICS_NOTIFICATION_EMAIL, default=None)
 
-        array_missing_data = self.query_dao.get_missing_array_data_files_for_aw3(
+        array_missing_data = self.query_dao.get_missing_data_files_for_aw3(
             genome_type=config.GENOME_TYPE_ARRAY
         )
-        wgs_missing_data = self.query_dao.get_missing_wgs_data_files_for_aw3(
+        wgs_missing_data = self.query_dao.get_missing_data_files_for_aw3(
             genome_type=config.GENOME_TYPE_WGS
         )
 
