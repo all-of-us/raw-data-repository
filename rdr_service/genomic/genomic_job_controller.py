@@ -154,10 +154,13 @@ class GenomicJobController:
                 GenomicJob.RNA_RR_WORKFLOW: 'r0'
             }[self.job_id]
 
-            last_job_run_status = self.job_run_dao.get_last_run_status_for_job_id(job_id=self.job_id)
-            if last_job_run_status and last_job_run_status[0] in [GenomicSubProcessResult.SUCCESS]:
+            last_completed_job = self.job_run_dao.get_last_completed_run_status_for_job_id(
+                job_id=self.job_id)
+            if last_completed_job and last_completed_job in [GenomicSubProcessResult.SUCCESS]:
                 self.execute_cloud_task(
-                    payload={'manifest_type': auto_generation_manifest_map},
+                    payload={
+                        'manifest_type': auto_generation_manifest_map
+                    },
                     endpoint='genomic_generate_manifest',
                     task_queue='genomic-generate-manifest'
                 )

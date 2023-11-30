@@ -1389,15 +1389,17 @@ class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
                     GenomicSubProcessResult.NO_FILES
                 ])).one()[0]
 
-    def get_last_run_status_for_job_id(self, job_id):
+    def get_last_completed_run_status_for_job_id(self, job_id):
         with self.session() as session:
             return session.query(
-                GenomicJobRun.runResult
+                functions.max(GenomicJobRun.runResult)
             ).filter(
                 GenomicJobRun.jobId == job_id,
-                GenomicJobRun.id ==
-                self.get_max_id_subquery().c.id
-            ).one()
+                GenomicJobRun.runStatus == GenomicSubProcessStatus.COMPLETED,
+                GenomicJobRun.runResult.in_([
+                    GenomicSubProcessResult.SUCCESS,
+                    GenomicSubProcessResult.NO_FILES
+                ])).one()[0]
 
     def insert_run_record(self, job_id):
         """

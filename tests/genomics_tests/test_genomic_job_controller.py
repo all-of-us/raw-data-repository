@@ -1850,9 +1850,10 @@ class GenomicJobControllerTest(BaseTestCase):
             controller._end_run()
             controller.execute_auto_generation_from_cloud_task()
 
-        last_job_run_status = self.job_run_dao.get_last_run_status_for_job_id(job_id=GenomicJob.PR_PR_WORKFLOW)
-        self.assertTrue(last_job_run_status is not None)
-        self.assertTrue(last_job_run_status[0] == GenomicSubProcessResult.ERROR)
+        last_job_run_status = self.job_run_dao.get_last_completed_run_status_for_job_id(
+            job_id=GenomicJob.PR_PR_WORKFLOW
+        )
+        self.assertIsNone(last_job_run_status)
 
         # task SHOULD NOT be called
         self.assertEqual(cloud_task_mock.called, False)
@@ -1865,9 +1866,11 @@ class GenomicJobControllerTest(BaseTestCase):
             controller._end_run()
             controller.execute_auto_generation_from_cloud_task()
 
-        last_job_run_status = self.job_run_dao.get_last_run_status_for_job_id(job_id=GenomicJob.PR_PR_WORKFLOW)
-        self.assertTrue(last_job_run_status is not None)
-        self.assertTrue(last_job_run_status[0] == GenomicSubProcessResult.SUCCESS)
+        last_job_run_status = self.job_run_dao.get_last_completed_run_status_for_job_id(
+            job_id=GenomicJob.PR_PR_WORKFLOW
+        )
+        self.assertIsNotNone(last_job_run_status)
+        self.assertTrue(last_job_run_status == GenomicSubProcessResult.SUCCESS)
 
         # task SHOULD be called
         self.assertEqual(cloud_task_mock.called, True)
