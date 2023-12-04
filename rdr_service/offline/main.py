@@ -890,7 +890,6 @@ def nph_sms_n1_generation():
 
 
 @app_util.auth_required_cron
-@check_genomic_cron_job('tactis_participants_to_bq')
 def sync_tactis_participants_to_bq():
     a_day_ago = CLOCK.now() - timedelta(days=1)
     since_date = datetime(year=a_day_ago.year, month=a_day_ago.month, day=a_day_ago.day)

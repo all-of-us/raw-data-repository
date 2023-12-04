@@ -276,6 +276,6 @@ cron:
   target: offline
 - description: Sync Tactis participant data to Big Query
   url: /offline/TactisBigQuerySync
-  schedule: every day 02:30
+  schedule: 1 of jan 12:00
   timezone: America/New_York
   target: offline
