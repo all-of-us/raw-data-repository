@@ -265,6 +265,13 @@ def _build_resource_app():
         methods=['POST']
     )
 
+    _api.add_resource(
+        cloud_tasks_api.UpdateRetentionEligibleStatus,
+        TASK_PREFIX + 'UpdateRetentionStatus',
+        endpoint='update_retention_status',
+        methods=['POST']
+    )
+
     _app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
     _app.add_url_rule('/_ah/stop', endpoint='stop', view_func=flask_stop, methods=["GET"])
 

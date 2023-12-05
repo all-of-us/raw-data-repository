@@ -16,6 +16,7 @@ from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
     bq_institutional_affiliations_batch_update, bq_researcher_batch_update, bq_audit_batch_update
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
 from rdr_service.offline import retention_eligible_import
 from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
@@ -405,5 +406,30 @@ class UpdateEnrollmentStatus(Resource):
             )
             dao.update_enrollment_status(
                 summary=summary,
+                session=session
+            )
+
+
+class UpdateRetentionEligibleStatus(Resource):
+    @task_auth_required
+    @returns_success
+    def post(self):
+
+        # disable the retention calculation until ready
+        if not config.getSettingJson('enable_retention_calc_task', default=False):
+            return
+
+        task_data = request.get_json(force=True)
+        participant_id = task_data['participant_id']
+
+        dao = ParticipantSummaryDao()
+        with dao.session() as session:
+            retention_data = retention_eligible_import.build_retention_data(
+                participant_id=participant_id,
+                session=session
+            )
+            RetentionEligibleMetricsDao.upsert_retention_data(
+                participant_id=participant_id,
+                retention_data=retention_data,
                 session=session
             )
