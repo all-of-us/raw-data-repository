@@ -640,6 +640,12 @@ event.listen(GenomicAW3Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicAW3Raw, 'before_update', model_update_listener)
 
 
+class TempBQClass(Base):
+    __tablename__ = 'temp_20231121_bq_wgs_402'
+
+    research_id = Column(String(100), primary_key=True,)
+
+
 class GenomicAW4Raw(Base):
     """
     Raw data from AW4 files

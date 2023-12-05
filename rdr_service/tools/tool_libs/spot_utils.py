@@ -15,7 +15,7 @@ from dateutil.parser import parse
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
 from sqlalchemy.orm import aliased
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_
 from sqlalchemy import case
 
 from rdr_service.dao import database_factory
@@ -23,7 +23,7 @@ from rdr_service.clock import Clock
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrder
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
-from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
+from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics, GenomicAW4Raw, TempBQClass
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireQuestion
@@ -522,7 +522,7 @@ class SpotTool(ToolBase):
 
         session = database_factory.get_database().make_session()
 
-        query = session.query(
+        query = (session.query(
             *rdr_attributes
         ).join(
             Participant,
@@ -532,7 +532,10 @@ class SpotTool(ToolBase):
             Participant.participantId == ParticipantSummary.participantId
         ).join(
             GenomicGCValidationMetrics,
-            GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            and_(
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
+                GenomicGCValidationMetrics.pipelineId == "dragen_3.7.8",
+            )
         ).join(
             BiobankStoredSample,
             BiobankStoredSample.biobankStoredSampleId == GenomicSetMember.collectionTubeId
@@ -542,11 +545,20 @@ class SpotTool(ToolBase):
         ).join(
             BiobankOrder,
             BiobankOrderIdentifier.biobankOrderId == BiobankOrder.biobankOrderId
-        ).join(
+        ).outerjoin(
             Site,
             BiobankOrder.collectedSiteId == Site.siteId
+        ).join(
+            GenomicAW4Raw,
+            and_(
+                GenomicAW4Raw.sample_id == GenomicSetMember.sampleId,
+                GenomicAW4Raw.genome_type == "aou_wgs",
+                # GenomicAW4Raw.pipeline_id == "dragen_3.7.8",
+            )
+        ).join(
+            TempBQClass,
+            TempBQClass.research_id == GenomicSetMember.sampleId
         ).filter(
-            GenomicSetMember.aw4ManifestJobRunID.isnot(None),
             GenomicSetMember.ignoreFlag == 0,
             GenomicGCValidationMetrics.ignoreFlag == 0,
             BiobankOrder.is_not_ignored(),
@@ -554,9 +566,12 @@ class SpotTool(ToolBase):
                 GenomicSetMember.modified > last_update_date,
                 GenomicGCValidationMetrics.modified > last_update_date,
                 ),
+            # GenomicSetMember.sampleId == 21035008243,
             # GenomicSetMember.participantId.in_(),  # TODO: Add param
-            GenomicSetMember.genomeType.in_(["aou_wgs", "aou_array"])
-        )
+            GenomicSetMember.genomeType.in_(["aou_wgs"]),
+            # Site.siteId.is_(None)
+
+        ))
         return query.all()
 
     @staticmethod
