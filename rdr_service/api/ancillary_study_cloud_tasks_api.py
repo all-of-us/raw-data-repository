@@ -121,6 +121,10 @@ class UpdateParticipantSummaryForNphTaskApi(BaseAncillaryTaskApi):
         if event_type.lower() == "consent":
             ps.consentForNphModule1 = True
             ps.consentForNphModule1Authored = event_authored
+            # Reset nphDeactivation if a participant re-consented
+            if ps.nphDeactivation == True:
+                ps.nphDeactivation = False
+                ps.nphDeactivationAuthored = None
         elif event_type.lower() == "withdrawal":
             ps.nphWithdrawal = True
             ps.nphWithdrawalAuthored = event_authored
