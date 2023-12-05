@@ -207,7 +207,7 @@ class NphIncidentTaskApiCloudTaskTest(BaseTestCase):
         with self.assertLogs(level="INFO") as cm:
             response = self.send_post(
                 local_path="WithdrawnParticipantNotifierTaskApi",
-                request_data={"nph_pids": ["1", "2"]},
+                request_data={"bundle_id": "abc", "nph_pids": ["1", "2"]},
                 prefix="/resource/task/",
                 test_client=resource_main.app.test_client(),
                 expected_status=OK,

@@ -237,7 +237,7 @@ class PostIntakePayload(ABC):
             received_nph_pids = [ele.get("nph_participant_id") for ele in self.participant_response]
             cloud_task.execute(
                 endpoint="withdrawn_participant_notifier_task",
-                payload={"nph_pids": received_nph_pids},
+                payload={"bundle_id": self.bundle_identifier, "nph_pids": received_nph_pids},
                 queue="nph"
             )
 

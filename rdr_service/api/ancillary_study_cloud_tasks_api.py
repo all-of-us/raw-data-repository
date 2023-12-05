@@ -211,6 +211,7 @@ class WithdrawnParticipantNotifierTaskApi(BaseAncillaryTaskApi):
 
     def post(self):
         super().post()
+        bundle_id = self.data.get("bundle_id")
         nph_pids = self.data.get("nph_pids")
         aou_pids = self._convert_nph_pids_to_aou_pids(nph_pids=nph_pids)
         withdrawn_pids: list[str] = self.participant_dao.get_withdrawn_participant_ids(
@@ -222,8 +223,8 @@ class WithdrawnParticipantNotifierTaskApi(BaseAncillaryTaskApi):
         if withdrawn_pids:
             ts = CLOCK.now().strftime('%Y-%m-%d %H:%M:%S')
             msg = (
-                f"NPH Intake API Payload received on {ts} contains {len(withdrawn_pids)} withdrawn participant IDs:"
-                f" {', '.join(withdrawn_pids)}"
+                f"NPH Intake API Payload received on {ts} with bundle id {bundle_id} contains "
+                f"{len(withdrawn_pids)} withdrawn participant IDs: {', '.join(withdrawn_pids)}"
             )
             create_nph_incident(slack=True, message=msg)
         return {"success": True}
