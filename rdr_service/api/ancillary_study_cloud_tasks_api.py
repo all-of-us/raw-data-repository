@@ -12,6 +12,7 @@ from rdr_service.dao.study_nph_dao import NphConsentEventDao, NphPairingEventDao
 from rdr_service.services.ancillary_studies.nph_incident import create_nph_incident
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.config import NPH_STUDY_ID, AOU_STUDY_ID
 from rdr_service.workflow_management.nph.sms_workflows import SmsWorkflow
@@ -202,14 +203,36 @@ class WithdrawnParticipantNotifierTaskApi(BaseAncillaryTaskApi):
     Cloud Task endpoint: Send a slack alert to rdr-nph-alerts if the payload sent by partner
     contains information about participants who have withdrawn from AOU program.
     """
+
+    def __init__(self):
+        super().__init__()
+        self.rex_dao = RexParticipantMappingDao()
+        self.participant_dao = ParticipantDao()
+
     def post(self):
         super().post()
-        withdrawn_pids = self.data.get("withdrawn_pids")
+        nph_pids = self.data.get("nph_pids")
+        aou_pids = self._convert_nph_pids_to_aou_pids(nph_pids=nph_pids)
+        withdrawn_pids: list[str] = self.participant_dao.get_withdrawn_participant_ids(
+            participant_ids=aou_pids
+        )
+
         log_msg = f"{len(withdrawn_pids)} withdrawn PIDs received in NPH intake payload."
         logging.info(log_msg)
-
-        ts = CLOCK.now().strftime('%Y-%m-%d %H:%M:%S')
-        msg = (f"NPH Intake API Payload received on {ts} contains {len(withdrawn_pids)} withdrawn participant IDs:"
-               f" {', '.join(withdrawn_pids)}")
-        create_nph_incident(slack=True, message=msg)
+        if withdrawn_pids:
+            ts = CLOCK.now().strftime('%Y-%m-%d %H:%M:%S')
+            msg = (
+                f"NPH Intake API Payload received on {ts} contains {len(withdrawn_pids)} withdrawn participant IDs:"
+                f" {', '.join(withdrawn_pids)}"
+            )
+            create_nph_incident(slack=True, message=msg)
         return {"success": True}
+
+    def _convert_nph_pids_to_aou_pids(self, nph_pids: list[str]) -> list[int]:
+        aou_pids = [
+            self.rex_dao.get_from_ancillary_id(
+                AOU_STUDY_ID, NPH_STUDY_ID, pid
+            ).primary_participant_id
+            for pid in nph_pids
+        ]
+        return aou_pids
