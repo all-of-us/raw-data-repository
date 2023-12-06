@@ -794,21 +794,27 @@ def genomic_data_quality_daily_ingestion_summary():
 @app_util.auth_required_cron
 @check_genomic_cron_job('daily_incident_summary')
 def genomic_data_quality_daily_incident_summary():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS)
+    genomic_data_quality_pipeline.daily_data_quality_workflow(
+        reporting_job=GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS
+    )
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
 @check_genomic_cron_job('daily_validation_emails')
 def genomic_data_quality_validation_emails():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SEND_VALIDATION_EMAILS)
+    genomic_data_quality_pipeline.daily_data_quality_workflow(
+        reporting_job=GenomicJob.DAILY_SEND_VALIDATION_EMAILS
+    )
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
 @check_genomic_cron_job('daily_validation_fails_resolved')
 def genomic_data_quality_validation_fails_resolved():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED)
+    genomic_data_quality_pipeline.daily_data_quality_workflow(
+        reporting_job=GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED
+    )
     return '{"success": "true"}'
 
 
