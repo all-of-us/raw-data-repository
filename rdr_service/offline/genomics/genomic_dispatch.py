@@ -11,6 +11,7 @@ from rdr_service.model.genomics import (GenomicLRRaw, GenomicL0Raw, GenomicPRRaw
                                         GenomicRRRaw, GenomicR0Raw,
                                         GenomicR1Raw, GenomicL1Raw, GenomicA2Raw, GenomicA3Raw, GenomicA1Raw,
                                         GenomicR2Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw)
+
 from rdr_service.services.system_utils import JSONObject
 
 

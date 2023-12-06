@@ -44,6 +44,7 @@ from rdr_service.offline.response_validation import ResponseValidationController
 from rdr_service.offline.service_accounts import ServiceAccountKeyManager
 from rdr_service.offline.sync_consent_files import ConsentSyncController
 from rdr_service.offline.table_exporter import TableExporter
+from rdr_service.offline.tactis_bq_sync import TactisBQDataSync
 from rdr_service.repository.obfuscation_repository import ObfuscationRepository
 from rdr_service.resource.tasks import dispatch_check_consent_errors_task
 from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
@@ -794,21 +795,27 @@ def genomic_data_quality_daily_ingestion_summary():
 @app_util.auth_required_cron
 @check_genomic_cron_job('daily_incident_summary')
 def genomic_data_quality_daily_incident_summary():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS)
+    genomic_data_quality_pipeline.daily_data_quality_workflow(
+        reporting_job=GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS
+    )
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
 @check_genomic_cron_job('daily_validation_emails')
 def genomic_data_quality_validation_emails():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SEND_VALIDATION_EMAILS)
+    genomic_data_quality_pipeline.daily_data_quality_workflow(
+        reporting_job=GenomicJob.DAILY_SEND_VALIDATION_EMAILS
+    )
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
 @check_genomic_cron_job('daily_validation_fails_resolved')
 def genomic_data_quality_validation_fails_resolved():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED)
+    genomic_data_quality_pipeline.daily_data_quality_workflow(
+        reporting_job=GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED
+    )
     return '{"success": "true"}'
 
 
@@ -888,6 +895,21 @@ def nph_sms_n1_generation():
     return '{"success": "true"}'
 
 
+@app_util.auth_required_cron
+def sync_tactis_participants_to_bq():
+    a_day_ago = CLOCK.now() - timedelta(days=1)
+    since_date = datetime(year=a_day_ago.year, month=a_day_ago.month, day=a_day_ago.day)
+
+    data_sync = TactisBQDataSync(
+        dataset="drc_to_tactis_data",
+        table_name="participant_data_to_tactis",
+        since_date=since_date
+    )
+
+    data_sync.sync_data_to_bigquery()
+    return '{ "success": "true" }'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
@@ -904,6 +926,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "FlagResponseDuplication",
         endpoint="flagResponseDuplication",
         view_func=flag_response_duplication,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "TactisBigQuerySync",
+        endpoint="tactisBigQuerySync",
+        view_func=sync_tactis_participants_to_bq,
         methods=["GET"],
     )
 

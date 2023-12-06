@@ -952,3 +952,29 @@ class GenomicDataQualityReportTest(BaseTestCase):
 
         self.assertEqual(email_mock.call_count, current_mock_count)
 
+    def test_daily_reporting_kwargs(self):
+
+        genomic_data_quality_pipeline.daily_data_quality_workflow()
+
+        current_job_runs = GenomicJobRunDao().get_all()
+
+        # should loop thru daily ingestions
+        daily_ingestion_list = [
+            GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS,
+            GenomicJob.DAILY_SUMMARY_LONGREAD_REPORT_INGESTIONS,
+            GenomicJob.DAILY_SUMMARY_PROTEOMICS_REPORT_INGESTIONS,
+            GenomicJob.DAILY_SUMMARY_RNA_REPORT_INGESTIONS
+        ]
+
+        self.assertEqual(len(current_job_runs), 4)
+        self.assertTrue(all(obj.jobId in daily_ingestion_list for obj in current_job_runs))
+
+        updated_job_list = daily_ingestion_list + [GenomicJob.DAILY_SEND_VALIDATION_EMAILS]
+
+        genomic_data_quality_pipeline.daily_data_quality_workflow(reporting_job=GenomicJob.DAILY_SEND_VALIDATION_EMAILS
+                                                                  )
+        current_job_runs = GenomicJobRunDao().get_all()
+
+        self.assertEqual(len(current_job_runs), len(updated_job_list))
+        self.assertTrue(all(obj.jobId in updated_job_list for obj in current_job_runs))
+
