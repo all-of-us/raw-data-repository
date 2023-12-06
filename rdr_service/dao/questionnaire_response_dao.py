@@ -555,6 +555,10 @@ class QuestionnaireResponseDao(BaseDao):
         )
         if summary:
             ParticipantSummaryDao().update_enrollment_status(summary, session=session)
+            dispatch_task(
+                endpoint='update_retention_status',
+                payload={'participant_id': questionnaire_response.participantId}
+            )
 
         return questionnaire_response
 

@@ -9,6 +9,7 @@ from sqlalchemy.sql import func
 from werkzeug.exceptions import HTTPException, InternalServerError, BadGateway
 
 from rdr_service import config
+from rdr_service.api_util import dispatch_task
 from rdr_service.app_util import datetime_as_naive_utc
 from rdr_service.cloud_utils import bigquery
 from rdr_service.config import GAE_PROJECT
@@ -219,6 +220,9 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
                 create_rebuild_tasks_for_participants(
                     list(participant_ids_to_rebuild), batch_size, project_id, summary_dao
                 )
+
+            for participant_id in participant_ids_to_rebuild:
+                dispatch_task(endpoint='update_retention_status', payload={'participant_id': participant_id})
 
     # Rebuild any participants that had the "current" flag set before, but don't now
     # (because they didn't have a file today)
