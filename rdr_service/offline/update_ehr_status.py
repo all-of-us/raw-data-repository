@@ -211,9 +211,7 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
                     participant_id=participant_id,
                     session=session
                 )
-                if summary is None:
-                    LOG.error(f'No summary found for P{participant_id}')
-                else:
+                if summary:
                     summary_dao.update_enrollment_status(session=session, summary=summary)
                     participant_ids_to_rebuild.add(participant_id)
 
