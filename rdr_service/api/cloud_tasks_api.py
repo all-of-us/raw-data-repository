@@ -428,8 +428,9 @@ class UpdateRetentionEligibleStatus(Resource):
                 participant_id=participant_id,
                 session=session
             )
-            RetentionEligibleMetricsDao.upsert_retention_data(
-                participant_id=participant_id,
-                retention_data=retention_data,
-                session=session
-            )
+            if retention_data:
+                RetentionEligibleMetricsDao.upsert_retention_data(
+                    participant_id=participant_id,
+                    retention_data=retention_data,
+                    session=session
+                )

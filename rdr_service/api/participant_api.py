@@ -3,7 +3,7 @@ from werkzeug.exceptions import NotFound
 from flask import request
 
 from rdr_service.api.base_api import UpdatableApi, BaseApi
-from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO, HEALTHPRO
+from rdr_service.api_util import dispatch_task, PTC, PTC_AND_HEALTHPRO, HEALTHPRO
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.pediatric_data_log_dao import PediatricDataLogDao
@@ -24,7 +24,10 @@ class ParticipantApi(UpdatableApi):
     @app_util.auth_required(PTC)
     def post(self):
         response, *_ = super(ParticipantApi, self).post()
-        self._check_for_pediatric_update(from_client_participant_id(response['participantId']))
+
+        participant_id = from_client_participant_id(response['participantId'])
+        self._check_for_pediatric_update(participant_id)
+        dispatch_task(endpoint='update_retention_status', payload={'participant_id': participant_id})
 
         return response, *_
 
@@ -32,6 +35,7 @@ class ParticipantApi(UpdatableApi):
     def put(self, p_id):
         response = super(ParticipantApi, self).put(p_id)
         self._check_for_pediatric_update(p_id)
+        dispatch_task(endpoint='update_retention_status', payload={'participant_id': p_id})
 
         return response
 
