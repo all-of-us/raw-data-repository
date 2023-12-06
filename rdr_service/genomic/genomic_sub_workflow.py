@@ -30,7 +30,8 @@ class GenomicBaseSubWorkflow(ABC):
             GenomicJob.RNA_R1_WORKFLOW: self.run_sample_ingestion,
             GenomicJob.RNA_R2_WORKFLOW: self.run_bypass,
             GenomicJob.LR_LR_WORKFLOW: self.run_request_ingestion,
-            GenomicJob.LR_L1_WORKFLOW: self.run_sample_ingestion
+            GenomicJob.LR_L1_WORKFLOW: self.run_sample_ingestion,
+            GenomicJob.LR_L2_ONT_WORKFLOW: self.run_bypass
         }[self.job_id]
 
     @classmethod
@@ -138,12 +139,6 @@ class GenomicBaseSubWorkflow(ABC):
         )
 
         returned_biobank_ids = [obj.biobank_id for obj in new_pipeline_members]
-
-        self.handle_request_differences(
-            request_biobank_ids=request_biobank_ids,
-            returned_biobank_ids=returned_biobank_ids
-        )
-
         pipeline_objs = []
         default_attributes: dict = self.build_defaulted_base_attributes(model_string_attributes)
 
@@ -155,6 +150,11 @@ class GenomicBaseSubWorkflow(ABC):
             })
 
         self.dao.insert_bulk(pipeline_objs)
+
+        self.handle_request_differences(
+            request_biobank_ids=request_biobank_ids,
+            returned_biobank_ids=returned_biobank_ids
+        )
 
     def run_sample_ingestion(self) -> None:
         updated_pipeline_members = self.dao.get_pipeline_members_missing_sample_id(

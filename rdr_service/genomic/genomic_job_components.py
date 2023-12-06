@@ -298,6 +298,7 @@ class GenomicFileIngester:
             GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
             GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L1_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L2_ONT_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
@@ -1299,6 +1300,11 @@ class GenomicFileValidator:
         self.controller = controller
         self.gc_site_id = None
 
+        self.VALID_CVL_FACILITIES = ('rdr', 'co', 'uw', 'bcm')
+        self.CVL_ANALYSIS_TYPES = ('hdrv1', 'pgxv1')
+        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'ha', 'rdr')
+        self.DRC_BROAD = 'drc_broad'
+
         self.GC_METRICS_SCHEMAS = {
             GENOME_TYPE_WGS: (
                 "biobankid",
@@ -1335,11 +1341,6 @@ class GenomicFileValidator:
                 "genometype"
             ),
         }
-
-        self.VALID_CVL_FACILITIES = ('rdr', 'co', 'uw', 'bcm')
-        self.CVL_ANALYSIS_TYPES = ('hdrv1', 'pgxv1')
-        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'ha', 'rdr')
-        self.DRC_BROAD = 'drc_broad'
 
         # CVL pipeline
         self.CVL_W2_SCHEMA = (
@@ -1603,6 +1604,35 @@ class GenomicFileValidator:
             "longreadplatform",
             "failuremode",
             "failuremodedesc"
+        )
+
+        self.LR_L2_ONT_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "flowcellid",
+            "basecallerversion",
+            "basecallermodel",
+            "bampath",
+            "longreadplatform",
+            "barcode",
+            "limsid",
+            "processingstatus",
+            "translocationspeed",
+            "minimumreadlength",
+            "mappedreadpct",
+            "meancoverage",
+            "genomecoverage",
+            "readerrorrate",
+            "readlengthn50",
+            "meanreadquality",
+            "alignedq10bases",
+            "contamination",
+            "arrayconcordance",
+            "sexconcordance",
+            "sexploidy",
+            "samplesource",
+            "genometype"
         )
 
         # PR pipeline
@@ -2044,6 +2074,19 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def lr_l2_ont_manifest_name_rule():
+            """
+            LR L2 ONT manifest name rule
+            """
+            return (
+                len(filename_components) == 6 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'l2' and
+                filename_components[4] == 'ont' and
+                filename.lower().endswith('csv')
+            )
+
         # PR pipeline
         def pr_pr_manifest_name_rule():
             """
@@ -2140,6 +2183,7 @@ class GenomicFileValidator:
             GenomicJob.CVL_W5NF_WORKFLOW: cvl_w5nf_manifest_name_rule,
             GenomicJob.LR_LR_WORKFLOW: lr_lr_manifest_name_rule,
             GenomicJob.LR_L1_WORKFLOW: lr_l1_manifest_name_rule,
+            GenomicJob.LR_L2_ONT_WORKFLOW: lr_l2_ont_manifest_name_rule,
             GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule,
             GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule,
             GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule,

@@ -1763,6 +1763,52 @@ event.listen(GenomicL1Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicL1Raw, 'before_update', model_update_listener)
 
 
+class GenomicL2ONTRaw(Base):
+    """
+    Raw Data from L2 ONT files
+    """
+    __tablename__ = 'genomic_l2_ont_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    flowcell_id = Column(String(255), nullable=True)
+    basecaller_version = Column(String(255), nullable=True)
+    basecaller_model = Column(String(255), nullable=True)
+    bam_path = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    barcode = Column(String(255), nullable=True)
+    lims_id = Column(String(255), nullable=True)
+    processing_status = Column(String(255), nullable=True)
+    translocation_speed = Column(String(255), nullable=True)
+    minimum_read_length = Column(String(255), nullable=True)
+    mapped_read_pct = Column(String(255), nullable=True)
+    mean_coverage = Column(String(255), nullable=True)
+    genome_coverage = Column(String(255), nullable=True)
+    read_error_rate = Column(String(255), nullable=True)
+    read_length_n50 = Column(String(255), nullable=True)
+    mean_read_quality = Column(String(255), nullable=True)
+    aligned_q10_bases = Column(String(255), nullable=True)
+    contamination = Column(String(255), nullable=True)
+    array_concordance = Column(String(255), nullable=True)
+    sex_concordance = Column(String(255), nullable=True)
+    sex_ploidy = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL2ONTRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicL2ONTRaw, 'before_update', model_update_listener)
+
+
 class GenomicProteomics(Base):
     """
     Used for storing the member records that are being
