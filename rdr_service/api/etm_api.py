@@ -94,7 +94,7 @@ class EtmApi:
             submit_pipeline_pubsub_msg(database='rdr', table='etm_questionnaire_response', action='insert',
                                        pk_columns=['etm_questionnaire_response_id'], pk_values=[response_obj.id])
 
-            dispatch_task(endpoint='update_retention_status', payload={'participant_id': response_obj.participantId})
+            dispatch_task(endpoint='update_retention_status', payload={'participant_id': response_obj.participant_id})
 
             return {
                 'id': str(response_obj.id),
