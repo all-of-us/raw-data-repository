@@ -299,6 +299,7 @@ class GenomicFileIngester:
             GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L1_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L2_ONT_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L2_PB_CCS_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
@@ -1635,6 +1636,35 @@ class GenomicFileValidator:
             "genometype"
         )
 
+        self.LR_L2_PB_CCS_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "limsid",
+            "aggregationlevel",
+            "flowcellid",
+            "barcode",
+            "meancoverage",
+            "genomecoverage",
+            "contamination",
+            "sexconcordance",
+            "sexploidy",
+            "alignedhifibases",
+            "readerrorrate",
+            "numhifireads",
+            "readlengthmean",
+            "arrayconcordance",
+            "samplesource",
+            "mappedreadspct",
+            "genometype",
+            "processingstatus",
+            "bampath",
+            "longreadplatform",
+            "instrument",
+            "smrtlinkserverversion",
+            "instrumenticsversion"
+        )
+
         # PR pipeline
         self.PR_PR_SCHEMA = (
             "biobankid",
@@ -2087,6 +2117,19 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def lr_l2_pb_ccs_manifest_name_rule():
+            """
+            LR L2 PB CCS manifest name rule
+            """
+            return (
+                len(filename_components) == 6 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'l2' and
+                filename_components[4] == 'pbccs' and
+                filename.lower().endswith('csv')
+            )
+
         # PR pipeline
         def pr_pr_manifest_name_rule():
             """
@@ -2184,6 +2227,7 @@ class GenomicFileValidator:
             GenomicJob.LR_LR_WORKFLOW: lr_lr_manifest_name_rule,
             GenomicJob.LR_L1_WORKFLOW: lr_l1_manifest_name_rule,
             GenomicJob.LR_L2_ONT_WORKFLOW: lr_l2_ont_manifest_name_rule,
+            GenomicJob.LR_L2_PB_CCS_WORKFLOW: lr_l2_pb_ccs_manifest_name_rule,
             GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule,
             GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule,
             GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule,
@@ -2307,6 +2351,10 @@ class GenomicFileValidator:
                 return self.LR_LR_SCHEMA
             if self.job_id == GenomicJob.LR_L1_WORKFLOW:
                 return self.LR_L1_SCHEMA
+            if self.job_id == GenomicJob.LR_L2_ONT_WORKFLOW:
+                return self.LR_L2_ONT_SCHEMA
+            if self.job_id == GenomicJob.LR_L2_PB_CCS_WORKFLOW:
+                return self.LR_L2_PB_CCS_SCHEMA
             if self.job_id == GenomicJob.PR_PR_WORKFLOW:
                 return self.PR_PR_SCHEMA
             if self.job_id == GenomicJob.PR_P1_WORKFLOW:
