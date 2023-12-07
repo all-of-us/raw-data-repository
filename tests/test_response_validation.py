@@ -263,6 +263,7 @@ class TestValidation(BaseTestCase):
     def _build_response(cls, answers: Dict[str, List[Tuple[int, str]]]):
         return Response(
             id=1,
+            survey_code_id=10,
             survey_code='test',
             authored_datetime=datetime.now(),
             status=QuestionnaireResponseStatus.COMPLETED,
@@ -350,6 +351,7 @@ class TestConditionalFromBranchingLogic(BaseTestCase):
             },
             authored_datetime=datetime.now(),
             id=8,
+            survey_code_id=11,
             status=QuestionnaireResponseStatus.COMPLETED,
             survey_code='test'
         )

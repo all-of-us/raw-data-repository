@@ -64,6 +64,7 @@ class QuestionnaireResponseRepository:
                 QuestionnaireResponse.questionnaireResponseId,
                 QuestionnaireResponse.authored,
                 survey_code.value,
+                survey_code.codeId,
                 QuestionnaireResponseAnswer,
                 QuestionnaireResponse.status
             )
@@ -122,8 +123,8 @@ class QuestionnaireResponseRepository:
 
         # build dict with participant ids as keys and ParticipantResponse objects as values
         participant_response_map = defaultdict(response_domain_model.ParticipantResponses)
-        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, answer, \
-                status in query.all():
+        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, survey_code_id, \
+                answer, status in query.all():
             # Get the collection of responses for the participant
             response_collection_for_participant = participant_response_map[participant_id]
 
@@ -133,6 +134,7 @@ class QuestionnaireResponseRepository:
                 # This is the first time seeing an answer for this response, so create the Response structure for it
                 response = response_domain_model.Response(
                     id=response_id,
+                    survey_code_id=survey_code_id,
                     survey_code=survey_code_str,
                     authored_datetime=authored_datetime,
                     status=status
