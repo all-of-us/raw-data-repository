@@ -1,7 +1,7 @@
 
 from sqlalchemy import or_, and_
 
-from rdr_service.api_util import format_json_date
+from rdr_service.api_util import dispatch_task, format_json_date
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.participant import Participant
 from rdr_service.api_util import parse_date
@@ -396,6 +396,7 @@ class BiobankSpecimenDao(BiobankDaoBase):
         dao.update_from_biobank_stored_samples(participant_id=participant_id, biobank_ids=[biobank_id], session=session)
 
         dispatch_participant_rebuild_tasks([participant_id])
+        dispatch_task(endpoint='update_retention_status', payload={'participant_id': participant_id})
 
 
 class BiobankSpecimenAttributeDao(BiobankDaoBase):

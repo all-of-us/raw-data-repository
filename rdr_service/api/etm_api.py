@@ -4,6 +4,7 @@ import logging
 import pytz
 from typing import List
 
+from rdr_service.api_util import dispatch_task
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.questionnaire import Questionnaire as FhirQuestionnaire
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.questionnaireresponse import \
@@ -92,6 +93,8 @@ class EtmApi:
             # etm_questionnaire_response record (don't need submit_pipeline_pubsub_msg_from_model())
             submit_pipeline_pubsub_msg(database='rdr', table='etm_questionnaire_response', action='insert',
                                        pk_columns=['etm_questionnaire_response_id'], pk_values=[response_obj.id])
+
+            dispatch_task(endpoint='update_retention_status', payload={'participant_id': response_obj.participant_id})
 
             return {
                 'id': str(response_obj.id),

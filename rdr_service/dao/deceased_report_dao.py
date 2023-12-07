@@ -5,6 +5,7 @@ from sqlalchemy.orm.exc import DetachedInstanceError
 from werkzeug.exceptions import BadRequest, NotFound, Conflict, InternalServerError
 
 from rdr_service import config
+from rdr_service.api_util import dispatch_task
 from rdr_service.clock import CLOCK
 from rdr_service.dao.api_user_dao import ApiUserDao
 from rdr_service.dao.base_dao import UpdatableDao
@@ -586,6 +587,8 @@ class DeceasedReportDao(UpdatableDao):
 
             self._update_participant_summary(session, obj)
             insert_result = super(DeceasedReportDao, self).insert_with_session(session, obj)
+            dispatch_task(endpoint='update_retention_status', payload={'participant_id': obj.participantId})
+
             return insert_result
 
     def update_with_session(self, session, obj: DeceasedReport):
