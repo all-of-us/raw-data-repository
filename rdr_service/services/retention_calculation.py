@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
 
-from rdr_service.participant_enums import ParticipantCohort
+from rdr_service.participant_enums import ParticipantCohort, RetentionStatus, RetentionType
 
 
 @dataclass
@@ -151,6 +151,21 @@ class RetentionEligibility:
             and self._is_less_than_18_months_ago(self._participant.latest_ehr_upload_timestamp)
             and self._participant.has_uploaded_ehr_file
         )
+
+    @property
+    def retention_status(self):
+        return RetentionStatus.ELIGIBLE if self.is_eligible else RetentionStatus.NOT_ELIGIBLE
+
+    @property
+    def retention_type(self):
+        if self.is_actively_retained and self.is_passively_retained:
+            return RetentionType.ACTIVE_AND_PASSIVE
+        elif self.is_actively_retained:
+            return RetentionType.ACTIVE
+        elif self.is_passively_retained:
+            return RetentionType.PASSIVE
+
+        return RetentionType.UNSET
 
     @classmethod
     def _did_provide_consent(cls, consent: Consent) -> bool:

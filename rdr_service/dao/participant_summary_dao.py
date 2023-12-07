@@ -87,6 +87,7 @@ from rdr_service.model.code import Code
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
 from rdr_service.repository.obfuscation_repository import ObfuscationRepository
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
+from rdr_service.services.retention_calculation import RetentionEligibility
 from rdr_service.services.system_utils import min_or_none
 
 
@@ -1682,6 +1683,18 @@ class ParticipantSummaryDao(UpdatableDao):
                 }
             )
             session.execute(query, {'file_upload_date': upload_date})
+
+    @classmethod
+    def update_with_retention_data(cls, participant_id, retention_data: RetentionEligibility, session):
+        participant_summary: ParticipantSummary = session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant_id
+        ).one_or_none()
+
+        if participant_summary:
+            participant_summary.retentionEligibleStatus = retention_data.retention_status
+            participant_summary.retentionEligibleTime = retention_data.retention_eligible_date
+            participant_summary.retentionType = retention_data.retention_type
+            participant_summary.lastActiveRetentionActivityTime = retention_data.last_active_retention_date
 
     @classmethod
     def update_profile_data(cls, participant_id: int, **kwargs):
