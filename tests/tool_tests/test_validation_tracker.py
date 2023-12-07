@@ -196,6 +196,7 @@ class TestValidationTracker(BaseTestCase):
         return response_domain_model.Response(
             id=1,
             survey_code=survey_code,
+            survey_code_id=11,
             authored_datetime=datetime.utcnow(),
             status=QuestionnaireResponseStatus.COMPLETED,
             answered_codes=answers

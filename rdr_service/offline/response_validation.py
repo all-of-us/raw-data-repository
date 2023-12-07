@@ -65,7 +65,9 @@ class ResponseValidationController:
                             error.reason,
                             error.error_type,
                             participant_id,
-                            error.answer_id[0]
+                            error.answer_id[0],
+                            response.id,
+                            response.survey_code_id
                         )].append(
                             f'{response.survey_code} - question "{error.question_code}" '
                             f'Error: {error.reason} (P{participant_id}, ansID {error.answer_id[0]})'
@@ -121,16 +123,18 @@ class ResponseValidationController:
 
     def _insert_data(self):
         for key in self._error_list:
-            survey_code, question_code, error_str, error_type, pid, answer_id = key
+            survey_code, question_code, error_str, error_type, pid, answer_id, response_id, survey_code_id = key
 
             data = PpiValidationErrors(
-                eval_date=datetime.utcnow(),
+                created=datetime.utcnow(),
                 survey_code_value=survey_code,
                 question_code=question_code,
                 error_str=error_str,
                 error_type=error_type,
                 participant_id=pid,
-                questionnaire_response_answer_id=answer_id
+                questionnaire_response_answer_id=answer_id,
+                questionnaire_response_id=response_id,
+                survey_code_id=survey_code_id
             )
 
             # Insert data into PPI validation table if offline job is running

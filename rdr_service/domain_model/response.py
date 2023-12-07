@@ -27,6 +27,7 @@ class ParticipantResponses:
 @dataclass
 class Response:
     id: int
+    survey_code_id: int
     survey_code: str
     authored_datetime: datetime
     status: QuestionnaireResponseStatus

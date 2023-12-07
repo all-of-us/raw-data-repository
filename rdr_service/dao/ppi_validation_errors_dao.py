@@ -1,12 +1,18 @@
 from rdr_service.model.utils import UTCDateTime
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.ppi_validation_errors import PpiValidationErrors
+from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
 
 
 class PpiValidationErrorsDao(BaseDao):
 
     def __init__(self):
         super(PpiValidationErrorsDao, self).__init__(PpiValidationErrors)
+
+    def insert_with_session(self, session, obj: PpiValidationErrors):
+        insert_result = super(PpiValidationErrorsDao, self).insert_with_session(session, obj)
+        submit_pipeline_pubsub_msg_from_model(obj, self.get_connection_database_name())
+        return insert_result
 
     def get(self, validation_error_id):
         with self.session() as session:
@@ -19,7 +25,7 @@ class PpiValidationErrorsDao(BaseDao):
         """Returns all validation errors since a specific date"""
         with self.session() as session:
             query = session.query(PpiValidationErrors).filter(
-                PpiValidationErrors.eval_date >= since_date
+                PpiValidationErrors.created >= since_date
             )
             return query.all()
 
@@ -27,7 +33,7 @@ class PpiValidationErrorsDao(BaseDao):
         """Returns all validation errors from START_DATE to END_DATE"""
         with self.session() as session:
             query = session.query(PpiValidationErrors).filter(
-                PpiValidationErrors.eval_date >= start_date,
-                PpiValidationErrors.eval_date <= end_date,
+                PpiValidationErrors.created >= start_date,
+                PpiValidationErrors.created <= end_date,
             )
             return query.all()
