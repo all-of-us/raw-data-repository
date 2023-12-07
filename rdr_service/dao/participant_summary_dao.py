@@ -1062,7 +1062,10 @@ class ParticipantSummaryDao(UpdatableDao):
         summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
 
         if pdr_pubsub:
-            submit_pipeline_pubsub_msg_from_model(summary, self.get_connection_database_name())
+            # Capture any enrollment status history records that have been added to the session.
+            models_ = list(session.new)
+            models_.append(summary)
+            submit_pipeline_pubsub_msg_from_model(models_, self.get_connection_database_name())
 
     def calculate_enrollment_status(
         self, consent, num_completed_baseline_ppi_modules, physical_measurements_status,
