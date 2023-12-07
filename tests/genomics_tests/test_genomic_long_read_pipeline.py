@@ -351,6 +351,16 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                 collectionTubeId=num
             )
             if num < 3:
+                # SHOULD NOT add sample_id to long_read member w/ different lr platform
+                self.data_generator.create_database_genomic_long_read(
+                    genomic_set_member_id=genomic_set_member.id,
+                    biobank_id=genomic_set_member.biobankId,
+                    collection_tube_id=f'{num}11111',
+                    genome_type="aou_long_read",
+                    lr_site_id="bi",
+                    long_read_platform=GenomicLongReadPlatform.ONT,
+                    long_read_set=1
+                )
                 self.data_generator.create_database_genomic_long_read(
                     genomic_set_member_id=genomic_set_member.id,
                     biobank_id=genomic_set_member.biobankId,
@@ -370,9 +380,15 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         long_read_members = self.long_read_dao.get_all()
 
-        self.assertEqual(len(long_read_members), 2)
-        self.assertTrue(all(obj.sample_id is not None for obj in long_read_members))
-        self.assertTrue(all(obj.sample_id in ['1111', '1112'] for obj in long_read_members))
+        self.assertEqual(len(long_read_members), 4)
+        self.assertTrue(all(obj.sample_id is not None for obj in long_read_members if
+                            obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS))
+        self.assertTrue(all(obj.sample_id in ['1111', '1112'] for obj in long_read_members  if
+                            obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS))
+
+        # ONT platform does not get updated
+        self.assertTrue(all(obj.sample_id is None for obj in long_read_members if
+                            obj.long_read_platform == GenomicLongReadPlatform.ONT))
 
         # check job run record
         l1_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LR_L1_WORKFLOW, self.job_run_dao.get_all()))

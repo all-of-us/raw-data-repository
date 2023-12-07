@@ -156,12 +156,14 @@ class GenomicBaseSubWorkflow(ABC):
             returned_biobank_ids=returned_biobank_ids
         )
 
-    def run_sample_ingestion(self) -> None:
-        updated_pipeline_members = self.dao.get_pipeline_members_missing_sample_id(
+    def get_members_for_sample_update(self):
+        return self.dao.get_pipeline_members_missing_sample_id(
             biobank_ids=[row.get('biobank_id')[1:] for row in self.row_data if row.get('sample_id')],
             collection_tube_ids=[row.get('collection_tubeid') for row in self.row_data if row.get('sample_id')]
         )
 
+    def run_sample_ingestion(self) -> None:
+        updated_pipeline_members = self.get_members_for_sample_update()
         update_objs = []
         for member in updated_pipeline_members:
             matching_row = list(filter(lambda x: x.get('biobank_id')[1:] == member.biobank_id, self.row_data))
@@ -192,6 +194,13 @@ class GenomicSubLongReadWorkflow(GenomicBaseSubWorkflow):
     def get_platform_value(self, attribute_name: str = 'long_read_platform') -> Enum:
         row_long_read_platform = self.row_data[0].get(attribute_name)
         return GenomicLongReadPlatform.lookup_by_name(row_long_read_platform.upper())
+
+    def get_members_for_sample_update(self):
+        return self.dao.get_pipeline_members_missing_sample_id(
+            biobank_ids=[row.get('biobank_id')[1:] for row in self.row_data if row.get('sample_id')],
+            collection_tube_ids=[row.get('collection_tubeid') for row in self.row_data if row.get('sample_id')],
+            long_read_platform=self.get_platform_value()
+        )
 
     def set_default_base_attributes(self) -> dict:
         return {

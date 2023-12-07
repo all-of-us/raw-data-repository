@@ -25,7 +25,7 @@ from rdr_service import clock, code_constants, config
 from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus, \
-    ResultsModuleType
+    ResultsModuleType, GenomicLongReadPlatform
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
@@ -4925,6 +4925,23 @@ class GenomicLongReadDao(GenomicSubDao):
             ).filter(
                 GenomicLongRead.long_read_set ==
                 self.get_max_set_subquery().c.long_read_set
+            ).distinct().all()
+
+    def get_pipeline_members_missing_sample_id(
+        self,
+        *, biobank_ids: List[str],
+        collection_tube_ids: List[str],
+        long_read_platform: GenomicLongReadPlatform
+    ):
+        with self.session() as session:
+            return session.query(
+                self.model_type.id,
+                self.model_type.biobank_id
+            ).filter(
+                self.model_type.sample_id.is_(None),
+                self.model_type.biobank_id.in_(biobank_ids),
+                self.model_type.collection_tube_id.in_(collection_tube_ids),
+                self.model_type.long_read_platform == long_read_platform
             ).distinct().all()
 
 
