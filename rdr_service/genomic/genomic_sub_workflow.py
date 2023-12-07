@@ -31,7 +31,8 @@ class GenomicBaseSubWorkflow(ABC):
             GenomicJob.RNA_R2_WORKFLOW: self.run_bypass,
             GenomicJob.LR_LR_WORKFLOW: self.run_request_ingestion,
             GenomicJob.LR_L1_WORKFLOW: self.run_sample_ingestion,
-            GenomicJob.LR_L2_ONT_WORKFLOW: self.run_bypass
+            GenomicJob.LR_L2_ONT_WORKFLOW: self.run_bypass,
+            GenomicJob.LR_L2_PB_CCS_WORKFLOW: self.run_bypass
         }[self.job_id]
 
     @classmethod
@@ -48,8 +49,7 @@ class GenomicBaseSubWorkflow(ABC):
                 queue=task_queue
             )
 
-    def run_bypass(self) -> None:
-        ...
+    def run_bypass(self) -> None: ...
 
     def set_model_string_attributes(self) -> List[str]:
         return [str(obj).split('.')[-1] for obj in self.dao.model_type.__table__.columns]
@@ -66,8 +66,7 @@ class GenomicBaseSubWorkflow(ABC):
         return current_site_id
 
     @abstractmethod
-    def set_default_base_attributes(self) -> dict:
-        ...
+    def set_default_base_attributes(self) -> dict: return {}
 
     def build_defaulted_base_attributes(self, model_string_attributes: List[str]) -> dict:
         base_default_attributes_map = {
