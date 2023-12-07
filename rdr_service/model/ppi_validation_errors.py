@@ -31,7 +31,8 @@ class PpiValidationErrors(Base):
 
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False)
     survey_code_id = Column(Integer, ForeignKey("code.code_id"), nullable=False)
-    questionnaire_response_id = Column(Integer, ForeignKey("questionnaire_response.questionnaire_response_id"), nullable=False)
+    questionnaire_response_id = Column(Integer, ForeignKey("questionnaire_response.questionnaire_response_id"),
+                                       nullable=False)
     questionnaire_response_answer_id = Column(
         Integer,
         ForeignKey("questionnaire_response_answer.questionnaire_response_answer_id"),
