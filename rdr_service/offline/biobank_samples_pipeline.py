@@ -601,7 +601,7 @@ _RECONCILIATION_REPORT_SOURCE_SQL = (
     case when collected_site.site_id is not null then (case when collected_site.state = 'NY' then 'Y' else 'N' end)
        when mko_state_code.code_id is not null then
             (case when mko_state_code.value like 'state_ny' then 'Y' else 'N' end)
-       else 'NULL'
+       else ''
     end ny_flag,
     case when sex_code.value like 'sexatbirth_male' then 'M'
        when sex_code.value like 'sexatbirth_female' then 'F'
