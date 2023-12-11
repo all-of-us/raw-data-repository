@@ -247,13 +247,10 @@ def _build_query_params(start_date: datetime):
 
 def _query_and_write_received_report(exporter, report_path, query_params, report_predicate):
     received_report_select = _RECONCILIATION_REPORT_SELECTS_SQL
-    if config.getSettingJson(config.ENABLE_BIOBANK_MANIFEST_RECEIVED_FLAG, default=False):
-        received_report_select += """,
-            group_concat(ny_flag) ny_flag,
-            group_concat(sex_at_birth_flag) sex_at_birth_flag
-        """
     received_report_select += """,
-        max(is_pediatric) ispediatric
+        max(is_pediatric) ispediatric,
+        group_concat(ny_flag) ny_flag,
+        group_concat(sex_at_birth_flag) sex_at_birth_flag
     """
     logging.info(f"Writing {report_path} report.")
     received_sql = replace_isodate(received_report_select + _RECONCILIATION_REPORT_SOURCE_SQL)
@@ -604,7 +601,7 @@ _RECONCILIATION_REPORT_SOURCE_SQL = (
     case when collected_site.site_id is not null then (case when collected_site.state = 'NY' then 'Y' else 'N' end)
        when mko_state_code.code_id is not null then
             (case when mko_state_code.value like 'state_ny' then 'Y' else 'N' end)
-       else 'NA'
+       else 'NULL'
     end ny_flag,
     case when sex_code.value like 'sexatbirth_male' then 'M'
        when sex_code.value like 'sexatbirth_female' then 'F'
