@@ -54,8 +54,6 @@ from rdr_service.dao.genomics_dao import (
     GenomicSetDao,
     GenomicJobRunDao,
     GenomicManifestFileDao,
-    GenomicAW1RawDao,
-    GenomicAW2RawDao,
     GenomicIncidentDao,
     UserEventMetricsDao,
     GenomicQueriesDao,
@@ -203,7 +201,6 @@ class GenomicFileIngester:
                 try:
                     current_file = self.file_queue[0]
                     ingestion_result = self._ingest_genomic_file(current_file)
-
                     file_ingested = self.file_queue.popleft()
                     results.append(ingestion_result == GenomicSubProcessResult.SUCCESS)
 
@@ -275,6 +272,17 @@ class GenomicFileIngester:
         logging.info(f'Ingesting data from {self.file_obj.fileName}')
         logging.info("Validating file.")
 
+        self.file_validator.valid_schema = None
+
+        validation_result = self.file_validator.validate_ingestion_file(
+            filename=self.file_obj.fileName,
+            data_to_validate=data_to_ingest
+        )
+        if validation_result != GenomicSubProcessResult.SUCCESS:
+            return validation_result
+
+        # validation pass - send raw ingestion to cloud task
+
         workflow_map = {
             GenomicJob.AW1_MANIFEST: GenomicAW1Workflow,
             GenomicJob.AW1F_MANIFEST: GenomicAW1Workflow,
@@ -312,22 +320,6 @@ class GenomicFileIngester:
         if not current_ingestion_workflow:
             current_workflow = workflow_map.get(self.job_id)(file_ingester=self)
             current_ingestion_workflow = current_workflow.run_ingestion
-
-        self.file_validator.valid_schema = None
-
-        validation_result = self.file_validator.validate_ingestion_file(
-            filename=self.file_obj.fileName,
-            data_to_validate=data_to_ingest
-        )
-
-        if validation_result != GenomicSubProcessResult.SUCCESS:
-            # delete raw records
-            if self.job_id == GenomicJob.AW1_MANIFEST:
-                GenomicAW1RawDao().delete_from_filepath(file_obj.filePath)
-            if self.job_id == GenomicJob.METRICS_INGESTION:
-                GenomicAW2RawDao().delete_from_filepath(file_obj.filePath)
-            return validation_result
-
         try:
             ingestions = self._set_data_ingest_iterations(data_to_ingest['rows'])
             for row in ingestions:

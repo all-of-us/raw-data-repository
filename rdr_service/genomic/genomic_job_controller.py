@@ -153,7 +153,6 @@ class GenomicJobController:
                 GenomicJob.PR_PR_WORKFLOW: 'p0',
                 GenomicJob.RNA_RR_WORKFLOW: 'r0'
             }[self.job_id]
-
             last_completed_job = self.job_run_dao.get_last_completed_run_status_for_job_id(
                 job_id=self.job_id)
             if last_completed_job and last_completed_job in [GenomicSubProcessResult.SUCCESS]:
