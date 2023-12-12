@@ -117,7 +117,7 @@ class GenomicBaseSubWorkflow(ABC):
             return
 
         message = (f'{self.job_id.name}: Biobank IDs [{",".join(missing_in_returned)}] failed request manifest '
-                   f'validation')
+                   f'validation: {self.current_manifest_file_name}')
         self.execute_cloud_task(
             payload={
                 'slack': True,
