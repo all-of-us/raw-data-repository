@@ -102,6 +102,8 @@ _SITE_FIELDS = (
     "biospecimenFinalizedSite",
     "site",
     "enrollmentSite",
+    "healthDataStreamSharingStatus",
+    "healthDataStreamSharingStatusTime",
 )
 
 # Lazy caches of property names for client JSON conversion.
@@ -538,6 +540,10 @@ class ParticipantSummaryDao(UpdatableDao):
             return self._add_env_health_order(query, order_by, PediatricDataLog.created)
         elif order_by.field_name == 'questionnaireOnEnvironmentalHealthAuthored':
             return self._add_env_health_order(query, order_by, PediatricDataLog.value)
+        elif order_by.field_name == 'healthDataStreamStatusSharing':
+            return self._add_env_health_order(query, order_by, ParticipantSummary.healthDataStreamSharingStatus)
+        elif order_by.field_name == 'healthDataStreamStatusSharingTime':
+            return self._add_env_health_order(query, order_by, ParticipantSummary.healthDataStreamSharingStatusTime)
         return super(ParticipantSummaryDao, self)._add_order_by(query, order_by, field_names, fields)
 
     @staticmethod

@@ -904,7 +904,7 @@ def ptsc_ytest_participant_cleanup_request():
                      "\n\nThanks,\nDRC Team".format(str(month), date.strftime("%d/%Y")))
 
     email = Email(
-        recipients=["david.konopka@vumc.org"],
+        recipients=["Analytics.Support@researchallofus.org"],
         cc_recipients=config.getSetting("participant_cleanup_cc_list"),
         subject="Test Participant Cleanup Reminder",
         plain_text_content=email_message
