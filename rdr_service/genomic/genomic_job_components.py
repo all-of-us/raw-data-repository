@@ -1952,7 +1952,7 @@ class GenomicFileValidator:
         def gem_a2_manifest_name_rule():
             """GEM A2 manifest name rule: i.e. AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv"""
             return (
-                len(filename_components) <= 6 and
+                len(filename_components) == 5 and
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'gem' and
                 filename_components[2] == 'a2' and

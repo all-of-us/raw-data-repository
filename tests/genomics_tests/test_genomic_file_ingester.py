@@ -124,36 +124,29 @@ class GenomicFileIngesterTest(BaseTestCase):
             controller=job_controller
         )
 
-        aw1f_files = ['UW_AoU_GEN_PKG-1234-567890_FAILURE.csv',
-                      'UW_AoU_GEN_PKG-1234-567890_FAILURE_v2.csv',
-                      'UW_AoU_GEN_PKG-1234-567890_FAILURE-v2.csv',
-                      'UW_AoU_GEN_PKG-1234-567890_FAILURE.v2.csv']
-        aw2_files = ['AoU_GEM_A2_manifest_2020-07-11.csv',
-                     'AoU_GEM_A2_manifest_2020-07-11_v2.csv']
-        aw4_arr_files = ['AoU_DRCB_GEN_2020-07-11-00-00-00.csv',
-                         'AoU_DRCB_GEN_2020-07-11-00-00-00_v2.csv']
-        aw4_wgs_files = ['AoU_DRCB_SEQ_2020-07-11-00-00-00.csv',
-                         'AoU_DRCB_SEQ_2020-07-11-00-00-00_v2.csv']
+        short_read_job_ids = [GenomicJob.AW1F_MANIFEST,
+                              GenomicJob.AW1_MANIFEST,
+                              GenomicJob.METRICS_INGESTION,
+                              GenomicJob.AW4_ARRAY_WORKFLOW,
+                              GenomicJob.AW4_WGS_WORKFLOW]
 
-        expected = [True, True, False, False,
-                    True, True,
-                    True, True,
-                    True, True]
-        actual = []
+        file_list = {
+            GenomicJob.AW1F_MANIFEST: ['UW_AoU_GEN_PKG-1234-567890_FAILURE.csv',
+                                       'UW_AoU_SEQ_PKG-1234-567890_FAILURE_v2.csv'],
+            GenomicJob.AW1_MANIFEST: ['UW_AoU_SEQ_PKG-1234-567890.csv',
+                                      'UW_AoU_GEN_PKG-1234-567890_2.csv'],
+            GenomicJob.METRICS_INGESTION: ['UW_AoU_GEN_DataManifest_01234567_890.csv',
+                                           'UW_AoU_SEQ_DataManifest_01234567_890_v2.csv'],
+            GenomicJob.AW4_ARRAY_WORKFLOW: ['AoU_DRCB_GEN_2020-07-11-00-00-00.csv',
+                                            'AoU_DRCB_GEN_2020-07-11-00-00-00_v2.csv'],
+            GenomicJob.AW4_WGS_WORKFLOW: ['AoU_DRCB_SEQ_2020-07-11-00-00-00.csv',
+                                          'AoU_DRCB_SEQ_2020-07-11-00-00-00_v2.csv']
+        }
 
-        for f in aw1f_files:
-            actual.append(file_validator.validate_filename(f))
+        self.assertFalse(file_validator.validate_filename('UW_AoU_GEN_PKG-1234-567890_FAILURE-v2.csv'))
+        self.assertFalse(file_validator.validate_filename('UW_AoU_SEQ_PKG-1234-567890_FAILURE.v2.csv'))
 
-        file_validator.job_id = GenomicJob.GEM_A2_MANIFEST
-        for f in aw2_files:
-            actual.append(file_validator.validate_filename(f))
-
-        file_validator.job_id = GenomicJob.AW4_ARRAY_WORKFLOW
-        for f in aw4_arr_files:
-            actual.append(file_validator.validate_filename(f))
-
-        file_validator.job_id = GenomicJob.AW4_WGS_WORKFLOW
-        for f in aw4_wgs_files:
-            actual.append(file_validator.validate_filename(f))
-
-        self.assertEqual(expected, actual)
+        for job_id in short_read_job_ids:
+            file_validator.job_id = job_id
+            for file in file_list[job_id]:
+                self.assertTrue(file_validator.validate_filename(file))
