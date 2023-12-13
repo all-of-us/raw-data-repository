@@ -1841,7 +1841,7 @@ class GenomicJobControllerTest(BaseTestCase):
         self.clear_table_after_test('genomic_gcr_outreach_escalation_notified')
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
-    def test_execute_auto_generation_from_last_run(self, cloud_task_mock):
+    def test_execute_auto_generation_from_result_status(self, cloud_task_mock):
 
         with GenomicJobController(
             GenomicJob.PR_PR_WORKFLOW
@@ -1849,11 +1849,6 @@ class GenomicJobControllerTest(BaseTestCase):
             controller.job_result = GenomicSubProcessResult.ERROR
             controller._end_run()
             controller.execute_auto_generation_from_cloud_task()
-
-        last_job_run_status = self.job_run_dao.get_last_completed_run_status_for_job_id(
-            job_id=GenomicJob.PR_PR_WORKFLOW
-        )
-        self.assertIsNone(last_job_run_status)
 
         # task SHOULD NOT be called
         self.assertEqual(cloud_task_mock.called, False)
@@ -1866,12 +1861,6 @@ class GenomicJobControllerTest(BaseTestCase):
             controller._end_run()
             controller.execute_auto_generation_from_cloud_task()
 
-        last_job_run_status = self.job_run_dao.get_last_completed_run_status_for_job_id(
-            job_id=GenomicJob.PR_PR_WORKFLOW
-        )
-        self.assertIsNotNone(last_job_run_status)
-        self.assertTrue(last_job_run_status == GenomicSubProcessResult.SUCCESS)
-
         # task SHOULD be called
         self.assertEqual(cloud_task_mock.called, True)
         self.assertTrue(cloud_task_mock.call_args[1].get('payload').get('manifest_type') == 'p0')
@@ -1882,4 +1871,3 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertTrue(all(obj.runResult in [GenomicSubProcessResult.SUCCESS, GenomicSubProcessResult.ERROR] for obj
                             in all_job_runs))
         self.assertTrue(all(obj.jobId == GenomicJob.PR_PR_WORKFLOW for obj in all_job_runs))
-
