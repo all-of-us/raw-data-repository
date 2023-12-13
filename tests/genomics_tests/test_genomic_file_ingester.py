@@ -2,7 +2,7 @@
 
 from rdr_service import clock, config
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao
-from rdr_service.genomic.genomic_job_components import GenomicFileIngester
+from rdr_service.genomic.genomic_job_components import GenomicFileIngester, GenomicFileValidator
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob
 from tests.genomics_tests.test_genomic_utils import create_ingestion_test_file
@@ -116,6 +116,44 @@ class GenomicFileIngesterTest(BaseTestCase):
         self.assertEqual(copy_member.blockResearchReason, block_research_reason)
         self.assertEqual(copy_member.blockResearch, 1)
 
+    def test_validate_filenames(self):
+        job_controller = GenomicJobController(job_id=GenomicJob.AW1F_MANIFEST)
 
+        file_validator = GenomicFileValidator(
+            job_id=job_controller.job_id,
+            controller=job_controller
+        )
 
+        aw1f_files = ['UW_AoU_GEN_PKG-1234-567890_FAILURE.csv',
+                      'UW_AoU_GEN_PKG-1234-567890_FAILURE_v2.csv',
+                      'UW_AoU_GEN_PKG-1234-567890_FAILURE-v2.csv',
+                      'UW_AoU_GEN_PKG-1234-567890_FAILURE.v2.csv']
+        aw2_files = ['AoU_GEM_A2_manifest_2020-07-11.csv',
+                     'AoU_GEM_A2_manifest_2020-07-11_v2.csv']
+        aw4_arr_files = ['AoU_DRCB_GEN_2020-07-11-00-00-00.csv',
+                         'AoU_DRCB_GEN_2020-07-11-00-00-00_v2.csv']
+        aw4_wgs_files = ['AoU_DRCB_SEQ_2020-07-11-00-00-00.csv',
+                         'AoU_DRCB_SEQ_2020-07-11-00-00-00_v2.csv']
 
+        expected = [True, True, False, False,
+                    True, True,
+                    True, True,
+                    True, True]
+        actual = []
+
+        for f in aw1f_files:
+            actual.append(file_validator.validate_filename(f))
+
+        file_validator.job_id = GenomicJob.GEM_A2_MANIFEST
+        for f in aw2_files:
+            actual.append(file_validator.validate_filename(f))
+
+        file_validator.job_id = GenomicJob.AW4_ARRAY_WORKFLOW
+        for f in aw4_arr_files:
+            actual.append(file_validator.validate_filename(f))
+
+        file_validator.job_id = GenomicJob.AW4_WGS_WORKFLOW
+        for f in aw4_wgs_files:
+            actual.append(file_validator.validate_filename(f))
+
+        self.assertEqual(expected, actual)
