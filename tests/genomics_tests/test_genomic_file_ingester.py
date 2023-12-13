@@ -134,7 +134,7 @@ class GenomicFileIngesterTest(BaseTestCase):
             GenomicJob.AW1F_MANIFEST: ['UW_AoU_GEN_PKG-1234-567890_FAILURE.csv',
                                        'UW_AoU_SEQ_PKG-1234-567890_FAILURE_v2.csv'],
             GenomicJob.AW1_MANIFEST: ['UW_AoU_SEQ_PKG-1234-567890.csv',
-                                      'UW_AoU_GEN_PKG-1234-567890_2.csv'],
+                                      'UW_AoU_GEN_PKG-1234-567890_v2.csv'],
             GenomicJob.METRICS_INGESTION: ['UW_AoU_GEN_DataManifest_01234567_890.csv',
                                            'UW_AoU_SEQ_DataManifest_01234567_890_v2.csv'],
             GenomicJob.AW4_ARRAY_WORKFLOW: ['AoU_DRCB_GEN_2020-07-11-00-00-00.csv',
