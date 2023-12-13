@@ -534,7 +534,7 @@ class SpotTool(ToolBase):
             GenomicGCValidationMetrics,
             and_(
                 GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
-                GenomicGCValidationMetrics.pipelineId == "cidr_egt_1",
+                GenomicGCValidationMetrics.pipelineId == "dragen_3.7.8",
             )
         ).join(
             BiobankStoredSample,
@@ -552,8 +552,8 @@ class SpotTool(ToolBase):
             GenomicAW4Raw,
             and_(
                 GenomicAW4Raw.sample_id == GenomicSetMember.sampleId,
-                GenomicAW4Raw.genome_type == "aou_array",
-                GenomicAW4Raw.file_path.notilike("%old_egt%")
+                GenomicAW4Raw.genome_type == "aou_wgs",
+                GenomicAW4Raw.pipeline_id == "dragen_3.7.8"
             )
         # ).join(
         #     TempBQClass,
@@ -567,8 +567,8 @@ class SpotTool(ToolBase):
                 GenomicGCValidationMetrics.modified > last_update_date,
                 ),
             # GenomicSetMember.sampleId == 21035008243,
-            # GenomicSetMember.participantId.in_(),  # TODO: Add param
-            GenomicSetMember.genomeType.in_(["aou_array"]),
+            # GenomicSetMember.sampleId.in_(),  # TODO: Add param
+            GenomicSetMember.genomeType.in_(["aou_wgs"]),
             # Site.siteId.is_(None)
 
         ))
