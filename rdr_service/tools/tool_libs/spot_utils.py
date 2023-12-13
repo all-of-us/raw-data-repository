@@ -23,7 +23,7 @@ from rdr_service.clock import Clock
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrder
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
-from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics, GenomicAW4Raw, TempBQClass
+from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics, GenomicAW4Raw
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireQuestion
@@ -534,7 +534,7 @@ class SpotTool(ToolBase):
             GenomicGCValidationMetrics,
             and_(
                 GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
-                GenomicGCValidationMetrics.pipelineId == "dragen_3.7.8",
+                GenomicGCValidationMetrics.pipelineId == "cidr_egt_1",
             )
         ).join(
             BiobankStoredSample,
@@ -552,12 +552,12 @@ class SpotTool(ToolBase):
             GenomicAW4Raw,
             and_(
                 GenomicAW4Raw.sample_id == GenomicSetMember.sampleId,
-                GenomicAW4Raw.genome_type == "aou_wgs",
-                # GenomicAW4Raw.pipeline_id == "dragen_3.7.8",
+                GenomicAW4Raw.genome_type == "aou_array",
+                GenomicAW4Raw.file_path.notilike("%old_egt%")
             )
-        ).join(
-            TempBQClass,
-            TempBQClass.research_id == GenomicSetMember.sampleId
+        # ).join(
+        #     TempBQClass,
+        #     TempBQClass.research_id == GenomicSetMember.sampleId
         ).filter(
             GenomicSetMember.ignoreFlag == 0,
             GenomicGCValidationMetrics.ignoreFlag == 0,
@@ -568,7 +568,7 @@ class SpotTool(ToolBase):
                 ),
             # GenomicSetMember.sampleId == 21035008243,
             # GenomicSetMember.participantId.in_(),  # TODO: Add param
-            GenomicSetMember.genomeType.in_(["aou_wgs"]),
+            GenomicSetMember.genomeType.in_(["aou_array"]),
             # Site.siteId.is_(None)
 
         ))
