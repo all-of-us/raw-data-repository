@@ -32,7 +32,8 @@ class GenomicBaseSubWorkflow(ABC):
             GenomicJob.LR_LR_WORKFLOW: self.run_request_ingestion,
             GenomicJob.LR_L1_WORKFLOW: self.run_sample_ingestion,
             GenomicJob.LR_L2_ONT_WORKFLOW: self.run_bypass,
-            GenomicJob.LR_L2_PB_CCS_WORKFLOW: self.run_bypass
+            GenomicJob.LR_L2_PB_CCS_WORKFLOW: self.run_bypass,
+            GenomicJob.LR_L4_WORKFLOW: self.run_bypass
         }[self.job_id]
 
     @classmethod
