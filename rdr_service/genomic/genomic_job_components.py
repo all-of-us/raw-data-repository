@@ -1962,13 +1962,13 @@ class GenomicFileValidator:
         def aw1f_manifest_name_rule():
             """Biobank to GCs Failure (AW1F) manifest name rule"""
             return (
-                len(filename_components) == 5 and
+                len(filename_components) <= 6 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] in ('seq', 'gen') and
                 re.search(r"pkg-[0-9]{4}-[0-9]{5,}$",
                           filename_components[3]) is not None and
-                filename_components[4] == 'failure.csv' and
+                filename_components[4] in ('failure', 'failure.csv') and
                 filename.lower().endswith('csv')
             )
 
