@@ -117,36 +117,48 @@ class GenomicFileIngesterTest(BaseTestCase):
         self.assertEqual(copy_member.blockResearch, 1)
 
     def test_validate_filenames(self):
-        job_controller = GenomicJobController(job_id=GenomicJob.AW1F_MANIFEST)
+        job_controller = GenomicJobController(job_id=0)
 
         file_validator = GenomicFileValidator(
             job_id=job_controller.job_id,
             controller=job_controller
         )
 
-        short_read_job_ids = [GenomicJob.AW1F_MANIFEST,
-                              GenomicJob.AW1_MANIFEST,
-                              GenomicJob.METRICS_INGESTION,
-                              GenomicJob.AW4_ARRAY_WORKFLOW,
-                              GenomicJob.AW4_WGS_WORKFLOW]
-
-        file_list = {
-            GenomicJob.AW1F_MANIFEST: ['UW_AoU_GEN_PKG-1234-567890_FAILURE.csv',
-                                       'UW_AoU_SEQ_PKG-1234-567890_FAILURE_v2.csv'],
-            GenomicJob.AW1_MANIFEST: ['UW_AoU_SEQ_PKG-1234-567890.csv',
-                                      'UW_AoU_GEN_PKG-1234-567890_v2.csv'],
-            GenomicJob.METRICS_INGESTION: ['UW_AoU_GEN_DataManifest_01234567_890.csv',
-                                           'UW_AoU_SEQ_DataManifest_01234567_890_v2.csv'],
-            GenomicJob.AW4_ARRAY_WORKFLOW: ['AoU_DRCB_GEN_2020-07-11-00-00-00.csv',
-                                            'AoU_DRCB_GEN_2020-07-11-00-00-00_v2.csv'],
-            GenomicJob.AW4_WGS_WORKFLOW: ['AoU_DRCB_SEQ_2020-07-11-00-00-00.csv',
-                                          'AoU_DRCB_SEQ_2020-07-11-00-00-00_v2.csv']
+        short_read_map = {
+            GenomicJob.AW1F_MANIFEST: {
+                'valid': ['UW_AoU_GEN_PKG-1234-567890_FAILURE.csv', 'UW_AoU_SEQ_PKG-1234-567890_FAILURE_v2.csv'],
+                'invalid': ['UW_AoU_GEN_PKG-1234-567890_FAILURE-v2.csv', 'UW_AoU_SEQ_PKG-1234-567890_FAILURE.v2.csv']
+            },
+            GenomicJob.AW1_MANIFEST: {
+                'valid': ['UW_AoU_SEQ_PKG-1234-567890.csv', 'UW_AoU_GEN_PKG-1234-567890_v2.csv'],
+                'invalid': ['UW_AoU_SEQ_PKG-1234-567890.pdf', 'UW_AoU_ABC_PKG-1234-567890_v2.csv']
+            },
+            GenomicJob.METRICS_INGESTION: {
+                'valid': ['UW_AoU_GEN_DataManifest_01234567_890.csv', 'UW_AoU_SEQ_DataManifest_01234567_890_v2.csv'],
+                'invalid': ['AB_AoU_GEN_DataManifest_01234567_890.csv', 'UW_SEQ_DataManifest_01234567_890_v2.csv']
+            },
+            GenomicJob.AW4_ARRAY_WORKFLOW: {
+                'valid': ['AoU_DRCB_GEN_2020-07-11-00-00-00.csv', 'AoU_DRCB_GEN_2020-07-11-00-00-00_v2.csv'],
+                'invalid': ['AU_DRCB_GEN_2020-07-11-00-00-00.csv', 'AoU_DRAB_GEN_2020-07-11-00-00-00_v2.csv']
+            },
+            GenomicJob.AW4_WGS_WORKFLOW: {
+                'valid': ['AoU_DRCB_SEQ_2020-07-11-00-00-00.csv', 'AoU_DRCB_SEQ_2020-07-11-00-00-00_v2.csv'],
+                'invalid': ['AoU_DRCB_GEN_2020-07-11-00-00-00.csv', 'AoU_DRCB_SEQ_2020-07-11-00-00-00_v2.pdf']
+            },
+            GenomicJob.AW5_ARRAY_MANIFEST: {
+                'valid': ['AoU_DRCB_GEN_0000-00-00-00-00-00.csv', 'AoU_DRCB_GEN_0000-00-00-00-00-00_v2.csv'],
+                'invalid': ['AoU_DRCB_GEN_0000-00-00-00-00-00.json']
+            },
+            GenomicJob.AW5_WGS_MANIFEST: {
+                'valid': ['AoU_DRCB_SEQ_0000-00-00-00-00-00.csv', 'AoU_DRCB_SEQ_0000-00-00-00-00-00_v2.csv'],
+                'invalid': ['AoU_DRCB_SEQ_0000-00-00-00-00-00.txt']
+            }
         }
 
-        self.assertFalse(file_validator.validate_filename('UW_AoU_GEN_PKG-1234-567890_FAILURE-v2.csv'))
-        self.assertFalse(file_validator.validate_filename('UW_AoU_SEQ_PKG-1234-567890_FAILURE.v2.csv'))
-
-        for job_id in short_read_job_ids:
+        for job_id in short_read_map:
             file_validator.job_id = job_id
-            for file in file_list[job_id]:
-                self.assertTrue(file_validator.validate_filename(file))
+            for valid_file in short_read_map[job_id]['valid']:
+                self.assertTrue(file_validator.validate_filename(valid_file))
+
+            for invalid_file in short_read_map[job_id]['invalid']:
+                self.assertFalse(file_validator.validate_filename(invalid_file))
