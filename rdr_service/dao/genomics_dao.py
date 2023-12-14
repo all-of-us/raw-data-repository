@@ -4837,7 +4837,7 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
         ...
 
     @abstractmethod
-    def get_zero_manifest_records_from_max_set(self):
+    def get_manifest_zero_records_from_max_set(self):
         ...
 
     @abstractmethod
@@ -4898,7 +4898,7 @@ class GenomicLongReadDao(GenomicSubDao):
                 GenomicSetMember.biobankId.in_(biobank_ids)
             ).distinct().all()
 
-    def get_zero_manifest_records_from_max_set(self):
+    def get_manifest_zero_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicLongRead.biobank_id),
@@ -4985,7 +4985,7 @@ class GenomicPRDao(GenomicSubDao):
                 GenomicSetMember.ai_an == 'N'
             ).distinct().all()
 
-    def get_zero_manifest_records_from_max_set(self):
+    def get_manifest_zero_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicProteomics.biobank_id),
@@ -5053,7 +5053,7 @@ class GenomicRNADao(GenomicSubDao):
                 GenomicSetMember.ai_an == 'N'
             ).distinct().all()
 
-    def get_zero_manifest_records_from_max_set(self):
+    def get_manifest_zero_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicRNA.biobank_id),

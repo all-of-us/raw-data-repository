@@ -3355,19 +3355,19 @@ class ManifestDefinitionProvider:
                 'output_filename':
                     f'{LR_L0_MANIFEST_SUBFOLDER}/LongRead-Manifest-AoU-{self.kwargs.get("long_read_max_set")}'
                     f'-{now_formatted}.csv',
-                'query': self.long_read_dao.get_zero_manifest_records_from_max_set
+                'query': self.long_read_dao.get_manifest_zero_records_from_max_set
             },
             GenomicManifestTypes.PR_P0: {
                 'output_filename':
                     f'{PR_P0_MANIFEST_SUBFOLDER}/Proteomics-Manifest-AoU-{self.kwargs.get("pr_max_set")}'
                     f'-{now_formatted}.csv',
-                'query': self.pr_dao.get_zero_manifest_records_from_max_set
+                'query': self.pr_dao.get_manifest_zero_records_from_max_set
             },
             GenomicManifestTypes.RNA_R0: {
                 'output_filename':
                     f'{RNA_R0_MANIFEST_SUBFOLDER}/RNASeq-Manifest-AoU-{self.kwargs.get("rna_max_set")}'
                     f'-{now_formatted}.csv',
-                'query': self.rna_dao.get_zero_manifest_records_from_max_set
+                'query': self.rna_dao.get_manifest_zero_records_from_max_set
             },
         }
         def_config = def_config.get(manifest_type)
