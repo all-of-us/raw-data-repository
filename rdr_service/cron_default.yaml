@@ -124,6 +124,11 @@ cron:
   timezone: America/New_York
   schedule: every monday 06:00
   target: offline
+- description: Genomic LR L3 Workflow
+  url: /offline/GenomicLRL3Workflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
 - description: Genomic CVL W1IL PGX Workflow
   url: /offline/GenomicCVLW1ILPgxWorkflow
   timezone: America/New_York

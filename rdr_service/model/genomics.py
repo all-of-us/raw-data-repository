@@ -1855,6 +1855,48 @@ event.listen(GenomicL2PBCCSRaw, 'before_insert', model_insert_listener)
 event.listen(GenomicL2PBCCSRaw, 'before_update', model_update_listener)
 
 
+class GenomicL3Raw(Base):
+    """
+    Raw Data from L3 files
+    """
+    __tablename__ = 'genomic_l3_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    flowcell_id = Column(String(255), nullable=True)
+    barcode = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    bam_path = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    gc_processing_status = Column(String(255), nullable=True)
+    fragment_length = Column(String(255), nullable=True)
+    pacbio_instrument_type = Column(String(255), nullable=True)
+    smrtlink_server_version = Column(String(255), nullable=True)
+    pacbio_instrument_ics_version = Column(String(255), nullable=True)
+    gc_read_error_rate = Column(String(255), nullable=True)
+    gc_mean_coverage = Column(String(255), nullable=True)
+    gc_genome_coverage = Column(String(255), nullable=True)
+    gc_contamination = Column(String(255), nullable=True)
+    ont_basecaller_version = Column(String(255), nullable=True)
+    ont_basecaller_model = Column(String(255), nullable=True)
+    ont_mean_read_qual = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL3Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicL3Raw, 'before_update', model_update_listener)
+
+
 class GenomicProteomics(Base):
     """
     Used for storing the member records that are being

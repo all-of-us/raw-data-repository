@@ -4841,6 +4841,10 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
         ...
 
     @abstractmethod
+    def get_manifest_three_records(self):
+        ...
+
+    @abstractmethod
     def get_max_set_subquery(self):
         ...
 
@@ -4944,6 +4948,9 @@ class GenomicLongReadDao(GenomicSubDao):
                 self.model_type.long_read_platform == long_read_platform
             ).distinct().all()
 
+    def get_manifest_three_records(self):
+        ...
+
 
 class GenomicPRDao(GenomicSubDao):
 
@@ -5012,6 +5019,8 @@ class GenomicPRDao(GenomicSubDao):
                 self.get_max_set_subquery().c.proteomics_set
             ).distinct().all()
 
+    def get_manifest_three_records(self):
+        ...
 
 class GenomicRNADao(GenomicSubDao):
 
@@ -5080,6 +5089,8 @@ class GenomicRNADao(GenomicSubDao):
                 self.get_max_set_subquery().c.rna_set
             ).distinct().all()
 
+    def get_manifest_three_records(self):
+        ...
 
 class GenomicReportingDao(ABC, BaseDao):
 

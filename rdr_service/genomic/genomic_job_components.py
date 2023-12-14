@@ -82,7 +82,7 @@ from rdr_service.config import (
     CVL_W1IL_PGX_MANIFEST_SUBFOLDER,
     CVL_W2W_MANIFEST_SUBFOLDER,
     CVL_W3SR_MANIFEST_SUBFOLDER,
-    LR_L0_MANIFEST_SUBFOLDER, PR_P0_MANIFEST_SUBFOLDER, RNA_R0_MANIFEST_SUBFOLDER
+    LR_L0_MANIFEST_SUBFOLDER, PR_P0_MANIFEST_SUBFOLDER, RNA_R0_MANIFEST_SUBFOLDER, LR_L3_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
@@ -3237,6 +3237,30 @@ class ManifestDefinitionProvider:
                 'lr_site_id',
                 'long_read_platform'
             ),
+            GenomicManifestTypes.LR_L3: (
+                'biobank_id',
+                'sample_id',
+                'biobankid_sampleid',
+                'flowcell_id',
+                'barcode',
+                'long_read_platform',
+                'bam_path',
+                'sex_at_birth',
+                'lr_site_id',
+                'sample_source',
+                'gc_processing_status',
+                'fragment_length',
+                'pacbio_instrument_type',
+                'smrtlink_server_version',
+                'pacbio_instrument_ics_version',
+                'gc_read_error_rate',
+                'gc_mean_coverage',
+                'gc_genome_coverage',
+                'gc_contamination',
+                'ont_basecaller_version',
+                'ont_basecaller_model',
+                'ont_mean_read_qual'
+            ),
             GenomicManifestTypes.PR_P0: (
                 'biobank_id',
                 'collection_tube_id',
@@ -3355,6 +3379,12 @@ class ManifestDefinitionProvider:
                 'output_filename':
                     f'{LR_L0_MANIFEST_SUBFOLDER}/LongRead-Manifest-AoU-{self.kwargs.get("long_read_max_set")}'
                     f'-{now_formatted}.csv',
+                'query': self.long_read_dao.get_manifest_zero_records_from_max_set
+            },
+            GenomicManifestTypes.LR_L3: {
+                'output_filename':
+                    f'{LR_L3_MANIFEST_SUBFOLDER}/AoU_L3_'
+                    f'{now_formatted}.csv',
                 'query': self.long_read_dao.get_manifest_zero_records_from_max_set
             },
             GenomicManifestTypes.PR_P0: {
