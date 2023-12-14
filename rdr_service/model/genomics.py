@@ -1855,6 +1855,45 @@ event.listen(GenomicL2PBCCSRaw, 'before_insert', model_insert_listener)
 event.listen(GenomicL2PBCCSRaw, 'before_update', model_update_listener)
 
 
+class GenomicL4Raw(Base):
+    """
+    Raw Data from L4 files
+    """
+    __tablename__ = 'genomic_l4_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    aggregation_level = Column(String(255), nullable=True)
+    flowcell_id = Column(String(255), nullable=True)
+    barcode = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    bam_path = Column(String(255), nullable=True)
+    drc_contamination = Column(String(255), nullable=True)
+    drc_sex_concordance = Column(String(255), nullable=True)
+    drc_array_concordance = Column(String(255), nullable=True)
+    drc_mean_coverage = Column(String(255), nullable=True)
+    drc_processing_status = Column(String(255), nullable=True)
+    drc_failure_mode = Column(String(255), nullable=True)
+    drc_failure_mode_desc = Column(String(255), nullable=True)
+    drc_processing_count = Column(String(255), nullable=True)
+    pass_to_research_pipeline = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL4Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicL4Raw, 'before_update', model_update_listener)
+
+
 class GenomicProteomics(Base):
     """
     Used for storing the member records that are being
