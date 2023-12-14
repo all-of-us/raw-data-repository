@@ -218,10 +218,18 @@ class EnrollmentCalculation:
                 participant_info.basics_authored_time
             )
 
-        if participant_info.ever_expressed_interest_in_sharing_ehr and participant_info.basics_authored_time:
+        if (
+            participant_info.ever_expressed_interest_in_sharing_ehr
+            and participant_info.basics_authored_time
+            and participant_info.gror_authored_time
+        ):
             enrollment.upgrade_3_2_status(
                 EnrollmentStatusV32.PMB_ELIGIBLE,
-                max(participant_info.first_ehr_consent_date, participant_info.basics_authored_time)
+                max(
+                    participant_info.first_ehr_consent_date,
+                    participant_info.basics_authored_time,
+                    participant_info.gror_authored_time
+                )
             )
 
         if cls._meets_requirements_for_core_minus_pm(participant_info):
