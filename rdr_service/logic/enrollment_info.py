@@ -50,6 +50,7 @@ class EnrollmentDependencies:
 
     consent_cohort: ParticipantCohort
     primary_consent_authored_time: datetime
+    first_full_ehr_consent_authored_time: datetime
 
     dna_update_time: datetime  # Cohorts 1 and 2
 
@@ -219,14 +220,14 @@ class EnrollmentCalculation:
             )
 
         if (
-            participant_info.ever_expressed_interest_in_sharing_ehr
+            participant_info.first_full_ehr_consent_authored_time
             and participant_info.basics_authored_time
             and participant_info.gror_authored_time
         ):
             enrollment.upgrade_3_2_status(
                 EnrollmentStatusV32.PMB_ELIGIBLE,
                 max(
-                    participant_info.first_ehr_consent_date,
+                    participant_info.first_full_ehr_consent_authored_time,
                     participant_info.basics_authored_time,
                     participant_info.gror_authored_time
                 )

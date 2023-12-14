@@ -808,6 +808,7 @@ class ParticipantSummaryDao(UpdatableDao):
         enrl_dependencies = EnrollmentDependencies(
             consent_cohort=summary.consentCohort,
             primary_consent_authored_time=summary.consentForStudyEnrollmentFirstYesAuthored,
+            first_full_ehr_consent_authored_time=summary.consentForElectronicHealthRecordsFirstYesAuthored,
             gror_authored_time=summary.consentForGenomicsRORAuthored,
             basics_authored_time=summary.questionnaireOnTheBasicsAuthored,
             overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,

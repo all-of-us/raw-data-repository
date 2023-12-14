@@ -94,6 +94,7 @@ class TestEnrollmentInfo(BaseTestCase):
         )
 
         participant_info.ehr_consent_date_range_list = [DateRange(start=datetime(2020, 7, 18))]
+        participant_info.first_full_ehr_consent_authored_time = datetime(2020, 7, 18)
         self.assertEnrollmentInfoEqual(
             self._build_expected_enrollment_info(
                 legacy_data=[
@@ -321,6 +322,7 @@ class TestEnrollmentInfo(BaseTestCase):
         """
         participant_info = self._build_participant_info(
             primary_authored_time=datetime(2018, 1, 17),
+            ehr_first_yes_timestamp=datetime(2018, 1, 17),
             ehr_consent_ranges=[DateRange(start=datetime(2018, 1, 17))],
             gror_time=datetime(2018, 1, 17),
             is_pediatric=True,
@@ -383,6 +385,7 @@ class TestEnrollmentInfo(BaseTestCase):
         overall_health_time=None,
         lifestyle_time=None,
         exposures_time=None,
+        ehr_first_yes_timestamp=None,
         ehr_consent_ranges: List[DateRange] = None,
         biobank_received_dna_sample_time=None,
         physical_measurements_time=None,
@@ -407,6 +410,7 @@ class TestEnrollmentInfo(BaseTestCase):
         return EnrollmentDependencies(
             consent_cohort=consent_cohort,
             primary_consent_authored_time=primary_authored_time,
+            first_full_ehr_consent_authored_time=ehr_first_yes_timestamp,
             gror_authored_time=gror_time,
             basics_authored_time=basics_time,
             overall_health_authored_time=overall_health_time,
