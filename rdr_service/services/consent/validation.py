@@ -971,7 +971,7 @@ class ConsentValidator:
         if guardian_id_list:
             guardian_summary = self._session.query(
                 ParticipantSummary.firstName, ParticipantSummary.lastName
-            ).filter(ParticipantSummary.participantId == guardian_id_list.pop()).one()
+            ).filter(ParticipantSummary.participantId == guardian_id_list.pop()).one_or_none()
 
         # compare first and last name to parsed string
         if (
