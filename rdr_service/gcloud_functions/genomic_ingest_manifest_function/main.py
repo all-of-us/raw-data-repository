@@ -115,6 +115,10 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             '_pbccs_': {
                 'manifest_type': 'l2_pb_ccs',
                 'task_endpoint': 'IngestSubManifestTaskApi'
+            },
+            '_l4_': {
+                'manifest_type': 'l4',
+                'task_endpoint': 'IngestSubManifestTaskApi'
             }
         }
         pr_tasks = {
