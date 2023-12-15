@@ -3868,7 +3868,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.session.commit()
 
         # Override the default config, disabling the fields on the API
-        self.temporarily_override_config_setting(config.ENABLE_ENROLLMENT_STATUS_3, False)
+        self.temporarily_override_config_setting(config.ENABLED_STATUS_FIELD_LIST, [])
         self.temporarily_override_config_setting(config.ENABLE_HEALTH_SHARING_STATUS_3, False)
 
         # Check that the new fields are hidden
