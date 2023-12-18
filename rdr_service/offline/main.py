@@ -891,7 +891,7 @@ def nph_sms_n1_generation():
 
 
 @app_util.auth_required_cron
-def ptsc_ytest_participant_cleanup_request():
+def ptsc_test_participant_cleanup_request():
     date = datetime.today()
     if date.month == 12:
         month = 1
@@ -1488,7 +1488,7 @@ def _build_pipeline_app():
     offline_app.add_url_rule(
         OFFLINE_PREFIX + 'PTSCTestParticipantCleanupRequest',
         endpoint="ptsc_test_participant_cleanup_request",
-        view_func=ptsc_participant_cleanup_email,
+        view_func=ptsc_test_participant_cleanup_request,
         methods=["GET"]
     )
 
