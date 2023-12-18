@@ -35,7 +35,8 @@ from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricData
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import (
     ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType,
-    TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus, IdVerificationOriginType)
+    TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus, IdVerificationOriginType, EnrollmentStatusV32
+)
 from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id, \
     load_qr_response_json
 from tests.helpers.unittest_base import BaseTestCase
@@ -4720,6 +4721,27 @@ class ParticipantSummaryApiTest(BaseTestCase):
         response = self.send_get(f'ParticipantSummary')
         self.assertEqual([], response['entry'])
         logging_mock.error.assert_called_with('Pediatric participant has unconsented guardian')
+
+    def test_pmb_eligible_masking(self):
+        """
+        While we're still holding back the PMB_ELIGIBLE status, any participants that would have that
+        status should appear as if they have the next one down
+        """
+
+        # Set up participant with PMB_ELIGIBLE status
+        summary = self.data_generator.create_database_participant_summary(
+            enrollmentStatusV3_2=EnrollmentStatusV32.PMB_ELIGIBLE,
+            enrollmentStatusPmbEligibleV3_2Time=datetime.datetime.today()
+        )
+
+        # Check that the 3.2 PM&B eligible status is achieved
+        response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertEqual('PMB_ELIGIBLE', response['enrollmentStatusV3_2'])
+
+        # Check that the status is masked if the config hides PM&B
+        self.temporarily_override_config_setting(config.ENABLED_STATUS_FIELD_LIST, ['enrollmentStatusV3_2'])
+        response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertEqual('ENROLLED_PARTICIPANT', response['enrollmentStatusV3_2'])
 
     @classmethod
     def _get_summary_response_id_list(self, response):
