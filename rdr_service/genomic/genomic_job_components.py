@@ -3422,7 +3422,7 @@ class ManifestDefinitionProvider:
                 'output_filename':
                     f'{LR_L3_MANIFEST_SUBFOLDER}/AoU_L3_'
                     f'{now_formatted}.csv',
-                'query': self.long_read_dao.get_manifest_zero_records_from_max_set
+                'query': self.long_read_dao.get_manifest_three_records
             },
             GenomicManifestTypes.PR_P0: {
                 'output_filename':
