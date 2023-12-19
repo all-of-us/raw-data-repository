@@ -26,7 +26,7 @@ class ParticipantApi(UpdatableApi):
         response, *_ = super(ParticipantApi, self).post()
 
         participant_id = from_client_participant_id(response['participantId'])
-        self._check_for_pediatric_update(participant_id)
+        self._check_for_pediatric_update(participant_id, check_for_summary=False)
         dispatch_task(endpoint='update_retention_status', payload={'participant_id': participant_id})
 
         return response, *_
@@ -39,13 +39,14 @@ class ParticipantApi(UpdatableApi):
 
         return response
 
-    def _check_for_pediatric_update(self, participant_id):
+    def _check_for_pediatric_update(self, participant_id, check_for_summary=True):
         pediatric_age_range_field = 'childAccountType'
         request_json = self.get_request_json()
         if pediatric_age_range_field in request_json:
             PediatricDataLogDao.record_age_range(
                 participant_id=participant_id,
-                age_range_str=request_json[pediatric_age_range_field]
+                age_range_str=request_json[pediatric_age_range_field],
+                check_for_summary=check_for_summary
             )
 
 

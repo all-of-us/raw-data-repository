@@ -833,6 +833,17 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
             age_range_str='SIX_AND_BELOW'
         )
 
+    @mock.patch('rdr_service.dao.pediatric_data_log_dao.PediatricDataLogDao._check_new_pediatric_participant')
+    def test_participant_post_skips_summary_update(self, summary_update_mock):
+        """
+        POSTing new participant data wouldn't need to update a participant summary.
+        """
+        self.send_post('Participant', {
+            'childAccountType': 'SIX_AND_BELOW'
+        })
+        summary_update_mock.assert_not_called()
+
+
 def _add_code_answer(code_answers, link_id, code):
     if code:
         code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
