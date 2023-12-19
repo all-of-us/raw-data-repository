@@ -259,7 +259,7 @@ class RetentionEligibleImportTest(BaseTestCase):
         })
 
         # Confirm a forced recalculation of RDR values
-        assert mock_rdr_calculator.call_count == 1
+        self.assertTrue(mock_rdr_calculator.call_count == 1)
 
     def test_lower_env_retention_metric_cronjob(self):
         ps1 = self.data_generator.create_database_participant_summary()
