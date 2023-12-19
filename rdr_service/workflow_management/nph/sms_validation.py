@@ -32,6 +32,11 @@ class SmsValidator:
         For N1 generation, check if biobank id exists in a row, then all other values defined in required_columns
         exist. If not, raise an exception and send a slack alert.
 
+        N1 manifest contains information related to each individual's sample within each compartment (well) of a plate.
+        So if a biobank_id is present in a row in N1 manifest, indicating that an individual’s sample must be in a well
+        box position, then it must also contain a sample_id and other details of that individual. If it is missing those
+        information, then we need to investigate why the values for that biobank_id is not populated.
+
         :param row: A row representing data.
         :type row: class: 'sqlalchemy.util._collections.result'
         :raise ValueError: If other values does not exist when biobank_id exists.
@@ -49,7 +54,7 @@ class SmsValidator:
         if row.biobank_id:
             if not all([col for col in required_columns]):
                 msg = (
-                    f"N1 manifest for package id {row.package_id} contains biobank id "
+                    f"N1 manifest for package id {row.package_id} contains biobank id {row.biobank_id} "
                     f"but is missing other value(s) for recipient {self.recipient}."
                 )
                 create_nph_incident(slack=True, message=msg)
