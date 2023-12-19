@@ -815,7 +815,8 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         })
         pediatric_dao_mock.record_age_range.assert_called_with(
             participant_id=from_client_participant_id(response['participantId']),
-            age_range_str='TEEN'
+            age_range_str='TEEN',
+            check_for_summary=False
         )
 
     @mock.patch('rdr_service.api.participant_api.PediatricDataLogDao')
@@ -830,7 +831,8 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
 
         pediatric_dao_mock.record_age_range.assert_called_with(
             participant_id=participant.participantId,
-            age_range_str='SIX_AND_BELOW'
+            age_range_str='SIX_AND_BELOW',
+            check_for_summary=True
         )
 
     @mock.patch('rdr_service.dao.pediatric_data_log_dao.PediatricDataLogDao._check_new_pediatric_participant')
