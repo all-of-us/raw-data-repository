@@ -147,25 +147,18 @@ class GenomicJobController:
         self.execute_auto_generation_from_cloud_task()
 
     def execute_auto_generation_from_cloud_task(self):
-        try:
-            auto_generation_manifest_map = {
-                GenomicJob.LR_LR_WORKFLOW: 'l0',
-                GenomicJob.PR_PR_WORKFLOW: 'p0',
-                GenomicJob.RNA_RR_WORKFLOW: 'r0'
-            }[self.job_id]
-
-            last_completed_job = self.job_run_dao.get_last_completed_run_status_for_job_id(
-                job_id=self.job_id)
-            if last_completed_job and last_completed_job in [GenomicSubProcessResult.SUCCESS]:
-                self.execute_cloud_task(
-                    payload={
-                        'manifest_type': auto_generation_manifest_map
-                    },
-                    endpoint='genomic_generate_manifest',
-                    task_queue='genomic-generate-manifest'
-                )
-        except KeyError:
-            pass
+        auto_generation_manifest_map = {
+            GenomicJob.LR_LR_WORKFLOW: 'l0',
+            GenomicJob.PR_PR_WORKFLOW: 'p0',
+            GenomicJob.RNA_RR_WORKFLOW: 'r0'
+        }
+        auto_generate_manifest_type = auto_generation_manifest_map.get(self.job_id)
+        if auto_generate_manifest_type and self.job_result == GenomicSubProcessResult.SUCCESS:
+            self.execute_cloud_task(
+                payload={'manifest_type': auto_generate_manifest_type},
+                endpoint='genomic_generate_manifest',
+                task_queue='genomic-generate-manifest'
+            )
 
     def insert_genomic_manifest_file_record(self):
         """

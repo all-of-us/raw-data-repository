@@ -62,22 +62,22 @@ cron:
 - description: Genomic Daily Ingestion Summary
   url: /offline/GenomicDataQualityDailyIngestionSummary
   timezone: America/New_York
-  schedule: every day 08:00
+  schedule: every day 09:30
   target: offline
 - description: Genomic Daily Incident Summary
   url: /offline/GenomicDataQualityDailyIncidentSummary
   timezone: America/New_York
-  schedule: every day 08:05
+  schedule: every day 09:35
   target: offline
 - description: Genomic Daily Incident Validation Emails
   url: /offline/GenomicDataQualityDailyValidationEmails
   timezone: America/New_York
-  schedule: every day 08:10
+  schedule: every day 09:40
   target: offline
 - description: Genomic Daily Resolved Validation Incidents
   url: /offline/GenomicDataQualityDailyValidationFailsResolved
   timezone: America/New_York
-  schedule: every day 08:15
+  schedule: every day 09:45
   target: offline
 - description: Check for Yes-No-Yes GROR W1IL participants
   url: /offline/CheckForW1ilGrorResubmitParticipants

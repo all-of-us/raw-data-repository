@@ -32,7 +32,8 @@ class GenomicBaseSubWorkflow(ABC):
             GenomicJob.LR_LR_WORKFLOW: self.run_request_ingestion,
             GenomicJob.LR_L1_WORKFLOW: self.run_sample_ingestion,
             GenomicJob.LR_L2_ONT_WORKFLOW: self.run_bypass,
-            GenomicJob.LR_L2_PB_CCS_WORKFLOW: self.run_bypass
+            GenomicJob.LR_L2_PB_CCS_WORKFLOW: self.run_bypass,
+            GenomicJob.LR_L4_WORKFLOW: self.run_bypass
         }[self.job_id]
 
     @classmethod
@@ -117,7 +118,7 @@ class GenomicBaseSubWorkflow(ABC):
             return
 
         message = (f'{self.job_id.name}: Biobank IDs [{",".join(missing_in_returned)}] failed request manifest '
-                   f'validation')
+                   f'validation: {self.current_manifest_file_name}')
         self.execute_cloud_task(
             payload={
                 'slack': True,

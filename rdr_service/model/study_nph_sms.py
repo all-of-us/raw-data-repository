@@ -140,7 +140,7 @@ class SmsN1Mc1(NphBase):
     additive_treatment = Column(String(16))
     quantity_ml = Column(String(16))
     age = Column(String(4))
-    sex_at_birth = Column(String(16))
+    sex_at_birth = Column(String(32))
     package_id = Column(String(32), index=True)
     storage_unit_id = Column(String(32))
     well_box_position = Column(String(32), index=True)

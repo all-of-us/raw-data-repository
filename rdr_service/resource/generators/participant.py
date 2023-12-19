@@ -23,7 +23,11 @@ from rdr_service.code_constants import (
     PMI_SKIP_CODE,
     WITHDRAWAL_CEREMONY_QUESTION_CODE,
     WITHDRAWAL_CEREMONY_YES,
-    WITHDRAWAL_CEREMONY_NO
+    WITHDRAWAL_CEREMONY_NO,
+    PEDIATRIC_CONSENT_QUESTION_CODE,
+    EHR_PEDIATRIC_CONSENT_QUESTION_CODE,
+    PEDIATRIC_CONSENT_YES, PEDIATRIC_CONSENT_NO,
+    PEDIATRIC_SHARE_AGREE, PEDIATRIC_SHARE_NOT_AGREE
 )
 from rdr_service.dao.resource_dao import ResourceDataDao
 # TODO: Replace BQRecord here with a Resource alternative.
@@ -91,7 +95,10 @@ _consent_module_question_map = {
     'nonvaprimaryreconsent': 'nonvaprimaryreconsent_agree',
     # TODO: Getting clarification on which is correct module code string for EtM consent.  Recognize either for now
     'english_exploring_the_mind_consent_form': 'etm_consent',  # Key/concept code value seen in PTSC payloads
-    'welcome_to_etm': 'etm_consent'  # Key/module code value from REDCap
+    'welcome_to_etm': 'etm_consent',  # Key/module code value from REDCap
+    # Pediatric consents
+    'consentpii_0to6': PEDIATRIC_CONSENT_QUESTION_CODE,
+    'ehrchildconsentpii': EHR_PEDIATRIC_CONSENT_QUESTION_CODE
 }
 
 # _consent_expired_question_map, for expired consents. { module: question code string }
@@ -135,7 +142,12 @@ _consent_answer_status_map = {
     'ExtraConsent_DoNotAgreeToConsent': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     # Need to support all lowercase values for unit test setups
     'extraconsent_agreetoconsent': BQModuleStatusEnum.SUBMITTED,
-    'extraconsent_donotagreetoconsent': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
+    'extraconsent_donotagreetoconsent': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    # Pediatric consents
+    PEDIATRIC_CONSENT_YES: BQModuleStatusEnum.SUBMITTED,
+    PEDIATRIC_CONSENT_NO: BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    PEDIATRIC_SHARE_AGREE: BQModuleStatusEnum.SUBMITTED,
+    PEDIATRIC_SHARE_NOT_AGREE: BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
 }
 
 # PDR-2031: PDR decision to map new ConsentPII user-provided answer codes to codes we were already using
