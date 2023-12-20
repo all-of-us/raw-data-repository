@@ -11,4 +11,5 @@ Participant Summary Field List
                       biospecimenProcessedSiteId, biospecimenFinalizedSiteId, participant, enrollmentSiteId,
                       enrollmentStatusV3_2, enrollmentStatusParticipantV3_2Time,
                       enrollmentStatusParticipantPlusEhrV3_2Time, enrollmentStatusEnrolledParticipantV3_2Time,
-                      enrollmentStatusCoreMinusPmV3_2Time, enrollmentStatusCoreV3_2Time
+                      enrollmentStatusCoreMinusPmV3_2Time, enrollmentStatusCoreV3_2Time, pediatricData,
+                      did_submit_environmental_exposures
