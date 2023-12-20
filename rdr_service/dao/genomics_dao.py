@@ -4953,18 +4953,17 @@ class GenomicLongReadDao(GenomicSubDao):
             records = (
                 session.query(
                     GenomicLongRead.biobank_id.label('biobank_id'),
-                    GenomicL2ONTRaw.sample_id.label('sample_id'),
-                    func.concat(
-                        (func.concat(get_biobank_id_prefix(), GenomicLongRead.biobank_id),
-                        ('_', GenomicLongRead.sample_id))
-                    ).label('biobankid_sampleid'),
+                    GenomicLongRead.sample_id.label('sample_id'),
+                    func.concat(get_biobank_id_prefix(),
+                                GenomicLongRead.biobank_id, '_',
+                                GenomicLongRead.sample_id),
                     GenomicL2ONTRaw.flowcell_id.label('flowcell_id'),
                     GenomicL2ONTRaw.barcode.label('barcode'),
                     GenomicLongRead.long_read_platform.label('long_read_platform'),
                     GenomicL2ONTRaw.bam_path.label('bam_path'),
                     GenomicL1Raw.sex_at_birth.label('sex_at_birth'),
                     GenomicLongRead.lr_site_id.label('lr_site_id'),
-                    GenomicL1Raw.sample_source.label('sample_source'),
+                    GenomicL2ONTRaw.sample_source.label('sample_source'),
                     GenomicL2ONTRaw.processing_status.label('gc_processing_status'),
                     GenomicL2ONTRaw.read_length_n50.label('fragment_length'),
                     literal('').label('pacbio_instrument_type'),
@@ -4979,34 +4978,51 @@ class GenomicLongReadDao(GenomicSubDao):
                     GenomicL2ONTRaw.mean_read_quality.label('ont_mean_read_qual'),
                 ).join(
                     GenomicL1Raw,
-                    GenomicL1Raw.sample_id == GenomicLongRead.sample_id,
-                    GenomicL1Raw.long_read_platform == 'ont'
+                    and_(
+                        GenomicLongRead.sample_id == GenomicL1Raw.sample_id,
+                        GenomicL1Raw.long_read_platform.ilike('ont')
+                    )
                 ).join(
                     GenomicL2ONTRaw,
-                    GenomicL2ONTRaw.sample_id == GenomicLongRead.sample_id
+                    GenomicLongRead.sample_id == GenomicL2ONTRaw.sample_id
                 ).outerjoin(
                     GenomicL3Raw,
-                    GenomicL2ONTRaw.sample_id == GenomicL3Raw.sample_id,
-                    GenomicL2ONTRaw.flowcell_id == GenomicL3Raw.flowcell_id,
-                    GenomicL2ONTRaw.barcode == GenomicL3Raw.barcode
+                    and_(
+                        GenomicL2ONTRaw.sample_id == GenomicL3Raw.sample_id,
+                        GenomicL2ONTRaw.flowcell_id == GenomicL3Raw.flowcell_id,
+                        GenomicL2ONTRaw.barcode == GenomicL3Raw.barcode
+                    )
                 ).filter(
                     GenomicL3Raw.id.is_(None),
-                    GenomicLongRead.sample_id.isnot(None)
+                    GenomicLongRead.sample_id.isnot(None),
+                    GenomicL1Raw.sex_at_birth.isnot(None),
+                    GenomicL2ONTRaw.flowcell_id.isnot(None),
+                    GenomicL2ONTRaw.barcode.isnot(None),
+                    GenomicL2ONTRaw.bam_path.isnot(None),
+                    GenomicL2ONTRaw.sample_source.isnot(None),
+                    GenomicL2ONTRaw.processing_status.isnot(None),
+                    GenomicL2ONTRaw.read_length_n50.isnot(None),
+                    GenomicL2ONTRaw.read_error_rate.isnot(None),
+                    GenomicL2ONTRaw.mean_coverage.isnot(None),
+                    GenomicL2ONTRaw.genome_coverage.isnot(None),
+                    GenomicL2ONTRaw.contamination.isnot(None),
+                    GenomicL2ONTRaw.basecaller_version.isnot(None),
+                    GenomicL2ONTRaw.basecaller_model.isnot(None),
+                    GenomicL2ONTRaw.mean_read_quality.isnot(None),
                 ).union(
                     session.query(
                         GenomicLongRead.biobank_id.label('biobank_id'),
-                        GenomicL2PBCCSRaw.sample_id.label('sample_id'),
-                        func.concat(
-                            (func.concat(get_biobank_id_prefix(), GenomicLongRead.biobank_id),
-                             ('_', GenomicLongRead.sample_id))
-                        ).label('biobankid_sampleid'),
+                        GenomicLongRead.sample_id.label('sample_id'),
+                        func.concat(get_biobank_id_prefix(),
+                                    GenomicLongRead.biobank_id, '_',
+                                    GenomicLongRead.sample_id),
                         GenomicL2PBCCSRaw.flowcell_id.label('flowcell_id'),
                         GenomicL2PBCCSRaw.barcode.label('barcode'),
                         GenomicLongRead.long_read_platform.label('long_read_platform'),
                         GenomicL2PBCCSRaw.bam_path.label('bam_path'),
                         GenomicL1Raw.sex_at_birth.label('sex_at_birth'),
                         GenomicLongRead.lr_site_id.label('lr_site_id'),
-                        GenomicL1Raw.sample_source.label('sample_source'),
+                        GenomicL2PBCCSRaw.sample_source.label('sample_source'),
                         GenomicL2PBCCSRaw.processing_status.label('gc_processing_status'),
                         GenomicL2PBCCSRaw.read_length_mean.label('fragment_length'),
                         GenomicL2PBCCSRaw.instrument.label('pacbio_instrument_type'),
@@ -5016,27 +5032,46 @@ class GenomicLongReadDao(GenomicSubDao):
                         GenomicL2PBCCSRaw.mean_coverage.label('gc_mean_coverage'),
                         GenomicL2PBCCSRaw.genome_coverage.label('gc_genome_coverage'),
                         GenomicL2PBCCSRaw.contamination.label('gc_contamination'),
-                        literal('').basecaller_version.label('ont_basecaller_version'),
-                        literal('').basecaller_model.label('ont_basecaller_model'),
-                        literal('').mean_read_quality.label('ont_mean_read_qual'),
+                        literal('').label('ont_basecaller_version'),
+                        literal('').label('ont_basecaller_model'),
+                        literal('').label('ont_mean_read_qual'),
                     ).join(
                         GenomicL1Raw,
-                        GenomicL1Raw.sample_id == GenomicLongRead.sample_id,
-                        GenomicL1Raw.long_read_platform == 'pacbio_ccs'
+                        and_(
+                            GenomicLongRead.sample_id == GenomicL1Raw.sample_id,
+                            GenomicL1Raw.long_read_platform.ilike('pacbio_ccs')
+                        )
                     ).join(
                         GenomicL2PBCCSRaw,
-                        GenomicL2PBCCSRaw.sample_id == GenomicLongRead.sample_id
+                        GenomicLongRead.sample_id == GenomicL2PBCCSRaw.sample_id
                     ).outerjoin(
                         GenomicL3Raw,
-                        GenomicL2PBCCSRaw.sample_id == GenomicL3Raw.sample_id,
-                        GenomicL2PBCCSRaw.flowcell_id == GenomicL3Raw.flowcell_id,
-                        GenomicL2PBCCSRaw.barcode == GenomicL3Raw.barcode
+                        and_(
+                            GenomicL2PBCCSRaw.sample_id == GenomicL3Raw.sample_id,
+                            GenomicL2PBCCSRaw.flowcell_id == GenomicL3Raw.flowcell_id,
+                            GenomicL2PBCCSRaw.barcode == GenomicL3Raw.barcode
+                        )
                     ).filter(
                         GenomicL3Raw.id.is_(None),
-                        GenomicLongRead.sample_id.isnot(None)
+                        GenomicLongRead.sample_id.isnot(None),
+                        GenomicL1Raw.sex_at_birth.isnot(None),
+                        GenomicL2PBCCSRaw.flowcell_id.isnot(None),
+                        GenomicL2PBCCSRaw.barcode.isnot(None),
+                        GenomicL2PBCCSRaw.bam_path.isnot(None),
+                        GenomicL2PBCCSRaw.sample_source.isnot(None),
+                        GenomicL2PBCCSRaw.processing_status.isnot(None),
+                        GenomicL2PBCCSRaw.read_length_mean.isnot(None),
+                        GenomicL2PBCCSRaw.instrument.isnot(None),
+                        GenomicL2PBCCSRaw.smrtlink_server_version.isnot(None),
+                        GenomicL2PBCCSRaw.instrument_ics_version.isnot(None),
+                        GenomicL2PBCCSRaw.read_error_rate.isnot(None),
+                        GenomicL2PBCCSRaw.mean_coverage.isnot(None),
+                        GenomicL2PBCCSRaw.genome_coverage.isnot(None),
+                        GenomicL2PBCCSRaw.contamination.isnot(None),
                     )
                 )
             )
+
             return records.all()
 
 
@@ -5180,6 +5215,7 @@ class GenomicRNADao(GenomicSubDao):
 
     def get_manifest_three_records(self):
         ...
+
 
 class GenomicReportingDao(ABC, BaseDao):
 

@@ -11,7 +11,7 @@ from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvide
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicLongReadPlatform, \
     GenomicSubProcessStatus, GenomicSubProcessResult
 from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicL1Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, \
-    GenomicL4Raw
+    GenomicL4Raw, GenomicL3Raw
 from rdr_service.offline.genomics import genomic_dispatch, genomic_long_read_pipeline
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
@@ -459,6 +459,8 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l2_ont_job_runs))
 
         self.clear_table_after_test('genomic_long_read')
+        self.clear_table_after_test('genomic_l2_ont_raw')
+        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
 
     def test_l2_ont_manifest_to_raw_ingestion(self):
 
@@ -498,6 +500,8 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l2_ont_job_runs))
 
         self.clear_table_after_test('genomic_long_read')
+        self.clear_table_after_test('genomic_l2_ont_raw')
+        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
 
     def test_l2_pb_ccs_manifest_ingestion(self):
 
@@ -520,6 +524,8 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l2_pb_ccs_job_runs))
 
         self.clear_table_after_test('genomic_long_read')
+        self.clear_table_after_test('genomic_l2_ont_raw')
+        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
 
     def test_l2_pb_ccs_manifest_to_raw_ingestion(self):
 
@@ -561,8 +567,10 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l2_pb_ccs_job_runs))
 
         self.clear_table_after_test('genomic_long_read')
+        self.clear_table_after_test('genomic_l2_ont_raw')
+        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
 
-    def test_l3_manifest_generation(self):
+    def build_lr_l3_data(self):
         for num in range(1, 7):
             participant_summary = self.data_generator.create_database_participant_summary(
                 consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
@@ -588,6 +596,13 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                     long_read_platform=GenomicLongReadPlatform.ONT,
                     long_read_set=1
                 )
+                self.data_generator.create_database_genomic_longread_l1_raw(
+                    sex_at_birth='F',
+                    sample_id=long_read_member.sample_id,
+                    biobank_id=long_read_member.biobank_id,
+                    long_read_platform='ont'
+                )
+
             else:
                 long_read_member = self.data_generator.create_database_genomic_long_read(
                     genomic_set_member_id=genomic_set_member.id,
@@ -598,14 +613,13 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                     lr_site_id="bi",
                     long_read_platform=GenomicLongReadPlatform.PACBIO_CCS,
                     long_read_set=1
-
                 )
-
-            self.data_generator.create_database_genomic_longread_l1_raw(
-                sex_at_birth='F',
-                sample_id=long_read_member.sample_id,
-                biobank_id=long_read_member.biobank_id
-            )
+                self.data_generator.create_database_genomic_longread_l1_raw(
+                    sex_at_birth='F',
+                    sample_id=long_read_member.sample_id,
+                    biobank_id=long_read_member.biobank_id,
+                    long_read_platform='pacbio_ccs'
+                )
 
         ont_platform_members = list(filter(lambda x: x.long_read_platform == GenomicLongReadPlatform.ONT,
                                            self.long_read_dao.get_all()))
@@ -624,7 +638,8 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                 contamination=0.20,
                 basecaller_version='bv1',
                 basecaller_model='bvm2',
-                mean_read_quality=20
+                mean_read_quality=20,
+                sample_source='whole blood'
             )
 
         pb_ccs_platform_members = list(filter(lambda x: x.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS,
@@ -637,6 +652,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                     sample_id=ccs.sample_id,
                     flowcell_id='na' if num % 2 != 0 else f'PA{num}1212',
                     barcode='na' if num % 2 != 0 else f'bc{num}001',
+                    bam_path='dat_bam_path',
                     processing_status='pass',
                     read_length_mean=20,
                     instrument='t200',
@@ -645,115 +661,173 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                     read_error_rate=20,
                     mean_coverage=20,
                     genome_coverage=20,
-                    contamination=0.20
+                    contamination=0.20,
+                    sample_source='whole blood'
                 )
 
-        long_read_members = self.long_read_dao.get_all()
-        self.assertEqual(len(long_read_members), 3)
+    def test_l3_manifest_generation(self):
 
-        fake_date = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+        self.build_lr_l3_data()
+
+        # If data is on L2 files, needs to go out on L3
+        l2_ont_dao = GenomicDefaultBaseDao(
+            model_type=GenomicL2ONTRaw
+        )
+
+        l2_pb_ccs_dao = GenomicDefaultBaseDao(
+            model_type=GenomicL2PBCCSRaw
+        )
+
+        current_l2_ont_records = l2_ont_dao.get_all()
+        current_l2_pb_ccs_records = l2_pb_ccs_dao.get_all()
+
         # init l3 workflow from pipeline
-        with clock.FakeClock(fake_date):
-            genomic_long_read_pipeline.lr_l3_manifest_workflow()
+        genomic_long_read_pipeline.lr_l3_manifest_workflow()
 
-        current_lr_manifests = self.manifest_file_dao.get_all()
+        current_l3_manifests = self.manifest_file_dao.get_all()
+        self.assertEqual(len(current_l3_manifests), 1)
 
-        # 1 for LR and 1 for L0
-        self.assertEqual(len(current_lr_manifests), 2)
-
-        # check L0 manifest only
-        current_l0_manifest = list(filter(lambda x: x.manifestTypeId == GenomicManifestTypes.LR_L0,
-                                          current_lr_manifests))
-
-        self.assertEqual(len(current_l0_manifest), 1)
-        self.assertTrue(all(obj.recordCount == len(long_read_members) for obj in current_l0_manifest))
-        self.assertTrue(all(obj.manifestTypeId == GenomicManifestTypes.LR_L0 for obj in current_l0_manifest))
-        self.assertTrue(all(obj.manifestTypeIdStr == GenomicManifestTypes.LR_L0.name for obj in current_l0_manifest))
+        self.assertTrue(all(obj.recordCount == len(current_l2_ont_records + current_l2_pb_ccs_records) for obj in current_l3_manifests))
+        self.assertTrue(all(obj.manifestTypeId == GenomicManifestTypes.LR_L3 for obj in current_l3_manifests))
+        self.assertTrue(all(obj.manifestTypeIdStr == GenomicManifestTypes.LR_L3.name for obj in current_l3_manifests))
 
         manifest_def_provider = ManifestDefinitionProvider(kwargs={})
-        columns_expected = manifest_def_provider.manifest_columns_config[GenomicManifestTypes.LR_L0]
+        columns_expected = manifest_def_provider.manifest_columns_config[GenomicManifestTypes.LR_L3]
+
+        current_l3_manifest = current_l3_manifests[0]
 
         with open_cloud_file(
             os.path.normpath(
-                f'{current_l0_manifest[0].filePath}'
+                f'{current_l3_manifest.filePath}'
             )
         ) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             csv_rows = list(csv_reader)
-            self.assertEqual(len(csv_rows), len(long_read_members))
-
+            self.assertEqual(len(csv_rows), len(current_l2_ont_records + current_l2_pb_ccs_records))
             # check for all columns
             manifest_columns = csv_reader.fieldnames
             self.assertTrue(list(columns_expected) == manifest_columns)
 
-            prefix = config.getSetting(config.BIOBANK_ID_PREFIX)
-
-            for row in csv_rows:
-                self.assertIsNotNone(row['biobank_id'])
-                self.assertTrue(prefix in row['biobank_id'])
-                self.assertIsNotNone(row['collection_tube_id'])
-                self.assertIsNotNone(row['sex_at_birth'])
-                self.assertIsNotNone(row['validation_passed'])
-                self.assertIsNotNone(row['parent_tube_id'])
-                self.assertIsNotNone(row['lr_site_id'])
-                self.assertIsNotNone(row['long_read_platform'])
-
-                self.assertEqual(row['sex_at_birth'], 'F')
-                self.assertEqual(row['ny_flag'], 'N')
-                self.assertEqual(row['genome_type'], config.GENOME_TYPE_LR)
-                self.assertEqual(row['lr_site_id'], 'bcm')
-                self.assertEqual(row['ai_an'], 'Y')
-                self.assertEqual(row['long_read_platform'], GenomicLongReadPlatform.PACBIO_CCS.name)
-                self.assertEqual(row['validation_passed'], 'Y')
-
-        lr_files_processed = self.file_processed_dao.get_all()
-
-        # 1 for LR and 1 for L0
-        self.assertEqual(len(lr_files_processed), 2)
-
-        # check job run record
-        l0_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LR_L0_WORKFLOW, self.job_run_dao.get_all()))
-
-        self.assertIsNotNone(l0_job_runs)
-        self.assertEqual(len(l0_job_runs), 1)
-        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l0_job_runs))
-        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l0_job_runs))
-
-        # Cloud task needs to be BYPASSED for updating members @ this time
-        # self.assertFalse(cloud_task.called)
-        # self.assertEqual(cloud_task.call_count, 0)
+        l3_files_processed = self.file_processed_dao.get_all()
+        self.assertEqual(len(l3_files_processed), 1)
 
         # check raw records
-        l0_raw_dao = GenomicDefaultBaseDao(
-            model_type=GenomicL0Raw
+        l3_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicL3Raw
         )
 
-        l0_raw_records = l0_raw_dao.get_all()
-        self.assertEqual(len(l0_raw_records), len(long_read_members))
-        self.assertTrue(all(obj.file_path is not None for obj in l0_raw_records))
-        self.assertTrue(all(obj.biobank_id is not None for obj in l0_raw_records))
-        self.assertTrue(all(obj.collection_tube_id is not None for obj in l0_raw_records))
-        self.assertTrue(all(obj.parent_tube_id is not None for obj in l0_raw_records))
-        self.assertTrue(all(obj.sex_at_birth == 'F' for obj in l0_raw_records))
-        self.assertTrue(all(obj.ny_flag == 'N' for obj in l0_raw_records))
-        self.assertTrue(all(obj.genome_type == config.GENOME_TYPE_LR for obj in l0_raw_records))
-        self.assertTrue(all(obj.ai_an == 'Y' for obj in l0_raw_records))
-        self.assertTrue(all(obj.lr_site_id == 'bcm' for obj in l0_raw_records))
-        self.assertTrue(all(obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS.name for obj in
-                            l0_raw_records))
+        l3_raw_records = l3_raw_dao.get_all()
+        self.assertEqual(len(l3_raw_records), len(current_l2_ont_records + current_l2_pb_ccs_records))
+
+        self.assertTrue(all(obj.file_path is not None for obj in l3_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in l3_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in l3_raw_records))
+        self.assertTrue(all(obj.biobankid_sampleid is not None for obj in l3_raw_records))
+        self.assertTrue(all(obj.flowcell_id is not None for obj in l3_raw_records))
+
+        self.assertTrue(all(obj.barcode is not None for obj in l3_raw_records))
+
+        self.assertTrue(any(obj.long_read_platform == GenomicLongReadPlatform.ONT.name for obj in l3_raw_records))
+        self.assertTrue(any(obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS.name for obj in
+                            l3_raw_records))
+
+        self.assertTrue(all(obj.long_read_platform is not None for obj in l3_raw_records))
+        self.assertTrue(all(obj.bam_path is not None for obj in l3_raw_records))
+        self.assertTrue(all(obj.sex_at_birth is not None for obj in l3_raw_records))
+        self.assertTrue(all(obj.lr_site_id is not None for obj in l3_raw_records))
+
+        self.assertTrue(any(obj.pacbio_instrument_type is not None for obj in l3_raw_records))
+        self.assertTrue(any(obj.smrtlink_server_version is not None for obj in l3_raw_records))
+        self.assertTrue(any(obj.pacbio_instrument_ics_version is not None for obj in l3_raw_records))
+
+        self.assertTrue(all(obj.gc_read_error_rate is not None for obj in l3_raw_records))
+        self.assertTrue(all(obj.gc_mean_coverage is not None for obj in l3_raw_records))
+        self.assertTrue(all(obj.gc_genome_coverage is not None for obj in l3_raw_records))
+        self.assertTrue(all(obj.gc_contamination is not None for obj in l3_raw_records))
+
+        self.assertTrue(any(obj.ont_basecaller_version is not None for obj in l3_raw_records))
+        self.assertTrue(any(obj.ont_basecaller_model is not None for obj in l3_raw_records))
+        self.assertTrue(any(obj.ont_mean_read_qual is not None for obj in l3_raw_records))
+
+        # check raw job run record
+        l3_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_L3_TO_RAW_TABLE, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(l3_raw_job_runs)
+        self.assertEqual(len(l3_raw_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l3_raw_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l3_raw_job_runs))
 
         # check job run record
-        l0_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_L0_TO_RAW_TABLE, self.job_run_dao.get_all()))
+        l3_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LR_L3_WORKFLOW, self.job_run_dao.get_all()))
 
-        self.assertIsNotNone(l0_raw_job_runs)
-        self.assertEqual(len(l0_raw_job_runs), 1)
-        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l0_raw_job_runs))
-        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l0_raw_job_runs))
+        self.assertIsNotNone(l3_job_runs)
+        self.assertEqual(len(l3_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l3_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l3_job_runs))
 
         self.clear_table_after_test('genomic_long_read')
+        self.clear_table_after_test('genomic_l2_ont_raw')
+        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
+        self.clear_table_after_test('genomic_l3_raw')
 
     def test_l3_manifest_generation_excludes_sent_samples(self):
-        ...
+
+        self.build_lr_l3_data()
+
+        # init l3 workflow from pipeline
+        genomic_long_read_pipeline.lr_l3_manifest_workflow()
+
+        current_l3_manifests = self.manifest_file_dao.get_all()
+        self.assertEqual(len(current_l3_manifests), 1)
+
+        l3_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LR_L3_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(l3_job_runs)
+        self.assertEqual(len(l3_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l3_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l3_job_runs))
+
+        l2_ont_dao = GenomicDefaultBaseDao(
+            model_type=GenomicL2ONTRaw
+        )
+
+        l2_pb_ccs_dao = GenomicDefaultBaseDao(
+            model_type=GenomicL2PBCCSRaw
+        )
+
+        l3_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicL3Raw
+        )
+
+        # check raw records exist for current manifest
+        current_l2_ont_records = l2_ont_dao.get_all()
+        current_l2_pb_ccs_records = l2_pb_ccs_dao.get_all()
+        self.assertEqual(len(l3_raw_dao.get_all()), len(current_l2_ont_records + current_l2_pb_ccs_records))
+
+        # re-init l3 workflow from pipeline
+        genomic_long_read_pipeline.lr_l3_manifest_workflow()
+
+        # should find no data since, so should only be one manifest
+        current_l3_manifests = self.manifest_file_dao.get_all()
+        self.assertEqual(len(current_l3_manifests), 1)
+
+        l3_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LR_L3_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(l3_job_runs)
+        self.assertEqual(len(l3_job_runs), 2)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l3_job_runs))
+        self.assertTrue(any(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l3_job_runs))
+        self.assertTrue(any(obj.runResult == GenomicSubProcessResult.NO_FILES for obj in l3_job_runs))
+
+        # should only have initial 9 raw records for first L3 manifest
+        current_l2_ont_records = l2_ont_dao.get_all()
+        current_l2_pb_ccs_records = l2_pb_ccs_dao.get_all()
+        self.assertEqual(len(l3_raw_dao.get_all()), len(current_l2_ont_records + current_l2_pb_ccs_records))
+
+        self.clear_table_after_test('genomic_long_read')
+        self.clear_table_after_test('genomic_l2_ont_raw')
+        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
+        self.clear_table_after_test('genomic_l3_raw')
 
     def test_l4_manifest_ingestion(self):
 
