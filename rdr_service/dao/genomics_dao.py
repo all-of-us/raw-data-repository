@@ -4889,7 +4889,7 @@ class GenomicLongReadDao(GenomicSubDao):
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
-                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
                 GenomicSetMember.diversionPouchSiteFlag != 1,
                 GenomicSetMember.blockResults != 1,
@@ -4902,7 +4902,7 @@ class GenomicLongReadDao(GenomicSubDao):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicLongRead.biobank_id),
-                GenomicSetMember.collectionTubeId,
+                GenomicLongRead.collection_tube_id,
                 GenomicSetMember.sexAtBirth,
                 GenomicLongRead.genome_type,
                 func.IF(GenomicSetMember.nyFlag == 1,
@@ -4919,7 +4919,7 @@ class GenomicLongReadDao(GenomicSubDao):
                 GenomicSetMember,
                 and_(
                     GenomicSetMember.id == GenomicLongRead.genomic_set_member_id,
-                    GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                    GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.ignoreFlag != 1
                 )
             ).filter(
