@@ -1790,7 +1790,7 @@ class GenomicL2ONTRaw(Base):
     processing_status = Column(String(255), nullable=True)
     translocation_speed = Column(String(255), nullable=True)
     minimum_read_length = Column(String(255), nullable=True)
-    mapped_read_pct = Column(String(255), nullable=True)
+    mapped_reads_pct = Column(String(255), nullable=True)
     mean_coverage = Column(String(255), nullable=True)
     genome_coverage = Column(String(255), nullable=True)
     read_error_rate = Column(String(255), nullable=True)
