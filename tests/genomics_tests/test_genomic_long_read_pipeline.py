@@ -43,7 +43,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                 participantId=participant_summary.participantId,
                 genomicSetId=self.gen_set.id,
                 biobankId=f"{num}",
-                genomeType="aou_array",
+                genomeType="aou_wgs",  # should always pull wgs sample
                 qcStatus=1,
                 gcManifestSampleSource="whole blood",
                 gcManifestParentSampleId=f"{num}11111111111",
