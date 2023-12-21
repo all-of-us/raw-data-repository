@@ -1784,39 +1784,25 @@ class GenomicFileValidator:
         )
 
         self.RNA_R2_SCHEMA = (
-            "packageid",
-            "biobankidsampleid",
-            "boxstorageunitid",
-            "boxidplateid",
-            "wellposition",
-            "sampleid",
-            "parentsampleid",
-            "collectiontubeid",
-            "matrixid",
-            "collectiondate",
             "biobankid",
-            "sexatbirth",
-            "age",
-            "nystateyn",
-            "sampletype",
-            "treatments",
-            "quantityul",
-            "totalconcentrationngul",
-            "totalyieldng",
-            "rqs",
-            "260230",
-            "260280",
-            "visitdescription",
+            "sampleid",
+            "biobankidsampleid",
+            "limsid",
             "samplesource",
-            "study",
-            "trackingnumber",
-            "contact",
-            "email",
-            "studypi",
-            "sitename",
+            "alignmentratepct",
+            "duplicationpct",
+            "mrnabasespct",
+            "readsalignedinpairs",
+            "ribosomalbasespct",
+            "mediancvcoverage",
+            "meaninsertsize",
+            "rqs",
             "genometype",
-            "failuremode",
-            "failuremodedesc"
+            "processingstatus",
+            "pipelineid",
+            "crampath",
+            "crammd5path",
+            "notes"
         )
 
         self.values_for_validation = {
@@ -2235,10 +2221,11 @@ class GenomicFileValidator:
             RNA R2 manifest name rule
             """
             return (
-                len(filename_components) >= 4 and
+                len(filename_components) == 6 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'r2' and
+                'v' in filename_components[-1] and
                 filename.lower().endswith('csv')
             )
 
@@ -2402,6 +2389,8 @@ class GenomicFileValidator:
                 return self.RNA_RR_SCHEMA
             if self.job_id == GenomicJob.RNA_R1_WORKFLOW:
                 return self.RNA_R1_SCHEMA
+            if self.job_id == GenomicJob.RNA_R2_WORKFLOW:
+                return self.RNA_R2_SCHEMA
 
         except (IndexError, KeyError):
             return GenomicSubProcessResult.ERROR
