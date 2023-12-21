@@ -1622,7 +1622,7 @@ class GenomicFileValidator:
             "processingstatus",
             "translocationspeed",
             "minimumreadlength",
-            "mappedreadpct",
+            "mappedreadspct",
             "meancoverage",
             "genomecoverage",
             "readerrorrate",
