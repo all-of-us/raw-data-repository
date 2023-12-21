@@ -92,7 +92,7 @@ class NphParticipantData:
         enrollment_data: dict
     ) -> Optional[List[dict]]:
         if not enrollment_data:
-            return QuestionnaireStatus.UNSET
+            return []
         return list(map(
             lambda x: {
                 'value': x['value'],
@@ -125,13 +125,13 @@ class NphParticipantData:
         module: int
     ) -> Optional[List[dict]]:
         if not consent_data:
-            return QuestionnaireStatus.UNSET
+            return []
         current_module_consents = [
             obj for obj in consent_data.get('consent_json')
             if f'm{module}_consent' in obj.get('value')
         ]
         if not current_module_consents:
-            return QuestionnaireStatus.UNSET
+            return []
         return list(map(
             lambda x: {
                 'value': x['value'],
