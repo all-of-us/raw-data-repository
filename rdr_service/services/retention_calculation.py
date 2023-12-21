@@ -45,7 +45,6 @@ class RetentionEligibilityDependencies:
     bhp_response_timestamp:                 Optional[datetime]
     latest_etm_response_timestamp:          Optional[datetime]  # Repeatable EtM task responses, find most recent
 
-
 class RetentionEligibility:
     def __init__(self, participant_data: RetentionEligibilityDependencies):
         self._participant = participant_data
