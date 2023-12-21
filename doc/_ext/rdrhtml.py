@@ -15,6 +15,13 @@ class RdrHtml5Translator(HTML5Translator):
         # class or function signature. Leaving them out to simplify the look and feel of the documentation.
         self._is_visiting_complex_signature = len(node.children) > 2
 
+        if node.attributes['fullname'] == 'ParticipantSummary.isPediatric':
+            # Need to modify the isPediatric output
+            self._is_visiting_complex_signature = False
+            node.children = [node.children[1]]  # remove "property" and "bool" tags
+        elif len(node.children) == 2:
+            node.children = [node.children[0]]  # remove data type if specified in the code
+
         if not self._is_visiting_complex_signature:
             super(RdrHtml5Translator, self).visit_desc_signature(node)
         else:
