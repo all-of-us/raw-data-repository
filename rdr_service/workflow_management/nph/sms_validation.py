@@ -10,17 +10,18 @@ class SmsValidator:
         self, row: dict[str, str], max_length_allowed: int = 5
     ) -> None:
         """If bmi str length is greater than 5 chars (including the decimal), raise value error and send slack alert."""
-        bmi_str_len = len(row.get("bmi"))
-        if bmi_str_len > max_length_allowed:
-            msg = (
-                f"Pull list Validation Error: BMI value exceeds the max length allowed of {max_length_allowed} "
-                f"and contains {bmi_str_len} characters for sample id {row.get('sample_id')}."
-                f"Check the data at: {self.file_path}."
-            )
-            create_nph_incident(slack=True, message=msg)
-            raise ValueError(
-                f"BMI str length of {bmi_str_len} exceeds the limit of {max_length_allowed} characters."
-            )
+        if row.get("bmi"):
+            bmi_str_len = len(row.get("bmi"))
+            if bmi_str_len > max_length_allowed:
+                msg = (
+                    f"Pull list Validation Error: BMI value exceeds the max length allowed of {max_length_allowed} "
+                    f"and contains {bmi_str_len} characters for sample id {row.get('sample_id')}."
+                    f"Check the data at: {self.file_path}."
+                )
+                create_nph_incident(slack=True, message=msg)
+                raise ValueError(
+                    f"BMI str length of {bmi_str_len} exceeds the limit of {max_length_allowed} characters."
+                )
 
     def validate_pull_list(self, data: list[dict]) -> None:
         """Run validation checks for each row in the pull list."""
