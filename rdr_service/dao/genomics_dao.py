@@ -50,7 +50,7 @@ from rdr_service.model.genomics import (
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead,
     GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, GenomicRRRaw, GenomicR1Raw, GenomicLRRaw,
-     GenomicL1Raw, GenomicAW4Raw)
+    GenomicL1Raw, GenomicAW4Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, GenomicL3Raw)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -4837,7 +4837,11 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
         ...
 
     @abstractmethod
-    def get_zero_manifest_records_from_max_set(self):
+    def get_manifest_zero_records_from_max_set(self):
+        ...
+
+    @abstractmethod
+    def get_manifest_three_records(self):
         ...
 
     @abstractmethod
@@ -4898,7 +4902,7 @@ class GenomicLongReadDao(GenomicSubDao):
                 GenomicSetMember.biobankId.in_(biobank_ids)
             ).distinct().all()
 
-    def get_zero_manifest_records_from_max_set(self):
+    def get_manifest_zero_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicLongRead.biobank_id),
@@ -4944,6 +4948,132 @@ class GenomicLongReadDao(GenomicSubDao):
                 self.model_type.long_read_platform == long_read_platform
             ).distinct().all()
 
+    def get_manifest_three_records(self):
+        with self.session() as session:
+            records = (
+                session.query(
+                    GenomicLongRead.biobank_id.label('biobank_id'),
+                    GenomicLongRead.sample_id.label('sample_id'),
+                    func.concat(get_biobank_id_prefix(),
+                                GenomicLongRead.biobank_id, '_',
+                                GenomicLongRead.sample_id),
+                    GenomicL2ONTRaw.flowcell_id.label('flowcell_id'),
+                    GenomicL2ONTRaw.barcode.label('barcode'),
+                    GenomicLongRead.long_read_platform.label('long_read_platform'),
+                    GenomicL2ONTRaw.bam_path.label('bam_path'),
+                    GenomicL1Raw.sex_at_birth.label('sex_at_birth'),
+                    GenomicLongRead.lr_site_id.label('lr_site_id'),
+                    GenomicL2ONTRaw.sample_source.label('sample_source'),
+                    GenomicL2ONTRaw.processing_status.label('gc_processing_status'),
+                    GenomicL2ONTRaw.read_length_n50.label('fragment_length'),
+                    literal('').label('pacbio_instrument_type'),
+                    literal('').label('smrtlink_server_version'),
+                    literal('').label('pacbio_instrument_ics_version'),
+                    GenomicL2ONTRaw.read_error_rate.label('gc_read_error_rate'),
+                    GenomicL2ONTRaw.mean_coverage.label('gc_mean_coverage'),
+                    GenomicL2ONTRaw.genome_coverage.label('gc_genome_coverage'),
+                    GenomicL2ONTRaw.contamination.label('gc_contamination'),
+                    GenomicL2ONTRaw.basecaller_version.label('ont_basecaller_version'),
+                    GenomicL2ONTRaw.basecaller_model.label('ont_basecaller_model'),
+                    GenomicL2ONTRaw.mean_read_quality.label('ont_mean_read_qual'),
+                ).join(
+                    GenomicL1Raw,
+                    and_(
+                        GenomicLongRead.sample_id == GenomicL1Raw.sample_id,
+                        GenomicL1Raw.long_read_platform.ilike('ont')
+                    )
+                ).join(
+                    GenomicL2ONTRaw,
+                    GenomicLongRead.sample_id == GenomicL2ONTRaw.sample_id
+                ).outerjoin(
+                    GenomicL3Raw,
+                    and_(
+                        GenomicL2ONTRaw.sample_id == GenomicL3Raw.sample_id,
+                        GenomicL2ONTRaw.flowcell_id == GenomicL3Raw.flowcell_id,
+                        GenomicL2ONTRaw.barcode == GenomicL3Raw.barcode
+                    )
+                ).filter(
+                    GenomicL3Raw.id.is_(None),
+                    GenomicLongRead.sample_id.isnot(None),
+                    GenomicL1Raw.sex_at_birth.isnot(None),
+                    GenomicL2ONTRaw.flowcell_id.isnot(None),
+                    GenomicL2ONTRaw.barcode.isnot(None),
+                    GenomicL2ONTRaw.bam_path.isnot(None),
+                    GenomicL2ONTRaw.sample_source.isnot(None),
+                    GenomicL2ONTRaw.processing_status.isnot(None),
+                    GenomicL2ONTRaw.read_length_n50.isnot(None),
+                    GenomicL2ONTRaw.read_error_rate.isnot(None),
+                    GenomicL2ONTRaw.mean_coverage.isnot(None),
+                    GenomicL2ONTRaw.genome_coverage.isnot(None),
+                    GenomicL2ONTRaw.contamination.isnot(None),
+                    GenomicL2ONTRaw.basecaller_version.isnot(None),
+                    GenomicL2ONTRaw.basecaller_model.isnot(None),
+                    GenomicL2ONTRaw.mean_read_quality.isnot(None),
+                ).union(
+                    session.query(
+                        GenomicLongRead.biobank_id.label('biobank_id'),
+                        GenomicLongRead.sample_id.label('sample_id'),
+                        func.concat(get_biobank_id_prefix(),
+                                    GenomicLongRead.biobank_id, '_',
+                                    GenomicLongRead.sample_id),
+                        GenomicL2PBCCSRaw.flowcell_id.label('flowcell_id'),
+                        GenomicL2PBCCSRaw.barcode.label('barcode'),
+                        GenomicLongRead.long_read_platform.label('long_read_platform'),
+                        GenomicL2PBCCSRaw.bam_path.label('bam_path'),
+                        GenomicL1Raw.sex_at_birth.label('sex_at_birth'),
+                        GenomicLongRead.lr_site_id.label('lr_site_id'),
+                        GenomicL2PBCCSRaw.sample_source.label('sample_source'),
+                        GenomicL2PBCCSRaw.processing_status.label('gc_processing_status'),
+                        GenomicL2PBCCSRaw.read_length_mean.label('fragment_length'),
+                        GenomicL2PBCCSRaw.instrument.label('pacbio_instrument_type'),
+                        GenomicL2PBCCSRaw.smrtlink_server_version.label('smrtlink_server_version'),
+                        GenomicL2PBCCSRaw.instrument_ics_version.label('pacbio_instrument_ics_version'),
+                        GenomicL2PBCCSRaw.read_error_rate.label('gc_read_error_rate'),
+                        GenomicL2PBCCSRaw.mean_coverage.label('gc_mean_coverage'),
+                        GenomicL2PBCCSRaw.genome_coverage.label('gc_genome_coverage'),
+                        GenomicL2PBCCSRaw.contamination.label('gc_contamination'),
+                        literal('').label('ont_basecaller_version'),
+                        literal('').label('ont_basecaller_model'),
+                        literal('').label('ont_mean_read_qual'),
+                    ).join(
+                        GenomicL1Raw,
+                        and_(
+                            GenomicLongRead.sample_id == GenomicL1Raw.sample_id,
+                            GenomicL1Raw.long_read_platform.ilike('pacbio_ccs')
+                        )
+                    ).join(
+                        GenomicL2PBCCSRaw,
+                        GenomicLongRead.sample_id == GenomicL2PBCCSRaw.sample_id
+                    ).outerjoin(
+                        GenomicL3Raw,
+                        and_(
+                            GenomicL2PBCCSRaw.sample_id == GenomicL3Raw.sample_id,
+                            GenomicL2PBCCSRaw.flowcell_id == GenomicL3Raw.flowcell_id,
+                            GenomicL2PBCCSRaw.barcode == GenomicL3Raw.barcode
+                        )
+                    ).filter(
+                        GenomicL3Raw.id.is_(None),
+                        GenomicLongRead.sample_id.isnot(None),
+                        GenomicL1Raw.sex_at_birth.isnot(None),
+                        GenomicL2PBCCSRaw.flowcell_id.isnot(None),
+                        GenomicL2PBCCSRaw.barcode.isnot(None),
+                        GenomicL2PBCCSRaw.bam_path.isnot(None),
+                        GenomicL2PBCCSRaw.sample_source.isnot(None),
+                        GenomicL2PBCCSRaw.processing_status.isnot(None),
+                        GenomicL2PBCCSRaw.read_length_mean.isnot(None),
+                        GenomicL2PBCCSRaw.instrument.isnot(None),
+                        GenomicL2PBCCSRaw.smrtlink_server_version.isnot(None),
+                        GenomicL2PBCCSRaw.instrument_ics_version.isnot(None),
+                        GenomicL2PBCCSRaw.read_error_rate.isnot(None),
+                        GenomicL2PBCCSRaw.mean_coverage.isnot(None),
+                        GenomicL2PBCCSRaw.genome_coverage.isnot(None),
+                        GenomicL2PBCCSRaw.contamination.isnot(None),
+                    )
+                )
+            )
+
+            return records.all()
+
 
 class GenomicPRDao(GenomicSubDao):
 
@@ -4985,7 +5115,7 @@ class GenomicPRDao(GenomicSubDao):
                 GenomicSetMember.ai_an == 'N'
             ).distinct().all()
 
-    def get_zero_manifest_records_from_max_set(self):
+    def get_manifest_zero_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicProteomics.biobank_id),
@@ -5011,6 +5141,9 @@ class GenomicPRDao(GenomicSubDao):
                 GenomicProteomics.proteomics_set ==
                 self.get_max_set_subquery().c.proteomics_set
             ).distinct().all()
+
+    def get_manifest_three_records(self):
+        ...
 
 
 class GenomicRNADao(GenomicSubDao):
@@ -5053,7 +5186,7 @@ class GenomicRNADao(GenomicSubDao):
                 GenomicSetMember.ai_an == 'N'
             ).distinct().all()
 
-    def get_zero_manifest_records_from_max_set(self):
+    def get_manifest_zero_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicRNA.biobank_id),
@@ -5079,6 +5212,9 @@ class GenomicRNADao(GenomicSubDao):
                 GenomicRNA.rna_set ==
                 self.get_max_set_subquery().c.rna_set
             ).distinct().all()
+
+    def get_manifest_three_records(self):
+        ...
 
 
 class GenomicReportingDao(ABC, BaseDao):

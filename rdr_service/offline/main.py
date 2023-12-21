@@ -25,7 +25,7 @@ from rdr_service.model.requests_log import RequestsLog
 from rdr_service.offline import biobank_samples_pipeline, sync_consent_files, update_ehr_status, \
     antibody_study_pipeline, export_va_workqueue
 from rdr_service.offline.genomics import genomic_pipeline, genomic_cvl_pipeline, genomic_data_quality_pipeline, \
-    genomic_gem_pipeline
+    genomic_gem_pipeline, genomic_long_read_pipeline
 from rdr_service.offline.ce_health_data_reconciliation_pipeline import CeHealthDataReconciliationPipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
@@ -580,6 +580,13 @@ def genomic_aw3_wgs_updated_workflow():
     genomic_pipeline.aw3_wgs_manifest_workflow(
         pipeline_id=config.GENOMIC_UPDATED_WGS_DRAGEN
     )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@check_genomic_cron_job('l3_manifest_workflow')
+def genomic_lr_l3_workflow():
+    genomic_long_read_pipeline.lr_l3_manifest_workflow()
     return '{"success": "true"}'
 
 
@@ -1157,6 +1164,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicAW3WGSUpdatedWorkflow",
         endpoint="genomic_aw3_wgs_updated_workflow",
         view_func=genomic_aw3_wgs_updated_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicLRL3Workflow",
+        endpoint="genomic_lr_l3_workflow",
+        view_func=genomic_lr_l3_workflow,
         methods=["GET"]
     )
     offline_app.add_url_rule(
