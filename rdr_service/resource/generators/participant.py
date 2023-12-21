@@ -13,7 +13,7 @@ from sqlalchemy import func, desc, exc, inspect, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
 
-from rdr_service.model.pediatric_data_log import PediatricDataType
+from rdr_service.model.pediatric_data_log import PediatricDataLog
 from rdr_service import config
 from rdr_service.code_constants import (
     CONSENT_COPE_YES_CODE,
@@ -539,9 +539,16 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             Participant.participantId == p_id
         ).options(joinedload(ParticipantSummary.pediatricData)).first()
 
+        ped_log = ro_session.query(PediatricDataLog).filter(
+                PediatricDataLog.participant_id == p_id, PediatricDataLog.data_type == 'AGE_RANGE').first()
+
         # For PDR, start with REGISTERED as the default enrollment status.  This identifies participants
         # who have not yet consented / should not have a participant_summary record
         data = {}
+
+        # Check for Pediatric participant
+        data['is_pediatric'] = 1 if ped_log else 0
+
         # TODO:  add enrollment_status / enrollment_status_id after Goal 1 QC (move from _calculate_enrollment_status)
         for key in ['enrollment_status_v2', 'enrollment_status_v3_0']:
             data[key] = str(EnrollmentStatusV2.REGISTERED)
@@ -666,10 +673,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 _act(data['ehr_receipt'], ActivityGroupEnum.Profile, ParticipantEventEnum.EHRFirstReceived),
                 _act(data['ehr_update'], ActivityGroupEnum.Profile, ParticipantEventEnum.EHRLastReceived)
             ]
-
-            # Check for Pediatric participant
-            data['is_pediatric'] = 1 \
-                if any(r.data_type == PediatricDataType.AGE_RANGE for r in ps.pediatricData) else 0
 
         return data
 
