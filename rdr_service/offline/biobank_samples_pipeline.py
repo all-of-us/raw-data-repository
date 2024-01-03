@@ -685,7 +685,7 @@ _RECONCILIATION_REPORT_SOURCE_SQL = (
       NULL edited_cancelled_restored_site_reason,
       NULL order_origin,
       participant.participant_origin,
-      'NA' ny_flag,
+      '' ny_flag,
       case when sex_code.value like 'sexatbirth_male' then 'M'
            when sex_code.value like 'sexatbirth_female' then 'F'
            else 'NA'
