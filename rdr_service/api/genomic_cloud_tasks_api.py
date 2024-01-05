@@ -402,6 +402,10 @@ class IngestSubManifestTaskApi(BaseGenomicTaskApi):
             'l4': {
                 'job': GenomicJob.LR_L4_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.LR_L4
+            },
+            'l5': {
+                'job': GenomicJob.LR_L5_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.LR_L5
             }
         }
         pr_map = {
