@@ -531,7 +531,7 @@ class GrorConsentFile(ConsentFile, ABC):
     def is_confirmation_selected(self):
         for element in self._get_confirmation_check_elements():
             for child in element:
-                if isinstance(child, LTCurve):
+                if isinstance(child, LTCurve) or child.get_text() == '4':
                     return True
 
         return False
