@@ -10,7 +10,7 @@ job_defaults: &job_defaults
       environment:
         RDR_UNITTEST_SQL_SERVER_PORT: 3306
         CIRCLECI_FLAG: 1
-    - image: circleci/mysql:5.7
+    - image: circleci/mysql:8.0
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: yes
         MYSQL_ROOT_PASSWORD: ''
