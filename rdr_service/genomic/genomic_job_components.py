@@ -301,6 +301,7 @@ class GenomicFileIngester:
             GenomicJob.LR_L2_ONT_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L2_PB_CCS_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L4_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L5_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
@@ -1688,6 +1689,16 @@ class GenomicFileValidator:
             "passtoresearchpipeline",
         )
 
+        self.LR_L5_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "flowcellid",
+            "barcode",
+            "lrsiteid",
+            "longreadplatform",
+        )
+
         # PR pipeline
         self.PR_PR_SCHEMA = (
             "biobankid",
@@ -2150,6 +2161,17 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def lr_l5_manifest_name_rule():
+            """
+            LR L5 manifest name rule
+            """
+            return (
+                len(filename_components) == 3 and
+                filename_components[0] == 'aou' and
+                filename_components[1] == 'l5' and
+                filename.lower().endswith('csv')
+            )
+
         # PR pipeline
         def pr_pr_manifest_name_rule():
             """
@@ -2250,6 +2272,7 @@ class GenomicFileValidator:
             GenomicJob.LR_L2_ONT_WORKFLOW: lr_l2_ont_manifest_name_rule,
             GenomicJob.LR_L2_PB_CCS_WORKFLOW: lr_l2_pb_ccs_manifest_name_rule,
             GenomicJob.LR_L4_WORKFLOW: lr_l4_manifest_name_rule,
+            GenomicJob.LR_L5_WORKFLOW: lr_l5_manifest_name_rule,
             GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule,
             GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule,
             GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule,
@@ -2379,6 +2402,8 @@ class GenomicFileValidator:
                 return self.LR_L2_PB_CCS_SCHEMA
             if self.job_id == GenomicJob.LR_L4_WORKFLOW:
                 return self.LR_L4_SCHEMA
+            if self.job_id == GenomicJob.LR_L5_WORKFLOW:
+                return self.LR_L5_SCHEMA
             if self.job_id == GenomicJob.PR_PR_WORKFLOW:
                 return self.PR_PR_SCHEMA
             if self.job_id == GenomicJob.PR_P1_WORKFLOW:
