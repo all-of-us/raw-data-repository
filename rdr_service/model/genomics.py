@@ -1936,6 +1936,33 @@ event.listen(GenomicL4Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicL4Raw, 'before_update', model_update_listener)
 
 
+class GenomicL5Raw(Base):
+    """
+    Raw Data from L5 files
+    """
+    __tablename__ = 'genomic_l5_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    flowcell_id = Column(String(255), nullable=True)
+    barcode = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL5Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicL5Raw, 'before_update', model_update_listener)
+
+
 class GenomicProteomics(Base):
     """
     Used for storing the member records that are being
