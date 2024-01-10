@@ -252,9 +252,6 @@ class NphParticipantDao(BaseDao):
                                 ],
                                 else_=None
                             ),
-                            'nphPairedSite', Site.external_id,
-                            'nphPairedOrg', Site.organization_external_id,
-                            'nphPairedAwardee', Site.awardee_external_id
                         )
                     ), type_=JSON
                 ).label('orders_sample_status'),
