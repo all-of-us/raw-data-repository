@@ -199,20 +199,52 @@ class NphBiospecimenAPITest(BaseTestCase):
     def test_filter_by_nph_paired_site(self):
         self.create_nph_biospecimen_data()
         first_nph_site = self.nph_site_dao.get_all()[0]
+        first_nph_participant = self.nph_participant.get_all()[0]
         response = self.send_get(f'nph/Biospecimen?nph_paired_site={first_nph_site.external_id}')
+
         self.assertIsNotNone(response)
+        self.assertIsNotNone(response.get('entry'))
+        self.assertEqual(len(response.get('entry')), 1)
+
+        response_data = response.get('entry')[0]['resource'][0]
+        self.assertEqual(list(response_data.keys()), ['nph_participant_id', 'biospecimens'])
+
+        # should be first participant linked to first site external_id
+        self.assertEqual(response_data.get('nph_participant_id'), first_nph_participant.id)
 
     def test_filter_by_nph_paired_org(self):
         self.create_nph_biospecimen_data()
         first_nph_site = self.nph_site_dao.get_all()[0]
+        first_nph_participant = self.nph_participant.get_all()[0]
+
         response = self.send_get(f'nph/Biospecimen?nph_paired_org={first_nph_site.organization_external_id}')
+
         self.assertIsNotNone(response)
+        self.assertIsNotNone(response.get('entry'))
+        self.assertEqual(len(response.get('entry')), 1)
+
+        response_data = response.get('entry')[0]['resource'][0]
+        self.assertEqual(list(response_data.keys()), ['nph_participant_id', 'biospecimens'])
+
+        # should be first participant linked to first site organization_external_id
+        self.assertEqual(response_data.get('nph_participant_id'), first_nph_participant.id)
 
     def test_filter_by_nph_paired_awardee(self):
         self.create_nph_biospecimen_data()
         first_nph_site = self.nph_site_dao.get_all()[0]
+        first_nph_participant = self.nph_participant.get_all()[0]
+
         response = self.send_get(f'nph/Biospecimen?nph_paired_awardee={first_nph_site.awardee_external_id}')
+
         self.assertIsNotNone(response)
+        self.assertIsNotNone(response.get('entry'))
+        self.assertEqual(len(response.get('entry')), 1)
+
+        response_data = response.get('entry')[0]['resource'][0]
+        self.assertEqual(list(response_data.keys()), ['nph_participant_id', 'biospecimens'])
+
+        # should be first participant linked to first site awardee_external_id
+        self.assertEqual(response_data.get('nph_participant_id'), first_nph_participant.id)
 
     def tearDown(self):
         super().tearDown()
