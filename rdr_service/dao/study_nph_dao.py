@@ -175,12 +175,11 @@ class NphParticipantDao(BaseDao):
                 return stored_samples_subquery.filter(Participant.id == nph_participant_id)
 
             if query_def := kwargs.get('query_def'):
-                if applicable_filters := \
-                    [
-                        filter_obj for filter_obj
-                        in query_def.field_filters
-                        if filter_obj.field_name in ['modified']
-                     ]:
+                if applicable_filters := [
+                    filter_obj for filter_obj
+                    in query_def.field_filters
+                    if filter_obj.field_name in ['modified']
+                ]:
                     stored_samples_subquery = self._set_filters(
                         query=stored_samples_subquery,
                         filters=applicable_filters,
