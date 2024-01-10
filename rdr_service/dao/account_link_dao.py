@@ -18,12 +18,18 @@ class AccountLinkDao:
         ).all()
         if not results:
             session.add(account_link)
+        else:
+            for result in results:
+                result.modified = CLOCK.now()
+                result.start = account_link.start
+                result.end = account_link.end
 
-            summary: ParticipantSummary = session.query(ParticipantSummary).filter(
-                ParticipantSummary.participantId == account_link.participant_id
-            ).one_or_none()
-            if summary:
-                summary.lastModified = CLOCK.now()
+        summary: ParticipantSummary = session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == account_link.participant_id
+        ).one_or_none()
+        if summary:
+            summary.lastModified = CLOCK.now()
+
 
     @classmethod
     @with_session
