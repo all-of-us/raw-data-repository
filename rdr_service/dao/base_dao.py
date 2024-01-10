@@ -392,9 +392,7 @@ class BaseDao(object):
     def _make_query(self, session, query_definition):
         query = self._initialize_query(session, query_definition)
         query = self._set_filters(query, query_definition.field_filters)
-        order_by_field_names = []
-        order_by_fields = []
-        first_descending = False
+        order_by_field_names, order_by_fields, first_descending = [], [], False
         if query_definition.order_by:
             query = self._add_order_by(query, query_definition.order_by, order_by_field_names, order_by_fields)
             first_descending = not query_definition.order_by.ascending
@@ -414,10 +412,10 @@ class BaseDao(object):
         model_type = model_type or self.model_type
         for field_filter in filters:
             try:
-                f = getattr(model_type, field_filter.field_name)
+                filter_attribute = getattr(model_type, field_filter.field_name)
             except AttributeError:
                 raise BadRequest(f"No field named {field_filter.field_name} found on {model_type}.")
-            query = self._add_filter(query, field_filter, f)
+            query = self._add_filter(query, field_filter, filter_attribute)
         return query
 
     @staticmethod

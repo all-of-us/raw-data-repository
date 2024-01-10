@@ -1,4 +1,5 @@
 from dateutil import parser
+from datetime import datetime
 
 from rdr_service import clock
 from rdr_service.ancillary_study_resources.nph.enums import StoredSampleStatus
@@ -18,6 +19,15 @@ class NphBiospecimenAPITest(BaseTestCase):
         self.nph_order_dao = NphOrderDao()
         self.nph_order_sample_dao = NphOrderedSampleDao()
 
+        # nph activities
+        for activity_name in ['ENROLLMENT', 'PAIRING']:
+            self.nph_data_gen.create_database_activity(
+                name=activity_name
+            )
+
+        # nph pairing event type
+        self.nph_data_gen.create_database_pairing_event_type(name="INITIAL")
+
         for _ in range(2):
             self.nph_data_gen.create_database_participant()
 
@@ -25,8 +35,8 @@ class NphBiospecimenAPITest(BaseTestCase):
             self.nph_data_gen.create_database_site(
                 external_id=f"nph-test-site-{i}",
                 name=f"nph-test-site-name-{i}",
-                awardee_external_id="nph-test-hpo",
-                organization_external_id="nph-test-org"
+                awardee_external_id=f"nph-test-hpo-{i}",
+                organization_external_id=f"nph-test-org-{i}"
             )
 
     def create_nph_biospecimen_data(self, **kwargs):
@@ -39,7 +49,15 @@ class NphBiospecimenAPITest(BaseTestCase):
             type_label="Test",
         )
 
-        for participant in self.nph_participant.get_all():
+        for num, participant in enumerate(self.nph_participant.get_all()):
+
+            # create pairing data / should be only 2 sites for pairing
+            self.nph_data_gen.create_database_pairing_event(
+                participant_id=participant.id,
+                event_authored_time=datetime(2023, 1, 1, 12, 1),
+                site_id=2 if num % 2 != 0 else 1
+            )
+
             for i in range(num_orders):
                 order = self.sms_data_gen.create_database_order(
                     nph_order_id=f"10{participant.id + (i + 1) + participant.biobank_id}",
@@ -172,6 +190,30 @@ class NphBiospecimenAPITest(BaseTestCase):
         self.assertTrue(f'rdr/v1/nph/Biospecimen/{current_response_nph_pid}'
                         in next_response['entry'][0]['fullUrl'])
 
+    # FILTER DB ATTRIBUTE MAPPING FOR NPH SITE = {
+    #     'nph_paired_site': 'external_id',
+    #     'nph_paired_org': 'organization_external_id',
+    #     'nph_paired_awardee': 'awardee_external_id'
+    # }
+
+    def test_filter_by_nph_paired_site(self):
+        self.create_nph_biospecimen_data()
+        first_nph_site = self.nph_site_dao.get_all()[0]
+        response = self.send_get(f'nph/Biospecimen?nph_paired_site={first_nph_site.external_id}')
+        self.assertIsNotNone(response)
+
+    def test_filter_by_nph_paired_org(self):
+        self.create_nph_biospecimen_data()
+        first_nph_site = self.nph_site_dao.get_all()[0]
+        response = self.send_get(f'nph/Biospecimen?nph_paired_org={first_nph_site.organization_external_id}')
+        self.assertIsNotNone(response)
+
+    def test_filter_by_nph_paired_awardee(self):
+        self.create_nph_biospecimen_data()
+        first_nph_site = self.nph_site_dao.get_all()[0]
+        response = self.send_get(f'nph/Biospecimen?nph_paired_awardee={first_nph_site.awardee_external_id}')
+        self.assertIsNotNone(response)
+
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("nph.participant")
@@ -179,3 +221,7 @@ class NphBiospecimenAPITest(BaseTestCase):
         self.clear_table_after_test("nph.order")
         self.clear_table_after_test("nph.ordered_sample")
         self.clear_table_after_test("nph.stored_sample")
+        self.clear_table_after_test("nph.activity")
+        self.clear_table_after_test("nph.pairing_event_type")
+        self.clear_table_after_test("nph.participant_event_activity")
+        self.clear_table_after_test("nph.pairing_event")
