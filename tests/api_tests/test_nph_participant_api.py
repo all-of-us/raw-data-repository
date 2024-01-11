@@ -167,6 +167,14 @@ class NphParticipantAPITest(BaseTestCase):
             self.nph_data_gen.create_database_participant(id=ancillary_participant_id)
             ancillary_participant_id = ancillary_participant_id + 1
 
+        # add site pairing events
+        for num, participant in enumerate(self.nph_participant_dao.get_all()):
+            self.nph_data_gen.create_database_pairing_event(
+                participant_id=participant.id,
+                event_authored_time=datetime(2023, 1, 1, 12, 1),
+                site_id=2 if num % 2 != 0 else 1
+            )
+
     # base method for adding consent events - main req for showing in resp
     def add_consents(self, nph_participant_ids: List = None, module_nums: List[int] = None, **kwargs) -> None:
         all_consent_event_types = self.nph_consent_event_type_dao.get_all()
