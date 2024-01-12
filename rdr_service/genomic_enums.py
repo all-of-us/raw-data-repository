@@ -176,6 +176,7 @@ class GenomicJob(messages.Enum):
     LR_L3_WORKFLOW = 305
     LR_L4_WORKFLOW = 306
     LR_L5_WORKFLOW = 307
+    LR_L6_WORKFLOW = 308
 
     LOAD_LR_TO_RAW_TABLE = 350
     LOAD_L0_TO_RAW_TABLE = 351
@@ -185,6 +186,7 @@ class GenomicJob(messages.Enum):
     LOAD_L3_TO_RAW_TABLE = 355
     LOAD_L4_TO_RAW_TABLE = 356
     LOAD_L5_TO_RAW_TABLE = 357
+    LOAD_L6_TO_RAW_TABLE = 358
 
     PR_PR_WORKFLOW = 400
     PR_P0_WORKFLOW = 401
@@ -279,19 +281,6 @@ class GenomicWorkflowState(messages.Enum):
     CVL_RPT_DELETED = 40
 
 
-class ResultsWorkflowState(messages.Enum):
-    UNSET = 0
-    CVL_W1IL = 1
-    CVL_W2SC = 2
-    CVL_W2W = 3
-    CVL_W3SR = 4
-    CVL_W3SS = 5
-    CVL_W3NS = 6
-    CVL_W3SC = 7
-    CVL_W4WR = 8
-    CVL_W5NF = 9
-
-
 class ResultsModuleType(messages.Enum):
     UNSET = 0
     HDRV1 = 1
@@ -370,6 +359,7 @@ class GenomicManifestTypes(messages.Enum):
     LR_L3 = 33
     LR_L4 = 34
     LR_L5 = 35
+    LR_L6 = 36
 
     PR_PR = 40
     PR_P0 = 41
