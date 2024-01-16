@@ -8,7 +8,8 @@ from typing import Tuple
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
-from rdr_service.config import GENOMIC_DEPRECATED_WGS_DRAGEN
+from rdr_service.config import GENOMIC_DEPRECATED_WGS_DRAGEN, GENOMIC_UPDATED_WGS_DRAGEN
+from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
     GenomicManifestFileDao, \
     GenomicCVLSecondSampleDao, GenomicCVLResultPastDueDao, GenomicDefaultBaseDao
@@ -261,7 +262,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
             self.assertTrue(type(member_ids) is list)
             self.assertTrue(updated_value == w3sr_job_runs[num].id)
             self.assertEqual(len(member_ids), 1)
-            self.assertTrue(hasattr(self.member_dao.get(num+1), updated_field))
+            self.assertTrue(hasattr(self.member_dao.get(num + 1), updated_field))
             self.assertEqual(updated_field, 'cvlW3srManifestJobRunID')
 
         # check raw records
@@ -283,7 +284,8 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.ai_an == 'N' for obj in w3sr_raw_records))
         self.assertTrue(all(obj.cvl_site_id in cvl_sites for obj in w3sr_raw_records))
 
-        w3sr_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE, self.job_run_dao.get_all()))
+        w3sr_raw_job_runs = list(
+            filter(lambda x: x.jobId == GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE, self.job_run_dao.get_all()))
 
         self.assertIsNotNone(w3sr_raw_job_runs)
         self.assertEqual(len(cvl_sites), len(w3sr_raw_job_runs))
@@ -629,38 +631,58 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         )
 
         # Generate some set members that would go on a W1IL for BCM
-        self.default_summary, self.default_set_member, self.default_validation_metrics = self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm'}
+        self.default_summary, self.default_set_member, self.default_validation_metrics, self.default_aw4_raw = (
+            self._generate_cvl_participant(set_member_params={'gcSiteId': 'bcm'}))
+        self.ny_summary, self.ny_set_member, self.ny_validation_metrics, self.ny_aw4_raw = (
+            self._generate_cvl_participant(set_member_params={'gcSiteId': 'bcm', 'nyFlag': 1}))
+        self.male_summary, self.male_set_member, self.male_validation_metrics, self.male_aw4_raw = (
+            self._generate_cvl_participant(set_member_params={'gcSiteId': 'bcm', 'sexAtBirth': 'M'}))
+        self.hdr_and_pgx_summary, self.hdr_and_pgx_set_member, self.hdr_and_pgx_validation_metrics, \
+            self.hdr_and_pgx_aw4_raw = self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm', 'nyFlag': 1},
+            informing_loop_decision_param_list=[
+                {},  # default 'yes' for PGX
+                {'module_type': 'hdr'}
+            ]
         )
-        self.ny_summary, self.ny_set_member, self.ny_validation_metrics = self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm', 'nyFlag': 1})
-        self.male_summary, self.male_set_member, self.male_validation_metrics = self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm', 'sexAtBirth': 'M'}
-        )
-        self.hdr_and_pgx_summary, self.hdr_and_pgx_set_member, self.hdr_and_pgx_validation_metrics = \
+        self.co_summary, self.co_set_member, self.co_validation_metrics, self.co_aw4_raw = (
             self._generate_cvl_participant(
-                set_member_params={'gcSiteId': 'bcm', 'nyFlag': 1},
-                informing_loop_decision_param_list=[
-                    {},  # default 'yes' for PGX
-                    {'module_type': 'hdr'}
-                ]
-            )
-        self.co_summary, self.co_set_member, self.co_validation_metrics = self._generate_cvl_participant(
-            set_member_params={
-                'gcSiteId': 'bi',
-                'cvlW1ilHdrJobRunId': self.data_generator.create_database_genomic_job_run().id
-            }
-        )
+                set_member_params={
+                    'gcSiteId': 'bi',
+                    'cvlW1ilHdrJobRunId': self.data_generator.create_database_genomic_job_run().id
+                }
+            ))
+
+        # Generate set members with both pipeline_ids for each cvl site
+        self.bcm_pipeline_summary, self.bcm_pipeline_set_member, self.bcm_pipeline_validation_metrics, \
+            self.bcm_pipeline_aw4_raw, self.bcm_pipeline_validation_metrics_3_4_12, self.bcm_pipeline_aw4_raw_3_4_12 = (
+            self._generate_cvl_participant(
+                set_member_params={'gcSiteId': 'bcm'},
+                pipeline_id_test=True
+            ))
+        self.co_pipeline_summary, self.co_pipeline_set_member, self.co_pipeline_validation_metrics, \
+            self.co_pipeline_aw4_raw, self.co_pipeline_validation_metrics_3_4_12, self.co_pipeline_aw4_raw_3_4_12 = (
+            self._generate_cvl_participant(
+                set_member_params={'gcSiteId': 'bi'},
+                pipeline_id_test=True
+            ))
+        self.uw_pipeline_summary, self.uw_pipeline_set_member, self.uw_pipeline_validation_metrics, \
+            self.uw_pipeline_aw4_raw, self.uw_pipeline_validation_metrics_3_4_12, self.uw_pipeline_aw4_raw_3_4_12 = (
+            self._generate_cvl_participant(
+                set_member_params={'gcSiteId': 'uw'},
+                pipeline_id_test=True
+            ))
 
         # Create some records that shouldn't exist in a W1IL for BCM
         self._generate_cvl_participant(
             set_member_params={'gcSiteId': 'bcm'},
             informing_loop_decision_param_list=[{'decision_value': 'no'}]
         )
-        self._generate_cvl_participant(set_member_params={'gcSiteId': 'bcm', 'qcStatus': GenomicQcStatus.FAIL})
+        self._generate_cvl_participant(set_member_params={'gcSiteId': 'bcm'},
+                                       aw4_raw_params={'qc_status': GenomicQcStatus.FAIL})
         self._generate_cvl_participant(
             set_member_params={'gcSiteId': 'bcm'},
-            validation_metrics_params={'drcSexConcordance': 'fail'}
+            aw4_raw_params={'drc_sex_concordance': 'fail'}
         )
         self._generate_cvl_participant(
             set_member_params={'gcSiteId': 'bcm'},
@@ -700,6 +722,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         bcm_pgx_w1il_manifest = mock.MagicMock()
         bcm_hdr_w1il_manifest = mock.MagicMock()
         co_w1il_manifest = mock.MagicMock()
+        uw_w1il_manifest = mock.MagicMock()
+
         self.setup_manifest_mocks(
             sql_exporter_class_mock,
             {
@@ -713,6 +737,10 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
                 config.getSetting(config.CO_BUCKET_NAME): {
                     f'W1IL_manifests_pgx/CO_AoU_CVL_W1IL_{ResultsModuleType.PGXV1.name}'
                     f'_{manifest_file_timestamp_str}.csv': co_w1il_manifest
+                },
+                config.getSetting(config.UW_BUCKET_NAME): {
+                    f'W1IL_manifests_pgx/UW_AoU_CVL_W1IL_{ResultsModuleType.PGXV1.name}'
+                    f'_{manifest_file_timestamp_str}.csv': uw_w1il_manifest
                 }
             }
         )
@@ -732,6 +760,20 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
              'aou_hdr_coverage', 'contamination', 'sex_ploidy'),
             self.get_manifest_headers(bcm_pgx_w1il_manifest)
         )
+        self.assertTupleEqual(
+            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path',
+             'gvcf_path', 'gvcf_md5_path', 'cram_name', 'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror',
+             'genome_type', 'informing_loop_pgx',
+             'aou_hdr_coverage', 'contamination', 'sex_ploidy'),
+            self.get_manifest_headers(co_w1il_manifest)
+        )
+        self.assertTupleEqual(
+            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path',
+             'gvcf_path', 'gvcf_md5_path', 'cram_name', 'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror',
+             'genome_type', 'informing_loop_pgx',
+             'aou_hdr_coverage', 'contamination', 'sex_ploidy'),
+            self.get_manifest_headers(uw_w1il_manifest)
+        )
 
         self.assert_manifest_has_rows(
             manifest_cloud_writer_mock=bcm_pgx_w1il_manifest,
@@ -740,13 +782,24 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
                 self.expected_w1il_row(self.ny_set_member, self.ny_validation_metrics, self.ny_summary),
                 self.expected_w1il_row(self.male_set_member, self.male_validation_metrics, self.male_summary),
                 self.expected_w1il_row(self.hdr_and_pgx_set_member, self.hdr_and_pgx_validation_metrics,
-                                       self.hdr_and_pgx_summary)
+                                       self.hdr_and_pgx_summary),
+                self.expected_w1il_row(self.bcm_pipeline_set_member, self.bcm_pipeline_validation_metrics,
+                                       self.bcm_pipeline_summary)
             ]
         )
         self.assert_manifest_has_rows(
             manifest_cloud_writer_mock=co_w1il_manifest,
             expected_rows=[
-                self.expected_w1il_row(self.co_set_member, self.co_validation_metrics, self.co_summary)
+                self.expected_w1il_row(self.co_set_member, self.co_validation_metrics, self.co_summary),
+                self.expected_w1il_row(self.co_pipeline_set_member, self.co_pipeline_validation_metrics,
+                                       self.co_pipeline_summary)
+            ]
+        )
+        self.assert_manifest_has_rows(
+            manifest_cloud_writer_mock=uw_w1il_manifest,
+            expected_rows=[
+                self.expected_w1il_row(self.uw_pipeline_set_member, self.uw_pipeline_validation_metrics_3_4_12,
+                                       self.uw_pipeline_summary)
             ]
         )
 
@@ -754,8 +807,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         cloud_task_mock.assert_has_calls([
             mock.call(
                 {
-                    'member_ids': [self.default_set_member.id, self.ny_set_member.id,
-                                   self.male_set_member.id, self.hdr_and_pgx_set_member.id],
+                    'member_ids': [self.default_set_member.id, self.ny_set_member.id, self.male_set_member.id,
+                                   self.hdr_and_pgx_set_member.id, self.bcm_pipeline_set_member.id],
                     'field': 'cvlW1ilPgxJobRunId',
                     'value': mock.ANY,
                     'is_job_run': True
@@ -764,7 +817,16 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             ),
             mock.call(
                 {
-                    'member_ids': [self.co_set_member.id],
+                    'member_ids': [self.co_set_member.id, self.co_pipeline_set_member.id],
+                    'field': 'cvlW1ilPgxJobRunId',
+                    'value': mock.ANY,
+                    'is_job_run': True
+                },
+                'genomic_set_member_update_task'
+            ),
+            mock.call(
+                {
+                    'member_ids': [self.uw_pipeline_set_member.id],
                     'field': 'cvlW1ilPgxJobRunId',
                     'value': mock.ANY,
                     'is_job_run': True
@@ -782,7 +844,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
         # Check that the headers appear as expected
         self.assertTupleEqual(
-            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path', 'gvcf_path', 'gvcf_md5_path',
+            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path', 'gvcf_path',
+             'gvcf_md5_path',
              'cram_name', 'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror', 'genome_type',
              'informing_loop_hdr', 'aou_hdr_coverage', 'contamination', 'sex_ploidy'),
             self.get_manifest_headers(bcm_hdr_w1il_manifest)
@@ -826,7 +889,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
 
         current_raw_records = w1il_raw_dao.get_all()
         pgx_raw_records = list(filter(lambda x: 'PGXV1' in x.file_path, current_raw_records))
-        self.assertEqual(len(pgx_raw_records), 5)
+        self.assertEqual(len(pgx_raw_records), 8)
 
         self.assertTrue(all(obj.file_path is not None for obj in pgx_raw_records))
         self.assertTrue(all(obj.cvl_site_id in cvl_sites for obj in pgx_raw_records))
@@ -891,7 +954,9 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         collection_site_params=None,
         informing_loop_decision_param_list=None,
         set_member_params=None,
-        validation_metrics_params=None
+        validation_metrics_params=None,
+        aw4_raw_params=None,
+        pipeline_id_test=False
     ) -> Tuple[ParticipantSummary, GenomicSetMember, GenomicGCValidationMetrics]:
 
         participant_summary_params = participant_summary_params or {}
@@ -899,6 +964,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         informing_loop_decision_param_list = informing_loop_decision_param_list or [{}]  # Default to having a decision
         set_member_params = set_member_params or {}
         validation_metrics_params = validation_metrics_params or {}
+        aw4_raw_params = aw4_raw_params or {}
 
         participant_summary_params = {
             **{
@@ -973,7 +1039,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
                 'aouHdrCoverage': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
                 'contamination': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
                 'sexPloidy': self.fake.pystr(1, 10),
-                'pipelineId': GENOMIC_DEPRECATED_WGS_DRAGEN
+                'pipelineId': GENOMIC_UPDATED_WGS_DRAGEN
             },
             **validation_metrics_params
         }
@@ -981,7 +1047,72 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             **validation_metrics_params
         )
 
-        return summary, genomic_set_member, validation_metrics
+        aw4_raw_params = {
+            **{
+                'sample_id': genomic_set_member.sampleId,
+                'pipeline_id': GENOMIC_UPDATED_WGS_DRAGEN,
+                'qc_status': 'pass',
+                'drc_sex_concordance': 'pass',
+                'drc_fp_concordance': 'pass',
+                'genome_type': 'aou_wgs',
+                'biobank_id': f'{get_biobank_id_prefix()}1234',
+                'vcf_hf_path': self.fake.pystr(),
+                'vcf_hf_index_path': self.fake.pystr(),
+                'vcf_hf_md5_path': self.fake.pystr(),
+                'gvcf_path': self.fake.pystr(),
+                'gvcf_md5_path': self.fake.pystr(),
+                'cram_path': self.fake.pystr()
+            },
+            **aw4_raw_params
+        }
+        aw4_raw = self.data_generator.create_database_genomic_aw4_raw(
+            **aw4_raw_params
+        )
+
+        if pipeline_id_test:
+            validation_metrics_params_3_4_12 = {
+                'genomicSetMemberId': genomic_set_member.id,
+                'processingStatus': 'pass',
+                'sexConcordance': 'true',
+                'drcSexConcordance': 'pass',
+                'drcFpConcordance': 'pass',
+                'hfVcfPath': self.fake.pystr(),
+                'hfVcfTbiPath': self.fake.pystr(),
+                'hfVcfMd5Path': self.fake.pystr(),
+                'gvcfPath': self.fake.pystr(),
+                'gvcfMd5Path': self.fake.pystr(),
+                'cramPath': self.fake.pystr(),
+                'aouHdrCoverage': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
+                'contamination': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
+                'sexPloidy': self.fake.pystr(1, 10),
+                'pipelineId': GENOMIC_DEPRECATED_WGS_DRAGEN
+            }
+
+            validation_metrics_3_4_12 = self.data_generator.create_database_genomic_gc_validation_metrics(
+                **validation_metrics_params_3_4_12
+            )
+
+            aw4_raw_params_3_4_12 = {
+                'sample_id': genomic_set_member.sampleId,
+                'pipeline_id': GENOMIC_DEPRECATED_WGS_DRAGEN,
+                'qc_status': 'pass',
+                'drc_sex_concordance': 'pass',
+                'drc_fp_concordance': 'pass',
+                'genome_type': 'aou_wgs',
+                'biobank_id': f'{get_biobank_id_prefix()}1234',
+                'vcf_hf_path': self.fake.pystr(),
+                'vcf_hf_index_path': self.fake.pystr(),
+                'vcf_hf_md5_path': self.fake.pystr(),
+                'gvcf_path': self.fake.pystr(),
+                'gvcf_md5_path': self.fake.pystr(),
+                'cram_path': self.fake.pystr()
+            }
+            aw4_raw_3_4_12 = self.data_generator.create_database_genomic_aw4_raw(
+                **aw4_raw_params_3_4_12
+            )
+            return summary, genomic_set_member, validation_metrics, aw4_raw, validation_metrics_3_4_12, aw4_raw_3_4_12
+
+        return summary, genomic_set_member, validation_metrics, aw4_raw
 
     @classmethod
     def expected_w1il_row(cls, set_member: GenomicSetMember, validation_metrics: GenomicGCValidationMetrics,
@@ -1095,9 +1226,9 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             mock.call(
                 {
                     'member_ids': [self.first_withdrawn_member.id, self.second_withdrawn_member.id],
-                     'field': 'cvlW2wJobRunId',
-                     'value': mock.ANY,
-                     'is_job_run': True
+                    'field': 'cvlW2wJobRunId',
+                    'value': mock.ANY,
+                    'is_job_run': True
                 },
                 'genomic_set_member_update_task'
             ),
@@ -1177,7 +1308,6 @@ class GenomicCVLMiscPipelineTest(BaseTestCase):
         super(GenomicCVLMiscPipelineTest, self).setUp()
 
     def test_cvl_skip_week_manifest_generation(self):
-
         from rdr_service.offline.main import app, OFFLINE_PREFIX
         offline_test_client = app.test_client()
 
@@ -1535,4 +1665,3 @@ class GenomicCVLReconcileTest(BaseTestCase):
         self.assertTrue(current_job_run.runResult == GenomicSubProcessResult.SUCCESS)
 
         self.clear_table_after_test('genomic_cvl_result_past_due')
-
