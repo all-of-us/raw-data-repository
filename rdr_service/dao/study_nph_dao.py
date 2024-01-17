@@ -3,7 +3,7 @@ import json
 
 from datetime import datetime
 from types import SimpleNamespace as Namespace
-from typing import Tuple, Dict, List, Any, Optional
+from typing import Tuple, Dict, List, Any, Optional, Union
 
 from protorpc import messages
 from werkzeug.exceptions import BadRequest, NotFound
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Query, aliased
 from sqlalchemy import exc, func, case, and_, literal
 from sqlalchemy.dialects.mysql import JSON
 
+from rdr_service.ancillary_study_resources.nph.enums import StoredSampleStatus
 from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample,
     Activity, ParticipantEventActivity, EnrollmentEventType,
@@ -1238,6 +1239,31 @@ class NphBiospecimenDao(BaseDao):
                 raise BadRequest(f"No field named {field_filter.field_name} found on {model_type}.")
             query = self._add_filter(query, field_filter, filter_attribute)
         return query
+
+    @classmethod
+    def update_biospeciman_stored_samples(
+        cls,
+        order_samples: dict,
+        order_biobank_samples: dict
+    ) -> Union[Optional[str], Any]:
+        if not order_samples:
+            return []
+        order_samples = order_samples.get('orders_sample_json')
+        for sample in order_samples:
+            sample['biobankStatus'] = []
+            if not order_biobank_samples:
+                continue
+            stored_samples = list(filter(lambda x: x.get('orderSampleID') == sample.get('sampleID'),
+                                         order_biobank_samples.get('orders_sample_biobank_json')))
+
+            sample['biobankStatus'] = [
+                {
+                    "limsID": stored_sample.get('limsID'),
+                    "biobankModified": stored_sample.get('biobankModified'),
+                    "status": str(StoredSampleStatus.lookup_by_number(stored_sample.get('status')))
+                } for stored_sample in stored_samples
+            ]
+        return order_samples
 
 
 class NphSampleUpdateDao(BaseDao):

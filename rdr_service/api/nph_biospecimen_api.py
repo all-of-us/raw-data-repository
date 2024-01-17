@@ -2,7 +2,6 @@ from flask import request
 
 from werkzeug.exceptions import NotFound
 from rdr_service.api.base_api import BaseApi, log_api_request
-from rdr_service.api.nph_participant_api_schemas.util import NphParticipantData
 from rdr_service.api_util import RTI, RDR_AND_HEALTHPRO
 from rdr_service.app_util import auth_required
 from rdr_service.dao.study_nph_dao import NphBiospecimenDao, NphParticipantDao
@@ -34,7 +33,7 @@ class NphBiospecimenAPI(BaseApi):
         for participant_obj in payload:
             updated_payload = {
                 'nph_participant_id': participant_obj.orders_samples_pid,
-                'biospecimens': NphParticipantData.update_nph_participant_biospeciman_samples(
+                'biospecimens': self.dao.update_biospeciman_stored_samples(
                     order_samples=participant_obj.orders_sample_status,
                     order_biobank_samples=participant_obj.orders_sample_biobank_status,
                 )}

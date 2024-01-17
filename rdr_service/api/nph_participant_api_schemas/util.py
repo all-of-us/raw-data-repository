@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Union
 
 import sqlalchemy
 from graphene import List as GrapheneList
@@ -8,7 +8,7 @@ from graphene import List as GrapheneList
 from sqlalchemy.orm import Query, aliased
 
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, ConsentOptInTypes, \
-    StoredSampleStatus, DietType, DietStatus, ModuleTypes
+    DietType, DietStatus, ModuleTypes
 from rdr_service.api_util import parse_date
 from rdr_service.dao.study_nph_dao import NphOrderDao
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
@@ -184,35 +184,10 @@ class NphParticipantData:
         return current_ops_value[0].source_value
 
     @classmethod
-    def update_nph_participant_biospeciman_samples(
-        cls,
-        order_samples: dict,
-        order_biobank_samples: dict
-    ) -> Union[Optional[str], Any]:
-        if not order_samples:
-            return []
-        order_samples = order_samples.get('orders_sample_json')
-        for sample in order_samples:
-            sample['biobankStatus'] = []
-            if not order_biobank_samples:
-                continue
-            stored_samples = list(filter(lambda x: x.get('orderSampleID') == sample.get('sampleID'),
-                                         order_biobank_samples.get('orders_sample_biobank_json')))
-
-            sample['biobankStatus'] = [
-                {
-                    "limsID": stored_sample.get('limsID'),
-                    "biobankModified": stored_sample.get('biobankModified'),
-                    "status": str(StoredSampleStatus.lookup_by_number(stored_sample.get('status')))
-                } for stored_sample in stored_samples
-            ]
-        return order_samples
-
-    @classmethod
     def load_nph_participant_data(cls, query: sqlalchemy.orm.Query, biobank_prefix: str) -> List[dict]:
         results, records = [], query.all()
-        for summary, site, nph_site, mapping, nph_participant, enrollments, consents, \
-                order_samples, order_biobank_samples, diets, deactivated, withdrawn, ops_data in records:
+        for (summary, site, nph_site, mapping, nph_participant, enrollments, consents, diets, deactivated, withdrawn,
+             ops_data) in records:
             participant_obj = {
                 'participantNphId': mapping.ancillary_participant_id,
                 'lastModified': summary.lastModified,
@@ -240,7 +215,6 @@ class NphParticipantData:
                 'nphModule3ConsentStatus': cls.get_consent_statuses(consents, module=3),
                 'nphModule2DietStatus': cls.get_diet_statuses(diets, module=2),
                 'nphModule3DietStatus': cls.get_diet_statuses(diets, module=3),
-                "nphBiospecimens": cls.update_nph_participant_biospeciman_samples(order_samples, order_biobank_samples),
                 'aianStatus': summary.aian,
                 'suspensionStatus': {"value": cls.check_field_value(summary.suspensionStatus),
                                      "time": summary.suspensionTime},
