@@ -966,6 +966,8 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         validation_metrics_params = validation_metrics_params or {}
         aw4_raw_params = aw4_raw_params or {}
 
+        gc_site_bucket = config.GENOMICS_SITES_DATA_BUCKETS.get(set_member_params.get('gcSiteId')) + '/'
+
         participant_summary_params = {
             **{
                 'consentForStudyEnrollment': QuestionnaireStatus.SUBMITTED,
@@ -1076,12 +1078,12 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
                 'sexConcordance': 'true',
                 'drcSexConcordance': 'pass',
                 'drcFpConcordance': 'pass',
-                'hfVcfPath': self.fake.pystr(),
-                'hfVcfTbiPath': self.fake.pystr(),
-                'hfVcfMd5Path': self.fake.pystr(),
-                'gvcfPath': self.fake.pystr(),
-                'gvcfMd5Path': self.fake.pystr(),
-                'cramPath': self.fake.pystr(),
+                'hfVcfPath': gc_site_bucket + self.fake.pystr(),
+                'hfVcfTbiPath': gc_site_bucket + self.fake.pystr(),
+                'hfVcfMd5Path': gc_site_bucket + self.fake.pystr(),
+                'gvcfPath': gc_site_bucket + self.fake.pystr(),
+                'gvcfMd5Path': gc_site_bucket + self.fake.pystr(),
+                'cramPath': gc_site_bucket + self.fake.pystr(),
                 'aouHdrCoverage': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
                 'contamination': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
                 'sexPloidy': self.fake.pystr(1, 10),
@@ -1100,12 +1102,12 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
                 'drc_fp_concordance': 'pass',
                 'genome_type': 'aou_wgs',
                 'biobank_id': f'{get_biobank_id_prefix()}1234',
-                'vcf_hf_path': self.fake.pystr(),
-                'vcf_hf_index_path': self.fake.pystr(),
-                'vcf_hf_md5_path': self.fake.pystr(),
-                'gvcf_path': self.fake.pystr(),
-                'gvcf_md5_path': self.fake.pystr(),
-                'cram_path': self.fake.pystr()
+                'vcf_hf_path': gc_site_bucket + self.fake.pystr(),
+                'vcf_hf_index_path': gc_site_bucket + self.fake.pystr(),
+                'vcf_hf_md5_path': gc_site_bucket + self.fake.pystr(),
+                'gvcf_path': gc_site_bucket + self.fake.pystr(),
+                'gvcf_md5_path': gc_site_bucket + self.fake.pystr(),
+                'cram_path': gc_site_bucket + self.fake.pystr()
             }
             aw4_raw_3_4_12 = self.data_generator.create_database_genomic_aw4_raw(
                 **aw4_raw_params_3_4_12
@@ -1117,6 +1119,28 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
     @classmethod
     def expected_w1il_row(cls, set_member: GenomicSetMember, validation_metrics: GenomicGCValidationMetrics,
                           summary: ParticipantSummary):
+        if set_member.gcSiteId == 'uw':
+            gc_site_bucket = config.GENOMICS_SITES_DATA_BUCKETS.get(set_member.gcSiteId)
+            return (
+                to_client_biobank_id(set_member.biobankId),
+                str(set_member.sampleId),
+                validation_metrics.hfVcfPath.replace(gc_site_bucket, gc_site_bucket + '-archive'),
+                validation_metrics.hfVcfTbiPath.replace(gc_site_bucket, gc_site_bucket + '-archive'),
+                validation_metrics.hfVcfMd5Path.replace(gc_site_bucket, gc_site_bucket + '-archive'),
+                validation_metrics.gvcfPath.replace(gc_site_bucket, gc_site_bucket + '-archive'),
+                validation_metrics.gvcfMd5Path.replace(gc_site_bucket, gc_site_bucket + '-archive'),
+                validation_metrics.cramPath.replace(gc_site_bucket, gc_site_bucket + '-archive'),
+                set_member.sexAtBirth,
+                'Y' if set_member.nyFlag == 1 else 'N',
+                set_member.gcSiteId.upper(),
+                'Y' if summary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED else 'N',
+                'aou_cvl',  # genome type
+                'Y',  # informing loop decision
+                str(validation_metrics.aouHdrCoverage),
+                str(validation_metrics.contamination),
+                str(validation_metrics.sexPloidy)
+            )
+
         return (
             to_client_biobank_id(set_member.biobankId),
             str(set_member.sampleId),

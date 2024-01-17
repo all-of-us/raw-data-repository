@@ -181,6 +181,7 @@ CE_MEDIATED_HPO_ID='ce_mediated_hpo_id'
 GENOMICS_SITES_DATA_BUCKETS = {
     "bcm": "prod-genomics-data-baylor",
     "co": "prod-genomics-data-color",
+    "bi": "prod-genomics-data-color",
     "uw": "prod-genomics-data-northwest"
 }
 # Buckets to listen for Pub/Sub notifications
