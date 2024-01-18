@@ -4324,6 +4324,7 @@ class GenomicQueriesDao(BaseDao):
         """
 
         gc_site_id = self.transform_cvl_site_id(cvl_id)
+        gc_site_data_bucket = config.CVL_SITES_DATA_BUCKETS.get(cvl_id)
         previous_w1il_job_field = {
             'pgx': GenomicSetMember.cvlW1ilPgxJobRunId,
             'hdr': GenomicSetMember.cvlW1ilHdrJobRunId
@@ -4340,16 +4341,37 @@ class GenomicQueriesDao(BaseDao):
         informing_loop_subquery = aliased(GenomicInformingLoop, informing_loop_decision_query.subquery())
         pipeline_metrics = aliased(GenomicGCValidationMetrics)
 
+        def get_archive_path(*, file_path):
+            return func.replace(file_path, gc_site_data_bucket, gc_site_data_bucket + '-archive')
+
         with self.session() as session:
             query = session.query(
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                 GenomicSetMember.sampleId,
-                GenomicGCValidationMetrics.hfVcfPath.label('vcf_raw_path'),
-                GenomicGCValidationMetrics.hfVcfTbiPath.label('vcf_raw_index_path'),
-                GenomicGCValidationMetrics.hfVcfMd5Path.label('vcf_raw_md5_path'),
-                GenomicGCValidationMetrics.gvcfPath.label('gvcf_path'),
-                GenomicGCValidationMetrics.gvcfMd5Path.label('gvcf_md5_path'),
-                GenomicGCValidationMetrics.cramPath.label('cram_name'),
+                func.IF(and_(cvl_id == 'uw',
+                             GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)),
+                        get_archive_path(file_path=GenomicGCValidationMetrics.hfVcfPath),
+                        GenomicGCValidationMetrics.hfVcfPath).label('vcf_raw_path'),
+                func.IF(and_(cvl_id == 'uw',
+                             GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)),
+                        get_archive_path(file_path=GenomicGCValidationMetrics.hfVcfTbiPath),
+                        GenomicGCValidationMetrics.hfVcfTbiPath).label('vcf_raw_index_path'),
+                func.IF(and_(cvl_id == 'uw',
+                             GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)),
+                        get_archive_path(file_path=GenomicGCValidationMetrics.hfVcfMd5Path),
+                        GenomicGCValidationMetrics.hfVcfMd5Path).label('vcf_raw_md5_path'),
+                func.IF(and_(cvl_id == 'uw',
+                             GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)),
+                        get_archive_path(file_path=GenomicGCValidationMetrics.gvcfPath),
+                        GenomicGCValidationMetrics.gvcfPath).label('gvcf_path'),
+                func.IF(and_(cvl_id == 'uw',
+                             GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)),
+                        get_archive_path(file_path=GenomicGCValidationMetrics.gvcfMd5Path),
+                        GenomicGCValidationMetrics.gvcfMd5Path).label('gvcf_md5_path'),
+                func.IF(and_(cvl_id == 'uw',
+                             GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)),
+                        get_archive_path(file_path=GenomicGCValidationMetrics.cramPath),
+                        GenomicGCValidationMetrics.cramPath).label('cram_name'),
                 GenomicSetMember.sexAtBirth.label('sex_at_birth'),
                 func.IF(
                     GenomicSetMember.nyFlag == 1,
@@ -4378,16 +4400,22 @@ class GenomicQueriesDao(BaseDao):
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
                     GenomicGCValidationMetrics.ignoreFlag != 1
                 )
+            ).outerjoin(
+                GenomicAW4Raw,
+                and_(
+                    GenomicAW4Raw.sample_id == GenomicSetMember.sampleId,
+                    GenomicAW4Raw.ignore_flag != 1,
+                    or_(
+                        GenomicAW4Raw.pipeline_id == GenomicGCValidationMetrics.pipelineId,
+                        and_(
+                            GenomicAW4Raw.pipeline_id == None,
+                            GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)
+                        )
+                    )
+                )
             ).join(
                 informing_loop_subquery,
                 informing_loop_subquery.participant_id == GenomicSetMember.participantId
-            ).outerjoin(
-                pipeline_metrics,
-                and_(
-                    pipeline_metrics.genomicSetMemberId == GenomicSetMember.id,
-                    pipeline_metrics.ignoreFlag != 1,
-                    pipeline_metrics.pipelineId < GenomicGCValidationMetrics.pipelineId
-                )
             ).filter(
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
@@ -4397,13 +4425,14 @@ class GenomicQueriesDao(BaseDao):
                 or_(
                     GenomicGCValidationMetrics.sexConcordance.ilike('true'),
                     GenomicGCValidationMetrics.sexConcordance.ilike('other')
-                ), # check AW2 gives sex concordance as true
-                GenomicGCValidationMetrics.drcSexConcordance.ilike('pass'),  # check AW4 gives sex concordance as true
+                ),  # check AW2 gives sex concordance as true
+                GenomicAW4Raw.drc_sex_concordance.ilike('pass'),
+                GenomicAW4Raw.qc_status.ilike('pass'),
                 GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
                 ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
-                GenomicGCValidationMetrics.drcFpConcordance.ilike('pass'),
+                GenomicAW4Raw.drc_fp_concordance.ilike('pass'),
                 GenomicSetMember.diversionPouchSiteFlag != 1,
                 GenomicSetMember.gcSiteId.ilike(gc_site_id),
                 ParticipantSummary.participantOrigin != 'careevolution',
@@ -4415,9 +4444,24 @@ class GenomicQueriesDao(BaseDao):
                 GenomicGCValidationMetrics.hfVcfMd5Path.isnot(None),
                 GenomicGCValidationMetrics.gvcfPath.isnot(None),
                 GenomicGCValidationMetrics.gvcfMd5Path.isnot(None),
-                GenomicGCValidationMetrics.cramPath.isnot(None),
-                pipeline_metrics.id.is_(None)
+                GenomicGCValidationMetrics.cramPath.isnot(None)
             )
+
+            if cvl_id == 'uw':
+                query = query.outerjoin(
+                    pipeline_metrics,
+                    and_(
+                        pipeline_metrics.genomicSetMemberId == GenomicSetMember.id,
+                        pipeline_metrics.ignoreFlag != 1,
+                        pipeline_metrics.pipelineId < GenomicGCValidationMetrics.pipelineId
+                    )
+                ).filter(
+                    pipeline_metrics.id.is_(None)
+                )
+            else:
+                query = query.filter(
+                    GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_UPDATED_WGS_DRAGEN)
+                )
 
             if sample_ids:
                 query = query.filter(
