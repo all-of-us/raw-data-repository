@@ -966,7 +966,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         validation_metrics_params = validation_metrics_params or {}
         aw4_raw_params = aw4_raw_params or {}
 
-        gc_site_bucket = config.GENOMICS_SITES_DATA_BUCKETS.get(set_member_params.get('gcSiteId')) + '/'
+        gc_site_bucket = config.CVL_SITES_DATA_BUCKETS.get(set_member_params.get('gcSiteId')) + '/'
 
         participant_summary_params = {
             **{
@@ -1120,7 +1120,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
     def expected_w1il_row(cls, set_member: GenomicSetMember, validation_metrics: GenomicGCValidationMetrics,
                           summary: ParticipantSummary):
         if set_member.gcSiteId == 'uw':
-            gc_site_bucket = config.GENOMICS_SITES_DATA_BUCKETS.get(set_member.gcSiteId)
+            gc_site_bucket = config.CVL_SITES_DATA_BUCKETS.get(set_member.gcSiteId)
             return (
                 to_client_biobank_id(set_member.biobankId),
                 str(set_member.sampleId),

@@ -4324,7 +4324,7 @@ class GenomicQueriesDao(BaseDao):
         """
 
         gc_site_id = self.transform_cvl_site_id(cvl_id)
-        gc_site_data_bucket = config.GENOMICS_SITES_DATA_BUCKETS.get(cvl_id)
+        gc_site_data_bucket = config.CVL_SITES_DATA_BUCKETS.get(cvl_id)
         previous_w1il_job_field = {
             'pgx': GenomicSetMember.cvlW1ilPgxJobRunId,
             'hdr': GenomicSetMember.cvlW1ilHdrJobRunId
