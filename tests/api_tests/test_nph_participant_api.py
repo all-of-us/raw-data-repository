@@ -1,12 +1,11 @@
 import json
 import time
 
-from typing import Iterable, Dict, List
-from collections import defaultdict
+from typing import Iterable, List
 from graphql import GraphQLSyntaxError
 from datetime import datetime, timedelta
 
-from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, StoredSampleStatus, DietType, \
+from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes, DietType, \
     DietStatus, ModuleTypes, ConsentOptInTypes
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -14,7 +13,7 @@ from rdr_service.dao.rex_dao import RexStudyDao, RexParticipantMappingDao
 
 from rdr_service.dao.study_nph_dao import NphParticipantDao, NphDefaultBaseDao, NphSiteDao
 from rdr_service.model.study_nph import (
-    ConsentEventType, Participant as NphParticipant, OrderedSample, Order, WithdrawalEvent,
+    ConsentEventType, WithdrawalEvent,
     DeactivationEvent
 )
 from rdr_service.participant_enums import QuestionnaireStatus
@@ -23,13 +22,6 @@ from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.data_gen.generators.nph import NphDataGenerator, NphSmsDataGenerator
 import rdr_service.api.nph_participant_api as api
 from rdr_service import config, clock
-from rdr_service.data_gen.generators.study_nph import (
-    generate_fake_study_categories,
-    generate_fake_orders,
-    generate_fake_ordered_samples,
-    generate_fake_sample_updates,
-    generate_fake_stored_samples,
-)
 
 NPH_BIOBANK_PREFIX = NPH_PROD_BIOBANK_PREFIX if config.GAE_PROJECT == "all-of-us-rdr-prod" else NPH_TEST_BIOBANK_PREFIX
 
@@ -166,6 +158,14 @@ class NphParticipantAPITest(BaseTestCase):
 
             self.nph_data_gen.create_database_participant(id=ancillary_participant_id)
             ancillary_participant_id = ancillary_participant_id + 1
+
+        # add site pairing events
+        for num, participant in enumerate(self.nph_participant_dao.get_all()):
+            self.nph_data_gen.create_database_pairing_event(
+                participant_id=participant.id,
+                event_authored_time=datetime(2023, 1, 1, 12, 1),
+                site_id=2 if num % 2 != 0 else 1
+            )
 
     # base method for adding consent events - main req for showing in resp
     def add_consents(self, nph_participant_ids: List = None, module_nums: List[int] = None, **kwargs) -> None:
@@ -978,105 +978,6 @@ class NphParticipantAPITest(BaseTestCase):
         aou_site = current_participant.get('siteId')
         self.assertTrue(aou_site == 'UNSET')
 
-    def test_nph_biospecimen_for_participant(self):
-        self.add_consents(nph_participant_ids=self.base_participant_ids)
-        generate_ordered_sample_data()
-        field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID collectionDateUTC processingDateUTC " \
-                        "timepointID biobankStatus { limsID biobankModified status } } "
-        query = simple_query(field_to_test)
-
-        executed = app.test_client().post('/rdr/v1/nph_participant', data=query)
-        result = json.loads(executed.data.decode('utf-8'))
-        self.assertEqual(2, len(result.get('participant').get('edges')))
-        n_participants = len(result.get('participant').get('edges'))
-        for i in range(n_participants):
-            biospecimens: Iterable[Dict[str, str]] = (
-                result.get("participant").get("edges")[i].get("node").get("nphBiospecimens")
-            )
-            self.assertEqual(8, len(biospecimens))
-            for biospecimen in biospecimens:
-                self.assertIsNotNone(biospecimen.get("biobankStatus")[0].get("status"))
-                self.assertNotEqual(biospecimen.get("processingDateUTC"), biospecimen.get("collectionDateUTC"))
-
-    def test_nph_biospecimen_duplicate_stored_samples(self):
-        self.add_consents(nph_participant_ids=self.base_participant_ids)
-        # Create test orders, ordered samples, and stored samples
-        category = self.sms_data_gen.create_database_study_category(
-            type_label="Test",
-        )
-
-        order = self.sms_data_gen.create_database_order(
-            nph_order_id="100",
-            participant_id=100000000,
-            notes="Test",
-            category_id=category.id
-
-        )
-        self.sms_data_gen.create_database_ordered_sample(
-            order_id=order.id,
-            aliquot_id="1234",
-        )
-        self.sms_data_gen.create_database_ordered_sample(
-            order_id=order.id,
-            aliquot_id="5678",
-        )
-        for _ in range(5):
-            self.sms_data_gen.create_database_stored_sample(
-                biobank_id=1100000000,
-                sample_id="1234",
-                lims_id="142857"
-            )
-        for _ in range(5):
-            self.sms_data_gen.create_database_stored_sample(
-                biobank_id=1100000000,
-                sample_id="5678",
-                lims_id="857142"
-            )
-        # Add another status
-        self.sms_data_gen.create_database_stored_sample(
-            biobank_id=1100000000,
-            sample_id="5678",
-            lims_id="857142",
-            status=StoredSampleStatus.DISPOSED
-        )
-        # Call api
-        gql_query = """
-            { participant (nphId: "100000000") {totalCount resultCount pageInfo
-           { startCursor  endCursor hasNextPage }  edges { node { nphBiospecimens { sampleID biobankStatus { limsID } } } } } }
-        """
-        executed = app.test_client().post('/rdr/v1/nph_participant', data=gql_query)
-        result = json.loads(executed.data.decode('utf-8'))
-
-        participant = result.get('participant').get('edges')[0].get('node')
-
-        self.assertEqual(2, len(participant.get('nphBiospecimens')))
-        for specimen in participant.get('nphBiospecimens'):
-            if specimen['sampleID'] == '1234':
-                self.assertEqual(1, len(specimen.get('biobankStatus')))
-            if specimen['sampleID'] == '5678':
-                self.assertEqual(2, len(specimen.get('biobankStatus')))
-
-    def test_nph_biospecimen_for_participant_with_pagination(self):
-        self.add_consents(nph_participant_ids=self.base_participant_ids)
-        generate_ordered_sample_data()
-        field_to_test = "nphBiospecimens {orderID specimenCode studyID visitID timepointID biobankStatus { limsID biobankModified status } } "
-        query_1 = simple_query_with_pagination(field_to_test, limit=1, offset=0)
-        result_1 = app.test_client().post('/rdr/v1/nph_participant', data=query_1)
-        result_1 = json.loads(result_1.data.decode('utf-8'))
-        self.assertEqual(1, len(result_1.get('participant').get('edges')))
-
-        query_2 = simple_query_with_pagination(field_to_test, limit=1, offset=1)
-        result_2 = app.test_client().post('/rdr/v1/nph_participant', data=query_2)
-        result_2 = json.loads(result_2.data.decode('utf-8'))
-        self.assertEqual(1, len(result_2.get('participant').get('edges')))
-        for result in [result_1, result_2]:
-            biospecimens: Iterable[Dict[str, str]] = (
-                result.get("participant").get("edges")[0].get("node").get("nphBiospecimens")
-            )
-            self.assertEqual(8, len(biospecimens))
-            for biospecimen in biospecimens:
-                self.assertIsNotNone(biospecimen.get("biobankStatus")[0].get("status"))
-
     def test_total_count(self):
         """
         Check that the totalCount given in a response matches the count of participants
@@ -1121,44 +1022,6 @@ class NphParticipantAPITest(BaseTestCase):
         self.clear_table_after_test("nph.consent_event")
         self.clear_table_after_test("nph.consent_event_type")
         self.clear_table_after_test("nph.diet_event")
-
-
-def _group_ordered_samples_by_participant(
-    nph_participants: Iterable[NphParticipant],
-    grouped_orders: Dict[int, List[Order]],
-    grouped_ordered_samples: Dict[int, List[OrderedSample]],
-) -> List[OrderedSample]:
-    grouped_ordered_samples_by_participant = defaultdict(list)
-    for participant in nph_participants:
-        for order in grouped_orders[participant.id]:
-            grouped_ordered_samples_by_participant[participant.id].extend(grouped_ordered_samples[order.id])
-    return grouped_ordered_samples_by_participant
-
-
-def generate_ordered_sample_data():
-    nph_participants = NphParticipantDao().get_all()
-    sites = NphSiteDao().get_all()
-    study_categories = generate_fake_study_categories()
-    orders = generate_fake_orders(
-        fake_participants=nph_participants,
-        fake_study_categories=study_categories,
-        fake_sites=sites,
-    )
-    ordered_samples = generate_fake_ordered_samples(fake_orders=orders)
-    generate_fake_sample_updates(fake_ordered_samples=ordered_samples)
-    grouped_orders = defaultdict(list)
-    _grouped_ordered_samples = defaultdict(list)
-    for order in orders:
-        grouped_orders[order.participant_id].append(order)
-
-    for ordered_sample in ordered_samples:
-        _grouped_ordered_samples[ordered_sample.order_id].append(ordered_sample)
-    grouped_ordered_samples_by_participant = _group_ordered_samples_by_participant(
-        nph_participants,
-        grouped_orders,
-        _grouped_ordered_samples
-    )
-    generate_fake_stored_samples(nph_participants, grouped_ordered_samples_by_participant)
 
 
 class NphParticipantAPITestValidation(BaseTestCase):

@@ -86,7 +86,8 @@ class GenomicRNAPipelineTest(BaseTestCase):
             bucket_name,
             folder=subfolder,
             include_timestamp=kwargs.get('include_timestamp', True),
-            include_sub_num=kwargs.get('include_sub_num')
+            include_sub_num=kwargs.get('include_sub_num'),
+            after_timestamp=kwargs.get('after_timestamp')
         )
 
         task_data = {
@@ -447,7 +448,8 @@ class GenomicRNAPipelineTest(BaseTestCase):
         self.execute_base_rna_ingestion(
             test_file='RDR_AoU_R2.csv',
             job_id=GenomicJob.RNA_R2_WORKFLOW,
-            manifest_type=GenomicManifestTypes.RNA_R2
+            manifest_type=GenomicManifestTypes.RNA_R2,
+            after_timestamp='_2_v1'
         )
 
         # check job run record
@@ -466,7 +468,8 @@ class GenomicRNAPipelineTest(BaseTestCase):
         self.execute_base_rna_ingestion(
             test_file='RDR_AoU_R2.csv',
             job_id=GenomicJob.RNA_R2_WORKFLOW,
-            manifest_type=GenomicManifestTypes.RNA_R2
+            manifest_type=GenomicManifestTypes.RNA_R2,
+            after_timestamp='_2_v1'
         )
 
         r2_raw_dao = GenomicDefaultBaseDao(

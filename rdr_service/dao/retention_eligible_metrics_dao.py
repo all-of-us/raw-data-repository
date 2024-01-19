@@ -31,7 +31,9 @@ class RetentionEligibleMetricsDao(UpdatableDao):
         if not db_result:
             return None, True
 
-        is_same_data = (  # Only comparing the data received from PTSC
+        needs_update = False
+
+        is_same_data = (
             db_result.retentionEligibleStatus == metrics_obj.retentionEligibleStatus
             and (
                 db_result.retentionType == metrics_obj.retentionType
@@ -43,7 +45,17 @@ class RetentionEligibleMetricsDao(UpdatableDao):
             and db_result.lastActiveRetentionActivityTime == metrics_obj.lastActiveRetentionActivityTime
         )
 
-        return db_result.id, not is_same_data  # returning the id and whether an update is needed
+        # DA-3966 RDR values may not have been calculated yet using latest business logic.  Recognize additional
+        # situations where the record should be forced through an update/RDR value recalculation
+        needs_update = not is_same_data or (db_result.retentionEligible and not db_result.rdr_retention_eligible)
+        if not needs_update and db_result.lastActiveRetentionActivityTime:
+            # Additional check: It's expected that RDR last activity date calculated with latest logic could be ahead
+            # of PTSC's (e.g., only RDR calculations included EtM responses), but RDR values shouldn't be lagging
+            if (not db_result.rdr_last_retention_activity_time or
+                  db_result.lastActiveRetentionActivityTime.date() > db_result.rdr_last_retention_activity_time.date()):
+                needs_update = True
+
+        return db_result.id, needs_update  # returning the id and whether an update is needed
 
     @classmethod
     def get_existing_record(cls, participant_id, session) -> RetentionEligibleMetrics:

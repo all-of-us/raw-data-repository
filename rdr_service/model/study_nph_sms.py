@@ -64,7 +64,7 @@ class SmsSample(NphBase):
     sample_identifier = Column(String(32))
     diet = Column(String(32))
     sex_at_birth = Column(String(32))
-    bmi = Column(String(4))
+    bmi = Column(String(32))
     age = Column(String(4))
     race = Column(String(1024))
     ethnicity = Column(String(1024))

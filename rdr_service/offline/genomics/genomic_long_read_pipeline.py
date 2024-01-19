@@ -28,3 +28,23 @@ def lr_l0_manifest_workflow():
                 manifest['file_path'],
                 "l0",
             )
+
+
+def lr_l3_manifest_workflow():
+    with GenomicJobController(
+        GenomicJob.LR_L3_WORKFLOW,
+        bucket_name=config.DRC_BROAD_BUCKET_NAME
+    ) as controller:
+        controller.generate_manifest(
+            manifest_type=GenomicManifestTypes.LR_L3,
+            genome_type=config.GENOME_TYPE_LR,
+        )
+        for manifest in controller.manifests_generated:
+            logging.info(
+                f"Loading L3 Manifest Raw Data: {manifest['file_path']}"
+            )
+            # Call pipeline function to load raw
+            load_manifest_into_raw_table(
+                manifest['file_path'],
+                "l3",
+            )

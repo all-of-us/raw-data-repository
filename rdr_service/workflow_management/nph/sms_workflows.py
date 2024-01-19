@@ -10,6 +10,7 @@ from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.workflow_management.general_job_controller import JobController
 from rdr_service.services.ancillary_studies.nph_incident import NphIncidentDao
 from rdr_service.services.slack_utils import SlackMessageHandler
+from rdr_service.workflow_management.nph.sms_validation import SmsValidator
 
 
 def get_slack_message_handler() -> SlackMessageHandler:
@@ -56,6 +57,7 @@ class SmsWorkflow:
         self.file_transfer_def = None
         self.file_dao = None
         self.env = workflow_def.get('env')
+        self.validator = SmsValidator(self.file_path, self.recipient)
 
         # Job Map
         self.process_map = {
@@ -128,7 +130,6 @@ class SmsWorkflow:
                     row[key] = None
         return rows
 
-
     def execute_workflow(self):
         """
         Entrypoint for SMS Workflow execution.
@@ -178,16 +179,20 @@ class SmsWorkflow:
         if self.file_dao:
             # look up if any rows exist already for the file
             records = self.file_dao.get_from_filepath(self.file_path)
-
             if records:
                 logging.warning(f'File already ingested: {self.file_path}')
                 return
 
             data_to_ingest = self.read_data_from_cloud_manifest(self.file_path)
-
             self.validate_columns(data_to_ingest["fieldnames"], self.file_dao)
-
             cleaned_rows = self.convert_empty_string_to_none(data_to_ingest["rows"])
+
+            if self.file_type == SmsFileTypes.SAMPLE_LIST:
+                try:
+                    self.validator.validate_pull_list(cleaned_rows)
+                except ValueError as e:
+                    logging.error(f"Validation failed: {e}")
+                    return
 
             self.write_data_to_manifest_table(cleaned_rows)
 
@@ -198,17 +203,21 @@ class SmsWorkflow:
         # Map a file type to a DAO
         if self.file_type == SmsFileTypes.N1_MC1:
             self.file_dao = SmsN1Mc1Dao()
-
         else:
             self.file_dao = None
 
         if self.file_dao:
             source_data = self.file_dao.source_data(recipient=self.recipient, package_id=self.package_id)
-
             if source_data:
+                try:
+                    self.validator.validate_n1(source_data)
+                except ValueError as e:
+                    logging.error(f"Validation failed: {e}")
+                    return
 
                 self.file_transfer_def = self.file_dao.get_transfer_def(recipient=self.recipient, env=self.env)
-
                 self.export_data_to_cloud(source_data)
-
                 self.write_data_to_manifest_table(source_data)
+                logging.info(
+                    f"N1 successfully generated for package id {self.package_id} and written to the table."
+                )

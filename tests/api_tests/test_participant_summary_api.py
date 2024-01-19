@@ -35,7 +35,8 @@ from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricData
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import (
     ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType,
-    TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus, IdVerificationOriginType)
+    TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus, IdVerificationOriginType, EnrollmentStatusV32
+)
 from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id, \
     load_qr_response_json
 from tests.helpers.unittest_base import BaseTestCase
@@ -2899,7 +2900,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", ps_2["sampleStatus2ED10"])
         self.assertEqual("UNSET", ps_2["samplesToIsolateDNA"])
-        self.assertEqual("PMB_ELIGIBLE", ps_2["enrollmentStatusV3_2"])
+        self.assertEqual("ENROLLED_PARTICIPANT", ps_2["enrollmentStatusV3_2"])
         self.assertEqual("COMPLETED", ps_2["clinicPhysicalMeasurementsStatus"])
         self.assertEqual(TIME_2.isoformat(), ps_2["clinicPhysicalMeasurementsTime"])
         self.assertEqual("GenderIdentity_Woman", ps_2["genderIdentity"])
@@ -3002,7 +3003,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&consentForCABoR=SUBMITTED", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=UNSET", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=COMPLETED", [[ps_2, ps_3]])
-            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=ENROLLED_PARTICIPANT", [[ps_1]])
+            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=ENROLLED_PARTICIPANT", [[ps_1, ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=CORE_PARTICIPANT", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NOT_WITHDRAWN", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[ps_2]])
@@ -3067,7 +3068,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", new_ps_2["sampleStatus1ED10"])
         self.assertEqual("UNSET", new_ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", new_ps_2["samplesToIsolateDNA"])
-        self.assertEqual("PMB_ELIGIBLE", new_ps_2["enrollmentStatusV3_2"])
+        self.assertEqual("ENROLLED_PARTICIPANT", new_ps_2["enrollmentStatusV3_2"])
         self.assertEqual("UNSET", new_ps_2["clinicPhysicalMeasurementsStatus"])
         self.assertEqual("SUBMITTED", new_ps_2["consentForStudyEnrollment"])
         self.assertIsNotNone(new_ps_2["consentForStudyEnrollmentAuthored"])
@@ -3868,7 +3869,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.session.commit()
 
         # Override the default config, disabling the fields on the API
-        self.temporarily_override_config_setting(config.ENABLE_ENROLLMENT_STATUS_3, False)
+        self.temporarily_override_config_setting(config.ENABLED_STATUS_FIELD_LIST, [])
         self.temporarily_override_config_setting(config.ENABLE_HEALTH_SHARING_STATUS_3, False)
 
         # Check that the new fields are hidden
@@ -4720,6 +4721,27 @@ class ParticipantSummaryApiTest(BaseTestCase):
         response = self.send_get(f'ParticipantSummary')
         self.assertEqual([], response['entry'])
         logging_mock.error.assert_called_with('Pediatric participant has unconsented guardian')
+
+    def test_pmb_eligible_masking(self):
+        """
+        While we're still holding back the PMB_ELIGIBLE status, any participants that would have that
+        status should appear as if they have the next one down
+        """
+
+        # Set up participant with PMB_ELIGIBLE status
+        summary = self.data_generator.create_database_participant_summary(
+            enrollmentStatusV3_2=EnrollmentStatusV32.PMB_ELIGIBLE,
+            enrollmentStatusPmbEligibleV3_2Time=datetime.datetime.today()
+        )
+
+        # Check that the 3.2 PM&B eligible status is achieved
+        response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertEqual('PMB_ELIGIBLE', response['enrollmentStatusV3_2'])
+
+        # Check that the status is masked if the config hides PM&B
+        self.temporarily_override_config_setting(config.ENABLED_STATUS_FIELD_LIST, ['enrollmentStatusV3_2'])
+        response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertEqual('ENROLLED_PARTICIPANT', response['enrollmentStatusV3_2'])
 
     @classmethod
     def _get_summary_response_id_list(self, response):

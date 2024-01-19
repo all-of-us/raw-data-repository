@@ -3,7 +3,7 @@ import json
 
 from datetime import datetime
 from types import SimpleNamespace as Namespace
-from typing import Tuple, Dict, List, Any, Optional
+from typing import Tuple, Dict, List, Any, Optional, Union
 
 from protorpc import messages
 from werkzeug.exceptions import BadRequest, NotFound
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Query, aliased
 from sqlalchemy import exc, func, case, and_, literal
 from sqlalchemy.dialects.mysql import JSON
 
+from rdr_service.ancillary_study_resources.nph.enums import StoredSampleStatus
 from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample,
     Activity, ParticipantEventActivity, EnrollmentEventType,
@@ -175,10 +176,14 @@ class NphParticipantDao(BaseDao):
                 return stored_samples_subquery.filter(Participant.id == nph_participant_id)
 
             if query_def := kwargs.get('query_def'):
-                if query_def.field_filters:
+                if applicable_filters := [
+                    filter_obj for filter_obj
+                    in query_def.field_filters
+                    if filter_obj.field_name in ['modified']
+                ]:
                     stored_samples_subquery = self._set_filters(
                         query=stored_samples_subquery,
-                        filters=query_def.field_filters,
+                        filters=applicable_filters,
                         model_type=StoredSample
                     )
 
@@ -246,7 +251,7 @@ class NphParticipantDao(BaseDao):
                                     (OrderedSample.test.ilike("ST%"), Order.nph_order_id),
                                 ],
                                 else_=None
-                            )
+                            ),
                         )
                     ), type_=JSON
                 ).label('orders_sample_status'),
@@ -257,6 +262,12 @@ class NphParticipantDao(BaseDao):
             ).join(
                 StudyCategory,
                 StudyCategory.id == Order.category_id
+            ).join(
+                PairingEvent,
+                PairingEvent.participant_id == Order.participant_id
+            ).join(
+                Site,
+                Site.id == PairingEvent.site_id
             ).outerjoin(
                 parent_study_category,
                 parent_study_category.id == StudyCategory.parent_id
@@ -1167,6 +1178,24 @@ class NphBiospecimenDao(BaseDao):
                 Operator.GREATER_THAN_OR_EQUALS,
                 value
             )
+        if field_name == 'nph_paired_site':
+            return FieldFilter(
+                'Site.external_id',
+                Operator.EQUALS,
+                value
+            )
+        if field_name == 'nph_paired_org':
+            return FieldFilter(
+                'Site.organization_external_id',
+                Operator.EQUALS,
+                value
+            )
+        if field_name == 'nph_paired_awardee':
+            return FieldFilter(
+                'Site.awardee_external_id',
+                Operator.EQUALS,
+                value
+            )
         return super().make_query_filter(field_name, value)
 
     def query(self, query_definition):
@@ -1196,6 +1225,45 @@ class NphBiospecimenDao(BaseDao):
                     field_names) if query_definition.always_return_token else None
             )
             return Results(items, token, more_available=False, total=total)
+
+    def _set_filters(self, query, filters, model_type=None):
+        model_filter_map = {'Order': Order, 'Site': Site}
+        for field_filter in filters:
+            updated_model_list: List = field_filter.field_name.split('.')
+            model_type, field_name = (model_type or self.model_type), field_filter.field_name
+            if len(updated_model_list) > 1:
+                model_type, field_name = model_filter_map.get(updated_model_list[0]), updated_model_list[-1]
+            try:
+                filter_attribute = getattr(model_type, field_name)
+            except AttributeError:
+                raise BadRequest(f"No field named {field_filter.field_name} found on {model_type}.")
+            query = self._add_filter(query, field_filter, filter_attribute)
+        return query
+
+    @classmethod
+    def update_biospeciman_stored_samples(
+        cls,
+        order_samples: dict,
+        order_biobank_samples: dict
+    ) -> Union[Optional[str], Any]:
+        if not order_samples:
+            return []
+        order_samples = order_samples.get('orders_sample_json')
+        for sample in order_samples:
+            sample['biobankStatus'] = []
+            if not order_biobank_samples:
+                continue
+            stored_samples = list(filter(lambda x: x.get('orderSampleID') == sample.get('sampleID'),
+                                         order_biobank_samples.get('orders_sample_biobank_json')))
+
+            sample['biobankStatus'] = [
+                {
+                    "limsID": stored_sample.get('limsID'),
+                    "biobankModified": stored_sample.get('biobankModified'),
+                    "status": str(StoredSampleStatus.lookup_by_number(stored_sample.get('status')))
+                } for stored_sample in stored_samples
+            ]
+        return order_samples
 
 
 class NphSampleUpdateDao(BaseDao):

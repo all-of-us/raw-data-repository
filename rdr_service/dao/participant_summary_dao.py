@@ -808,6 +808,7 @@ class ParticipantSummaryDao(UpdatableDao):
         enrl_dependencies = EnrollmentDependencies(
             consent_cohort=summary.consentCohort,
             primary_consent_authored_time=summary.consentForStudyEnrollmentFirstYesAuthored,
+            first_full_ehr_consent_authored_time=summary.consentForElectronicHealthRecordsFirstYesAuthored,
             gror_authored_time=summary.consentForGenomicsRORAuthored,
             basics_authored_time=summary.questionnaireOnTheBasicsAuthored,
             overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
@@ -1430,21 +1431,29 @@ class ParticipantSummaryDao(UpdatableDao):
             result["physicalMeasurementsFinalizedSite"] = "UNSET"
             result["physicalMeasurementsCollectType"] = str(PhysicalMeasurementsCollectType.SELF_REPORTED)
 
-        # Check to see if we should hide 3.0 and 3.2 fields
-        if not config.getSettingJson(config.ENABLE_ENROLLMENT_STATUS_3, default=False):
-            del result['enrollmentStatusV3_2']
-            for field_name in [
-                'enrollmentStatusParticipantV3_2Time',
-                'enrollmentStatusParticipantPlusEhrV3_2Time',
-                'enrollmentStatusEnrolledParticipantV3_2Time',
-                'enrollmentStatusPmbEligibleV3_2Time',
-                'enrollmentStatusCoreMinusPmV3_2Time',
-                'enrollmentStatusCoreV3_2Time',
-                'hasCoreData',
-                'hasCoreDataTime'
-            ]:
-                if field_name in result:
-                    del result[field_name]
+        # Check to see if we should hide 3.2 fields
+        enabled_status_fields = config.getSettingJson(config.ENABLED_STATUS_FIELD_LIST, default=[])
+        for status_field_name in [
+            'enrollmentStatusV3_2',
+            'enrollmentStatusParticipantV3_2Time',
+            'enrollmentStatusParticipantPlusEhrV3_2Time',
+            'enrollmentStatusEnrolledParticipantV3_2Time',
+            'enrollmentStatusPmbEligibleV3_2Time',
+            'enrollmentStatusCoreMinusPmV3_2Time',
+            'enrollmentStatusCoreV3_2Time',
+            'hasCoreData',
+            'hasCoreDataTime'
+        ]:
+            if (
+                status_field_name in result
+                and status_field_name not in enabled_status_fields
+            ):
+                del result[status_field_name]
+                if (
+                    status_field_name == 'enrollmentStatusPmbEligibleV3_2Time'
+                    and result.get('enrollmentStatusV3_2') == str(EnrollmentStatusV32.PMB_ELIGIBLE)
+                ):
+                    result['enrollmentStatusV3_2'] = str(EnrollmentStatusV32.ENROLLED_PARTICIPANT)
 
         # Check to see if we should hide digital health sharing fields
         if not config.getSettingJson(config.ENABLE_HEALTH_SHARING_STATUS_3, default=False):

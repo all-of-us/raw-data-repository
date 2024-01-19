@@ -249,8 +249,8 @@ def _query_and_write_received_report(exporter, report_path, query_params, report
     received_report_select = _RECONCILIATION_REPORT_SELECTS_SQL
     received_report_select += """,
         max(is_pediatric) ispediatric,
-        group_concat(ny_flag) ny_flag,
-        group_concat(sex_at_birth_flag) sex_at_birth_flag
+        group_concat(distinct ny_flag) ny_flag,
+        group_concat(distinct sex_at_birth_flag) sex_at_birth_flag
     """
     logging.info(f"Writing {report_path} report.")
     received_sql = replace_isodate(received_report_select + _RECONCILIATION_REPORT_SOURCE_SQL)
@@ -685,7 +685,7 @@ _RECONCILIATION_REPORT_SOURCE_SQL = (
       NULL edited_cancelled_restored_site_reason,
       NULL order_origin,
       participant.participant_origin,
-      'NA' ny_flag,
+      '' ny_flag,
       case when sex_code.value like 'sexatbirth_male' then 'M'
            when sex_code.value like 'sexatbirth_female' then 'F'
            else 'NA'
