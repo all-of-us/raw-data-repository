@@ -16,6 +16,7 @@ tool_desc = 'bulk data dump of participants from the PS API for vibrent'
 bucket_name = 'ptsc-metrics-all-of-us-rdr-prod'
 client = storage.Client()
 
+
 def upload_to_gcs(df, filename):
     bucket = client.get_bucket(bucket_name)
     filename = f'ops_data_api/{filename}'
@@ -82,15 +83,12 @@ class ParticipantSummaryDataDump(ToolBase):
                     for i in ignored_columns:
                         if i in row:
                             del row[i]
-                columns = []
                 chunk_end = min(count + chunk_size, total_rows)
                 df = pd.DataFrame(results)
                 filename = f'chunk_{count + 1}_{chunk_end}.csv'
                 count += chunk_size
-                print("results: ", chunk_size)
-                print(df)
                 # Upload the chunk to Google Cloud Storage
-                #upload_to_gcs(df, filename)
+                upload_to_gcs(df, filename)
             return summary_list
 
 
