@@ -200,5 +200,13 @@
     ]
   },
   "pm_height_codes": ["height", "8302-2"],
-  "pm_weight_codes": ["weight", "29463-7", "pre-pregnancy-weight"]
+  "pm_weight_codes": ["weight", "29463-7", "pre-pregnancy-weight"],
+  "participant_cleanup_cc_list": [
+    "heather.fullen@vumc.org",
+    "megan.morris@vumc.org",
+    "mara.a.porter@vumc.org",
+    "kayla.marginean@vumc.org",
+    "sundos.s.masri@vumc.org",
+    "mandy.roberts@vumc.org"
+  ]
 }

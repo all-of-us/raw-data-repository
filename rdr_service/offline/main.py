@@ -50,6 +50,7 @@ from rdr_service.resource.tasks import dispatch_check_consent_errors_task
 from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
     StoreResultStrategy
 from rdr_service.services.data_quality import DataQualityChecker
+from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.services.hpro_consent import HealthProConsentFile
 from rdr_service.services.flask import OFFLINE_PREFIX, flask_start, flask_stop
@@ -890,6 +891,35 @@ def nph_biobank_inventory_file_import():
 
 
 @app_util.auth_required_cron
+def ptsc_test_participant_cleanup_request():
+    date = datetime.today()
+    if date.month == 12:
+        month = 1
+    else:
+        month = date.month + 1
+    email_message = ("Dear PTSC Team,\n\nPlease begin the quarterly Test Account Maintenance process to ensure that "
+                     "any existing test accounts are flagged in PTSC systems and communicated to DRC in time for this "
+                     "quarters EHR Submission Cycle and subsequent curation work.\n\nPer Scott’s request, we have been "
+                     "advised to provide one month’s notice for this process, making the target completion date {0}/{1}."
+                     "\n\nThanks,\nDRC Team".format(str(month), date.strftime("%d/%Y")))
+
+    email = Email(
+        recipients=["Analytics.Support@researchallofus.org"],
+        cc_recipients=config.getSetting("participant_cleanup_cc_list"),
+        subject="Test Participant Cleanup Reminder",
+        plain_text_content=email_message
+    )
+    try:
+        logging.info("Sending ptsc cleanup email...")
+        EmailService.send_email(email)
+        logging.info("Success!")
+        return '{"success": "true"}'
+    except:
+        logging.error("Failed to send ptsc cleanup email")
+        return '{"success": "false"}'
+
+
+@app_util.auth_required_cron
 def nph_sms_n1_generation():
     n1_generation()
     return '{"success": "true"}'
@@ -1453,6 +1483,13 @@ def _build_pipeline_app():
         endpoint='genomic_notify_outreach_escalation',
         view_func=genomic_notify_gcr_outreach_escalation,
         methods=['GET']
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'PTSCTestParticipantCleanupRequest',
+        endpoint="ptsc_test_participant_cleanup_request",
+        view_func=ptsc_test_participant_cleanup_request,
+        methods=["GET"]
     )
 
     offline_app.add_url_rule(

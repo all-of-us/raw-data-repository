@@ -284,6 +284,8 @@ SENSITIVE_EHR_RELEASE_DATE = 'sensitive_ehr_release_date'
 PM_HEIGHT_CODES = 'pm_height_codes'
 PM_WEIGHT_CODES = 'pm_weight_codes'
 
+PARTICIPANT_CLEANUP_CC_LIST = 'participant_cleanup_cc_list'
+
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
 
