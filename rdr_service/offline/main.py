@@ -900,8 +900,8 @@ def ptsc_test_participant_cleanup_request():
     email_message = ("Dear PTSC Team,\n\nPlease begin the quarterly Test Account Maintenance process to ensure that "
                      "any existing test accounts are flagged in PTSC systems and communicated to DRC in time for this "
                      "quarters EHR Submission Cycle and subsequent curation work.\n\nPer Scott’s request, we have been "
-                     "advised to provide one month’s notice for this process, making the target completion date {0}/{1}."
-                     "\n\nThanks,\nDRC Team".format(str(month), date.strftime("%d/%Y")))
+                     "advised to provide one month’s notice for this process, making the target completion date "
+                     "{0}/{1}.\n\nThanks,\nDRC Team".format(str(month), date.strftime("%d/%Y")))
 
     email = Email(
         recipients=["Analytics.Support@researchallofus.org"],
@@ -914,7 +914,7 @@ def ptsc_test_participant_cleanup_request():
         EmailService.send_email(email)
         logging.info("Success!")
         return '{"success": "true"}'
-    except:
+    except ConnectionError as e:
         logging.error("Failed to send ptsc cleanup email")
         return '{"success": "false"}'
 
