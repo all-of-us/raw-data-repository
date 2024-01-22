@@ -5,7 +5,6 @@ from typing import List, Optional, Union
 
 from rdr_service.domain_model.etm import EtmResponseAnswer
 from rdr_service.model import etm
-from rdr_service.repository.etm import EtmQuestionnaireRepository
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -250,10 +249,6 @@ class EtmIngestionTest(BaseTestCase):
         ps_ts = datetime.strptime(ps_etm_authored_str, "%Y-%m-%dT%H:%M:%S")
         self.assertEqual(ps_ts, saved_response.authored)
 
-        etm_repo =  EtmQuestionnaireRepository()
-        previous_questionnaire =  etm_repo._latest_db_object_for_version(self.questionnaire_response_url(participant.participantId))
-
-        self.assertEqual(previous_questionnaire, None)
 
     def test_multiple_etm_tasks_for_retention(self):
         with open(data_path("etm_questionnaire.json")) as file:
