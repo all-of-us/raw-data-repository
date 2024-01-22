@@ -8,11 +8,6 @@ from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
 from rdr_service.config import getSetting, getSettingJson, DRC_BROAD_AW4_SUBFOLDERS, GENOMIC_AW5_WGS_SUBFOLDERS, \
     GENOMIC_AW5_ARRAY_SUBFOLDERS, GENOMIC_INGESTIONS
-# Deprecated : Previously used for old PDR data pipeline.
-# from rdr_service.dao.bq_genomics_dao import bq_genomic_set_batch_update, bq_genomic_set_member_batch_update, \
-#     bq_genomic_job_run_batch_update, bq_genomic_file_processed_batch_update, \
-#     bq_genomic_gc_validation_metrics_batch_update, bq_genomic_manifest_file_batch_update, \
-#     bq_genomic_manifest_feedback_batch_update
 from rdr_service.dao.genomics_dao import GenomicManifestFileDao, GenomicCloudRequestsDao, GenomicSetMemberDao, \
     GenomicGCValidationMetricsDao
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
@@ -21,13 +16,6 @@ from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.offline.genomics import genomic_dispatch, genomic_long_read_pipeline, genomic_proteomics_pipeline, \
     genomic_rna_pipeline
-# Deprecated : Previously used for old PDR data pipeline.
-# from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
-#     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
-#     genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, \
-#     genomic_user_event_metrics_batch_update, genomic_informing_loop_batch_update, \
-#     genomic_cvl_result_past_due_batch_update, genomic_member_report_state_batch_update, \
-#     genomic_result_viewed_batch_update, genomic_appointment_event_batch_update
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -720,88 +708,6 @@ class CalculateContaminationCategoryApi(BaseGenomicTaskApi):
                 s.merge(record.GenomicGCValidationMetrics)
 
                 logging.info(f"Updated contamination category for member id: {member_id}")
-
-
-# Deprecated : Previously used for old PDR data pipeline.
-# class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
-#     """
-#     Cloud Task endpoint: Rebuild Genomic table records for Resource/BigQuery.
-#     """
-#     def post(self):
-#         super(RebuildGenomicTableRecordsApi, self).post()
-#
-#         table = self.data.get('table')
-#         batch = self.data.get('ids')
-#
-#         if not table or not batch:
-#             logging.warning('Table and batch are both required in rebuild genomics payload')
-#             return {"success": False}
-#
-#         logging.info(f'Rebuilding {len(batch)} records for table {table}.')
-#
-#         rebuild_map = {
-#             'genomic_set': [
-#                 bq_genomic_set_batch_update,
-#                 genomic_set_batch_update
-#             ],
-#             'genomic_set_member': [
-#                 bq_genomic_set_member_batch_update,
-#                 genomic_set_member_batch_update
-#             ],
-#             'genomic_job_run': [
-#                 bq_genomic_job_run_batch_update,
-#                 genomic_job_run_batch_update
-#             ],
-#             'genomic_file_processed': [
-#                 bq_genomic_file_processed_batch_update,
-#                 genomic_file_processed_batch_update
-#             ],
-#             'genomic_gc_validation_metrics': [
-#                 bq_genomic_gc_validation_metrics_batch_update,
-#                 genomic_gc_validation_metrics_batch_update
-#             ],
-#             'genomic_informing_loop': [
-#                 genomic_informing_loop_batch_update
-#             ],
-#             'genomic_manifest_file': [
-#                 bq_genomic_manifest_file_batch_update,
-#                 genomic_manifest_file_batch_update
-#             ],
-#             'genomic_manifest_feedback': [
-#                 bq_genomic_manifest_feedback_batch_update,
-#                 genomic_manifest_feedback_batch_update
-#             ],
-#             'user_event_metrics': [
-#                 genomic_user_event_metrics_batch_update
-#             ],
-#             'genomic_cvl_result_past_due': [
-#                 genomic_cvl_result_past_due_batch_update
-#             ],
-#             'genomic_member_report_state': [
-#                 genomic_member_report_state_batch_update
-#             ],
-#             'genomic_result_viewed': [
-#                 genomic_result_viewed_batch_update
-#             ],
-#             'genomic_appointment_event': [
-#                 genomic_appointment_event_batch_update
-#             ]
-#         }
-#
-#         try:
-#             for method in rebuild_map[table]:
-#                 method(batch)
-#             logging.info('Rebuild complete.')
-#
-#             self.create_cloud_record()
-#             logging.info('Complete.')
-#
-#             return {"success": True}
-#
-#         except KeyError:
-#             logging.warning(f'Table {table} is invalid for genomic rebuild task')
-#
-#             return {"success": False}
 
 
 class GenomicSetMemberUpdateApi(BaseGenomicTaskApi):

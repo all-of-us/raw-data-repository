@@ -27,8 +27,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.model.config_utils import get_biobank_id_prefix
-# Deprecated Import : Previously used for old PDR data pipeline.
-# from rdr_service.resource.generators.genomics import genomic_user_event_metrics_batch_update
+
 from rdr_service.api_util import (
     open_cloud_file,
     list_blobs,
@@ -697,8 +696,6 @@ class GenomicFileIngester:
                     # Batch update PDR resource records.
                     # Publish PDR data-pipeline pub-sub event in chunks up to 250 records.
                     submit_pipeline_pubsub_msg_from_model(batch, database='rdr')
-                    # Deprecated : Previously used for old PDR data pipeline.
-                    # genomic_user_event_metrics_batch_update([r.id for r in batch])
 
                 item_count = 0
                 batch.clear()
@@ -710,8 +707,6 @@ class GenomicFileIngester:
                 session.commit()
                 # Batch update PDR resource records.
                 submit_pipeline_pubsub_msg_from_model(batch, database='rdr')
-                # Deprecated : Previously used for old PDR data pipeline.
-                # genomic_user_event_metrics_batch_update([r.id for r in batch])
 
         return GenomicSubProcessResult.SUCCESS
 
