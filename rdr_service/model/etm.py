@@ -24,6 +24,13 @@ class EtmQuestionnaire(Base):
     title = sa.Column(sa.String(512))
     resource = sa.Column(sa.JSON)
 
+    __table_args__ = (
+        sa.Index(
+            "etm_questionnaire_version_index_descending",
+            version.desc(),
+        ),
+    )
+
 
 class EtmQuestionnaireResponse(Base):
     __tablename__ = 'etm_questionnaire_response'
