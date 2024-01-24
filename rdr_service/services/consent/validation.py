@@ -455,7 +455,7 @@ class _ValidationOutputHelper:
         is_same_path = new_result.file_path == existing_result.file_path
         is_possible_match_valid = existing_result.sync_status in (
             ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE
-        )
+        ) and new_result.type != ConsentType.EHR
 
         # Determine if it's for the same consent response, regardless of the date actually on the file
         is_for_same_date = new_result.expected_sign_date == existing_result.expected_sign_date
