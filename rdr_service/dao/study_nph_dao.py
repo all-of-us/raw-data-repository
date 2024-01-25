@@ -12,6 +12,7 @@ from sqlalchemy.orm import Query, aliased
 from sqlalchemy import exc, func, case, and_, literal
 from sqlalchemy.dialects.mysql import JSON
 
+from rdr_service import config
 from rdr_service.ancillary_study_resources.nph.enums import StoredSampleStatus
 from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample,
@@ -378,13 +379,24 @@ class NphStudyCategoryDao(UpdatableDao):
         # return False and empty string if module not exist
         # otherwise, return True and time point id
         module = aliased(StudyCategory)
-        visit_type = aliased(StudyCategory)
+        visit = aliased(StudyCategory)
         time_point = aliased(StudyCategory)
+
         query = Query(time_point)
         query.session = session
-        result = query.filter(module.id == visit_type.parent_id, visit_type.id == time_point.parent_id,
-                              module.name == order.module, visit_type.name == order.visitType,
-                              time_point.name == order.timepoint).first()
+
+        visit_attr_name = 'visitType'
+        if config.getSettingJson('nph_read_visitPeriod', default=False):
+            visit_attr_name = 'visitPeriod'
+
+        result = query.filter(
+            module.id == visit.parent_id,
+            visit.id == time_point.parent_id,
+            module.name == order.module,
+            visit.name == getattr(order, visit_attr_name),
+            time_point.name == order.timepoint
+        ).first()
+
         if not result:
             return False, ""
         else:
@@ -397,20 +409,32 @@ class NphStudyCategoryDao(UpdatableDao):
         query = Query(StudyCategory)
         query.session = session
         time_point_record = query.filter(StudyCategory.id == category_id).first()
+
+        should_read_visit_period = config.getSettingJson('nph_read_visitPeriod', default=False)
+        visit_label = 'visitPeriod' if should_read_visit_period else 'visitType'
         if time_point_record:
-            visit_type_record = query.filter(StudyCategory.id == time_point_record.parent_id,
-                                             StudyCategory.type_label == "visitType").first()
+            visit_type_record = query.filter(
+                StudyCategory.id == time_point_record.parent_id,
+                StudyCategory.type_label == visit_label
+            ).first()
             if visit_type_record:
-                module_record = query.filter(StudyCategory.id == visit_type_record.parent_id,
-                                             StudyCategory.type_label == "module").first()
+                module_record = query.filter(
+                    StudyCategory.id == visit_type_record.parent_id,
+                    StudyCategory.type_label == "module"
+                ).first()
         return time_point_record, visit_type_record, module_record
 
     @staticmethod
     def validate_model(obj):
         if obj.__dict__.get("module") is None:
             raise BadRequest("Module is missing")
-        if obj.__dict__.get("visitType") is None:
+
+        should_read_visit_period = config.getSettingJson('nph_read_visitPeriod', default=False)
+        if not should_read_visit_period and obj.__dict__.get("visitType") is None:
             raise BadRequest("Visit Type is missing")
+        elif should_read_visit_period and obj.__dict__.get("visitPeriod") is None:
+            raise BadRequest("Visit Type is missing")
+
         if obj.__dict__.get("timepoint") is None:
             raise BadRequest("Time Point ID is missing")
 
@@ -431,8 +455,14 @@ class NphStudyCategoryDao(UpdatableDao):
         query = Query(StudyCategory)
         query.session = session
         if module:
-            result = query.filter(StudyCategory.type_label == "visitType", StudyCategory.name == order.visitType,
-                                  StudyCategory.parent_id == module.id).first()
+            should_read_visit_period = config.getSettingJson('nph_read_visitPeriod', default=False)
+            visit_name = order.visitPeriod if should_read_visit_period else order.visitType
+            visit_label = 'visitPeriod' if should_read_visit_period else 'visitType'
+            result = query.filter(
+                StudyCategory.type_label == visit_label,
+                StudyCategory.name == visit_name,
+                StudyCategory.parent_id == module.id
+            ).first()
             if result:
                 return True, result
 
@@ -554,8 +584,12 @@ class NphOrderDao(UpdatableDao):
 
         if payload.module != module_record.name:
             raise BadRequest(f"Module does not exist: {payload.module}")
-        if payload.visitType != visit_type_record.name:
-            raise BadRequest(f"VisitType does not match the corresponding module: {payload.visitType}")
+
+        should_read_visit_period = config.getSettingJson('nph_read_visitPeriod', default=False)
+        visit_name = payload.visitPeriod if should_read_visit_period else payload.visitType
+        if visit_name != visit_type_record.name:
+            raise BadRequest(f"VisitType does not match the corresponding module: {visit_name}")
+
         if payload.timepoint != time_point_record.name:
             raise BadRequest(f"TimePoint does not match the corresponding visitType: {payload.timepoint}")
 
@@ -756,8 +790,11 @@ class NphOrderDao(UpdatableDao):
             session=session
         )
         if not visit_exist:
+            should_read_visit_period = config.getSettingJson('nph_read_visitPeriod', default=False)
+            category_label = 'visitPeriod' if should_read_visit_period else 'visitType'
+            category_name = order.visitPeriod if should_read_visit_period else order.visitType
             visit = self.study_category_dao.insert_with_session(
-                obj=StudyCategory(name=order.visitType, type_label="visitType"),
+                obj=StudyCategory(name=category_name, type_label=category_label),
                 session=session
             )
             module.children.append(visit)
