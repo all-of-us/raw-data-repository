@@ -16,6 +16,7 @@ from dateutil.parser import parse
 import sqlalchemy
 
 from rdr_service import clock, config
+from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow
 from rdr_service.genomic.genomic_sub_workflow import GenomicSubWorkflow, GenomicSubLongReadWorkflow
@@ -26,7 +27,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.model.config_utils import get_biobank_id_prefix
-from rdr_service.resource.generators.genomics import genomic_user_event_metrics_batch_update
+
 from rdr_service.api_util import (
     open_cloud_file,
     list_blobs,
@@ -695,7 +696,8 @@ class GenomicFileIngester:
                     session.add_all(batch)
                     session.commit()
                     # Batch update PDR resource records.
-                    genomic_user_event_metrics_batch_update([r.id for r in batch])
+                    # Publish PDR data-pipeline pub-sub event in chunks up to 250 records.
+                    submit_pipeline_pubsub_msg_from_model(batch, database='rdr')
 
                 item_count = 0
                 batch.clear()
@@ -706,7 +708,7 @@ class GenomicFileIngester:
                 session.add_all(batch)
                 session.commit()
                 # Batch update PDR resource records.
-                genomic_user_event_metrics_batch_update([r.id for r in batch])
+                submit_pipeline_pubsub_msg_from_model(batch, database='rdr')
 
         return GenomicSubProcessResult.SUCCESS
 
