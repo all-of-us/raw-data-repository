@@ -1038,12 +1038,6 @@ class GenomicJobController:
             for chunk in list_chunks(batch_ids, 250):
                 submit_pipeline_pubsub_msg(table=table_name, action='upsert', pk_columns=['id'], pk_values=chunk)
                 count += 1
-                # TODO: Remove this cloud task code block and the RebuildGenomicTableRecordsApi endpoint when the
-                #       new RDR to PDR pipeline is in place.
-                self.execute_cloud_task({
-                    'table': table_name,
-                    'ids': chunk,
-                }, 'rebuild_genomic_table_records_task')
 
             logging.info(f'Sent {count} PubSub notifications.')
 
