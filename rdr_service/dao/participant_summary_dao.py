@@ -1258,7 +1258,7 @@ class ParticipantSummaryDao(UpdatableDao):
             client_id = 'example'  # account for temp configs that dont create the key
         return client_id
 
-    def get_record_from_attr(self, *, attr, value, **kwargs):
+    def get_record_from_attr(self, *, attr, value):
         with self.session() as session:
             record = session.query(ParticipantSummary)
             record = record.filter(
