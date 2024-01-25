@@ -1260,11 +1260,12 @@ class ParticipantSummaryDao(UpdatableDao):
 
     def get_record_from_attr(self, *, attr, value):
         with self.session() as session:
-            record = session.query(ParticipantSummary)\
-                .filter(ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                    getattr(ParticipantSummary, attr) == value,
-                    getattr(ParticipantSummary, attr).isnot(None))
-            return record.all()
+            record = session.query(ParticipantSummary)
+            record = record.filter(
+                getattr(ParticipantSummary, attr) == value,
+                getattr(ParticipantSummary, attr).isnot(None)
+            )
+            return record.first()
 
     def get_hpro_consent_paths(self, result):
         type_to_field_name_map = {  # Maps types to the prefix of the field name they populate in the resulting JSON
