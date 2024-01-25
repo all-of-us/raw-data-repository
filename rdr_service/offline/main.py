@@ -886,7 +886,8 @@ def genomic_notify_gcr_ce_outreach_escalation():
 
 @app_util.auth_required_cron
 def nph_biobank_nightly_file_drop():
-    study_nph_biobank_file_export_job()
+    if not config.getSettingJson('enable_nph_biobank_report_upload', default=True):
+        study_nph_biobank_file_export_job()
     return '{"success": "true"}'
 
 
