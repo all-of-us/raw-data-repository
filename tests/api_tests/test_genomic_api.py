@@ -176,7 +176,7 @@ class GPGenomicPIIApiTest(GenomicApiTestBase):
                          )
         self.assertEqual(resp.status_code, 404)
 
-        # summary / set member / failed validation in query
+        # summary / set member / but has withdrawn
         self.data_generator.create_database_genomic_set_member(
             genomicSetId=gen_set.id,
             participantId=participant.participantId,
@@ -185,6 +185,26 @@ class GPGenomicPIIApiTest(GenomicApiTestBase):
             genomeType="aou_array",
             genomicWorkflowState=GenomicWorkflowState.AW0
         )
+
+        summaries = self.ps_dao.get_all()
+        current_summary = list(filter(lambda x: x.participantId == participant.participantId, summaries))[0]
+        current_summary.withdrawalStatus = 2
+        self.ps_dao.update(current_summary)
+
+        resp = self.send_get(
+            f"GenomicPII/GP/P{participant.participantId}",
+            expected_status=http.client.NOT_FOUND
+        )
+
+        self.assertEqual(resp.json['message'], f'Participant with ID P{participant.participantId} '
+                                               f'has withdrawn')
+        self.assertEqual(resp.status_code, 404)
+
+        # summary / set member / not withdrawn / failed validation in query
+        summaries = self.ps_dao.get_all()
+        current_summary = list(filter(lambda x: x.participantId == participant.participantId, summaries))[0]
+        current_summary.withdrawalStatus = 1
+        self.ps_dao.update(current_summary)
 
         resp = self.send_get(
             f"GenomicPII/GP/P{participant.participantId}",

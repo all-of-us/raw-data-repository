@@ -18,7 +18,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.config import getSettingList, HPO_LITE_AWARDEE
 from rdr_service.code_constants import UNSET
-from rdr_service.participant_enums import ParticipantSummaryRecord
+from rdr_service.participant_enums import ParticipantSummaryRecord, WithdrawalStatus
 
 PTC_ALLOWED_ENVIRONMENTS = [
     'all-of-us-rdr-sandbox',
@@ -304,7 +304,7 @@ class ParticipantSummaryCheckLoginApi(BaseApi):
                         attr=accepted_map[key],
                         value=value
                     )
-                    if found_result:
+                    if found_result and found_result.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN:
                         status = ParticipantSummaryRecord.IN_USE
                         break
 
