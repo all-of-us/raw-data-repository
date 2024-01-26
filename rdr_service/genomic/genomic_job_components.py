@@ -303,6 +303,7 @@ class GenomicFileIngester:
             GenomicJob.LR_L2_ONT_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L2_PB_CCS_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L4_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L4F_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L5_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L6_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
@@ -2192,7 +2193,7 @@ class GenomicFileValidator:
             return (
                 len(filename_components) == 3 and
                 filename_components[0] == 'aou' and
-                filename_components[1] == 'l4' and
+                filename_components[1] in ['l4','l4f'] and
                 filename.lower().endswith('csv')
             )
 
@@ -2319,6 +2320,7 @@ class GenomicFileValidator:
             GenomicJob.LR_L2_ONT_WORKFLOW: lr_l2_ont_manifest_name_rule,
             GenomicJob.LR_L2_PB_CCS_WORKFLOW: lr_l2_pb_ccs_manifest_name_rule,
             GenomicJob.LR_L4_WORKFLOW: lr_l4_manifest_name_rule,
+            GenomicJob.LR_L4F_WORKFLOW: lr_l4_manifest_name_rule,
             GenomicJob.LR_L5_WORKFLOW: lr_l5_manifest_name_rule,
             GenomicJob.LR_L6_WORKFLOW: lr_l6_manifest_name_rule,
             GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule,
@@ -2451,7 +2453,10 @@ class GenomicFileValidator:
                 return self.LR_L2_ONT_SCHEMA
             if self.job_id == GenomicJob.LR_L2_PB_CCS_WORKFLOW:
                 return self.LR_L2_PB_CCS_SCHEMA
-            if self.job_id == GenomicJob.LR_L4_WORKFLOW:
+            if self.job_id in [
+                GenomicJob.LR_L4_WORKFLOW,
+                GenomicJob.LR_L4F_WORKFLOW
+            ]:
                 return self.LR_L4_SCHEMA
             if self.job_id == GenomicJob.LR_L5_WORKFLOW:
                 return self.LR_L5_SCHEMA
