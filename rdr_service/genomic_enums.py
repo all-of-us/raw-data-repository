@@ -178,6 +178,7 @@ class GenomicJob(messages.Enum):
     LR_L5_WORKFLOW = 307
     LR_L6_WORKFLOW = 308
     LR_L1F_WORKFLOW = 309
+    LR_L4F_WORKFLOW = 310
 
     LOAD_LR_TO_RAW_TABLE = 350
     LOAD_L0_TO_RAW_TABLE = 351
@@ -189,6 +190,7 @@ class GenomicJob(messages.Enum):
     LOAD_L5_TO_RAW_TABLE = 357
     LOAD_L6_TO_RAW_TABLE = 358
     LOAD_L1F_TO_RAW_TABLE = 359
+    LOAD_L4F_TO_RAW_TABLE = 360
 
     PR_PR_WORKFLOW = 400
     PR_P0_WORKFLOW = 401
@@ -363,6 +365,7 @@ class GenomicManifestTypes(messages.Enum):
     LR_L5 = 35
     LR_L6 = 36
     LR_L1F = 37
+    LR_L4F = 38
 
     PR_PR = 40
     PR_P0 = 41
