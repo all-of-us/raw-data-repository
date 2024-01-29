@@ -139,161 +139,6 @@ class NphParticipantDao(BaseDao):
                 EnrollmentEventType.source_name.notlike('%_losttofollowup')
             ).group_by(Participant.id).subquery()
 
-    def get_stored_samples_subquery(
-        self, *, nph_participant_id=None, **kwargs
-    ):
-        stored_sample_alias = aliased(StoredSample)
-        with self.session() as session:
-            stored_samples_subquery = session.query(
-                Participant.id.label('stored_sample_pid'),
-                func.json_object(
-                    'orders_sample_biobank_json',
-                    func.json_arrayagg(
-                        func.json_object(
-                            'limsID', StoredSample.lims_id,
-                            'biobankModified', StoredSample.biobank_modified,
-                            'status', StoredSample.status,
-                            'orderSampleID', StoredSample.sample_id
-                        )
-                    ), type_=JSON
-                ).label('orders_sample_biobank_status')
-            ).join(
-                StoredSample,
-                StoredSample.biobank_id == Participant.biobank_id
-            ).outerjoin(
-                stored_sample_alias,
-                and_(
-                    StoredSample.biobank_id == stored_sample_alias.biobank_id,
-                    stored_sample_alias.sample_id == StoredSample.sample_id,
-                    stored_sample_alias.status == StoredSample.status,
-                    StoredSample.id < stored_sample_alias.id
-                )
-            ).filter(
-                stored_sample_alias.id.is_(None)
-            ).group_by(Participant.id)
-
-            if nph_participant_id:
-                return stored_samples_subquery.filter(Participant.id == nph_participant_id)
-
-            if query_def := kwargs.get('query_def'):
-                if applicable_filters := [
-                    filter_obj for filter_obj
-                    in query_def.field_filters
-                    if filter_obj.field_name in ['modified']
-                ]:
-                    stored_samples_subquery = self._set_filters(
-                        query=stored_samples_subquery,
-                        filters=applicable_filters,
-                        model_type=StoredSample
-                    )
-
-            return stored_samples_subquery.subquery()
-
-    def get_orders_samples_subquery(self, *, nph_participant_id=None, **kwargs):
-        parent_study_category = aliased(StudyCategory)
-        parent_study_category_module = aliased(StudyCategory)
-        parent_ordered_sample = aliased(OrderedSample)
-        stored_samples_subquery = self.get_stored_samples_subquery(**kwargs)
-        with self.session() as session:
-            sample_orders = session.query(
-                Order.participant_id.label('orders_samples_pid'),
-                func.json_object(
-                    'orders_sample_json',
-                    func.json_arrayagg(
-                        func.json_object(
-                            'orderID', Order.nph_order_id,
-                            'visitID', parent_study_category.name,
-                            'studyID', parent_study_category_module.name,
-                            'timepointID', StudyCategory.name,
-                            'clientID', Order.client_id,
-                            'specimenCode', case(
-                                [
-                                    (OrderedSample.identifier.isnot(None), OrderedSample.identifier),
-                                ],
-                                else_=OrderedSample.test
-                            ),
-                            'volume', OrderedSample.volume,
-                            'volumeUOM', OrderedSample.volumeUnits,
-                            'orderedSampleStatus', case(
-                                [
-                                    (Order.status == 'cancelled', 'Cancelled'),
-                                    (OrderedSample.status.ilike('cancelled'), 'Cancelled'),
-                                ],
-                                else_='Active'
-                            ),
-                            'collectionDateUTC', case(
-                                [
-                                    (OrderedSample.parent_sample_id.isnot(None), parent_ordered_sample.collected),
-                                ],
-                                else_=OrderedSample.collected
-                            ),
-                            'processingDateUTC', case(
-                                [
-                                    (OrderedSample.parent_sample_id.isnot(None), OrderedSample.collected),
-                                ],
-                                else_=None
-                            ),
-                            'finalizedDateUTC', case(
-                                [
-                                    (OrderedSample.finalized.isnot(None), OrderedSample.finalized),
-                                ],
-                                else_=None
-                            ),
-                            'sampleID', case(
-                                [
-                                    (OrderedSample.aliquot_id.isnot(None), OrderedSample.aliquot_id),
-                                ],
-                                else_=OrderedSample.nph_sample_id
-                            ),
-                            'kitID', case(
-                                [
-                                    (OrderedSample.identifier.ilike("ST%"), Order.nph_order_id),
-                                    (OrderedSample.test.ilike("ST%"), Order.nph_order_id),
-                                ],
-                                else_=None
-                            ),
-                        )
-                    ), type_=JSON
-                ).label('orders_sample_status'),
-                stored_samples_subquery.c.orders_sample_biobank_status
-            ).join(
-                OrderedSample,
-                OrderedSample.order_id == Order.id
-            ).join(
-                StudyCategory,
-                StudyCategory.id == Order.category_id
-            ).join(
-                PairingEvent,
-                PairingEvent.participant_id == Order.participant_id
-            ).join(
-                Site,
-                Site.id == PairingEvent.site_id
-            ).outerjoin(
-                parent_study_category,
-                parent_study_category.id == StudyCategory.parent_id
-            ).outerjoin(
-                parent_study_category_module,
-                parent_study_category_module.id == parent_study_category.parent_id
-            ).outerjoin(
-                parent_ordered_sample,
-                parent_ordered_sample.id == OrderedSample.parent_sample_id
-            ).outerjoin(
-                stored_samples_subquery,
-                stored_samples_subquery.c.stored_sample_pid == Order.participant_id
-            ).group_by(Order.participant_id)
-
-            if nph_participant_id:
-                sample_orders = sample_orders.filter(
-                    Order.participant_id == nph_participant_id
-                )
-                return sample_orders.all()
-
-            if query_def := kwargs.get('query_def'):
-                if query_def.field_filters:
-                    return sample_orders
-
-            return sample_orders.subquery()
-
     def get_diet_status_subquery(self):
         diet_alias = aliased(DietEvent)
 
@@ -1157,7 +1002,6 @@ class NphIntakeDao(BaseDao):
 class NphBiospecimenDao(BaseDao):
     def __init__(self):
         super().__init__(Order, order_by_ending=["participant_id"])
-        self.nph_participant_dao = NphParticipantDao()
 
     def get_id(self, obj):
         return obj.id
@@ -1169,7 +1013,7 @@ class NphBiospecimenDao(BaseDao):
         return payload
 
     def _initialize_query(self, session, query_def):
-        return self.nph_participant_dao.get_orders_samples_subquery(query_def=query_def)
+        return self.get_orders_samples_subquery(query_def=query_def)
 
     def make_query_filter(self, field_name, value):
         if field_name == 'last_modified':
@@ -1264,6 +1108,159 @@ class NphBiospecimenDao(BaseDao):
                 } for stored_sample in stored_samples
             ]
         return order_samples
+
+    def get_stored_samples_subquery(
+        self, *, nph_participant_id=None, **kwargs
+    ):
+        stored_sample_alias = aliased(StoredSample)
+        with self.session() as session:
+            stored_samples_subquery = session.query(
+                Participant.id.label('stored_sample_pid'),
+                func.json_object(
+                    'orders_sample_biobank_json',
+                    func.json_arrayagg(
+                        func.json_object(
+                            'limsID', StoredSample.lims_id,
+                            'biobankModified', StoredSample.biobank_modified,
+                            'status', StoredSample.status,
+                            'orderSampleID', StoredSample.sample_id
+                        )
+                    ), type_=JSON
+                ).label('orders_sample_biobank_status')
+            ).join(
+                StoredSample,
+                StoredSample.biobank_id == Participant.biobank_id
+            ).outerjoin(
+                stored_sample_alias,
+                and_(
+                    StoredSample.biobank_id == stored_sample_alias.biobank_id,
+                    stored_sample_alias.sample_id == StoredSample.sample_id,
+                    stored_sample_alias.status == StoredSample.status,
+                    StoredSample.id < stored_sample_alias.id
+                )
+            ).filter(
+                stored_sample_alias.id.is_(None)
+            ).group_by(Participant.id)
+
+            if nph_participant_id:
+                return stored_samples_subquery.filter(Participant.id == nph_participant_id)
+
+            if query_def := kwargs.get('query_def'):
+                if applicable_filters := [
+                    filter_obj for filter_obj
+                    in query_def.field_filters
+                    if filter_obj.field_name in ['modified']
+                ]:
+                    stored_samples_subquery = self._set_filters(
+                        query=stored_samples_subquery,
+                        filters=applicable_filters,
+                        model_type=StoredSample
+                    )
+
+            return stored_samples_subquery.subquery()
+
+    def get_orders_samples_subquery(self, *, nph_participant_id=None, **kwargs):
+        parent_study_category = aliased(StudyCategory)
+        parent_study_category_module = aliased(StudyCategory)
+        parent_ordered_sample = aliased(OrderedSample)
+        stored_samples_subquery = self.get_stored_samples_subquery(**kwargs)
+        with self.session() as session:
+            sample_orders = session.query(
+                Order.participant_id.label('orders_samples_pid'),
+                func.json_object(
+                    'orders_sample_json',
+                    func.json_arrayagg(
+                        func.json_object(
+                            'orderID', Order.nph_order_id,
+                            'visitID', parent_study_category.name,
+                            'studyID', parent_study_category_module.name,
+                            'timepointID', StudyCategory.name,
+                            'clientID', Order.client_id,
+                            'specimenCode', case(
+                                [
+                                    (OrderedSample.identifier.isnot(None), OrderedSample.identifier),
+                                ],
+                                else_=OrderedSample.test
+                            ),
+                            'volume', OrderedSample.volume,
+                            'volumeUOM', OrderedSample.volumeUnits,
+                            'orderedSampleStatus', case(
+                                [
+                                    (Order.status == 'cancelled', 'Cancelled'),
+                                    (OrderedSample.status.ilike('cancelled'), 'Cancelled'),
+                                ],
+                                else_='Active'
+                            ),
+                            'collectionDateUTC', case(
+                                [
+                                    (OrderedSample.parent_sample_id.isnot(None), parent_ordered_sample.collected),
+                                ],
+                                else_=OrderedSample.collected
+                            ),
+                            'processingDateUTC', case(
+                                [
+                                    (OrderedSample.parent_sample_id.isnot(None), OrderedSample.collected),
+                                ],
+                                else_=None
+                            ),
+                            'finalizedDateUTC', case(
+                                [
+                                    (OrderedSample.finalized.isnot(None), OrderedSample.finalized),
+                                ],
+                                else_=None
+                            ),
+                            'sampleID', case(
+                                [
+                                    (OrderedSample.aliquot_id.isnot(None), OrderedSample.aliquot_id),
+                                ],
+                                else_=OrderedSample.nph_sample_id
+                            ),
+                            'kitID', case(
+                                [
+                                    (OrderedSample.identifier.ilike("ST%"), Order.nph_order_id),
+                                    (OrderedSample.test.ilike("ST%"), Order.nph_order_id),
+                                ],
+                                else_=None
+                            ),
+                        )
+                    ), type_=JSON
+                ).label('orders_sample_status'),
+                stored_samples_subquery.c.orders_sample_biobank_status
+            ).join(
+                OrderedSample,
+                OrderedSample.order_id == Order.id
+            ).join(
+                StudyCategory,
+                StudyCategory.id == Order.category_id
+            ).join(
+                PairingEvent,
+                PairingEvent.participant_id == Order.participant_id
+            ).join(
+                Site,
+                Site.id == PairingEvent.site_id
+            ).outerjoin(
+                parent_study_category,
+                parent_study_category.id == StudyCategory.parent_id
+            ).outerjoin(
+                parent_study_category_module,
+                parent_study_category_module.id == parent_study_category.parent_id
+            ).outerjoin(
+                parent_ordered_sample,
+                parent_ordered_sample.id == OrderedSample.parent_sample_id
+            ).outerjoin(
+                stored_samples_subquery,
+                stored_samples_subquery.c.stored_sample_pid == Order.participant_id
+            ).group_by(Order.participant_id)
+
+            if nph_participant_id:
+                sample_orders = sample_orders.filter(
+                    Order.participant_id == nph_participant_id
+                )
+                return sample_orders.all()
+
+            if query_def := kwargs.get('query_def'):
+                if query_def.field_filters:
+                    return sample_orders
 
 
 class NphSampleUpdateDao(BaseDao):
