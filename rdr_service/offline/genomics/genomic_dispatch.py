@@ -3,6 +3,7 @@ import logging
 from rdr_service import config
 from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicDefaultBaseDao
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
+from rdr_service.genomic.genomic_mappings import GENOMIC_FULL_INGESTION_MAP
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult
 from rdr_service.model.genomics import (GenomicLRRaw, GenomicL0Raw, GenomicPRRaw, GenomicP0Raw, GenomicW1ILRaw,
                                         GenomicW2SCRaw, GenomicW2WRaw, GenomicW3NSRaw, GenomicW3SCRaw, GenomicW3SRRaw,
@@ -216,40 +217,7 @@ def dispatch_genomic_job_from_task(
     :param project_id:
     :param _task_data: dictionary of metadata needed by the controller
     """
-
-    ingestion_workflows = (
-        GenomicJob.AW1_MANIFEST,
-        GenomicJob.AW1F_MANIFEST,
-        GenomicJob.METRICS_INGESTION,
-        GenomicJob.AW4_ARRAY_WORKFLOW,
-        GenomicJob.AW4_WGS_WORKFLOW,
-        GenomicJob.AW5_ARRAY_MANIFEST,
-        GenomicJob.AW5_WGS_MANIFEST,
-        GenomicJob.GEM_A2_MANIFEST,
-        GenomicJob.CVL_W2SC_WORKFLOW,
-        GenomicJob.CVL_W3NS_WORKFLOW,
-        GenomicJob.CVL_W3SC_WORKFLOW,
-        GenomicJob.CVL_W3SS_WORKFLOW,
-        GenomicJob.CVL_W4WR_WORKFLOW,
-        GenomicJob.CVL_W5NF_WORKFLOW,
-        GenomicJob.LR_LR_WORKFLOW,
-        GenomicJob.LR_L1_WORKFLOW,
-        GenomicJob.LR_L1F_WORKFLOW,
-        GenomicJob.LR_L2_ONT_WORKFLOW,
-        GenomicJob.LR_L2_PB_CCS_WORKFLOW,
-        GenomicJob.LR_L4_WORKFLOW,
-        GenomicJob.LR_L4F_WORKFLOW,
-        GenomicJob.LR_L5_WORKFLOW,
-        GenomicJob.LR_L6_WORKFLOW,
-        GenomicJob.PR_PR_WORKFLOW,
-        GenomicJob.PR_P1_WORKFLOW,
-        GenomicJob.PR_P2_WORKFLOW,
-        GenomicJob.RNA_RR_WORKFLOW,
-        GenomicJob.RNA_R1_WORKFLOW,
-        GenomicJob.RNA_R2_WORKFLOW,
-    )
-
-    if _task_data.job in ingestion_workflows:
+    if _task_data.job in GENOMIC_FULL_INGESTION_MAP:
         # Ingestion Job
         with GenomicJobController(_task_data.job,
                                   task_data=_task_data,

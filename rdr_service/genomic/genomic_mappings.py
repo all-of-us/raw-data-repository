@@ -1,7 +1,7 @@
 """
 This module provides central location for all genomics_mappings
 """
-from rdr_service.genomic_enums import GenomicReportState
+from rdr_service.genomic_enums import GenomicReportState, GenomicJob
 
 genome_type_to_aw1_aw2_file_prefix = {
     "aou_array": "GEN",
@@ -306,4 +306,263 @@ wgs_metrics_manifest_mapping = {
     'crai_path': 'craiPath',
     'gvcf_path': 'gvcfPath',
     'gvcf_md5_path': 'gvcfMd5Path'
+}
+
+GENOMIC_SHORT_READ_INGESTION_MAP = {
+    GenomicJob.AW1_MANIFEST: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.AW1F_MANIFEST: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.METRICS_INGESTION: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.AW4_ARRAY_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.AW4_WGS_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.AW5_ARRAY_MANIFEST: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.AW5_WGS_MANIFEST: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+}
+
+GENOMIC_GEM_INGESTION_MAP = {
+    GenomicJob.GEM_A2_MANIFEST: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+}
+
+GENOMIC_CVL_INGESTION_MAP = {
+    GenomicJob.CVL_W2SC_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.CVL_W3NS_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.CVL_W3SC_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.CVL_W3SS_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.CVL_W4WR_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.CVL_W5NF_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+}
+
+GENOMIC_LONG_READ_INGESTION_MAP = {
+    GenomicJob.LR_LR_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.LR_L1_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.LR_L1F_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.LR_L2_ONT_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.LR_L2_PB_CCS_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.LR_L4_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.LR_L4F_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.LR_L5_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.LR_L6_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+}
+
+GENOMIC_PROTEOMICS_INGESTION_MAP = {
+    GenomicJob.PR_PR_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.PR_P1_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.PR_P2_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    }
+}
+
+GENOMIC_RNA_INGESTION_MAP = {
+    GenomicJob.RNA_RR_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.RNA_R1_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    },
+    GenomicJob.RNA_R2_WORKFLOW: {
+        'raw': {
+            'model': '',
+            'job_id': ''
+        },
+        'cloud_task': '',
+        'ingestion_method': ''
+    }
+}
+
+GENOMIC_FULL_INGESTION_MAP = {
+    **GENOMIC_SHORT_READ_INGESTION_MAP,
+    **GENOMIC_GEM_INGESTION_MAP,
+    **GENOMIC_LONG_READ_INGESTION_MAP,
+    **GENOMIC_CVL_INGESTION_MAP,
+    **GENOMIC_PROTEOMICS_INGESTION_MAP,
+    **GENOMIC_RNA_INGESTION_MAP
 }
