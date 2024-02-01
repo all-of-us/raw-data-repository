@@ -2500,11 +2500,18 @@ class GenomicSchedulingDao(BaseDao):
                     ],
                     else_=False
                 ).label('note_available'),
+            ).select_from(
+                GenomicAppointmentEvent
             ).join(
                 max_appointment_id_subquery,
                 and_(
                     GenomicAppointmentEvent.participant_id == max_appointment_id_subquery.c.participant_id,
                     GenomicAppointmentEvent.module_type == max_appointment_id_subquery.c.module_type,
+                )
+            ).join(
+                GenomicSetMember,
+                and_(
+                    GenomicSetMember.participantId == GenomicAppointmentEvent.participant_id,
                 )
             ).outerjoin(
                 note_alias,
