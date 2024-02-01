@@ -1,18 +1,13 @@
 import logging
 
 from rdr_service import config
-from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicDefaultBaseDao
+from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
-from rdr_service.genomic.genomic_mappings import GENOMIC_FULL_INGESTION_MAP
+from rdr_service.genomic.genomic_manifest_mappings import GENOMIC_FULL_INGESTION_MAP
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult
-from rdr_service.model.genomics import (GenomicLRRaw, GenomicL0Raw, GenomicPRRaw, GenomicP0Raw, GenomicW1ILRaw,
-                                        GenomicW2SCRaw, GenomicW2WRaw, GenomicW3NSRaw, GenomicW3SCRaw, GenomicW3SRRaw,
-                                        GenomicW3SSRaw, GenomicW4WRRaw,
-                                        GenomicW5NFRaw, GenomicAW4Raw, GenomicAW3Raw, GenomicP1Raw, GenomicP2Raw,
-                                        GenomicRRRaw, GenomicR0Raw,
-                                        GenomicR1Raw, GenomicL1Raw, GenomicA2Raw, GenomicA3Raw, GenomicA1Raw,
-                                        GenomicR2Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, GenomicL3Raw, GenomicL4Raw,
-                                        GenomicL5Raw, GenomicL6Raw, GenomicL1FRaw, GenomicL4FRaw)
+from rdr_service.model.genomics import (GenomicL0Raw, GenomicP0Raw, GenomicW1ILRaw, GenomicW2WRaw, GenomicW3SRRaw,
+                                        GenomicRRRaw, GenomicR0Raw, GenomicR1Raw, GenomicA3Raw, GenomicA1Raw,
+                                        GenomicR2Raw, GenomicL3Raw, GenomicAW3Raw)
 
 from rdr_service.services.system_utils import JSONObject
 
@@ -25,31 +20,15 @@ def load_manifest_into_raw_table(
     cvl_site_id=None
 ):
     short_read_raw_map = {
-        "aw1": {
-            'job_id': GenomicJob.LOAD_AW1_TO_RAW_TABLE,
-            'dao': GenomicAW1RawDao
-        },
-        "aw2": {
-            'job_id': GenomicJob.LOAD_AW2_TO_RAW_TABLE,
-            'dao': GenomicAW2RawDao
-        },
         "aw3": {
             'job_id': GenomicJob.LOAD_AW3_TO_RAW_TABLE,
             'model': GenomicAW3Raw
-        },
-        "aw4": {
-            'job_id': GenomicJob.LOAD_AW4_TO_RAW_TABLE,
-            'model': GenomicAW4Raw
         }
     }
     gem_map = {
         "a1": {
             'job_id': GenomicJob.LOAD_A1_TO_RAW_TABLE,
             'model': GenomicA1Raw
-        },
-        "a2": {
-            'job_id': GenomicJob.LOAD_A2_TO_RAW_TABLE,
-            'model': GenomicA2Raw
         },
         "a3": {
             'job_id': GenomicJob.LOAD_A3_TO_RAW_TABLE,
@@ -61,102 +40,30 @@ def load_manifest_into_raw_table(
             'job_id': GenomicJob.LOAD_CVL_W1IL_TO_RAW_TABLE,
             'model': GenomicW1ILRaw
         },
-        "w2sc": {
-            'job_id': GenomicJob.LOAD_CVL_W2SC_TO_RAW_TABLE,
-            'model': GenomicW2SCRaw
-        },
         "w2w": {
             'job_id': GenomicJob.LOAD_CVL_W2W_TO_RAW_TABLE,
             'model': GenomicW2WRaw
         },
-        "w3ns": {
-            'job_id': GenomicJob.LOAD_CVL_W3NS_TO_RAW_TABLE,
-            'model': GenomicW3NSRaw
-        },
-        "w3sc": {
-            'job_id': GenomicJob.LOAD_CVL_W3SC_TO_RAW_TABLE,
-            'model': GenomicW3SCRaw
-        },
-        "w3ss": {
-            'job_id': GenomicJob.LOAD_CVL_W3SS_TO_RAW_TABLE,
-            'model': GenomicW3SSRaw
-        },
         "w3sr": {
             'job_id': GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE,
             'model': GenomicW3SRRaw
-        },
-        "w4wr": {
-            'job_id': GenomicJob.LOAD_CVL_W4WR_TO_RAW_TABLE,
-            'model': GenomicW4WRRaw
-        },
-        "w5nf": {
-            'job_id': GenomicJob.LOAD_CVL_W5NF_TO_RAW_TABLE,
-            'model': GenomicW5NFRaw
-        },
+        }
     }
     long_read_raw_map = {
-        "lr": {
-            'job_id': GenomicJob.LOAD_LR_TO_RAW_TABLE,
-            'model': GenomicLRRaw
-        },
         "l0": {
             'job_id': GenomicJob.LOAD_L0_TO_RAW_TABLE,
             'model': GenomicL0Raw
-        },
-        "l1": {
-            'job_id': GenomicJob.LOAD_L1_TO_RAW_TABLE,
-            'model': GenomicL1Raw
-        },
-        "l1f": {
-            'job_id': GenomicJob.LOAD_L1F_TO_RAW_TABLE,
-            'model': GenomicL1FRaw
-        },
-        "l2_ont": {
-            'job_id': GenomicJob.LOAD_L2_ONT_TO_RAW_TABLE,
-            'model': GenomicL2ONTRaw
-        },
-        "l2_pb_ccs": {
-            'job_id': GenomicJob.LOAD_L2_PB_CCS_TO_RAW_TABLE,
-            'model': GenomicL2PBCCSRaw
         },
         "l3": {
             'job_id': GenomicJob.LOAD_L3_TO_RAW_TABLE,
             'model': GenomicL3Raw
         },
-        "l4": {
-            'job_id': GenomicJob.LOAD_L4_TO_RAW_TABLE,
-            'model': GenomicL4Raw
-        },
-        "l4f": {
-            'job_id': GenomicJob.LOAD_L4F_TO_RAW_TABLE,
-            'model': GenomicL4FRaw
-        },
-        "l5": {
-            'job_id': GenomicJob.LOAD_L5_TO_RAW_TABLE,
-            'model': GenomicL5Raw
-        },
-        "l6": {
-            'job_id': GenomicJob.LOAD_L6_TO_RAW_TABLE,
-            'model': GenomicL6Raw
-        }
     }
     pr_raw_map = {
-        "pr": {
-            'job_id': GenomicJob.LOAD_PR_TO_RAW_TABLE,
-            'model': GenomicPRRaw
-        },
         "p0": {
             'job_id': GenomicJob.LOAD_P0_TO_RAW_TABLE,
             'model': GenomicP0Raw
         },
-        "p1": {
-            'job_id': GenomicJob.LOAD_P1_TO_RAW_TABLE,
-            'model': GenomicP1Raw
-        },
-        "p2": {
-            'job_id': GenomicJob.LOAD_P2_TO_RAW_TABLE,
-            'model': GenomicP2Raw
-        }
     }
     rna_raw_map = {
         "rr": {
