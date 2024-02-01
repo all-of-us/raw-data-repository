@@ -10,18 +10,18 @@ from rdr_service.dao.study_nph_dao import NphBiospecimenDao, NphParticipantDao
 class NphBiospecimenAPI(BaseApi):
     def __init__(self):
         super().__init__(NphBiospecimenDao())
-        self.nph_participant_dao = NphParticipantDao()
 
     @auth_required(RDR_AND_HEALTHPRO + [RTI])
     def get(self, nph_participant_id=None):
         log_api_request(log=request.log_record)
         if nph_participant_id:
-            with self.nph_participant_dao.session() as session:
-                if self.nph_participant_dao.get_participant_by_id(
+            nph_participant_dao = NphParticipantDao()
+            with nph_participant_dao.session() as session:
+                if nph_participant_dao.get_participant_by_id(
                     nph_participant_id,
                     session
                 ):
-                    biospecimen_data = self.nph_participant_dao.get_orders_samples_subquery(
+                    biospecimen_data = self.dao.get_orders_samples_subquery(
                         nph_participant_id=nph_participant_id
                     )
                     return self._make_response(biospecimen_data)

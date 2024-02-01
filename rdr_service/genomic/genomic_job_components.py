@@ -306,6 +306,7 @@ class GenomicFileIngester:
             GenomicJob.LR_L4F_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L5_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L6_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L6F_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
@@ -2188,12 +2189,12 @@ class GenomicFileValidator:
 
         def lr_l4_manifest_name_rule():
             """
-            LR L4 manifest name rule
+            LR L4/L4F manifest name rule
             """
             return (
                 len(filename_components) == 3 and
                 filename_components[0] == 'aou' and
-                filename_components[1] in ['l4','l4f'] and
+                filename_components[1] in ['l4', 'l4f'] and
                 filename.lower().endswith('csv')
             )
 
@@ -2210,12 +2211,12 @@ class GenomicFileValidator:
 
         def lr_l6_manifest_name_rule():
             """
-            LR L6 manifest name rule
+            LR L6/L6F manifest name rule
             """
             return (
                 len(filename_components) == 3 and
                 filename_components[0] == 'aou' and
-                filename_components[1] == 'l6' and
+                filename_components[1] in ['l6', 'l6f'] and
                 filename.lower().endswith('csv')
             )
 
@@ -2323,6 +2324,7 @@ class GenomicFileValidator:
             GenomicJob.LR_L4F_WORKFLOW: lr_l4_manifest_name_rule,
             GenomicJob.LR_L5_WORKFLOW: lr_l5_manifest_name_rule,
             GenomicJob.LR_L6_WORKFLOW: lr_l6_manifest_name_rule,
+            GenomicJob.LR_L6F_WORKFLOW: lr_l6_manifest_name_rule,
             GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule,
             GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule,
             GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule,
@@ -2460,7 +2462,10 @@ class GenomicFileValidator:
                 return self.LR_L4_SCHEMA
             if self.job_id == GenomicJob.LR_L5_WORKFLOW:
                 return self.LR_L5_SCHEMA
-            if self.job_id == GenomicJob.LR_L6_WORKFLOW:
+            if self.job_id in [
+                GenomicJob.LR_L6_WORKFLOW,
+                GenomicJob.LR_L6F_WORKFLOW
+            ]:
                 return self.LR_L6_SCHEMA
             if self.job_id == GenomicJob.PR_PR_WORKFLOW:
                 return self.PR_PR_SCHEMA
