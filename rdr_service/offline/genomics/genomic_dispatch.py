@@ -6,8 +6,7 @@ from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_manifest_mappings import GENOMIC_FULL_INGESTION_MAP
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult
 from rdr_service.model.genomics import (GenomicL0Raw, GenomicP0Raw, GenomicW1ILRaw, GenomicW2WRaw, GenomicW3SRRaw,
-                                        GenomicRRRaw, GenomicR0Raw, GenomicR1Raw, GenomicA3Raw, GenomicA1Raw,
-                                        GenomicR2Raw, GenomicL3Raw, GenomicAW3Raw)
+  GenomicR0Raw, GenomicA3Raw, GenomicA1Raw, GenomicL3Raw, GenomicAW3Raw)
 
 from rdr_service.services.system_utils import JSONObject
 
@@ -66,26 +65,10 @@ def load_manifest_into_raw_table(
         },
     }
     rna_raw_map = {
-        "rr": {
-            'job_id': GenomicJob.LOAD_RR_TO_RAW_TABLE,
-            'model': GenomicRRRaw
-        },
         "r0": {
             'job_id': GenomicJob.LOAD_RO_TO_RAW_TABLE,
             'model': GenomicR0Raw
         },
-        "r1": {
-            'job_id': GenomicJob.LOAD_R1_TO_RAW_TABLE,
-            'model': GenomicR1Raw,
-            'special_mappings': {
-                '260_230': 'two_sixty_two_thirty',
-                '260_280': 'two_sixty_two_eighty'
-            }
-        },
-        "r2": {
-            'job_id': GenomicJob.LOAD_R2_TO_RAW_TABLE,
-            'model': GenomicR2Raw
-        }
     }
 
     try:
@@ -95,7 +78,8 @@ def load_manifest_into_raw_table(
             **long_read_raw_map,
             **cvl_raw_map,
             **pr_raw_map,
-            **rna_raw_map
+            **rna_raw_map,
+            **{k: v.get('raw') for k, v in GENOMIC_FULL_INGESTION_MAP.items() if v.get('raw')}
         }[manifest_type]
 
         with GenomicJobController(
