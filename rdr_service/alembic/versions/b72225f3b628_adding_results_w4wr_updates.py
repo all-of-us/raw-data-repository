@@ -8,7 +8,7 @@ Create Date: 2022-03-22 12:27:48.967252
 from alembic import op
 import sqlalchemy as sa
 import rdr_service.model.utils
-from rdr_service.genomic_enums import ResultsWorkflowState, ResultsModuleType
+from rdr_service.genomic_enums import ResultsModuleType
 
 # revision identifiers, used by Alembic.
 revision = 'b72225f3b628'
@@ -58,8 +58,6 @@ def upgrade_rdr():
     sa.Column('created', sa.DateTime(), nullable=True),
     sa.Column('modified', sa.DateTime(), nullable=True),
     sa.Column('genomic_set_member_id', sa.Integer(), nullable=False),
-    sa.Column('results_workflow_state', rdr_service.model.utils.Enum(ResultsWorkflowState), nullable=True),
-    sa.Column('results_workflow_state_str', sa.String(length=64), nullable=True),
     sa.Column('results_module', rdr_service.model.utils.Enum(ResultsModuleType), nullable=False),
     sa.Column('results_module_str', sa.String(length=64), nullable=True),
     sa.Column('ignore_flag', sa.SmallInteger(), nullable=False),

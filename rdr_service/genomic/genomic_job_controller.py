@@ -147,22 +147,18 @@ class GenomicJobController:
         self.execute_auto_generation_from_cloud_task()
 
     def execute_auto_generation_from_cloud_task(self):
-        try:
-            auto_generation_manifest_map = {
-                GenomicJob.LR_LR_WORKFLOW: 'l0',
-                GenomicJob.PR_PR_WORKFLOW: 'p0',
-                GenomicJob.RNA_RR_WORKFLOW: 'r0'
-            }[self.job_id]
-
-            last_job_run_status = self.job_run_dao.get_last_run_status_for_job_id(job_id=self.job_id)
-            if last_job_run_status and last_job_run_status[0] in [GenomicSubProcessResult.SUCCESS]:
-                self.execute_cloud_task(
-                    payload={'manifest_type': auto_generation_manifest_map},
-                    endpoint='genomic_generate_manifest',
-                    task_queue='genomic-generate-manifest'
-                )
-        except KeyError:
-            pass
+        auto_generation_manifest_map = {
+            GenomicJob.LR_LR_WORKFLOW: 'l0',
+            GenomicJob.PR_PR_WORKFLOW: 'p0',
+            GenomicJob.RNA_RR_WORKFLOW: 'r0'
+        }
+        auto_generate_manifest_type = auto_generation_manifest_map.get(self.job_id)
+        if auto_generate_manifest_type and self.job_result == GenomicSubProcessResult.SUCCESS:
+            self.execute_cloud_task(
+                payload={'manifest_type': auto_generate_manifest_type},
+                endpoint='genomic_generate_manifest',
+                task_queue='genomic-generate-manifest'
+            )
 
     def insert_genomic_manifest_file_record(self):
         """
@@ -1042,12 +1038,6 @@ class GenomicJobController:
             for chunk in list_chunks(batch_ids, 250):
                 submit_pipeline_pubsub_msg(table=table_name, action='upsert', pk_columns=['id'], pk_values=chunk)
                 count += 1
-                # TODO: Remove this cloud task code block and the RebuildGenomicTableRecordsApi endpoint when the
-                #       new RDR to PDR pipeline is in place.
-                self.execute_cloud_task({
-                    'table': table_name,
-                    'ids': chunk,
-                }, 'rebuild_genomic_table_records_task')
 
             logging.info(f'Sent {count} PubSub notifications.')
 
@@ -1908,12 +1898,15 @@ class GenomicJobController:
         wgs_missing_data = self.query_dao.get_missing_data_files_for_aw3(
             genome_type=config.GENOME_TYPE_WGS
         )
+
         if notification_email_address and any((array_missing_data, wgs_missing_data)):
-            message = 'The following samples matched AW3 manifest criteria except for the data file count:\n\n'
-            message += 'sample_id, aw2 manifest date, genome_type\n'
-            message += '\n'.join([f'{sample[0]}, {sample[1]}, aou_array' for sample in array_missing_data])
+            message = 'The following samples matched AW3 manifest criteria except for these data files:\n\n'
+            message += 'date_reported, sample_id, gc, aw2_file_path, missing_files\n'
+            message += '\n'.join([f'{sample[0]}, {sample[1]}, {sample[2]}, {sample[3]}, Missing {sample[4]} files for '
+                                  f'these samples' for sample in array_missing_data])
             message += '\n'
-            message += '\n'.join([f'{sample[0]}, {sample[1]}, aou_wgs' for sample in wgs_missing_data])
+            message += '\n'.join([f'{sample[0]}, {sample[1]}, {sample[2]}, {sample[3]}, Missing {sample[4]} files for '
+                                  f'these samples' for sample in wgs_missing_data])
             message += '\n'
             EmailService.send_email(
                 Email(
@@ -2093,7 +2086,7 @@ class DataQualityJobController:
     Executes jobs as cloud tasks or via tools ran locally
     """
 
-    def __init__(self, job, bq_project_id=None):
+    def __init__(self, job: GenomicJob, bq_project_id: str = None):
         super().__init__()
 
         # Job attributes
@@ -2155,17 +2148,18 @@ class DataQualityJobController:
         :param job:
         :return:
         """
-        job_registry = {
-            GenomicJob.DAILY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
+        return {
             GenomicJob.WEEKLY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
-            GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.WEEKLY_SUMMARY_REPORT_INGESTIONS: self.get_report,
+            GenomicJob.DAILY_SUMMARY_SHORTREAD_REPORT_INGESTIONS: self.get_report,
+            GenomicJob.DAILY_SUMMARY_LONGREAD_REPORT_INGESTIONS: self.get_report,
+            GenomicJob.DAILY_SUMMARY_PROTEOMICS_REPORT_INGESTIONS: self.get_report,
+            GenomicJob.DAILY_SUMMARY_RNA_REPORT_INGESTIONS: self.get_report,
+            GenomicJob.DAILY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
             GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS: self.get_report,
             GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED: self.get_report,
             GenomicJob.DAILY_SEND_VALIDATION_EMAILS: self.send_validation_emails,
-        }
-
-        return job_registry[job]
+        }[job]
 
     def execute_workflow(self, **kwargs):
         """
@@ -2214,7 +2208,7 @@ class DataQualityJobController:
             file_path = rc.create_report_file(
                 report_string=report_string,
                 display_name=report_params['display_name'],
-                report_type=report_params['target']
+                report_type=report_params['report_type']
             )
             message = report_params['display_name'] + " too long for output.\n"
             message += f"Report too long for Slack Output, download the report here:" \

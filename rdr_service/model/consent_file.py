@@ -2,6 +2,7 @@ from protorpc import messages
 from sqlalchemy import Boolean, Column, Date, event, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
+from rdr_service import code_constants
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import Enum, UTCDateTime
@@ -16,6 +17,7 @@ class ConsentOtherErrors:
     SENSITIVE_EHR_EXPECTED = 'non-sensitive ehr consent given when sensitive version expected'
     NONSENSITIVE_EHR_EXPECTED = 'sensitive ehr consent given when non-sensitive version expected'
     INITIALS_MISSING_ON_SENSITIVE_EHR = 'missing expected initials on sensitive ehr'
+    UNEXPECTED_GUARDIAN_NAME = 'name on pdf does not match previously identified guardian'
 
 
 class ConsentType(messages.Enum):
@@ -43,7 +45,9 @@ CONSENT_TYPE_MODULE_NAMES = {
     ConsentType.PRIMARY_RECONSENT: ['vaprimaryreconsent_c1_2', 'vaprimaryreconsent_c3', 'nonvaprimaryreconsent'],
     ConsentType.EHR_RECONSENT: ['vaehrreconsent'],
     # TODO: Currently seeing both ETM module strings in lower env test payloads.  Confirm if both will be needed
-    ConsentType.ETM: ['welcome_to_etm', 'english_exploring_the_mind_consent_form']
+    ConsentType.ETM: ['welcome_to_etm', 'english_exploring_the_mind_consent_form'],
+    ConsentType.PEDIATRIC_PRIMARY: code_constants.PEDIATRIC_PRIMARY_CONSENT_MODULE,
+    ConsentType.PEDIATRIC_EHR: code_constants.PEDIATRIC_EHR_CONSENT
     # ConsentType.UNKNOWN intentionally omitted
 }
 
@@ -77,6 +81,8 @@ class ConsentFile(Base):
     signing_date = Column(Date, nullable=True)
     printed_name = Column(String(200), nullable=True)
     expected_sign_date = Column(Date, nullable=True)
+    guardian_printed_name = Column(String(200), nullable=True)
+    guardian_relationship = Column(String(32))
 
     file_upload_time = Column(UTCDateTime, nullable=True)
     file_path = Column(String(250), nullable=True)
@@ -91,6 +97,7 @@ class ConsentFile(Base):
 
     consent_response = relationship('ConsentResponse')
     consent_error_report = relationship('ConsentErrorReport')
+
 
 # DA-2611:  Track which consent_file records with validation errors already had error reports generated.
 # Table schema may expand to include other details as warranted

@@ -6,9 +6,9 @@ from ._base import BaseGenerator, ResourceRecordSet
 from .code import CodeGenerator
 from .participant import ParticipantSummaryGenerator
 from .retention_metrics import RetentionEligibleMetricGenerator
-from .genomics import GenomicSetSchemaGenerator, GenomicManifestFileSchemaGenerator, GenomicJobRunSchemaGenerator, \
-    GenomicGCValidationMetricsSchemaGenerator, GenomicFileProcessedSchemaGenerator, GenomicSetMemberSchemaGenerator, \
-    GenomicManifestFeedbackSchemaGenerator, GenomicUserEventMetricsSchemaGenerator
+# from .genomics import GenomicSetSchemaGenerator, GenomicManifestFileSchemaGenerator, GenomicJobRunSchemaGenerator, \
+#     GenomicGCValidationMetricsSchemaGenerator, GenomicFileProcessedSchemaGenerator, GenomicSetMemberSchemaGenerator, \
+#     GenomicManifestFeedbackSchemaGenerator, GenomicUserEventMetricsSchemaGenerator
 from .workbench import WBWorkspaceGenerator, WBWorkspaceUsersGenerator, WBInstitutionalAffiliationsGenerator, \
     WBResearcherGenerator
 from .consent_metrics import ConsentMetricGenerator, ConsentErrorReportGenerator
@@ -22,14 +22,14 @@ __all__ = [
     'RetentionEligibleMetricGenerator',
     'ConsentMetricGenerator',
     'ConsentErrorReportGenerator',
-    'GenomicSetSchemaGenerator',
-    'GenomicManifestFileSchemaGenerator',
-    'GenomicJobRunSchemaGenerator',
-    'GenomicGCValidationMetricsSchemaGenerator',
-    'GenomicFileProcessedSchemaGenerator',
-    'GenomicSetMemberSchemaGenerator',
-    'GenomicManifestFeedbackSchemaGenerator',
-    'GenomicUserEventMetricsSchemaGenerator',
+    # 'GenomicSetSchemaGenerator',
+    # 'GenomicManifestFileSchemaGenerator',
+    # 'GenomicJobRunSchemaGenerator',
+    # 'GenomicGCValidationMetricsSchemaGenerator',
+    # 'GenomicFileProcessedSchemaGenerator',
+    # 'GenomicSetMemberSchemaGenerator',
+    # 'GenomicManifestFeedbackSchemaGenerator',
+    # 'GenomicUserEventMetricsSchemaGenerator',
     'WBWorkspaceGenerator',
     'WBWorkspaceUsersGenerator',
     'WBInstitutionalAffiliationsGenerator',

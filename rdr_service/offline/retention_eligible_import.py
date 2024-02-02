@@ -255,18 +255,27 @@ def _create_retention_eligible_metrics_obj_from_row(row, upload_date) -> Retenti
 
 def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, session):
     """Fill in the rdr eligibility calculations for comparison"""
-    summary_dao = ParticipantSummaryDao()
 
+    retention_data = build_retention_data(participant_id=metrics_data.participantId, session=session)
+    if retention_data:
+        metrics_data.rdr_retention_eligible = retention_data.is_eligible
+        metrics_data.rdr_retention_eligible_time = retention_data.retention_eligible_date
+        metrics_data.rdr_last_retention_activity_time = retention_data.last_active_retention_date
+        metrics_data.rdr_is_actively_retained = retention_data.is_actively_retained
+        metrics_data.rdr_is_passively_retained = retention_data.is_passively_retained
+
+
+def build_retention_data(participant_id, session) -> Optional[RetentionEligibility]:
+    summary_dao = ParticipantSummaryDao()
     summary: ParticipantSummary = summary_dao.get_with_session(
         session=session,
-        obj_id=metrics_data.participantId
+        obj_id=participant_id
     )
 
     if not summary:
-        # PTSC currently included  REGISTERED participants without primary consent yet, so only emit warning if there
-        # is no participant_summary record found
-        logging.warning(f'no summary for P{metrics_data.participantId}')
-        return
+        # RDR doesn't currently display retention status information of participants without primary consent
+        logging.warning(f'no summary for P{participant_id}')
+        return None
 
     dependencies = RetentionEligibilityDependencies(
         primary_consent=Consent(
@@ -321,13 +330,8 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
         bhp_response_timestamp=summary.questionnaireOnBehavioralHealthAndPersonalityAuthored,
         latest_etm_response_timestamp=summary.latestEtMTaskAuthored
     )
-    retention_data = RetentionEligibility(dependencies)
+    return RetentionEligibility(dependencies)
 
-    metrics_data.rdr_retention_eligible = retention_data.is_eligible
-    metrics_data.rdr_retention_eligible_time = retention_data.retention_eligible_date
-    metrics_data.rdr_last_retention_activity_time = retention_data.last_active_retention_date
-    metrics_data.rdr_is_actively_retained = retention_data.is_actively_retained
-    metrics_data.rdr_is_passively_retained = retention_data.is_passively_retained
 
 def _get_earliest_intent_for_ehr(session, participant_id) -> Optional[Consent]:
     date_range_list = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(

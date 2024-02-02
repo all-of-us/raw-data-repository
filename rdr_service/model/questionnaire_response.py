@@ -51,6 +51,11 @@ class QuestionnaireResponse(Base):
     externalId = Column('external_id', String(64), nullable=True)
     """@rdr_dictionary_internal_column"""
 
+    invalid_reason = Column(String(300))
+    """
+    A note on the reason why a particular questionnaire response is invalid.
+    """
+
     classificationType = Column(
         'classification_type',
         EnumZeroBased(QuestionnaireResponseClassificationType),

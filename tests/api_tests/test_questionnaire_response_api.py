@@ -2195,6 +2195,15 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(1, participant_summary.numCompletedPPIModules)
         self.assertEqual(1, participant_summary.numCompletedBaselinePPIModules)
 
+        # PDR-2210: Verify PDR BigQuery generator maps the mod name to NIH-requested value, and identifies it
+        # as baseline module
+        bqs_rsc = self.make_bq_participant_summary(participant_id)
+        mod_list = self.get_generated_items(bqs_rsc['modules'])
+        self.assertEqual(1, len(mod_list))
+        mod_data = mod_list[0]
+        self.assertEqual(mod_data['mod_module'], 'ped_environmental_exposures')
+        self.assertEqual(mod_data['mod_baseline_module'], 1)
+
     def test_pediatrics_permission(self):
         """
         Check that the pediatrics version of primary consent maps to the correct fields on participant summary

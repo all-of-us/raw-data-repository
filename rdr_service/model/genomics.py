@@ -1752,12 +1752,375 @@ class GenomicL1Raw(Base):
     contact = Column(String(255), nullable=True)
     email = Column(String(255), nullable=True)
     study_pi = Column(String(255), nullable=True)
-    site_name = Column(String(255), nullable=True, index=True)
     genome_type = Column(String(80), nullable=True, index=True)
     lr_site_id = Column(String(80), nullable=True, index=True)
     long_read_platform = Column(String(80), nullable=True, index=True)
     failure_mode = Column(String(255), nullable=True)
     failure_mode_desc = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL1Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicL1Raw, 'before_update', model_update_listener)
+
+
+class GenomicL1FRaw(Base):
+    """
+    Raw Data from L1D files
+    """
+    __tablename__ = 'genomic_l1f_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    package_id = Column(String(255), nullable=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    box_storageunit_id = Column(String(255), nullable=True)
+    box_id_plate_id = Column(String(255), nullable=True)
+    well_position = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    parent_sample_id = Column(String(255), nullable=True)
+    collection_tubeid = Column(String(255), nullable=True)
+    matrix_id = Column(String(255), nullable=True)
+    collection_date = Column(String(255), nullable=True)
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    age = Column(String(255), nullable=True)
+    ny_state_y_n = Column(String(255), nullable=True)
+    sample_type = Column(String(255), nullable=True)
+    treatments = Column(String(255), nullable=True)
+    quantity_ul = Column(String(255), nullable=True)
+    total_concentration_ng_ul = Column(String(255), nullable=True)
+    total_dna_ng = Column(String(255), nullable=True)
+    visit_description = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    study = Column(String(255), nullable=True)
+    tracking_number = Column(String(255), nullable=True)
+    contact = Column(String(255), nullable=True)
+    email = Column(String(255), nullable=True)
+    study_pi = Column(String(255), nullable=True)
+    genome_type = Column(String(80), nullable=True)
+    lr_site_id = Column(String(80), nullable=True)
+    long_read_platform = Column(String(80), nullable=True)
+    failure_mode = Column(String(255), nullable=True)
+    failure_mode_desc = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL1FRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicL1FRaw, 'before_update', model_update_listener)
+
+
+class GenomicL2ONTRaw(Base):
+    """
+    Raw Data from L2 ONT files
+    """
+    __tablename__ = 'genomic_l2_ont_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    flowcell_id = Column(String(255), nullable=True)
+    basecaller_version = Column(String(255), nullable=True)
+    basecaller_model = Column(String(255), nullable=True)
+    bam_path = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    barcode = Column(String(255), nullable=True)
+    lims_id = Column(String(255), nullable=True)
+    processing_status = Column(String(255), nullable=True)
+    translocation_speed = Column(String(255), nullable=True)
+    minimum_read_length = Column(String(255), nullable=True)
+    mapped_reads_pct = Column(String(255), nullable=True)
+    mean_coverage = Column(String(255), nullable=True)
+    genome_coverage = Column(String(255), nullable=True)
+    read_error_rate = Column(String(255), nullable=True)
+    read_length_n50 = Column(String(255), nullable=True)
+    mean_read_quality = Column(String(255), nullable=True)
+    aligned_q10_bases = Column(String(255), nullable=True)
+    contamination = Column(String(255), nullable=True)
+    array_concordance = Column(String(255), nullable=True)
+    sex_concordance = Column(String(255), nullable=True)
+    sex_ploidy = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL2ONTRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicL2ONTRaw, 'before_update', model_update_listener)
+
+
+class GenomicL2PBCCSRaw(Base):
+    """
+    Raw Data from L2 PB CCS files
+    """
+    __tablename__ = 'genomic_l2_pb_ccs_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    lims_id = Column(String(255), nullable=True)
+    aggregation_level = Column(String(255), nullable=True)
+    flowcell_id = Column(String(255), nullable=True)
+    barcode = Column(String(255), nullable=True)
+    mean_coverage = Column(String(255), nullable=True)
+    genome_coverage = Column(String(255), nullable=True)
+    contamination = Column(String(255), nullable=True)
+    sex_concordance = Column(String(255), nullable=True)
+    sex_ploidy = Column(String(255), nullable=True)
+    aligned_hifi_bases = Column(String(255), nullable=True)
+    read_error_rate = Column(String(255), nullable=True)
+    num_hifi_reads = Column(String(255), nullable=True)
+    read_length_mean = Column(String(255), nullable=True)
+    array_concordance = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    mapped_reads_pct = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    processing_status = Column(String(255), nullable=True)
+    bam_path = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    instrument = Column(String(255), nullable=True)
+    smrtlink_server_version = Column(String(255), nullable=True)
+    instrument_ics_version = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL2PBCCSRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicL2PBCCSRaw, 'before_update', model_update_listener)
+
+
+class GenomicL3Raw(Base):
+    """
+    Raw Data from L3 files
+    """
+    __tablename__ = 'genomic_l3_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    flowcell_id = Column(String(255), nullable=True)
+    barcode = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    bam_path = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    gc_processing_status = Column(String(255), nullable=True)
+    fragment_length = Column(String(255), nullable=True)
+    pacbio_instrument_type = Column(String(255), nullable=True)
+    smrtlink_server_version = Column(String(255), nullable=True)
+    pacbio_instrument_ics_version = Column(String(255), nullable=True)
+    gc_read_error_rate = Column(String(255), nullable=True)
+    gc_mean_coverage = Column(String(255), nullable=True)
+    gc_genome_coverage = Column(String(255), nullable=True)
+    gc_contamination = Column(String(255), nullable=True)
+    ont_basecaller_version = Column(String(255), nullable=True)
+    ont_basecaller_model = Column(String(255), nullable=True)
+    ont_mean_read_qual = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL3Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicL3Raw, 'before_update', model_update_listener)
+
+
+class GenomicL4Raw(Base):
+    """
+    Raw Data from L4 files
+    """
+    __tablename__ = 'genomic_l4_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    aggregation_level = Column(String(255), nullable=True)
+    flowcell_id = Column(String(255), nullable=True)
+    barcode = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    bam_path = Column(String(255), nullable=True)
+    drc_contamination = Column(String(255), nullable=True)
+    drc_sex_concordance = Column(String(255), nullable=True)
+    drc_array_concordance = Column(String(255), nullable=True)
+    drc_mean_coverage = Column(String(255), nullable=True)
+    drc_processing_status = Column(String(255), nullable=True)
+    drc_failure_mode = Column(String(255), nullable=True)
+    drc_failure_mode_desc = Column(String(255), nullable=True)
+    drc_processing_count = Column(String(255), nullable=True)
+    pass_to_research_pipeline = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL4Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicL4Raw, 'before_update', model_update_listener)
+
+
+class GenomicL4FRaw(Base):
+    """
+    Raw Data from L4F files
+    """
+    __tablename__ = 'genomic_l4f_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    aggregation_level = Column(String(255), nullable=True)
+    flowcell_id = Column(String(255), nullable=True)
+    barcode = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    bam_path = Column(String(255), nullable=True)
+    drc_contamination = Column(String(255), nullable=True)
+    drc_sex_concordance = Column(String(255), nullable=True)
+    drc_array_concordance = Column(String(255), nullable=True)
+    drc_mean_coverage = Column(String(255), nullable=True)
+    drc_processing_status = Column(String(255), nullable=True)
+    drc_failure_mode = Column(String(255), nullable=True)
+    drc_failure_mode_desc = Column(String(255), nullable=True)
+    drc_processing_count = Column(String(255), nullable=True)
+    pass_to_research_pipeline = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL4FRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicL4FRaw, 'before_update', model_update_listener)
+
+
+class GenomicL5Raw(Base):
+    """
+    Raw Data from L5 files
+    """
+    __tablename__ = 'genomic_l5_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    flowcell_id = Column(String(255), nullable=True)
+    barcode = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL5Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicL5Raw, 'before_update', model_update_listener)
+
+
+class GenomicL6Raw(Base):
+    """
+    Raw Data from L6 files
+    """
+    __tablename__ = 'genomic_l6_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    drc_contamination = Column(String(255), nullable=True)
+    drc_sex_concordance = Column(String(255), nullable=True)
+    drc_array_concordance = Column(String(255), nullable=True)
+    drc_mean_coverage = Column(String(255), nullable=True)
+    drc_processing_status = Column(String(255), nullable=True)
+    drc_failure_mode = Column(String(255), nullable=True)
+    drc_failure_mode_desc = Column(String(255), nullable=True)
+    drc_processing_count = Column(String(255), nullable=True)
+    pass_to_research_pipeline = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL6Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicL6Raw, 'before_update', model_update_listener)
+
+
+class GenomicL6FRaw(Base):
+    """
+    Raw Data from L6F files
+    """
+    __tablename__ = 'genomic_l6f_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    drc_contamination = Column(String(255), nullable=True)
+    drc_sex_concordance = Column(String(255), nullable=True)
+    drc_array_concordance = Column(String(255), nullable=True)
+    drc_mean_coverage = Column(String(255), nullable=True)
+    drc_processing_status = Column(String(255), nullable=True)
+    drc_failure_mode = Column(String(255), nullable=True)
+    drc_failure_mode_desc = Column(String(255), nullable=True)
+    drc_processing_count = Column(String(255), nullable=True)
+    pass_to_research_pipeline = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL6FRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicL6FRaw, 'before_update', model_update_listener)
 
 
 class GenomicProteomics(Base):
@@ -1834,6 +2197,10 @@ class GenomicP0Raw(Base):
     p_site_id = Column(String(255), nullable=True)
 
 
+event.listen(GenomicP0Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicP0Raw, 'before_update', model_update_listener)
+
+
 class GenomicP1Raw(Base):
     """
     Raw Data from P1 files
@@ -1878,6 +2245,10 @@ class GenomicP1Raw(Base):
     genome_type = Column(String(80), nullable=True, index=True)
 
 
+event.listen(GenomicP1Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicP1Raw, 'before_update', model_update_listener)
+
+
 class GenomicP2Raw(Base):
     """
     Raw Data from P2 files
@@ -1903,6 +2274,10 @@ class GenomicP2Raw(Base):
     analysis_report_path = Column(String(255), nullable=True)
     kit_type = Column(String(255), nullable=True)
     notes = Column(String(1028), nullable=True)
+
+
+event.listen(GenomicP2Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicP2Raw, 'before_update', model_update_listener)
 
 
 class GenomicRNA(Base):
@@ -2036,6 +2411,71 @@ event.listen(GenomicR1Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicR1Raw, 'before_update', model_update_listener)
 
 
+class GenomicR2Raw(Base):
+    """
+    Raw Data from R2 files
+    """
+    __tablename__ = 'genomic_r2_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    lims_id = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    alignment_rate_pct = Column(String(255), nullable=True)
+    duplication_pct = Column(String(255), nullable=True)
+    mrna_bases_pct = Column(String(255), nullable=True)
+    reads_aligned_in_pairs = Column(String(255), nullable=True)
+    ribosomal_bases_pct = Column(String(255), nullable=True)
+    median_cv_coverage = Column(String(255), nullable=True)
+    mean_insert_size = Column(String(255), nullable=True)
+    rqs = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    processing_status = Column(String(255), nullable=True)
+    pipeline_id = Column(String(255), nullable=True)
+    cram_path = Column(String(255), nullable=True)
+    cram_md5_path = Column(String(255), nullable=True)
+    notes = Column(String(1028), nullable=True)
+
+
+event.listen(GenomicR2Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicR2Raw, 'before_update', model_update_listener)
+
+
+class GenomicA1Raw(Base):
+    """
+    Raw data from A1 files
+    """
+    __tablename__ = 'genomic_a1_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    consent_for_ror = Column(String(255), nullable=True)
+    chipwellbarcode = Column(String(255), nullable=True)
+    genome_center = Column(String(255), nullable=True)
+
+
+event.listen(GenomicA1Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicA1Raw, 'before_update', model_update_listener)
+
+
 class GenomicA2Raw(Base):
     """
     Raw data from A2 files
@@ -2058,3 +2498,26 @@ class GenomicA2Raw(Base):
 
 event.listen(GenomicA2Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicA2Raw, 'before_update', model_update_listener)
+
+
+class GenomicA3Raw(Base):
+    """
+    Raw data from A3 files
+    """
+    __tablename__ = 'genomic_a3_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    date_of_consent_removal = Column(String(255), nullable=True)
+
+
+event.listen(GenomicA3Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicA3Raw, 'before_update', model_update_listener)

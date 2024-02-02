@@ -93,25 +93,6 @@ class GraphQLNphBiobankStatus(ObjectType):
     status = Field(String)
 
 
-class GraphQLNphBioSpecimen(ObjectType):
-
-    orderID = Field(String)
-    studyID = Field(String)
-    visitID = Field(String)
-    specimenCode = Field(String)
-    timepointID = Field(String)
-    volume = Field(String)
-    volumeUOM = Field(String)
-    orderedSampleStatus = Field(String)
-    clientID = Field(String)
-    collectionDateUTC = Field(String)
-    processingDateUTC = Field(String)
-    finalizedDateUTC = Field(String)
-    sampleID = Field(String)
-    kitID = Field(String)
-    biobankStatus = Field(List(GraphQLNphBiobankStatus))
-
-
 class EventCollection(ObjectType):
 
     current = SortableField(Event)
@@ -330,7 +311,7 @@ class ParticipantField(ObjectType):
         description='Sourced from NPH Schema.',
         sort_modifier=lambda context: context.set_order_expression(
                                           nphSite.awardee_external_id),
-        filter_modifier = lambda context, value: context.add_filter(nphSite.awardee_external_id == value)
+        filter_modifier=lambda context, value: context.add_filter(nphSite.awardee_external_id == value)
     )
     nphEnrollmentStatus = List(Event, name="nphEnrollmentStatus", description='Sourced from NPH Schema.')
     nphModule1ConsentStatus = List(
@@ -348,7 +329,6 @@ class ParticipantField(ObjectType):
     nphModule3DietStatus = List(
         GraphQLDietEvent, name="nphModule3DietStatus", description="Sourced from NPH Schema"
     )
-    nphBiospecimens = List(GraphQLNphBioSpecimen, name="nphBiospecimens", description="NPH Biospecimens")
     nphWithdrawalStatus = List(GraphQLActiveEvent, name="nphWithdrawalStatus", description='Sourced from NPH Schema.')
     nphDeactivationStatus = List(GraphQLActiveEvent, name="nphDeactivationStatus",
                                  description='Sourced from NPH Schema.')
@@ -434,7 +414,6 @@ class ParticipantQuery(ObjectType):
         nph_participant_dao = NphParticipantDao()
         consent_subquery = nph_participant_dao.get_consents_subquery()
         enrollment_subquery = nph_participant_dao.get_enrollment_subquery()
-        orders_samples_subquery = nph_participant_dao.get_orders_samples_subquery()
         diet_status_subquery = nph_participant_dao.get_diet_status_subquery()
         deactivated_subquery = nph_participant_dao.get_deactivated_subquery()
         withdrawal_subquery = nph_participant_dao.get_withdrawal_subquery()
@@ -452,8 +431,6 @@ class ParticipantQuery(ObjectType):
                 Participant,
                 enrollment_subquery.c.enrollment_status,
                 consent_subquery.c.consent_status,
-                orders_samples_subquery.c.orders_sample_status,
-                orders_samples_subquery.c.orders_sample_biobank_status,
                 diet_status_subquery.c.diet_status,
                 deactivated_subquery.c.deactivation_status,
                 withdrawal_subquery.c.withdrawal_status,
@@ -473,9 +450,6 @@ class ParticipantQuery(ObjectType):
             ).outerjoin(
                 enrollment_subquery,
                 enrollment_subquery.c.enrollment_pid == Participant.id
-            ).outerjoin(
-                orders_samples_subquery,
-                orders_samples_subquery.c.orders_samples_pid == Participant.id
             ).outerjoin(
                 diet_status_subquery,
                 diet_status_subquery.c.diet_pid == Participant.id

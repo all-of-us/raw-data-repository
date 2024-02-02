@@ -22,15 +22,15 @@ class GenomicBaseSubWorkflow(ABC):
         self.increment_set_number = None
 
     def get_sub_workflow_method(self):
-        return {
+        sub_workflow_map = {
             GenomicJob.PR_PR_WORKFLOW: self.run_request_ingestion,
             GenomicJob.PR_P1_WORKFLOW: self.run_sample_ingestion,
-            GenomicJob.PR_P2_WORKFLOW: self.run_bypass,
             GenomicJob.RNA_RR_WORKFLOW: self.run_request_ingestion,
             GenomicJob.RNA_R1_WORKFLOW: self.run_sample_ingestion,
             GenomicJob.LR_LR_WORKFLOW: self.run_request_ingestion,
             GenomicJob.LR_L1_WORKFLOW: self.run_sample_ingestion
-        }[self.job_id]
+        }
+        return sub_workflow_map.get(self.job_id)
 
     @classmethod
     def create_genomic_sub_workflow(cls, *, dao, job_id, job_run_id, **kwargs):
@@ -45,9 +45,6 @@ class GenomicBaseSubWorkflow(ABC):
                 payload=payload,
                 queue=task_queue
             )
-
-    def run_bypass(self) -> None:
-        ...
 
     def set_model_string_attributes(self) -> List[str]:
         return [str(obj).split('.')[-1] for obj in self.dao.model_type.__table__.columns]
@@ -64,8 +61,7 @@ class GenomicBaseSubWorkflow(ABC):
         return current_site_id
 
     @abstractmethod
-    def set_default_base_attributes(self) -> dict:
-        ...
+    def set_default_base_attributes(self) -> dict: return {}
 
     def build_defaulted_base_attributes(self, model_string_attributes: List[str]) -> dict:
         base_default_attributes_map = {
@@ -108,7 +104,10 @@ class GenomicBaseSubWorkflow(ABC):
     def run_workflow(self, *, row_data) -> None:
         self.row_data = row_data
         self.set_instance_attributes_from_data()
-        self.get_sub_workflow_method()()
+        executed_sub_workflow = self.get_sub_workflow_method()
+        if not executed_sub_workflow:
+            return
+        executed_sub_workflow()
 
     def handle_request_differences(self, *, request_biobank_ids: List[str], returned_biobank_ids: List[str]) -> None:
         missing_in_returned = list(set(request_biobank_ids) - set(returned_biobank_ids))
@@ -116,7 +115,7 @@ class GenomicBaseSubWorkflow(ABC):
             return
 
         message = (f'{self.job_id.name}: Biobank IDs [{",".join(missing_in_returned)}] failed request manifest '
-                   f'validation')
+                   f'validation: {self.current_manifest_file_name}')
         self.execute_cloud_task(
             payload={
                 'slack': True,
@@ -137,12 +136,6 @@ class GenomicBaseSubWorkflow(ABC):
         )
 
         returned_biobank_ids = [obj.biobank_id for obj in new_pipeline_members]
-
-        self.handle_request_differences(
-            request_biobank_ids=request_biobank_ids,
-            returned_biobank_ids=returned_biobank_ids
-        )
-
         pipeline_objs = []
         default_attributes: dict = self.build_defaulted_base_attributes(model_string_attributes)
 
@@ -155,12 +148,19 @@ class GenomicBaseSubWorkflow(ABC):
 
         self.dao.insert_bulk(pipeline_objs)
 
-    def run_sample_ingestion(self) -> None:
-        updated_pipeline_members = self.dao.get_pipeline_members_missing_sample_id(
+        self.handle_request_differences(
+            request_biobank_ids=request_biobank_ids,
+            returned_biobank_ids=returned_biobank_ids
+        )
+
+    def get_members_for_sample_update(self):
+        return self.dao.get_pipeline_members_missing_sample_id(
             biobank_ids=[row.get('biobank_id')[1:] for row in self.row_data if row.get('sample_id')],
             collection_tube_ids=[row.get('collection_tubeid') for row in self.row_data if row.get('sample_id')]
         )
 
+    def run_sample_ingestion(self) -> None:
+        updated_pipeline_members = self.get_members_for_sample_update()
         update_objs = []
         for member in updated_pipeline_members:
             matching_row = list(filter(lambda x: x.get('biobank_id')[1:] == member.biobank_id, self.row_data))
@@ -191,6 +191,13 @@ class GenomicSubLongReadWorkflow(GenomicBaseSubWorkflow):
     def get_platform_value(self, attribute_name: str = 'long_read_platform') -> Enum:
         row_long_read_platform = self.row_data[0].get(attribute_name)
         return GenomicLongReadPlatform.lookup_by_name(row_long_read_platform.upper())
+
+    def get_members_for_sample_update(self):
+        return self.dao.get_pipeline_members_missing_sample_id(
+            biobank_ids=[row.get('biobank_id')[1:] for row in self.row_data if row.get('sample_id')],
+            collection_tube_ids=[row.get('collection_tubeid') for row in self.row_data if row.get('sample_id')],
+            long_read_platform=self.get_platform_value()
+        )
 
     def set_default_base_attributes(self) -> dict:
         return {

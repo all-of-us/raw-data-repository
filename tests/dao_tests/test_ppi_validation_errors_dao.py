@@ -14,36 +14,49 @@ class PpiValidationErrorsDaoTest(BaseTestCase):
         # Create test validation errors
         participant_1 = self.data_generator.create_database_participant()
         participant_2 = self.data_generator.create_database_participant()
+        questionnaire_question = self.data_generator.create_database_questionnaire_question()
+        code = self.data_generator.create_database_code()
+        response = self.data_generator.create_database_questionnaire_response()
+        response_answer = self.data_generator.create_database_questionnaire_response_answer(
+            questionnaireResponseId=response.questionnaireResponseId,
+            questionId=questionnaire_question.questionnaireQuestionId
+        )
 
         self.error_1 = PpiValidationErrors(
             id=1,
-            eval_date=datetime(2023, 10, 1),
+            created=datetime(2023, 10, 1),
             survey_code_value="TheBasics",
             question_code="test_code",
             error_str="Error: Test error",
             error_type=ValidationErrorType.BRANCHING_ERROR,
             participant_id=participant_1.participantId,
-            questionnaire_response_answer_id=1234
+            survey_code_id=code.codeId,
+            questionnaire_response_id=response.questionnaireResponseId,
+            questionnaire_response_answer_id=response_answer.questionnaireResponseAnswerId
         )
         self.error_2 = PpiValidationErrors(
             id=2,
-            eval_date=datetime(2023, 10, 2),
+            created=datetime(2023, 10, 2),
             survey_code_value="GROR",
             question_code="test_code",
             error_str="Error: Test error",
             error_type=ValidationErrorType.INVALID_DATA_TYPE,
             participant_id=participant_2.participantId,
-            questionnaire_response_answer_id=2345
+            survey_code_id=code.codeId,
+            questionnaire_response_id=response.questionnaireResponseId,
+            questionnaire_response_answer_id=response_answer.questionnaireResponseAnswerId
         )
         self.error_3 = PpiValidationErrors(
             id=3,
-            eval_date=datetime(2023, 10, 4),
+            created=datetime(2023, 10, 4),
             survey_code_value="TestSurvey",
             question_code="test_code",
             error_str="Error: Test error",
             error_type=ValidationErrorType.INVALID_VALUE,
             participant_id=participant_1.participantId,
-            questionnaire_response_answer_id=3456
+            survey_code_id=code.codeId,
+            questionnaire_response_id=response.questionnaireResponseId,
+            questionnaire_response_answer_id=response_answer.questionnaireResponseAnswerId
         )
 
     def test_get_before_insert(self):

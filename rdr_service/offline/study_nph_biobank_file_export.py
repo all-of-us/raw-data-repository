@@ -134,7 +134,11 @@ def _convert_ordered_samples_to_samples(
 ) -> List[Dict[str, Any]]:
     samples = []
     for ordered_sample in ordered_samples:
-        processing_timestamp = ordered_sample.collected if not ordered_sample.parent is None else None
+        processing_timestamp = (
+            ordered_sample.collected
+            if ordered_sample.parent is not None or ordered_sample.test.startswith("ST")
+            else None
+        )
         sample_cancelled = ordered_cancelled or ordered_sample.status == 'cancelled'
         sample = {
             "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),

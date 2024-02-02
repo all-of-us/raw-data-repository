@@ -103,10 +103,6 @@ def _build_resource_app():
     # Begin Genomic Cloud Task API Endpoints
     #
 
-    _api.add_resource(genomic_cloud_tasks_api.RebuildGenomicTableRecordsApi,
-                      TASK_PREFIX + "RebuildGenomicTableRecordsApi",
-                      endpoint="rebuild_genomic_table_records_task", methods=["POST"])
-
     # Load AW1/AW2 raw manifest
     _api.add_resource(genomic_cloud_tasks_api.LoadRawAWNManifestDataAPI,
                       TASK_PREFIX + "LoadRawAWNManifestDataAPI",
@@ -236,7 +232,7 @@ def _build_resource_app():
                       TASK_PREFIX + "NphIncidentTaskApi",
                       endpoint="nph_incident_task", methods=["POST"])
 
-    # Cloud Task for sending Slack Alerts if withdrawn PIDs found in NPH Intake Api payload
+    # Cloud Task for sending Slack alerts if withdrawn PIDs found in NPH Intake Api payload
     _api.add_resource(ancillary_study_cloud_tasks_api.WithdrawnParticipantNotifierTaskApi,
                       TASK_PREFIX + "WithdrawnParticipantNotifierTaskApi",
                       endpoint="withdrawn_participant_notifier_task", methods=["POST"])
@@ -262,6 +258,13 @@ def _build_resource_app():
         cloud_tasks_api.UpdateEnrollmentStatus,
         TASK_PREFIX + 'UpdateEnrollmentStatus',
         endpoint='update_enrollment_status',
+        methods=['POST']
+    )
+
+    _api.add_resource(
+        cloud_tasks_api.UpdateRetentionEligibleStatus,
+        TASK_PREFIX + 'UpdateRetentionStatus',
+        endpoint='update_retention_status',
         methods=['POST']
     )
 

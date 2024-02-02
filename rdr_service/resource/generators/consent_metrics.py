@@ -70,7 +70,8 @@ class ConsentMetricGenerator(generators.BaseGenerator):
             ConsentType.GROR: rec.consentForGenomicsRORAuthored,
             ConsentType.PRIMARY_UPDATE: rec.consentForStudyEnrollmentAuthored,
             ConsentType.ETM: rec.consentForEtMAuthored,
-
+            ConsentType.PEDIATRIC_PRIMARY: rec.consentForStudyEnrollmentFirstYesAuthored,
+            ConsentType.PEDIATRIC_EHR: rec.consentForElectronicHealthRecordsFirstYesAuthored
         }
         default_authored = consent_authored_values.get(rec.type, None)
         consent_authored_values[rec.type] = rec.questionnaire_response_authored or default_authored

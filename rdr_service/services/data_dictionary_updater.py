@@ -271,7 +271,7 @@ class DataDictionaryUpdater:
 
         if display_unique_data:
             distinct_values = self.session.execute(
-                f'select distinct {reflected_column.name} from {reflected_table_name}'
+                f'select distinct `{reflected_column.name}` from {reflected_table_name}'
             )
             unique_values_display_list = [str(value) if value is not None else 'NULL' for (value,) in distinct_values]
 

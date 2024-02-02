@@ -22,10 +22,11 @@ class AwardeeApi(BaseApi):
             return self._make_response(self.dao.get_with_children(hpo.hpoId))
         return super(AwardeeApi, self)._query(id_field="id")
 
-    def _make_resource_url(self, json, id_field, participant_id):  # pylint: disable=unused-argument
+    @classmethod
+    def _make_resource_url(cls, json, id_field, participant_id):  # pylint: disable=unused-argument
         from rdr_service import main
 
-        return main.api.url_for(self.__class__, a_id=json[id_field], _external=True)
+        return main.api.url_for(cls, a_id=json[id_field], _external=True)
 
     def _make_response(self, obj):
         inactive = request.args.get("_inactive")

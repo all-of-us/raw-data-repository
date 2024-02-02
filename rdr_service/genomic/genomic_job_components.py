@@ -16,6 +16,7 @@ from dateutil.parser import parse
 import sqlalchemy
 
 from rdr_service import clock, config
+from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow
 from rdr_service.genomic.genomic_sub_workflow import GenomicSubWorkflow, GenomicSubLongReadWorkflow
@@ -26,7 +27,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.model.config_utils import get_biobank_id_prefix
-from rdr_service.resource.generators.genomics import genomic_user_event_metrics_batch_update
+
 from rdr_service.api_util import (
     open_cloud_file,
     list_blobs,
@@ -82,7 +83,7 @@ from rdr_service.config import (
     CVL_W1IL_PGX_MANIFEST_SUBFOLDER,
     CVL_W2W_MANIFEST_SUBFOLDER,
     CVL_W3SR_MANIFEST_SUBFOLDER,
-    LR_L0_MANIFEST_SUBFOLDER, PR_P0_MANIFEST_SUBFOLDER, RNA_R0_MANIFEST_SUBFOLDER
+    LR_L0_MANIFEST_SUBFOLDER, PR_P0_MANIFEST_SUBFOLDER, RNA_R0_MANIFEST_SUBFOLDER, LR_L3_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
@@ -298,11 +299,20 @@ class GenomicFileIngester:
             GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
             GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L1_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L1F_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L2_ONT_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L2_PB_CCS_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L4_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L4F_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L5_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L6_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L6F_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.RNA_RR_WORKFLOW: self._ingest_rna_manifest,
-            GenomicJob.RNA_R1_WORKFLOW: self._ingest_rna_manifest
+            GenomicJob.RNA_R1_WORKFLOW: self._ingest_rna_manifest,
+            GenomicJob.RNA_R2_WORKFLOW: self._ingest_rna_manifest
         }
 
         current_ingestion_workflow = current_ingestion_map.get(self.job_id)
@@ -688,7 +698,8 @@ class GenomicFileIngester:
                     session.add_all(batch)
                     session.commit()
                     # Batch update PDR resource records.
-                    genomic_user_event_metrics_batch_update([r.id for r in batch])
+                    # Publish PDR data-pipeline pub-sub event in chunks up to 250 records.
+                    submit_pipeline_pubsub_msg_from_model(batch, database='rdr')
 
                 item_count = 0
                 batch.clear()
@@ -699,7 +710,7 @@ class GenomicFileIngester:
                 session.add_all(batch)
                 session.commit()
                 # Batch update PDR resource records.
-                genomic_user_event_metrics_batch_update([r.id for r in batch])
+                submit_pipeline_pubsub_msg_from_model(batch, database='rdr')
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -1298,6 +1309,11 @@ class GenomicFileValidator:
         self.controller = controller
         self.gc_site_id = None
 
+        self.VALID_CVL_FACILITIES = ('rdr', 'co', 'uw', 'bcm')
+        self.CVL_ANALYSIS_TYPES = ('hdrv1', 'pgxv1')
+        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'ha', 'rdr')
+        self.DRC_BROAD = 'drc_broad'
+
         self.GC_METRICS_SCHEMAS = {
             GENOME_TYPE_WGS: (
                 "biobankid",
@@ -1334,11 +1350,6 @@ class GenomicFileValidator:
                 "genometype"
             ),
         }
-
-        self.VALID_CVL_FACILITIES = ('rdr', 'co', 'uw', 'bcm')
-        self.CVL_ANALYSIS_TYPES = ('hdrv1', 'pgxv1')
-        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'ha', 'rdr')
-        self.DRC_BROAD = 'drc_broad'
 
         # CVL pipeline
         self.CVL_W2_SCHEMA = (
@@ -1597,12 +1608,119 @@ class GenomicFileValidator:
             "contact",
             "email",
             "studypi",
-            "sitename",
             "genometype",
             "lrsiteid",
             "longreadplatform",
             "failuremode",
             "failuremodedesc"
+        )
+
+        self.LR_L2_ONT_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "flowcellid",
+            "basecallerversion",
+            "basecallermodel",
+            "bampath",
+            "longreadplatform",
+            "barcode",
+            "limsid",
+            "processingstatus",
+            "translocationspeed",
+            "minimumreadlength",
+            "mappedreadspct",
+            "meancoverage",
+            "genomecoverage",
+            "readerrorrate",
+            "readlengthn50",
+            "meanreadquality",
+            "alignedq10bases",
+            "contamination",
+            "arrayconcordance",
+            "sexconcordance",
+            "sexploidy",
+            "samplesource",
+            "genometype"
+        )
+
+        self.LR_L2_PB_CCS_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "limsid",
+            "aggregationlevel",
+            "flowcellid",
+            "barcode",
+            "meancoverage",
+            "genomecoverage",
+            "contamination",
+            "sexconcordance",
+            "sexploidy",
+            "alignedhifibases",
+            "readerrorrate",
+            "numhifireads",
+            "readlengthmean",
+            "arrayconcordance",
+            "samplesource",
+            "mappedreadspct",
+            "genometype",
+            "processingstatus",
+            "bampath",
+            "longreadplatform",
+            "instrument",
+            "smrtlinkserverversion",
+            "instrumenticsversion"
+        )
+
+        self.LR_L4_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "aggregationlevel",
+            "flowcellid",
+            "barcode",
+            "lrsiteid",
+            "longreadplatform",
+            "sexatbirth",
+            "bampath",
+            "drccontamination",
+            "drcsexconcordance",
+            "drcarrayconcordance",
+            "drcmeancoverage",
+            "drcprocessingstatus",
+            "drcfailuremode",
+            "drcfailuremodedesc",
+            "drcprocessingcount",
+            "passtoresearchpipeline",
+        )
+
+        self.LR_L5_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "flowcellid",
+            "barcode",
+            "lrsiteid",
+            "longreadplatform",
+        )
+
+        self.LR_L6_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "lrsiteid",
+            "longreadplatform",
+            "sexatbirth",
+            "drccontamination",
+            "drcsexconcordance",
+            "drcarrayconcordance",
+            "drcmeancoverage",
+            "drcprocessingstatus",
+            "drcfailuremode",
+            "drcfailuremodedesc",
+            "drcprocessingcount",
+            "passtoresearchpipeline"
         )
 
         # PR pipeline
@@ -1698,6 +1816,28 @@ class GenomicFileValidator:
             "genometype",
             "failuremode",
             "failuremodedesc"
+        )
+
+        self.RNA_R2_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "limsid",
+            "samplesource",
+            "alignmentratepct",
+            "duplicationpct",
+            "mrnabasespct",
+            "readsalignedinpairs",
+            "ribosomalbasespct",
+            "mediancvcoverage",
+            "meaninsertsize",
+            "rqs",
+            "genometype",
+            "processingstatus",
+            "pipelineid",
+            "crampath",
+            "crammd5path",
+            "notes"
         )
 
         self.values_for_validation = {
@@ -1843,13 +1983,13 @@ class GenomicFileValidator:
         def aw1f_manifest_name_rule():
             """Biobank to GCs Failure (AW1F) manifest name rule"""
             return (
-                len(filename_components) == 5 and
+                len(filename_components) <= 6 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] in ('seq', 'gen') and
                 re.search(r"pkg-[0-9]{4}-[0-9]{5,}$",
                           filename_components[3]) is not None and
-                filename_components[4] == 'failure.csv' and
+                filename_components[4] in ('failure', 'failure.csv') and
                 filename.lower().endswith('csv')
             )
 
@@ -2003,7 +2143,80 @@ class GenomicFileValidator:
                 len(filename_components) == 4 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
-                filename_components[2] == 'l1' and
+                filename_components[2] == 'lr' and
+                'pkg' in filename_components[3] and
+                filename.lower().endswith('csv')
+            )
+
+        def lr_l1f_manifest_name_rule():
+            """
+            LR L1F manifest name rule
+            """
+            return (
+                len(filename_components) == 4 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'l1f' and
+                'pkg' in filename_components[3] and
+                filename.lower().endswith('csv')
+            )
+
+        def lr_l2_ont_manifest_name_rule():
+            """
+            LR L2 ONT manifest name rule
+            """
+            return (
+                len(filename_components) == 6 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'l2' and
+                filename_components[4] == 'ont' and
+                filename.lower().endswith('csv')
+            )
+
+        def lr_l2_pb_ccs_manifest_name_rule():
+            """
+            LR L2 PB CCS manifest name rule
+            """
+            return (
+                len(filename_components) == 6 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'l2' and
+                filename_components[4] == 'pbccs' and
+                filename.lower().endswith('csv')
+            )
+
+        def lr_l4_manifest_name_rule():
+            """
+            LR L4/L4F manifest name rule
+            """
+            return (
+                len(filename_components) == 3 and
+                filename_components[0] == 'aou' and
+                filename_components[1] in ['l4', 'l4f'] and
+                filename.lower().endswith('csv')
+            )
+
+        def lr_l5_manifest_name_rule():
+            """
+            LR L5 manifest name rule
+            """
+            return (
+                len(filename_components) == 3 and
+                filename_components[0] == 'aou' and
+                filename_components[1] == 'l5' and
+                filename.lower().endswith('csv')
+            )
+
+        def lr_l6_manifest_name_rule():
+            """
+            LR L6/L6F manifest name rule
+            """
+            return (
+                len(filename_components) == 3 and
+                filename_components[0] == 'aou' and
+                filename_components[1] in ['l6', 'l6f'] and
                 filename.lower().endswith('csv')
             )
 
@@ -2039,7 +2252,7 @@ class GenomicFileValidator:
             PR P2 manifest name rule
             """
             return (
-                len(filename_components) == 4 and
+                len(filename_components) >= 4 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'p2' and
@@ -2073,6 +2286,19 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def rna_r2_manifest_name_rule():
+            """
+            RNA R2 manifest name rule
+            """
+            return (
+                len(filename_components) == 6 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'r2' and
+                'v' in filename_components[-1] and
+                filename.lower().endswith('csv')
+            )
+
         ingestion_name_rules = {
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
             GenomicJob.AW1_MANIFEST: bb_to_gc_manifest_name_rule,
@@ -2091,11 +2317,20 @@ class GenomicFileValidator:
             GenomicJob.CVL_W5NF_WORKFLOW: cvl_w5nf_manifest_name_rule,
             GenomicJob.LR_LR_WORKFLOW: lr_lr_manifest_name_rule,
             GenomicJob.LR_L1_WORKFLOW: lr_l1_manifest_name_rule,
+            GenomicJob.LR_L1F_WORKFLOW: lr_l1f_manifest_name_rule,
+            GenomicJob.LR_L2_ONT_WORKFLOW: lr_l2_ont_manifest_name_rule,
+            GenomicJob.LR_L2_PB_CCS_WORKFLOW: lr_l2_pb_ccs_manifest_name_rule,
+            GenomicJob.LR_L4_WORKFLOW: lr_l4_manifest_name_rule,
+            GenomicJob.LR_L4F_WORKFLOW: lr_l4_manifest_name_rule,
+            GenomicJob.LR_L5_WORKFLOW: lr_l5_manifest_name_rule,
+            GenomicJob.LR_L6_WORKFLOW: lr_l6_manifest_name_rule,
+            GenomicJob.LR_L6F_WORKFLOW: lr_l6_manifest_name_rule,
             GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule,
             GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule,
             GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule,
             GenomicJob.RNA_RR_WORKFLOW: rna_rr_manifest_name_rule,
-            GenomicJob.RNA_R1_WORKFLOW: rna_r1_manifest_name_rule
+            GenomicJob.RNA_R1_WORKFLOW: rna_r1_manifest_name_rule,
+            GenomicJob.RNA_R2_WORKFLOW: rna_r2_manifest_name_rule
         }
 
         try:
@@ -2211,8 +2446,27 @@ class GenomicFileValidator:
                 return self.CVL_W5NF_SCHEMA
             if self.job_id == GenomicJob.LR_LR_WORKFLOW:
                 return self.LR_LR_SCHEMA
-            if self.job_id == GenomicJob.LR_L1_WORKFLOW:
+            if self.job_id in [
+                GenomicJob.LR_L1_WORKFLOW,
+                GenomicJob.LR_L1F_WORKFLOW
+            ]:
                 return self.LR_L1_SCHEMA
+            if self.job_id == GenomicJob.LR_L2_ONT_WORKFLOW:
+                return self.LR_L2_ONT_SCHEMA
+            if self.job_id == GenomicJob.LR_L2_PB_CCS_WORKFLOW:
+                return self.LR_L2_PB_CCS_SCHEMA
+            if self.job_id in [
+                GenomicJob.LR_L4_WORKFLOW,
+                GenomicJob.LR_L4F_WORKFLOW
+            ]:
+                return self.LR_L4_SCHEMA
+            if self.job_id == GenomicJob.LR_L5_WORKFLOW:
+                return self.LR_L5_SCHEMA
+            if self.job_id in [
+                GenomicJob.LR_L6_WORKFLOW,
+                GenomicJob.LR_L6F_WORKFLOW
+            ]:
+                return self.LR_L6_SCHEMA
             if self.job_id == GenomicJob.PR_PR_WORKFLOW:
                 return self.PR_PR_SCHEMA
             if self.job_id == GenomicJob.PR_P1_WORKFLOW:
@@ -2223,6 +2477,8 @@ class GenomicFileValidator:
                 return self.RNA_RR_SCHEMA
             if self.job_id == GenomicJob.RNA_R1_WORKFLOW:
                 return self.RNA_R1_SCHEMA
+            if self.job_id == GenomicJob.RNA_R2_WORKFLOW:
+                return self.RNA_R2_SCHEMA
 
         except (IndexError, KeyError):
             return GenomicSubProcessResult.ERROR
@@ -3095,6 +3351,30 @@ class ManifestDefinitionProvider:
                 'lr_site_id',
                 'long_read_platform'
             ),
+            GenomicManifestTypes.LR_L3: (
+                'biobank_id',
+                'sample_id',
+                'biobankid_sampleid',
+                'flowcell_id',
+                'barcode',
+                'long_read_platform',
+                'bam_path',
+                'sex_at_birth',
+                'lr_site_id',
+                'sample_source',
+                'gc_processing_status',
+                'fragment_length',
+                'pacbio_instrument_type',
+                'smrtlink_server_version',
+                'pacbio_instrument_ics_version',
+                'gc_read_error_rate',
+                'gc_mean_coverage',
+                'gc_genome_coverage',
+                'gc_contamination',
+                'ont_basecaller_version',
+                'ont_basecaller_model',
+                'ont_mean_read_qual'
+            ),
             GenomicManifestTypes.PR_P0: (
                 'biobank_id',
                 'collection_tube_id',
@@ -3213,19 +3493,25 @@ class ManifestDefinitionProvider:
                 'output_filename':
                     f'{LR_L0_MANIFEST_SUBFOLDER}/LongRead-Manifest-AoU-{self.kwargs.get("long_read_max_set")}'
                     f'-{now_formatted}.csv',
-                'query': self.long_read_dao.get_zero_manifest_records_from_max_set
+                'query': self.long_read_dao.get_manifest_zero_records_from_max_set
+            },
+            GenomicManifestTypes.LR_L3: {
+                'output_filename':
+                    f'{LR_L3_MANIFEST_SUBFOLDER}/AoU_L3_'
+                    f'{now_formatted}.csv',
+                'query': self.long_read_dao.get_manifest_three_records
             },
             GenomicManifestTypes.PR_P0: {
                 'output_filename':
                     f'{PR_P0_MANIFEST_SUBFOLDER}/Proteomics-Manifest-AoU-{self.kwargs.get("pr_max_set")}'
                     f'-{now_formatted}.csv',
-                'query': self.pr_dao.get_zero_manifest_records_from_max_set
+                'query': self.pr_dao.get_manifest_zero_records_from_max_set
             },
             GenomicManifestTypes.RNA_R0: {
                 'output_filename':
                     f'{RNA_R0_MANIFEST_SUBFOLDER}/RNASeq-Manifest-AoU-{self.kwargs.get("rna_max_set")}'
                     f'-{now_formatted}.csv',
-                'query': self.rna_dao.get_zero_manifest_records_from_max_set
+                'query': self.rna_dao.get_manifest_zero_records_from_max_set
             },
         }
         def_config = def_config.get(manifest_type)

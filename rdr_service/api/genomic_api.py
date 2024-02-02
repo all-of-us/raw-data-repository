@@ -15,6 +15,7 @@ from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicSetMemberDao, Gen
     GenomicSchedulingDao, GenomicMemberReportStateDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.participant_enums import WithdrawalStatus
 from rdr_service.services.genomic_datagen import ParticipantGenerator
 
 PTC_ALLOWED_ENVIRONMENTS = [
@@ -59,7 +60,7 @@ class GenomicApiValidationMixin:
 
                 has_summary = participant_summary_dao.get_record_from_attr(
                     attr=key,
-                    value=value
+                    value=value,
                 )
                 has_member = member_dao.get_record_from_attr(
                     attr=key,
@@ -70,6 +71,8 @@ class GenomicApiValidationMixin:
             raise NotFound(f"Participant with ID {prefix}{checked_value} not found in RDR")
         if not has_member:
             raise NotFound(f"Participant with ID {prefix}{checked_value} not found in Genomics system")
+        if has_summary and has_summary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN:
+            raise NotFound(f"Participant with ID {prefix}{checked_value} has withdrawn")
 
 
 class GenomicOrigin:

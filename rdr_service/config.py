@@ -74,6 +74,7 @@ CVL_W1IL_PGX_MANIFEST_SUBFOLDER = "W1IL_manifests_pgx"
 CVL_W2W_MANIFEST_SUBFOLDER = "W2W_manifests"
 CVL_W3SR_MANIFEST_SUBFOLDER = "W3SR_manifests"
 LR_L0_MANIFEST_SUBFOLDER = "l0_manifests"
+LR_L3_MANIFEST_SUBFOLDER = "l3_manifests"
 PR_P0_MANIFEST_SUBFOLDER = "p0_manifests"
 RNA_R0_MANIFEST_SUBFOLDER = "r0_manifests"
 GENOMIC_AW2_SUBFOLDERS = ("aw2_wgs_data_manifest_subfolder_name", "aw2_genotyping_data_manifest_subfolder_name")
@@ -171,12 +172,18 @@ CE_HEALTH_DATA_BUCKET_NAME = "ce_health_data_bucket_name"
 VA_WORKQUEUE_BUCKET_NAME = 'va_workqueue_bucket_name'
 VA_WORKQUEUE_SUBFOLDER = 'va_workqueue_subfolder'
 OPS_DATA_PAYLOAD_ROLES = 'ops_data_payload_roles'
-ENABLE_ENROLLMENT_STATUS_3 = 'enable_enrollment_status_3'
 ENABLE_HEALTH_SHARING_STATUS_3 = 'enable_health_sharing_status_3'
 ENABLE_PARTICIPANT_MEDIATED_EHR = 'enable_participant_mediated_ehr'
+ENABLED_STATUS_FIELD_LIST = 'enabled_status_field_list'
 NPH_SAMPLE_DATA_BIOBANK_NIGHTLY_FILE_DROP = 'nph_sample_data_biobank_bucket_name'
 CE_MEDIATED_HPO_ID='ce_mediated_hpo_id'
 
+CVL_SITES_DATA_BUCKETS = {
+    "bcm": "prod-genomics-data-baylor",
+    "co": "prod-genomics-data-color",
+    "bi": "prod-genomics-data-color",
+    "uw": "prod-genomics-data-northwest"
+}
 # Buckets to listen for Pub/Sub notifications
 PUBSUB_NOTIFICATION_BUCKETS_PROD = [
     "prod-genomics-baylor",

@@ -29,6 +29,7 @@ class PDROnsiteVerificationVisitType(Enum):
     BIOSPECIMEN_REDRAW_ONLY = 4
     RETENTION_ACTIVITIES = 5
     PEDIATRIC_VISIT = 6
+    ID_VERIFICATION_ONLY = 7
 
 
 class OnSiteIdVerificationSchema(Schema):

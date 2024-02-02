@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 from dateutil.parser import parse
 import faker
@@ -86,6 +87,7 @@ from rdr_service.model.code import Code
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
 from rdr_service.repository.obfuscation_repository import ObfuscationRepository
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
+from rdr_service.services.retention_calculation import RetentionEligibility
 from rdr_service.services.system_utils import min_or_none
 
 
@@ -794,7 +796,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
         wgs_sequencing_time = GenomicSetMemberDao.get_wgs_pass_date(
             session=session,
-            participant_id=summary.participantId
+            biobank_id=summary.biobankId
         )
         first_exposures_response_time = None
         for data in (summary.pediatricData or []):
@@ -806,6 +808,7 @@ class ParticipantSummaryDao(UpdatableDao):
         enrl_dependencies = EnrollmentDependencies(
             consent_cohort=summary.consentCohort,
             primary_consent_authored_time=summary.consentForStudyEnrollmentFirstYesAuthored,
+            first_full_ehr_consent_authored_time=summary.consentForElectronicHealthRecordsFirstYesAuthored,
             gror_authored_time=summary.consentForGenomicsRORAuthored,
             basics_authored_time=summary.questionnaireOnTheBasicsAuthored,
             overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
@@ -1060,7 +1063,10 @@ class ParticipantSummaryDao(UpdatableDao):
         summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
 
         if pdr_pubsub:
-            submit_pipeline_pubsub_msg_from_model(summary, self.get_connection_database_name())
+            # Capture any enrollment status history records that have been added to the session.
+            models_ = list(session.new)
+            models_.append(summary)
+            submit_pipeline_pubsub_msg_from_model(models_, self.get_connection_database_name())
 
     def calculate_enrollment_status(
         self, consent, num_completed_baseline_ppi_modules, physical_measurements_status,
@@ -1254,17 +1260,20 @@ class ParticipantSummaryDao(UpdatableDao):
 
     def get_record_from_attr(self, *, attr, value):
         with self.session() as session:
-            record = session.query(ParticipantSummary)\
-                .filter(ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                    getattr(ParticipantSummary, attr) == value,
-                    getattr(ParticipantSummary, attr).isnot(None))
-            return record.all()
+            record = session.query(ParticipantSummary)
+            record = record.filter(
+                getattr(ParticipantSummary, attr) == value,
+                getattr(ParticipantSummary, attr).isnot(None)
+            )
+            return record.first()
 
     def get_hpro_consent_paths(self, result):
-        consents_map = {
+        type_to_field_name_map = {  # Maps types to the prefix of the field name they populate in the resulting JSON
             ConsentType.PRIMARY: 'consentForStudyEnrollment',
+            ConsentType.PEDIATRIC_PRIMARY: 'consentForStudyEnrollment',
             ConsentType.CABOR: 'consentForCABoR',
             ConsentType.EHR: 'consentForElectronicHealthRecords',
+            ConsentType.PEDIATRIC_EHR: 'consentForElectronicHealthRecords',
             ConsentType.GROR: 'consentForGenomicsROR',
             ConsentType.PRIMARY_RECONSENT: 'reconsentForStudyEnrollment',
             ConsentType.EHR_RECONSENT: 'reconsentForElectronicHealthRecords'
@@ -1272,12 +1281,12 @@ class ParticipantSummaryDao(UpdatableDao):
         participant_id = result['participantId']
         records = list(filter(lambda obj: obj.participant_id == participant_id, self.hpro_consents))
 
-        for consent_type, consent_name in consents_map.items():
-            value_path_key = f'{consent_name}FilePath'
-            has_consent_path = [obj for obj in records if consent_type == obj.consent_type]
+        for consent_type, field_name_prefix in type_to_field_name_map.items():
+            field_name = f'{field_name_prefix}FilePath'
+            matching_consent_list = [obj for obj in records if consent_type == obj.consent_type]
 
-            if has_consent_path:
-                result[value_path_key] = has_consent_path[0].file_path
+            if matching_consent_list:
+                result[field_name] = matching_consent_list[0].file_path
 
         return result
 
@@ -1423,21 +1432,29 @@ class ParticipantSummaryDao(UpdatableDao):
             result["physicalMeasurementsFinalizedSite"] = "UNSET"
             result["physicalMeasurementsCollectType"] = str(PhysicalMeasurementsCollectType.SELF_REPORTED)
 
-        # Check to see if we should hide 3.0 and 3.2 fields
-        if not config.getSettingJson(config.ENABLE_ENROLLMENT_STATUS_3, default=False):
-            del result['enrollmentStatusV3_2']
-            for field_name in [
-                'enrollmentStatusParticipantV3_2Time',
-                'enrollmentStatusParticipantPlusEhrV3_2Time',
-                'enrollmentStatusEnrolledParticipantV3_2Time',
-                'enrollmentStatusPmbEligibleV3_2Time',
-                'enrollmentStatusCoreMinusPmV3_2Time',
-                'enrollmentStatusCoreV3_2Time',
-                'hasCoreData',
-                'hasCoreDataTime'
-            ]:
-                if field_name in result:
-                    del result[field_name]
+        # Check to see if we should hide 3.2 fields
+        enabled_status_fields = config.getSettingJson(config.ENABLED_STATUS_FIELD_LIST, default=[])
+        for status_field_name in [
+            'enrollmentStatusV3_2',
+            'enrollmentStatusParticipantV3_2Time',
+            'enrollmentStatusParticipantPlusEhrV3_2Time',
+            'enrollmentStatusEnrolledParticipantV3_2Time',
+            'enrollmentStatusPmbEligibleV3_2Time',
+            'enrollmentStatusCoreMinusPmV3_2Time',
+            'enrollmentStatusCoreV3_2Time',
+            'hasCoreData',
+            'hasCoreDataTime'
+        ]:
+            if (
+                status_field_name in result
+                and status_field_name not in enabled_status_fields
+            ):
+                del result[status_field_name]
+                if (
+                    status_field_name == 'enrollmentStatusPmbEligibleV3_2Time'
+                    and result.get('enrollmentStatusV3_2') == str(EnrollmentStatusV32.PMB_ELIGIBLE)
+                ):
+                    result['enrollmentStatusV3_2'] = str(EnrollmentStatusV32.ENROLLED_PARTICIPANT)
 
         # Check to see if we should hide digital health sharing fields
         if not config.getSettingJson(config.ENABLE_HEALTH_SHARING_STATUS_3, default=False):
@@ -1458,8 +1475,18 @@ class ParticipantSummaryDao(UpdatableDao):
 
         # Find any linked accounts to display
         result['relatedParticipants'] = UNSET
-        if obj.relatedParticipants:
+        if obj.isPediatric:
+            if not obj.relatedParticipants:
+                logging.error('Pediatric participant does not have a guardian account linked')
+                return None
+
             related_summary_list = [link.related.participantSummary for link in obj.relatedParticipants]
+            if any(summary is None for summary in related_summary_list):
+                # If any of the guardians of a pediatric participant are not yet consented,
+                # don't return the pediatric participant's data
+                logging.error('Pediatric participant has unconsented guardian')
+                return None
+
             result['relatedParticipants'] = [
                 {
                     'participantId': to_client_participant_id(related_summary.participantId),
@@ -1669,6 +1696,18 @@ class ParticipantSummaryDao(UpdatableDao):
                 }
             )
             session.execute(query, {'file_upload_date': upload_date})
+
+    @classmethod
+    def update_with_retention_data(cls, participant_id, retention_data: RetentionEligibility, session):
+        participant_summary: ParticipantSummary = session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant_id
+        ).one_or_none()
+
+        if participant_summary:
+            participant_summary.retentionEligibleStatus = retention_data.retention_status
+            participant_summary.retentionEligibleTime = retention_data.retention_eligible_date
+            participant_summary.retentionType = retention_data.retention_type
+            participant_summary.lastActiveRetentionActivityTime = retention_data.last_active_retention_date
 
     @classmethod
     def update_profile_data(cls, participant_id: int, **kwargs):

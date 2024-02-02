@@ -73,3 +73,32 @@ class AccountLinkDaoTest(BaseTestCase):
             )
 
         self.assertEqual(timestamp, pediatric_summary.lastModified)
+
+    def test_upsert(self):
+        """Saving a link should update the current data if one already exists"""
+        parent_id = self.data_generator.create_database_participant().participantId
+        child_id = self.data_generator.create_database_participant().participantId
+
+        # Create the initial link
+        AccountLinkDao.save_account_link(
+            account_link=AccountLink(
+                participant_id=child_id, related_id=parent_id,
+                start=datetime(2020, 10, 1)
+            )
+        )
+
+        # Make an update
+        saved_end_date = datetime(2021, 12, 1)
+        AccountLinkDao.save_account_link(
+            account_link=AccountLink(
+                participant_id=child_id, related_id=parent_id,
+                start=datetime(2020, 10, 1),
+                end=saved_end_date
+            )
+        )
+
+        account_link = self.session.query(AccountLink).filter(
+            AccountLink.participant_id == child_id,
+            AccountLink.related_id == parent_id
+        ).one()
+        self.assertEqual(saved_end_date, account_link.end)

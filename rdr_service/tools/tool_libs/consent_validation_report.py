@@ -73,10 +73,17 @@ CONSENT_PARTICIPANT_SUMMARY_FIELDS = {
     # yet included in the validation)
     ConsentType.PRIMARY : ('consent_for_study_enrollment', 'consent_for_study_enrollment_first_yes_authored'),
     ConsentType.CABOR: ('consent_for_cabor', 'consent_for_cabor_authored'),
-    ConsentType.EHR: ('consent_for_electronic_health_records',
-                      'consent_for_electronic_health_records_first_yes_authored'),
+    ConsentType.EHR: (
+        'consent_for_electronic_health_records',
+        'consent_for_electronic_health_records_first_yes_authored'
+    ),
     ConsentType.GROR: ('consent_for_genomics_ror', 'consent_for_genomics_ror_authored'),
-    ConsentType.PRIMARY_UPDATE: ('consent_for_study_enrollment', 'consent_for_study_enrollment_authored')
+    ConsentType.PRIMARY_UPDATE: ('consent_for_study_enrollment', 'consent_for_study_enrollment_authored'),
+    ConsentType.PEDIATRIC_PRIMARY: ('consent_for_study_enrollment', 'consent_for_study_enrollment_first_yes_authored'),
+    ConsentType.PEDIATRIC_EHR: (
+        'consent_for_electronic_health_records',
+        'consent_for_electronic_health_records_first_yes_authored'
+    )
 }
 
 # List of currently validated consent type values as ints, for pandas filtering of consent_file.type values

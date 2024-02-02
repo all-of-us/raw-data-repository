@@ -64,6 +64,7 @@ class QuestionnaireResponseRepository:
                 QuestionnaireResponse.questionnaireResponseId,
                 QuestionnaireResponse.authored,
                 survey_code.value,
+                survey_code.codeId,
                 QuestionnaireResponseAnswer,
                 QuestionnaireResponse.status
             )
@@ -122,8 +123,8 @@ class QuestionnaireResponseRepository:
 
         # build dict with participant ids as keys and ParticipantResponse objects as values
         participant_response_map = defaultdict(response_domain_model.ParticipantResponses)
-        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, answer, \
-                status in query.all():
+        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, survey_code_id, \
+                answer, status in query.all():
             # Get the collection of responses for the participant
             response_collection_for_participant = participant_response_map[participant_id]
 
@@ -133,6 +134,7 @@ class QuestionnaireResponseRepository:
                 # This is the first time seeing an answer for this response, so create the Response structure for it
                 response = response_domain_model.Response(
                     id=response_id,
+                    survey_code_id=survey_code_id,
                     survey_code=survey_code_str,
                     authored_datetime=authored_datetime,
                     status=status
@@ -151,7 +153,7 @@ class QuestionnaireResponseRepository:
             session.query(ConsentResponse.questionnaire_response_id)
             .join(ConsentFile)
             .filter(
-                ConsentFile.type == ConsentType.EHR,
+                ConsentFile.type.in_([ConsentType.EHR, ConsentType.PEDIATRIC_EHR]),
                 ConsentFile.sync_status.in_([ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE]),
                 ConsentFile.participant_id == participant_id
             )
@@ -174,7 +176,8 @@ class QuestionnaireResponseRepository:
             session=session,
             survey_codes=[
                 code_constants.CONSENT_FOR_DVEHR_MODULE,
-                code_constants.CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
+                code_constants.CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
+                code_constants.PEDIATRIC_EHR_CONSENT
             ],
             participant_ids=[participant_id],
             classification_types=[
@@ -230,6 +233,28 @@ class QuestionnaireResponseRepository:
                         current_date_range = DateRange(start=response.authored_datetime)
                     if (
                         consent_answer.value.lower() != code_constants.CONSENT_PERMISSION_YES_CODE.lower()
+                        and current_date_range is not None
+                    ):
+                        current_date_range.end = response.authored_datetime
+                        ehr_interest_date_ranges.append(current_date_range)
+                        current_date_range = None
+
+                consent_answer = response.get_single_answer_for(code_constants.EHR_PEDIATRIC_CONSENT_QUESTION_CODE)
+                if consent_answer:
+                    if (
+                        response.id not in validated_ehr_id_list
+                        and not skip_validation_check
+                        and response.authored_datetime != default_authored_datetime
+                    ):
+                        continue
+
+                    if (
+                        consent_answer.value.lower() == code_constants.PEDIATRIC_SHARE_AGREE.lower()
+                        and current_date_range is None
+                    ):
+                        current_date_range = DateRange(start=response.authored_datetime)
+                    if (
+                        consent_answer.value.lower() != code_constants.PEDIATRIC_SHARE_AGREE.lower()
                         and current_date_range is not None
                     ):
                         current_date_range.end = response.authored_datetime

@@ -11,7 +11,7 @@ from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestF
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, \
     GenomicSubProcessStatus, GenomicSubProcessResult
-from rdr_service.model.genomics import GenomicRRRaw, GenomicR0Raw, GenomicR1Raw
+from rdr_service.model.genomics import GenomicRRRaw, GenomicR0Raw, GenomicR1Raw, GenomicR2Raw
 from rdr_service.offline.genomics import genomic_dispatch, genomic_rna_pipeline
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
@@ -86,7 +86,8 @@ class GenomicRNAPipelineTest(BaseTestCase):
             bucket_name,
             folder=subfolder,
             include_timestamp=kwargs.get('include_timestamp', True),
-            include_sub_num=kwargs.get('include_sub_num')
+            include_sub_num=kwargs.get('include_sub_num'),
+            after_timestamp=kwargs.get('after_timestamp')
         )
 
         task_data = {
@@ -439,5 +440,62 @@ class GenomicRNAPipelineTest(BaseTestCase):
         self.assertEqual(len(r1_raw_job_runs), 1)
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in r1_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in r1_raw_job_runs))
+
+        self.clear_table_after_test('genomic_rna')
+
+    def test_r2_manifest_ingestion(self):
+
+        self.execute_base_rna_ingestion(
+            test_file='RDR_AoU_R2.csv',
+            job_id=GenomicJob.RNA_R2_WORKFLOW,
+            manifest_type=GenomicManifestTypes.RNA_R2,
+            after_timestamp='_2_v1'
+        )
+
+        # check job run record
+        r2_job_runs = list(filter(lambda x: x.jobId == GenomicJob.RNA_R2_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(r2_job_runs)
+        self.assertEqual(len(r2_job_runs), 1)
+
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in r2_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in r2_job_runs))
+
+        self.clear_table_after_test('genomic_rna')
+
+    def test_r2_manifest_to_raw_ingestion(self):
+
+        self.execute_base_rna_ingestion(
+            test_file='RDR_AoU_R2.csv',
+            job_id=GenomicJob.RNA_R2_WORKFLOW,
+            manifest_type=GenomicManifestTypes.RNA_R2,
+            after_timestamp='_2_v1'
+        )
+
+        r2_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicR2Raw
+        )
+
+        manifest_type = 'r2'
+        r2_manifest_file = self.manifest_file_dao.get(1)
+
+        genomic_dispatch.load_manifest_into_raw_table(
+            r2_manifest_file.filePath,
+            manifest_type
+        )
+
+        r2_raw_records = r2_raw_dao.get_all()
+        self.assertEqual(len(r2_raw_records), 1)
+
+        for attribute in GenomicR2Raw.__table__.columns:
+            self.assertTrue(all(getattr(obj, str(attribute).split('.')[1]) is not None for obj in r2_raw_records))
+
+        # check job run record
+        r2_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_R2_TO_RAW_TABLE, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(r2_raw_job_runs)
+        self.assertEqual(len(r2_raw_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in r2_raw_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in r2_raw_job_runs))
 
         self.clear_table_after_test('genomic_rna')

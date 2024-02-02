@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from dateutil import parser
 
-from sqlalchemy import and_, or_, func
+from sqlalchemy import and_, or_, func, case
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import functions
@@ -25,7 +25,7 @@ from rdr_service import clock, code_constants, config
 from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus, \
-    ResultsModuleType
+    ResultsModuleType, GenomicLongReadPlatform
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
@@ -49,7 +49,8 @@ from rdr_service.model.genomics import (
     GenomicCVLSecondSample, GenomicW2WRaw, GenomicCVLResultPastDue, GenomicSampleSwapMember,
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead,
-    GenomicProteomics, GenomicRNA)
+    GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, GenomicRRRaw, GenomicR1Raw, GenomicLRRaw,
+    GenomicL1Raw, GenomicAW4Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, GenomicL3Raw)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -1339,22 +1340,19 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             return members.all()
 
     @classmethod
-    def get_wgs_pass_date(cls, session, participant_id) -> Optional[datetime]:
-        aw4_job_run = session.query(
-            GenomicJobRun.startTime
+    def get_wgs_pass_date(cls, session, biobank_id) -> Optional[datetime]:
+        aw4_record = session.query(
+            GenomicAW4Raw.created
         ).select_from(
-            GenomicSetMember
-        ).join(
-            GenomicJobRun,
-            GenomicJobRun.id == GenomicSetMember.aw4ManifestJobRunID
+            GenomicAW4Raw
         ).filter(
-            GenomicSetMember.participantId == participant_id,
-            GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
-            GenomicSetMember.qcStatus == GenomicQcStatus.PASS
-        ).first()
+            GenomicAW4Raw.biobank_id == f'{get_biobank_id_prefix()}{biobank_id}',
+            GenomicAW4Raw.genome_type == config.GENOME_TYPE_WGS,
+            GenomicAW4Raw.qc_status.ilike('pass')
+        ).order_by(GenomicAW4Raw.created).first()
 
-        if aw4_job_run:
-            return aw4_job_run.startTime
+        if aw4_record:
+            return aw4_record.created
 
         return None
 
@@ -1391,15 +1389,17 @@ class GenomicJobRunDao(UpdatableDao, GenomicDaoMixin):
                     GenomicSubProcessResult.NO_FILES
                 ])).one()[0]
 
-    def get_last_run_status_for_job_id(self, job_id):
+    def get_last_completed_run_status_for_job_id(self, job_id):
         with self.session() as session:
             return session.query(
-                GenomicJobRun.runResult
+                functions.max(GenomicJobRun.runResult)
             ).filter(
                 GenomicJobRun.jobId == job_id,
-                GenomicJobRun.id ==
-                self.get_max_id_subquery().c.id
-            ).one()
+                GenomicJobRun.runStatus == GenomicSubProcessStatus.COMPLETED,
+                GenomicJobRun.runResult.in_([
+                    GenomicSubProcessResult.SUCCESS,
+                    GenomicSubProcessResult.NO_FILES
+                ])).one()[0]
 
     def insert_run_record(self, job_id):
         """
@@ -2500,11 +2500,18 @@ class GenomicSchedulingDao(BaseDao):
                     ],
                     else_=False
                 ).label('note_available'),
+            ).select_from(
+                GenomicAppointmentEvent
             ).join(
                 max_appointment_id_subquery,
                 and_(
                     GenomicAppointmentEvent.participant_id == max_appointment_id_subquery.c.participant_id,
                     GenomicAppointmentEvent.module_type == max_appointment_id_subquery.c.module_type,
+                )
+            ).join(
+                GenomicSetMember,
+                and_(
+                    GenomicSetMember.participantId == GenomicAppointmentEvent.participant_id,
                 )
             ).outerjoin(
                 note_alias,
@@ -3739,18 +3746,37 @@ class GenomicQueriesDao(BaseDao):
         return site_id_map[site_id]
 
     def get_missing_data_files_for_aw3(self, genome_type):
-        missing_files_map = {
-            config.GENOME_TYPE_ARRAY: array_file_types_attributes,
-            config.GENOME_TYPE_WGS: wgs_file_types_attributes
-        }[genome_type]
-        required_file_types = [file_type['file_type'] for file_type in missing_files_map
-                               if file_type['required']]
+        idat_red_path = aliased(GenomicGcDataFile)
+        idat_green_path = aliased(GenomicGcDataFile)
+        idat_red_md5_path = aliased(GenomicGcDataFile)
+        idat_green_md5_path = aliased(GenomicGcDataFile)
+        vcf_path = aliased(GenomicGcDataFile)
+        vcf_tbi_path = aliased(GenomicGcDataFile)
+        vcf_md5_path = aliased(GenomicGcDataFile)
+
+        hard_filtered_vcf_gz = aliased(GenomicGcDataFile)
+        hard_filtered_vcf_gz_tbi = aliased(GenomicGcDataFile)
+        hard_filtered_vcf_gz_md5_sum = aliased(GenomicGcDataFile)
+        cram = aliased(GenomicGcDataFile)
+        cram_md5_sum = aliased(GenomicGcDataFile)
+        cram_crai = aliased(GenomicGcDataFile)
+        hard_filtered_gvcf_gz = aliased(GenomicGcDataFile)
+        hard_filtered_gvcf_gz_md5_sum = aliased(GenomicGcDataFile)
 
         with self.session() as session:
             if genome_type == config.GENOME_TYPE_ARRAY:
                 subquery = session.query(
-                    GenomicSetMember.id,
-                    func.count(GenomicGcDataFile.file_type).label("file_count")
+                    GenomicSetMember.sampleId.label('sample_id'),
+                    GenomicSetMember.gcSiteId.label('gc'),
+                    sqlalchemy.func.concat_ws(', ',
+                                              case([(idat_red_path.file_type.is_(None), 'Red.idat')]),
+                                              case([(idat_red_md5_path.file_type.is_(None), 'Red.idat.md5sum')]),
+                                              case([(idat_green_path.file_type.is_(None), 'Grn.idat')]),
+                                              case([(idat_green_md5_path.file_type.is_(None), 'Grn.idat.md5sum')]),
+                                              case([(vcf_path.file_type.is_(None), 'vcf.gz')]),
+                                              case([(vcf_tbi_path.file_type.is_(None), 'vcf.gz.tbi')]),
+                                              case([(vcf_md5_path.file_type.is_(None), 'vcf.gz.md5sum')])
+                                              ).label('missing_files')
                 ).join(
                     ParticipantSummary,
                     ParticipantSummary.participantId == GenomicSetMember.participantId
@@ -3758,24 +3784,92 @@ class GenomicQueriesDao(BaseDao):
                     GenomicGCValidationMetrics,
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
                 ).outerjoin(
-                    GenomicGcDataFile,
-                    GenomicGcDataFile.identifier_value == GenomicGCValidationMetrics.chipwellbarcode
+                    idat_red_path,
+                    and_(
+                        idat_red_path.file_type == 'Red.idat',
+                        idat_red_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                        idat_red_path.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    idat_green_path,
+                    and_(
+                        idat_green_path.file_type == 'Grn.idat',
+                        idat_green_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                        idat_green_path.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    idat_red_md5_path,
+                    and_(
+                        idat_red_md5_path.file_type == 'Red.idat.md5sum',
+                        idat_red_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                        idat_red_md5_path.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    idat_green_md5_path,
+                    and_(
+                        idat_green_md5_path.file_type == 'Grn.idat.md5sum',
+                        idat_green_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                        idat_green_md5_path.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    vcf_path,
+                    and_(
+                        vcf_path.file_type == 'vcf.gz',
+                        vcf_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                        vcf_path.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    vcf_tbi_path,
+                    and_(
+                        vcf_tbi_path.file_type == 'vcf.gz.tbi',
+                        vcf_tbi_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                        vcf_tbi_path.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    vcf_md5_path,
+                    and_(
+                        vcf_md5_path.file_type == 'vcf.gz.md5sum',
+                        vcf_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+                        vcf_md5_path.ignore_flag != 1
+                    )
                 ).filter(
                     GenomicSetMember.genomeType == genome_type,
                     GenomicSetMember.aw3ManifestJobRunID.is_(None),
                     GenomicSetMember.ignoreFlag != 1,
                     GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                     GenomicGCValidationMetrics.ignoreFlag != 1,
-                    GenomicGcDataFile.ignore_flag != 1,
-                    GenomicGcDataFile.file_type.in_(required_file_types),
                     ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                     ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                ).group_by(GenomicSetMember.id).subquery()
+                    or_(
+                        idat_red_path.file_type.is_(None),
+                        idat_red_md5_path.file_type.is_(None),
+                        idat_green_path.file_type.is_(None),
+                        idat_green_md5_path.file_type.is_(None),
+                        vcf_path.file_type.is_(None),
+                        vcf_tbi_path.file_type.is_(None),
+                        vcf_md5_path.file_type.is_(None)
+                    )
+                ).subquery()
 
             elif genome_type == config.GENOME_TYPE_WGS:
                 subquery = session.query(
-                    GenomicSetMember.id,
-                    func.count(GenomicGcDataFile.file_type).label("file_count")
+                    GenomicSetMember.sampleId.label('sample_id'),
+                    GenomicSetMember.gcSiteId.label('gc'),
+                    sqlalchemy.func.concat_ws(', ',
+                                              case(
+                                                  [(hard_filtered_vcf_gz.file_type.is_(None), 'hard-filtered.vcf.gz')]),
+                                              case([(hard_filtered_vcf_gz_tbi.file_type.is_(None),
+                                                     'hard-filtered.vcf.gz.tbi')]),
+                                              case([(hard_filtered_vcf_gz_md5_sum.file_type.is_(None),
+                                                     'hard-filtered.vcf.gz.md5sum')]),
+                                              case([(cram.file_type.is_(None), 'cram')]),
+                                              case([(cram_md5_sum.file_type.is_(None), 'cram.crai')]),
+                                              case([(cram_crai.file_type.is_(None), 'cram.md5sum')]),
+                                              case([(hard_filtered_gvcf_gz.file_type.is_(None),
+                                                     'hard-filtered.gvcf.gz')]),
+                                              case([(hard_filtered_gvcf_gz_md5_sum.file_type.is_(None),
+                                                     'hard-filtered.gvcf.gz.md5sum')])
+                                              ).label('missing_files')
                 ).join(
                     ParticipantSummary,
                     ParticipantSummary.participantId == GenomicSetMember.participantId
@@ -3783,34 +3877,90 @@ class GenomicQueriesDao(BaseDao):
                     GenomicGCValidationMetrics,
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
                 ).outerjoin(
-                    GenomicGcDataFile,
-                    GenomicGcDataFile.identifier_value == GenomicSetMember.sampleId
+                    hard_filtered_vcf_gz,
+                    and_(
+                        hard_filtered_vcf_gz.file_type == 'hard-filtered.vcf.gz',
+                        hard_filtered_vcf_gz.identifier_value == GenomicSetMember.sampleId,
+                        hard_filtered_vcf_gz.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    hard_filtered_vcf_gz_tbi,
+                    and_(
+                        hard_filtered_vcf_gz_tbi.file_type == 'hard-filtered.vcf.gz.tbi',
+                        hard_filtered_vcf_gz_tbi.identifier_value == GenomicSetMember.sampleId,
+                        hard_filtered_vcf_gz_tbi.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    hard_filtered_vcf_gz_md5_sum,
+                    and_(
+                        hard_filtered_vcf_gz_md5_sum.file_type == 'hard-filtered.vcf.gz.md5sum',
+                        hard_filtered_vcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
+                        hard_filtered_vcf_gz_md5_sum.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    cram,
+                    and_(
+                        cram.file_type == 'cram',
+                        cram.identifier_value == GenomicSetMember.sampleId,
+                        cram.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    cram_md5_sum,
+                    and_(
+                        cram_md5_sum.file_type == 'cram.md5sum',
+                        cram_md5_sum.identifier_value == GenomicSetMember.sampleId,
+                        cram_md5_sum.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    cram_crai,
+                    and_(
+                        cram_crai.file_type == 'cram.crai',
+                        cram_crai.identifier_value == GenomicSetMember.sampleId,
+                        cram_crai.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    hard_filtered_gvcf_gz,
+                    and_(
+                        hard_filtered_gvcf_gz.file_type == 'hard-filtered.gvcf.gz',
+                        hard_filtered_gvcf_gz.identifier_value == GenomicSetMember.sampleId,
+                        hard_filtered_gvcf_gz.ignore_flag != 1
+                    )
+                ).outerjoin(
+                    hard_filtered_gvcf_gz_md5_sum,
+                    and_(
+                        hard_filtered_gvcf_gz_md5_sum.file_type == 'hard-filtered.gvcf.gz.md5sum',
+                        hard_filtered_gvcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
+                        hard_filtered_gvcf_gz_md5_sum.ignore_flag != 1
+                    )
                 ).filter(
                     GenomicSetMember.genomeType == genome_type,
                     GenomicSetMember.aw3ManifestJobRunID.is_(None),
                     GenomicSetMember.ignoreFlag != 1,
                     GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                     GenomicGCValidationMetrics.ignoreFlag != 1,
-                    GenomicGcDataFile.ignore_flag != 1,
-                    GenomicGcDataFile.file_type.in_(required_file_types),
                     ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                     ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                ).group_by(GenomicSetMember.id).subquery()
+                    or_(
+                        hard_filtered_vcf_gz.file_type.is_(None),
+                        hard_filtered_vcf_gz_tbi.file_type.is_(None),
+                        hard_filtered_vcf_gz_md5_sum.file_type.is_(None),
+                        cram.file_type.is_(None),
+                        cram_md5_sum.file_type.is_(None),
+                        cram_crai.file_type.is_(None),
+                        hard_filtered_gvcf_gz.file_type.is_(None),
+                        hard_filtered_gvcf_gz_md5_sum.file_type.is_(None)
+                    )
+                ).subquery()
 
             records = session.query(
-                GenomicSetMember.sampleId,
-                GenomicAW2Raw.created
-            ).join(
-                subquery,
-                and_(
-                    subquery.c.id == GenomicSetMember.id
-                )
+                GenomicAW2Raw.created.label('date_reported'),
+                subquery.c.sample_id,
+                subquery.c.gc,
+                GenomicAW2Raw.file_path.label('aw2_file_path'),
+                subquery.c.missing_files
             ).join(
                 GenomicAW2Raw,
-                GenomicSetMember.sampleId == GenomicAW2Raw.sample_id
-            ).filter(
-                subquery.c.file_count !=
-                len(required_file_types)
+                subquery.c.sample_id == GenomicAW2Raw.sample_id
             )
             return records.distinct().all()
 
@@ -4181,6 +4331,7 @@ class GenomicQueriesDao(BaseDao):
         """
 
         gc_site_id = self.transform_cvl_site_id(cvl_id)
+        gc_site_data_bucket = config.CVL_SITES_DATA_BUCKETS.get(cvl_id)
         previous_w1il_job_field = {
             'pgx': GenomicSetMember.cvlW1ilPgxJobRunId,
             'hdr': GenomicSetMember.cvlW1ilHdrJobRunId
@@ -4197,16 +4348,37 @@ class GenomicQueriesDao(BaseDao):
         informing_loop_subquery = aliased(GenomicInformingLoop, informing_loop_decision_query.subquery())
         pipeline_metrics = aliased(GenomicGCValidationMetrics)
 
+        def get_archive_path(*, file_path):
+            return func.replace(file_path, gc_site_data_bucket, gc_site_data_bucket + '-archive')
+
         with self.session() as session:
             query = session.query(
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                 GenomicSetMember.sampleId,
-                GenomicGCValidationMetrics.hfVcfPath.label('vcf_raw_path'),
-                GenomicGCValidationMetrics.hfVcfTbiPath.label('vcf_raw_index_path'),
-                GenomicGCValidationMetrics.hfVcfMd5Path.label('vcf_raw_md5_path'),
-                GenomicGCValidationMetrics.gvcfPath.label('gvcf_path'),
-                GenomicGCValidationMetrics.gvcfMd5Path.label('gvcf_md5_path'),
-                GenomicGCValidationMetrics.cramPath.label('cram_name'),
+                func.IF(and_(cvl_id == 'uw',
+                             GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)),
+                        get_archive_path(file_path=GenomicGCValidationMetrics.hfVcfPath),
+                        GenomicGCValidationMetrics.hfVcfPath).label('vcf_raw_path'),
+                func.IF(and_(cvl_id == 'uw',
+                             GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)),
+                        get_archive_path(file_path=GenomicGCValidationMetrics.hfVcfTbiPath),
+                        GenomicGCValidationMetrics.hfVcfTbiPath).label('vcf_raw_index_path'),
+                func.IF(and_(cvl_id == 'uw',
+                             GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)),
+                        get_archive_path(file_path=GenomicGCValidationMetrics.hfVcfMd5Path),
+                        GenomicGCValidationMetrics.hfVcfMd5Path).label('vcf_raw_md5_path'),
+                func.IF(and_(cvl_id == 'uw',
+                             GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)),
+                        get_archive_path(file_path=GenomicGCValidationMetrics.gvcfPath),
+                        GenomicGCValidationMetrics.gvcfPath).label('gvcf_path'),
+                func.IF(and_(cvl_id == 'uw',
+                             GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)),
+                        get_archive_path(file_path=GenomicGCValidationMetrics.gvcfMd5Path),
+                        GenomicGCValidationMetrics.gvcfMd5Path).label('gvcf_md5_path'),
+                func.IF(and_(cvl_id == 'uw',
+                             GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)),
+                        get_archive_path(file_path=GenomicGCValidationMetrics.cramPath),
+                        GenomicGCValidationMetrics.cramPath).label('cram_name'),
                 GenomicSetMember.sexAtBirth.label('sex_at_birth'),
                 func.IF(
                     GenomicSetMember.nyFlag == 1,
@@ -4235,16 +4407,22 @@ class GenomicQueriesDao(BaseDao):
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
                     GenomicGCValidationMetrics.ignoreFlag != 1
                 )
+            ).outerjoin(
+                GenomicAW4Raw,
+                and_(
+                    GenomicAW4Raw.sample_id == GenomicSetMember.sampleId,
+                    GenomicAW4Raw.ignore_flag != 1,
+                    or_(
+                        GenomicAW4Raw.pipeline_id == GenomicGCValidationMetrics.pipelineId,
+                        and_(
+                            GenomicAW4Raw.pipeline_id == None,
+                            GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_DEPRECATED_WGS_DRAGEN)
+                        )
+                    )
+                )
             ).join(
                 informing_loop_subquery,
                 informing_loop_subquery.participant_id == GenomicSetMember.participantId
-            ).outerjoin(
-                pipeline_metrics,
-                and_(
-                    pipeline_metrics.genomicSetMemberId == GenomicSetMember.id,
-                    pipeline_metrics.ignoreFlag != 1,
-                    pipeline_metrics.pipelineId < GenomicGCValidationMetrics.pipelineId
-                )
             ).filter(
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
@@ -4254,13 +4432,14 @@ class GenomicQueriesDao(BaseDao):
                 or_(
                     GenomicGCValidationMetrics.sexConcordance.ilike('true'),
                     GenomicGCValidationMetrics.sexConcordance.ilike('other')
-                ), # check AW2 gives sex concordance as true
-                GenomicGCValidationMetrics.drcSexConcordance.ilike('pass'),  # check AW4 gives sex concordance as true
+                ),  # check AW2 gives sex concordance as true
+                GenomicAW4Raw.drc_sex_concordance.ilike('pass'),
+                GenomicAW4Raw.qc_status.ilike('pass'),
                 GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
                 ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
-                GenomicGCValidationMetrics.drcFpConcordance.ilike('pass'),
+                GenomicAW4Raw.drc_fp_concordance.ilike('pass'),
                 GenomicSetMember.diversionPouchSiteFlag != 1,
                 GenomicSetMember.gcSiteId.ilike(gc_site_id),
                 ParticipantSummary.participantOrigin != 'careevolution',
@@ -4272,9 +4451,24 @@ class GenomicQueriesDao(BaseDao):
                 GenomicGCValidationMetrics.hfVcfMd5Path.isnot(None),
                 GenomicGCValidationMetrics.gvcfPath.isnot(None),
                 GenomicGCValidationMetrics.gvcfMd5Path.isnot(None),
-                GenomicGCValidationMetrics.cramPath.isnot(None),
-                pipeline_metrics.id.is_(None)
+                GenomicGCValidationMetrics.cramPath.isnot(None)
             )
+
+            if cvl_id == 'uw':
+                query = query.outerjoin(
+                    pipeline_metrics,
+                    and_(
+                        pipeline_metrics.genomicSetMemberId == GenomicSetMember.id,
+                        pipeline_metrics.ignoreFlag != 1,
+                        pipeline_metrics.pipelineId < GenomicGCValidationMetrics.pipelineId
+                    )
+                ).filter(
+                    pipeline_metrics.id.is_(None)
+                )
+            else:
+                query = query.filter(
+                    GenomicGCValidationMetrics.pipelineId.ilike(config.GENOMIC_UPDATED_WGS_DRAGEN)
+                )
 
             if sample_ids:
                 query = query.filter(
@@ -4694,7 +4888,11 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
         ...
 
     @abstractmethod
-    def get_zero_manifest_records_from_max_set(self):
+    def get_manifest_zero_records_from_max_set(self):
+        ...
+
+    @abstractmethod
+    def get_manifest_three_records(self):
         ...
 
     @abstractmethod
@@ -4746,7 +4944,7 @@ class GenomicLongReadDao(GenomicSubDao):
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
-                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
                 GenomicSetMember.diversionPouchSiteFlag != 1,
                 GenomicSetMember.blockResults != 1,
@@ -4755,11 +4953,11 @@ class GenomicLongReadDao(GenomicSubDao):
                 GenomicSetMember.biobankId.in_(biobank_ids)
             ).distinct().all()
 
-    def get_zero_manifest_records_from_max_set(self):
+    def get_manifest_zero_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicLongRead.biobank_id),
-                GenomicSetMember.collectionTubeId,
+                GenomicLongRead.collection_tube_id,
                 GenomicSetMember.sexAtBirth,
                 GenomicLongRead.genome_type,
                 func.IF(GenomicSetMember.nyFlag == 1,
@@ -4776,13 +4974,156 @@ class GenomicLongReadDao(GenomicSubDao):
                 GenomicSetMember,
                 and_(
                     GenomicSetMember.id == GenomicLongRead.genomic_set_member_id,
-                    GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                    GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.ignoreFlag != 1
                 )
             ).filter(
                 GenomicLongRead.long_read_set ==
                 self.get_max_set_subquery().c.long_read_set
             ).distinct().all()
+
+    def get_pipeline_members_missing_sample_id(
+        self,
+        *, biobank_ids: List[str],
+        collection_tube_ids: List[str],
+        long_read_platform: GenomicLongReadPlatform
+    ):
+        with self.session() as session:
+            return session.query(
+                self.model_type.id,
+                self.model_type.biobank_id
+            ).filter(
+                self.model_type.sample_id.is_(None),
+                self.model_type.biobank_id.in_(biobank_ids),
+                self.model_type.collection_tube_id.in_(collection_tube_ids),
+                self.model_type.long_read_platform == long_read_platform
+            ).distinct().all()
+
+    def get_manifest_three_records(self):
+        with self.session() as session:
+            records = (
+                session.query(
+                    GenomicLongRead.biobank_id.label('biobank_id'),
+                    GenomicLongRead.sample_id.label('sample_id'),
+                    func.concat(get_biobank_id_prefix(),
+                                GenomicLongRead.biobank_id, '_',
+                                GenomicLongRead.sample_id),
+                    GenomicL2ONTRaw.flowcell_id.label('flowcell_id'),
+                    GenomicL2ONTRaw.barcode.label('barcode'),
+                    GenomicLongRead.long_read_platform.label('long_read_platform'),
+                    GenomicL2ONTRaw.bam_path.label('bam_path'),
+                    GenomicL1Raw.sex_at_birth.label('sex_at_birth'),
+                    GenomicLongRead.lr_site_id.label('lr_site_id'),
+                    GenomicL2ONTRaw.sample_source.label('sample_source'),
+                    GenomicL2ONTRaw.processing_status.label('gc_processing_status'),
+                    GenomicL2ONTRaw.read_length_n50.label('fragment_length'),
+                    literal('').label('pacbio_instrument_type'),
+                    literal('').label('smrtlink_server_version'),
+                    literal('').label('pacbio_instrument_ics_version'),
+                    GenomicL2ONTRaw.read_error_rate.label('gc_read_error_rate'),
+                    GenomicL2ONTRaw.mean_coverage.label('gc_mean_coverage'),
+                    GenomicL2ONTRaw.genome_coverage.label('gc_genome_coverage'),
+                    GenomicL2ONTRaw.contamination.label('gc_contamination'),
+                    GenomicL2ONTRaw.basecaller_version.label('ont_basecaller_version'),
+                    GenomicL2ONTRaw.basecaller_model.label('ont_basecaller_model'),
+                    GenomicL2ONTRaw.mean_read_quality.label('ont_mean_read_qual'),
+                ).join(
+                    GenomicL1Raw,
+                    and_(
+                        GenomicLongRead.sample_id == GenomicL1Raw.sample_id,
+                        GenomicL1Raw.long_read_platform.ilike('ont')
+                    )
+                ).join(
+                    GenomicL2ONTRaw,
+                    GenomicLongRead.sample_id == GenomicL2ONTRaw.sample_id
+                ).outerjoin(
+                    GenomicL3Raw,
+                    and_(
+                        GenomicL2ONTRaw.sample_id == GenomicL3Raw.sample_id,
+                        GenomicL2ONTRaw.flowcell_id == GenomicL3Raw.flowcell_id,
+                        GenomicL2ONTRaw.barcode == GenomicL3Raw.barcode
+                    )
+                ).filter(
+                    GenomicL3Raw.id.is_(None),
+                    GenomicLongRead.sample_id.isnot(None),
+                    GenomicL1Raw.sex_at_birth.isnot(None),
+                    GenomicL2ONTRaw.flowcell_id.isnot(None),
+                    GenomicL2ONTRaw.barcode.isnot(None),
+                    GenomicL2ONTRaw.bam_path.isnot(None),
+                    GenomicL2ONTRaw.sample_source.isnot(None),
+                    GenomicL2ONTRaw.processing_status.isnot(None),
+                    GenomicL2ONTRaw.read_length_n50.isnot(None),
+                    GenomicL2ONTRaw.read_error_rate.isnot(None),
+                    GenomicL2ONTRaw.mean_coverage.isnot(None),
+                    GenomicL2ONTRaw.genome_coverage.isnot(None),
+                    GenomicL2ONTRaw.contamination.isnot(None),
+                    GenomicL2ONTRaw.basecaller_version.isnot(None),
+                    GenomicL2ONTRaw.basecaller_model.isnot(None),
+                    GenomicL2ONTRaw.mean_read_quality.isnot(None),
+                ).union(
+                    session.query(
+                        GenomicLongRead.biobank_id.label('biobank_id'),
+                        GenomicLongRead.sample_id.label('sample_id'),
+                        func.concat(get_biobank_id_prefix(),
+                                    GenomicLongRead.biobank_id, '_',
+                                    GenomicLongRead.sample_id),
+                        GenomicL2PBCCSRaw.flowcell_id.label('flowcell_id'),
+                        GenomicL2PBCCSRaw.barcode.label('barcode'),
+                        GenomicLongRead.long_read_platform.label('long_read_platform'),
+                        GenomicL2PBCCSRaw.bam_path.label('bam_path'),
+                        GenomicL1Raw.sex_at_birth.label('sex_at_birth'),
+                        GenomicLongRead.lr_site_id.label('lr_site_id'),
+                        GenomicL2PBCCSRaw.sample_source.label('sample_source'),
+                        GenomicL2PBCCSRaw.processing_status.label('gc_processing_status'),
+                        GenomicL2PBCCSRaw.read_length_mean.label('fragment_length'),
+                        GenomicL2PBCCSRaw.instrument.label('pacbio_instrument_type'),
+                        GenomicL2PBCCSRaw.smrtlink_server_version.label('smrtlink_server_version'),
+                        GenomicL2PBCCSRaw.instrument_ics_version.label('pacbio_instrument_ics_version'),
+                        GenomicL2PBCCSRaw.read_error_rate.label('gc_read_error_rate'),
+                        GenomicL2PBCCSRaw.mean_coverage.label('gc_mean_coverage'),
+                        GenomicL2PBCCSRaw.genome_coverage.label('gc_genome_coverage'),
+                        GenomicL2PBCCSRaw.contamination.label('gc_contamination'),
+                        literal('').label('ont_basecaller_version'),
+                        literal('').label('ont_basecaller_model'),
+                        literal('').label('ont_mean_read_qual'),
+                    ).join(
+                        GenomicL1Raw,
+                        and_(
+                            GenomicLongRead.sample_id == GenomicL1Raw.sample_id,
+                            GenomicL1Raw.long_read_platform.ilike('pacbio_ccs')
+                        )
+                    ).join(
+                        GenomicL2PBCCSRaw,
+                        GenomicLongRead.sample_id == GenomicL2PBCCSRaw.sample_id
+                    ).outerjoin(
+                        GenomicL3Raw,
+                        and_(
+                            GenomicL2PBCCSRaw.sample_id == GenomicL3Raw.sample_id,
+                            GenomicL2PBCCSRaw.flowcell_id == GenomicL3Raw.flowcell_id,
+                            GenomicL2PBCCSRaw.barcode == GenomicL3Raw.barcode
+                        )
+                    ).filter(
+                        GenomicL3Raw.id.is_(None),
+                        GenomicLongRead.sample_id.isnot(None),
+                        GenomicL1Raw.sex_at_birth.isnot(None),
+                        GenomicL2PBCCSRaw.flowcell_id.isnot(None),
+                        GenomicL2PBCCSRaw.barcode.isnot(None),
+                        GenomicL2PBCCSRaw.bam_path.isnot(None),
+                        GenomicL2PBCCSRaw.sample_source.isnot(None),
+                        GenomicL2PBCCSRaw.processing_status.isnot(None),
+                        GenomicL2PBCCSRaw.read_length_mean.isnot(None),
+                        GenomicL2PBCCSRaw.instrument.isnot(None),
+                        GenomicL2PBCCSRaw.smrtlink_server_version.isnot(None),
+                        GenomicL2PBCCSRaw.instrument_ics_version.isnot(None),
+                        GenomicL2PBCCSRaw.read_error_rate.isnot(None),
+                        GenomicL2PBCCSRaw.mean_coverage.isnot(None),
+                        GenomicL2PBCCSRaw.genome_coverage.isnot(None),
+                        GenomicL2PBCCSRaw.contamination.isnot(None),
+                    )
+                )
+            )
+
+            return records.all()
 
 
 class GenomicPRDao(GenomicSubDao):
@@ -4825,7 +5166,7 @@ class GenomicPRDao(GenomicSubDao):
                 GenomicSetMember.ai_an == 'N'
             ).distinct().all()
 
-    def get_zero_manifest_records_from_max_set(self):
+    def get_manifest_zero_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicProteomics.biobank_id),
@@ -4851,6 +5192,9 @@ class GenomicPRDao(GenomicSubDao):
                 GenomicProteomics.proteomics_set ==
                 self.get_max_set_subquery().c.proteomics_set
             ).distinct().all()
+
+    def get_manifest_three_records(self):
+        ...
 
 
 class GenomicRNADao(GenomicSubDao):
@@ -4893,7 +5237,7 @@ class GenomicRNADao(GenomicSubDao):
                 GenomicSetMember.ai_an == 'N'
             ).distinct().all()
 
-    def get_zero_manifest_records_from_max_set(self):
+    def get_manifest_zero_records_from_max_set(self):
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicRNA.biobank_id),
@@ -4919,3 +5263,182 @@ class GenomicRNADao(GenomicSubDao):
                 GenomicRNA.rna_set ==
                 self.get_max_set_subquery().c.rna_set
             ).distinct().all()
+
+    def get_manifest_three_records(self):
+        ...
+
+
+class GenomicReportingDao(ABC, BaseDao):
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    @abstractmethod
+    def get_reporting_counts(self, *, from_date):
+        ...
+
+
+class GenomicLongReadReportingDao(GenomicReportingDao):
+
+    def __init__(self):
+        super().__init__(GenomicLongRead, order_by_ending=['id'])
+
+    def get_reporting_counts(self, from_date):
+        with self.session() as session:
+            ingested_query = (
+                session.query(
+                    functions.count(distinct(GenomicLRRaw.id)).label('record_count'),
+                    functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                    (functions.count(distinct(GenomicLRRaw.id)) - functions.count(distinct(
+                        self.model_type.id))).label('delta_count'),
+                    literal('lr').label('file_type'),
+                    GenomicLRRaw.genome_type,
+                    GenomicLRRaw.file_path
+                ).join(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.runId == self.model_type.created_job_run_id
+                ).join(
+                    GenomicLRRaw,
+                    GenomicLRRaw.file_path == GenomicFileProcessed.filePath
+                ).filter(
+                    GenomicLRRaw.created >= from_date,
+                    GenomicLRRaw.ignore_flag != 1
+                ).group_by(
+                    GenomicLRRaw.genome_type,
+                    GenomicLRRaw.file_path
+                ).union(
+                    session.query(
+                        functions.count(distinct(GenomicL1Raw.id)).label('record_count'),
+                        functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                        (functions.count(distinct(GenomicL1Raw.id)) - functions.count(distinct(
+                            self.model_type.id))).label('delta_count'),
+                        literal('l1').label('file_type'),
+                        GenomicL1Raw.genome_type,
+                        GenomicL1Raw.file_path
+                    ).join(
+                        GenomicL1Raw,
+                        GenomicL1Raw.sample_id == self.model_type.sample_id
+                    ).filter(
+                        GenomicL1Raw.created >= from_date,
+                        GenomicL1Raw.ignore_flag != 1,
+                        GenomicL1Raw.biobank_id != "",
+                        GenomicL1Raw.biobank_id.isnot(None)
+                    ).group_by(
+                        GenomicL1Raw.genome_type,
+                        GenomicL1Raw.file_path
+                    )
+                )
+            )
+            return ingested_query.all()
+
+
+class GenomicPRReportingDao(GenomicReportingDao):
+
+    def __init__(self):
+        super().__init__(GenomicProteomics, order_by_ending=['id'])
+
+    def get_reporting_counts(self, from_date):
+        with self.session() as session:
+            ingested_query = (
+                session.query(
+                    functions.count(distinct(GenomicPRRaw.id)).label('record_count'),
+                    functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                    (functions.count(distinct(GenomicPRRaw.id)) - functions.count(distinct(
+                        self.model_type.id))).label('delta_count'),
+                    literal('pr').label('file_type'),
+                    GenomicPRRaw.genome_type,
+                    GenomicPRRaw.file_path
+                ).join(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.runId == self.model_type.created_job_run_id
+                ).join(
+                    GenomicPRRaw,
+                    GenomicPRRaw.file_path == GenomicFileProcessed.filePath
+                ).filter(
+                    GenomicPRRaw.created >= from_date,
+                    GenomicPRRaw.ignore_flag != 1
+                ).group_by(
+                    GenomicPRRaw.genome_type,
+                    GenomicPRRaw.file_path
+                ).union(
+                    session.query(
+                        functions.count(distinct(GenomicP1Raw.id)).label('record_count'),
+                        functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                        (functions.count(distinct(GenomicP1Raw.id)) - functions.count(distinct(
+                            self.model_type.id))).label('delta_count'),
+                        literal('p1').label('file_type'),
+                        GenomicP1Raw.genome_type,
+                        GenomicP1Raw.file_path
+                    ).join(
+                        GenomicP1Raw,
+                        GenomicP1Raw.sample_id == self.model_type.sample_id
+                    ).filter(
+                        GenomicP1Raw.created >= from_date,
+                        GenomicP1Raw.ignore_flag != 1,
+                        GenomicP1Raw.biobank_id != "",
+                        GenomicP1Raw.biobank_id.isnot(None)
+                    ).group_by(
+                        GenomicP1Raw.genome_type,
+                        GenomicP1Raw.file_path
+                    )
+                )
+            )
+            return ingested_query.all()
+
+
+class GenomicRNAReportingDao(GenomicReportingDao):
+
+    def __init__(self):
+        super().__init__(GenomicRNA, order_by_ending=['id'])
+
+    def get_reporting_counts(self, from_date):
+        with self.session() as session:
+            ingested_query = (
+                session.query(
+                    functions.count(distinct(GenomicRRRaw.id)).label('record_count'),
+                    functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                    (functions.count(distinct(GenomicRRRaw.id)) - functions.count(distinct(
+                        self.model_type.id))).label('delta_count'),
+                    literal('rr').label('file_type'),
+                    GenomicRRRaw.genome_type,
+                    GenomicRRRaw.file_path
+                ).join(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.runId == self.model_type.created_job_run_id
+                ).join(
+                    GenomicRRRaw,
+                    GenomicRRRaw.file_path == GenomicFileProcessed.filePath
+                ).filter(
+                    GenomicRRRaw.created >= from_date,
+                    GenomicRRRaw.ignore_flag != 1
+                ).group_by(
+                    GenomicRRRaw.genome_type,
+                    GenomicRRRaw.file_path
+                ).union(
+                    session.query(
+                        functions.count(distinct(GenomicR1Raw.id)).label('record_count'),
+                        functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                        (functions.count(distinct(GenomicR1Raw.id)) - functions.count(distinct(
+                            self.model_type.id))).label('delta_count'),
+                        literal('r1').label('file_type'),
+                        GenomicR1Raw.genome_type,
+                        GenomicR1Raw.file_path
+                    ).join(
+                        GenomicR1Raw,
+                        GenomicR1Raw.sample_id == self.model_type.sample_id
+                    ).filter(
+                        GenomicR1Raw.created >= from_date,
+                        GenomicR1Raw.ignore_flag != 1,
+                        GenomicR1Raw.biobank_id != "",
+                        GenomicR1Raw.biobank_id.isnot(None)
+                    ).group_by(
+                        GenomicR1Raw.genome_type,
+                        GenomicR1Raw.file_path
+                    )
+                )
+            )
+            return ingested_query.all()
+

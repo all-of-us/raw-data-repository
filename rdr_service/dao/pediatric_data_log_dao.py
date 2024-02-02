@@ -13,7 +13,9 @@ from rdr_service.participant_enums import PediatricAgeRange
 class PediatricDataLogDao:
     @classmethod
     @with_session
-    def record_age_range(cls, participant_id: int, age_range_str: str, session: Session):
+    def record_age_range(
+        cls, participant_id: int, age_range_str: str, session: Session, check_for_summary: bool = True
+    ):
         if age_range_str == 'UNSET':
             # non-pediatric participants will get UNSET sent as their age range.
             # No need to record or log these as an error
@@ -29,7 +31,7 @@ class PediatricDataLogDao:
                 value=age_range_str
             ),
             session=session,
-            callback=cls._check_new_pediatric_participant
+            callback=cls._check_new_pediatric_participant if check_for_summary else None
         )
 
     @classmethod

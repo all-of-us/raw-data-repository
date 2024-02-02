@@ -183,18 +183,39 @@ class NphIncidentTaskApiCloudTaskTest(BaseTestCase):
         )
         self.assertEqual(response.status_code, INTERNAL_SERVER_ERROR)
 
-    @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
-    def test_nph_withdrawn_pid_notifier_task_returns_200(self, mock_send_message_to_webhook: mock.Mock):
+    @mock.patch(
+        "rdr_service.dao.participant_dao.ParticipantDao.get_withdrawn_participant_ids"
+    )
+    @mock.patch(
+        "rdr_service.api.ancillary_study_cloud_tasks_api.WithdrawnParticipantNotifierTaskApi._convert_nph_pids_to_aou_pids"
+    )
+    @mock.patch(
+        "rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook"
+    )
+    def test_nph_withdrawn_pid_notifier_task_returns_200(
+        self,
+        mock_send_message_to_webhook,
+        mock_convert_nph_pids_to_aou_pids,
+        mock_get_withdrawn_participant_ids,
+    ):
         mock_send_message_to_webhook.return_value = True
+        mock_convert_nph_pids_to_aou_pids.return_value = []
+        mock_get_withdrawn_participant_ids.return_value = ["1"]
+
         from rdr_service.resource import main as resource_main
-        response = self.send_post(
-            local_path='WithdrawnParticipantNotifierTaskApi',
-            request_data={"withdrawn_pids": ["1", "2"]},
-            prefix="/resource/task/",
-            test_client=resource_main.app.test_client(),
-            expected_status=OK
-        )
-        self.assertEqual(response, {'success': True})
+
+        with self.assertLogs(level="INFO") as cm:
+            response = self.send_post(
+                local_path="WithdrawnParticipantNotifierTaskApi",
+                request_data={"bundle_id": "abc", "nph_pids": ["1", "2"]},
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+                expected_status=OK,
+            )
+            self.assertIn(
+                "INFO:root:1 withdrawn PIDs received in NPH intake payload.", cm.output
+            )
+            self.assertEqual(response, {"success": True})
 
     def tearDown(self):
         self.clear_table_after_test("nph.incident")

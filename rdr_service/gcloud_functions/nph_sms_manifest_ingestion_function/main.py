@@ -43,6 +43,9 @@ class SmsIngestManifestFunction(FunctionPubSubHandler):
             """.format(self.context.event_id, self.context.timestamp))
 
         object_id = self.event.attributes.objectId.lower()
+        if "archive" in object_id:
+            _logger.info(f"{object_id} is archived, skipping ingestion.")
+            return
 
         if "pull_lists" in object_id:
             file_type = "SAMPLE_LIST"

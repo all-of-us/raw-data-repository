@@ -13,7 +13,7 @@ from sqlalchemy import func, desc, exc, inspect, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
 
-from rdr_service.model.pediatric_data_log import PediatricDataType
+from rdr_service.model.pediatric_data_log import PediatricDataLog
 from rdr_service import config
 from rdr_service.code_constants import (
     CONSENT_COPE_YES_CODE,
@@ -23,7 +23,11 @@ from rdr_service.code_constants import (
     PMI_SKIP_CODE,
     WITHDRAWAL_CEREMONY_QUESTION_CODE,
     WITHDRAWAL_CEREMONY_YES,
-    WITHDRAWAL_CEREMONY_NO
+    WITHDRAWAL_CEREMONY_NO,
+    PEDIATRIC_CONSENT_QUESTION_CODE,
+    EHR_PEDIATRIC_CONSENT_QUESTION_CODE,
+    PEDIATRIC_CONSENT_YES, PEDIATRIC_CONSENT_NO,
+    PEDIATRIC_SHARE_AGREE, PEDIATRIC_SHARE_NOT_AGREE
 )
 from rdr_service.dao.resource_dao import ResourceDataDao
 # TODO: Replace BQRecord here with a Resource alternative.
@@ -91,7 +95,10 @@ _consent_module_question_map = {
     'nonvaprimaryreconsent': 'nonvaprimaryreconsent_agree',
     # TODO: Getting clarification on which is correct module code string for EtM consent.  Recognize either for now
     'english_exploring_the_mind_consent_form': 'etm_consent',  # Key/concept code value seen in PTSC payloads
-    'welcome_to_etm': 'etm_consent'  # Key/module code value from REDCap
+    'welcome_to_etm': 'etm_consent',  # Key/module code value from REDCap
+    # Pediatric consents
+    'consentpii_0to6': PEDIATRIC_CONSENT_QUESTION_CODE,
+    'ehrchildconsentpii': EHR_PEDIATRIC_CONSENT_QUESTION_CODE
 }
 
 # _consent_expired_question_map, for expired consents. { module: question code string }
@@ -130,15 +137,26 @@ _consent_answer_status_map = {
     # Generic yes/no answer codes that apply to multiple consents (e.g., VA/non-VA reconsents and EtM consents)
     'agree_yes': BQModuleStatusEnum.SUBMITTED,
     'agree_no': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
-    # For the updated ConsentPII that allows yes or no reponses
+    # For the updated ConsentPII that allows yes or no reponses.
+    'ExtraConsent_AgreeToConsent': BQModuleStatusEnum.SUBMITTED,
+    'ExtraConsent_DoNotAgreeToConsent': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    # Need to support all lowercase values for unit test setups
     'extraconsent_agreetoconsent': BQModuleStatusEnum.SUBMITTED,
-    'extraconsent_donotagreetoconsent': BQModuleStatusEnum.SUBMITTED_NO_CONSENT
+    'extraconsent_donotagreetoconsent': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    # Pediatric consents
+    PEDIATRIC_CONSENT_YES: BQModuleStatusEnum.SUBMITTED,
+    PEDIATRIC_CONSENT_NO: BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    PEDIATRIC_SHARE_AGREE: BQModuleStatusEnum.SUBMITTED,
+    PEDIATRIC_SHARE_NOT_AGREE: BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
 }
 
 # PDR-2031: PDR decision to map new ConsentPII user-provided answer codes to codes we were already using
 # in PDR (and that users are used to querying).  I.e., until now every ConsentPII response data record was given a
 # default ConsentPermission_Yes answer code value.
 _replace_answer_codes = {
+    'ExtraConsent_AgreeToConsent': 'ConsentPermission_Yes',
+    'ExtraConsent_DoNotAgreeToConsent': 'ConsentPermission_No',
+    # Need to support all lowercase values for unit test setups
     'extraconsent_agreetoconsent': 'ConsentPermission_Yes',
     'extraconsent_donotagreetoconsent': 'ConsentPermission_No'
 }
@@ -201,8 +219,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
     """
     ro_dao = None
     # Retrieve module and sample test lists from config.
+    # Need to add the peds mods since they don't have separate fields in participant_summary / aren't in the config item
     _baseline_modules = [mod.replace('questionnaireOn', '')
-                         for mod in config.getSettingList('baseline_ppi_questionnaire_fields')]
+                         for mod in config.getSettingList('baseline_ppi_questionnaire_fields')] + \
+                        ['ped_basics', 'ped_overall_health', 'ped_environmental_exposures']
+
     _baseline_sample_test_codes = config.getSettingList('baseline_sample_test_codes')
     _dna_sample_test_codes = config.getSettingList('dna_sample_test_codes')
 
@@ -518,9 +539,16 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             Participant.participantId == p_id
         ).options(joinedload(ParticipantSummary.pediatricData)).first()
 
+        ped_log = ro_session.query(PediatricDataLog).filter(
+                PediatricDataLog.participant_id == p_id, PediatricDataLog.data_type == 'AGE_RANGE').first()
+
         # For PDR, start with REGISTERED as the default enrollment status.  This identifies participants
         # who have not yet consented / should not have a participant_summary record
         data = {}
+
+        # Check for Pediatric participant
+        data['is_pediatric'] = 1 if ped_log else 0
+
         # TODO:  add enrollment_status / enrollment_status_id after Goal 1 QC (move from _calculate_enrollment_status)
         for key in ['enrollment_status_v2', 'enrollment_status_v3_0']:
             data[key] = str(EnrollmentStatusV2.REGISTERED)
@@ -646,10 +674,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 _act(data['ehr_update'], ActivityGroupEnum.Profile, ParticipantEventEnum.EHRLastReceived)
             ]
 
-            # Check for Pediatric participant
-            data['is_pediatric'] = 1 \
-                if any(r.data_type == PediatricDataType.AGE_RANGE for r in ps.pediatricData) else 0
-
         return data
 
     def _prep_consentpii_answers(self, p_id):
@@ -772,6 +796,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 if (module_name == 'EHRConsentPII'
                         and row.classificationType == QuestionnaireResponseClassificationType.PARTIAL):
                     continue
+                elif module_name == 'ped_environmental_health':
+                    # PDR-2210: NIH wants this nomenclature instead of the defined module name in codebook
+                    module_name = 'ped_environmental_exposures'
 
                 # Consent modules with a configured consent question start in UNSET status pending answer evaluation
                 if module_name in _consent_module_question_map and _consent_module_question_map[module_name]:

@@ -1,0 +1,2 @@
+"biobank_id","sample_id","biobankid_sampleid","lims_id","sample_source","alignment_rate_pct","duplication_pct","mrna_bases_pct","reads_aligned_in_pairs","ribosomal_bases_pct","median_cv_coverage","mean_insert_size","rqs","genome_type","processing_status","pipeline_id","cram_path","cram_md5_path","notes"
+"A1001","1111","1_1","2222","Whole Blood","34.56","34.56","34.56","123456789","34.56","1","1","1","aou_rnaseq","PASS","dragen_4.1.5","/cram_path","/cram_md5_path","notes here"

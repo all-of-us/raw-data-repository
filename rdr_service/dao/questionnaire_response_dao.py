@@ -538,13 +538,6 @@ class QuestionnaireResponseDao(BaseDao):
             answer.endTime = questionnaire_response.created
             session.merge(answer)
 
-        summary = ParticipantSummaryDao.get_for_update_with_linked_data(
-            participant_id=questionnaire_response.participantId,
-            session=session
-        )
-        if summary:
-            ParticipantSummaryDao().update_enrollment_status(summary, session=session)
-
         # Create any account links based on extensions
         for extension in questionnaire_response.extensions:
             if extension.url == _GUARDIAN_EXTENSION:
@@ -555,6 +548,17 @@ class QuestionnaireResponseDao(BaseDao):
                     ),
                     session=session
                 )
+
+        summary = ParticipantSummaryDao.get_for_update_with_linked_data(
+            participant_id=questionnaire_response.participantId,
+            session=session
+        )
+        if summary:
+            ParticipantSummaryDao().update_enrollment_status(summary, session=session)
+            dispatch_task(
+                endpoint='update_retention_status',
+                payload={'participant_id': questionnaire_response.participantId}
+            )
 
         return questionnaire_response
 
@@ -1073,7 +1077,14 @@ class QuestionnaireResponseDao(BaseDao):
                     if self._code_in_list(
                         code.value, [CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PEDIATRIC_EHR_CONSENT]
                     ):
-                        if ehr_consent:
+                        # If we got a new EHR consent, mark that it needs to be validated
+                        if (
+                            ehr_consent
+                            and (
+                                participant_summary.consentForElectronicHealthRecordsAuthored is None
+                                or authored > participant_summary.consentForElectronicHealthRecordsAuthored
+                            )
+                        ):
                             new_status = QuestionnaireStatus.SUBMITTED_NOT_VALIDATED
                         else:
                             new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT

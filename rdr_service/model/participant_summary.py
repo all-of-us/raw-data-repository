@@ -1793,6 +1793,21 @@ class ParticipantSummary(Base):
         uselist=True,
         lazy='noload'
     )
+    """
+    For a pediatric participant's summary, provides a list of guardians associated with the pediatric participant.
+
+    Will provide the following data for guardians linked to the pediatric participant:
+
+    .. code-block:: json
+
+        "relatedParticipants": [
+            {
+                "participantId": "P123456789",    // Participant ID of the guardian account
+                "firstName": "Jane",              // First name of the associated guardian
+                "lastName": "Smith"               // Last name of the associated guardian
+            }
+        ]
+    """
 
     pediatricData: List[PediatricDataLog] = relationship(
         'PediatricDataLog',

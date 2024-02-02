@@ -7,9 +7,11 @@ from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
+from rdr_service.dao.ppi_validation_errors_dao import PpiValidationErrorsDao
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
+from rdr_service.model.ppi_validation_errors import PpiValidationErrors, ValidationErrorType
 from rdr_service.model.utils import to_client_participant_id
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import load_biobank_order_json, load_measurement_json
@@ -49,6 +51,27 @@ class PubSubTest(BaseTestCase):
                   "site"
                 ]
             }
+        )
+
+        questionnaire_question = self.data_generator.create_database_questionnaire_question()
+        code = self.data_generator.create_database_code()
+        response = self.data_generator.create_database_questionnaire_response()
+        response_answer = self.data_generator.create_database_questionnaire_response_answer(
+            questionnaireResponseId=response.questionnaireResponseId,
+            questionId=questionnaire_question.questionnaireQuestionId
+        )
+        self.validation_dao = PpiValidationErrorsDao()
+        self.validation_error = PpiValidationErrors(
+            id=1,
+            created=TIME_1,
+            survey_code_value="TheBasics",
+            question_code="test_code",
+            error_str="Error: Test error",
+            error_type=ValidationErrorType.BRANCHING_ERROR,
+            participant_id=self.participant.participantId,
+            survey_code_id=code.codeId,
+            questionnaire_response_id=response.questionnaireResponseId,
+            questionnaire_response_answer_id=response_answer.questionnaireResponseAnswerId
         )
 
     @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
@@ -246,3 +269,10 @@ class PubSubTest(BaseTestCase):
         self.assertListEqual(parents, ['participant', 'organization'])
         self.assertTrue(mock_pub_func.called)
         self.assertEqual(mock_pub_func.call_count, 3)  # Previous call for 'participant' plus two more now.
+
+    @mock.patch('rdr_service.cloud_utils.gcp_google_pubsub.publish_pubsub_message')
+    def test_pubsub_ppi_validation_insert(self, mock_pub_func):
+        mock_pub_func.return_value = {'messageIds': ['123']}
+        self.validation_dao.insert_with_session(session=self.session, obj=self.validation_error)
+        self.assertTrue(mock_pub_func.called)
+        self.assertEqual(mock_pub_func.call_count, 1)

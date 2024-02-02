@@ -35,7 +35,8 @@ from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricData
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import (
     ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType,
-    TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus, IdVerificationOriginType)
+    TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus, IdVerificationOriginType, EnrollmentStatusV32
+)
 from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id, \
     load_qr_response_json
 from tests.helpers.unittest_base import BaseTestCase
@@ -791,6 +792,35 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 file_path = f'{value}FilePath'
                 self.assertFalse(file_path in entry['resource'].keys())
                 self.assertIsNone(entry['resource'].get(file_path))
+
+    def test_pediatric_hpro_consent(self):
+        participant_summary = self.data_generator.create_database_participant_summary()
+        consent_record = self.data_generator.create_database_consent_file(
+            file_path='pediatric/primary',
+            type=ConsentType.PEDIATRIC_PRIMARY,
+            participant_id=participant_summary.participantId
+        )
+        self.data_generator.create_database_hpro_consent(
+            consent_file_id=consent_record.id,
+            file_path='transferred/pediatric/primary',
+            participant_id=participant_summary.participantId
+        )
+        consent_record = self.data_generator.create_database_consent_file(
+            file_path='pediatric/ehr',
+            type=ConsentType.PEDIATRIC_EHR,
+            participant_id=participant_summary.participantId
+        )
+        self.data_generator.create_database_hpro_consent(
+            consent_file_id=consent_record.id,
+            file_path='transferred/pediatric/ehr',
+            participant_id=participant_summary.participantId
+        )
+
+        self.overwrite_test_user_roles([HEALTHPRO])
+        summary_response = self.send_get(f"Participant/P{participant_summary.participantId}/Summary")
+
+        self.assertEqual('transferred/pediatric/primary', summary_response['consentForStudyEnrollmentFilePath'])
+        self.assertEqual('transferred/pediatric/ehr', summary_response['consentForElectronicHealthRecordsFilePath'])
 
     def test_hpro_participant_incentives(self):
         num_summary, first_pid, second_pid = 3, None, None
@@ -2870,7 +2900,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", ps_2["sampleStatus2ED10"])
         self.assertEqual("UNSET", ps_2["samplesToIsolateDNA"])
-        self.assertEqual("PMB_ELIGIBLE", ps_2["enrollmentStatusV3_2"])
+        self.assertEqual("ENROLLED_PARTICIPANT", ps_2["enrollmentStatusV3_2"])
         self.assertEqual("COMPLETED", ps_2["clinicPhysicalMeasurementsStatus"])
         self.assertEqual(TIME_2.isoformat(), ps_2["clinicPhysicalMeasurementsTime"])
         self.assertEqual("GenderIdentity_Woman", ps_2["genderIdentity"])
@@ -2973,7 +3003,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&consentForCABoR=SUBMITTED", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=UNSET", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&clinicPhysicalMeasurementsStatus=COMPLETED", [[ps_2, ps_3]])
-            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=ENROLLED_PARTICIPANT", [[ps_1]])
+            self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=ENROLLED_PARTICIPANT", [[ps_1, ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatusV3_2=CORE_PARTICIPANT", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NOT_WITHDRAWN", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[ps_2]])
@@ -3038,7 +3068,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", new_ps_2["sampleStatus1ED10"])
         self.assertEqual("UNSET", new_ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", new_ps_2["samplesToIsolateDNA"])
-        self.assertEqual("PMB_ELIGIBLE", new_ps_2["enrollmentStatusV3_2"])
+        self.assertEqual("ENROLLED_PARTICIPANT", new_ps_2["enrollmentStatusV3_2"])
         self.assertEqual("UNSET", new_ps_2["clinicPhysicalMeasurementsStatus"])
         self.assertEqual("SUBMITTED", new_ps_2["consentForStudyEnrollment"])
         self.assertIsNotNone(new_ps_2["consentForStudyEnrollmentAuthored"])
@@ -3839,7 +3869,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.session.commit()
 
         # Override the default config, disabling the fields on the API
-        self.temporarily_override_config_setting(config.ENABLE_ENROLLMENT_STATUS_3, False)
+        self.temporarily_override_config_setting(config.ENABLED_STATUS_FIELD_LIST, [])
         self.temporarily_override_config_setting(config.ENABLE_HEALTH_SHARING_STATUS_3, False)
 
         # Check that the new fields are hidden
@@ -4561,6 +4591,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         second_parent = self.data_generator.create_database_participant_summary()
         child_id = self.data_generator.create_database_participant_summary().participantId
 
+        PediatricDataLogDao.record_age_range(participant_id=child_id, age_range_str='TEEN')
         self.session.add(AccountLink(participant_id=child_id, related_id=first_parent.participantId))
         self.session.add(AccountLink(participant_id=child_id, related_id=second_parent.participantId))
         self.session.commit()
@@ -4653,14 +4684,64 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
     def test_pediatric_flag(self):
         regular_participant = self.data_generator.create_database_participant_summary()
+
         pediatric_participant = self.data_generator.create_database_participant_summary()
         PediatricDataLogDao.record_age_range(participant_id=pediatric_participant.participantId, age_range_str='TEEN')
+        self.session.add(
+            AccountLink(
+                participant_id=pediatric_participant.participantId,
+                related_id=regular_participant.participantId
+            )
+        )
+        self.session.commit()
 
         response = self.send_get(f'Participant/P{regular_participant.participantId}/Summary')
         self.assertEqual('UNSET', response['isPediatric'])
 
         response = self.send_get(f'Participant/P{pediatric_participant.participantId}/Summary')
         self.assertEqual(True, response['isPediatric'])
+
+    @mock.patch('rdr_service.dao.participant_summary_dao.logging')
+    def test_invalid_link(self, logging_mock):
+        """
+        We need to gracefully handle when a guardian participant isn't consented (regardless of whether the
+        "pediatric" participant is actually a pediatric participant).
+        """
+        unconsented_guardian = self.data_generator.create_database_participant()
+        pediatric_participant = self.data_generator.create_database_participant_summary()
+        PediatricDataLogDao.record_age_range(participant_id=pediatric_participant.participantId, age_range_str='TEEN')
+        self.session.add(
+            AccountLink(
+                participant_id=pediatric_participant.participantId,
+                related_id=unconsented_guardian.participantId
+            )
+        )
+        self.session.commit()
+
+        response = self.send_get(f'ParticipantSummary')
+        self.assertEqual([], response['entry'])
+        logging_mock.error.assert_called_with('Pediatric participant has unconsented guardian')
+
+    def test_pmb_eligible_masking(self):
+        """
+        While we're still holding back the PMB_ELIGIBLE status, any participants that would have that
+        status should appear as if they have the next one down
+        """
+
+        # Set up participant with PMB_ELIGIBLE status
+        summary = self.data_generator.create_database_participant_summary(
+            enrollmentStatusV3_2=EnrollmentStatusV32.PMB_ELIGIBLE,
+            enrollmentStatusPmbEligibleV3_2Time=datetime.datetime.today()
+        )
+
+        # Check that the 3.2 PM&B eligible status is achieved
+        response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertEqual('PMB_ELIGIBLE', response['enrollmentStatusV3_2'])
+
+        # Check that the status is masked if the config hides PM&B
+        self.temporarily_override_config_setting(config.ENABLED_STATUS_FIELD_LIST, ['enrollmentStatusV3_2'])
+        response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertEqual('ENROLLED_PARTICIPANT', response['enrollmentStatusV3_2'])
 
     @classmethod
     def _get_summary_response_id_list(self, response):

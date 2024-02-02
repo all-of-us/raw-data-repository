@@ -3,6 +3,7 @@ import mock
 import pytz
 from typing import Optional
 
+from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.offline import retention_eligible_import
@@ -193,6 +194,72 @@ class RetentionEligibleImportTest(BaseTestCase):
         ps = self.send_get("ParticipantSummary?retentionType=UNSET&retentionEligibleStatus=NOT_ELIGIBLE"
                            "&_includeTotal=TRUE")
         self.assertEqual(len(ps['entry']), 1)
+
+    @mock.patch('rdr_service.offline.retention_eligible_import.GoogleCloudStorageCSVReader')
+    @mock.patch('rdr_service.offline.retention_eligible_import._supplement_with_rdr_calculations')
+    def test_force_rdr_calculation(self, csv_reader, mock_rdr_calculator):
+        latest_activity_time = datetime(2023, 6, 1)
+        ps1 = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollmentAuthored=datetime(2021, 1, 1),
+            sampleStatus1ED10Time=datetime(2021, 2, 10),
+            questionnaireOnTheBasicsAuthored=datetime(2021, 2, 1),
+            questionnaireOnOverallHealthAuthored=datetime(2021, 2, 2),
+            questionnaireOnLifestyleAuthored=datetime(2021, 2, 3),
+            consentForElectronicHealthRecordsAuthored=datetime(2021, 1, 2),
+            questionnaireOnBehavioralHealthAndPersonalityAuthored=latest_activity_time,
+            consentForStudyEnrollment=1,
+            consentForElectronicHealthRecords=1,
+            questionnaireOnTheBasics=1,
+            questionnaireOnOverallHealth=1,
+            questionnaireOnLifestyle=1,
+            withdrawalStatus=1,
+            suspensionStatus=1,
+            samplesToIsolateDNA=1,
+            latestEhrReceiptTime=datetime(2023, 9, 10)
+
+        )
+        # Create retention_eligible_metrics record before doing the import, so PTSC import values appear unchanged
+        dao = RetentionEligibleMetricsDao()
+        rem_data = RetentionEligibleMetrics(
+            created=datetime.utcnow(),
+            modified=datetime.utcnow(),
+            participantId=ps1.participantId,
+            retentionEligible=True,
+            retentionEligibleTime=ps1.consentForStudyEnrollmentAuthored,
+            lastActiveRetentionActivityTime=latest_activity_time,
+            activelyRetained=True,
+            passivelyRetained=True,
+            fileUploadDate=latest_activity_time,
+            retentionEligibleStatus=RetentionStatus.ELIGIBLE,
+            retentionType=RetentionType.ACTIVE_AND_PASSIVE,
+            rdr_retention_eligible=True,
+            rdr_retention_eligible_time=ps1.consentForStudyEnrollmentAuthored,
+            rdr_is_actively_retained=True,
+            rdr_is_passively_retained=True,
+            rdr_last_retention_activity_time=ps1.sampleStatus1ED10Time   # Deliberately initialize with outdated time
+        )
+        with dao.session() as session:
+            session.add(rem_data)
+
+        csv_reader.return_value = [
+            self._build_csv_row(
+                participant_id=ps1.participantId,
+                retention_eligible='1',
+                retention_eligible_date='2021-01-01',
+                actively_retained='1',
+                last_active_retention_activity_date='2023-06-01',   # Match the bhp authored date (> existing RDR value)
+                passively_retained='1'
+            )
+        ]
+        test_date = datetime(2023, 6, 2)
+        retention_eligible_import.import_retention_eligible_metrics_file({
+            "bucket": 'test_bucket',
+            "upload_date": test_date.isoformat(),
+            "file_path": 'test_bucket/test_file.csv'
+        })
+
+        # Confirm a forced recalculation of RDR values
+        self.assertTrue(mock_rdr_calculator.call_count == 1)
 
     def test_lower_env_retention_metric_cronjob(self):
         ps1 = self.data_generator.create_database_participant_summary()

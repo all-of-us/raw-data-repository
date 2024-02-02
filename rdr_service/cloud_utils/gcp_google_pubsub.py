@@ -46,9 +46,6 @@ class _PubSubServiceCache:
 _pubsub_service_cache = _PubSubServiceCache()
 
 
-# TODO: Add production project id after testing in Stable.
-# TODO: Add Stable after more testing has been completed in Test.
-
 # _PIPELINE_CONFIG = config.getSettingJson('pdr_pipeline')
 # _ALLOWED_PROJECTS = _PIPELINE_CONFIG['allowed_projects']
 # PUBSUB_EXCLUDED_TABLE_LIST = _PIPELINE_CONFIG['excluded_table_list']

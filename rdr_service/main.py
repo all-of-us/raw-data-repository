@@ -40,6 +40,7 @@ from rdr_service.api.questionnaire_api import QuestionnaireApi
 from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireAnswers, QuestionnaireResponseApi
 from rdr_service.api.organization_hierarchy_api import OrganizationHierarchyApi
 from rdr_service.api.workbench_api import WorkbenchWorkspaceApi, WorkbenchResearcherApi
+from rdr_service.api.related_person_api import RelatedPersonApi
 from rdr_service.api.research_projects_directory_api import ResearchProjectsDirectoryApi
 from rdr_service.api.redcap_workbench_audit_api import RedcapResearcherAuditApi, RedcapWorkbenchAuditApi
 from rdr_service.api.message_broker_api import MessageBrokerApi
@@ -347,6 +348,13 @@ api.add_resource(
     api_util.get_versioned_url_prefix(version=1) + 'Participant/ProfileUpdate',
     api_util.get_versioned_url_prefix(version=1) + 'Patient',
     endpoint='profile_update',
+    methods=['POST']
+)
+
+api.add_resource(
+    RelatedPersonApi,
+    api_util.get_versioned_url_prefix(version=1) + 'RelatedPerson',
+    endpoint='related_person',
     methods=['POST']
 )
 

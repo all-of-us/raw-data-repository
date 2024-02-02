@@ -14,14 +14,16 @@ def create_ingestion_test_file(
     folder=None,
     include_timestamp=True,
     include_sub_num=False,
-    extension=None
+    extension=None,
+    after_timestamp: str = None
 ):
     test_data_file = open_genomic_set_file(test_data_filename)
 
-    input_filename = '{}{}{}{}'.format(
+    input_filename = '{}{}{}{}{}'.format(
         test_data_filename.replace('.csv', ''),
         '_11192019' if include_timestamp else '',
         '_1' if include_sub_num else '',
+        after_timestamp if after_timestamp else '',
         '.csv' if not extension else extension
     )
     write_cloud_csv(

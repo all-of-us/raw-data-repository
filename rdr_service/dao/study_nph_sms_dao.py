@@ -217,6 +217,6 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsN0.ignore_flag == 0,
                 SmsN0.package_id == kwargs.get('package_id'),
                 SmsN0.file_path.ilike(f'%{kwargs.get("recipient")}%')
-            ).order_by(SmsN0.id)
+            ).distinct().order_by(SmsN0.id)
 
             return query.all()

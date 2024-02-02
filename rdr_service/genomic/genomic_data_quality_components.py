@@ -1,9 +1,11 @@
 import abc
 from datetime import timedelta
+from typing import List, Union
 
 from rdr_service import clock
 from rdr_service.api_util import open_cloud_file
-from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicJobRunDao
+from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicJobRunDao, GenomicPRReportingDao, \
+    GenomicLongReadReportingDao, GenomicRNAReportingDao
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.config import GENOMIC_INGESTION_REPORT_PATH, GENOMIC_INCIDENT_REPORT_PATH, GENOMIC_RESOLVED_REPORT_PATH
 
@@ -22,21 +24,28 @@ class ReportingComponent(GenomicDataQualityComponentBase):
     """
     def __init__(self, controller=None):
         super().__init__(controller=controller)
-
         self.query = GenomicQueryClass()
         self.incident_dao = GenomicIncidentDao()
+        self.pr_reporting_dao = GenomicPRReportingDao()
+        self.long_read_reporting_dao = GenomicLongReadReportingDao()
+        self.rna_reporting_dao = GenomicRNAReportingDao()
+        self.ingestion_type = self.set_ingestion_type()
         self.report_def = None
 
     class ReportDef:
-        def __init__(self, level=None, target=None, time_frame=None,
-                     display_name=None, empty_report_string=None):
+        def __init__(self,
+                     level=None,
+                     target=None,
+                     time_frame=None,
+                     display_name=None,
+                     empty_report_string=None,
+                     report_type=None):
             self.level = level
             self.target = target
             self.from_date = self.get_from_date(time_frame)
-
             self.display_name = display_name
             self.empty_report_string = empty_report_string
-
+            self.report_type = report_type
             self.source_data_query = None
             self.source_data_params = None
 
@@ -51,53 +60,45 @@ class ReportingComponent(GenomicDataQualityComponentBase):
             :param time_frame: D or W
             :return:
             """
-            interval_mappings = {
-                'D': 1,
-                'W': 7
-            }
-
+            interval_mappings = {'D': 1, 'W': 7}
             dd = timedelta(days=interval_mappings[time_frame])
-
             return clock.CLOCK.now() - dd
+
+    def set_ingestion_type(self) -> Union[str, None]:
+        if not self.controller:
+            return None
+        job_type_list = self.controller.job.name.split('_')
+        if job_type_list[-1].lower() == 'ingestions' and len(job_type_list) > 4:
+            return job_type_list[2]
+        return None
 
     def get_report_parameters(self, **kwargs):
 
-        # Set report level (SUMMARY, DETAIL, etc)
-        try:
-            report_level = kwargs['report_level']
-        except KeyError:
-            report_level = self.controller.job.name.split('_')[1]
-        # Set report target (INGESTION, RUNS, etc)
-        try:
-            report_target = kwargs['report_target']
-        except KeyError:
-            report_target = self.controller.job.name.split('_')[-1]
-        # Set report time frame (D, W, etc.)
-        try:
-            time_frame = kwargs['time_frame']
-        except KeyError:
-            time_frame = self.controller.job.name[0]
+        def set_target_value() -> str:
+            if self.ingestion_type and not kwargs.get('report_target'):
+                return self.ingestion_type
+            return kwargs.get('report_target', job_type_name_list[-1])
 
-        display_name = self.get_report_display_name()
+        display_name: str = self.get_report_display_name()
+        job_type_name_list: List[str] = self.controller.job.name.split('_')
+        target = set_target_value()
 
-        report_params = {
-            "level": report_level,
-            "target": report_target,
-            "time_frame": time_frame,
+        return {
+            "level": kwargs.get('report_level', job_type_name_list[1]),
+            "time_frame": kwargs.get('time_frame', job_type_name_list[0][0]),
+            "target": target,
             "display_name": display_name,
             "empty_report_string": self.get_empty_report_string(display_name),
+            "report_type": 'ingestions' if self.ingestion_type else target
         }
 
-        return report_params
-
     def get_report_display_name(self):
-
-        job_name_list = self.controller.job.name.split('_')
-
-        display_name = job_name_list[0].capitalize() + " "
-        display_name += job_name_list[-1].capitalize() + " "
-        display_name += job_name_list[1].capitalize()
-
+        job_type_list = self.controller.job.name.split('_')
+        display_name = f'{job_type_list[0].capitalize()} '
+        display_name += f'{job_type_list[-1].capitalize()} '
+        if self.ingestion_type:
+            display_name += f'({self.ingestion_type.capitalize()}) '
+        display_name += job_type_list[1].capitalize()
         return display_name
 
     @staticmethod
@@ -114,9 +115,12 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         # Map report targets to source data queries
         target_mappings = {
             ("SUMMARY", "RUNS"): self.query.dq_report_runs_summary(report_def.from_date),
-            ("SUMMARY", "INGESTIONS"): self.query.dq_report_ingestions_summary(report_def.from_date),
             ("SUMMARY", "INCIDENTS"): self.incident_dao.get_daily_report_incidents(report_def.from_date),
-            ("SUMMARY", "RESOLVED"): self.incident_dao.get_daily_report_resolved_manifests(report_def.from_date)
+            ("SUMMARY", "RESOLVED"): self.incident_dao.get_daily_report_resolved_manifests(report_def.from_date),
+            ("SUMMARY", "SHORTREAD"): self.query.short_read_ingestions_summary(report_def.from_date),
+            ("SUMMARY", "PROTEOMICS"): self.pr_reporting_dao.get_reporting_counts(report_def.from_date),
+            ("SUMMARY", "LONGREAD"): self.long_read_reporting_dao.get_reporting_counts(report_def.from_date),
+            ("SUMMARY", "RNA"): self.rna_reporting_dao.get_reporting_counts(report_def.from_date),
         }
 
         returned_from_method = target_mappings[(report_def.level, report_def.target)]
@@ -126,9 +130,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         # Leaning into dao method
         else:
             report_def.source_data_query = returned_from_method
-
         self.report_def = report_def
-
         return report_def
 
     def get_report_data(self):

@@ -525,7 +525,8 @@ class ConsentFileParsingTest(BaseTestCase):
                     bbox=(65, 470, 75, 480)
                 ),
                 self._build_form_element(text='Test gror', bbox=(140, 150, 450, 180)),
-                self._build_form_element(text='Jan 1st, 2021', bbox=(125, 100, 450, 130))
+                self._build_form_element(text='Jan 1st, 2021', bbox=(125, 100, 450, 130)),
+                self._build_pdf_element(cls=LTTextBoxHorizontal, text='This document prepared for')
             ]
         ])
         basic_gror_case = GrorConsentTestData(
@@ -539,7 +540,8 @@ class ConsentFileParsingTest(BaseTestCase):
             *nine_empty_pages,
             [
                 self._build_form_element(text='no confirmation', bbox=(140, 150, 450, 180)),
-                self._build_form_element(text='Feb 1st, 2021', bbox=(125, 100, 450, 130))
+                self._build_form_element(text='Feb 1st, 2021', bbox=(125, 100, 450, 130)),
+                self._build_pdf_element(cls=LTTextBoxHorizontal, text='This document prepared for')
             ]
         ])
         no_confirmation_case = GrorConsentTestData(
@@ -561,7 +563,8 @@ class ConsentFileParsingTest(BaseTestCase):
                     bbox=(30, 478, 40, 488)
                 ),
                 self._build_form_element(text='spanish gror', bbox=(140, 150, 450, 180)),
-                self._build_form_element(text='May 1st, 2018', bbox=(125, 100, 450, 130))
+                self._build_form_element(text='May 1st, 2018', bbox=(125, 100, 450, 130)),
+                self._build_pdf_element(cls=LTTextBoxHorizontal, text='Este documento está preparado para')
             ]
         ])
         spanish_gror_case = GrorConsentTestData(

@@ -1,7 +1,4 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
-
-from rdr_service.genomic_enums import GenomicJob
-
 import json
 import logging
 import traceback
@@ -23,10 +20,12 @@ from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.ppi_validation_errors_dao import PpiValidationErrorsDao
+from rdr_service.genomic_enums import GenomicJob
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.offline import biobank_samples_pipeline, sync_consent_files, update_ehr_status, \
     antibody_study_pipeline, export_va_workqueue
-from rdr_service.offline.genomics import genomic_pipeline, genomic_cvl_pipeline, genomic_data_quality_pipeline
+from rdr_service.offline.genomics import genomic_pipeline, genomic_cvl_pipeline, genomic_data_quality_pipeline, \
+    genomic_gem_pipeline, genomic_long_read_pipeline
 from rdr_service.offline.ce_health_data_reconciliation_pipeline import CeHealthDataReconciliationPipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
@@ -45,6 +44,7 @@ from rdr_service.offline.response_validation import ResponseValidationController
 from rdr_service.offline.service_accounts import ServiceAccountKeyManager
 from rdr_service.offline.sync_consent_files import ConsentSyncController
 from rdr_service.offline.table_exporter import TableExporter
+from rdr_service.offline.tactis_bq_sync import TactisBQDataSync
 from rdr_service.repository.obfuscation_repository import ObfuscationRepository
 from rdr_service.resource.tasks import dispatch_check_consent_errors_task
 from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
@@ -540,14 +540,14 @@ def genomic_aw2f_remainder_workflow():
 @app_util.auth_required_cron
 @check_genomic_cron_job('a1_manifest_workflow')
 def genomic_gem_a1_workflow():
-    genomic_pipeline.gem_a1_manifest_workflow()
+    genomic_gem_pipeline.gem_a1_manifest_workflow()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
 @check_genomic_cron_job('a3_manifest_workflow')
 def genomic_gem_a3_workflow():
-    genomic_pipeline.gem_a3_manifest_workflow()
+    genomic_gem_pipeline.gem_a3_manifest_workflow()
     return '{"success": "true"}'
 
 
@@ -580,6 +580,13 @@ def genomic_aw3_wgs_updated_workflow():
     genomic_pipeline.aw3_wgs_manifest_workflow(
         pipeline_id=config.GENOMIC_UPDATED_WGS_DRAGEN
     )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@check_genomic_cron_job('l3_manifest_workflow')
+def genomic_lr_l3_workflow():
+    genomic_long_read_pipeline.lr_l3_manifest_workflow()
     return '{"success": "true"}'
 
 
@@ -788,28 +795,34 @@ def genomic_reconcile_appointment_events():
 @app_util.auth_required_cron
 @check_genomic_cron_job('daily_ingestion_summary')
 def genomic_data_quality_daily_ingestion_summary():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
+    genomic_data_quality_pipeline.daily_data_quality_workflow()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
 @check_genomic_cron_job('daily_incident_summary')
 def genomic_data_quality_daily_incident_summary():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS)
+    genomic_data_quality_pipeline.daily_data_quality_workflow(
+        reporting_job=GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS
+    )
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
 @check_genomic_cron_job('daily_validation_emails')
 def genomic_data_quality_validation_emails():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SEND_VALIDATION_EMAILS)
+    genomic_data_quality_pipeline.daily_data_quality_workflow(
+        reporting_job=GenomicJob.DAILY_SEND_VALIDATION_EMAILS
+    )
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
 @check_genomic_cron_job('daily_validation_fails_resolved')
 def genomic_data_quality_validation_fails_resolved():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED)
+    genomic_data_quality_pipeline.daily_data_quality_workflow(
+        reporting_job=GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED
+    )
     return '{"success": "true"}'
 
 
@@ -873,7 +886,8 @@ def genomic_notify_gcr_ce_outreach_escalation():
 
 @app_util.auth_required_cron
 def nph_biobank_nightly_file_drop():
-    study_nph_biobank_file_export_job()
+    if not config.getSettingJson('enable_nph_biobank_report_upload', default=True):
+        study_nph_biobank_file_export_job()
     return '{"success": "true"}'
 
 
@@ -887,6 +901,21 @@ def nph_biobank_inventory_file_import():
 def nph_sms_n1_generation():
     n1_generation()
     return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+def sync_tactis_participants_to_bq():
+    a_day_ago = CLOCK.now() - timedelta(days=1)
+    since_date = datetime(year=a_day_ago.year, month=a_day_ago.month, day=a_day_ago.day)
+
+    data_sync = TactisBQDataSync(
+        dataset="drc_to_tactis_data",
+        table_name="participant_data_to_tactis",
+        since_date=since_date
+    )
+
+    data_sync.sync_data_to_bigquery()
+    return '{ "success": "true" }'
 
 
 def _build_pipeline_app():
@@ -905,6 +934,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "FlagResponseDuplication",
         endpoint="flagResponseDuplication",
         view_func=flag_response_duplication,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "TactisBigQuerySync",
+        endpoint="tactisBigQuerySync",
+        view_func=sync_tactis_participants_to_bq,
         methods=["GET"],
     )
 
@@ -1129,6 +1165,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicAW3WGSUpdatedWorkflow",
         endpoint="genomic_aw3_wgs_updated_workflow",
         view_func=genomic_aw3_wgs_updated_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicLRL3Workflow",
+        endpoint="genomic_lr_l3_workflow",
+        view_func=genomic_lr_l3_workflow,
         methods=["GET"]
     )
     offline_app.add_url_rule(

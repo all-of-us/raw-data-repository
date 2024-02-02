@@ -1,0 +1,5 @@
+"biobank_id","sample_id","biobankid_sampleid","lr_site_id","long_read_platform","sex_at_birth","drc_contamination","drc_sex_concordance","drc_array_concordance","drc_mean_coverage","drc_processing_status","drc_failure_mode","drc_failure_mode_desc","drc_processing_count","pass_to_research_pipeline"
+"T01","1111","T01_1111","bi","ont","M","1010","1010","1010","1010","pass","pass_mode","desc","0","True"
+"T02","2222","T02_2222","bi","ont","M","1010","1010","1010","1010","pass","pass_mode","desc","0","True"
+"T03","3333","T03_3333","bi","ont","M","1010","1010","1010","1010","pass","pass_mode","desc","0","True"
+

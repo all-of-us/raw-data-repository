@@ -20,11 +20,13 @@ class OnsiteVerificationApiTest(BaseTestCase):
         self.p2 = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
         self.p3 = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
         self.p4 = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
+        self.p5 = self.data_generator.create_database_participant(hpoId=self.hpo.hpoId)
 
         self.data_generator.create_database_participant_summary(participant=self.p)
         self.data_generator.create_database_participant_summary(participant=self.p2)
         self.data_generator.create_database_participant_summary(participant=self.p3)
         self.data_generator.create_database_participant_summary(participant=self.p4)
+        self.data_generator.create_database_participant_summary(participant=self.p5)
 
         self.ps_dao = ParticipantSummaryDao()
 
@@ -90,11 +92,21 @@ class OnsiteVerificationApiTest(BaseTestCase):
             "verificationType": "PHOTO_AND_ONE_OF_PII",
             "visitType": "PEDIATRIC_VISIT"
         }
+        payload_6 = {
+            "participantId": f'P{str(self.p5.participantId)}',
+            "userEmail": "test@mail.com",
+            "verifiedTime": "2022-04-22T06:07:08Z",
+            "siteGoogleGroup": self.site.googleGroup,
+            "verificationType": "PHOTO_AND_ONE_OF_PII",
+            "visitType": "ID_VERIFICATION_ONLY"
+        }
         response1 = self.send_post(path, payload_1)
         response2 = self.send_post(path, payload_2)
         response3 = self.send_post(path, payload_3)
         response4 = self.send_post(path, payload_4)
         response5 = self.send_post(path, payload_5)
+        response6 = self.send_post(path, payload_6)
+
         self.assertEqual(response1,
                          {'participantId': f'P{str(self.p.participantId)}',
                           'verifiedTime': '2022-03-22T06:07:08',
@@ -140,6 +152,15 @@ class OnsiteVerificationApiTest(BaseTestCase):
                           'verificationType': 'PHOTO_AND_ONE_OF_PII',
                           'visitType': 'PEDIATRIC_VISIT'}
                          )
+        self.assertEqual(response6,
+                         {'participantId': f'P{str(self.p5.participantId)}',
+                          'verifiedTime': '2022-04-22T06:07:08',
+                          'userEmail': 'test@mail.com',
+                          'siteGoogleGroup': self.site.googleGroup,
+                          'siteName': self.site.siteName,
+                          'verificationType': 'PHOTO_AND_ONE_OF_PII',
+                          'visitType': 'ID_VERIFICATION_ONLY'}
+                        )
 
         get_path = f'Onsite/Id/Verification/P{str(self.p.participantId)}'
         result = self.send_get(get_path)
@@ -196,6 +217,18 @@ class OnsiteVerificationApiTest(BaseTestCase):
                               'verificationType': 'PHOTO_AND_ONE_OF_PII',
                               'visitType': 'PEDIATRIC_VISIT'}
                          ]})
+        get_path = f'Onsite/Id/Verification/P{str(self.p5.participantId)}'
+        result = self.send_get(get_path)
+        self.assertEqual(result,
+                         {'entry': [
+                             {'participantId': f'P{str(self.p5.participantId)}',
+                              'verifiedTime': '2022-04-22T06:07:08',
+                              'userEmail': 'test@mail.com',
+                              'siteGoogleGroup': self.site.googleGroup,
+                              'siteName': self.site.siteName,
+                              'verificationType': 'PHOTO_AND_ONE_OF_PII',
+                              'visitType': 'ID_VERIFICATION_ONLY'}
+                         ]})
 
         participant_summary = self.ps_dao.get_by_participant_id(self.p.participantId)
         self.assertEqual(participant_summary.onsiteIdVerificationTime, datetime(2022, 2, 22, 6, 7, 8))
@@ -210,9 +243,9 @@ class OnsiteVerificationApiTest(BaseTestCase):
 
         # Verify the data dict arg from each mocked ResourceRecordSet(schema, data) created by the PDR generator,
         # triggered by POST /OnSite/Id/Verification requests
-        self.assertEqual(mock_pdr_resource_generator.call_count, 5)
-        payload_list = [payload_1, payload_2, payload_3, payload_4, payload_5]
-        for i in range(4):
+        self.assertEqual(mock_pdr_resource_generator.call_count, 6)
+        payload_list = [payload_1, payload_2, payload_3, payload_4, payload_5, payload_6]
+        for i in range(len(payload_list)):
             resource_dict = mock_pdr_resource_generator.call_args_list[i].args[1]
             self.verify_pdr_resource_data(resource_dict, payload_list[i])
 

@@ -94,6 +94,48 @@ class NphSmsWorkflowsTest(BaseTestCase):
         all_samples = sample_dao.get_all()
         self.assertEqual(len(all_samples), 3)
 
+    @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
+    def test_sample_list_not_ingested_on_bmi_validation_failure(self, mock_send_message_to_webhook):
+        mock_send_message_to_webhook.return_value = True
+
+        self.create_cloud_csv("test_sample_list.csv", "test_sample_list.csv")
+
+        # Define and add new record where bmi violates the validation rule
+        new_record = {
+            "sample_id": "10004",
+            "lims_sample_id": "7013747927",
+            "plate_number": "1",
+            "position": "C2",
+            "labware_type": "Matrix96_Blue",
+            "blank": "NA",
+            "sample_identifier": "C_S_7013747927_M1_L_TP5",
+            "diet": "LMT",
+            "sex_at_birth": "Intersex",
+            "bmi": "39.888",
+            "age": "21",
+            "race": "Black, African American or African",
+            "ethnicity": "Asian",
+            "destination": "UNC_META",
+        }
+        with open_cloud_file(f'/{self.test_bucket}/test_sample_list.csv', mode="a") as cf:
+            cf.write(','.join(new_record.values()))
+
+        ingestion_data = {
+            "job": "FILE_INGESTION",
+            "file_type": "SAMPLE_LIST",
+            "file_path": f"{self.test_bucket}/test_sample_list.csv"
+        }
+
+        from rdr_service.resource import main as resource_main
+        with self.assertLogs(level="ERROR") as cm:
+            self.send_post(
+                local_path='NphSmsIngestionTaskApi',
+                request_data=ingestion_data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+            self.assertIn('Validation failed', cm.output[0])
+
     def test_n0_ingestion(self):
 
         # Ingestion Test File - Biobank N0 manifest
@@ -339,6 +381,37 @@ class NphSmsWorkflowsTest(BaseTestCase):
             )
         manifest_records = n1_mcac_dao.get_all()
         self.assertEqual(len(manifest_records), 4)
+
+    @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
+    def test_n1_mc1_raises_error_on_data_validation_failure(self, mock_send_message_to_webhook):
+        mock_send_message_to_webhook.return_value = True
+
+        self.create_data_n1_mc1_generation()
+        sms_datagen = NphSmsDataGenerator()
+
+        # Create n0 with biobank id, but missing other values, like sample_id, diet, age, etc.
+        sms_datagen.create_database_sms_n0(
+            package_id="test",
+            storage_unit_id="test",
+            file_path="UNC_META_n0_test.csv",
+            well_box_position="A5",
+            biobank_id="test")
+
+        generation_data = {
+            "job": "FILE_GENERATION",
+            "file_type": "N1_MC1",
+            "recipient": "UNC_META",
+            "package_id": "test"
+        }
+        with self.assertLogs(level="ERROR") as cm:
+            from rdr_service.resource import main as resource_main
+            self.send_post(
+                local_path='NphSmsGenerationTaskApi',
+                request_data=generation_data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+            self.assertIn('Validation failed', cm.output[0])
 
     def test_n1_mcc_tab_delimited(self):
         self.create_data_n1_mc1_generation(destination="UCSD")
