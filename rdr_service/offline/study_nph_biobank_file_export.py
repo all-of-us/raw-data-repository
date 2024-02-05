@@ -126,6 +126,15 @@ def _get_ordered_samples(order_id: int) -> List[OrderedSample]:
         return query.all()
 
 
+def _get_processing_timestamp(ordered_sample: OrderedSample) -> Optional[datetime]:
+    """Get finalized ts for stool samples & collected ts for other samples."""
+    if ordered_sample.test.startswith("ST"):
+        return ordered_sample.finalized
+    elif ordered_sample.parent is not None:
+        return ordered_sample.collected
+    return None
+
+
 def _convert_ordered_samples_to_samples(
     order_id: str,
     ordered_samples: List[OrderedSample],
@@ -134,11 +143,6 @@ def _convert_ordered_samples_to_samples(
 ) -> List[Dict[str, Any]]:
     samples = []
     for ordered_sample in ordered_samples:
-        processing_timestamp = (
-            ordered_sample.collected
-            if ordered_sample.parent is not None or ordered_sample.test.startswith("ST")
-            else None
-        )
         sample_cancelled = ordered_cancelled or ordered_sample.status == 'cancelled'
         sample = {
             "sampleID": (ordered_sample.aliquot_id or ordered_sample.nph_sample_id),
@@ -147,7 +151,7 @@ def _convert_ordered_samples_to_samples(
             "volume": ordered_sample.volume,
             "volumeUOM": ordered_sample.volumeUnits,
             "collectionDateUTC": _format_timestamp((ordered_sample.parent or ordered_sample).collected),
-            "processingDateUTC": _format_timestamp(processing_timestamp),
+            "processingDateUTC": _format_timestamp(_get_processing_timestamp(ordered_sample)),
             "cancelledFlag": "Y" if sample_cancelled else "N",
             "notes": notes,
         }
