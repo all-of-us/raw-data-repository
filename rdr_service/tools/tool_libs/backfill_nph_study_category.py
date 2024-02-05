@@ -23,35 +23,48 @@ class TimepointManager:
         self.tp_map = id_map
         self.new_count = 0
 
-        self.visit_name_map = {
-            self.name_key(tp.parent.parent.id, tp.parent.name, tp.name): tp
+        self.tp_visit_name_map = {
+            self.tp_name_key(tp.parent.parent.id, tp.parent.name, tp.name): tp
             for tp in id_map.values()
             if tp.parent.type_label == 'visitPeriod'
         }
-        print("count of existing visit periods: ", len(self.visit_name_map))
 
-    def name_key(self, mo_id, visit_name, tp_name):
+        self.visit_name_map = {}
+        for timepoint in self.tp_visit_name_map.values:
+            visit = timepoint.parent
+            self.visit_name_map[self.visit_name_key(visit.parent.id, visit.name)] = visit
+
+        print("count of existing visit periods: ", len(self.tp_visit_name_map))
+
+    def tp_name_key(self, mo_id, visit_name, tp_name):
         return f'{mo_id} ||| {visit_name} ||| {tp_name}'
 
+    def visit_name_key(self, mo_id, visit_name):
+        return f'{mo_id} ||| {visit_name}'
+
     def getTimepointName(self, tp_visit_name, visit_name, old_timepoint_id: StudyCategory, session):
-        if tp_visit_name in self.visit_name_map:
-            return self.visit_name_map[tp_visit_name]
+        if tp_visit_name in self.tp_visit_name_map:
+            return self.tp_visit_name_map[tp_visit_name]
         else:
             old_timepoint = self.getTimepointId(old_timepoint_id)
             module = old_timepoint.parent.parent
 
-            new_visit = StudyCategory(
-                type_label='visitPeriod',
-                name=visit_name,
-                parent=module
-            )
+            visit_name_key = self.visit_name_key(module.id, visit_name)
+            visit = self.visit_name_map.get(visit_name_key, None)
+            if visit is None:
+                visit = StudyCategory(
+                    type_label='visitPeriod',
+                    name=visit_name,
+                    parent=module
+                )
+                self.visit_name_map[visit_name_key] = visit
 
             new_tp = StudyCategory(
                 type_label=old_timepoint.type_label,
                 name=old_timepoint.name,
-                parent=new_visit
+                parent=visit
             )
-            self.visit_name_map[tp_visit_name] = new_tp
+            self.tp_visit_name_map[tp_visit_name] = new_tp
 
             session.add(new_tp)
             session.flush()
@@ -118,7 +131,11 @@ class VisitPeriodBackfill(ToolBase):
                 current_timepoint = timepoint_map[order.category_id]
                 update = new_data[order.nph_order_id]
                 new_tp = manager.getTimepointName(
-                    manager.name_key(current_timepoint.parent.parent.id, update.new_visit_name, current_timepoint.name),
+                    manager.tp_name_key(
+                        current_timepoint.parent.parent.id,
+                        update.new_visit_name,
+                        current_timepoint.name
+                    ),
                     update.new_visit_name,
                     order.category_id,
                     session
