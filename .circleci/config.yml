@@ -83,6 +83,7 @@ commands:
 jobs:
   job_run_unittests:
     <<: *job_defaults
+    parallelism: 5
     steps:
       - unittest-app-steps
 
@@ -148,23 +149,23 @@ jobs:
 
 workflows:
 
-  test_sp_workflow:
-    jobs:
-      - job_run_1:
-          filters:
-            branches:
-              only:
-                - sp/test-cicd
-      - job_run_2:
-          filters:
-            branches:
-              only:
-                - sp/test-cicd
-      - job_run_3:
-          filters:
-            branches:
-              only:
-                - sp/test-cicd
+#  test_sp_workflow:
+#    jobs:
+#      - job_run_1:
+#          filters:
+#            branches:
+#              only:
+#                - sp/test-cicd
+#      - job_run_2:
+#          filters:
+#            branches:
+#              only:
+#                - sp/test-cicd
+#      - job_run_3:
+#          filters:
+#            branches:
+#              only:
+#                - sp/test-cicd
 
   test_commits_workflow:
     jobs:
