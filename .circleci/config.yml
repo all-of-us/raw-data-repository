@@ -15,7 +15,7 @@ job_defaults: &job_defaults
         MYSQL_ALLOW_EMPTY_PASSWORD: yes
         MYSQL_ROOT_PASSWORD: ''
   working_directory: ~/all-of-us/raw-data-repository
-  parallelism: 5
+  parallelism: 1
   shell: /bin/bash --login
   environment:
     IS_AUTOMATED_TESTING_ENVIRONMENT: "true"
