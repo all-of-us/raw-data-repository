@@ -46,9 +46,7 @@ commands:
           command: |
             source venv/bin/activate
             export PYTHONPATH=$PYTHONPATH:`pwd`
-            UNITTEST_FLAG=1 coverage run -m unittest -v $(circleci tests glob "tests/**/*.py" | circleci tests split --split-by=timings)
-          store_test_results:
-            path: ./test_results.xml
+            UNITTEST_FLAG=1 coverage run -m unittest -v $(circleci tests glob "tests/**/*.py" | circleci tests split --split-by=filesize)
       - run:
           name: Upload Coverage Report
           command: ./ci/run_upload_coverage_report.sh
@@ -136,36 +134,23 @@ jobs:
     steps:
       - run: "echo hello1"
 
-  job_run_2:
-    <<: *job_defaults
-    steps:
-      - run: "echo hello2"
-
-  job_run_3:
-    <<: *job_defaults
-    steps:
-      - run: "echo hello3"
-
 
 workflows:
 
-#  test_sp_workflow:
-#    jobs:
-#      - job_run_1:
-#          filters:
-#            branches:
-#              only:
-#                - sp/test-cicd
-#      - job_run_2:
-#          filters:
-#            branches:
-#              only:
-#                - sp/test-cicd
-#      - job_run_3:
-#          filters:
-#            branches:
-#              only:
-#                - sp/test-cicd
+  test_sp_workflow:
+    jobs:
+      - job_run_unittests:
+          filters:
+            branches:
+              only:
+                - sp/test-cicd
+      - job_run_1:
+          requires:
+            - job_run_unittests
+          filters:
+            branches:
+              only:
+                - sp/test-cicd
 
   test_commits_workflow:
     jobs:
@@ -176,6 +161,7 @@ workflows:
                 - circleci-deploy
                 - devel
                 - master
+                - sp/test-cicd
             tags:
               ignore: /.*/
 
