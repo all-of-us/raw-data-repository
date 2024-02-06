@@ -108,10 +108,14 @@ class NphParticipantDao(BaseDao):
                     and_(
                         ConsentEvent.participant_id == consent_event_alias.participant_id,
                         ConsentEvent.event_type_id == consent_event_alias.event_type_id,
-                        ConsentEvent.id < consent_event_alias.id
+                        ConsentEvent.id < consent_event_alias.id,
+                        consent_event_alias.ignore_flag == 0
                     ),
                 )
-                .filter(consent_event_alias.id.is_(None))
+                .filter(
+                    consent_event_alias.id.is_(None),
+                    ConsentEvent.ignore_flag == 0
+                )
                 .group_by(Participant.id)
                 .subquery()
             )
@@ -137,7 +141,8 @@ class NphParticipantDao(BaseDao):
                 EnrollmentEventType.id == EnrollmentEvent.event_type_id,
             ).filter(
                 EnrollmentEventType.source_name.notlike('%_death'),
-                EnrollmentEventType.source_name.notlike('%_losttofollowup')
+                EnrollmentEventType.source_name.notlike('%_losttofollowup'),
+                EnrollmentEvent.ignore_flag == 0
             ).group_by(Participant.id).subquery()
 
     def get_stored_samples_subquery(
@@ -322,10 +327,12 @@ class NphParticipantDao(BaseDao):
                 and_(
                     Participant.id == diet_alias.participant_id,
                     DietEvent.diet_name == diet_alias.diet_name,
-                    DietEvent.created < diet_alias.created
+                    DietEvent.created < diet_alias.created,
+                    diet_alias.ignore_flag == 0
                 )
             ).filter(
-              diet_alias.id.is_(None)
+                diet_alias.id.is_(None),
+                DietEvent.ignore_flag == 0
             ).group_by(
                 Participant.id
             ).subquery()
@@ -346,7 +353,7 @@ class NphParticipantDao(BaseDao):
             ).join(
                 DeactivationEvent,
                 DeactivationEvent.participant_id == Participant.id
-            ).group_by(Participant.id).subquery()
+            ).filter(DeactivationEvent.ignore_flag == 0).group_by(Participant.id).subquery()
 
     def get_withdrawal_subquery(self):
         with self.session() as session:
@@ -364,7 +371,7 @@ class NphParticipantDao(BaseDao):
             ).join(
                 WithdrawalEvent,
                 WithdrawalEvent.participant_id == Participant.id
-            ).group_by(Participant.id).subquery()
+            ).filter(WithdrawalEvent.ignore_flag == 0).group_by(Participant.id).subquery()
 
 
 class NphStudyCategoryDao(UpdatableDao):
