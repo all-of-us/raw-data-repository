@@ -30,7 +30,7 @@ class TimepointManager:
         }
 
         self.visit_name_map = {}
-        for timepoint in self.tp_visit_name_map.values:
+        for timepoint in self.tp_visit_name_map.values():
             visit = timepoint.parent
             self.visit_name_map[self.visit_name_key(visit.parent.id, visit.name)] = visit
 
