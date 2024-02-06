@@ -130,7 +130,41 @@ jobs:
           project-id: all-of-us-rdr-careevo-test
           git-target: << pipeline.git.tag >>
 
+  job_run_1:
+    <<: *job_defaults
+    steps:
+      - run: "echo hello1"
+
+  job_run_2:
+    <<: *job_defaults
+    steps:
+      - run: "echo hello2"
+
+  job_run_3:
+    <<: *job_defaults
+    steps:
+      - run: "echo hello3"
+
+
 workflows:
+
+  test_sp_workflow:
+    jobs:
+      - job_run_1:
+          filters:
+            branches:
+              only:
+                - sp/test-cicd
+      - job_run_2:
+          filters:
+            branches:
+              only:
+                - sp/test-cicd
+      - job_run_3:
+          filters:
+            branches:
+              only:
+                - sp/test-cicd
 
   test_commits_workflow:
     jobs:
