@@ -4736,9 +4736,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
         self.session.commit()
 
-        response = self.send_get(f'ParticipantSummary')
-        self.assertEqual([], response['entry'])
-        logging_mock.error.assert_called_with('Pediatric participant has unconsented guardian')
+        self.send_get(f'ParticipantSummary')
+        logging_mock.warning.assert_called_with('Found link to unconsented participant')
 
     def test_pmb_eligible_masking(self):
         """
