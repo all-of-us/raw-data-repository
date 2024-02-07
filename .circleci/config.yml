@@ -134,6 +134,12 @@ jobs:
     steps:
       - run: "echo hello1"
 
+  job_run_2:
+    <<: *job_defaults
+    steps:
+      - run: "echo hello2"
+
+
 
 workflows:
 
@@ -145,8 +151,11 @@ workflows:
               only:
                 - sp/test-cicd
       - job_run_1:
-          requires:
-            - job_run_unittests
+          filters:
+            branches:
+              only:
+                - sp/test-cicd
+      - job_run_2:
           filters:
             branches:
               only:
