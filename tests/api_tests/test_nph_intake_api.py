@@ -522,6 +522,7 @@ class NphIntakeAPITest(BaseTestCase):
 
         all_diet_types = [obj for obj in DietType if obj.name != 'LMT']
         self.assertTrue(all(obj.diet_name in all_diet_types for obj in diet_events))
+        self.assertTrue(all(obj.diet_name_str in [diet.name for diet in all_diet_types] for obj in diet_events))
 
         for diet_type in all_diet_types:
             current_diet_records = list(filter(lambda x: x.diet_name == diet_type, diet_events))
