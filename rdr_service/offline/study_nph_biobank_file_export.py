@@ -128,7 +128,7 @@ def _get_ordered_samples(order_id: int) -> List[OrderedSample]:
 
 def _get_processing_timestamp(ordered_sample: OrderedSample) -> Optional[datetime]:
     """Get finalized ts for stool samples & collected ts for other samples."""
-    if ordered_sample.test.startswith("ST"):
+    if ordered_sample.test is not None and ordered_sample.test.startswith("ST"):
         return ordered_sample.finalized
     elif ordered_sample.parent is not None:
         return ordered_sample.collected
