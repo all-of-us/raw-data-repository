@@ -4589,28 +4589,46 @@ class ParticipantSummaryApiTest(BaseTestCase):
     def test_displaying_linked_accounts(self):
         first_parent = self.data_generator.create_database_participant_summary()
         second_parent = self.data_generator.create_database_participant_summary()
-        child_id = self.data_generator.create_database_participant_summary().participantId
+        child = self.data_generator.create_database_participant_summary()
+        child_id = child.participantId
 
         PediatricDataLogDao.record_age_range(participant_id=child_id, age_range_str='TEEN')
         self.session.add(AccountLink(participant_id=child_id, related_id=first_parent.participantId))
         self.session.add(AccountLink(participant_id=child_id, related_id=second_parent.participantId))
         self.session.commit()
 
-        response = self.send_get(f'Participant/P{child_id}/Summary')
+        # Check that guardians show up for pediatric accounts
+        child_response = self.send_get(f'Participant/P{child_id}/Summary')
         self.assertEqual(
             [
                 {
                     'participantId': f'P{first_parent.participantId}',
                     'firstName': first_parent.firstName,
-                    'lastName': first_parent.lastName
+                    'lastName': first_parent.lastName,
+                    'relation': 'guardian'
                 },
                 {
                     'participantId': f'P{second_parent.participantId}',
                     'firstName': second_parent.firstName,
-                    'lastName': second_parent.lastName
+                    'lastName': second_parent.lastName,
+                    'relation': 'guardian'
                 }
             ],
-            response.get('relatedParticipants')
+            child_response.get('relatedParticipants')
+        )
+
+        # Check that pediatric accounts show up for guardians
+        adult_response = self.send_get(f'Participant/P{first_parent.participantId}/Summary')
+        self.assertEqual(
+            [
+                {
+                    'participantId': f'P{child_id}',
+                    'firstName': child.firstName,
+                    'lastName': child.lastName,
+                    'relation': 'pediatric'
+                }
+            ],
+            adult_response.get('relatedParticipants')
         )
 
     def test_pediatric_environmental_exposures(self):
@@ -4718,9 +4736,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
         self.session.commit()
 
-        response = self.send_get(f'ParticipantSummary')
-        self.assertEqual([], response['entry'])
-        logging_mock.error.assert_called_with('Pediatric participant has unconsented guardian')
+        self.send_get(f'ParticipantSummary')
+        logging_mock.warning.assert_called_with('Found link to unconsented participant')
 
     def test_pmb_eligible_masking(self):
         """
