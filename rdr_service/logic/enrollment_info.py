@@ -163,7 +163,10 @@ class EnrollmentCalculation:
             participant_info.lifestyle_authored_time,
             participant_info.earliest_biobank_received_dna_time
         ]
-        if participant_info.consent_cohort == ParticipantCohort.COHORT_3:
+        if (
+            participant_info.consent_cohort == ParticipantCohort.COHORT_3
+            and not participant_info.is_pediatric_participant
+        ):
             dates_needed_for_upgrade.append(participant_info.gror_authored_time)
 
         core_minus_pm_reqs_met_time = cls._get_requirements_met_date(dates_needed_for_upgrade)
@@ -219,19 +222,15 @@ class EnrollmentCalculation:
                 participant_info.basics_authored_time
             )
 
-        if (
-            participant_info.first_full_ehr_consent_authored_time
-            and participant_info.basics_authored_time
-            and participant_info.gror_authored_time
-        ):
-            enrollment.upgrade_3_2_status(
-                EnrollmentStatusV32.PMB_ELIGIBLE,
-                max(
-                    participant_info.first_full_ehr_consent_authored_time,
-                    participant_info.basics_authored_time,
-                    participant_info.gror_authored_time
-                )
-            )
+        dates_needed_for_pmb_eligible = [
+            participant_info.first_full_ehr_consent_authored_time,
+            participant_info.basics_authored_time
+        ]
+        if not participant_info.is_pediatric_participant:
+            dates_needed_for_pmb_eligible.append(participant_info.gror_authored_time)
+        met_pmb_eligible_reqs_time = cls._get_requirements_met_date(dates_needed_for_pmb_eligible)
+        if met_pmb_eligible_reqs_time:
+            enrollment.upgrade_3_2_status(EnrollmentStatusV32.PMB_ELIGIBLE, met_pmb_eligible_reqs_time)
 
         if cls._meets_requirements_for_core_minus_pm(participant_info):
             enrollment.upgrade_3_2_status(

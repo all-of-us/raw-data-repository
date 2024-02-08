@@ -318,13 +318,13 @@ class TestEnrollmentInfo(BaseTestCase):
 
     def test_pediatric_pmb_eligible(self):
         """
-        Participants should get PM&B Eligible status when completing The Basics and consenting to share EHR
+        Participants should get PM&B Eligible status when completing The Basics and consenting to share EHR,
+        but not need GROR
         """
         participant_info = self._build_participant_info(
             primary_authored_time=datetime(2018, 1, 17),
             ehr_first_yes_timestamp=datetime(2018, 1, 17),
             ehr_consent_ranges=[DateRange(start=datetime(2018, 1, 17))],
-            gror_time=datetime(2018, 1, 17),
             is_pediatric=True,
             has_guardian=True
         )
