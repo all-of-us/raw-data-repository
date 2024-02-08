@@ -51,23 +51,25 @@ class ConsentDao(BaseDao):
             .join(Participant)
             .outerjoin(
                 ConsentFile,
-                or_(
-                    and_(
-                        or_(
-                            ConsentFile.type != ConsentType.EHR,
-                            and_(
-                                ConsentResponse.type == ConsentType.EHR,
-                                QuestionnaireResponse.authored <= '2022-04-01',
-                            )
+                and_(
+                    or_(
+                        and_(
+                            or_(
+                                ConsentFile.type != ConsentType.EHR,
+                                and_(
+                                    ConsentResponse.type == ConsentType.EHR,
+                                    QuestionnaireResponse.authored <= '2022-04-01',
+                                )
+                            ),
+                            ConsentFile.type == ConsentResponse.type
                         ),
-                        ConsentFile.type == ConsentResponse.type,
-                        ConsentFile.participant_id == QuestionnaireResponse.participantId
+                        and_(
+                            ConsentResponse.type == ConsentType.EHR,
+                            QuestionnaireResponse.authored > '2022-04-01',
+                            ConsentResponse.id == ConsentFile.consent_response_id
+                        )
                     ),
-                    and_(
-                        ConsentResponse.type == ConsentType.EHR,
-                        QuestionnaireResponse.authored > '2022-04-01',
-                        ConsentResponse.id == ConsentFile.consent_response_id
-                    )
+                    ConsentFile.participant_id == QuestionnaireResponse.participantId
                 )
             ).filter(
                 ConsentFile.id.is_(None),
