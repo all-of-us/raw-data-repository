@@ -568,6 +568,7 @@ class PostIntakePayloadJSON(PostIntakePayload):
                 diet_entries.append({
                     'diet_id': diet_id,
                     'diet_name': diet_name,
+                    'diet_name_str': diet_name.name,
                     'status_id': diet_status.get('StatusId'),
                     'status': DietStatus.lookup_by_name(diet_status.get('Status').upper()),
                     'current': current_map.get(diet_status.get('Current').lower()),
