@@ -5,6 +5,7 @@ from typing import List, Optional, Union
 
 from rdr_service.domain_model.etm import EtmResponseAnswer
 from rdr_service.model import etm
+from rdr_service.model.requests_log import RequestsLog
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -173,6 +174,27 @@ class EtmIngestionTest(BaseTestCase):
 
         del response['id']
         self.assertEqual(questionnaire_response_json, response)
+
+        # checking for the log in the Requests Log and verifying the fpk info
+        log_entry = (
+            self.session.query(RequestsLog).order_by(RequestsLog.id.desc()).first()
+        )
+        self.assertIsNotNone(log_entry, "No log entry found in the requests log table")
+        self.assertEqual(
+            log_entry.fpk_id,
+            1,
+            "the fpk_id in the requests log entry does not match the expected value",
+        )
+        self.assertEqual(
+            log_entry.fpk_column,
+            "etm_questionnaire_response_id",
+            "the fpk_column in the requests log entry does not match the expected value",
+        )
+        self.assertEqual(
+            log_entry.fpk_table,
+            "etm_questionnaire_response",
+            "the fpk_table in the requests log entry does not match the expected value",
+        )
 
     def assert_has_extensions(
         self,

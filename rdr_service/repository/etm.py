@@ -1,7 +1,8 @@
-
+from flask import request
 from sqlalchemy.orm import Query, Session
 from typing import List
 
+from rdr_service.api.base_api import log_api_request
 from rdr_service.dao import database_factory
 from rdr_service.domain_model import etm as domain_model
 from rdr_service.model import etm as schema_model
@@ -153,6 +154,8 @@ class EtmResponseRepository(BaseRepository):
                 )
 
         self._add_to_session(schema_response)
+
+        log_api_request(log=request.log_record, model_obj=schema_response)
         response_obj.id = schema_response.etm_questionnaire_response_id
 
     @classmethod
