@@ -1,15 +1,17 @@
 import logging
 from typing import Optional
 
+from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import BadRequest
 
-from rdr_service.api.base_api import ApiUtilMixin
+from rdr_service.api.base_api import ApiUtilMixin, log_api_request
 from rdr_service.api_util import PTC
 from rdr_service.app_util import auth_required
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.pediatric_data_log_dao import PediatricDataLogDao
 from rdr_service.fhir_utils import find_extension
+from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.contactpoint import ContactPoint
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.patient import Patient as FhirPatient
@@ -333,8 +335,15 @@ class ProfileUpdateApi(Resource, ApiUtilMixin):
     def post(self):
         json = self.get_request_json()
         update_payload = PatientPayload(json)
+
+        if not hasattr(request, 'log_record'):
+            request.log_record = RequestsLog()
+        request.log_record.participantId = update_payload.participant_id
+
         self._process_request(update_payload)
         self._record_request(update_payload)
+
+        log_api_request(log=request.log_record)
         return json
 
     @classmethod
