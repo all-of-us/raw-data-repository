@@ -2619,50 +2619,6 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(withdraw_time):
             genomic_gem_pipeline.gem_a3_manifest_workflow()  # run_id 6
 
-    def test_gem_a1_limit(self):
-        # Need GC Manifest for source query : run_id = 1
-        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
-                                              startTime=clock.CLOCK.now(),
-                                              runStatus=GenomicSubProcessStatus.COMPLETED,
-                                              runResult=GenomicSubProcessResult.SUCCESS))
-
-        self._create_fake_datasets_for_gc_tests(4, arr_override=True,
-                                                array_participants=range(1, 5),
-                                                recon_gc_man_id=1,
-                                                genome_center='jh',
-                                                genomic_workflow_state=GenomicWorkflowState.GEM_READY)
-
-        # add validated consents for GROR
-        for summary in self.summary_dao.get_all():
-            self.data_generator.create_database_consent_file(
-                participant_id=summary.participantId,
-                type=ConsentType.GROR,
-                sync_status=ConsentSyncStatus.SYNC_COMPLETE
-            )
-
-        self._update_test_sample_ids()
-
-        self._create_stored_samples([
-            (1, 1001),
-            (2, 1002),
-            (3, 1003)
-        ])
-
-        for i in range(1, 5):
-            self.data_generator.create_database_genomic_gc_validation_metrics(
-                genomicSetMemberId=i,
-                processingStatus='pass',
-            )
-
-        config.override_setting(config.A1_LIMIT, [1])
-
-        genomic_gem_pipeline.gem_a1_manifest_workflow()  # run_id = 4
-
-        members = self.member_dao.get_all()
-        a1_members = [x for x in members if x.genomicWorkflowState == GenomicWorkflowState.A1]
-        self.assertEqual(1, len(a1_members))
-        config.override_setting(config.A1_LIMIT, [1000])  # reset for full testing
-
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_gem_a3_manifest_workflow(self, cloud_task):
         # Create A1 manifest job run: id = 1
@@ -2758,6 +2714,49 @@ class GenomicPipelineTest(BaseTestCase):
         for attribute in GenomicA3Raw.__table__.columns:
             self.assertTrue(all(getattr(obj, str(attribute).split('.')[1]) is not None for obj in gem_raw_records))
 
+    def test_gem_a1_limit(self):
+        # Need GC Manifest for source query : run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(4, arr_override=True,
+                                                array_participants=range(1, 5),
+                                                recon_gc_man_id=1,
+                                                genome_center='jh',
+                                                genomic_workflow_state=GenomicWorkflowState.GEM_READY)
+
+        # add validated consents for GROR
+        for summary in self.summary_dao.get_all():
+            self.data_generator.create_database_consent_file(
+                participant_id=summary.participantId,
+                type=ConsentType.GROR,
+                sync_status=ConsentSyncStatus.SYNC_COMPLETE
+            )
+
+        self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002),
+            (3, 1003)
+        ])
+
+        for i in range(1, 5):
+            self.data_generator.create_database_genomic_gc_validation_metrics(
+                genomicSetMemberId=i,
+                processingStatus='pass',
+            )
+
+        config.override_setting(config.A1_LIMIT, [1])
+
+        genomic_gem_pipeline.gem_a1_manifest_workflow()  # run_id = 4
+
+        members = self.member_dao.get_all()
+        a1_members = [x for x in members if x.genomicWorkflowState == GenomicWorkflowState.A1]
+        self.assertEqual(1, len(a1_members))
+        config.override_setting(config.A1_LIMIT, [1000])  # reset for full testing
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_aw3_array_manifest_generation(self, cloud_task):
