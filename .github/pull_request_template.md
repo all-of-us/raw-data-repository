@@ -1,4 +1,4 @@
-## Resolves *[ticket #](link to ticket)*
+## Resolves *[DA-####](https://precisionmedicineinitiative.atlassian.net/browse/DA-####)*
 
 
 ## Description of changes/additions
