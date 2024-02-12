@@ -1044,14 +1044,14 @@ class QuestionnaireResponseDao(BaseDao):
                     if self._code_in_list(
                         code.value, [CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PEDIATRIC_EHR_CONSENT]
                     ):
-                        # If we got a new EHR consent, mark that it needs to be validated
                         if (
-                            ehr_consent
-                            and (
-                                participant_summary.consentForElectronicHealthRecordsAuthored is None
-                                or authored > participant_summary.consentForElectronicHealthRecordsAuthored
-                            )
+                            participant_summary.consentForElectronicHealthRecords is not None
+                            and authored <= participant_summary.consentForElectronicHealthRecordsAuthored
                         ):
+                            # if we're getting a response that is the same or older than what we already have
+                            # then don't change the current status
+                            new_status = participant_summary.consentForElectronicHealthRecords
+                        elif ehr_consent:
                             new_status = QuestionnaireStatus.SUBMITTED_NOT_VALIDATED
                         else:
                             new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
