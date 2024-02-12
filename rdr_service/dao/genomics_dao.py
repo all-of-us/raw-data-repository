@@ -219,7 +219,7 @@ class GenomicSetDao(UpdatableDao, GenomicDaoMixin):
                     existing_valid_query.label("existing_valid_genomic_count"),
                 ]
             )
-                .select_from(
+            .select_from(
                 sqlalchemy.join(
                     sqlalchemy.join(
                         sqlalchemy.join(GenomicSet, GenomicSetMember, GenomicSetMember.genomicSetId == GenomicSet.id),
