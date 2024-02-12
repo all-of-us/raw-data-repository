@@ -2170,6 +2170,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
 
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
+        )
+
         resp = self.send_post(
             f'GenomicOutreachV2?participant_id=P{participant.participantId}',
             request_data={
@@ -2193,6 +2199,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
 
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
+        )
+
         resp = self.send_post(
             f'GenomicOutreachV2?participant_id=P{participant.participantId}',
             request_data={
@@ -2214,6 +2226,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.build_ready_loop_template_data()
 
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
+        )
 
         resp = self.send_post(
             f'GenomicOutreachV2?participant_id=P{participant.participantId}',
@@ -2243,6 +2261,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.build_ready_loop_template_data()
 
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
+        )
 
         resp = self.send_post(
             f'GenomicOutreachV2?participant_id=P{participant.participantId}',
@@ -2277,6 +2301,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.build_ready_loop_template_data()
 
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
+        )
 
         # POST to create set member
         resp = self.send_post(
