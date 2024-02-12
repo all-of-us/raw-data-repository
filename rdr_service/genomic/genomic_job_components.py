@@ -2140,7 +2140,7 @@ class GenomicFileValidator:
             LR L1 manifest name rule
             """
             return (
-                len(filename_components) == 4 and
+                len(filename_components) <= 5 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'lr' and
@@ -2153,7 +2153,7 @@ class GenomicFileValidator:
             LR L1F manifest name rule
             """
             return (
-                len(filename_components) == 4 and
+                len(filename_components) <= 5 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'l1f' and
@@ -2166,7 +2166,7 @@ class GenomicFileValidator:
             LR L2 ONT manifest name rule
             """
             return (
-                len(filename_components) == 6 and
+                len(filename_components) <= 7 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'l2' and
@@ -2179,7 +2179,7 @@ class GenomicFileValidator:
             LR L2 PB CCS manifest name rule
             """
             return (
-                len(filename_components) == 6 and
+                len(filename_components) <= 7 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'l2' and
@@ -2192,7 +2192,7 @@ class GenomicFileValidator:
             LR L4/L4F manifest name rule
             """
             return (
-                len(filename_components) == 3 and
+                len(filename_components) <= 4 and
                 filename_components[0] == 'aou' and
                 filename_components[1] in ['l4', 'l4f'] and
                 filename.lower().endswith('csv')
@@ -2203,7 +2203,7 @@ class GenomicFileValidator:
             LR L5 manifest name rule
             """
             return (
-                len(filename_components) == 3 and
+                len(filename_components) <= 4 and
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'l5' and
                 filename.lower().endswith('csv')
@@ -2214,7 +2214,7 @@ class GenomicFileValidator:
             LR L6/L6F manifest name rule
             """
             return (
-                len(filename_components) == 3 and
+                len(filename_components) <= 4 and
                 filename_components[0] == 'aou' and
                 filename_components[1] in ['l6', 'l6f'] and
                 filename.lower().endswith('csv')
@@ -2334,7 +2334,7 @@ class GenomicFileValidator:
         }
 
         try:
-            return ingestion_name_rules[self.job_id]()
+            return ingestion_name_rules.get(self.job_id)()
         except KeyError:
             return GenomicSubProcessResult.ERROR
 

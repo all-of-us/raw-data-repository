@@ -1,6 +1,6 @@
+import logging
 from flask_restful import Resource, request
 from werkzeug.exceptions import BadRequest, NotFound
-
 from rdr_service import app_util
 from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
@@ -37,7 +37,15 @@ class QuestionnaireResponseApi(BaseApi):
 
         request_json = self.get_request_json()
         if EtmApi.is_etm_payload(request_json):
-            return EtmApi.post_questionnaire_response(request_json)
+            try:
+                response = EtmApi.post_questionnaire_response(request_json)
+            except Exception as e:
+                logging.error(
+                    f'ETM API BAD REQUEST: {e}'
+                )
+                raise BadRequest('BAD REQUEST, please ask the Raw Data Repository Support Team for more details as to '
+                                 'why this request is not processing')
+            return response
         else:
             resp = super(QuestionnaireResponseApi, self).post(participant_id=p_id)
             if resp and 'id' in resp:

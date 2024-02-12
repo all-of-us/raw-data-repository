@@ -424,7 +424,7 @@ class ParticipantSummaryDao(UpdatableDao):
             session=session,
             obj_id=participant_id,
             options=[
-                joinedload(ParticipantSummary.relatedParticipants).load_only(),
+                joinedload(ParticipantSummary.guardianParticipants).load_only(),
                 # NOTE: only loading existence of account linkage for now, since that's all
                 # that's needed for enrollment status calculations
 
@@ -435,14 +435,21 @@ class ParticipantSummaryDao(UpdatableDao):
     @classmethod
     def _default_api_query_options(cls):
         return [
-            joinedload(ParticipantSummary.relatedParticipants).load_only()
+            joinedload(ParticipantSummary.guardianParticipants).load_only()
             .joinedload(AccountLink.related).load_only()
             .joinedload(Participant.participantSummary).load_only(
                 ParticipantSummary.participantId,
                 ParticipantSummary.firstName,
                 ParticipantSummary.lastName
             ),
-            joinedload(ParticipantSummary.pediatricData)
+            joinedload(ParticipantSummary.pediatricData),
+            joinedload(ParticipantSummary.childParticipants).load_only()
+            .joinedload(AccountLink.participant).load_only()
+            .joinedload(Participant.participantSummary).load_only(
+                ParticipantSummary.participantId,
+                ParticipantSummary.firstName,
+                ParticipantSummary.lastName
+            ),
         ]
 
     def get_by_hpo(self, hpo, session, yield_batch_size=1000):
@@ -830,7 +837,7 @@ class ParticipantSummaryDao(UpdatableDao):
             wgs_sequencing_time=wgs_sequencing_time,
             exposures_authored_time=first_exposures_response_time,
             is_pediatric_participant=summary.isPediatric,
-            has_linked_guardian_accounts=(summary.relatedParticipants and len(summary.relatedParticipants) > 0)
+            has_linked_guardian_accounts=(summary.guardianParticipants and len(summary.guardianParticipants) > 0)
         )
         enrollment_info = EnrollmentCalculation.get_enrollment_info(enrl_dependencies)
 
@@ -1474,27 +1481,34 @@ class ParticipantSummaryDao(UpdatableDao):
                     del result[field_name]
 
         # Find any linked accounts to display
-        result['relatedParticipants'] = UNSET
-        if obj.isPediatric:
-            if not obj.relatedParticipants:
-                logging.error('Pediatric participant does not have a guardian account linked')
-                return None
+        guardian_summary_list = [link.related.participantSummary for link in obj.guardianParticipants]
+        charge_summary_list = [link.participant.participantSummary for link in obj.childParticipants]
+        if any(summary is None for summary in guardian_summary_list + charge_summary_list):
+            # If any of the guardians of a pediatric participant are not yet consented,
+            # don't return the pediatric participant's data
+            logging.warning('Found link to unconsented participant')
 
-            related_summary_list = [link.related.participantSummary for link in obj.relatedParticipants]
-            if any(summary is None for summary in related_summary_list):
-                # If any of the guardians of a pediatric participant are not yet consented,
-                # don't return the pediatric participant's data
-                logging.error('Pediatric participant has unconsented guardian')
-                return None
-
-            result['relatedParticipants'] = [
-                {
-                    'participantId': to_client_participant_id(related_summary.participantId),
-                    'firstName': related_summary.firstName,
-                    'lastName': related_summary.lastName
-                }
-                for related_summary in related_summary_list
-            ]
+        related_participant_result = [
+            {
+                'participantId': to_client_participant_id(guardian_summary.participantId),
+                'firstName': guardian_summary.firstName,
+                'lastName': guardian_summary.lastName,
+                'relation': 'guardian'
+            }
+            for guardian_summary in guardian_summary_list
+            if guardian_summary is not None
+        ]
+        related_participant_result.extend([
+            {
+                'participantId': to_client_participant_id(child_summary.participantId),
+                'firstName': child_summary.firstName,
+                'lastName': child_summary.lastName,
+                'relation': 'pediatric'
+            }
+            for child_summary in charge_summary_list
+            if child_summary is not None
+        ])
+        result['relatedParticipants'] = related_participant_result or 'UNSET'
 
         # set the pediatric data flag
         result['isPediatric'] = True if obj.isPediatric else UNSET
