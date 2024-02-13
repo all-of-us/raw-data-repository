@@ -79,6 +79,7 @@ pyjwt==2.4.0              # via oauthlib
 pylint==2.17.4            # via -r requirements.in
 pyopenssl==23.3.0         # via requests
 pyparsing==2.4.7          # via packaging
+pytest==7.4.3
 python-dateutil==2.8.1    # via alembic, faker
 python-editor==1.0.4      # via alembic
 python-http-client==3.2.7  # via sendgrid
