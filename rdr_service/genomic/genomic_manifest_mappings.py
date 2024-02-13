@@ -1,21 +1,20 @@
-from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao
 from rdr_service.genomic_enums import GenomicJob
 from rdr_service.model.genomics import GenomicAW4Raw, GenomicA2Raw, GenomicW2SCRaw, GenomicW4WRRaw, GenomicW5NFRaw, \
     GenomicW3SSRaw, GenomicW3SCRaw, GenomicW3NSRaw, GenomicL5Raw, GenomicL6Raw, GenomicL4FRaw, GenomicL4Raw, \
     GenomicL2PBCCSRaw, GenomicL2ONTRaw, GenomicL1FRaw, GenomicL1Raw, GenomicLRRaw, GenomicPRRaw, GenomicP1Raw, \
-    GenomicP2Raw, GenomicR2Raw, GenomicR1Raw, GenomicRRRaw, GenomicL6FRaw
+    GenomicP2Raw, GenomicR2Raw, GenomicR1Raw, GenomicRRRaw, GenomicL6FRaw, GenomicAW1Raw, GenomicAW2Raw
 
 GENOMIC_SHORT_READ_INGESTION_MAP = {
     GenomicJob.AW1_MANIFEST: {
         'raw': {
-            'model': GenomicAW1RawDao,
+            'model': GenomicAW1Raw,
             'job_id': GenomicJob.LOAD_AW1_TO_RAW_TABLE
         },
     },
     GenomicJob.AW1F_MANIFEST: {},
     GenomicJob.METRICS_INGESTION: {
         'raw': {
-            'model': GenomicAW2RawDao,
+            'model': GenomicAW2Raw,
             'job_id': GenomicJob.LOAD_AW2_TO_RAW_TABLE
         },
     },

@@ -18,6 +18,7 @@ import sqlalchemy
 from rdr_service import clock, config
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.genomic.genomic_manifest_mappings import GENOMIC_FULL_INGESTION_MAP
 from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow
 from rdr_service.genomic.genomic_sub_workflow import GenomicSubWorkflow, GenomicSubLongReadWorkflow
 from rdr_service.genomic_enums import ResultsModuleType
@@ -377,13 +378,15 @@ class GenomicFileIngester:
         )
 
     def send_file_path_to_raw_ingestion_task(self, *, file_path):
-        self.controller.execute_cloud_task(
-            endpoint='load_awn_raw_data_task',
-            payload={
-                'file_path ': file_path,
-                'manifest_type': self.job_id
-            }
-        )
+        current_raw_ingestions = {k: v.get('raw') for k, v in GENOMIC_FULL_INGESTION_MAP.items() if v.get('raw')}
+        if self.job_id in current_raw_ingestions:
+            self.controller.execute_cloud_task(
+                endpoint='load_awn_raw_data_task',
+                payload={
+                    'file_path ': file_path,
+                    'manifest_type': self.job_id
+                }
+            )
 
     def load_raw_manifest_file(self, raw_dao, **kwargs):
         """
