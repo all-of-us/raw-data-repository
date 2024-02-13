@@ -30,6 +30,7 @@ from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
 from rdr_service.model.config_utils import get_biobank_id_prefix
+from rdr_service.model.consent_file import ConsentFile, ConsentType, ConsentSyncStatus
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
@@ -219,7 +220,7 @@ class GenomicSetDao(UpdatableDao, GenomicDaoMixin):
                     existing_valid_query.label("existing_valid_genomic_count"),
                 ]
             )
-                .select_from(
+            .select_from(
                 sqlalchemy.join(
                     sqlalchemy.join(
                         sqlalchemy.join(GenomicSet, GenomicSetMember, GenomicSetMember.genomicSetId == GenomicSet.id),
@@ -1062,6 +1063,12 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
                     GenomicGCValidationMetrics.ignoreFlag != 1
                 )
+            ).join(
+                ConsentFile,
+                and_(
+                    ConsentFile.participant_id == GenomicSetMember.participantId,
+                    ConsentFile.type == ConsentType.GROR,
+                )
             ).filter(
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
@@ -1081,6 +1088,10 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.diversionPouchSiteFlag != 1,
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.blockResults != 1,
+                (ConsentFile.sync_status.in_([
+                    ConsentSyncStatus.READY_FOR_SYNC,
+                    ConsentSyncStatus.SYNC_COMPLETE
+                ]))
             )
         )
 
