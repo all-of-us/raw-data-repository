@@ -5,6 +5,7 @@ from rdr_service import config
 from rdr_service.genomic_enums import GenomicSubProcessResult, GenomicWorkflowState, GenomicManifestTypes, \
     GenomicContaminationCategory
 from rdr_service.model.config_utils import get_biobank_id_prefix
+from rdr_service.model.consent_file import ConsentFile, ConsentType, ConsentSyncStatus
 from rdr_service.model.genomics import GenomicGCValidationMetrics, GenomicSetMember, GenomicFileProcessed
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus, QuestionnaireStatus
@@ -40,6 +41,12 @@ class GenomicQueryClass:
                 ).join(
                     GenomicGCValidationMetrics,
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                ).join(
+                    ConsentFile,
+                    sqlalchemy.and_(
+                        ConsentFile.participant_id == GenomicSetMember.participantId,
+                        ConsentFile.type == ConsentType.GROR,
+                    )
                 ).outerjoin(
                     self.aliases['gsm'],
                     sqlalchemy.and_(
@@ -60,7 +67,11 @@ class GenomicQueryClass:
                 (GenomicSetMember.blockResults != 1) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
-                (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
+                (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) &
+                (ConsentFile.sync_status.in_([
+                    ConsentSyncStatus.READY_FOR_SYNC,
+                    ConsentSyncStatus.SYNC_COMPLETE
+                ]))
             ).group_by(
                 GenomicSetMember.biobankId,
                 GenomicSetMember.sampleId,
