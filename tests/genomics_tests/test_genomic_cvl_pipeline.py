@@ -116,7 +116,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
             model_type=GenomicW2SCRaw
         )
 
-        manifest_type = 'w2sc'
+        manifest_type = GenomicJob.CVL_W2SC_WORKFLOW
         w2sc_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -330,7 +330,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
             model_type=GenomicW3NSRaw
         )
 
-        manifest_type = 'w3ns'
+        manifest_type = GenomicJob.CVL_W3NS_WORKFLOW
         w3sc_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -395,7 +395,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
             model_type=GenomicW3SCRaw
         )
 
-        manifest_type = 'w3sc'
+        manifest_type = GenomicJob.CVL_W3SC_WORKFLOW
         w3sc_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -458,7 +458,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
             model_type=GenomicW3SSRaw
         )
 
-        manifest_type = 'w3ss'
+        manifest_type = GenomicJob.CVL_W3SS_WORKFLOW
         w3ss_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -511,7 +511,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
             model_type=GenomicW4WRRaw
         )
 
-        manifest_type = 'w4wr'
+        manifest_type = GenomicJob.CVL_W4WR_WORKFLOW
         w4wr_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -568,7 +568,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
             model_type=GenomicW5NFRaw
         )
 
-        manifest_type = 'w5nf'
+        manifest_type = GenomicJob.CVL_W5NF_WORKFLOW
         w5nf_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(

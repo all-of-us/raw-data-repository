@@ -55,8 +55,6 @@ from rdr_service.dao.genomics_dao import (
     GenomicSetDao,
     GenomicJobRunDao,
     GenomicManifestFileDao,
-    GenomicAW1RawDao,
-    GenomicAW2RawDao,
     GenomicIncidentDao,
     UserEventMetricsDao,
     GenomicQueriesDao,
@@ -315,10 +313,8 @@ class GenomicFileIngester:
             GenomicJob.RNA_R2_WORKFLOW: self._ingest_rna_manifest
         }
 
-        current_ingestion_workflow = current_ingestion_map.get(self.job_id)
-        if not current_ingestion_workflow:
-            current_workflow = workflow_map.get(self.job_id)(file_ingester=self)
-            current_ingestion_workflow = current_workflow.run_ingestion
+        current_ingestion_workflow = (current_ingestion_map.get(self.job_id) or
+                                      workflow_map.get(self.job_id)(file_ingester=self).run_ingestion)
 
         self.file_validator.valid_schema = None
 
@@ -328,12 +324,11 @@ class GenomicFileIngester:
         )
 
         if validation_result != GenomicSubProcessResult.SUCCESS:
-            # delete raw records
-            if self.job_id == GenomicJob.AW1_MANIFEST:
-                GenomicAW1RawDao().delete_from_filepath(file_obj.filePath)
-            if self.job_id == GenomicJob.METRICS_INGESTION:
-                GenomicAW2RawDao().delete_from_filepath(file_obj.filePath)
             return validation_result
+
+        self.send_file_path_to_raw_ingestion_task(
+            file_path=file_obj.filePath
+        )
 
         try:
             ingestions = self._set_data_ingest_iterations(data_to_ingest['rows'])
@@ -379,6 +374,15 @@ class GenomicFileIngester:
         self.incident_dao.batch_update_incident_fields(
             [obj.id for obj in has_failed_validation],
             _type='resolved'
+        )
+
+    def send_file_path_to_raw_ingestion_task(self, *, file_path):
+        self.controller.execute_cloud_task(
+            endpoint='load_awn_raw_data_task',
+            payload={
+                'file_path ': file_path,
+                'manifest_type': self.job_id
+            }
         )
 
     def load_raw_manifest_file(self, raw_dao, **kwargs):
