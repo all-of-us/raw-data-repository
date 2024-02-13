@@ -45,12 +45,12 @@ commands:
           name: Running Unittests
           command: |
             source venv/bin/activate
-            mkdir test-results
             export PYTHONPATH=$PYTHONPATH:`pwd`
-            pytest --junitxml=test-results/junit.xml
+            pytest -v $(circleci tests glob "tests/**/*.py" | circleci tests split --split-by=timings)
+#            pytest --junitxml=test-results/junit.xml
 #            UNITTEST_FLAG=1 coverage run -m unittest -v $(circleci tests glob "tests/**/*.py" | circleci tests split --split-by=filesize)
-      - store_test_results:
-          path: test-results
+#      - store_test_results:
+#          path: test-results
       - run:
           name: Upload Coverage Report
           command: ./ci/run_upload_coverage_report.sh
@@ -85,7 +85,7 @@ commands:
 jobs:
   job_run_unittests:
     <<: *job_defaults
-#    parallelism: 5
+    parallelism: 5
     steps:
       - unittest-app-steps
 
