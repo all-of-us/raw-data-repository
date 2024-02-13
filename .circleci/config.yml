@@ -45,8 +45,12 @@ commands:
           name: Running Unittests
           command: |
             source venv/bin/activate
+            mkdir test-results
             export PYTHONPATH=$PYTHONPATH:`pwd`
-            UNITTEST_FLAG=1 coverage run -m unittest -v $(circleci tests glob "tests/**/*.py" | circleci tests split --split-by=filesize)
+            pytest --junitxml=test-results/junit.xml
+#            UNITTEST_FLAG=1 coverage run -m unittest -v $(circleci tests glob "tests/**/*.py" | circleci tests split --split-by=filesize)
+      - store_test_results:
+          path: test-results
       - run:
           name: Upload Coverage Report
           command: ./ci/run_upload_coverage_report.sh
@@ -81,7 +85,7 @@ commands:
 jobs:
   job_run_unittests:
     <<: *job_defaults
-    parallelism: 5
+#    parallelism: 5
     steps:
       - unittest-app-steps
 
@@ -129,37 +133,37 @@ jobs:
           project-id: all-of-us-rdr-careevo-test
           git-target: << pipeline.git.tag >>
 
-  job_run_1:
-    <<: *job_defaults
-    steps:
-      - run: "echo hello1"
-
-  job_run_2:
-    <<: *job_defaults
-    steps:
-      - run: "echo hello2"
+#  job_run_1:
+#    <<: *job_defaults
+#    steps:
+#      - run: "echo hello1"
+#
+#  job_run_2:
+#    <<: *job_defaults
+#    steps:
+#      - run: "echo hello2"
 
 
 
 workflows:
 
-  test_sp_workflow:
-    jobs:
-      - job_run_unittests:
-          filters:
-            branches:
-              only:
-                - sp/test-cicd
-      - job_run_1:
-          filters:
-            branches:
-              only:
-                - sp/test-cicd
-      - job_run_2:
-          filters:
-            branches:
-              only:
-                - sp/test-cicd
+#  test_sp_workflow:
+#    jobs:
+#      - job_run_unittests:
+#          filters:
+#            branches:
+#              only:
+#                - sp/test-cicd
+#      - job_run_1:
+#          filters:
+#            branches:
+#              only:
+#                - sp/test-cicd
+#      - job_run_2:
+#          filters:
+#            branches:
+#              only:
+#                - sp/test-cicd
 
   test_commits_workflow:
     jobs:
@@ -170,7 +174,6 @@ workflows:
                 - circleci-deploy
                 - devel
                 - master
-                - sp/test-cicd
             tags:
               ignore: /.*/
 
