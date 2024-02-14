@@ -254,7 +254,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
 
         call_args = cloud_task.call_args_list
         for num, call_arg in enumerate(call_args):
-            base_arg = call_arg.args[0]
+            base_arg = call_arg.kwargs.get('payload')
             member_ids = base_arg['member_ids']
             updated_field = base_arg['field']
             updated_value = base_arg['value']
@@ -806,32 +806,32 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         # Check that a task is generated to set the job run ids
         cloud_task_mock.assert_has_calls([
             mock.call(
-                {
+                payload={
                     'member_ids': [self.default_set_member.id, self.ny_set_member.id, self.male_set_member.id,
                                    self.hdr_and_pgx_set_member.id, self.bcm_pipeline_set_member.id],
                     'field': 'cvlW1ilPgxJobRunId',
                     'value': mock.ANY,
                     'is_job_run': True
                 },
-                'genomic_set_member_update_task'
+                endpoint='genomic_set_member_update_task'
             ),
             mock.call(
-                {
+                payload={
                     'member_ids': [self.co_set_member.id, self.co_pipeline_set_member.id],
                     'field': 'cvlW1ilPgxJobRunId',
                     'value': mock.ANY,
                     'is_job_run': True
                 },
-                'genomic_set_member_update_task'
+                endpoint='genomic_set_member_update_task'
             ),
             mock.call(
-                {
+                payload={
                     'member_ids': [self.uw_pipeline_set_member.id],
                     'field': 'cvlW1ilPgxJobRunId',
                     'value': mock.ANY,
                     'is_job_run': True
                 },
-                'genomic_set_member_update_task'
+                endpoint='genomic_set_member_update_task'
             )
         ], any_order=True)
 
@@ -864,13 +864,13 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         # Check that a task is generated to set the job run ids
         cloud_task_mock.assert_has_calls([
             mock.call(
-                {
+                payload={
                     'member_ids': [self.hdr_and_pgx_set_member.id],
                     'field': 'cvlW1ilHdrJobRunId',
                     'value': mock.ANY,
                     'is_job_run': True
                 },
-                'genomic_set_member_update_task'
+                endpoint='genomic_set_member_update_task'
             )
         ])
 
@@ -1248,22 +1248,22 @@ class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         # Check that a task is generated to set the job run ids
         cloud_task_mock.assert_has_calls([
             mock.call(
-                {
+                payload={
                     'member_ids': [self.first_withdrawn_member.id, self.second_withdrawn_member.id],
                     'field': 'cvlW2wJobRunId',
                     'value': mock.ANY,
                     'is_job_run': True
                 },
-                'genomic_set_member_update_task'
+                endpoint='genomic_set_member_update_task'
             ),
             mock.call(
-                {
+                payload={
                     'member_ids': [self.co_withdrawal.id],
                     'field': 'cvlW2wJobRunId',
                     'value': mock.ANY,
                     'is_job_run': True
                 },
-                'genomic_set_member_update_task'
+                endpoint='genomic_set_member_update_task'
             )
         ], any_order=True)
 
