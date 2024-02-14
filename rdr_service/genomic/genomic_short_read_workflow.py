@@ -566,10 +566,13 @@ class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
 
             # UPSERT cloud task for current metric
             prepped_row['contamination_category'] = int(prepped_row['contamination_category'])
-            self.file_ingester.controller.execute_cloud_task({
-                'metric_id': metric_id,
-                'payload_dict': prepped_row,
-            }, 'genomic_gc_metrics_upsert')
+            self.file_ingester.controller.execute_cloud_task(
+                payload={
+                    'metric_id': metric_id,
+                    'payload_dict': prepped_row,
+                },
+                endpoint='genomic_gc_metrics_upsert'
+            )
 
             # MANIFEST/FEEDBACK actions - (conditional) based on existing manifest record
             manifest_file = self.file_ingester.file_processed_dao.get(row_member.aw1FileProcessedId)

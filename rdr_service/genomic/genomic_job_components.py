@@ -3711,12 +3711,15 @@ class ManifestCompiler:
 
         # Updates job run field on set member
         if self.manifest_def.job_run_field and all_member_ids:
-            self.controller.execute_cloud_task({
-                'member_ids': list(set(all_member_ids)),
-                'field': self.manifest_def.job_run_field,
-                'value': self.run_id,
-                'is_job_run': True
-            }, 'genomic_set_member_update_task')
+            self.controller.execute_cloud_task(
+                payload={
+                    'member_ids': list(set(all_member_ids)),
+                    'field': self.manifest_def.job_run_field,
+                    'value': self.run_id,
+                    'is_job_run': True
+                },
+                endpoint='genomic_set_member_update_task'
+            )
 
         return {"code": GenomicSubProcessResult.SUCCESS}
 

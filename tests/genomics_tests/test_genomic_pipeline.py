@@ -577,15 +577,15 @@ class GenomicPipelineTest(BaseTestCase):
         call_args = metric_cloud_task.call_args_list
         self.assertEqual(len(call_args), 3)
 
-        for call_arg_data in metric_cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
+
         # test file processing queue
         file_processed = self.file_processed_dao.get(1)
         self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(file_processed.uploadDate))
@@ -646,14 +646,14 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
 
         # NEW metrics insert called via cloud task
-        self.assertEqual(metric_cloud_task.call_count, 4)
+        self.assertEqual(metric_cloud_task.call_count, 6)
         call_args = metric_cloud_task.call_args_list
-        self.assertEqual(len(call_args), 4)
+        self.assertEqual(len(call_args), 6)
 
-        # assimilate cloud task ingestion via call args for tests
-        for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            if 'payload_dict' in call_arg_data.keys() and i > 1:
+        for i, call_data in enumerate(call_args):
+            if 'metric_id' in call_data.kwargs.get('payload').keys() and i >= 4:
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
                 self.metrics_dao.upsert_gc_validation_metrics_from_dict(
                     data_to_upsert=call_arg_data.get('payload_dict'),
                     existing_id=call_arg_data.get('metric_id')
@@ -772,15 +772,14 @@ class GenomicPipelineTest(BaseTestCase):
         call_args = metric_cloud_task.call_args_list
         self.assertEqual(len(call_args), 6)
 
-        for call_arg_data in metric_cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # ingest AW5 files
         with clock.FakeClock(test_date):
@@ -1086,15 +1085,14 @@ class GenomicPipelineTest(BaseTestCase):
         call_args = metric_cloud_task.call_args_list
         self.assertEqual(len(call_args), 2)
 
-        for call_arg_data in metric_cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()
@@ -1167,15 +1165,14 @@ class GenomicPipelineTest(BaseTestCase):
         call_args = metric_cloud_task.call_args_list
         self.assertEqual(len(call_args), 2)
 
-        for call_arg_data in metric_cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()
@@ -1261,15 +1258,14 @@ class GenomicPipelineTest(BaseTestCase):
         call_args = metric_cloud_task.call_args_list
         self.assertEqual(len(call_args), 2)
 
-        for call_arg_data in metric_cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
 
         gc_metrics = self.metrics_dao.get_all()
@@ -2482,15 +2478,14 @@ class GenomicPipelineTest(BaseTestCase):
         call_args = metric_cloud_task.call_args_list
         self.assertEqual(len(call_args), 4)
 
-        for call_arg_data in metric_cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Test sequencing file (required for GEM)
         sequencing_test_files = (
@@ -2662,7 +2657,7 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_gem_pipeline.gem_a3_manifest_workflow()  # run_id 3
 
         self.assertTrue(cloud_task.called)
-        cloud_task_args = cloud_task.call_args.args[0]
+        cloud_task_args = cloud_task.call_args.kwargs.get('payload')
         req_keys = ['member_ids', 'is_job_run', 'field', 'value']
         self.assertTrue(set(cloud_task_args.keys()) == set(req_keys))
 
@@ -2792,16 +2787,14 @@ class GenomicPipelineTest(BaseTestCase):
         call_args = cloud_task.call_args_list
         self.assertEqual(len(call_args), 4)
 
-        # assimilate cloud task ingestion via call args for tests
-        for call_arg_data in cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Test sequencing file (required for GEM)
         sequencing_test_files = (
@@ -2855,13 +2848,13 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertEqual(cloud_task.call_count, 4)
+        self.assertEqual(cloud_task.call_count, 5)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 4)
+        self.assertEqual(len(call_args), 5)
 
         for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            if i == 3:
+            if i == 4:
+                call_arg_data = call_arg_data.kwargs.get('payload')
                 member_ids = call_arg_data.get('member_ids')
                 field = call_arg_data.get('field')
                 self.assertIsNotNone(member_ids)
@@ -3028,15 +3021,14 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(len(call_args), 4)
 
         # assimilate cloud task ingestion via call args for tests
-        for call_arg_data in metric_cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Test sequencing file (required for GEM)
         sequencing_test_files = (
@@ -3148,15 +3140,14 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(len(call_args), 8)
 
         # assimilate cloud task ingestion via call args for tests
-        for call_arg_data in metric_cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         sequencing_test_files = []
         for sample in stored_samples:
@@ -3308,15 +3299,14 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(len(call_args), 7)
 
         # assimilate cloud task ingestion via call args for tests
-        for call_arg_data in metric_cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         sequencing_test_files = []
         for sample in stored_samples:
@@ -3464,18 +3454,20 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
-        # metrics insert called via cloud task
-        self.assertEqual(cloud_task.call_count, 2)
+        # metrics insert / raw ingestion called via cloud task
+        self.assertEqual(cloud_task.call_count, 3)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 2)
+        self.assertEqual(len(call_args), 3)
 
         # assimilate cloud task ingestion via call args for tests
-        for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                data_to_upsert=call_arg_data.get('payload_dict'),
-                existing_id=call_arg_data.get('metric_id')
-            )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Test sequencing file (required for AW3 WGS)
         sequencing_test_files = (
@@ -3530,13 +3522,13 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertEqual(cloud_task.call_count, 3)
+        self.assertEqual(cloud_task.call_count, 4)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 3)
+        self.assertEqual(len(call_args), 4)
 
         for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            if i == 2:
+            if i == 3:
+                call_arg_data = call_arg_data.kwargs.get('payload')
                 member_ids = call_arg_data.get('member_ids')
                 field = call_arg_data.get('field')
                 self.assertIsNotNone(member_ids)
@@ -3725,18 +3717,20 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
-        # metrics insert called via cloud task
-        self.assertEqual(metric_cloud_task.call_count, 2)
+        # metrics insert / raw ingestion called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 3)
         call_args = metric_cloud_task.call_args_list
-        self.assertEqual(len(call_args), 2)
+        self.assertEqual(len(call_args), 3)
 
         # assimilate cloud task ingestion via call args for tests
-        for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                data_to_upsert=call_arg_data.get('payload_dict'),
-                existing_id=call_arg_data.get('metric_id')
-            )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Test sequencing file (required for AW3 WGS)
         sequencing_test_files = (
@@ -3857,18 +3851,20 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
-        # metrics insert called via cloud task
-        self.assertEqual(metric_cloud_task.call_count, 5)
+        # metrics insert / raw ingestion called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 6)
         call_args = metric_cloud_task.call_args_list
-        self.assertEqual(len(call_args), 5)
+        self.assertEqual(len(call_args), 6)
 
         # assimilate cloud task ingestion via call args for tests
-        for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                data_to_upsert=call_arg_data.get('payload_dict'),
-                existing_id=call_arg_data.get('metric_id')
-            )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         sequencing_test_files = []
         for sample in stored_samples:
@@ -4034,18 +4030,20 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
-        # metrics insert called via cloud task
-        self.assertEqual(metric_cloud_task.call_count, 5)
+        # metrics insert / raw ingestion called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 6)
         call_args = metric_cloud_task.call_args_list
-        self.assertEqual(len(call_args), 5)
+        self.assertEqual(len(call_args), 6)
 
         # assimilate cloud task ingestion via call args for tests
-        for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                data_to_upsert=call_arg_data.get('payload_dict'),
-                existing_id=call_arg_data.get('metric_id')
-            )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         sequencing_test_files = []
         for sample in stored_samples:
@@ -4215,18 +4213,20 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
-        # metrics insert called via cloud task
-        self.assertEqual(metric_cloud_task.call_count, 5)
+        # metrics insert /  raw ingestion called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 6)
         call_args = metric_cloud_task.call_args_list
-        self.assertEqual(len(call_args), 5)
+        self.assertEqual(len(call_args), 6)
 
         # assimilate cloud task ingestion via call args for tests
-        for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                data_to_upsert=call_arg_data.get('payload_dict'),
-                existing_id=call_arg_data.get('metric_id')
-            )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         sequencing_test_files = []
         for sample in stored_samples:
@@ -4290,7 +4290,7 @@ class GenomicPipelineTest(BaseTestCase):
         # 5 rows / 2 max_num + 1 for remainder
         self.assertEqual(len(bucket_files), 3)
 
-        # build ids/count for checking correct metrics insertion
+        # build ids / count for checking correct metrics insertion
         manifest_record_ids = [obj.id for obj in manifest_records]
         current_run_id = current_run_obj.id
 
@@ -4345,18 +4345,20 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
-        # metrics insert called via cloud task
-        self.assertEqual(cloud_task.call_count, 2)
+        # metrics insert / raw ingestion called via cloud task
+        self.assertEqual(cloud_task.call_count, 3)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 2)
+        self.assertEqual(len(call_args), 3)
 
         # assimilate cloud task ingestion via call args for tests
-        for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                data_to_upsert=call_arg_data.get('payload_dict'),
-                existing_id=call_arg_data.get('metric_id')
-            )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Test sequencing file (required for AW3 WGS) with
         # added dragen paths for same files to make sure distinct
@@ -4419,13 +4421,13 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertEqual(cloud_task.call_count, 3)
+        self.assertEqual(cloud_task.call_count, 4)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 3)
+        self.assertEqual(len(call_args), 4)
 
         for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            if i == 2:
+            if i == 3:
+                call_arg_data = call_arg_data.kwargs.get('payload')
                 member_ids = call_arg_data.get('member_ids')
                 field = call_arg_data.get('field')
                 self.assertIsNotNone(member_ids)
@@ -4941,15 +4943,14 @@ class GenomicPipelineTest(BaseTestCase):
         call_args = cloud_task.call_args_list
         self.assertEqual(len(call_args), 4)
 
-        for call_arg_data in cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        # assimilate cloud task ingestion via call args for tests
+        for call_arg_data in call_args:
+            if 'metric_id' in call_arg_data.kwargs.get('payload').keys():
+                call_arg_data = call_arg_data.kwargs.get('payload')
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Set up test for ignored gc_metrics records
         metrics_record_2 = self.metrics_dao.get(2)
@@ -4969,8 +4970,8 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(dt_40d):
             genomic_pipeline.scan_and_complete_feedback_records()
 
-        # Should NOT call cloud task since no records should still be 2 calls
-        self.assertEqual(cloud_task.call_count, 2)
+        # Should NOT call cloud task since no records should still be 4 calls
+        self.assertEqual(cloud_task.call_count, 4)
 
         # run the AW2F manifest workflow
         dt_60d = test_date + datetime.timedelta(days=60)
@@ -4979,9 +4980,9 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_pipeline.scan_and_complete_feedback_records()  # run_id = 4 & 5
 
         # Should call cloud task since there are records, increasing call count
-        self.assertEqual(cloud_task.call_count, 3)
+        self.assertEqual(cloud_task.call_count, 5)
 
-        cloud_task_args = cloud_task.call_args.args[0]
+        cloud_task_args = cloud_task.call_args.kwargs.get('payload')
         req_keys = ['member_ids', 'is_job_run', 'field', 'value']
         self.assertTrue(set(cloud_task_args.keys()) == set(req_keys))
 
@@ -5116,15 +5117,15 @@ class GenomicPipelineTest(BaseTestCase):
         # Call pipeline function
         genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)  # job_run_id 5 & 6
 
-        # NEW metrics insert called via cloud task
-        self.assertEqual(cloud_task.call_count, 5)
+        # NEW metrics insert / raw ingestion called via cloud task
+        self.assertEqual(cloud_task.call_count, 8)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 5)
+        self.assertEqual(len(call_args), 8)
 
         # assimilate cloud task ingestion via call args for tests
         for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            if 'payload_dict' in call_arg_data.keys() and i > 2:
+            call_arg_data = call_arg_data.kwargs.get('payload')
+            if 'metric_id' in call_arg_data.keys() and i >= 6:
                 self.metrics_dao.upsert_gc_validation_metrics_from_dict(
                     data_to_upsert=call_arg_data.get('payload_dict'),
                     existing_id=call_arg_data.get('metric_id')
@@ -6330,20 +6331,19 @@ class GenomicPipelineTest(BaseTestCase):
         # Call pipeline function
         genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data_aw2)
 
-        # metrics insert called via cloud task
+        # metrics insert / raw ingestion called via cloud task
         self.assertEqual(metric_cloud_task.call_count, 4)
         call_args = metric_cloud_task.call_args_list
         self.assertEqual(len(call_args), 4)
 
-        for call_arg_data in metric_cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # verify AW2 data
         metrics = self.metrics_dao.get_all()
@@ -6377,20 +6377,19 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
-        # metrics insert called via cloud task
+        # metrics insert / raw ingestion called via cloud task
         self.assertEqual(metric_cloud_task.call_count, 3)
         call_args = metric_cloud_task.call_args_list
         self.assertEqual(len(call_args), 3)
 
-        for call_arg_data in metric_cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         gc_record = self.metrics_dao.get(1)
         # Test the gc_metrics were populated at ingestion
@@ -6435,15 +6434,14 @@ class GenomicPipelineTest(BaseTestCase):
         call_args = metric_cloud_task.call_args_list
         self.assertEqual(len(call_args), 2)
 
-        for call_arg_data in metric_cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Test the reconciliation process
         sequencing_test_files = (
@@ -6526,15 +6524,14 @@ class GenomicPipelineTest(BaseTestCase):
         call_args = cloud_task.call_args_list
         self.assertEqual(len(call_args), 4)
 
-        for call_arg_data in cloud_task.call_args_list:
-            if len(call_arg_data.args):
-                if 'metric_id' in call_arg_data.args[0].keys():
-                    call_arg_data = call_arg_data.args[0]
-                    # assimilate cloud task ingestion via call args for tests
-                    self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                        data_to_upsert=call_arg_data.get('payload_dict'),
-                        existing_id=call_arg_data.get('metric_id')
-                    )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Test sequencing file (required for GEM)
         sequencing_test_files = (
@@ -6587,13 +6584,13 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertEqual(cloud_task.call_count, 4)
+        self.assertEqual(cloud_task.call_count, 5)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 4)
+        self.assertEqual(len(call_args), 5)
 
         for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            if i == 3:
+            if i == 4:
+                call_arg_data = call_arg_data.kwargs.get('payload')
                 member_ids = call_arg_data.get('member_ids')
                 field = call_arg_data.get('field')
                 self.assertIsNotNone(member_ids)
@@ -6732,18 +6729,20 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
-        # metrics insert called via cloud task
-        self.assertEqual(cloud_task.call_count, 2)
+        # metrics insert / raw ingestion called via cloud task
+        self.assertEqual(cloud_task.call_count, 3)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 2)
+        self.assertEqual(len(call_args), 3)
 
         # assimilate cloud task ingestion via call args for tests
-        for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                data_to_upsert=call_arg_data.get('payload_dict'),
-                existing_id=call_arg_data.get('metric_id')
-            )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Test sequencing file (required for AW3 WGS)
         sequencing_test_files = (
@@ -6804,13 +6803,13 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIsNotNone(manifest_records[0].fileName)
         self.assertIsNotNone(manifest_records[0].filePath)
 
-        self.assertEqual(cloud_task.call_count, 3)
+        self.assertEqual(cloud_task.call_count, 4)
         call_args = cloud_task.call_args_list
-        self.assertEqual(len(call_args), 3)
+        self.assertEqual(len(call_args), 4)
 
         for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            if i == 2:
+            if i == 3:
+                call_arg_data = call_arg_data.kwargs.get('payload')
                 member_ids = call_arg_data.get('member_ids')
                 field = call_arg_data.get('field')
                 self.assertIsNotNone(member_ids)
@@ -6997,18 +6996,20 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
-        # metrics insert called via cloud task
-        self.assertEqual(metric_cloud_task.call_count, 5)
+        # metrics insert / raw ingestion called via cloud task
+        self.assertEqual(metric_cloud_task.call_count, 7)
         call_args = metric_cloud_task.call_args_list
-        self.assertEqual(len(call_args), 5)
+        self.assertEqual(len(call_args), 7)
 
         # assimilate cloud task ingestion via call args for tests
-        for i, call_arg_data in enumerate(call_args):
-            call_arg_data = call_arg_data.args[0]
-            self.metrics_dao.upsert_gc_validation_metrics_from_dict(
-                data_to_upsert=call_arg_data.get('payload_dict'),
-                existing_id=call_arg_data.get('metric_id')
-            )
+        for call_data in call_args:
+            if 'metric_id' in call_data.kwargs.get('payload').keys():
+                call_arg_data = call_data.kwargs.get('payload')
+                # assimilate cloud task ingestion via call args for tests
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(
+                    data_to_upsert=call_arg_data.get('payload_dict'),
+                    existing_id=call_arg_data.get('metric_id')
+                )
 
         # Test sequencing file (required for AW3 WGS)
         wgs_sequencing_test_files = (
