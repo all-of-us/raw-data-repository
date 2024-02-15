@@ -69,14 +69,14 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
     def _list_has_valid_consent(cls, result_list: List[ParsingResult]):
         return any([result.sync_status == ConsentSyncStatus.READY_FOR_SYNC for result in result_list])
 
-    def _update_status(self, participant_id, has_valid_file):
+    def _update_status(self, participant_id, has_valid_file, status_check=QuestionnaireStatus.SUBMITTED_NOT_VALIDATED):
         participant_summary = ParticipantSummaryDao.get_for_update_with_linked_data(
             participant_id=participant_id,
             session=self._session
         )
         did_modify_status = False
 
-        if participant_summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED_NOT_VALIDATED:
+        if participant_summary.consentForElectronicHealthRecords == status_check:
             # If the summary is marked as awaiting validation, set the status with the validation results we have
             new_status = QuestionnaireStatus.SUBMITTED if has_valid_file else QuestionnaireStatus.SUBMITTED_INVALID
             participant_summary.consentForElectronicHealthRecords = new_status
