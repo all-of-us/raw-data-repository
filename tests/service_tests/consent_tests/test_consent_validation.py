@@ -6,6 +6,7 @@ from typing import List, Type
 from rdr_service import config
 from rdr_service.code_constants import SENSITIVE_EHR_STATES
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType, ConsentOtherErrors
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.services.consent import files
@@ -305,19 +306,22 @@ class ConsentValidationTesting(BaseTestCase):
             id=3,
             participant_id=new_primary_participant_id,
             type=ConsentType.PRIMARY,
-            file_exists=False
+            file_exists=False,
+            consent_response=ConsentResponse(id=1)
         )
         previous_ehr_result = ConsentFile(
             id=2,
             participant_id=new_primary_participant_id,
             type=ConsentType.EHR,
-            file_exists=False
+            file_exists=False,
+            consent_response=ConsentResponse(id=2)
         )
         new_gror_result = ConsentFile(
             id=4,
             participant_id=new_gror_participant_id,
             type=ConsentType.GROR,
-            file_exists=False
+            file_exists=False,
+            consent_response=ConsentResponse(id=3)
         )
 
         # Create a new storage validation strategy and provide the new validation results for each participant
@@ -355,14 +359,16 @@ class ConsentValidationTesting(BaseTestCase):
                 type=ConsentType.PRIMARY,
                 expected_sign_date=date(2021, 10, 17),
                 file_path='duplicate_primary',
-                sync_status=ConsentSyncStatus.SYNC_COMPLETE
+                sync_status=ConsentSyncStatus.SYNC_COMPLETE,
+                consent_response=ConsentResponse(id=1)
             ),
             ConsentFile(
                 participant_id=participant_id,
                 type=ConsentType.EHR,
                 expected_sign_date=date(2022, 2, 4),
                 file_path='older_ehr',
-                sync_status=ConsentSyncStatus.SYNC_COMPLETE
+                sync_status=ConsentSyncStatus.SYNC_COMPLETE,
+                consent_response=ConsentResponse(id=2)
             )
         ]
 
@@ -373,7 +379,8 @@ class ConsentValidationTesting(BaseTestCase):
             expected_sign_date=date(2021, 10, 17),
             file_exists=True,
             file_path='replay_primary',
-            sync_status=ConsentSyncStatus.READY_FOR_SYNC
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC,
+            consent_response=ConsentResponse(id=3)
         )
         new_ehr_result = ConsentFile(  # Another EHR file, but signed later than the one we've already seen
             participant_id=participant_id,
@@ -381,7 +388,8 @@ class ConsentValidationTesting(BaseTestCase):
             expected_sign_date=date(2023, 1, 23),
             file_exists=True,
             file_path='newer_ehr',
-            sync_status=ConsentSyncStatus.READY_FOR_SYNC
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC,
+            consent_response=ConsentResponse(id=4)
         )
 
         # Create a new storage validation strategy and provide the new validation results for each participant
