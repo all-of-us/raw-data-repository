@@ -55,7 +55,7 @@ class GenomicFileIngesterTest(BaseTestCase):
         data = file_ingester._retrieve_data_from_path(gen_processed_file.filePath)
 
         total_rows = len(data['rows'])
-        sample_ids = [obj['Sample ID'] for obj in data['rows']]
+        sample_ids = [obj['sample id'] for obj in data['rows']]
 
         iterations = file_ingester._set_data_ingest_iterations(data['rows'])
         self.assertEqual(len(iterations), 1)
@@ -68,7 +68,7 @@ class GenomicFileIngesterTest(BaseTestCase):
 
         distinct_sample_ids = set()
         for iteration in iterations:
-            current_sample_ids = set([obj['Sample ID'] for obj in iteration])
+            current_sample_ids = set([obj['sample id'] for obj in iteration])
             distinct_sample_ids.update(current_sample_ids)
 
         self.assertEqual(len(distinct_sample_ids), total_rows)
