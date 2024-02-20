@@ -4951,6 +4951,9 @@ class GenomicLongReadDao(GenomicSubDao):
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                BiobankStoredSample,
+                GenomicSetMember.biobankId == BiobankStoredSample.biobankId,
             ).filter(
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,

@@ -63,7 +63,8 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         bucket_name = 'test_lr_bucket'
         subfolder = 'lr_subfolder'
 
-        self.base_lr_data_insert()
+        if not kwargs.get('bypass_base_data'):
+            self.base_lr_data_insert()
 
         test_file_name = create_ingestion_test_file(
             kwargs.get('test_file'),
@@ -94,6 +95,48 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             test_file='RDR_AoU_LR_Requests.csv',
             job_id=GenomicJob.LR_LR_WORKFLOW,
             manifest_type=GenomicManifestTypes.LR_LR
+        )
+
+        long_read_members = self.long_read_dao.get_all()
+
+        self.assertEqual(len(long_read_members), 3)
+        self.assertTrue(all(obj.biobank_id is not None for obj in long_read_members))
+        self.assertTrue(all(obj.sample_id is None for obj in long_read_members))
+        self.assertTrue(all(obj.genome_type == 'aou_long_read' for obj in long_read_members))
+        self.assertTrue(all(obj.collection_tube_id is not None for obj in long_read_members))
+        self.assertTrue(all(obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS for obj in long_read_members))
+        self.assertTrue(all(obj.lr_site_id == 'bcm' for obj in long_read_members))
+        self.assertTrue(all(obj.genomic_set_member_id is not None for obj in long_read_members))
+        self.assertTrue(all(obj.long_read_set == 1 for obj in long_read_members))
+        self.assertTrue(all(obj.created_job_run_id is not None for obj in long_read_members))
+
+        # check collection tube ids
+        correct_collection_tube_ids = [obj.collectionTubeId for obj in self.genomic_set_member_dao.get_all()]
+        self.assertTrue(all(obj.collection_tube_id in correct_collection_tube_ids for obj in long_read_members))
+
+        # check job run record
+        lr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LR_LR_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(lr_job_runs)
+        self.assertEqual(len(lr_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in lr_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in lr_job_runs))
+
+        self.clear_table_after_test('genomic_long_read')
+
+    def test_full_lr_manifest_ingestion_diff_collection_tube_current_member(self):
+
+        self.base_lr_data_insert()
+
+        # update collection tube to mismatch on last current lr member
+
+        # add seperate collection_tube
+
+        self.execute_base_lr_ingestion(
+            test_file='RDR_AoU_LR_Requests.csv',
+            job_id=GenomicJob.LR_LR_WORKFLOW,
+            manifest_type=GenomicManifestTypes.LR_LR,
+            bypass_base_data=True
         )
 
         long_read_members = self.long_read_dao.get_all()
