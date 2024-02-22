@@ -20,6 +20,7 @@ from rdr_service.model.genomics import GenomicManifestFeedback, GenomicManifestF
     GenomicSampleSwapMember, GenomicCVLResultPastDue, GenomicW4WRRaw, GenomicW3SCRaw, GenomicAppointmentEvent, \
     GenomicAppointmentEventMetrics, GenomicLongRead, GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, \
     GenomicRRRaw, GenomicR1Raw, GenomicLRRaw, GenomicL1Raw, GenomicAW4Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.log_position import LogPosition
@@ -408,6 +409,20 @@ class DataGenerator:
             defaults['participant_id'] = self.create_database_participant().participantId
 
         return ConsentFile(**defaults)
+
+    def create_database_consent_response(self, **kwargs):
+        consent_response = self._consent_response_with_defaults(**kwargs);
+        self._commit_to_database(consent_response)
+        return consent_response
+
+    def _consent_response_with_defaults(self, **kwargs):
+        defaults = {}
+        defaults.update(kwargs)
+
+        if defaults.get('response') is None:
+            defaults['response'] = self.create_database_questionnaire_response()
+
+        return ConsentResponse(**defaults)
 
     def create_database_biobank_specimen(self, **kwargs):
         specimen = self._biobank_specimen_with_defaults(**kwargs)
