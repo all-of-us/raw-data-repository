@@ -58,16 +58,19 @@ class ConsentControllerTest(BaseTestCase):
             {
                 primary_and_ehr_participant_id: [
                     ConsentResponse(
+                        id=1,
                         response=QuestionnaireResponse(participantId=primary_and_ehr_participant_id),
                         type=ConsentType.PRIMARY
                     ),
                     ConsentResponse(
+                        id=2,
                         response=QuestionnaireResponse(participantId=primary_and_ehr_participant_id),
                         type=ConsentType.EHR
                     )
                 ],
                 cabor_participant_id: [
                     ConsentResponse(
+                        id=3,
                         response=QuestionnaireResponse(participantId=cabor_participant_id),
                         type=ConsentType.CABOR
                     ),
@@ -121,9 +124,21 @@ class ConsentControllerTest(BaseTestCase):
         primary_file = ConsentFile(id=1, sync_status=ConsentSyncStatus.READY_FOR_SYNC,
                                    file_path='/primary', file_exists=True)
         self.consent_validator_mock.get_primary_validation_results.return_value = [primary_file]
-        ehr_file = ConsentFile(id=2, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/ehr', file_exists=True)
+        ehr_file = ConsentFile(
+            id=2,
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC,
+            file_path='/ehr',
+            file_exists=True,
+            consent_response=ConsentResponse(id=1)
+        )
         self.consent_validator_mock.get_ehr_validation_results.return_value = [ehr_file]
-        gror_file = ConsentFile(id=3, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/gror', file_exists=True)
+        gror_file = ConsentFile(
+            id=3,
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC,
+            file_path='/gror',
+            file_exists=True,
+            consent_response=ConsentResponse(id=2)
+        )
         self.consent_validator_mock.get_gror_validation_results.return_value = [gror_file]
 
         # Make sure that only specific consent types are validated
