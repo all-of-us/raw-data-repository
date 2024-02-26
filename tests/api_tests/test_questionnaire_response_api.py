@@ -2395,6 +2395,35 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             participant_summary.consentForElectronicHealthRecords
         )
 
+    def test_ehr_consent_replay(self):
+        """There's an issue that if we get the same Yes response twice we mark that the participant said No"""
+        summary = self.data_generator.create_database_participant_summary()
+
+        # EHR consent should initially be unset
+        response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertEqual('UNSET', response.get('consentForElectronicHealthRecords'))
+
+        # sending consent should set it to NOT_VALIDATED
+        self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
+        self.submit_ehr_questionnaire(
+            f'P{summary.participantId}',
+            CONSENT_PERMISSION_YES_CODE,
+            None,
+            datetime.datetime(2020, 2, 12)
+        )
+        response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertEqual('SUBMITTED_NOT_VALIDATED', response.get('consentForElectronicHealthRecords'))
+
+        # submitting EHR again with the same authored date shouldn't change the status
+        self.submit_ehr_questionnaire(
+            f'P{summary.participantId}',
+            CONSENT_PERMISSION_YES_CODE,
+            None,
+            datetime.datetime(2020, 2, 12)
+        )
+        response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertEqual('SUBMITTED_NOT_VALIDATED', response.get('consentForElectronicHealthRecords'))
+
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
         with open(data_path(template_file_name)) as fd:

@@ -802,7 +802,8 @@ class GenomicFileIngester:
             for key in row.copy():
                 if not key:
                     del row[key]
-            data_to_ingest['rows'].append(row)
+            clean_row = {k.lower().replace('\ufeff', ''): v for k, v in row.copy().items()}
+            data_to_ingest['rows'].append(clean_row)
         return data_to_ingest
 
     def _process_aw1_attribute_data(self, aw1_data, member):

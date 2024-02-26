@@ -46,6 +46,7 @@ from rdr_service.model.biobank_order import (
 )
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
@@ -2445,6 +2446,12 @@ class GenomicPipelineTest(BaseTestCase):
         ps_list = self.summary_dao.get_all()
         ror_start = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)
         for p in ps_list:
+            # add validated consents for GROR
+            self.data_generator.create_database_consent_file(
+                participant_id=p.participantId,
+                type=ConsentType.GROR,
+                sync_status=ConsentSyncStatus.SYNC_COMPLETE
+            )
             p.consentForGenomicsRORAuthored = ror_start
             if p.participantId == 2:
                 p.consentForStudyEnrollmentAuthored = ror_start
@@ -2537,9 +2544,12 @@ class GenomicPipelineTest(BaseTestCase):
         # finally run the manifest workflow
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         a1_time = datetime.datetime(2020, 4, 1, 0, 0, 0, 0)
+
         with clock.FakeClock(a1_time):
             genomic_gem_pipeline.gem_a1_manifest_workflow()  # run_id = 3
+
         a1f = a1_time.strftime("%Y-%m-%d-%H-%M-%S")
+
         # Test Genomic Set Member updated with GEM Array Manifest job run
         with self.member_dao.session() as member_session:
             test_member_1 = member_session.query(
@@ -2727,6 +2737,14 @@ class GenomicPipelineTest(BaseTestCase):
                                                 recon_gc_man_id=1,
                                                 genome_center='jh',
                                                 genomic_workflow_state=GenomicWorkflowState.GEM_READY)
+
+        # add validated consents for GROR
+        for summary in self.summary_dao.get_all():
+            self.data_generator.create_database_consent_file(
+                participant_id=summary.participantId,
+                type=ConsentType.GROR,
+                sync_status=ConsentSyncStatus.SYNC_COMPLETE
+            )
 
         self._update_test_sample_ids()
 

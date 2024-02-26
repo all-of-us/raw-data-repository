@@ -18,7 +18,8 @@ from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWo
     GenomicSubProcessStatus, GenomicManifestTypes, GenomicQcStatus, GenomicReportState
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
-from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics,\
+from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus
+from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics, \
     GenomicGCROutreachEscalationNotified
 from rdr_service.offline.genomics import genomic_pipeline, genomic_cvl_pipeline
 from rdr_service.participant_enums import WithdrawalStatus
@@ -815,6 +816,11 @@ class GenomicJobControllerTest(BaseTestCase):
                 summary = self.data_generator.create_database_participant_summary(
                     consentForStudyEnrollment=1,
                     consentForGenomicsROR=1
+                )
+                self.data_generator.create_database_consent_file(
+                    participant_id=summary.participantId,
+                    type=ConsentType.GROR,
+                    sync_status=ConsentSyncStatus.SYNC_COMPLETE
                 )
                 stored_sample = self.data_generator.create_database_biobank_stored_sample(
                     biobankId=summary.biobankId,
