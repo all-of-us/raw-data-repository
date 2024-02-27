@@ -3744,18 +3744,6 @@ class GenomicQueriesDao(BaseDao):
     def get_id(self, obj):
         pass
 
-    @classmethod
-    def transform_cvl_site_id(cls, site_id=None):
-        # co => bi => cvl workflow
-        site_id_map = {
-            'co': 'bi'
-        }
-        if not site_id or site_id \
-                not in site_id_map.keys():
-            return site_id
-
-        return site_id_map[site_id]
-
     def get_missing_data_files_for_aw3(self, genome_type):
         idat_red_path = aliased(GenomicGcDataFile)
         idat_green_path = aliased(GenomicGcDataFile)
@@ -3974,6 +3962,59 @@ class GenomicQueriesDao(BaseDao):
                 subquery.c.sample_id == GenomicAW2Raw.sample_id
             )
             return records.distinct().all()
+
+    def get_results_withdrawn_participants(self):
+        with self.session() as session:
+            records = session.query(
+                GenomicSetMember.participantId.label('participant_id'),
+                func.max(sqlalchemy.case(
+                    [
+                        (GenomicSetMember.gemA1ManifestJobRunId.isnot(None), True)
+                    ],
+                    else_=False
+                )).label('array_results'),
+                func.max(sqlalchemy.case(
+                    [
+                        (
+                            or_(
+                                GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
+                                GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
+                            ), True)
+                    ],
+                    else_=False
+                )).label('cvl_results')
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).outerjoin(
+                GenomicResultWithdrawals,
+                GenomicResultWithdrawals.participant_id == GenomicSetMember.participantId
+            ).filter(
+                ParticipantSummary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
+                GenomicResultWithdrawals.id.is_(None),
+                and_(
+                    or_(
+                        GenomicSetMember.gemA1ManifestJobRunId.isnot(None),
+                        GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
+                        GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
+                    )
+                )
+            ).group_by(
+                GenomicSetMember.participantId
+            )
+            return records.all()
+
+
+class GenomicShortReadDao(BaseDao):
+
+    def __init__(self):
+        super().__init__(GenomicSetMember, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
 
     def get_aw3_array_records(self, **kwargs):
         # should be only array genome but query also
@@ -4279,7 +4320,30 @@ class GenomicQueriesDao(BaseDao):
             )
             return aw3_rows.distinct().all()
 
-    # CVL pipeline start
+
+class GenomicCVLDao(BaseDao):
+
+    def __init__(self):
+        super().__init__(GenomicSetMember, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    @classmethod
+    def transform_cvl_site_id(cls, site_id=None):
+        # co => bi => cvl workflow
+        site_id_map = {
+            'co': 'bi'
+        }
+        if not site_id or site_id \
+                not in site_id_map.keys():
+            return site_id
+
+        return site_id_map[site_id]
+
     def get_w3sr_records(self, **kwargs):
         gc_site_id = self.transform_cvl_site_id(kwargs.get('site_id'))
         sample_ids = kwargs.get('sample_ids')
@@ -4612,46 +4676,6 @@ class GenomicQueriesDao(BaseDao):
 
             return query.distinct().all()
 
-    def get_results_withdrawn_participants(self):
-        with self.session() as session:
-            records = session.query(
-                GenomicSetMember.participantId.label('participant_id'),
-                func.max(sqlalchemy.case(
-                    [
-                        (GenomicSetMember.gemA1ManifestJobRunId.isnot(None), True)
-                    ],
-                    else_=False
-                )).label('array_results'),
-                func.max(sqlalchemy.case(
-                    [
-                        (
-                            or_(
-                                GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
-                                GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
-                            ), True)
-                    ],
-                    else_=False
-                )).label('cvl_results')
-            ).join(
-                ParticipantSummary,
-                ParticipantSummary.participantId == GenomicSetMember.participantId
-            ).outerjoin(
-                GenomicResultWithdrawals,
-                GenomicResultWithdrawals.participant_id == GenomicSetMember.participantId
-            ).filter(
-                ParticipantSummary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
-                GenomicResultWithdrawals.id.is_(None),
-                and_(
-                    or_(
-                        GenomicSetMember.gemA1ManifestJobRunId.isnot(None),
-                        GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
-                        GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
-                    )
-                )
-            ).group_by(
-                GenomicSetMember.participantId
-            )
-            return records.all()
 
 
 class GenomicCVLResultPastDueDao(UpdatableDao, GenomicDaoMixin):
