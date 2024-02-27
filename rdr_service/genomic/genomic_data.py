@@ -498,7 +498,6 @@ class GenomicQueryClass:
             LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id
         WHERE TRUE
             AND ss.test in ('1ED04', '1ED10', '1SAL2')
-            AND ss.rdr_created > :from_date_param
             AND ps.consent_cohort = :cohort_3_param
             AND m.id IS NULL
         """

@@ -2565,7 +2565,7 @@ class GenomicBiobankSamplesCoupler:
         self.controller = controller
         self.query = GenomicQueryClass()
 
-    def create_new_genomic_participants(self, from_date):
+    def create_new_genomic_participants(self):
         """
         This method determines which samples to enter into the genomic system
         from Cohort 3 (New Participants).
@@ -2574,7 +2574,7 @@ class GenomicBiobankSamplesCoupler:
         :param: from_date : the date from which to lookup new biobank_ids
         :return: result
         """
-        samples = self._get_new_biobank_samples(from_date)
+        samples = self._get_new_biobank_samples()
 
         if samples:
             samples_meta = self.GenomicSampleMeta(*samples)
@@ -2881,7 +2881,7 @@ class GenomicBiobankSamplesCoupler:
         except Exception as e:
             raise Exception("Error occurred on genomic member insert: {0}".format(e))
 
-    def _get_new_biobank_samples(self, from_date):
+    def _get_new_biobank_samples(self):
         """
         Retrieves BiobankStoredSample objects with `rdr_created`
         after the last run of the new participant workflow job.
@@ -2898,7 +2898,6 @@ class GenomicBiobankSamplesCoupler:
             "dob_param": GENOMIC_VALID_AGE,
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
-            "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
             "cohort_3_param": ParticipantCohort.COHORT_3.__int__(),
