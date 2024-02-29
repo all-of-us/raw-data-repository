@@ -11,8 +11,12 @@ from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestF
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicLongReadPlatform, \
     GenomicSubProcessStatus, GenomicSubProcessResult
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicL1Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, \
-    GenomicL4Raw, GenomicL3Raw, GenomicL5Raw, GenomicL6Raw, GenomicL1FRaw, GenomicL4FRaw, GenomicL6FRaw
+    GenomicL4Raw, GenomicL3Raw, GenomicL5Raw, GenomicL6Raw, GenomicL1FRaw, GenomicL4FRaw, GenomicL6FRaw, \
+    GenomicSetMember
+from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline.genomics import genomic_dispatch, genomic_long_read_pipeline
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
@@ -71,8 +75,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         bucket_name = 'test_lr_bucket'
         subfolder = 'lr_subfolder'
 
-        if not kwargs.get('bypass_base_data'):
-            self.base_lr_data_insert()
+        self.base_lr_data_insert()
 
         test_file_name = create_ingestion_test_file(
             kwargs.get('test_file'),
@@ -129,8 +132,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in lr_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in lr_job_runs))
 
-        self.clear_table_after_test('genomic_long_read')
-
     def test_lr_manifest_ingestion_increments_set(self):
 
         self.execute_base_lr_ingestion(
@@ -150,12 +151,18 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in lr_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in lr_job_runs))
 
+        # remove stored data for next iteration
+        with self.long_read_dao.session() as session:
+            session.query(ParticipantSummary).delete()
+            session.query(BiobankStoredSample).delete()
+            session.query(GenomicSetMember).delete()
+            session.query(Participant).delete()
+
         # rerun job should increment set correctly
         self.execute_base_lr_ingestion(
             test_file='RDR_AoU_LR_Requests.csv',
             job_id=GenomicJob.LR_LR_WORKFLOW,
-            manifest_type=GenomicManifestTypes.LR_LR,
-            bypass_data_insert=True
+            manifest_type=GenomicManifestTypes.LR_LR
         )
 
         long_read_members = self.long_read_dao.get_all()
@@ -168,8 +175,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertEqual(len(lr_job_runs), 2)
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in lr_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in lr_job_runs))
-
-        self.clear_table_after_test('genomic_long_read')
 
     def test_lr_manifest_to_raw_ingestion(self):
 
@@ -206,8 +211,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l0_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l0_raw_job_runs))
 
-        self.clear_table_after_test('genomic_long_read')
-
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_full_lr_to_l0_cloud_task_manifest(self, cloud_task_mock):
 
@@ -226,8 +229,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         # task queue
         self.assertTrue(cloud_task_mock.call_args[1].get('task_queue') == 'genomic-generate-manifest')
-
-        self.clear_table_after_test('genomic_long_read')
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_l0_manifest_generation(self, cloud_task):
@@ -344,8 +345,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l0_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l0_raw_job_runs))
 
-        self.clear_table_after_test('genomic_long_read')
-
     def test_l1_manifest_ingestion(self):
         for num in range(1, 4):
             if num < 3:
@@ -395,7 +394,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l1_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l1_job_runs))
 
-        self.clear_table_after_test('genomic_long_read')
 
     def test_l1_manifest_to_raw_ingestion(self):
 
@@ -432,8 +430,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l1_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l1_raw_job_runs))
 
-        self.clear_table_after_test('genomic_long_read')
-
     def test_l2_ont_manifest_ingestion(self):
 
         self.execute_base_lr_ingestion(
@@ -452,10 +448,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l2_ont_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l2_ont_job_runs))
-
-        self.clear_table_after_test('genomic_long_read')
-        self.clear_table_after_test('genomic_l2_ont_raw')
-        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
 
     def test_l2_ont_manifest_to_raw_ingestion(self):
 
@@ -494,10 +486,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l2_ont_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l2_ont_job_runs))
 
-        self.clear_table_after_test('genomic_long_read')
-        self.clear_table_after_test('genomic_l2_ont_raw')
-        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
-
     def test_l2_pb_ccs_manifest_ingestion(self):
 
         self.execute_base_lr_ingestion(
@@ -517,10 +505,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l2_pb_ccs_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l2_pb_ccs_job_runs))
-
-        self.clear_table_after_test('genomic_long_read')
-        self.clear_table_after_test('genomic_l2_ont_raw')
-        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
 
     def test_l2_pb_ccs_manifest_to_raw_ingestion(self):
 
@@ -560,10 +544,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertEqual(len(l2_pb_ccs_job_runs), 1)
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l2_pb_ccs_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l2_pb_ccs_job_runs))
-
-        self.clear_table_after_test('genomic_long_read')
-        self.clear_table_after_test('genomic_l2_ont_raw')
-        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
 
     def build_lr_l3_data(self):
         for num in range(1, 7):
@@ -746,11 +726,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l3_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l3_job_runs))
 
-        self.clear_table_after_test('genomic_long_read')
-        self.clear_table_after_test('genomic_l2_ont_raw')
-        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
-        self.clear_table_after_test('genomic_l3_raw')
-
     def test_l3_manifest_generation_excludes_sent_samples(self):
 
         self.build_lr_l3_data()
@@ -805,11 +780,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         current_l2_pb_ccs_records = l2_pb_ccs_dao.get_all()
         self.assertEqual(len(l3_raw_dao.get_all()), len(current_l2_ont_records + current_l2_pb_ccs_records))
 
-        self.clear_table_after_test('genomic_long_read')
-        self.clear_table_after_test('genomic_l2_ont_raw')
-        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
-        self.clear_table_after_test('genomic_l3_raw')
-
     def test_l4_manifest_ingestion(self):
 
         self.execute_base_lr_ingestion(
@@ -827,8 +797,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l4_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l4_job_runs))
-
-        self.clear_table_after_test('genomic_long_read')
 
     def test_l4_manifest_to_raw_ingestion(self):
 
@@ -867,8 +835,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l4_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l4_job_runs))
 
-        self.clear_table_after_test('genomic_long_read')
-
     def test_l5_manifest_ingestion(self):
 
         self.execute_base_lr_ingestion(
@@ -886,8 +852,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l5_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l5_job_runs))
-
-        self.clear_table_after_test('genomic_long_read')
 
     def test_l5_manifest_to_raw_ingestion(self):
 
@@ -926,8 +890,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l5_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l5_job_runs))
 
-        self.clear_table_after_test('genomic_long_read')
-
     def test_l6_manifest_ingestion(self):
 
         self.execute_base_lr_ingestion(
@@ -945,8 +907,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l6_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l6_job_runs))
-
-        self.clear_table_after_test('genomic_long_read')
 
     def test_l6_manifest_to_raw_ingestion(self):
 
@@ -985,8 +945,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l6_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l6_job_runs))
 
-        self.clear_table_after_test('genomic_long_read')
-
     def test_l1f_manifest_ingestion(self):
 
         self.execute_base_lr_ingestion(
@@ -1004,8 +962,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l1f_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l1f_job_runs))
-
-        self.clear_table_after_test('genomic_long_read')
 
     def test_l1f_manifest_to_raw_ingestion(self):
 
@@ -1044,8 +1000,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l1f_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l1f_job_runs))
 
-        self.clear_table_after_test('genomic_long_read')
-
     def test_l4f_manifest_ingestion(self):
 
         self.execute_base_lr_ingestion(
@@ -1063,8 +1017,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l4f_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l4f_job_runs))
-
-        self.clear_table_after_test('genomic_long_read')
 
     def test_l4f_manifest_to_raw_ingestion(self):
 
@@ -1103,8 +1055,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l4f_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l4f_job_runs))
 
-        self.clear_table_after_test('genomic_long_read')
-
     def test_l6f_manifest_ingestion(self):
 
         self.execute_base_lr_ingestion(
@@ -1122,8 +1072,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l6f_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l6f_job_runs))
-
-        self.clear_table_after_test('genomic_long_read')
 
     def test_l6f_manifest_to_raw_ingestion(self):
 
@@ -1162,4 +1110,14 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in l6f_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in l6f_job_runs))
 
+    def tearDown(self):
+        super().tearDown()
+        self.clear_table_after_test("participant")
+        self.clear_table_after_test("participant_summary")
+        self.clear_table_after_test("biobank_stored_sample")
+        self.clear_table_after_test("genomic_set_member")
         self.clear_table_after_test('genomic_long_read')
+        self.clear_table_after_test('genomic_l2_ont_raw')
+        self.clear_table_after_test('genomic_l2_pb_ccs_raw')
+        self.clear_table_after_test('genomic_l3_raw')
+
