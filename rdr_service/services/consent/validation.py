@@ -830,7 +830,7 @@ class ConsentValidator:
             expected_signing_date = self.participant_summary.consentForStudyEnrollmentFirstYesAuthored
 
         return self._generate_validation_results(
-            consent_files=self.factory.get_primary_consents(),
+            consent_files=self.factory.get_va_primary_reconsents(),
             consent_type=ConsentType.PRIMARY_RECONSENT,
             expected_sign_datetime=expected_signing_date
         )
@@ -850,7 +850,7 @@ class ConsentValidator:
             expected_signing_date = self.participant_summary.consentForElectronicHealthRecordsAuthored
 
         return self._generate_validation_results(
-            consent_files=self.factory.get_ehr_consents(),
+            consent_files=self.factory.get_va_ehr_reconsents(),
             consent_type=ConsentType.EHR_RECONSENT,
             expected_sign_datetime=expected_signing_date
         )
