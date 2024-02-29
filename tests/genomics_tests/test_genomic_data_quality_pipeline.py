@@ -349,7 +349,6 @@ class GenomicDataQualityReportTest(BaseTestCase):
             if num < 2:
                 # should have a delta of 1 on LR flow
                 self.data_generator.create_database_genomic_long_read(
-                    genomic_set_member_id=genomic_set_member.id,
                     biobank_id=genomic_set_member.biobankId,
                     collection_tube_id=f'{num}11111',
                     genome_type="aou_long_read",
