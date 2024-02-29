@@ -4895,7 +4895,7 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
             ).one()
 
     @abstractmethod
-    def get_new_pipeline_members(self,  *, biobank_ids: List[str]):
+    def get_new_pipeline_members(self,  *, biobank_ids: List[str], **kwargs):
         ...
 
     @abstractmethod
@@ -4942,29 +4942,21 @@ class GenomicLongReadDao(GenomicSubDao):
                 self.get_max_set_subquery()
             ).one()
 
-    def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
+    def get_new_pipeline_members(self, *, biobank_ids: List[str], **kwargs) -> List:
         with self.session() as session:
+            collection_tube_ids = kwargs.get('parent_tube_ids')
             return session.query(
-                GenomicSetMember.id.label('genomic_set_member_id'),
-                GenomicSetMember.biobankId.label('biobank_id'),
-                GenomicSetMember.collectionTubeId.label('collection_tube_id')
+                BiobankStoredSample.biobankId.label('biobank_id'),
+                BiobankStoredSample.biobankStoredSampleId.label('collection_tube_id')
             ).join(
                 ParticipantSummary,
-                ParticipantSummary.participantId == GenomicSetMember.participantId
-            ).join(
-                BiobankStoredSample,
-                GenomicSetMember.biobankId == BiobankStoredSample.biobankId,
+                ParticipantSummary.biobankId == BiobankStoredSample.biobankId
             ).filter(
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
-                GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
-                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
-                GenomicSetMember.diversionPouchSiteFlag != 1,
-                GenomicSetMember.blockResults != 1,
-                GenomicSetMember.blockResearch != 1,
-                GenomicSetMember.ignoreFlag != 1,
-                GenomicSetMember.biobankId.in_(biobank_ids)
+                BiobankStoredSample.biobankId.in_(biobank_ids),
+                BiobankStoredSample.biobankStoredSampleId.in_(collection_tube_ids)
             ).distinct().all()
 
     def get_manifest_zero_records_from_max_set(self):
@@ -4987,7 +4979,7 @@ class GenomicLongReadDao(GenomicSubDao):
             ).join(
                 GenomicSetMember,
                 and_(
-                    GenomicSetMember.id == GenomicLongRead.genomic_set_member_id,
+                    GenomicSetMember.biobankId == GenomicLongRead.biobank_id,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.ignoreFlag != 1
                 )
@@ -5150,7 +5142,7 @@ class GenomicPRDao(GenomicSubDao):
             functions.max(GenomicProteomics.proteomics_set).label('proteomics_set')
         ).subquery()
 
-    def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
+    def get_new_pipeline_members(self, *, biobank_ids: List[str], **kwargs) -> List:
         with self.session() as session:
             return session.query(
                 GenomicSetMember.id.label('genomic_set_member_id'),
@@ -5221,7 +5213,7 @@ class GenomicRNADao(GenomicSubDao):
             functions.max(GenomicRNA.rna_set).label('rna_set')
         ).subquery()
 
-    def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
+    def get_new_pipeline_members(self, *, biobank_ids: List[str], **kwargs) -> List:
         with self.session() as session:
             return session.query(
                 GenomicSetMember.id.label('genomic_set_member_id'),

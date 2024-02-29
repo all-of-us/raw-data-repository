@@ -5,15 +5,15 @@ from unittest import mock
 
 from rdr_service import config, clock
 from rdr_service.api_util import open_cloud_file
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestFileDao, GenomicLongReadDao, \
-    GenomicFileProcessedDao, GenomicJobRunDao, GenomicSetMemberDao
+    GenomicFileProcessedDao, GenomicJobRunDao
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicLongReadPlatform, \
     GenomicSubProcessStatus, GenomicSubProcessResult
 from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicL1Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, \
     GenomicL4Raw, GenomicL3Raw, GenomicL5Raw, GenomicL6Raw, GenomicL1FRaw, GenomicL4FRaw, GenomicL6FRaw
 from rdr_service.offline.genomics import genomic_dispatch, genomic_long_read_pipeline
-from rdr_service.participant_enums import QuestionnaireStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -30,19 +30,31 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             genomicSetVersion=1
         )
         self.long_read_dao = GenomicLongReadDao()
-        self.genomic_set_member_dao = GenomicSetMemberDao()
+        self.biobank_stored_sample_dao = BiobankStoredSampleDao()
 
     def base_lr_data_insert(self, **kwargs):
         for num in range(1, kwargs.get('num_set_members', 4)):
+            participant = self.data_generator.create_database_participant(
+                biobankId=f"{num}"
+            )
             participant_summary = self.data_generator.create_database_participant_summary(
                 withdrawalStatus=1,
                 suspensionStatus=1,
-                consentForStudyEnrollment=1
+                consentForStudyEnrollment=1,
+                biobankId=participant.biobankId
             )
-            member = self.data_generator.create_database_genomic_set_member(
+            self.data_generator.create_database_biobank_stored_sample(
+                biobankId=participant.biobankId,
+                biobankOrderIdentifier=self.fake.pyint(),
+                biobankStoredSampleId=f"{num}11111111111",
+                confirmed=clock.CLOCK.now()
+            )
+
+            # adding set member records for L0 generation
+            self.data_generator.create_database_genomic_set_member(
                 participantId=participant_summary.participantId,
                 genomicSetId=self.gen_set.id,
-                biobankId=f"{num}",
+                biobankId=participant.biobankId,
                 genomeType="aou_wgs",  # should always pull wgs sample
                 qcStatus=1,
                 gcManifestSampleSource="whole blood",
@@ -50,12 +62,8 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                 participantOrigin="vibrent",
                 validationStatus=1,
                 sexAtBirth="F",
-                collectionTubeId=f"{num}2222222222",
+                collectionTubeId=f"{num}11111111111",
                 ai_an='Y'
-            )
-            self.data_generator.create_database_genomic_gc_validation_metrics(
-                genomicSetMemberId=member.id,
-                processingStatus='Pass'
             )
 
     def execute_base_lr_ingestion(self, **kwargs):
@@ -106,54 +114,11 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.collection_tube_id is not None for obj in long_read_members))
         self.assertTrue(all(obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS for obj in long_read_members))
         self.assertTrue(all(obj.lr_site_id == 'bcm' for obj in long_read_members))
-        self.assertTrue(all(obj.genomic_set_member_id is not None for obj in long_read_members))
         self.assertTrue(all(obj.long_read_set == 1 for obj in long_read_members))
         self.assertTrue(all(obj.created_job_run_id is not None for obj in long_read_members))
 
         # check collection tube ids
-        correct_collection_tube_ids = [obj.collectionTubeId for obj in self.genomic_set_member_dao.get_all()]
-        self.assertTrue(all(obj.collection_tube_id in correct_collection_tube_ids for obj in long_read_members))
-
-        # check job run record
-        lr_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LR_LR_WORKFLOW, self.job_run_dao.get_all()))
-
-        self.assertIsNotNone(lr_job_runs)
-        self.assertEqual(len(lr_job_runs), 1)
-        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in lr_job_runs))
-        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in lr_job_runs))
-
-        self.clear_table_after_test('genomic_long_read')
-
-    def test_full_lr_manifest_ingestion_diff_collection_tube_current_member(self):
-
-        self.base_lr_data_insert()
-
-        # update collection tube to mismatch on last current lr member
-
-        # add seperate collection_tube
-
-        self.execute_base_lr_ingestion(
-            test_file='RDR_AoU_LR_Requests.csv',
-            job_id=GenomicJob.LR_LR_WORKFLOW,
-            manifest_type=GenomicManifestTypes.LR_LR,
-            bypass_base_data=True
-        )
-
-        long_read_members = self.long_read_dao.get_all()
-
-        self.assertEqual(len(long_read_members), 3)
-        self.assertTrue(all(obj.biobank_id is not None for obj in long_read_members))
-        self.assertTrue(all(obj.sample_id is None for obj in long_read_members))
-        self.assertTrue(all(obj.genome_type == 'aou_long_read' for obj in long_read_members))
-        self.assertTrue(all(obj.collection_tube_id is not None for obj in long_read_members))
-        self.assertTrue(all(obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS for obj in long_read_members))
-        self.assertTrue(all(obj.lr_site_id == 'bcm' for obj in long_read_members))
-        self.assertTrue(all(obj.genomic_set_member_id is not None for obj in long_read_members))
-        self.assertTrue(all(obj.long_read_set == 1 for obj in long_read_members))
-        self.assertTrue(all(obj.created_job_run_id is not None for obj in long_read_members))
-
-        # check collection tube ids
-        correct_collection_tube_ids = [obj.collectionTubeId for obj in self.genomic_set_member_dao.get_all()]
+        correct_collection_tube_ids = [obj.biobankStoredSampleId for obj in self.biobank_stored_sample_dao.get_all()]
         self.assertTrue(all(obj.collection_tube_id in correct_collection_tube_ids for obj in long_read_members))
 
         # check job run record
@@ -383,22 +348,10 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
     def test_l1_manifest_ingestion(self):
         for num in range(1, 4):
-            participant_summary = self.data_generator.create_database_participant_summary(
-                consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
-                consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
-            )
-            genomic_set_member = self.data_generator.create_database_genomic_set_member(
-                genomicSetId=self.gen_set.id,
-                participantId=participant_summary.participantId,
-                biobankId=f"100{num}",
-                genomeType="aou_array",
-                collectionTubeId=num
-            )
             if num < 3:
                 # SHOULD NOT add sample_id to long_read member w/ different lr platform
                 self.data_generator.create_database_genomic_long_read(
-                    genomic_set_member_id=genomic_set_member.id,
-                    biobank_id=genomic_set_member.biobankId,
+                    biobank_id=f"100{num}",
                     collection_tube_id=f'{num}11111',
                     genome_type="aou_long_read",
                     lr_site_id="bi",
@@ -406,8 +359,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                     long_read_set=1
                 )
                 self.data_generator.create_database_genomic_long_read(
-                    genomic_set_member_id=genomic_set_member.id,
-                    biobank_id=genomic_set_member.biobankId,
+                    biobank_id=f"100{num}",
                     collection_tube_id=f'{num}11111',
                     genome_type="aou_long_read",
                     lr_site_id="bi",
@@ -615,23 +567,10 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
     def build_lr_l3_data(self):
         for num in range(1, 7):
-            participant_summary = self.data_generator.create_database_participant_summary(
-                consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
-                consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
-            )
-            genomic_set_member = self.data_generator.create_database_genomic_set_member(
-                genomicSetId=self.gen_set.id,
-                participantId=participant_summary.participantId,
-                biobankId=f"100{num}",
-                genomeType="aou_array",
-                collectionTubeId=num
-            )
-
             # SAME Sample ID cannot be shared between platforms
             if num % 2 != 0:
                 long_read_member = self.data_generator.create_database_genomic_long_read(
-                    genomic_set_member_id=genomic_set_member.id,
-                    biobank_id=genomic_set_member.biobankId,
+                    biobank_id=f"100{num}",
                     sample_id=f'{num}11111',
                     collection_tube_id=f'{num}11111',
                     genome_type="aou_long_read",
@@ -648,8 +587,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
             else:
                 long_read_member = self.data_generator.create_database_genomic_long_read(
-                    genomic_set_member_id=genomic_set_member.id,
-                    biobank_id=genomic_set_member.biobankId,
+                    biobank_id=f"100{num}",
                     collection_tube_id=f'{num}22222',
                     sample_id=f'{num}22222',
                     genome_type="aou_long_read",
