@@ -252,7 +252,6 @@ class EnrollmentCalculation:
             participant_info.first_ehr_consent_date,
             participant_info.basics_authored_time,
             participant_info.overall_health_authored_time,
-            participant_info.lifestyle_authored_time,
             participant_info.earliest_height_measurement_time,
             participant_info.earliest_weight_measurement_time,
             participant_info.wgs_sequencing_time,
@@ -260,6 +259,11 @@ class EnrollmentCalculation:
         ]
         if participant_info.consent_cohort == ParticipantCohort.COHORT_1:
             required_timestamp_list.append(participant_info.dna_update_time)
+
+        if participant_info.is_pediatric_participant:
+            required_timestamp_list.append(participant_info.exposures_authored_time)
+        else:
+            required_timestamp_list.append(participant_info.lifestyle_authored_time)
 
         if any(required_time is None for required_time in required_timestamp_list):
             return  # If any required timestamps are missing, leave Core Data flag as False
