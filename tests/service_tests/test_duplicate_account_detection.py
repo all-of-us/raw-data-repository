@@ -12,6 +12,9 @@ class DuplicateDetectionTest(BaseTestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.uses_database = False
+
+    def setUp(self, *args, **kwargs) -> None:
+        super().setUp(*args, **kwargs)
         self.all_participants_mock = self.mock(
             'rdr_service.dao.duplicate_account_dao.DuplicateAccountDao.query_participant_duplication_data'
         )

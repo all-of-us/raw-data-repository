@@ -55,11 +55,8 @@ class DuplicateDetection:
         them to all other participants to find and record any new duplicates.
         """
 
-        print(datetime.now(), 'starting cache load')
         cache = _SummaryCache(session)
-        print(datetime.now(), 'cache initialized')
         recently_modified_summaries = DuplicateAccountDao.query_participants_to_check(session=session, since=since)
-
         for summary in recently_modified_summaries:
             duplicate_id_list = cache.get_matching_participant_ids(summary)
             for duplicate_id in duplicate_id_list:
@@ -68,7 +65,6 @@ class DuplicateDetection:
                     participant_b_id=duplicate_id,
                     session=session
                 )
-        print(datetime.now(), 'finished')
 
     @classmethod
     def _record_as_duplicate(cls, participant_a_id: int, participant_b_id: int, session: Session):
