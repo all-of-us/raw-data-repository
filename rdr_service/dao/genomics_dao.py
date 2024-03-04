@@ -5316,6 +5316,69 @@ class GenomicReportingDao(ABC, BaseDao):
         ...
 
 
+class GenomicShortReadReportingReadDao(GenomicReportingDao):
+
+    def __init__(self):
+        super().__init__(GenomicSetMember, order_by_ending=['id'])
+
+    def get_reporting_counts(self, from_date):
+        with self.session() as session:
+            ingested_query = (
+                session.query(
+                    functions.count(distinct(GenomicAW1Raw.id)).label('record_count'),
+                    functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                    (functions.count(distinct(GenomicAW1Raw.id)) - functions.count(distinct(
+                        GenomicSetMember.id))).label('delta_count'),
+                    literal('aw1').label('file_type'),
+                    GenomicAW1Raw.genome_type,
+                    GenomicAW1Raw.file_path
+                ).outerjoin(
+                    GenomicManifestFile,
+                    GenomicManifestFile.filePath == GenomicAW1Raw.file_path
+                ).outerjoin(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.genomicManifestFileId == GenomicManifestFile.id
+                ).outerjoin(
+                    self.model_type,
+                    self.model_type.aw1FileProcessedId == GenomicFileProcessed.id
+                ).filter(
+                    GenomicAW1Raw.created >= from_date,
+                    GenomicAW1Raw.ignore_flag != 1,
+                    GenomicAW1Raw.biobank_id != "",
+                ).group_by(
+                    GenomicAW1Raw.file_path,
+                    GenomicAW1Raw.genome_type
+                ).union(
+                    session.query(
+                        functions.count(distinct(GenomicAW2Raw.id)).label('record_count'),
+                        functions.count(distinct(GenomicGCValidationMetrics.id)).label('ingested_count'),
+                        (functions.count(distinct(GenomicAW2Raw.id)) - functions.count(distinct(
+                            GenomicGCValidationMetrics.id))).label('delta_count'),
+                        literal('aw2').label('file_type'),
+                        GenomicAW2Raw.genome_type,
+                        GenomicAW2Raw.file_path
+                    ).outerjoin(
+                        GenomicManifestFile,
+                        GenomicManifestFile.filePath == GenomicAW2Raw.file_path
+                    ).outerjoin(
+                        GenomicFileProcessed,
+                        GenomicFileProcessed.genomicManifestFileId == GenomicManifestFile.id
+                    ).outerjoin(
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicFileProcessedId == GenomicFileProcessed.id
+                    ).filter(
+                        GenomicAW2Raw.created >= from_date,
+                        GenomicAW2Raw.ignore_flag != 1,
+                        GenomicAW2Raw.biobank_id != "",
+                    ).group_by(
+                        GenomicAW2Raw.file_path,
+                        GenomicAW2Raw.genome_type
+                    )
+                )
+            )
+            return ingested_query.all()
+
+
 class GenomicLongReadReportingDao(GenomicReportingDao):
 
     def __init__(self):
