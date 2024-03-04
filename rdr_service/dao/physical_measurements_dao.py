@@ -463,7 +463,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
             record = self._restore_record(record, resource)
 
         if resource["status"].lower() == "re-pairing":
-            for extension in record["resource"].get("extension", []):
+            for extension in resource["resource"].get("extension", []):
                 value_reference = extension.get("valueString", extension.get("valueReference"))
                 if value_reference:
                     url = extension.get("url")
