@@ -463,13 +463,17 @@ class PhysicalMeasurementsDao(UpdatableDao):
             record = self._restore_record(record, resource)
 
         if resource["status"].lower() == "re-pairing":
+            print("Testing if any urls are equal to : %s or %s" % (_CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION))
             for extension in resource.get("extensions", []):
                 value_reference = extension.get("valueString", extension.get("valueReference"))
                 if value_reference:
                     url = extension.get("url")
+                    print(url)
                     if url == _CREATED_LOC_EXTENSION:
+                        print("New created site is: %s" % value_reference)
                         record.createdSiteId = PhysicalMeasurementsDao.get_location_site_id(value_reference)
                     elif url == _FINALIZED_LOC_EXTENSION:
+                        print("New finalized site is: %s" % value_reference)
                         record.finalizedSiteId = PhysicalMeasurementsDao.get_location_site_id(value_reference)
 
         logging.info(f"{resource['status']} physical measurement {record.physicalMeasurementsId}.")
@@ -767,9 +771,11 @@ class PhysicalMeasurementsDao(UpdatableDao):
             for field in restored_required_fields:
                 if field not in resource:
                     raise BadRequest(f"{field} is required in restore request.")
+
         elif resource.get("status").lower() == "re-pairing":
             if measurement.status == PhysicalMeasurementsStatus.CANCELLED:
                 raise BadRequest("Can not re-pair cancelled orders.")
+
         else:
             raise BadRequest("status is required in restore request.")
 

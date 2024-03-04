@@ -825,7 +825,7 @@ class BiobankOrderDao(UpdatableDao):
             order.restoredTime = clock.CLOCK.now()
             order.orderStatus = BiobankOrderStatus.UNSET
         elif resource["status"].lower() == "re-pairing":
-            order.createdSiteId = get_site(resource.get("createdInfo", ""))
+            order.sourceSiteId = get_site(resource.get("createdInfo", ""))
             order.collectedSiteId = get_site(resource.get("collectedInfo", ""))
             order.processedSiteId = get_site(resource.get("processedInfo", ""))
             order.finalizedSiteId = get_site(resource.get("finalizedInfo", ""))

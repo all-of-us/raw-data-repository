@@ -180,6 +180,7 @@ def main(client):
                         participant[i]['site']['value'] = new_pairing[j]
                         j += 1
                 elif pm_sync:
+                    participant['status'] = "re-pairing"
                     for i in range(len(participant['entry'])):
                         if participant['entry'][i]['resource']['resourceType'] == 'Composition':
                             for j in range(len(pairing_list)):
