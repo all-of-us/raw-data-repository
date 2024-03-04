@@ -2,6 +2,7 @@ import datetime
 import logging
 
 from dateutil.parser import parse
+from dateutil.relativedelta import relativedelta
 import faker
 import re
 import threading
@@ -9,7 +10,7 @@ import threading
 import sqlalchemy
 import sqlalchemy.orm
 
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func, text
 from sqlalchemy.orm import Query, joinedload
 from sqlalchemy.sql import expression
 from typing import Collection, List
@@ -563,6 +564,8 @@ class ParticipantSummaryDao(UpdatableDao):
             return self._add_env_exposures_order(query, order_by, PediatricDataLog.created)
         elif order_by.field_name == 'questionnaireOnEnvironmentalExposuresAuthored':
             return self._add_env_exposures_order(query, order_by, PediatricDataLog.value)
+        elif order_by.field_name == 'ageAtConsentMonths':
+            return self._add_age_at_consent_months_order(order_by, query)
         return super(ParticipantSummaryDao, self)._add_order_by(query, order_by, field_names, fields)
 
     @staticmethod
@@ -585,6 +588,18 @@ class ParticipantSummaryDao(UpdatableDao):
                 PediatricDataLog.data_type == PediatricDataType.ENVIRONMENTAL_EXPOSURES
             )
         ).order_by(field)
+
+    @classmethod
+    def _add_age_at_consent_months_order(cls, order_by, query):
+        age_at_consent_expr = func.TIMESTAMPDIFF(
+            text('MONTH'),
+            ParticipantSummary.dateOfBirth,
+            ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored
+        )
+        if order_by.ascending:
+            return query.order_by(age_at_consent_expr)
+        else:
+            return query.order_by(age_at_consent_expr.desc())
 
     def _make_query(self, session, query_definition):
         query, order_by_field_names = super(ParticipantSummaryDao, self)._make_query(session, query_definition)
@@ -637,6 +652,17 @@ class ParticipantSummaryDao(UpdatableDao):
             return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
         if field_name == 'updatedSince':
             return self._make_updated_since_filter(value)
+        if field_name == 'ageAtConsentMonths':
+            return super().make_expression_filter(
+                func.TIMESTAMPDIFF(
+                    text('MONTH'),
+                    ParticipantSummary.dateOfBirth,
+                    ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored
+                ),
+                value,
+                PropertyType.DATETIME,
+                'dateOfBirth'
+            )
 
         return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
 
@@ -1512,6 +1538,9 @@ class ParticipantSummaryDao(UpdatableDao):
 
         # set the pediatric data flag
         result['isPediatric'] = True if obj.isPediatric else UNSET
+
+        delta = relativedelta(obj.consentForStudyEnrollmentFirstYesAuthored, obj.dateOfBirth)
+        result['ageAtConsentMonths'] = 12 * delta.years + delta.months
 
         # EnvironmentalExposures module fields
         result['questionnaireOnEnvironmentalExposures'] = UNSET
