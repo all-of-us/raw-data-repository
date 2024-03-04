@@ -186,9 +186,9 @@ def main(client):
                             for j in range(len(pairing_list)):
                                 pair = participant['entry'][i]['resource']['extension'][j]
                                 if 'valueString' in pair:
-                                    pair['valueString'] = new_pairing[j]
+                                    pair['valueString'] = 'Location/%s' % new_pairing[j]
                                 elif 'valueReference' in pair:
-                                    pair['valueReference'] = new_pairing[j]
+                                    pair['valueReference'] = 'Location/%s' % new_pairing[j]
                 else:
                     for i in pairing_list:
                         del participant[i]
@@ -203,7 +203,6 @@ def main(client):
                 for i in range(len(pairing_list)):
                     logging.info("Dry run, would update physical_measurements[%r] to %r", pairing_list[i], new_pairing[i])
             else:
-                print(participant)
                 client.request_json(
                     request_url, "PATCH" if pm_sync or biospecimen_sync else "PUT", participant, headers={"If-Match": client.last_etag}
                 )
