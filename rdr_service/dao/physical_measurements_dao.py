@@ -472,8 +472,6 @@ class PhysicalMeasurementsDao(UpdatableDao):
                             record.createdSiteId = PhysicalMeasurementsDao.get_location_site_id(value_reference)
                         elif url == _FINALIZED_LOC_EXTENSION:
                             record.finalizedSiteId = PhysicalMeasurementsDao.get_location_site_id(value_reference)
-                if not resource['entry'][i]['resource'].get("extension", []):
-                    raise BadRequest("list is empty")
 
         logging.info(f"{resource['status']} physical measurement {record.physicalMeasurementsId}.")
 
