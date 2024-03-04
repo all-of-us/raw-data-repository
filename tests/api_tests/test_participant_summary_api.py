@@ -55,6 +55,7 @@ TIME_6 = datetime.datetime(2015, 1, 1)
 TEST_AGE_BUCKET_DOB_DATE_OBJ = datetime.date(1980, 10, 9)
 
 participant_summary_default_values = {
+    "ageAtConsentMonths": 0,
     "ageRange": "UNSET",
     "race": "PMI_Skip",
     "hpoId": "UNSET",
