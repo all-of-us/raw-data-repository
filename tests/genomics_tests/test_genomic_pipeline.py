@@ -1389,7 +1389,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Should be a aou_wgs and aou_array for each
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(14, len(new_genomic_members))
+        self.assertEqual(16, len(new_genomic_members))
 
         all_ps_origins = [self.summary_dao.get_by_participant_id(obj.participantId).participantOrigin
                        for obj in new_genomic_members]
