@@ -27,7 +27,7 @@ import sys
 
 from rdr_service.main_util import configure_logging, get_parser
 from rdr_service.rdr_client.client import Client, HttpException, client_log
-from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
+from rdr_service.dao.physical_measurements_dao import _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION
 
 def main(client):
     num_no_change = 0
@@ -45,6 +45,7 @@ def main(client):
     ]
     pm_sync = False
     biospecimen_sync = False
+
     if client.args.finalization:
         biospecimen_fields.append("finalizedInfo")
         pm_fields.append("finalizedSiteId")
@@ -63,17 +64,13 @@ def main(client):
     else:
         pairing_list = [pairing_key]
 
-    with open(client.args.file) as csvfile:
+    with (open(client.args.file) as csvfile):
         reader = csv.reader(csvfile)
         for line in reader:
             try:
                 args_list = [v.strip() for v in line]
                 participant_id = args_list[0]
-                if len(args_list) > 2 and (biospecimen_sync or pm_sync):
-                    new_pairing = args_list[2:]
-                    obj_id = args_list[1]
-                else:
-                    new_pairing = [args_list[1]]
+                new_pairing = args_list[1]
             except ValueError as e:
                 logging.error("Skipping invalid line %d (parsed as %r): %s.", reader.line_num, line, e)
                 num_errors += 1
@@ -89,16 +86,6 @@ def main(client):
                 num_errors += 1
                 continue
 
-            if not (len(new_pairing) == len(pairing_list)):
-                logging.warning(
-                    "Skipping invalid line %d: invalid number of values provided %d. Expected %d",
-                    reader.line_num,
-                    len(new_pairing),
-                    len(pairing_list)
-                )
-                num_errors += 1
-                continue
-
             if not participant_id.startswith("P"):
                 if not biospecimen_sync:
                     logging.error(
@@ -110,9 +97,9 @@ def main(client):
                     continue
 
             if biospecimen_sync:
-                request_url = "Participant/%s/BiobankOrder/%s" % (participant_id, obj_id)
+                request_url = "Participant/%s/BiobankOrder" % participant_id
             elif pm_sync:
-                request_url = "Participant/%s/PhysicalMeasurements/%s" % (participant_id, obj_id)
+                request_url = "Participant/%s/PhysicalMeasurements" % participant_id
             else:
                 request_url = "Participant/%s" % participant_id
 
@@ -123,20 +110,19 @@ def main(client):
                 num_errors += 1
                 continue
 
-            print(participant)
-            old_pairing = []
+            old_pairing = ""
             if pm_sync:
-                for i in range(len(participant['entry'])):
-                    if participant['entry'][i]['resource']['resourceType'] == 'Composition':
-                        for j in range(len(pairing_list)):
-                            pair = participant['entry'][i]['resource']['extension'][j]
-
-                            old_pairing.append(
-                                pair.get('valueString', pair['valueReference']).split('Location/')[1]
-                            )
+                for entry in participant['entry']:
+                    if entry['resource']['resourceType'] == 'Composition':
+                        for extension in entry['resource']['extension']:
+                            if extension.get('url', "") == _CREATED_LOC_EXTENSION:
+                                old_pairing = extension.get('valueString', extension['valueReference']).split('/')[1]
+                            break
+                        break
+            elif biospecimen_sync:
+                old_pairing = participant['data'][0][pairing_list[0]]['site']['value']
             else:
-                for key in pairing_list:
-                    old_pairing.append(_get_old_pairing(participant, key))
+                old_pairing = _get_old_pairing(participant, pairing_key)
 
             if new_pairing == old_pairing:
                 num_no_change += 1
@@ -159,14 +145,7 @@ def main(client):
                         )
                         continue
 
-            if biospecimen_sync:
-                for i in range(len(pairing_list)):
-                    logging.info("%s %s => %s", obj_id, old_pairing[i]['site']['value'], new_pairing[i])
-            elif pm_sync:
-                for i in range(len(pairing_list)):
-                    logging.info("%s %s => %s", participant_id, old_pairing[i], new_pairing[i])
-            else:
-                logging.info("%s %s => %s", participant_id, old_pairing, new_pairing)
+            logging.info("%s %s => %s", participant_id, old_pairing, new_pairing)
 
             if new_pairing == "UNSET":
                 for i in pairing_list:
@@ -174,21 +153,21 @@ def main(client):
                 participant["providerLink"] = []
             else:
                 if biospecimen_sync:
-                    participant['status'] = "re-pairing"
-                    j = 0
-                    for i in pairing_list:
-                        participant[i]['site']['value'] = new_pairing[j]
-                        j += 1
+                    for order in participant['data']:
+                        order['status'] = "re-pairing"
+                        for i in pairing_list:
+                            order[i]['site']['value'] = new_pairing
                 elif pm_sync:
-                    participant['status'] = "re-pairing"
-                    for i in range(len(participant['entry'])):
-                        if participant['entry'][i]['resource']['resourceType'] == 'Composition':
-                            for j in range(len(pairing_list)):
-                                pair = participant['entry'][i]['resource']['extension'][j]
-                                if 'valueString' in pair:
-                                    pair['valueString'] = 'Location/%s' % new_pairing[j]
-                                elif 'valueReference' in pair:
-                                    pair['valueReference'] = 'Location/%s' % new_pairing[j]
+                    for entry in participant['entry']:
+                        entry['status'] = 're-pairing'
+                        entry['resource']['status'] = 're-pairing'
+                        if entry['resource']['resourceType'] == 'Composition':
+                            for extension in entry['resource']['extension']:
+                                if extension.get('url', "") == (_CREATED_LOC_EXTENSION or _FINALIZED_LOC_EXTENSION):
+                                    if 'valueString' in extension:
+                                        extension['valueString'] = 'Location/%s' % new_pairing
+                                    elif 'valueReference' in extension:
+                                        extension['valueReference'] = 'Location/%s' % new_pairing
                 else:
                     for i in pairing_list:
                         del participant[i]
@@ -203,9 +182,21 @@ def main(client):
                 for i in range(len(pairing_list)):
                     logging.info("Dry run, would update physical_measurements[%r] to %r", pairing_list[i], new_pairing[i])
             else:
-                client.request_json(
-                    request_url, "PATCH" if pm_sync or biospecimen_sync else "PUT", participant, headers={"If-Match": client.last_etag}
-                )
+                if biospecimen_sync:
+                    for resource in participant['data']:
+                        id_url = request_url + '/%s' % resource['id']
+                        client.request_json(id_url)
+                        client.request_json(id_url, "PATCH", resource, headers={"If-Match": client.last_etag})
+                elif pm_sync:
+                    for entry in participant['entry']:
+                        print(entry['status'])
+                        id_url = entry['fullUrl'].split('rdr/v1/')[1]
+                        client.request_json(id_url)
+                        client.request_json(id_url, "PATCH", entry, headers={"If-Match": client.last_etag})
+                else:
+                    client.request_json(
+                        request_url, "PUT", participant, headers={"If-Match": client.last_etag}
+                    )
             num_updates += 1
     logging.info(
         "%s %d participants, %d unchanged, %d errors.",
