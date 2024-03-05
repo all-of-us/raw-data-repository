@@ -2,6 +2,7 @@
 from protorpc import messages
 from sqlalchemy import func, not_, or_
 
+
 class Operator(messages.Enum):
     EQUALS = 0  # Case insensitive comparison for strings, exact comparison otherwise
     LESS_THAN = 1
@@ -81,6 +82,23 @@ class FieldFilter(object):
         if not query:
             raise ValueError("Invalid operator: %r." % self.operator)
         return query
+
+
+class GenericExpressionFilter:
+    OPERATOR_MAP = {
+        "lt": '__lt__',
+        "le": '__le__',
+        "gt": '__gt__',
+        "ge": '__ge__',
+        "ne": '__ne__',
+    }
+
+    def __init__(self, sqlalchemy_expression, field_name):
+        self._expression = sqlalchemy_expression
+        self.field_name = field_name
+
+    def add_to_sqlalchemy_query(self, query):
+        return query.filter(self._expression)
 
 
 class OrderBy(object):

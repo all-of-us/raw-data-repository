@@ -169,6 +169,12 @@ class ParticipantSummary(Base):
     :ref:`Enumerated values <age_range>`
     """
 
+    ageAtConsentMonths = None
+    """
+    Whole number representing the age of the participant, in months, the first time
+    they signed the Primary consent.
+    """
+
     genderIdentityId = Column("gender_identity_id", Integer, ForeignKey("code.code_id"))
     genderIdentity = Column("gender_identity", Enum(GenderIdentity))
     """
