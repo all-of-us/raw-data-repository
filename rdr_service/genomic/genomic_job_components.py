@@ -59,8 +59,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicAW2RawDao,
     GenomicIncidentDao,
     UserEventMetricsDao,
-    GenomicQueriesDao,
-    GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao, GenomicPRDao, GenomicRNADao)
+    GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao, GenomicPRDao, GenomicRNADao,
+    GenomicShortReadDao, GenomicCVLDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -2565,7 +2565,7 @@ class GenomicBiobankSamplesCoupler:
         self.controller = controller
         self.query = GenomicQueryClass()
 
-    def create_new_genomic_participants(self, from_date):
+    def create_new_genomic_participants(self):
         """
         This method determines which samples to enter into the genomic system
         from Cohort 3 (New Participants).
@@ -2574,7 +2574,7 @@ class GenomicBiobankSamplesCoupler:
         :param: from_date : the date from which to lookup new biobank_ids
         :return: result
         """
-        samples = self._get_new_biobank_samples(from_date)
+        samples = self._get_new_biobank_samples()
 
         if samples:
             samples_meta = self.GenomicSampleMeta(*samples)
@@ -2881,7 +2881,7 @@ class GenomicBiobankSamplesCoupler:
         except Exception as e:
             raise Exception("Error occurred on genomic member insert: {0}".format(e))
 
-    def _get_new_biobank_samples(self, from_date):
+    def _get_new_biobank_samples(self):
         """
         Retrieves BiobankStoredSample objects with `rdr_created`
         after the last run of the new participant workflow job.
@@ -2898,7 +2898,6 @@ class GenomicBiobankSamplesCoupler:
             "dob_param": GENOMIC_VALID_AGE,
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
-            "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
             "cohort_3_param": ParticipantCohort.COHORT_3.__int__(),
@@ -3178,8 +3177,9 @@ class ManifestDefinitionProvider:
             input_manifest=self.kwargs.get('input_manifest'),
             genome_type=self.genome_type
         )
-        self.query_dao = GenomicQueriesDao()
+        self.short_read_dao = GenomicShortReadDao()
         self.long_read_dao = GenomicLongReadDao()
+        self.cvl_dao = GenomicCVLDao()
         self.pr_dao = GenomicPRDao()
         self.rna_dao = GenomicRNADao()
 
@@ -3430,7 +3430,7 @@ class ManifestDefinitionProvider:
                     f'{CVL_W1IL_PGX_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_'
                     f'{ResultsModuleType.PGXV1.name}_{now_formatted}.csv',
                 'signal': 'manifest-generated',
-                'query': self.query_dao.get_data_ready_for_w1il_manifest,
+                'query': self.cvl_dao.get_data_ready_for_w1il_manifest,
                 'params': {
                     'module': 'pgx',
                     'cvl_id': self.cvl_site_id
@@ -3441,7 +3441,7 @@ class ManifestDefinitionProvider:
                 'output_filename':
                     f'{CVL_W1IL_HDR_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_'
                     f'{ResultsModuleType.HDRV1.name}_{now_formatted}.csv',
-                'query': self.query_dao.get_data_ready_for_w1il_manifest,
+                'query': self.cvl_dao.get_data_ready_for_w1il_manifest,
                 'params': {
                     'module': 'hdr',
                     'cvl_id': self.cvl_site_id
@@ -3451,7 +3451,7 @@ class ManifestDefinitionProvider:
                 'job_run_field': 'cvlW2wJobRunId',
                 'output_filename':
                     f'{CVL_W2W_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W2W_{now_formatted}.csv',
-                'query': self.query_dao.get_data_ready_for_w2w_manifest,
+                'query': self.cvl_dao.get_data_ready_for_w2w_manifest,
                 'params': {
                     'cvl_id': self.cvl_site_id
                 }
@@ -3460,7 +3460,7 @@ class ManifestDefinitionProvider:
                 'job_run_field': 'cvlW3srManifestJobRunID',
                 'output_filename': f'{CVL_W3SR_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W3SR'
                                    f'_{now_formatted}.csv',
-                'query': self.query_dao.get_w3sr_records,
+                'query': self.cvl_dao.get_w3sr_records,
                 'params': {
                     'site_id': self.cvl_site_id
                 }
@@ -3469,7 +3469,7 @@ class ManifestDefinitionProvider:
                 'job_run_field': 'aw3ManifestJobRunID',
                 'output_filename': f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
                 'signal': 'bypass',
-                'query': self.query_dao.get_aw3_array_records,
+                'query': self.short_read_dao.get_aw3_array_records,
                 'params': {
                     'genome_type': self.genome_type
                 }
@@ -3479,7 +3479,7 @@ class ManifestDefinitionProvider:
                 'output_filename': f'{self.kwargs.get("pipeline_id")}/'
                                    f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
                 'signal': 'bypass',
-                'query': self.query_dao.get_aw3_wgs_records,
+                'query': self.short_read_dao.get_aw3_wgs_records,
                 'params': {
                     'genome_type': self.genome_type,
                     'pipeline_id': self.kwargs.get('pipeline_id')
