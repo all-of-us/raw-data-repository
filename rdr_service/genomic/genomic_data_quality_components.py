@@ -5,7 +5,7 @@ from typing import List, Union
 from rdr_service import clock
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicJobRunDao, GenomicPRReportingDao, \
-    GenomicLongReadReportingDao, GenomicRNAReportingDao
+    GenomicLongReadReportingDao, GenomicRNAReportingDao, GenomicShortReadReportingReadDao
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.config import GENOMIC_INGESTION_REPORT_PATH, GENOMIC_INCIDENT_REPORT_PATH, GENOMIC_RESOLVED_REPORT_PATH
 
@@ -26,6 +26,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         super().__init__(controller=controller)
         self.query = GenomicQueryClass()
         self.incident_dao = GenomicIncidentDao()
+        self.short_read_reporting_dao = GenomicShortReadReportingReadDao()
         self.pr_reporting_dao = GenomicPRReportingDao()
         self.long_read_reporting_dao = GenomicLongReadReportingDao()
         self.rna_reporting_dao = GenomicRNAReportingDao()
@@ -117,7 +118,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
             ("SUMMARY", "RUNS"): self.query.dq_report_runs_summary(report_def.from_date),
             ("SUMMARY", "INCIDENTS"): self.incident_dao.get_daily_report_incidents(report_def.from_date),
             ("SUMMARY", "RESOLVED"): self.incident_dao.get_daily_report_resolved_manifests(report_def.from_date),
-            ("SUMMARY", "SHORTREAD"): self.query.short_read_ingestions_summary(report_def.from_date),
+            ("SUMMARY", "SHORTREAD"): self.short_read_reporting_dao.get_reporting_counts(report_def.from_date),
             ("SUMMARY", "PROTEOMICS"): self.pr_reporting_dao.get_reporting_counts(report_def.from_date),
             ("SUMMARY", "LONGREAD"): self.long_read_reporting_dao.get_reporting_counts(report_def.from_date),
             ("SUMMARY", "RNA"): self.rna_reporting_dao.get_reporting_counts(report_def.from_date),

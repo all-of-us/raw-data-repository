@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from rdr_service import clock, code_constants
-from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicQueriesDao, GenomicSetMemberDao
+from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicSetMemberDao, GenomicCVLDao
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicIncidentCode, GenomicIncidentStatus
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import GenomicIncident
@@ -346,7 +346,7 @@ class GenomicDaoTest(BaseTestCase):
             ]
         )
 
-        dao = GenomicQueriesDao()
+        dao = GenomicCVLDao()
         yes_no_yes_participant_list = dao.get_w1il_yes_no_yes_participants(start_datetime=datetime(2022, 1, 9))
 
         self.assertEqual(1, len(yes_no_yes_participant_list))
