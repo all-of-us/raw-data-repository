@@ -29,7 +29,7 @@ from rdr_service.dao import database_factory
 from rdr_service.model.participant import Participant
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import get_property_type
-from rdr_service.query import FieldFilter, Operator, PropertyType, Results
+from rdr_service.query import FieldFilter, GenericExpressionFilter, Operator, PropertyType, Results
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.
 
@@ -301,15 +301,29 @@ class BaseDao(object):
             # If we're dealing with a comparable property type, look for a prefix that indicates an
             # operator other than EQUALS and strip it off
             if property_type in _COMPARABLE_PROPERTY_TYPES:
-                for prefix, op in list(_OPERATOR_PREFIX_MAP.items()):
-                    if isinstance(value, str) and value.startswith(prefix):
-                        operator = op
-                        value = value[len(prefix) :]
-                        break
+                operator, value = self._parse_filter_value_operator(value, _OPERATOR_PREFIX_MAP, Operator.EQUALS)
             filter_value = self._parse_value(prop, property_type, value)
             return FieldFilter(field_name, operator, filter_value)
         else:
             return None
+
+    def make_expression_filter(self, db_read_expression, value, property_type, field_name):
+        operator, value = self._parse_filter_value_operator(
+            value,
+            GenericExpressionFilter.OPERATOR_MAP,
+            '__eq__'
+        )
+        # TODO: needs more implementation before this'll work with Enums
+        filter_value = self._parse_value(None, property_type, value)
+        filter_func = db_read_expression.__getattribute__(operator)
+        return GenericExpressionFilter(filter_func(filter_value), field_name)
+
+    @classmethod
+    def _parse_filter_value_operator(cls, value, op_map, default_op):
+        for prefix, op in op_map.items():
+            if isinstance(value, str) and value.startswith(prefix):
+                return op, value[len(prefix):]
+        return default_op, value
 
     @staticmethod
     def _parse_value(prop, property_type, value):
@@ -408,14 +422,17 @@ class BaseDao(object):
             query = query.options(query_definition.options)
         return query, order_by_field_names
 
-    def _set_filters(self, query, filters, model_type=None):
+    def _set_filters(self, query, filter_list, model_type=None):
         model_type = model_type or self.model_type
-        for field_filter in filters:
-            try:
-                filter_attribute = getattr(model_type, field_filter.field_name)
-            except AttributeError:
-                raise BadRequest(f"No field named {field_filter.field_name} found on {model_type}.")
-            query = self._add_filter(query, field_filter, filter_attribute)
+        for query_filter in filter_list:
+            if not isinstance(query_filter, GenericExpressionFilter):
+                try:
+                    filter_attribute = getattr(model_type, query_filter.field_name)
+                except AttributeError:
+                    raise BadRequest(f"No field named {query_filter.field_name} found on {model_type}.")
+                query = self._add_filter(query, query_filter, filter_attribute)
+            else:
+                query = query_filter.add_to_sqlalchemy_query(query)
         return query
 
     @staticmethod
