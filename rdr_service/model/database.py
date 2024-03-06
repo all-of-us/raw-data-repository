@@ -28,6 +28,7 @@ from rdr_service.model.code import CodeBook, Code, CodeHistory
 from rdr_service.model.calendar import Calendar
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.deceased_report_import_record import DeceasedReportImportRecord
+from rdr_service.model.duplicate_account import DuplicateAccount
 from rdr_service.model.ehr import EhrReceipt, ParticipantEhrReceipt
 from rdr_service.model.enrollment_status_history import EnrollmentStatusHistory
 from rdr_service.model.ghost_api_check import GhostApiCheck
