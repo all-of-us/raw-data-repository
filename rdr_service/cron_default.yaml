@@ -120,7 +120,7 @@ cron:
   schedule: every monday 05:45
   target: offline
 - description: Genomic AW3 WGS Workflow (dragen_3.7.8)
-  url: /offline/GenomicAW3WGSUpdatedWorkflow3
+  url: /offline/GenomicAW3WGSUpdatedWorkflow
   timezone: America/New_York
   schedule: every monday 06:00
   target: offline
