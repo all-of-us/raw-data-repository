@@ -3732,18 +3732,6 @@ class GenomicQueriesDao(BaseDao):
     def get_id(self, obj):
         pass
 
-    @classmethod
-    def transform_cvl_site_id(cls, site_id=None):
-        # co => bi => cvl workflow
-        site_id_map = {
-            'co': 'bi'
-        }
-        if not site_id or site_id \
-                not in site_id_map.keys():
-            return site_id
-
-        return site_id_map[site_id]
-
     def get_missing_data_files_for_aw3(self, genome_type):
         idat_red_path = aliased(GenomicGcDataFile)
         idat_green_path = aliased(GenomicGcDataFile)
@@ -3962,6 +3950,59 @@ class GenomicQueriesDao(BaseDao):
                 subquery.c.sample_id == GenomicAW2Raw.sample_id
             )
             return records.distinct().all()
+
+    def get_results_withdrawn_participants(self):
+        with self.session() as session:
+            records = session.query(
+                GenomicSetMember.participantId.label('participant_id'),
+                func.max(sqlalchemy.case(
+                    [
+                        (GenomicSetMember.gemA1ManifestJobRunId.isnot(None), True)
+                    ],
+                    else_=False
+                )).label('array_results'),
+                func.max(sqlalchemy.case(
+                    [
+                        (
+                            or_(
+                                GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
+                                GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
+                            ), True)
+                    ],
+                    else_=False
+                )).label('cvl_results')
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).outerjoin(
+                GenomicResultWithdrawals,
+                GenomicResultWithdrawals.participant_id == GenomicSetMember.participantId
+            ).filter(
+                ParticipantSummary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
+                GenomicResultWithdrawals.id.is_(None),
+                and_(
+                    or_(
+                        GenomicSetMember.gemA1ManifestJobRunId.isnot(None),
+                        GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
+                        GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
+                    )
+                )
+            ).group_by(
+                GenomicSetMember.participantId
+            )
+            return records.all()
+
+
+class GenomicShortReadDao(BaseDao):
+
+    def __init__(self):
+        super().__init__(GenomicSetMember, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
 
     def get_aw3_array_records(self, **kwargs):
         # should be only array genome but query also
@@ -4267,7 +4308,30 @@ class GenomicQueriesDao(BaseDao):
             )
             return aw3_rows.distinct().all()
 
-    # CVL pipeline start
+
+class GenomicCVLDao(BaseDao):
+
+    def __init__(self):
+        super().__init__(GenomicSetMember, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    @classmethod
+    def transform_cvl_site_id(cls, site_id=None):
+        # co => bi => cvl workflow
+        site_id_map = {
+            'co': 'bi'
+        }
+        if not site_id or site_id \
+                not in site_id_map.keys():
+            return site_id
+
+        return site_id_map[site_id]
+
     def get_w3sr_records(self, **kwargs):
         gc_site_id = self.transform_cvl_site_id(kwargs.get('site_id'))
         sample_ids = kwargs.get('sample_ids')
@@ -4600,46 +4664,6 @@ class GenomicQueriesDao(BaseDao):
 
             return query.distinct().all()
 
-    def get_results_withdrawn_participants(self):
-        with self.session() as session:
-            records = session.query(
-                GenomicSetMember.participantId.label('participant_id'),
-                func.max(sqlalchemy.case(
-                    [
-                        (GenomicSetMember.gemA1ManifestJobRunId.isnot(None), True)
-                    ],
-                    else_=False
-                )).label('array_results'),
-                func.max(sqlalchemy.case(
-                    [
-                        (
-                            or_(
-                                GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
-                                GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
-                            ), True)
-                    ],
-                    else_=False
-                )).label('cvl_results')
-            ).join(
-                ParticipantSummary,
-                ParticipantSummary.participantId == GenomicSetMember.participantId
-            ).outerjoin(
-                GenomicResultWithdrawals,
-                GenomicResultWithdrawals.participant_id == GenomicSetMember.participantId
-            ).filter(
-                ParticipantSummary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
-                GenomicResultWithdrawals.id.is_(None),
-                and_(
-                    or_(
-                        GenomicSetMember.gemA1ManifestJobRunId.isnot(None),
-                        GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
-                        GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
-                    )
-                )
-            ).group_by(
-                GenomicSetMember.participantId
-            )
-            return records.all()
 
 
 class GenomicCVLResultPastDueDao(UpdatableDao, GenomicDaoMixin):
@@ -4883,7 +4907,7 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
             ).one()
 
     @abstractmethod
-    def get_new_pipeline_members(self,  *, biobank_ids: List[str]):
+    def get_new_pipeline_members(self,  *, biobank_ids: List[str], **kwargs):
         ...
 
     @abstractmethod
@@ -4930,26 +4954,21 @@ class GenomicLongReadDao(GenomicSubDao):
                 self.get_max_set_subquery()
             ).one()
 
-    def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
+    def get_new_pipeline_members(self, *, biobank_ids: List[str], **kwargs) -> List:
         with self.session() as session:
+            collection_tube_ids = kwargs.get('parent_tube_ids')
             return session.query(
-                GenomicSetMember.id.label('genomic_set_member_id'),
-                GenomicSetMember.biobankId.label('biobank_id'),
-                GenomicSetMember.collectionTubeId.label('collection_tube_id')
+                BiobankStoredSample.biobankId.label('biobank_id'),
+                BiobankStoredSample.biobankStoredSampleId.label('collection_tube_id')
             ).join(
                 ParticipantSummary,
-                ParticipantSummary.participantId == GenomicSetMember.participantId
+                ParticipantSummary.biobankId == BiobankStoredSample.biobankId
             ).filter(
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
-                GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
-                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
-                GenomicSetMember.diversionPouchSiteFlag != 1,
-                GenomicSetMember.blockResults != 1,
-                GenomicSetMember.blockResearch != 1,
-                GenomicSetMember.ignoreFlag != 1,
-                GenomicSetMember.biobankId.in_(biobank_ids)
+                BiobankStoredSample.biobankId.in_(biobank_ids),
+                BiobankStoredSample.biobankStoredSampleId.in_(collection_tube_ids)
             ).distinct().all()
 
     def get_manifest_zero_records_from_max_set(self):
@@ -4972,7 +4991,7 @@ class GenomicLongReadDao(GenomicSubDao):
             ).join(
                 GenomicSetMember,
                 and_(
-                    GenomicSetMember.id == GenomicLongRead.genomic_set_member_id,
+                    GenomicSetMember.biobankId == GenomicLongRead.biobank_id,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.ignoreFlag != 1
                 )
@@ -5135,7 +5154,7 @@ class GenomicPRDao(GenomicSubDao):
             functions.max(GenomicProteomics.proteomics_set).label('proteomics_set')
         ).subquery()
 
-    def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
+    def get_new_pipeline_members(self, *, biobank_ids: List[str], **kwargs) -> List:
         with self.session() as session:
             return session.query(
                 GenomicSetMember.id.label('genomic_set_member_id'),
@@ -5206,7 +5225,7 @@ class GenomicRNADao(GenomicSubDao):
             functions.max(GenomicRNA.rna_set).label('rna_set')
         ).subquery()
 
-    def get_new_pipeline_members(self, *, biobank_ids: List[str]) -> List:
+    def get_new_pipeline_members(self, *, biobank_ids: List[str], **kwargs) -> List:
         with self.session() as session:
             return session.query(
                 GenomicSetMember.id.label('genomic_set_member_id'),
@@ -5278,6 +5297,69 @@ class GenomicReportingDao(ABC, BaseDao):
     @abstractmethod
     def get_reporting_counts(self, *, from_date):
         ...
+
+
+class GenomicShortReadReportingReadDao(GenomicReportingDao):
+
+    def __init__(self):
+        super().__init__(GenomicSetMember, order_by_ending=['id'])
+
+    def get_reporting_counts(self, from_date):
+        with self.session() as session:
+            ingested_query = (
+                session.query(
+                    functions.count(distinct(GenomicAW1Raw.id)).label('record_count'),
+                    functions.count(distinct(self.model_type.id)).label('ingested_count'),
+                    (functions.count(distinct(GenomicAW1Raw.id)) - functions.count(distinct(
+                        GenomicSetMember.id))).label('delta_count'),
+                    literal('aw1').label('file_type'),
+                    GenomicAW1Raw.genome_type,
+                    GenomicAW1Raw.file_path
+                ).outerjoin(
+                    GenomicManifestFile,
+                    GenomicManifestFile.filePath == GenomicAW1Raw.file_path
+                ).outerjoin(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.genomicManifestFileId == GenomicManifestFile.id
+                ).outerjoin(
+                    self.model_type,
+                    self.model_type.aw1FileProcessedId == GenomicFileProcessed.id
+                ).filter(
+                    GenomicAW1Raw.created >= from_date,
+                    GenomicAW1Raw.ignore_flag != 1,
+                    GenomicAW1Raw.biobank_id != "",
+                ).group_by(
+                    GenomicAW1Raw.file_path,
+                    GenomicAW1Raw.genome_type
+                ).union(
+                    session.query(
+                        functions.count(distinct(GenomicAW2Raw.id)).label('record_count'),
+                        functions.count(distinct(GenomicGCValidationMetrics.id)).label('ingested_count'),
+                        (functions.count(distinct(GenomicAW2Raw.id)) - functions.count(distinct(
+                            GenomicGCValidationMetrics.id))).label('delta_count'),
+                        literal('aw2').label('file_type'),
+                        GenomicAW2Raw.genome_type,
+                        GenomicAW2Raw.file_path
+                    ).outerjoin(
+                        GenomicManifestFile,
+                        GenomicManifestFile.filePath == GenomicAW2Raw.file_path
+                    ).outerjoin(
+                        GenomicFileProcessed,
+                        GenomicFileProcessed.genomicManifestFileId == GenomicManifestFile.id
+                    ).outerjoin(
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicFileProcessedId == GenomicFileProcessed.id
+                    ).filter(
+                        GenomicAW2Raw.created >= from_date,
+                        GenomicAW2Raw.ignore_flag != 1,
+                        GenomicAW2Raw.biobank_id != "",
+                    ).group_by(
+                        GenomicAW2Raw.file_path,
+                        GenomicAW2Raw.genome_type
+                    )
+                )
+            )
+            return ingested_query.all()
 
 
 class GenomicLongReadReportingDao(GenomicReportingDao):

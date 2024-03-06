@@ -50,6 +50,7 @@ from rdr_service.resource.tasks import dispatch_check_consent_errors_task
 from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
     StoreResultStrategy
 from rdr_service.services.data_quality import DataQualityChecker
+from rdr_service.services.duplicate_detection import DuplicateDetection
 from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.services.hpro_consent import HealthProConsentFile
 from rdr_service.services.flask import OFFLINE_PREFIX, flask_start, flask_stop
@@ -431,6 +432,14 @@ def validate_responses():
             slack_webhook=slack_webhooks[config.RDR_VALIDATION_WEBHOOK]
         )
         controller.run_validation()
+
+    return '{ "success": "true" }'
+
+
+@app_util.auth_required_cron
+def detect_duplicate_accounts():
+    start_time = CLOCK.now() - timedelta(days=1, hours=3)
+    DuplicateDetection.find_duplicates(since=start_time)
 
     return '{ "success": "true" }'
 
@@ -948,6 +957,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "ResponseValidation",
         endpoint="responseValidation",
         view_func=validate_responses,
+        methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "DetectDuplicateAccounts",
+        endpoint="duplicateAccountCheck",
+        view_func=detect_duplicate_accounts,
         methods=["GET"]
     )
 
