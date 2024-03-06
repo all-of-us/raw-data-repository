@@ -3,13 +3,13 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
 
-from rdr_service.model.enrollment_dependencies import EnrollmentDependencies as DbEnrollmentDependencies
 from rdr_service.participant_enums import (
     EnrollmentStatus,
     EnrollmentStatusV30,
     EnrollmentStatusV32,
-    ParticipantCohortEnum as ParticipantCohort
+    ParticipantCohort
 )
+from rdr_service.services.system_utils import DateRange
 
 
 @dataclass
@@ -48,87 +48,39 @@ class EnrollmentDependencies:
     Convenience class for communicating data needed for finding enrollment progress
     """
 
-    def __init__(self, db_obj: DbEnrollmentDependencies):
-        self._db_obj = db_obj
+    consent_cohort: ParticipantCohort
+    primary_consent_authored_time: datetime
+    first_full_ehr_consent_authored_time: datetime
 
-    @property
-    def consent_cohort(self) -> ParticipantCohort:
-        return self._db_obj.consent_cohort
+    dna_update_time: datetime  # Cohorts 1 and 2
 
-    @property
-    def primary_consent_authored_time(self) -> datetime:
-        return self._db_obj.primary_consent_authored_time
+    gror_authored_time: datetime
+    basics_authored_time: datetime
+    overall_health_authored_time: datetime
+    lifestyle_authored_time: datetime
+    exposures_authored_time: datetime
 
-    @property
-    def first_full_ehr_consent_authored_time(self) -> datetime:
-        return self._db_obj.full_ehr_consent_authored_time
+    ehr_consent_date_range_list: List[DateRange]
+    """DateRanges of when the participant expressed interest in sharing EHR data. Must be in chronological order"""
 
-    @property
-    def dna_update_time(self) -> datetime:
-        # Cohorts 1 and 2
-        return self._db_obj.dna_consent_update_time
+    earliest_biobank_received_dna_time: datetime
+    earliest_ehr_file_received_time: datetime
+    earliest_mediated_ehr_receipt_time: datetime
+    earliest_physical_measurements_time: datetime
 
-    @property
-    def gror_authored_time(self) -> datetime:
-        return self._db_obj.gror_consent_authored_time
+    earliest_weight_measurement_time: datetime  # Earliest physical measurement that meets core data reqs
+    earliest_height_measurement_time: datetime  # Earliest physical measurement that meets core data reqs
+    wgs_sequencing_time: datetime
 
-    @property
-    def basics_authored_time(self) -> datetime:
-        return self._db_obj.basics_survey_authored_time
-
-    @property
-    def overall_health_authored_time(self) -> datetime:
-        return self._db_obj.overall_health_survey_authored_time
-
-    @property
-    def lifestyle_authored_time(self) -> datetime:
-        return self._db_obj.lifestyle_survey_authored_time
-
-    @property
-    def exposures_authored_time(self) -> datetime:
-        return self._db_obj.exposures_survey_authored_time
-
-    @property
-    def earliest_biobank_received_dna_time(self) -> datetime:
-        return self._db_obj.biobank_received_dna_time
-
-    @property
-    def earliest_ehr_file_received_time(self) -> datetime:
-        return self._db_obj.first_ehr_file_received_time
-
-    @property
-    def earliest_mediated_ehr_receipt_time(self) -> datetime:
-        return self._db_obj.first_mediated_ehr_received_time
-
-    @property
-    def earliest_physical_measurements_time(self) -> datetime:
-        return self._db_obj.physical_measurements_time
-
-    @property
-    def earliest_weight_measurement_time(self) -> datetime:
-        # Earliest physical measurement that meets core data reqs
-        return self._db_obj.weight_physical_measurements_time
-
-    @property
-    def earliest_height_measurement_time(self) -> datetime:
-        # Earliest physical measurement that meets core data reqs
-        return self._db_obj.height_physical_measurements_time
-
-    @property
-    def wgs_sequencing_time(self) -> datetime:
-        return self._db_obj.wgs_sequencing_time
-
-    @property
-    def is_pediatric_participant(self) -> bool:
-        return self._db_obj.is_pediatric_participant
-
-    @property
-    def has_linked_guardian_accounts(self) -> bool:
-        return self._db_obj.has_linked_guardian_account
+    is_pediatric_participant: bool
+    has_linked_guardian_accounts: bool
 
     @property
     def first_ehr_consent_date(self):
-        return self._db_obj.intent_to_share_ehr_time
+        if len(self.ehr_consent_date_range_list) > 0:
+            return self.ehr_consent_date_range_list[0].start
+
+        return None
 
     @property
     def has_completed_dna_update(self):
@@ -152,7 +104,7 @@ class EnrollmentDependencies:
 
     @property
     def ever_expressed_interest_in_sharing_ehr(self):
-        return self.first_ehr_consent_date is not None
+        return len(self.ehr_consent_date_range_list) > 0
 
     @property
     def biobank_received_dna_sample(self):
@@ -171,27 +123,7 @@ class EnrollmentDependencies:
         return self.earliest_physical_measurements_time is not None
 
     def to_json_dict(self):
-        return {
-            "consent_cohort": self._db_obj.consent_cohort.name,
-            "dna_update_time": self._db_obj.dna_consent_update_time,
-            "gror_authored_time": self._db_obj.gror_consent_authored_time,
-            "wgs_sequencing_time": self._db_obj.wgs_sequencing_time,
-            "basics_authored_time": self._db_obj.basics_survey_authored_time,
-            "exposures_authored_time": self._db_obj.exposures_survey_authored_time,
-            "lifestyle_authored_time": self._db_obj.lifestyle_survey_authored_time,
-            "is_pediatric_participant": self._db_obj.is_pediatric_participant,
-            "first_ehr_consent_date": self._db_obj.intent_to_share_ehr_time,
-            "has_linked_guardian_accounts": self._db_obj.has_linked_guardian_account,
-            "overall_health_authored_time": self._db_obj.overall_health_survey_authored_time,
-            "primary_consent_authored_time": self._db_obj.primary_consent_authored_time,
-            "earliest_ehr_file_received_time": self._db_obj.first_ehr_file_received_time,
-            "earliest_height_measurement_time": self._db_obj.height_physical_measurements_time,
-            "earliest_weight_measurement_time": self._db_obj.weight_physical_measurements_time,
-            "earliest_biobank_received_dna_time": self._db_obj.biobank_received_dna_time,
-            "earliest_mediated_ehr_receipt_time": self._db_obj.first_mediated_ehr_received_time,
-            "earliest_physical_measurements_time": self._db_obj.physical_measurements_time,
-            "first_full_ehr_consent_authored_time": self._db_obj.full_ehr_consent_authored_time
-        }
+        return {field_name: str(value) for field_name, value in self.__dict__.items()}
 
 
 class EnrollmentCalculation:
