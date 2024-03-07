@@ -64,7 +64,7 @@ def main(client):
     else:
         pairing_list = [pairing_key]
 
-    with (open(client.args.file) as csvfile):
+    with open(client.args.file) as csvfile:
         reader = csv.reader(csvfile)
         for line in reader:
             try:
@@ -175,10 +175,17 @@ def main(client):
                 logging.info("Dry run, would update participant[%r] to %r.", pairing_key, new_pairing)
             elif client.args.dry_run and biospecimen_sync:
                 for i in range(len(pairing_list)):
-                    logging.info("Dry run, would update biobank_order[%r] to %r", pairing_list[i], new_pairing)
+                    logging.info(
+                        "Dry run, would update biobank_order[%r] to %r",
+                        pairing_list[i],
+                        new_pairing)
             elif client.args.dry_run and pm_sync:
                 for i in range(len(pairing_list)):
-                    logging.info("Dry run, would update physical_measurements[%r] to %r", pairing_list[i], new_pairing)
+                    logging.info(
+                        "Dry run, would update physical_measurements[%r] to %r",
+                        pairing_list[i],
+                        new_pairing
+                    )
             else:
                 if biospecimen_sync:
                     for resource in participant['data']:
