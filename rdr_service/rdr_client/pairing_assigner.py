@@ -68,9 +68,7 @@ def main(client):
         reader = csv.reader(csvfile)
         for line in reader:
             try:
-                args_list = [v.strip() for v in line]
-                participant_id = args_list[0]
-                new_pairing = args_list[1]
+                participant_id, new_pairing = [v.strip() for v in line]
             except ValueError as e:
                 logging.error("Skipping invalid line %d (parsed as %r): %s.", reader.line_num, line, e)
                 num_errors += 1
@@ -137,7 +135,7 @@ def main(client):
 
             if client.args.no_awardee_change:
                 if participant.get("awardee") and participant["awardee"] != "UNSET":
-                    if not new_pairing[0].startswith(participant["awardee"]):
+                    if not new_pairing.startswith(participant["awardee"]):
                         logging.info(
                             "Skipping participant %s where pairing %s does not begin with old awardee %s"
                             % (participant_id, new_pairing, participant["awardee"])
@@ -174,13 +172,13 @@ def main(client):
                     participant[pairing_key] = new_pairing
 
             if client.args.dry_run and client.args.pairing in pairing_list:
-                logging.info("Dry run, would update participant[%r] to %r.", pairing_key, new_pairing[0])
+                logging.info("Dry run, would update participant[%r] to %r.", pairing_key, new_pairing)
             elif client.args.dry_run and biospecimen_sync:
                 for i in range(len(pairing_list)):
-                    logging.info("Dry run, would update biobank_order[%r] to %r", pairing_list[i], new_pairing[i])
+                    logging.info("Dry run, would update biobank_order[%r] to %r", pairing_list[i], new_pairing)
             elif client.args.dry_run and pm_sync:
                 for i in range(len(pairing_list)):
-                    logging.info("Dry run, would update physical_measurements[%r] to %r", pairing_list[i], new_pairing[i])
+                    logging.info("Dry run, would update physical_measurements[%r] to %r", pairing_list[i], new_pairing)
             else:
                 if biospecimen_sync:
                     for resource in participant['data']:
