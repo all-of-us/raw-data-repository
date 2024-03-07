@@ -112,7 +112,7 @@ def main(client):
 
             old_pairing = ""
             if pm_sync:
-                for entry in participant['entry']:
+                for entry in participant['entry'][0]['resource']['entry']:
                     if entry['resource']['resourceType'] == 'Composition':
                         for extension in entry['resource']['extension']:
                             if extension.get('url', "") == _CREATED_LOC_EXTENSION:
@@ -158,16 +158,17 @@ def main(client):
                         for i in pairing_list:
                             order[i]['site']['value'] = new_pairing
                 elif pm_sync:
-                    for entry in participant['entry']:
-                        entry['status'] = 're-pairing'
-                        entry['resource']['status'] = 're-pairing'
-                        if entry['resource']['resourceType'] == 'Composition':
-                            for extension in entry['resource']['extension']:
-                                if extension.get('url', "") == (_CREATED_LOC_EXTENSION or _FINALIZED_LOC_EXTENSION):
-                                    if 'valueString' in extension:
-                                        extension['valueString'] = 'Location/%s' % new_pairing
-                                    elif 'valueReference' in extension:
-                                        extension['valueReference'] = 'Location/%s' % new_pairing
+                    for result in participant['entry']:
+                        result['resource']['status'] = 're-pairing'
+                        for entry in result['resource']['entry']:
+                            if entry['resource']['resourceType'] == 'Composition':
+                                for extension in entry['resource']['extension']:
+                                    if (extension.get('url', "") == _CREATED_LOC_EXTENSION or
+                                            extension.get('url', "") == _FINALIZED_LOC_EXTENSION):
+                                        if 'valueString' in extension:
+                                            extension['valueString'] = 'Location/%s' % new_pairing
+                                        elif 'valueReference' in extension:
+                                            extension['valueReference'] = 'Location/%s' % new_pairing
                 else:
                     for i in pairing_list:
                         del participant[i]
@@ -189,10 +190,9 @@ def main(client):
                         client.request_json(id_url, "PATCH", resource, headers={"If-Match": client.last_etag})
                 elif pm_sync:
                     for entry in participant['entry']:
-                        print(entry['status'])
                         id_url = entry['fullUrl'].split('rdr/v1/')[1]
                         client.request_json(id_url)
-                        client.request_json(id_url, "PATCH", entry, headers={"If-Match": client.last_etag})
+                        client.request_json(id_url, "PATCH", entry['resource'], headers={"If-Match": client.last_etag})
                 else:
                     client.request_json(
                         request_url, "PUT", participant, headers={"If-Match": client.last_etag}

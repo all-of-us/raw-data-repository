@@ -461,3 +461,20 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
         ).one()
         self.assertTrue(db_obj.satisfiesHeightRequirements)
         self.assertTrue(db_obj.satisfiesWeightRequirements)
+
+    def test_repairing_a_record(self):
+        self._make_summary()
+        measurement = self._make_physical_measurements()
+        measurement_json = self.dao.to_client_json(measurement)
+        measurement.createdSiteId = 2
+        measurement.finalizedSiteId = 1
+        measurement_json['status'] = 're-pairing'
+        self.dao.insert(measurement)
+        with self.dao.session() as session:
+            updated_measurement = self.dao.update_with_patch(
+                measurement.physicalMeasurementsId,
+                session,
+                measurement_json
+            )
+        self.assertNotEqual(measurement.createdSiteId, updated_measurement.createdSiteId)
+        self.assertNotEqual(measurement.finalizedSiteId, updated_measurement.finalizedSiteId)

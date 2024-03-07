@@ -395,3 +395,20 @@ class BiobankOrderDaoTest(BaseTestCase):
         results = self.dao.get_biobank_orders_for_participant(self.participant.participantId)
         self.assertEqual(1, len(results))
         self.assertEqual(order_2.biobankOrderId, results[0].biobankOrderId)
+
+    def test_repairing_an_order(self):
+        ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+        order = self._make_biobank_order()
+        order_json = self.dao.to_client_json(order)
+        order.sourceSiteId = 2
+        order.collectedSiteId = 2
+        order.processedSiteId = 2
+        order.finalizedSiteId = 1
+        order_json['status'] = 're-pairing'
+        self.dao.insert(order)
+        updated_order = self.dao.update_with_patch(order.biobankOrderId, order_json, order.version)
+        self.assertNotEqual(updated_order.sourceSiteId, order.sourceSiteId)
+        self.assertNotEqual(updated_order.collectedSiteId, order.collectedSiteId)
+        self.assertNotEqual(updated_order.processedSiteId, order.processedSiteId)
+        self.assertNotEqual(updated_order.finalizedSiteId, order.finalizedSiteId)
+

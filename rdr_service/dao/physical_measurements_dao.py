@@ -463,15 +463,16 @@ class PhysicalMeasurementsDao(UpdatableDao):
             record = self._restore_record(record, resource)
 
         if resource["status"].lower() == "re-pairing":
-            for entry in resource['resource']['entry']:
-                for extension in entry['resource'].get("extension", []):
-                    value_reference = extension.get("valueString", extension.get("valueReference"))
-                    if value_reference:
-                        url = extension.get("url")
-                        if url == _CREATED_LOC_EXTENSION:
-                            record.createdSiteId = PhysicalMeasurementsDao.get_location_site_id(value_reference)
-                        elif url == _FINALIZED_LOC_EXTENSION:
-                            record.finalizedSiteId = PhysicalMeasurementsDao.get_location_site_id(value_reference)
+            for entry in resource['entry']:
+                if entry['resource']['resourceType'] == "Composition":
+                    for extension in entry['resource'].get("extension", []):
+                        value_reference = extension.get("valueString", extension.get("valueReference"))
+                        if value_reference:
+                            url = extension.get("url")
+                            if url == _CREATED_LOC_EXTENSION:
+                                record.createdSiteId = PhysicalMeasurementsDao.get_location_site_id(value_reference)
+                            elif url == _FINALIZED_LOC_EXTENSION:
+                                record.finalizedSiteId = PhysicalMeasurementsDao.get_location_site_id(value_reference)
 
         logging.info(f"{resource['status']} physical measurement {record.physicalMeasurementsId}.")
 
