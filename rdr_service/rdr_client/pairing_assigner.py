@@ -41,10 +41,6 @@ def main(client):
         "processedInfo",
         "finalizedInfo"
     ]
-    pm_fields = [
-        "createdSiteId",
-        "finalizedSiteId"
-    ]
 
     pairing_key = client.args.pairing
 
