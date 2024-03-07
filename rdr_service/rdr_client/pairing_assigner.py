@@ -2,8 +2,8 @@
 
 Usage:
 ./rdr_client/run_client.sh --project all-of-us-rdr-prod --account $USER@pmi-ops.org \
-  pairing_assigner.py file.csv --pairing [site|organization|awardee|biospecimen|physical_measurements] \
-  [--dry_run] [--override_site] [--finalization]
+  pairing_assigner.py file.csv --pairing [site|organization|awardee] \
+  [--dry_run] [--override_site] [--biospecimen] [--physical_measurements]
 
 Where site = google_group, organization = external_id, awardee = name.
 
@@ -38,17 +38,13 @@ def main(client):
     biospecimen_fields = [
         "createdInfo",
         "collectedInfo",
-        "processedInfo"
+        "processedInfo",
+        "finalizedInfo"
     ]
     pm_fields = [
         "createdSiteId",
+        "finalizedSiteId"
     ]
-    pm_sync = False
-    biospecimen_sync = False
-
-    if client.args.finalization:
-        biospecimen_fields.append("finalizedInfo")
-        pm_fields.append("finalizedSiteId")
 
     pairing_key = client.args.pairing
 
@@ -93,13 +89,25 @@ def main(client):
                 num_errors += 1
                 continue
 
-            if biospecimen_sync:
+            if client.args.biospecimen:
                 request_url = "Participant/%s/BiobankOrder" % participant_id
-            elif pm_sync:
-                request_url = "Participant/%s/PhysicalMeasurements" % participant_id
-            else:
-                request_url = "Participant/%s" % participant_id
+                try:
+                    biobank_orders = client.request_json(request_url)
+                except HttpException as e:
+                    logging.error("Skipping %s: %s", participant_id, e)
+                    num_errors += 1
+                    continue
 
+            if client.args.physical_measurements:
+                request_url = "Participant/%s/PhysicalMeasurements" % participant_id
+                try:
+                    physical_measurements = client.request_json(request_url)
+                except HttpException as e:
+                    logging.error("Skipping %s: %s", participant_id, e)
+                    num_errors += 1
+                    continue
+
+            request_url = "Participant/%s" % participant_id
             try:
                 participant = client.request_json(request_url)
             except HttpException as e:
@@ -107,19 +115,7 @@ def main(client):
                 num_errors += 1
                 continue
 
-            old_pairing = ""
-            if pm_sync:
-                for entry in participant['entry'][0]['resource']['entry']:
-                    if entry['resource']['resourceType'] == 'Composition':
-                        for extension in entry['resource']['extension']:
-                            if extension.get('url', "") == _CREATED_LOC_EXTENSION:
-                                old_pairing = extension.get('valueString', extension['valueReference']).split('/')[1]
-                            break
-                        break
-            elif biospecimen_sync:
-                old_pairing = participant['data'][0][pairing_list[0]]['site']['value']
-            else:
-                old_pairing = _get_old_pairing(participant, pairing_key)
+            old_pairing = _get_old_pairing(participant, pairing_key)
 
             if new_pairing == old_pairing:
                 num_no_change += 1
@@ -141,7 +137,6 @@ def main(client):
                             % (participant_id, new_pairing, participant["awardee"])
                         )
                         continue
-
             logging.info("%s %s => %s", participant_id, old_pairing, new_pairing)
 
             if new_pairing == "UNSET":
@@ -149,13 +144,14 @@ def main(client):
                     participant[i] = "UNSET"
                 participant["providerLink"] = []
             else:
-                if biospecimen_sync:
-                    for order in participant['data']:
+                if client.args.biospecimen:
+                    for order in biobank_orders['data']:
                         order['status'] = "re-pairing"
                         for i in pairing_list:
                             order[i]['site']['value'] = new_pairing
-                elif pm_sync:
-                    for result in participant['entry']:
+
+                if client.args.physical_measurements:
+                    for result in physical_measurements['entry']:
                         result['resource']['status'] = 're-pairing'
                         for entry in result['resource']['entry']:
                             if entry['resource']['resourceType'] == 'Composition':
@@ -171,36 +167,39 @@ def main(client):
                         del participant[i]
                     participant[pairing_key] = new_pairing
 
-            if client.args.dry_run and client.args.pairing in pairing_list:
-                logging.info("Dry run, would update participant[%r] to %r.", pairing_key, new_pairing)
-            elif client.args.dry_run and biospecimen_sync:
+            if client.args.dry_run and client.args.biospecimen:
                 for i in range(len(pairing_list)):
                     logging.info(
                         "Dry run, would update biobank_order[%r] to %r",
                         pairing_list[i],
                         new_pairing)
-            elif client.args.dry_run and pm_sync:
+
+            if client.args.dry_run and client.args.physical_measurements:
                 for i in range(len(pairing_list)):
                     logging.info(
                         "Dry run, would update physical_measurements[%r] to %r",
                         pairing_list[i],
                         new_pairing
                     )
+
+            if client.args.dry_run and client.args.pairing in pairing_list:
+                logging.info("Dry run, would update participant[%r] to %r.", pairing_key, new_pairing)
             else:
-                if biospecimen_sync:
-                    for resource in participant['data']:
+                client.request_json(
+                    request_url, "PUT", participant, headers={"If-Match": client.last_etag}
+                )
+                if client.args.biospecimen:
+                    for resource in biobank_orders['data']:
                         id_url = request_url + '/%s' % resource['id']
                         client.request_json(id_url)
                         client.request_json(id_url, "PATCH", resource, headers={"If-Match": client.last_etag})
-                elif pm_sync:
-                    for entry in participant['entry']:
+
+                if client.args.physical_measurements:
+                    for entry in physical_measurements['entry']:
                         id_url = entry['fullUrl'].split('rdr/v1/')[1]
                         client.request_json(id_url)
                         client.request_json(id_url, "PATCH", entry['resource'], headers={"If-Match": client.last_etag})
-                else:
-                    client.request_json(
-                        request_url, "PUT", participant, headers={"If-Match": client.last_etag}
-                    )
+
             num_updates += 1
     logging.info(
         "%s %d participants, %d unchanged, %d errors.",
@@ -238,8 +237,13 @@ if __name__ == "__main__":
         action="store_true",
     )
     arg_parser.add_argument(
-        "--finalization",
-        help="Attempt to re-pair the finalization site of the given field(biospecimen or physical_measurements only",
+        "--biospecimen",
+        help="Attempt to re-pair the biobank_order site of the given participant",
+        action="store_true"
+    )
+    arg_parser.add_argument(
+        "--physical_measurements",
+        help="Attempt to re-pair the physical_measurements site of the given participant",
         action="store_true"
     )
     main(Client(parser=arg_parser))
