@@ -51,15 +51,6 @@ def main(client):
     if client.args.pairing not in p_pair_list and client.args.pairing not in ps_pair_list:
         sys.exit("Pairing must be one of site|organization|awardee|biospecimen|physical_measurements")
 
-    if client.args.pairing == "physical_measurements":
-        pm_sync = True
-        pairing_list = pm_fields
-    elif client.args.pairing == "biospecimen":
-        biospecimen_sync = True
-        pairing_list = biospecimen_fields
-    else:
-        pairing_list = [pairing_key]
-
     with open(client.args.file) as csvfile:
         reader = csv.reader(csvfile)
         for line in reader:
@@ -90,18 +81,18 @@ def main(client):
                 continue
 
             if client.args.biospecimen:
-                request_url = "Participant/%s/BiobankOrder" % participant_id
+                biobank_url = "Participant/%s/BiobankOrder" % participant_id
                 try:
-                    biobank_orders = client.request_json(request_url)
+                    biobank_orders = client.request_json(biobank_url)
                 except HttpException as e:
                     logging.error("Skipping %s: %s", participant_id, e)
                     num_errors += 1
                     continue
 
             if client.args.physical_measurements:
-                request_url = "Participant/%s/PhysicalMeasurements" % participant_id
+                pm_url = "Participant/%s/PhysicalMeasurements" % participant_id
                 try:
-                    physical_measurements = client.request_json(request_url)
+                    physical_measurements = client.request_json(pm_url)
                 except HttpException as e:
                     logging.error("Skipping %s: %s", participant_id, e)
                     num_errors += 1
@@ -140,14 +131,13 @@ def main(client):
             logging.info("%s %s => %s", participant_id, old_pairing, new_pairing)
 
             if new_pairing == "UNSET":
-                for i in pairing_list:
-                    participant[i] = "UNSET"
+                participant[pairing_key] = "UNSET"
                 participant["providerLink"] = []
             else:
                 if client.args.biospecimen:
                     for order in biobank_orders['data']:
                         order['status'] = "re-pairing"
-                        for i in pairing_list:
+                        for i in biospecimen_fields:
                             order[i]['site']['value'] = new_pairing
 
                 if client.args.physical_measurements:
@@ -162,35 +152,20 @@ def main(client):
                                             extension['valueString'] = 'Location/%s' % new_pairing
                                         elif 'valueReference' in extension:
                                             extension['valueReference'] = 'Location/%s' % new_pairing
-                else:
-                    for i in pairing_list:
-                        del participant[i]
-                    participant[pairing_key] = new_pairing
 
-            if client.args.dry_run and client.args.biospecimen:
-                for i in range(len(pairing_list)):
-                    logging.info(
-                        "Dry run, would update biobank_order[%r] to %r",
-                        pairing_list[i],
-                        new_pairing)
+                del participant[pairing_key]
+                participant[pairing_key] = new_pairing
 
-            if client.args.dry_run and client.args.physical_measurements:
-                for i in range(len(pairing_list)):
-                    logging.info(
-                        "Dry run, would update physical_measurements[%r] to %r",
-                        pairing_list[i],
-                        new_pairing
-                    )
-
-            if client.args.dry_run and client.args.pairing in pairing_list:
+            if client.args.dry_run:
                 logging.info("Dry run, would update participant[%r] to %r.", pairing_key, new_pairing)
             else:
                 client.request_json(
                     request_url, "PUT", participant, headers={"If-Match": client.last_etag}
                 )
+
                 if client.args.biospecimen:
                     for resource in biobank_orders['data']:
-                        id_url = request_url + '/%s' % resource['id']
+                        id_url = biobank_url + '/%s' % resource['id']
                         client.request_json(id_url)
                         client.request_json(id_url, "PATCH", resource, headers={"If-Match": client.last_etag})
 
