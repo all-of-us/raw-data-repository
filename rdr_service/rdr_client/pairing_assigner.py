@@ -87,14 +87,13 @@ def main(client):
                 continue
 
             if not participant_id.startswith("P"):
-                if not biospecimen_sync:
-                    logging.error(
-                        "Malformed participant ID from line %d: %r does not start with P.",
-                        reader.line_num,
-                        participant_id
-                    )
-                    num_errors += 1
-                    continue
+                logging.error(
+                    "Malformed participant ID from line %d: %r does not start with P.",
+                    reader.line_num,
+                    participant_id
+                )
+                num_errors += 1
+                continue
 
             if biospecimen_sync:
                 request_url = "Participant/%s/BiobankOrder" % participant_id
