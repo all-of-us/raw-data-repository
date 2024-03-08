@@ -37,6 +37,7 @@ class AccountLink(Base):
     In a child-guardian relationship, this would be the guardian's participant id.
     """
 
+    participant = relationship('Participant', foreign_keys=participant_id)
     related = relationship('Participant', foreign_keys=related_id)
 
     @classmethod

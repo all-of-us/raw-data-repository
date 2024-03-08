@@ -169,6 +169,12 @@ class ParticipantSummary(Base):
     :ref:`Enumerated values <age_range>`
     """
 
+    ageAtConsentMonths = None
+    """
+    Whole number representing the age of the participant, in months, the first time
+    they signed the Primary consent.
+    """
+
     genderIdentityId = Column("gender_identity_id", Integer, ForeignKey("code.code_id"))
     genderIdentity = Column("gender_identity", Enum(GenderIdentity))
     """
@@ -525,6 +531,9 @@ class ParticipantSummary(Base):
             persisted=True
         )
     )
+    """
+    Provides whether EHR files have been or currently are available for the participant
+    """
 
     # If both ehrUpdateTime and latestParticipantMediatedEhrReceiptTime are null, result is null
     # If one is null, result is the non-null timestamp
@@ -543,6 +552,10 @@ class ParticipantSummary(Base):
             persisted=True
         )
     )
+    """
+    UTC timestamp indicating the most recent timestamp
+    between the ehrUpdateTime and latestParticipantMediatedEhrReceiptTime
+    """
 
     clinicPhysicalMeasurementsStatus = Column(
         "clinic_physical_measurements_status", Enum(PhysicalMeasurementsStatus),
@@ -1784,10 +1797,45 @@ class ParticipantSummary(Base):
     regardless of when it was sent to RDR
     """
 
-    relatedParticipants: List[AccountLink] = relationship(
+    relatedParticipants: List[AccountLink] = None  # placeholder filled in by the DAO
+    """
+    Provides a list of participant accounts associated with this account.
+    For a pediatric participant's summary, this will be the list of guardians associated with the pediatric participant.
+    And for a guardian's summary, this will be the list of pediatric participants for which this participant is set
+    as a guardian.
+
+    The "relation" field defines what the linked account is relative to the current one. A value of "guardian" specifies
+    that the linked account is a guardian of the current account. A value of "pediatric" specifies that the current
+    account is a guardian of the linked account.
+
+    The following is an example of the data provided for each link linked participant:
+
+    .. code-block:: json
+
+        "relatedParticipants": [
+            {
+                "participantId": "P123456789",    // Participant ID of the linked account
+                "firstName": "Jane",              // First name of the associated participant
+                "lastName": "Smith"               // Last name of the associated participant
+                "relation": "pediatric"           // Relationship of the account ("guardian" for guardian accounts)
+            }
+        ]
+    """
+
+    guardianParticipants = relationship(
         'AccountLink',
         primaryjoin=and_(
             foreign(participantId) == remote(AccountLink.participant_id),
+            AccountLink.get_active_filter()
+        ),
+        uselist=True,
+        lazy='noload'
+    )
+
+    childParticipants = relationship(
+        'AccountLink',
+        primaryjoin=and_(
+            foreign(participantId) == remote(AccountLink.related_id),
             AccountLink.get_active_filter()
         ),
         uselist=True,

@@ -139,3 +139,8 @@ cron:
   schedule: 1 of december, march, june, september, 09:00
   target: offline
   timezone: America/New_York
+- description: Daily Duplicate Account Check
+  url: /offline/DetectDuplicateAccounts
+  schedule: every day 20:00
+  target: offline
+  timezone: America/New_York

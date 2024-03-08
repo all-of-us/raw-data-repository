@@ -69,14 +69,14 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
     def _list_has_valid_consent(cls, result_list: List[ParsingResult]):
         return any([result.sync_status == ConsentSyncStatus.READY_FOR_SYNC for result in result_list])
 
-    def _update_status(self, participant_id, has_valid_file):
+    def _update_status(self, participant_id, has_valid_file, status_check=QuestionnaireStatus.SUBMITTED_NOT_VALIDATED):
         participant_summary = ParticipantSummaryDao.get_for_update_with_linked_data(
             participant_id=participant_id,
             session=self._session
         )
         did_modify_status = False
 
-        if participant_summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED_NOT_VALIDATED:
+        if participant_summary.consentForElectronicHealthRecords == status_check:
             # If the summary is marked as awaiting validation, set the status with the validation results we have
             new_status = QuestionnaireStatus.SUBMITTED if has_valid_file else QuestionnaireStatus.SUBMITTED_INVALID
             participant_summary.consentForElectronicHealthRecords = new_status
@@ -171,6 +171,9 @@ class StoreResultStrategy(ValidationOutputStrategy):
         new_results_to_store = _ValidationOutputHelper.get_new_validation_results(
             existing_results=previous_results,
             results_to_filter=self._results
+        )
+        new_results_to_store = _ValidationOutputHelper.filter_one_valid_result_per_response(
+            new_results_to_store
         )
         self._consent_dao.batch_update_consent_files(new_results_to_store, self._session)
         self._session.commit()
@@ -455,7 +458,7 @@ class _ValidationOutputHelper:
         is_same_path = new_result.file_path == existing_result.file_path
         is_possible_match_valid = existing_result.sync_status in (
             ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE
-        )
+        ) and new_result.type != ConsentType.EHR
 
         # Determine if it's for the same consent response, regardless of the date actually on the file
         is_for_same_date = new_result.expected_sign_date == existing_result.expected_sign_date
@@ -469,6 +472,23 @@ class _ValidationOutputHelper:
             )
         else:
             return is_same_type and is_same_participant and is_for_same_date
+
+    @classmethod
+    def filter_one_valid_result_per_response(cls, file_collection: Collection[ParsingResult]):
+        response_result_map = defaultdict(list)
+        for file in file_collection:
+            response_result_map[file.consent_response.id].append(file)
+
+        result = []
+        for file_list in response_result_map.values():
+            if any(file.sync_status == ConsentSyncStatus.READY_FOR_SYNC for file in file_list):
+                for file in file_list:
+                    if file.sync_status == ConsentSyncStatus.READY_FOR_SYNC:
+                        result.append(file)
+                        break
+            else:
+                result.extend(file_list)
+        return result
 
 
 class ConsentValidationController:
@@ -684,11 +704,8 @@ class ConsentValidationController:
 
     @classmethod
     def _process_validation_results(cls, results: List[ParsingResult]):
-        ready_file = cls._find_file_ready_for_sync(results)
-        if ready_file:
-            return [ready_file]
-        else:
-            return results
+        ready_file_list = cls._find_file_ready_for_sync(results)
+        return ready_file_list if ready_file_list else results
 
     @classmethod
     def _has_consent(cls, consent_status, authored=None, min_authored=None, max_authored=None):
@@ -741,11 +758,7 @@ class ConsentValidationController:
 
     @classmethod
     def _find_file_ready_for_sync(cls, results: List[ParsingResult]):
-        for result in results:
-            if result.sync_status == ConsentSyncStatus.READY_FOR_SYNC:
-                return result
-
-        return None
+        return [file for file in results if file.sync_status == ConsentSyncStatus.READY_FOR_SYNC]
 
     @classmethod
     def _find_matching_validation_result(cls, new_result: ParsingResult, previous_results: List[ParsingResult]):
@@ -817,7 +830,7 @@ class ConsentValidator:
             expected_signing_date = self.participant_summary.consentForStudyEnrollmentFirstYesAuthored
 
         return self._generate_validation_results(
-            consent_files=self.factory.get_primary_consents(),
+            consent_files=self.factory.get_va_primary_reconsents(),
             consent_type=ConsentType.PRIMARY_RECONSENT,
             expected_sign_datetime=expected_signing_date
         )
@@ -837,7 +850,7 @@ class ConsentValidator:
             expected_signing_date = self.participant_summary.consentForElectronicHealthRecordsAuthored
 
         return self._generate_validation_results(
-            consent_files=self.factory.get_ehr_consents(),
+            consent_files=self.factory.get_va_ehr_reconsents(),
             consent_type=ConsentType.EHR_RECONSENT,
             expected_sign_datetime=expected_signing_date
         )

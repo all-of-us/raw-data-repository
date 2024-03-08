@@ -176,7 +176,8 @@ class QuestionnaireResponseRepository:
             session=session,
             survey_codes=[
                 code_constants.CONSENT_FOR_DVEHR_MODULE,
-                code_constants.CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
+                code_constants.CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
+                code_constants.PEDIATRIC_EHR_CONSENT
             ],
             participant_ids=[participant_id],
             classification_types=[

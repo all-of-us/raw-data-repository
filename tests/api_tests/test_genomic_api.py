@@ -9,6 +9,7 @@ from unittest import mock
 
 from rdr_service.api_util import PTC, HEALTHPRO, GEM, RDR
 from rdr_service.dao.database_utils import format_datetime
+from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus
 from rdr_service.services.system_utils import JSONObject
 from rdr_service import clock, config
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -176,7 +177,7 @@ class GPGenomicPIIApiTest(GenomicApiTestBase):
                          )
         self.assertEqual(resp.status_code, 404)
 
-        # summary / set member / failed validation in query
+        # summary / set member / but has withdrawn
         self.data_generator.create_database_genomic_set_member(
             genomicSetId=gen_set.id,
             participantId=participant.participantId,
@@ -185,6 +186,26 @@ class GPGenomicPIIApiTest(GenomicApiTestBase):
             genomeType="aou_array",
             genomicWorkflowState=GenomicWorkflowState.AW0
         )
+
+        summaries = self.ps_dao.get_all()
+        current_summary = list(filter(lambda x: x.participantId == participant.participantId, summaries))[0]
+        current_summary.withdrawalStatus = 2
+        self.ps_dao.update(current_summary)
+
+        resp = self.send_get(
+            f"GenomicPII/GP/P{participant.participantId}",
+            expected_status=http.client.NOT_FOUND
+        )
+
+        self.assertEqual(resp.json['message'], f'Participant with ID P{participant.participantId} '
+                                               f'has withdrawn')
+        self.assertEqual(resp.status_code, 404)
+
+        # summary / set member / not withdrawn / failed validation in query
+        summaries = self.ps_dao.get_all()
+        current_summary = list(filter(lambda x: x.participantId == participant.participantId, summaries))[0]
+        current_summary.withdrawalStatus = 1
+        self.ps_dao.update(current_summary)
 
         resp = self.send_get(
             f"GenomicPII/GP/P{participant.participantId}",
@@ -271,6 +292,11 @@ class GPGenomicPIIApiTest(GenomicApiTestBase):
             drcFpConcordance='Pass',
             drcSexConcordance='Pass',
             processingStatus='Pass'
+        )
+        self.data_generator.create_database_consent_file(
+            participant_id=wgs_member.participantId,
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
         )
 
         response = self.send_get(f"GenomicPII/GP/P{p.participantId}")
@@ -1538,6 +1564,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
                 processingStatus='Pass'
             )
 
+            self.data_generator.create_database_consent_file(
+                participant_id=member.participantId,
+                type=ConsentType.GROR,
+                sync_status=ConsentSyncStatus.SYNC_COMPLETE
+            )
+
         resp = self.send_get(f'GenomicOutreachV2?participant_id={first_participant.participantId}')
 
         # 2 ready objects based on module type
@@ -1622,6 +1654,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
             drcFpConcordance='Pass',
             drcSexConcordance='Pass',
             processingStatus='Pass'
+        )
+
+        self.data_generator.create_database_consent_file(
+            participant_id=member.participantId,
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
         )
 
         # correct data
@@ -2132,6 +2170,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
 
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
+        )
+
         resp = self.send_post(
             f'GenomicOutreachV2?participant_id=P{participant.participantId}',
             request_data={
@@ -2155,6 +2199,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
 
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
 
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
+        )
+
         resp = self.send_post(
             f'GenomicOutreachV2?participant_id=P{participant.participantId}',
             request_data={
@@ -2176,6 +2226,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.build_ready_loop_template_data()
 
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
+        )
 
         resp = self.send_post(
             f'GenomicOutreachV2?participant_id=P{participant.participantId}',
@@ -2205,6 +2261,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.build_ready_loop_template_data()
 
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
+        )
 
         resp = self.send_post(
             f'GenomicOutreachV2?participant_id=P{participant.participantId}',
@@ -2239,6 +2301,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         self.build_ready_loop_template_data()
 
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
+        )
 
         # POST to create set member
         resp = self.send_post(
@@ -3615,76 +3683,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertIsNotNone(appointment_metrics)
         self.assertEqual(appointment_metrics['success'], True)
         self.assertEqual(ingest_mock.call_count, 1)
-
-    @mock.patch('rdr_service.api.genomic_cloud_tasks_api.bq_genomic_set_member_batch_update')
-    @mock.patch('rdr_service.api.genomic_cloud_tasks_api.genomic_set_member_batch_update')
-    def test_genomic_rebuild_task_api(self, bq_batch_mock, batch_mock):
-
-        from rdr_service.resource import main as resource_main
-
-        gen_set = self.data_generator.create_database_genomic_set(
-            genomicSetName=".",
-            genomicSetCriteria=".",
-            genomicSetVersion=1
-        )
-
-        self.data_generator.create_database_genomic_set_member(
-            genomicSetId=gen_set.id,
-            biobankId="100153482",
-            sampleId="21042005280",
-            genomeType="aou_array",
-            genomicWorkflowState=GenomicWorkflowState.AW0,
-            participantOrigin='vibrent'
-        )
-
-        data = {}
-        call_ids = [1]
-
-        rebuild_task = self.send_post(
-            local_path='RebuildGenomicTableRecordsApi',
-            request_data=data,
-            prefix="/resource/task/",
-            test_client=resource_main.app.test_client(),
-        )
-
-        self.assertIsNotNone(rebuild_task)
-        self.assertEqual(rebuild_task['success'], False)
-        self.assertEqual(bq_batch_mock.call_count, 0)
-        self.assertEqual(batch_mock.call_count, 0)
-
-        data = {
-            'table': 'bad_table',
-            'ids': call_ids
-        }
-
-        rebuild_task = self.send_post(
-            local_path='RebuildGenomicTableRecordsApi',
-            request_data=data,
-            prefix="/resource/task/",
-            test_client=resource_main.app.test_client(),
-        )
-
-        self.assertIsNotNone(rebuild_task)
-        self.assertEqual(rebuild_task['success'], False)
-        self.assertEqual(bq_batch_mock.call_count, 0)
-        self.assertEqual(batch_mock.call_count, 0)
-
-        data = {
-            'table': 'genomic_set_member',
-            'ids': call_ids
-        }
-
-        rebuild_task = self.send_post(
-            local_path='RebuildGenomicTableRecordsApi',
-            request_data=data,
-            prefix="/resource/task/",
-            test_client=resource_main.app.test_client(),
-        )
-
-        self.assertIsNotNone(rebuild_task)
-        self.assertEqual(rebuild_task['success'], True)
-        self.assertEqual(bq_batch_mock.call_count, 1)
-        self.assertEqual(batch_mock.call_count, 1)
 
     @mock.patch('rdr_service.dao.genomics_dao.GenomicGCValidationMetricsDao.upsert_gc_validation_metrics_from_dict')
     def test_call_gc_metrics_api(self, ingest_mock):

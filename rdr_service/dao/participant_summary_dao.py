@@ -2,6 +2,7 @@ import datetime
 import logging
 
 from dateutil.parser import parse
+from dateutil.relativedelta import relativedelta
 import faker
 import re
 import threading
@@ -9,7 +10,7 @@ import threading
 import sqlalchemy
 import sqlalchemy.orm
 
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func, text
 from sqlalchemy.orm import Query, joinedload
 from sqlalchemy.sql import expression
 from typing import Collection, List
@@ -424,7 +425,7 @@ class ParticipantSummaryDao(UpdatableDao):
             session=session,
             obj_id=participant_id,
             options=[
-                joinedload(ParticipantSummary.relatedParticipants).load_only(),
+                joinedload(ParticipantSummary.guardianParticipants).load_only(),
                 # NOTE: only loading existence of account linkage for now, since that's all
                 # that's needed for enrollment status calculations
 
@@ -435,14 +436,21 @@ class ParticipantSummaryDao(UpdatableDao):
     @classmethod
     def _default_api_query_options(cls):
         return [
-            joinedload(ParticipantSummary.relatedParticipants).load_only()
+            joinedload(ParticipantSummary.guardianParticipants).load_only()
             .joinedload(AccountLink.related).load_only()
             .joinedload(Participant.participantSummary).load_only(
                 ParticipantSummary.participantId,
                 ParticipantSummary.firstName,
                 ParticipantSummary.lastName
             ),
-            joinedload(ParticipantSummary.pediatricData)
+            joinedload(ParticipantSummary.pediatricData),
+            joinedload(ParticipantSummary.childParticipants).load_only()
+            .joinedload(AccountLink.participant).load_only()
+            .joinedload(Participant.participantSummary).load_only(
+                ParticipantSummary.participantId,
+                ParticipantSummary.firstName,
+                ParticipantSummary.lastName
+            ),
         ]
 
     def get_by_hpo(self, hpo, session, yield_batch_size=1000):
@@ -556,6 +564,8 @@ class ParticipantSummaryDao(UpdatableDao):
             return self._add_env_exposures_order(query, order_by, PediatricDataLog.created)
         elif order_by.field_name == 'questionnaireOnEnvironmentalExposuresAuthored':
             return self._add_env_exposures_order(query, order_by, PediatricDataLog.value)
+        elif order_by.field_name == 'ageAtConsentMonths':
+            return self._add_age_at_consent_months_order(order_by, query)
         return super(ParticipantSummaryDao, self)._add_order_by(query, order_by, field_names, fields)
 
     @staticmethod
@@ -578,6 +588,18 @@ class ParticipantSummaryDao(UpdatableDao):
                 PediatricDataLog.data_type == PediatricDataType.ENVIRONMENTAL_EXPOSURES
             )
         ).order_by(field)
+
+    @classmethod
+    def _add_age_at_consent_months_order(cls, order_by, query):
+        age_at_consent_expr = func.TIMESTAMPDIFF(
+            text('MONTH'),
+            ParticipantSummary.dateOfBirth,
+            ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored
+        )
+        if order_by.ascending:
+            return query.order_by(age_at_consent_expr)
+        else:
+            return query.order_by(age_at_consent_expr.desc())
 
     def _make_query(self, session, query_definition):
         query, order_by_field_names = super(ParticipantSummaryDao, self)._make_query(session, query_definition)
@@ -630,6 +652,17 @@ class ParticipantSummaryDao(UpdatableDao):
             return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
         if field_name == 'updatedSince':
             return self._make_updated_since_filter(value)
+        if field_name == 'ageAtConsentMonths':
+            return super().make_expression_filter(
+                func.TIMESTAMPDIFF(
+                    text('MONTH'),
+                    ParticipantSummary.dateOfBirth,
+                    ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored
+                ),
+                value,
+                PropertyType.DATETIME,
+                'dateOfBirth'
+            )
 
         return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
 
@@ -808,6 +841,7 @@ class ParticipantSummaryDao(UpdatableDao):
         enrl_dependencies = EnrollmentDependencies(
             consent_cohort=summary.consentCohort,
             primary_consent_authored_time=summary.consentForStudyEnrollmentFirstYesAuthored,
+            first_full_ehr_consent_authored_time=summary.consentForElectronicHealthRecordsFirstYesAuthored,
             gror_authored_time=summary.consentForGenomicsRORAuthored,
             basics_authored_time=summary.questionnaireOnTheBasicsAuthored,
             overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
@@ -829,7 +863,7 @@ class ParticipantSummaryDao(UpdatableDao):
             wgs_sequencing_time=wgs_sequencing_time,
             exposures_authored_time=first_exposures_response_time,
             is_pediatric_participant=summary.isPediatric,
-            has_linked_guardian_accounts=(summary.relatedParticipants and len(summary.relatedParticipants) > 0)
+            has_linked_guardian_accounts=(summary.guardianParticipants and len(summary.guardianParticipants) > 0)
         )
         enrollment_info = EnrollmentCalculation.get_enrollment_info(enrl_dependencies)
 
@@ -1259,11 +1293,12 @@ class ParticipantSummaryDao(UpdatableDao):
 
     def get_record_from_attr(self, *, attr, value):
         with self.session() as session:
-            record = session.query(ParticipantSummary)\
-                .filter(ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                    getattr(ParticipantSummary, attr) == value,
-                    getattr(ParticipantSummary, attr).isnot(None))
-            return record.all()
+            record = session.query(ParticipantSummary)
+            record = record.filter(
+                getattr(ParticipantSummary, attr) == value,
+                getattr(ParticipantSummary, attr).isnot(None)
+            )
+            return record.first()
 
     def get_hpro_consent_paths(self, result):
         type_to_field_name_map = {  # Maps types to the prefix of the field name they populate in the resulting JSON
@@ -1430,21 +1465,29 @@ class ParticipantSummaryDao(UpdatableDao):
             result["physicalMeasurementsFinalizedSite"] = "UNSET"
             result["physicalMeasurementsCollectType"] = str(PhysicalMeasurementsCollectType.SELF_REPORTED)
 
-        # Check to see if we should hide 3.0 and 3.2 fields
-        if not config.getSettingJson(config.ENABLE_ENROLLMENT_STATUS_3, default=False):
-            del result['enrollmentStatusV3_2']
-            for field_name in [
-                'enrollmentStatusParticipantV3_2Time',
-                'enrollmentStatusParticipantPlusEhrV3_2Time',
-                'enrollmentStatusEnrolledParticipantV3_2Time',
-                'enrollmentStatusPmbEligibleV3_2Time',
-                'enrollmentStatusCoreMinusPmV3_2Time',
-                'enrollmentStatusCoreV3_2Time',
-                'hasCoreData',
-                'hasCoreDataTime'
-            ]:
-                if field_name in result:
-                    del result[field_name]
+        # Check to see if we should hide 3.2 fields
+        enabled_status_fields = config.getSettingJson(config.ENABLED_STATUS_FIELD_LIST, default=[])
+        for status_field_name in [
+            'enrollmentStatusV3_2',
+            'enrollmentStatusParticipantV3_2Time',
+            'enrollmentStatusParticipantPlusEhrV3_2Time',
+            'enrollmentStatusEnrolledParticipantV3_2Time',
+            'enrollmentStatusPmbEligibleV3_2Time',
+            'enrollmentStatusCoreMinusPmV3_2Time',
+            'enrollmentStatusCoreV3_2Time',
+            'hasCoreData',
+            'hasCoreDataTime'
+        ]:
+            if (
+                status_field_name in result
+                and status_field_name not in enabled_status_fields
+            ):
+                del result[status_field_name]
+                if (
+                    status_field_name == 'enrollmentStatusPmbEligibleV3_2Time'
+                    and result.get('enrollmentStatusV3_2') == str(EnrollmentStatusV32.PMB_ELIGIBLE)
+                ):
+                    result['enrollmentStatusV3_2'] = str(EnrollmentStatusV32.ENROLLED_PARTICIPANT)
 
         # Check to see if we should hide digital health sharing fields
         if not config.getSettingJson(config.ENABLE_HEALTH_SHARING_STATUS_3, default=False):
@@ -1464,30 +1507,40 @@ class ParticipantSummaryDao(UpdatableDao):
                     del result[field_name]
 
         # Find any linked accounts to display
-        result['relatedParticipants'] = UNSET
-        if obj.isPediatric:
-            if not obj.relatedParticipants:
-                logging.error('Pediatric participant does not have a guardian account linked')
-                return None
+        guardian_summary_list = [link.related.participantSummary for link in obj.guardianParticipants]
+        charge_summary_list = [link.participant.participantSummary for link in obj.childParticipants]
+        if any(summary is None for summary in guardian_summary_list + charge_summary_list):
+            # If any of the guardians of a pediatric participant are not yet consented,
+            # don't return the pediatric participant's data
+            logging.warning('Found link to unconsented participant')
 
-            related_summary_list = [link.related.participantSummary for link in obj.relatedParticipants]
-            if any(summary is None for summary in related_summary_list):
-                # If any of the guardians of a pediatric participant are not yet consented,
-                # don't return the pediatric participant's data
-                logging.error('Pediatric participant has unconsented guardian')
-                return None
-
-            result['relatedParticipants'] = [
-                {
-                    'participantId': to_client_participant_id(related_summary.participantId),
-                    'firstName': related_summary.firstName,
-                    'lastName': related_summary.lastName
-                }
-                for related_summary in related_summary_list
-            ]
+        related_participant_result = [
+            {
+                'participantId': to_client_participant_id(guardian_summary.participantId),
+                'firstName': guardian_summary.firstName,
+                'lastName': guardian_summary.lastName,
+                'relation': 'guardian'
+            }
+            for guardian_summary in guardian_summary_list
+            if guardian_summary is not None
+        ]
+        related_participant_result.extend([
+            {
+                'participantId': to_client_participant_id(child_summary.participantId),
+                'firstName': child_summary.firstName,
+                'lastName': child_summary.lastName,
+                'relation': 'pediatric'
+            }
+            for child_summary in charge_summary_list
+            if child_summary is not None
+        ])
+        result['relatedParticipants'] = related_participant_result or 'UNSET'
 
         # set the pediatric data flag
         result['isPediatric'] = True if obj.isPediatric else UNSET
+
+        delta = relativedelta(obj.consentForStudyEnrollmentFirstYesAuthored, obj.dateOfBirth)
+        result['ageAtConsentMonths'] = 12 * delta.years + delta.months
 
         # EnvironmentalExposures module fields
         result['questionnaireOnEnvironmentalExposures'] = UNSET

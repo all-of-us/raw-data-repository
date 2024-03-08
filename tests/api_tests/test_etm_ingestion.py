@@ -5,6 +5,7 @@ from typing import List, Optional, Union
 
 from rdr_service.domain_model.etm import EtmResponseAnswer
 from rdr_service.model import etm
+from rdr_service.model.requests_log import RequestsLog
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -174,6 +175,27 @@ class EtmIngestionTest(BaseTestCase):
         del response['id']
         self.assertEqual(questionnaire_response_json, response)
 
+        # checking for the log in the Requests Log and verifying the fpk info
+        log_entry = (
+            self.session.query(RequestsLog).order_by(RequestsLog.id.desc()).first()
+        )
+        self.assertIsNotNone(log_entry, "No log entry found in the requests log table")
+        self.assertEqual(
+            log_entry.fpk_id,
+            1,
+            "the fpk_id in the requests log entry does not match the expected value",
+        )
+        self.assertEqual(
+            log_entry.fpk_column,
+            "etm_questionnaire_response_id",
+            "the fpk_column in the requests log entry does not match the expected value",
+        )
+        self.assertEqual(
+            log_entry.fpk_table,
+            "etm_questionnaire_response",
+            "the fpk_table in the requests log entry does not match the expected value",
+        )
+
     def assert_has_extensions(
         self,
         expected_list: List[EtmExtension],
@@ -223,3 +245,35 @@ class EtmIngestionTest(BaseTestCase):
 
             if not found_match:
                 self.fail(f'No matching answer found for {expected_answer}')
+
+    def test_400_bad_request_exception(self):
+        """ Forcing a 400 Bad Request """
+        # loading a test QuestionnaireResponse (QR), creating a test participant, & updating the QR w/ participant info
+        with open(data_path("etm_questionnaire_response.json")) as file:
+            questionnaire_response_json = json.load(file)
+        participant = self.data_generator.create_database_participant_summary()
+        participant_id = participant.participantId
+        questionnaire_response_json["subject"][
+            "reference"
+        ] = f"Participant/P{participant_id}"
+
+        # deleting the authored field to force the 400 Bad Request
+        del questionnaire_response_json["authored"]
+
+        response = self.send_post(
+            f"Participant/P{participant_id}/QuestionnaireResponse",
+            questionnaire_response_json,
+            expected_status=400,
+        )
+
+        self.assertEqual(400, response.status_code)
+
+        # grabbing the error message from the response
+        message = json.loads(response.response[0])
+        error_message = message["message"]
+
+        self.assertEqual(
+            error_message,
+            "BAD REQUEST, please ask the Raw Data Repository Support Team for more details as to why this "
+            "request is not processing",
+        )

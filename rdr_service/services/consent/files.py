@@ -120,6 +120,20 @@ class ConsentFileAbstractFactory(ABC):
             if self._is_pediatric_ehr_consent(blob_wrapper)
         ]
 
+    def get_va_primary_reconsents(self) -> List['PrimaryConsentFile']:
+        return [
+            self._build_va_primary_reconsent(blob_wrapper)
+            for blob_wrapper in self.consent_blobs
+            if self._is_va_primary_reconsent(blob_wrapper)
+        ]
+
+    def get_va_ehr_reconsents(self) -> List['EhrConsentFile']:
+        return [
+            self._build_va_ehr_reconsent(blob_wrapper)
+            for blob_wrapper in self.consent_blobs
+            if self._is_va_ehr_reconsent(blob_wrapper)
+        ]
+
     def get_from_path(self, file_path: str, consent_date=None) -> 'ConsentFile':
         wrapper = None
         for consent in self.consent_blobs:
@@ -178,6 +192,14 @@ class ConsentFileAbstractFactory(ABC):
         ...
 
     @abstractmethod
+    def _is_va_primary_reconsent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        ...
+
+    @abstractmethod
+    def _is_va_ehr_reconsent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        ...
+
+    @abstractmethod
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         ...
 
@@ -212,6 +234,14 @@ class ConsentFileAbstractFactory(ABC):
 
     @abstractmethod
     def _build_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PediatricEhrConsentFile':
+        ...
+
+    @abstractmethod
+    def _build_va_primary_reconsent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
+        ...
+
+    @abstractmethod
+    def _build_va_ehr_reconsent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EhrConsentFile':
         ...
 
     @abstractmethod
@@ -266,6 +296,12 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
     def _is_etm_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         return 'exploring_the_mind_consent_form' in basename(blob_wrapper.blob.name)
 
+    def _is_va_primary_reconsent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        return basename(blob_wrapper.blob.name).startswith('vaprimaryreconsent')
+
+    def _is_va_ehr_reconsent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        return basename(blob_wrapper.blob.name).startswith('vaehrreconsent')
+
     def _is_pediatric_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         return 'consentpii_0to6' in basename(blob_wrapper.blob.name)
 
@@ -306,6 +342,12 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
 
     def _build_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PediatricEhrConsentFile':
         return VibrentPediatricEhrConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
+
+    def _build_va_primary_reconsent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
+        return VibrentPrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
+
+    def _build_va_ehr_reconsent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EhrConsentFile':
+        return VibrentEhrConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['vibrent']
@@ -379,6 +421,12 @@ class CeConsentFactory(ConsentFileAbstractFactory):
     def _is_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         raise NotImplementedError('Pediatric consent validation not implemented for CE')
 
+    def _is_va_primary_reconsent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        raise NotImplementedError('VA reconsent validation not implemented for CE')
+
+    def _is_va_ehr_reconsent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        raise NotImplementedError('VA reconsent validation not implemented for CE')
+
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return CePrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
@@ -406,6 +454,12 @@ class CeConsentFactory(ConsentFileAbstractFactory):
 
     def _build_pediatric_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PediatricEhrConsentFile':
         raise NotImplementedError('Pediatric consent validation not implemented for CE')
+
+    def _build_va_primary_reconsent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
+        raise NotImplementedError('VA reconsent validation not implemented for CE')
+
+    def _build_va_ehr_reconsent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EhrConsentFile':
+        raise NotImplementedError('VA reconsent validation not implemented for CE')
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['careevolution']
@@ -531,7 +585,7 @@ class GrorConsentFile(ConsentFile, ABC):
     def is_confirmation_selected(self):
         for element in self._get_confirmation_check_elements():
             for child in element:
-                if isinstance(child, LTCurve):
+                if isinstance(child, LTCurve) or child.get_text() == '4':
                     return True
 
         return False

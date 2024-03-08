@@ -6,11 +6,11 @@ version: 2.1
 
 job_defaults: &job_defaults
   docker:
-    - image: cimg/base:2022.09
+    - image: cimg/base:2023.12
       environment:
         RDR_UNITTEST_SQL_SERVER_PORT: 3306
         CIRCLECI_FLAG: 1
-    - image: circleci/mysql:5.7
+    - image: circleci/mysql:8.0
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: yes
         MYSQL_ROOT_PASSWORD: ''
@@ -78,6 +78,7 @@ commands:
 jobs:
   job_run_unittests:
     <<: *job_defaults
+    parallelism: 5
     steps:
       - unittest-app-steps
 

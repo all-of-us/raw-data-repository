@@ -591,6 +591,16 @@ class ProfileUpdateApiTest(BaseTestCase):
         pediatric_data_insert_mock.assert_not_called()
         logging_mock.error.assert_not_called()
 
+    @mock.patch("rdr_service.api.base_api.log_api_request")
+    def test_participant_id_in_log_record(self, mock_log_api_request):
+        self.send_post(
+            "Patient", request_data={"id": "P123123123", "name": [{"given": ["Peter"]}]}
+        )
+        mock_log_api_request.assert_called_once()
+        self.assertEqual(mock_log_api_request.return_value.participantId, 123123123)
+
+
+
 
 class ProfileUpdateIntegrationTest(BaseTestCase):
     def test_error_when_removing_login(self):

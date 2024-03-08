@@ -114,39 +114,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         # Set the config back so that the rest of the tests are ok
         config.GAE_PROJECT = previous_config_project_setting
 
-    def test_basics_profile_update(self):
-        """ Participant summary should not be updated with TheBasics details if it was a profile update payload """
-        participant_id = self.create_participant()
-        with FakeClock(TIME_1):
-            self.send_consent(participant_id, authored=TIME_1)
-        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
-        self.assertEqual(summary.get('questionnaireOnTheBasicsAuthored'), None)
-        self.assertEqual(summary.get('numCompletedBaselinePPIModules'), 0)
-
-        # Submit a payload that only contains profile update content
-        questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-        resource = self._load_response_json("questionnaire_the_basics_profile_update_resp.json",
-                                            questionnaire_id, participant_id)
-        with FakeClock(TIME_2):
-            resource["authored"] = TIME_2.isoformat()
-            self.send_post(_questionnaire_response_url(participant_id), resource)
-
-        # Confirm participant_summary did not record a TheBasics response
-        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
-        self.assertEqual(summary.get('questionnaireOnTheBasicsAuthored'), None)
-        self.assertEqual(summary.get('numCompletedBaselinePPIModules'), 0)
-
-        # Now submit a full TheBasics survey response and confirm participant_summary is updated with its details
-        resource = self._load_response_json("questionnaire_the_basics_resp.json",
-                                            questionnaire_id, participant_id)
-        with FakeClock(TIME_3):
-            resource["authored"] = TIME_3.isoformat()
-            self.send_post(_questionnaire_response_url(participant_id), resource)
-
-        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
-        self.assertEqual(summary.get('questionnaireOnTheBasicsAuthored'), TIME_3.isoformat())
-        self.assertEqual(summary.get('numCompletedBaselinePPIModules'), 1)
-
     def test_update_baseline_questionnaires_first_complete_authored(self):
         participant_id = self.create_participant()
         with FakeClock(TIME_1):
@@ -2427,6 +2394,35 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             QuestionnaireStatus.SUBMITTED_NO_CONSENT,
             participant_summary.consentForElectronicHealthRecords
         )
+
+    def test_ehr_consent_replay(self):
+        """There's an issue that if we get the same Yes response twice we mark that the participant said No"""
+        summary = self.data_generator.create_database_participant_summary()
+
+        # EHR consent should initially be unset
+        response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertEqual('UNSET', response.get('consentForElectronicHealthRecords'))
+
+        # sending consent should set it to NOT_VALIDATED
+        self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
+        self.submit_ehr_questionnaire(
+            f'P{summary.participantId}',
+            CONSENT_PERMISSION_YES_CODE,
+            None,
+            datetime.datetime(2020, 2, 12)
+        )
+        response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertEqual('SUBMITTED_NOT_VALIDATED', response.get('consentForElectronicHealthRecords'))
+
+        # submitting EHR again with the same authored date shouldn't change the status
+        self.submit_ehr_questionnaire(
+            f'P{summary.participantId}',
+            CONSENT_PERMISSION_YES_CODE,
+            None,
+            datetime.datetime(2020, 2, 12)
+        )
+        response = self.send_get(f'Participant/P{summary.participantId}/Summary')
+        self.assertEqual('SUBMITTED_NOT_VALIDATED', response.get('consentForElectronicHealthRecords'))
 
     @classmethod
     def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):

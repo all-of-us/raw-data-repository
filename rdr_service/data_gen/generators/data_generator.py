@@ -19,7 +19,8 @@ from rdr_service.model.genomics import GenomicManifestFeedback, GenomicManifestF
     GenomicResultViewed, GenomicCVLSecondSample, GenomicSampleSwap, \
     GenomicSampleSwapMember, GenomicCVLResultPastDue, GenomicW4WRRaw, GenomicW3SCRaw, GenomicAppointmentEvent, \
     GenomicAppointmentEventMetrics, GenomicLongRead, GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, \
-    GenomicRRRaw, GenomicR1Raw, GenomicLRRaw, GenomicL1Raw, GenomicAW4Raw
+    GenomicRRRaw, GenomicR1Raw, GenomicLRRaw, GenomicL1Raw, GenomicAW4Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.log_position import LogPosition
@@ -408,6 +409,20 @@ class DataGenerator:
             defaults['participant_id'] = self.create_database_participant().participantId
 
         return ConsentFile(**defaults)
+
+    def create_database_consent_response(self, **kwargs):
+        consent_response = self._consent_response_with_defaults(**kwargs);
+        self._commit_to_database(consent_response)
+        return consent_response
+
+    def _consent_response_with_defaults(self, **kwargs):
+        defaults = {}
+        defaults.update(kwargs)
+
+        if defaults.get('response') is None:
+            defaults['response'] = self.create_database_questionnaire_response()
+
+        return ConsentResponse(**defaults)
 
     def create_database_biobank_specimen(self, **kwargs):
         specimen = self._biobank_specimen_with_defaults(**kwargs)
@@ -962,6 +977,24 @@ class DataGenerator:
 
     def create_database_genomic_longread_l1_raw(self, **kwargs):
         m = self._genomic_longread_l1_raw(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_longread_l2_ont_raw(**kwargs):
+        return GenomicL2ONTRaw(**kwargs)
+
+    def create_database_genomic_longread_l2_ont_raw(self, **kwargs):
+        m = self._genomic_longread_l2_ont_raw(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_longread_l2_pb_ccs_raw(**kwargs):
+        return GenomicL2PBCCSRaw(**kwargs)
+
+    def create_database_genomic_longread_l2_pb_ccs_raw(self, **kwargs):
+        m = self._genomic_longread_l2_pb_ccs_raw(**kwargs)
         self._commit_to_database(m)
         return m
 

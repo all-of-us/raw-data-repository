@@ -330,6 +330,7 @@ class DietEvent(NphBase):
     status_id = Column(BigInteger, nullable=False)
     module = Column(Enum(ModuleTypes), nullable=False)
     diet_name = Column(Enum(DietType), nullable=False)
+    diet_name_str = Column(String(128), nullable=True)
     status = Column(Enum(DietStatus), nullable=False)
     current = Column(TINYINT, default=0)
 

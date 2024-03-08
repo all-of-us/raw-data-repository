@@ -18,7 +18,8 @@ from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWo
     GenomicSubProcessStatus, GenomicManifestTypes, GenomicQcStatus, GenomicReportState
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
-from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics,\
+from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus
+from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics, \
     GenomicGCROutreachEscalationNotified
 from rdr_service.offline.genomics import genomic_pipeline, genomic_cvl_pipeline
 from rdr_service.participant_enums import WithdrawalStatus
@@ -486,155 +487,156 @@ class GenomicJobControllerTest(BaseTestCase):
             self.assertEqual(len(file_metrics), len(participant_ingested_metrics))
             self.assertTrue(all(obj.run_id == job_run_id for obj in participant_ingested_metrics))
 
-    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
-    def test_reconcile_pdr_data(self, mock_cloud_task):
-
-        # init new job run in __enter__
-        with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
-            controller.reconcile_pdr_data()
-
-        cloud_task_endpoint = 'rebuild_genomic_table_records_task'
-
-        first_run = self.job_run_dao.get_all()
-
-        self.assertEqual(mock_cloud_task.call_count, 1)
-        call_args = mock_cloud_task.call_args_list
-
-        self.assertEqual(len(call_args), 1)
-        self.assertEqual(call_args[0].args[0]['table'], self.job_run_dao.model_type.__tablename__)
-
-        self.assertTrue(type(call_args[0].args[0]['ids']) is list)
-        self.assertEqual(call_args[0].args[0]['ids'], [obj.id for obj in first_run])
-        self.assertEqual(call_args[0].args[1], cloud_task_endpoint)
-
-        participant = self.data_generator.create_database_participant()
-
-        gen_set = self.data_generator.create_database_genomic_set(
-            genomicSetName=".",
-            genomicSetCriteria=".",
-            genomicSetVersion=1
-        )
-
-        plus_ten = clock.CLOCK.now() + datetime.timedelta(minutes=10)
-        plus_ten = plus_ten.replace(microsecond=0)
-        with FakeClock(plus_ten):
-            for i in range(2):
-                gen_member = self.data_generator.create_database_genomic_set_member(
-                    genomicSetId=gen_set.id,
-                    biobankId="100153482",
-                    sampleId="21042005280",
-                    genomeType="aou_wgs",
-                    genomicWorkflowState=GenomicWorkflowState.AW1
-                )
-
-                gen_processed_file = self.data_generator.create_database_genomic_file_processed(
-                    runId=first_run[0].id,
-                    startTime=clock.CLOCK.now(),
-                    filePath=f'test_file_path_{i}',
-                    bucketName='test_bucket',
-                    fileName='test_file_name',
-                )
-
-                self.data_generator.create_database_genomic_gc_validation_metrics(
-                    genomicSetMemberId=gen_member.id,
-                    genomicFileProcessedId=gen_processed_file.id
-                )
-
-                manifest = self.data_generator.create_database_genomic_manifest_file(
-                    manifestTypeId=2,
-                    filePath=f'test_file_path_{i}'
-                )
-
-                self.data_generator.create_database_genomic_manifest_feedback(
-                    inputManifestFileId=manifest.id,
-                    feedbackRecordCount=2
-                )
-
-                self.data_generator.create_database_genomic_user_event_metrics(
-                    participant_id=participant.participantId,
-                    event_name='test_event',
-                    run_id=1,
-                )
-
-                self.data_generator.create_database_genomic_informing_loop(
-                    message_record_id=1,
-                    event_type='informing_loop_decision',
-                    module_type='gem',
-                    participant_id=participant.participantId,
-                    decision_value='maybe_later',
-                    event_authored_time=clock.CLOCK.now()
-                )
-
-                self.data_generator.create_database_genomic_cvl_past_due(
-                    cvl_site_id='co',
-                    email_notification_sent=0,
-                    sample_id='sample_test',
-                    results_type='hdr',
-                    genomic_set_member_id=gen_member.id
-                )
-
-                self.data_generator.create_database_genomic_appointment(
-                    message_record_id=i,
-                    appointment_id=i,
-                    event_type='appointment_scheduled',
-                    module_type='hdr',
-                    participant_id=participant.participantId,
-                    event_authored_time=clock.CLOCK.now(),
-                    source='Color',
-                    appointment_timestamp=format_datetime(clock.CLOCK.now()),
-                    appointment_timezone='America/Los_Angeles',
-                    location='123 address st',
-                    contact_number='17348675309',
-                    language='en'
-                )
-
-                self.data_generator.create_database_genomic_member_report_state(
-                    genomic_set_member_id=gen_member.id,
-                    participant_id=participant.participantId,
-                    module='gem',
-                    genomic_report_state=GenomicReportState.GEM_RPT_READY,
-                    event_authored_time=clock.CLOCK.now()
-                )
-
-                self.data_generator.create_genomic_result_viewed(
-                    participant_id=participant.participantId,
-                    event_type='result_viewed',
-                    event_authored_time=clock.CLOCK.now(),
-                    module_type='gem',
-                    sample_id=gen_member.sampleId
-                )
-
-        # gets new records that were created with last job run from above
-        with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
-            controller.reconcile_pdr_data()
-
-        affected_tables = [
-            'genomic_set',
-            'genomic_set_member',
-            'genomic_job_run',
-            'genomic_file_processed',
-            'genomic_gc_validation_metrics',
-            'genomic_manifest_file',
-            'genomic_manifest_feedback',
-            'genomic_informing_loop',
-            'genomic_cvl_results_past_due',
-            'user_event_metrics',
-            'genomic_member_report_state',
-            'genomic_result_viewed',
-            'genomic_appointment_event'
-        ]
-
-        num_calls = len(affected_tables) + 1
-
-        self.assertEqual(mock_cloud_task.call_count, num_calls)
-        call_args = mock_cloud_task.call_args_list
-        self.assertEqual(len(call_args), num_calls)
-
-        mock_tables = set([obj[0][0]['table'] for obj in call_args])
-        mock_endpoint = [obj[0][1] for obj in call_args]
-
-        self.assertTrue([mock_tables].sort() == affected_tables.sort())
-        self.assertTrue(all(obj for obj in mock_endpoint if obj == cloud_task_endpoint))
+    # Deprecated : Previously used for old PDR data pipeline.
+    # @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    # def test_reconcile_pdr_data(self, mock_cloud_task):
+    #
+    #     # init new job run in __enter__
+    #     with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
+    #         controller.reconcile_pdr_data()
+    #
+    #     cloud_task_endpoint = 'rebuild_genomic_table_records_task'
+    #
+    #     first_run = self.job_run_dao.get_all()
+    #
+    #     self.assertEqual(mock_cloud_task.call_count, 1)
+    #     call_args = mock_cloud_task.call_args_list
+    #
+    #     self.assertEqual(len(call_args), 1)
+    #     self.assertEqual(call_args[0].args[0]['table'], self.job_run_dao.model_type.__tablename__)
+    #
+    #     self.assertTrue(type(call_args[0].args[0]['ids']) is list)
+    #     self.assertEqual(call_args[0].args[0]['ids'], [obj.id for obj in first_run])
+    #     self.assertEqual(call_args[0].args[1], cloud_task_endpoint)
+    #
+    #     participant = self.data_generator.create_database_participant()
+    #
+    #     gen_set = self.data_generator.create_database_genomic_set(
+    #         genomicSetName=".",
+    #         genomicSetCriteria=".",
+    #         genomicSetVersion=1
+    #     )
+    #
+    #     plus_ten = clock.CLOCK.now() + datetime.timedelta(minutes=10)
+    #     plus_ten = plus_ten.replace(microsecond=0)
+    #     with FakeClock(plus_ten):
+    #         for i in range(2):
+    #             gen_member = self.data_generator.create_database_genomic_set_member(
+    #                 genomicSetId=gen_set.id,
+    #                 biobankId="100153482",
+    #                 sampleId="21042005280",
+    #                 genomeType="aou_wgs",
+    #                 genomicWorkflowState=GenomicWorkflowState.AW1
+    #             )
+    #
+    #             gen_processed_file = self.data_generator.create_database_genomic_file_processed(
+    #                 runId=first_run[0].id,
+    #                 startTime=clock.CLOCK.now(),
+    #                 filePath=f'test_file_path_{i}',
+    #                 bucketName='test_bucket',
+    #                 fileName='test_file_name',
+    #             )
+    #
+    #             self.data_generator.create_database_genomic_gc_validation_metrics(
+    #                 genomicSetMemberId=gen_member.id,
+    #                 genomicFileProcessedId=gen_processed_file.id
+    #             )
+    #
+    #             manifest = self.data_generator.create_database_genomic_manifest_file(
+    #                 manifestTypeId=2,
+    #                 filePath=f'test_file_path_{i}'
+    #             )
+    #
+    #             self.data_generator.create_database_genomic_manifest_feedback(
+    #                 inputManifestFileId=manifest.id,
+    #                 feedbackRecordCount=2
+    #             )
+    #
+    #             self.data_generator.create_database_genomic_user_event_metrics(
+    #                 participant_id=participant.participantId,
+    #                 event_name='test_event',
+    #                 run_id=1,
+    #             )
+    #
+    #             self.data_generator.create_database_genomic_informing_loop(
+    #                 message_record_id=1,
+    #                 event_type='informing_loop_decision',
+    #                 module_type='gem',
+    #                 participant_id=participant.participantId,
+    #                 decision_value='maybe_later',
+    #                 event_authored_time=clock.CLOCK.now()
+    #             )
+    #
+    #             self.data_generator.create_database_genomic_cvl_past_due(
+    #                 cvl_site_id='co',
+    #                 email_notification_sent=0,
+    #                 sample_id='sample_test',
+    #                 results_type='hdr',
+    #                 genomic_set_member_id=gen_member.id
+    #             )
+    #
+    #             self.data_generator.create_database_genomic_appointment(
+    #                 message_record_id=i,
+    #                 appointment_id=i,
+    #                 event_type='appointment_scheduled',
+    #                 module_type='hdr',
+    #                 participant_id=participant.participantId,
+    #                 event_authored_time=clock.CLOCK.now(),
+    #                 source='Color',
+    #                 appointment_timestamp=format_datetime(clock.CLOCK.now()),
+    #                 appointment_timezone='America/Los_Angeles',
+    #                 location='123 address st',
+    #                 contact_number='17348675309',
+    #                 language='en'
+    #             )
+    #
+    #             self.data_generator.create_database_genomic_member_report_state(
+    #                 genomic_set_member_id=gen_member.id,
+    #                 participant_id=participant.participantId,
+    #                 module='gem',
+    #                 genomic_report_state=GenomicReportState.GEM_RPT_READY,
+    #                 event_authored_time=clock.CLOCK.now()
+    #             )
+    #
+    #             self.data_generator.create_genomic_result_viewed(
+    #                 participant_id=participant.participantId,
+    #                 event_type='result_viewed',
+    #                 event_authored_time=clock.CLOCK.now(),
+    #                 module_type='gem',
+    #                 sample_id=gen_member.sampleId
+    #             )
+    #
+    #     # gets new records that were created with last job run from above
+    #     with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
+    #         controller.reconcile_pdr_data()
+    #
+    #     affected_tables = [
+    #         'genomic_set',
+    #         'genomic_set_member',
+    #         'genomic_job_run',
+    #         'genomic_file_processed',
+    #         'genomic_gc_validation_metrics',
+    #         'genomic_manifest_file',
+    #         'genomic_manifest_feedback',
+    #         'genomic_informing_loop',
+    #         'genomic_cvl_results_past_due',
+    #         'user_event_metrics',
+    #         'genomic_member_report_state',
+    #         'genomic_result_viewed',
+    #         'genomic_appointment_event'
+    #     ]
+    #
+    #     num_calls = len(affected_tables) + 1
+    #
+    #     self.assertEqual(mock_cloud_task.call_count, num_calls)
+    #     call_args = mock_cloud_task.call_args_list
+    #     self.assertEqual(len(call_args), num_calls)
+    #
+    #     mock_tables = set([obj[0][0]['table'] for obj in call_args])
+    #     mock_endpoint = [obj[0][1] for obj in call_args]
+    #
+    #     self.assertTrue([mock_tables].sort() == affected_tables.sort())
+    #     self.assertTrue(all(obj for obj in mock_endpoint if obj == cloud_task_endpoint))
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_retry_manifest_ingestions_if_deltas(self, mock_cloud_task):
@@ -814,6 +816,11 @@ class GenomicJobControllerTest(BaseTestCase):
                 summary = self.data_generator.create_database_participant_summary(
                     consentForStudyEnrollment=1,
                     consentForGenomicsROR=1
+                )
+                self.data_generator.create_database_consent_file(
+                    participant_id=summary.participantId,
+                    type=ConsentType.GROR,
+                    sync_status=ConsentSyncStatus.SYNC_COMPLETE
                 )
                 stored_sample = self.data_generator.create_database_biobank_stored_sample(
                     biobankId=summary.biobankId,
