@@ -33,6 +33,7 @@ class EnrollmentDependenciesDaoTest(BaseTestCase):
         created_time = datetime(2020, 7, 6)
         with FakeClock(created_time):
             EnrollmentDependenciesDao.set_basics_survey_authored_time(datetime.now(), self.participant_id, self.session)
+            self.session.commit()
 
         db_obj = EnrollmentDependenciesDao.get_enrollment_dependencies(
             participant_id=self.participant_id,
@@ -61,6 +62,7 @@ class EnrollmentDependenciesDaoTest(BaseTestCase):
             EnrollmentDependenciesDao.set_basics_survey_authored_time(
                 new_authored_date, self.participant_id, self.session
             )
+            self.session.commit()
 
         self.assertEqual(created_time, db_obj.created)
         self.assertEqual(modified_time, db_obj.modified)
