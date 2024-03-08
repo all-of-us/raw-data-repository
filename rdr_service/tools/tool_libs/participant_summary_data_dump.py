@@ -31,7 +31,7 @@ class ParticipantSummaryDataDump(ToolBase):
         summary_list = []
         super(ParticipantSummaryDataDump, self).run()
         print("starting")
-        with (self.get_session() as session):
+        with self.get_session() as session:
             print("session made")
             summary_dao = ParticipantSummaryDao()
             # --id option takes precedence over --from-file option
