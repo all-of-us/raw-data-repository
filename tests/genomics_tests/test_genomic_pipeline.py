@@ -7118,3 +7118,31 @@ class GenomicPipelineTest(BaseTestCase):
                       f'hard-filtered.gvcf.gz files for these samples', email_mock.call_args[0][0].plain_text_content)
         self.assertIn(f'2022-11-01 14:13:14, 1003, rdr, {array_test_file}, Missing Red.idat, Grn.idat files for '
                       f'these samples', email_mock.call_args[0][0].plain_text_content)
+
+    @mock.patch(
+        'rdr_service.genomic.genomic_job_controller.GenomicJobController.load_raw_manifest_data_from_filepath')
+    def test_manifest_into_raw_table_diff_types(self, load_raw_mock):
+
+        # test bad string
+        genomic_dispatch.load_manifest_into_raw_table(
+            'test_bucket/test_file_path',
+            'bad_string'
+        )
+
+        self.assertEqual(load_raw_mock.call_count, 0)
+
+        # test current generation string
+        genomic_dispatch.load_manifest_into_raw_table(
+            'test_bucket/test_file_path',
+            'aw3'
+        )
+
+        self.assertEqual(load_raw_mock.call_count, 1)
+
+        # test enum string from genomic ingestion map
+        genomic_dispatch.load_manifest_into_raw_table(
+            'test_bucket/test_file_path',
+            'AW4_ARRAY_WORKFLOW'
+        )
+
+        self.assertEqual(load_raw_mock.call_count, 2)

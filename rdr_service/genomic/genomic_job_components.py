@@ -328,7 +328,7 @@ class GenomicFileIngester:
             return validation_result
 
         self.send_file_path_to_raw_ingestion_task(
-            file_path=file_obj.filePath
+            file_path=self.file_obj.filePath
         )
 
         try:
@@ -383,8 +383,8 @@ class GenomicFileIngester:
             self.controller.execute_cloud_task(
                 endpoint='load_awn_raw_data_task',
                 payload={
-                    'file_path ': file_path,
-                    'manifest_type': self.job_id
+                    'file_path': file_path,
+                    'file_type': self.job_id.name
                 }
             )
 

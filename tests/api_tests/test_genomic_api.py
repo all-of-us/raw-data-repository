@@ -2924,7 +2924,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
             test_file_path = f"test-bucket-name/test_{key}_file.csv"
             data = {
                 "file_path": test_file_path,
-                "file_type": str(key)
+                "file_type": key.name
             }
 
             self.send_post(

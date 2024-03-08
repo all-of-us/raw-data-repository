@@ -72,30 +72,36 @@ def load_manifest_into_raw_table(
     }
 
     try:
-        raw_jobs_map = {
+        raw_map, generation_map, ingestion_map = None, {
             **short_read_raw_map,
             **gem_map,
             **long_read_raw_map,
             **cvl_raw_map,
             **pr_raw_map,
             **rna_raw_map,
-            **{k: v.get('raw') for k, v in GENOMIC_FULL_INGESTION_MAP.items() if v.get('raw')}
-        }[manifest_type]
+        }, {k: v.get('raw') for k, v in GENOMIC_FULL_INGESTION_MAP.items() if v.get('raw')}
+
+        if manifest_type in generation_map:
+            raw_map = generation_map.get(manifest_type)
+        else:
+            enum_job_type = GenomicJob.lookup_by_name(manifest_type) if type(manifest_type) is str else manifest_type
+            raw_map = ingestion_map.get(enum_job_type)
 
         with GenomicJobController(
-            job_id=raw_jobs_map.get('job_id'),
+            job_id=raw_map.get('job_id'),
             bq_project_id=project_id,
             storage_provider=provider
         ) as controller:
             controller.load_raw_manifest_data_from_filepath(
                 file_path=file_path,
-                raw_dao=raw_jobs_map.get('dao', GenomicDefaultBaseDao),
+                raw_dao=raw_map.get('dao', GenomicDefaultBaseDao),
                 cvl_site_id=cvl_site_id,
-                model=raw_jobs_map.get('model'),
-                special_mappings=raw_jobs_map.get('special_mappings')
+                model=raw_map.get('model'),
+                special_mappings=raw_map.get('special_mappings')
             )
-    except KeyError:
-        pass
+    # pylint: disable=broad-except
+    except (Exception, KeyError) as e:
+        logging.warning(f'Raw ingestion error occurred: {e}')
 
 
 def dispatch_genomic_job_from_task(
