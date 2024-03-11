@@ -813,7 +813,7 @@ class ParticipantSummaryDao(UpdatableDao):
             session=session
         )
         EnrollmentDependenciesDao.set_has_linked_guardian_account(
-            value=(summary.guardianParticipants and len(summary.guardianParticipants) > 0),
+            value=bool(summary.guardianParticipants and len(summary.guardianParticipants) > 0),
             participant_id=summary.participantId,
             session=session
         )
