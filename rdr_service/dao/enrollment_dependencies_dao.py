@@ -12,7 +12,7 @@ class EnrollmentDependenciesDao:
     def get_enrollment_dependencies(cls, participant_id: int, session: Session) -> Optional[EnrollmentDependencies]:
         return session.query(EnrollmentDependencies).filter(
             EnrollmentDependencies.participant_id == participant_id
-        ).one_or_none()
+        ).first()
 
     @classmethod
     def _set_field(cls, field_name: str, value, participant_id: int, session: Session):

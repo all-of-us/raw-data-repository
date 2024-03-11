@@ -37,6 +37,7 @@ from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
+from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
@@ -789,10 +790,32 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.clinicPhysicalMeasurementsFinalizedTime,
             summary.selfReportedPhysicalMeasurementsAuthored
         ])
-
         core_measurements = PhysicalMeasurementsDao.get_core_measurements_for_participant(
             session=session,
             participant_id=summary.participantId
+        )
+        EnrollmentDependenciesDao.set_physical_measurements_time(
+            value=min_or_none([
+                summary.clinicPhysicalMeasurementsFinalizedTime,
+                summary.selfReportedPhysicalMeasurementsAuthored
+            ]),
+            participant_id=summary.participantId,
+            session=session
+        )
+        EnrollmentDependenciesDao.set_weight_physical_measurements_time(
+            value=min_or_none(meas.finalized for meas in core_measurements if meas.satisfiesHeightRequirements),
+            participant_id=summary.participantId,
+            session=session
+        )
+        EnrollmentDependenciesDao.set_weight_physical_measurements_time(
+            value=min_or_none(meas.finalized for meas in core_measurements if meas.satisfiesWeightRequirements),
+            participant_id=summary.participantId,
+            session=session
+        )
+        EnrollmentDependenciesDao.set_has_linked_guardian_account(
+            value=(summary.guardianParticipants and len(summary.guardianParticipants) > 0),
+            participant_id=summary.participantId,
+            session=session
         )
 
         earliest_biobank_received_dna_time = None
@@ -831,6 +854,16 @@ class ParticipantSummaryDao(UpdatableDao):
             session=session,
             biobank_id=summary.biobankId
         )
+        EnrollmentDependenciesDao.set_wgs_sequencing_time(wgs_sequencing_time, summary.participantId, session)
+        EnrollmentDependenciesDao.set_first_ehr_file_received_time(
+            value=min_or_none([summary.ehrReceiptTime, summary.firstParticipantMediatedEhrReceiptTime]),
+            participant_id=summary.participantId,
+            session=session
+        )
+        EnrollmentDependenciesDao.set_first_mediated_ehr_received_time(
+            summary.firstParticipantMediatedEhrReceiptTime, summary.participantId, session
+        )
+
         first_exposures_response_time = None
         for data in (summary.pediatricData or []):
             if data.data_type == PediatricDataType.ENVIRONMENTAL_EXPOSURES:

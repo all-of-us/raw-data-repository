@@ -87,6 +87,8 @@ from rdr_service.code_constants import (
     REMOTE_ID_VERIFIED_CODE,
     REMOTE_ID_VERIFIED_ON_CODE,
     ETM_CONSENT_QUESTION_CODE,
+    LIFESTYLE_PPI_MODULE,
+    OVERALL_HEALTH_PPI_MODULE,
     PEDIATRIC_BIRTH_DATE,
     PEDIATRIC_CABOR_SIGNATURE,
     PEDIATRIC_CONSENT_NO,
@@ -96,11 +98,13 @@ from rdr_service.code_constants import (
     PEDIATRIC_PRIMARY_CONSENT_MODULE,
     PEDIATRIC_RACE_QUESTION_CODE,
     PEDIATRIC_SHARE_AGREE,
-    PEDIATRICS_ENVIRONMENTAL_HEALTH
+    PEDIATRICS_ENVIRONMENTAL_HEALTH,
+    THE_BASICS_PPI_MODULE
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.consent_dao import ConsentDao
+from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.dao.participant_summary_dao import (
@@ -131,6 +135,7 @@ from rdr_service.participant_enums import (
     get_gender_identity,
     get_race,
     ParticipantCohort,
+    ParticipantCohortEnum,
     ConsentExpireStatus,
     OriginMeasurementUnit,
     PhysicalMeasurementsCollectType,
@@ -839,6 +844,9 @@ class QuestionnaireResponseDao(BaseDao):
                         code = code_dao.get(answer.valueCodeId)
                         if code and code.value == DVEHRSHARING_CONSENT_CODE_YES:
                             dvehr_consent = QuestionnaireStatus.SUBMITTED
+                            EnrollmentDependenciesDao.set_intent_to_share_ehr_time(
+                                authored, participant_summary.participantId, session
+                            )
                         elif code and code.value == DVEHRSHARING_CONSENT_CODE_NOT_SURE:
                             dvehr_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
                     elif self._code_in_list(
@@ -869,6 +877,12 @@ class QuestionnaireResponseDao(BaseDao):
                             if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED and \
                                 authored < participant_summary.ehrConsentExpireAuthored:
                                 ehr_consent = False
+                            EnrollmentDependenciesDao.set_intent_to_share_ehr_time(
+                                authored, participant_summary.participantId, session
+                            )
+                            EnrollmentDependenciesDao.set_full_ehr_consent_authored_time(
+                                authored, participant_summary.participantId, session
+                            )
                     elif code.value == EHR_CONSENT_EXPIRED_QUESTION_CODE:
                         if answer.valueString and answer.valueString == EHR_CONSENT_EXPIRED_YES:
                             participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.EXPIRED
@@ -916,6 +930,9 @@ class QuestionnaireResponseDao(BaseDao):
                         if answer_value == COHORT_1_REVIEW_CONSENT_YES_CODE:
                             self.consents_provided.append(ConsentType.PRIMARY_UPDATE)
                             participant_summary.consentForStudyEnrollmentAuthored = authored
+                            EnrollmentDependenciesDao.set_dna_consent_update_time(
+                                authored, participant_summary.participantId, session
+                            )
                     elif code.value == CONSENT_COHORT_GROUP_CODE:
                         try:
                             cohort_group = int(answer.valueString)
@@ -928,6 +945,14 @@ class QuestionnaireResponseDao(BaseDao):
                             else:
                                 participant_summary.consentCohort = answer.valueString
                                 something_changed = True
+                                try:
+                                    EnrollmentDependenciesDao.set_consent_cohort(
+                                        ParticipantCohortEnum(int(answer.valueString)),
+                                        participant_summary.participantId,
+                                        session=session
+                                    )
+                                except ValueError:
+                                    logging.error("Unable to record consent cohort", exc_info=True)
                         except ValueError:
                             logging.error(f'Invalid value given for cohort group: received "{answer.valueString}"')
                     elif code.value.lower() == WEAR_CONSENT_QUESTION_CODE:
@@ -1064,6 +1089,21 @@ class QuestionnaireResponseDao(BaseDao):
                                 .format([CONSENT_GROR_YES_CODE, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE])
                             )
                         new_status = gror_consent
+                        EnrollmentDependenciesDao.set_gror_consent_authored_time(
+                            authored, participant_summary.participantId, session
+                        )
+                    elif code.value.lower() == THE_BASICS_PPI_MODULE.lower():
+                        EnrollmentDependenciesDao.set_basics_survey_authored_time(
+                            authored, participant_summary.participantId, session
+                        )
+                    elif code.value.lower() == OVERALL_HEALTH_PPI_MODULE.lower():
+                        EnrollmentDependenciesDao.set_overall_health_survey_authored_time(
+                            authored, participant_summary.participantId, session
+                        )
+                    elif code.value.lower() == LIFESTYLE_PPI_MODULE.lower():
+                        EnrollmentDependenciesDao.set_lifestyle_survey_authored_time(
+                            authored, participant_summary.participantId, session
+                        )
                     elif self._code_in_list(
                         code.value, [CONSENT_FOR_STUDY_ENROLLMENT_MODULE, PEDIATRIC_PRIMARY_CONSENT_MODULE]
                     ):
@@ -1104,6 +1144,9 @@ class QuestionnaireResponseDao(BaseDao):
                                 and extension.get("valueCode") not in LANGUAGE_OF_CONSENT
                             ):
                                 logging.warning(f"consent language {extension.get('valueCode')} not recognized.")
+                        EnrollmentDependenciesDao.set_primary_consent_authored_time(
+                            authored, participant_summary.participantId, session=session
+                        )
                     elif self._is_digital_health_share_code(code.value):
                         digital_health_sharing_status, something_changed = self._update_digital_health_status_field(
                             participant_summary.digitalHealthSharingStatus, code.value.lower(), authored)
@@ -1166,6 +1209,9 @@ class QuestionnaireResponseDao(BaseDao):
                             data_type=PediatricDataType.ENVIRONMENTAL_EXPOSURES,
                             value=authored.isoformat()
                         )
+                    )
+                    EnrollmentDependenciesDao.set_exposures_survey_authored_time(
+                        authored, participant_summary.participantId, session
                     )
                     something_changed = module_changed = True
 

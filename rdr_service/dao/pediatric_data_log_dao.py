@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from rdr_service.clock import CLOCK
 from rdr_service.dao.base_dao import with_session
+from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.participant_enums import PediatricAgeRange
@@ -24,6 +25,7 @@ class PediatricDataLogDao:
             logging.error(f'Unrecognized age range value "{age_range_str}"')
             return None
 
+        EnrollmentDependenciesDao.set_is_pediatric_participant(True, participant_id, session)
         cls.insert(
             data=PediatricDataLog(
                 participant_id=participant_id,
