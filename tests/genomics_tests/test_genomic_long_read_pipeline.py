@@ -682,6 +682,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         self.assertTrue(all(obj.file_path is not None for obj in l3_raw_records))
         self.assertTrue(all(obj.biobank_id is not None for obj in l3_raw_records))
+        self.assertTrue(all('A' in obj.biobank_id for obj in l3_raw_records))
         self.assertTrue(all(obj.sample_id is not None for obj in l3_raw_records))
         self.assertTrue(all(obj.biobankid_sampleid is not None for obj in l3_raw_records))
         self.assertTrue(all(obj.flowcell_id is not None for obj in l3_raw_records))
