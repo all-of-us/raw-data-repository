@@ -4,12 +4,14 @@ from typing import Dict, Any
 from flask import request
 from flask_restful import Resource
 
+from rdr_service import config
 from rdr_service.clock import CLOCK
 from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.study_nph_dao import NphConsentEventDao, NphPairingEventDao, NphEnrollmentEventDao, \
     NphParticipantEventActivityDao
 from rdr_service.services.ancillary_studies.nph_incident import create_nph_incident
+from rdr_service.services.slack_utils import SlackMessageHandler
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -197,6 +199,15 @@ class NphIncidentTaskApi(BaseAncillaryTaskApi):
         create_nph_incident(**kwargs)
         return {"success": True}
 
+    def get_nph_slack_message_handler(self) -> SlackMessageHandler:
+        slack_config = config.getSettingJson(config.NPH_SLACK_WEBHOOKS, {})
+        if slack_config is None:
+            logging.warning("'slack_config' for 'NPH_SLACK_WEBHOOKS' is empty")
+
+        webhook_url = slack_config.get('rdr_nph_alerts', None)
+        if webhook_url is None:
+            logging.warning("'rdr_nph_alerts' is not available in slack config. 'webhook_url' is None")
+        return SlackMessageHandler(webhook_url=webhook_url)
 
 class WithdrawnParticipantNotifierTaskApi(BaseAncillaryTaskApi):
     """

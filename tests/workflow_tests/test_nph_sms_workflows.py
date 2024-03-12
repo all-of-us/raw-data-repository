@@ -457,3 +457,26 @@ class NphSmsWorkflowsTest(BaseTestCase):
                                      payload=data,
                                      queue='nph')
 
+    def test_sms_ingestion_filetype_failure(self):
+
+        # Ingestion Test File - RTI Pull List
+        self.create_cloud_csv("test_sample_list.txt", "test_sample_list.csv")
+        ingestion_data = {
+            "job": "FILE_INGESTION",
+            "file_type": "SAMPLE_LIST",
+            "file_path": f"{self.test_bucket}/test_sample_list.txt"
+        }
+        workflow = SmsWorkflow(ingestion_data)
+        workflow.execute_workflow()
+
+        from rdr_service.resource import main as resource_main
+        with self.assertLogs(level="WARNING") as cm:
+            self.send_post(
+                local_path='NphSmsIngestionTaskApi',
+                request_data=ingestion_data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+            self.assertIn('does not conform', cm.output[0])
+
+        self.assertEqual(job_run.result, '')

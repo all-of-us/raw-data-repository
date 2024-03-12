@@ -105,6 +105,7 @@ def main(client):
             if client.args.dry_run:
                 logging.info("Dry run, would update participant[%r] to %r.", pairing_key, new_pairing)
             else:
+                print(participant)
                 client.request_json(
                     "Participant/%s" % participant_id, "PUT", participant, headers={"If-Match": client.last_etag}
                 )
