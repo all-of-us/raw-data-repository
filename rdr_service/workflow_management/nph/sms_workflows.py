@@ -3,6 +3,7 @@ import logging
 
 from protorpc import messages
 
+from rdr_service import config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.study_nph_sms_dao import SmsJobRunDao, SmsSampleDao, SmsN0Dao, SmsN1Mc1Dao
 from rdr_service.offline.sql_exporter import SqlExporter
@@ -149,12 +150,18 @@ class SmsWorkflow:
         # Ensure file is CSV
         if not str(self.file_path).endswith(".csv"):
             file_end = self.file_path.split(".")[-1]
-            kwargs = {
-                "slack": True,
-                "message": f"Error ingesting nph file of type {file_end}. "
-                           f"File '{self.file_path}' does not conform to csv format."
-            }
-            create_nph_incident(**kwargs)
+            if config.getSettingJson(config.NPH_SLACK_WEBHOOKS, {}):
+                kwargs = {
+                    "slack": True,
+                    "message": f"Error ingesting nph file of type {file_end}. "
+                               f"File '{self.file_path}' does not conform to csv format."
+                }
+                create_nph_incident(**kwargs)
+            else:
+                logging.warning(
+                    msg=f"Error ingesting nph file of type {file_end}. "
+                        f"File '{self.file_path}' does not conform to csv format."
+                )
             return
 
         # Map a file type to a DAO
