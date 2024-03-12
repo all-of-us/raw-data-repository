@@ -932,7 +932,7 @@ def ptsc_test_participant_cleanup_request():
         logging.info("Success!")
         return '{"success": "true"}'
     except ConnectionError as e:
-        logging.error("Failed to send ptsc cleanup email: ", e)
+        logging.error(f"Failed to send ptsc cleanup email: {e}")
         return '{"success": "false"}'
 
 
