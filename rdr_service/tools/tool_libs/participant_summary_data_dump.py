@@ -74,10 +74,10 @@ class ParticipantSummaryDataDump(ToolBase):
                     'email',
                     'dateOfBirth'
                 ]
-                for row in results:
+                for column in results:
                     for i in ignored_columns:
-                        if i in row:
-                            del row[i]
+                        if i in column:
+                            del column[i]
                 chunk_end = min(count + chunk_size, total_rows)
                 df = pd.DataFrame(results)
                 filename = f'chunk_{count + 1}_{chunk_end}.csv'
