@@ -12,6 +12,7 @@ from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvide
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicLongReadPlatform, \
     GenomicSubProcessStatus, GenomicSubProcessResult
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicL1Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, \
     GenomicL4Raw, GenomicL3Raw, GenomicL5Raw, GenomicL6Raw, GenomicL1FRaw, GenomicL4FRaw, GenomicL6FRaw, \
     GenomicSetMember
@@ -682,6 +683,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         self.assertTrue(all(obj.file_path is not None for obj in l3_raw_records))
         self.assertTrue(all(obj.biobank_id is not None for obj in l3_raw_records))
+        self.assertTrue(all(get_biobank_id_prefix() in obj.biobank_id for obj in l3_raw_records))
         self.assertTrue(all(obj.sample_id is not None for obj in l3_raw_records))
         self.assertTrue(all(obj.biobankid_sampleid is not None for obj in l3_raw_records))
         self.assertTrue(all(obj.flowcell_id is not None for obj in l3_raw_records))

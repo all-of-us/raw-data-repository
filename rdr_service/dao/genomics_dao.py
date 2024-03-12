@@ -5021,7 +5021,7 @@ class GenomicLongReadDao(GenomicSubDao):
         with self.session() as session:
             records = (
                 session.query(
-                    GenomicLongRead.biobank_id.label('biobank_id'),
+                    func.concat(get_biobank_id_prefix(), GenomicLongRead.biobank_id),
                     GenomicLongRead.sample_id.label('sample_id'),
                     func.concat(get_biobank_id_prefix(),
                                 GenomicLongRead.biobank_id, '_',
@@ -5080,7 +5080,7 @@ class GenomicLongReadDao(GenomicSubDao):
                     GenomicL2ONTRaw.mean_read_quality.isnot(None),
                 ).union(
                     session.query(
-                        GenomicLongRead.biobank_id.label('biobank_id'),
+                        func.concat(get_biobank_id_prefix(), GenomicLongRead.biobank_id),
                         GenomicLongRead.sample_id.label('sample_id'),
                         func.concat(get_biobank_id_prefix(),
                                     GenomicLongRead.biobank_id, '_',
