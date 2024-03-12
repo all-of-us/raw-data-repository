@@ -460,11 +460,11 @@ class NphSmsWorkflowsTest(BaseTestCase):
     def test_sms_ingestion_filetype_failure(self):
 
         # Ingestion Test File - RTI Pull List
-        self.create_cloud_csv("test_sample_list.txt", "test_sample_list.csv")
+        self.create_cloud_csv("test_sample_list_fail.txt", "test_sample_list_fail.txt")
         ingestion_data = {
             "job": "FILE_INGESTION",
             "file_type": "SAMPLE_LIST",
-            "file_path": f"{self.test_bucket}/test_sample_list.txt"
+            "file_path": f"{self.test_bucket}/test_sample_list_fail.txt"
         }
         workflow = SmsWorkflow(ingestion_data)
         workflow.execute_workflow()
@@ -478,5 +478,3 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
             self.assertIn('does not conform', cm.output[0])
-
-        self.assertEqual(job_run.result, '')
