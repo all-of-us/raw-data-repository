@@ -1,7 +1,6 @@
 import datetime
 import logging
 
-from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 import faker
 import re
@@ -31,10 +30,9 @@ from rdr_service.api_util import (
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
-from rdr_service.code_constants import BIOBANK_TESTS, COHORT_1_REVIEW_CONSENT_YES_CODE, ORIGINATING_SOURCES,\
-    PMI_SKIP_CODE, PPI_SYSTEM, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE, UNSET
+from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES,\
+    PMI_SKIP_CODE, PPI_SYSTEM, UNSET
 from rdr_service.dao.base_dao import UpdatableDao
-from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
 from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
@@ -88,7 +86,6 @@ from rdr_service.participant_enums import (
 from rdr_service.model.code import Code
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
 from rdr_service.repository.obfuscation_repository import ObfuscationRepository
-from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from rdr_service.services.retention_calculation import RetentionEligibility
 from rdr_service.services.system_utils import min_or_none
 
@@ -786,10 +783,6 @@ class ParticipantSummaryDao(UpdatableDao):
         """
         from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 
-        earliest_physical_measurements_time = min_or_none([
-            summary.clinicPhysicalMeasurementsFinalizedTime,
-            summary.selfReportedPhysicalMeasurementsAuthored
-        ])
         core_measurements = PhysicalMeasurementsDao.get_core_measurements_for_participant(
             session=session,
             participant_id=summary.participantId
@@ -818,37 +811,6 @@ class ParticipantSummaryDao(UpdatableDao):
             session=session
         )
 
-        earliest_biobank_received_dna_time = None
-        if summary.samplesToIsolateDNA == SampleStatus.RECEIVED:
-            earliest_biobank_received_dna_time = BiobankStoredSampleDao.get_earliest_confirmed_dna_sample_timestamp(
-                session=session,
-                biobank_id=summary.biobankId
-            )
-
-        # See ROC-1572/PDR-1699.  Provide a default date to get_interest_in_sharing_ehr_ranges() if participant
-        # has SUBMITTED status for their EHR consent.  Remediates data issues w/older consent validations
-        default_ehr_date = summary.consentForElectronicHealthRecordsFirstYesAuthored \
-            if summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED else None
-
-        ehr_consent_ranges = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
-            participant_id=summary.participantId,
-            session=session,
-            default_authored_datetime=default_ehr_date
-        )
-
-        revised_consent_time_list = []
-        response_collection = QuestionnaireResponseRepository.get_responses_to_surveys(
-            session=session,
-            survey_codes=[PRIMARY_CONSENT_UPDATE_MODULE],
-            participant_ids=[summary.participantId]
-        )
-        if summary.participantId in response_collection:
-            program_update_response_list = response_collection[summary.participantId].responses.values()
-            for response in program_update_response_list:
-                reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE).value.lower()
-                if reconsent_answer == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
-                    revised_consent_time_list.append(response.authored_datetime)
-        revised_consent_time = min_or_none(revised_consent_time_list)
 
         wgs_sequencing_time = GenomicSetMemberDao.get_wgs_pass_date(
             session=session,
@@ -864,39 +826,11 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.firstParticipantMediatedEhrReceiptTime, summary.participantId, session
         )
 
-        first_exposures_response_time = None
-        for data in (summary.pediatricData or []):
-            if data.data_type == PediatricDataType.ENVIRONMENTAL_EXPOSURES:
-                timestamp = parse(data.value)
-                if first_exposures_response_time is None or timestamp < first_exposures_response_time:
-                    first_exposures_response_time = timestamp
-
         enrl_dependencies = EnrollmentDependencies(
-            consent_cohort=summary.consentCohort,
-            primary_consent_authored_time=summary.consentForStudyEnrollmentFirstYesAuthored,
-            first_full_ehr_consent_authored_time=summary.consentForElectronicHealthRecordsFirstYesAuthored,
-            gror_authored_time=summary.consentForGenomicsRORAuthored,
-            basics_authored_time=summary.questionnaireOnTheBasicsAuthored,
-            overall_health_authored_time=summary.questionnaireOnOverallHealthAuthored,
-            lifestyle_authored_time=summary.questionnaireOnLifestyleAuthored,
-            earliest_ehr_file_received_time=min_or_none(
-                [summary.ehrReceiptTime, summary.firstParticipantMediatedEhrReceiptTime]
-            ),
-            earliest_mediated_ehr_receipt_time=summary.firstParticipantMediatedEhrReceiptTime,
-            earliest_physical_measurements_time=earliest_physical_measurements_time,
-            earliest_biobank_received_dna_time=earliest_biobank_received_dna_time,
-            ehr_consent_date_range_list=ehr_consent_ranges,
-            dna_update_time=revised_consent_time,
-            earliest_height_measurement_time=min_or_none(
-                meas.finalized for meas in core_measurements if meas.satisfiesHeightRequirements
-            ),
-            earliest_weight_measurement_time=min_or_none(
-                meas.finalized for meas in core_measurements if meas.satisfiesWeightRequirements
-            ),
-            wgs_sequencing_time=wgs_sequencing_time,
-            exposures_authored_time=first_exposures_response_time,
-            is_pediatric_participant=summary.isPediatric,
-            has_linked_guardian_accounts=(summary.guardianParticipants and len(summary.guardianParticipants) > 0)
+            EnrollmentDependenciesDao.get_enrollment_dependencies(
+                participant_id=summary.participantId,
+                session=session
+            )
         )
         enrollment_info = EnrollmentCalculation.get_enrollment_info(enrl_dependencies)
 

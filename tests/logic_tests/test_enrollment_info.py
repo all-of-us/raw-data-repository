@@ -1,19 +1,16 @@
 from datetime import datetime
-from typing import List
-
-from rdr_service.services.system_utils import DateRange
-
 
 from rdr_service.logic.enrollment_info import (
     EnrollmentCalculation,
     EnrollmentDependencies,
     EnrollmentInfo
 )
+from rdr_service.model.enrollment_dependencies import EnrollmentDependencies as DbEnrollmentDependencies
 from rdr_service.participant_enums import (
     EnrollmentStatus,
     EnrollmentStatusV30,
     EnrollmentStatusV32,
-    ParticipantCohort
+    ParticipantCohortEnum as ParticipantCohort
 )
 
 from tests.helpers.unittest_base import BaseTestCase
@@ -47,7 +44,7 @@ class TestEnrollmentInfo(BaseTestCase):
         """
         participant_info = self._build_participant_info(
             primary_authored_time=datetime(2019, 8, 1),
-            ehr_consent_ranges=[DateRange(start=datetime(2019, 8, 3))]
+            first_intent_to_share_ehr=datetime(2019, 8, 3)
         )
         self.assertEnrollmentInfoEqual(
             self._build_expected_enrollment_info(
@@ -93,8 +90,8 @@ class TestEnrollmentInfo(BaseTestCase):
             EnrollmentCalculation.get_enrollment_info(participant_info)
         )
 
-        participant_info.ehr_consent_date_range_list = [DateRange(start=datetime(2020, 7, 18))]
-        participant_info.first_full_ehr_consent_authored_time = datetime(2020, 7, 18)
+        participant_info._db_obj.intent_to_share_ehr_time = datetime(2020, 7, 18)
+        participant_info._db_obj.full_ehr_consent_authored_time = datetime(2020, 7, 18)
         self.assertEnrollmentInfoEqual(
             self._build_expected_enrollment_info(
                 legacy_data=[
@@ -122,7 +119,7 @@ class TestEnrollmentInfo(BaseTestCase):
         participant_info = self._build_participant_info(
             consent_cohort=ParticipantCohort.COHORT_2,
             primary_authored_time=datetime(2022, 3, 4),
-            ehr_consent_ranges=[DateRange(start=datetime(2022, 3, 4))],
+            first_intent_to_share_ehr=datetime(2022, 3, 4),
             basics_time=datetime(2022, 3, 7),
             overall_health_time=datetime(2022, 3, 9),
             lifestyle_time=datetime(2022, 3, 9),
@@ -152,7 +149,7 @@ class TestEnrollmentInfo(BaseTestCase):
         )
 
         # Check that GROR is needed for cohort 3 participants
-        participant_info.consent_cohort = ParticipantCohort.COHORT_3
+        participant_info._db_obj.consent_cohort = ParticipantCohort.COHORT_3
         enrollment_info = EnrollmentCalculation.get_enrollment_info(participant_info)
         self.assertNotEqual(EnrollmentStatus.CORE_MINUS_PM, enrollment_info.version_legacy_status)
         self.assertNotEqual(EnrollmentStatusV30.CORE_MINUS_PM, enrollment_info.version_3_0_status)
@@ -166,9 +163,7 @@ class TestEnrollmentInfo(BaseTestCase):
         participant_info = self._build_participant_info(
             consent_cohort=ParticipantCohort.COHORT_2,
             primary_authored_time=datetime(2018, 1, 17),
-            ehr_consent_ranges=[
-                DateRange(start=datetime(2018, 1, 17), end=datetime(2018, 4, 13))
-            ],
+            first_intent_to_share_ehr=datetime(2018, 1, 17),
             basics_time=datetime(2018, 1, 17),
             overall_health_time=datetime(2018, 1, 17),
             lifestyle_time=datetime(2018, 1, 17),
@@ -209,9 +204,7 @@ class TestEnrollmentInfo(BaseTestCase):
         participant_info = self._build_participant_info(
             consent_cohort=ParticipantCohort.COHORT_2,
             primary_authored_time=datetime(2018, 1, 17),
-            ehr_consent_ranges=[
-                DateRange(start=datetime(2018, 1, 17), end=datetime(2018, 1, 20))
-            ],
+            first_intent_to_share_ehr=datetime(2018, 1, 17),
             basics_time=datetime(2018, 1, 17),
             overall_health_time=datetime(2018, 1, 17),
             lifestyle_time=datetime(2018, 1, 17),
@@ -251,9 +244,7 @@ class TestEnrollmentInfo(BaseTestCase):
         participant_info = self._build_participant_info(
             consent_cohort=ParticipantCohort.COHORT_2,
             primary_authored_time=datetime(2018, 1, 17),
-            ehr_consent_ranges=[
-                DateRange(start=datetime(2018, 1, 17), end=datetime(2018, 4, 13))
-            ],
+            first_intent_to_share_ehr=datetime(2018, 1, 17),
             basics_time=datetime(2018, 1, 17),
             overall_health_time=datetime(2018, 1, 17),
             lifestyle_time=datetime(2018, 1, 17),
@@ -273,9 +264,7 @@ class TestEnrollmentInfo(BaseTestCase):
         participant_info = self._build_participant_info(
             consent_cohort=ParticipantCohort.COHORT_2,
             primary_authored_time=datetime(2018, 1, 17),
-            ehr_consent_ranges=[
-                DateRange(start=datetime(2018, 1, 17), end=datetime(2018, 4, 13))
-            ],
+            first_intent_to_share_ehr=datetime(2018, 1, 17),
             basics_time=datetime(2018, 1, 17),
             overall_health_time=datetime(2018, 1, 17),
             lifestyle_time=datetime(2018, 1, 17),
@@ -297,9 +286,7 @@ class TestEnrollmentInfo(BaseTestCase):
         participant_info = self._build_participant_info(
             consent_cohort=ParticipantCohort.COHORT_2,
             primary_authored_time=datetime(2018, 1, 17),
-            ehr_consent_ranges=[
-                DateRange(start=datetime(2018, 1, 17), end=datetime(2018, 4, 13))
-            ],
+            first_intent_to_share_ehr=datetime(2018, 1, 17),
             basics_time=datetime(2018, 1, 17),
             overall_health_time=datetime(2018, 1, 17),
             biobank_received_dna_sample_time=datetime(2018, 2, 21),
@@ -324,7 +311,7 @@ class TestEnrollmentInfo(BaseTestCase):
         participant_info = self._build_participant_info(
             primary_authored_time=datetime(2018, 1, 17),
             ehr_first_yes_timestamp=datetime(2018, 1, 17),
-            ehr_consent_ranges=[DateRange(start=datetime(2018, 1, 17))],
+            first_intent_to_share_ehr=datetime(2018, 1, 17),
             is_pediatric=True,
             has_guardian=True
         )
@@ -332,9 +319,12 @@ class TestEnrollmentInfo(BaseTestCase):
         current_state = EnrollmentCalculation.get_enrollment_info(participant_info)
         self.assertEqual(EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, current_state.version_3_2_status)
 
-        participant_info.basics_authored_time = datetime(2018, 1, 17)
+        participant_info._db_obj.basics_survey_authored_time = datetime(2018, 1, 17)
         current_state = EnrollmentCalculation.get_enrollment_info(participant_info)
         self.assertEqual(EnrollmentStatusV32.PMB_ELIGIBLE, current_state.version_3_2_status)
+
+        bobjson = participant_info.to_json_dict()
+        print(bobjson)
 
     def test_pediatric_core(self):
         """
@@ -344,9 +334,7 @@ class TestEnrollmentInfo(BaseTestCase):
         participant_info = self._build_participant_info(
             consent_cohort=ParticipantCohort.COHORT_2,
             primary_authored_time=datetime(2018, 1, 17),
-            ehr_consent_ranges=[
-                DateRange(start=datetime(2018, 1, 17), end=datetime(2018, 4, 13))
-            ],
+            first_intent_to_share_ehr=datetime(2018, 1, 17),
             basics_time=datetime(2018, 1, 17),
             overall_health_time=datetime(2018, 1, 17),
             biobank_received_dna_sample_time=datetime(2018, 2, 21),
@@ -358,18 +346,16 @@ class TestEnrollmentInfo(BaseTestCase):
         current_state = EnrollmentCalculation.get_enrollment_info(participant_info)
         self.assertEqual(EnrollmentStatusV32.ENROLLED_PARTICIPANT, current_state.version_3_2_status)
 
-        participant_info.exposures_authored_time = datetime(2018, 1, 17)
-        participant_info.earliest_height_measurement_time = datetime(2018, 1, 17)
-        participant_info.earliest_weight_measurement_time = datetime(2018, 1, 17)
+        participant_info._db_obj.exposures_survey_authored_time = datetime(2018, 1, 17)
+        participant_info._db_obj.height_physical_measurements_time = datetime(2018, 1, 17)
+        participant_info._db_obj.weight_physical_measurements_time = datetime(2018, 1, 17)
         current_state = EnrollmentCalculation.get_enrollment_info(participant_info)
         self.assertEqual(EnrollmentStatusV32.CORE_PARTICIPANT, current_state.version_3_2_status)
 
     def test_pediatric_achieving_core_data(self):
         participant_info = self._build_participant_info(
             primary_authored_time=datetime(2018, 1, 17),
-            ehr_consent_ranges=[
-                DateRange(start=datetime(2018, 1, 17), end=datetime(2018, 4, 13))
-            ],
+            first_intent_to_share_ehr=datetime(2018, 1, 17),
             basics_time=datetime(2018, 1, 17),
             overall_health_time=datetime(2018, 1, 17),
             exposures_time=datetime(2018, 1, 17),
@@ -384,9 +370,9 @@ class TestEnrollmentInfo(BaseTestCase):
         self.assertFalse(enrollment_status.has_core_data)
 
         core_data_time = datetime(2018, 5, 6)
-        participant_info.wgs_sequencing_time = core_data_time
-        participant_info.earliest_ehr_file_received_time = core_data_time
-        participant_info.exposures_authored_time = core_data_time
+        participant_info._db_obj.wgs_sequencing_time = core_data_time
+        participant_info._db_obj.first_ehr_file_received_time = core_data_time
+        participant_info._db_obj.exposures_survey_authored_time = core_data_time
 
         enrollment_status = EnrollmentCalculation.get_enrollment_info(participant_info)
         self.assertTrue(enrollment_status.has_core_data)
@@ -414,47 +400,39 @@ class TestEnrollmentInfo(BaseTestCase):
         lifestyle_time=None,
         exposures_time=None,
         ehr_first_yes_timestamp=None,
-        ehr_consent_ranges: List[DateRange] = None,
+        first_intent_to_share_ehr=None,
         biobank_received_dna_sample_time=None,
         physical_measurements_time=None,
         ehr_file_submitted_time=None,
         earliest_mediated_ehr_receipt_time=None,
         dna_update_time=None,
-        current_enrollment: EnrollmentInfo = None,
         earliest_core_pm_time: datetime = None,
         wgs_sequencing_time: datetime = None,
         is_pediatric: bool = False,
         has_guardian: bool = False
     ):
-        if not ehr_consent_ranges:
-            ehr_consent_ranges = []
-        if not current_enrollment:
-            default_first_status_time = datetime(2017, 1, 1)
-            current_enrollment = EnrollmentInfo()
-            current_enrollment.upgrade_legacy_status(EnrollmentStatus.INTERESTED, default_first_status_time)
-            current_enrollment.upgrade_3_0_status(EnrollmentStatusV30.PARTICIPANT, default_first_status_time)
-            current_enrollment.upgrade_3_2_status(EnrollmentStatusV32.PARTICIPANT, default_first_status_time)
-
         return EnrollmentDependencies(
-            consent_cohort=consent_cohort,
-            primary_consent_authored_time=primary_authored_time,
-            first_full_ehr_consent_authored_time=ehr_first_yes_timestamp,
-            gror_authored_time=gror_time,
-            basics_authored_time=basics_time,
-            overall_health_authored_time=overall_health_time,
-            lifestyle_authored_time=lifestyle_time,
-            exposures_authored_time=exposures_time,
-            ehr_consent_date_range_list=ehr_consent_ranges,
-            earliest_biobank_received_dna_time=biobank_received_dna_sample_time,
-            earliest_physical_measurements_time=physical_measurements_time,
-            dna_update_time=dna_update_time,
-            earliest_ehr_file_received_time=ehr_file_submitted_time,
-            earliest_mediated_ehr_receipt_time=earliest_mediated_ehr_receipt_time,
-            earliest_height_measurement_time=earliest_core_pm_time,
-            earliest_weight_measurement_time=earliest_core_pm_time,
-            wgs_sequencing_time=wgs_sequencing_time,
-            is_pediatric_participant=is_pediatric,
-            has_linked_guardian_accounts=has_guardian
+            DbEnrollmentDependencies(
+                consent_cohort=consent_cohort,
+                primary_consent_authored_time=primary_authored_time,
+                intent_to_share_ehr_time=first_intent_to_share_ehr,
+                full_ehr_consent_authored_time=ehr_first_yes_timestamp,
+                gror_consent_authored_time=gror_time,
+                basics_survey_authored_time=basics_time,
+                overall_health_survey_authored_time=overall_health_time,
+                lifestyle_survey_authored_time=lifestyle_time,
+                exposures_survey_authored_time=exposures_time,
+                biobank_received_dna_time=biobank_received_dna_sample_time,
+                physical_measurements_time=physical_measurements_time,
+                dna_consent_update_time=dna_update_time,
+                first_ehr_file_received_time=ehr_file_submitted_time,
+                first_mediated_ehr_received_time=earliest_mediated_ehr_receipt_time,
+                height_physical_measurements_time=earliest_core_pm_time,
+                weight_physical_measurements_time=earliest_core_pm_time,
+                wgs_sequencing_time=wgs_sequencing_time,
+                is_pediatric_participant=is_pediatric,
+                has_linked_guardian_account=has_guardian
+            )
         )
 
     @classmethod
