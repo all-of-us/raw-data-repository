@@ -18,7 +18,6 @@ GCP_PROJECTS = [
     "all-of-us-rdr-careevo-test",
     "all-of-us-rdr-ptsc-1-test",
     "all-of-us-rdr-ptsc-2-test",
-    "all-of-us-rdr-ptsc-3-test",
     "aou-pdr-data-prod"
 ]
 
@@ -32,7 +31,6 @@ class RdrEnvironment(Enum):
     CAREEVO_TEST = "all-of-us-rdr-careevo-test"
     PTSC_1_TEST = "all-of-us-rdr-ptsc-1-test"
     PTSC_2_TEST = "all-of-us-rdr-ptsc-2-test"
-    PTSC_3_TEST = "all-of-us-rdr-ptsc-3-test"
 
 
 GCP_INSTANCES = {  # List of RDR's GCP projects mapped to their database instance names
@@ -44,7 +42,6 @@ GCP_INSTANCES = {  # List of RDR's GCP projects mapped to their database instanc
     "all-of-us-rdr-careevo-test": "all-of-us-rdr-careevo-test:us-central1:rdrmaindb",
     "all-of-us-rdr-ptsc-1-test": "all-of-us-rdr-ptsc-1-test:us-central1:rdrmaindb",
     "all-of-us-rdr-ptsc-2-test": "all-of-us-rdr-ptsc-2-test:us-central1:rdrmaindb",
-    "all-of-us-rdr-ptsc-3-test": "all-of-us-rdr-ptsc-3-test:us-central1:rdrmaindb",
 }
 
 GCP_REPLICA_INSTANCES = {
@@ -56,7 +53,6 @@ GCP_REPLICA_INSTANCES = {
     "all-of-us-rdr-careevo-test": "all-of-us-rdr-careevo-test:us-central1:rdrbackupdb",
     "all-of-us-rdr-ptsc-1-test": "all-of-us-rdr-ptsc-1-test:us-central1:rdrbackupdb",
     "all-of-us-rdr-ptsc-2-test": "all-of-us-rdr-ptsc-2-test:us-central1:rdrbackupdb",
-    "all-of-us-rdr-ptsc-3-test": "all-of-us-rdr-ptsc-3-test:us-central1:rdrbackupdb",
 }
 
 GCP_SERVICES = [
