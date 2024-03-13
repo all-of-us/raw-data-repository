@@ -5,6 +5,7 @@ import pytz
 from calendar import monthrange
 from datetime import datetime, timedelta
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
+from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -14,18 +15,22 @@ tool_cmd = "qr_duplicate_fix"
 tool_desc = "Tool to run the questionnaire response duplicate detection logic over a long period of time."
 
 
+class ResponseDuplicateFix(ToolBase):
+
+    def run(self):
+
+        # Will end at year of oldest observed duplicates.
+        end = datetime(2017, 1, 1, 0, 0, 0, 0, pytz.UTC)
+        response_detector = ResponseDuplicationDetector()
+        from_ts = datetime.now()
+        while end < from_ts:
+            days_in_month = monthrange(from_ts.year, from_ts.month)[1]
+            response_detector.flag_duplicate_responses(days_in_month + 1, from_ts, self.args.project)
+            next_month = from_ts.month + 1 if from_ts.month > 1 else 12
+            from_ts = from_ts - timedelta(days=monthrange(from_ts.year, next_month)[1])
+
+        return
+
+
 def run():
-
-    # Starting from year of oldest observed duplicates
-    start = datetime(2017, 1, 31, 23, 59, 59, 999999, pytz.UTC)
-    rdd = ResponseDuplicationDetector()
-
-    while start < datetime.now(tz=pytz.UTC):
-        days_in_month = monthrange(start.year, start.month)[1]
-        rdd.flag_duplicate_responses(days_in_month + 1, start)
-        next_month = start.month + 1 if start.month < 12 else 1
-        start = start + timedelta(days=monthrange(start.year, next_month)[1])
-
-# --- Main Program Call ---
-if __name__ == "__main__":
-    sys.exit(run())
+    cli_run(tool_cmd, tool_desc, ResponseDuplicateFix)
