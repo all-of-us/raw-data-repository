@@ -9,7 +9,7 @@ from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.study_nph_sms_dao import SmsJobRunDao, SmsSampleDao, SmsN0Dao, SmsN1Mc1Dao
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.workflow_management.general_job_controller import JobController
-from rdr_service.services.ancillary_studies.nph_incident import NphIncidentDao, create_nph_incident
+from rdr_service.services.ancillary_studies.nph_incident import NphIncidentDao
 from rdr_service.workflow_management.nph.sms_validation import SmsValidator
 
 
