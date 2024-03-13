@@ -4,14 +4,12 @@ from typing import Dict, Any
 from flask import request
 from flask_restful import Resource
 
-from rdr_service import config
 from rdr_service.clock import CLOCK
 from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.study_nph_dao import NphConsentEventDao, NphPairingEventDao, NphEnrollmentEventDao, \
     NphParticipantEventActivityDao
 from rdr_service.services.ancillary_studies.nph_incident import create_nph_incident
-from rdr_service.services.slack_utils import SlackMessageHandler
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.participant_dao import ParticipantDao
