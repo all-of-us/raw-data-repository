@@ -1,5 +1,4 @@
 import logging
-import sys
 import pytz
 
 from calendar import monthrange
