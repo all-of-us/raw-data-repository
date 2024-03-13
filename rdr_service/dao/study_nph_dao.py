@@ -12,6 +12,7 @@ from sqlalchemy.orm import Query, aliased
 from sqlalchemy import exc, func, case, and_, literal
 from sqlalchemy.dialects.mysql import JSON
 
+from rdr_service import config
 from rdr_service.ancillary_study_resources.nph.enums import StoredSampleStatus
 from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample,
@@ -107,10 +108,14 @@ class NphParticipantDao(BaseDao):
                     and_(
                         ConsentEvent.participant_id == consent_event_alias.participant_id,
                         ConsentEvent.event_type_id == consent_event_alias.event_type_id,
-                        ConsentEvent.id < consent_event_alias.id
+                        ConsentEvent.id < consent_event_alias.id,
+                        consent_event_alias.ignore_flag == 0
                     ),
                 )
-                .filter(consent_event_alias.id.is_(None))
+                .filter(
+                    consent_event_alias.id.is_(None),
+                    ConsentEvent.ignore_flag == 0
+                )
                 .group_by(Participant.id)
                 .subquery()
             )
@@ -136,163 +141,9 @@ class NphParticipantDao(BaseDao):
                 EnrollmentEventType.id == EnrollmentEvent.event_type_id,
             ).filter(
                 EnrollmentEventType.source_name.notlike('%_death'),
-                EnrollmentEventType.source_name.notlike('%_losttofollowup')
+                EnrollmentEventType.source_name.notlike('%_losttofollowup'),
+                EnrollmentEvent.ignore_flag == 0
             ).group_by(Participant.id).subquery()
-
-    def get_stored_samples_subquery(
-        self, *, nph_participant_id=None, **kwargs
-    ):
-        stored_sample_alias = aliased(StoredSample)
-        with self.session() as session:
-            stored_samples_subquery = session.query(
-                Participant.id.label('stored_sample_pid'),
-                func.json_object(
-                    'orders_sample_biobank_json',
-                    func.json_arrayagg(
-                        func.json_object(
-                            'limsID', StoredSample.lims_id,
-                            'biobankModified', StoredSample.biobank_modified,
-                            'status', StoredSample.status,
-                            'orderSampleID', StoredSample.sample_id
-                        )
-                    ), type_=JSON
-                ).label('orders_sample_biobank_status')
-            ).join(
-                StoredSample,
-                StoredSample.biobank_id == Participant.biobank_id
-            ).outerjoin(
-                stored_sample_alias,
-                and_(
-                    StoredSample.biobank_id == stored_sample_alias.biobank_id,
-                    stored_sample_alias.sample_id == StoredSample.sample_id,
-                    stored_sample_alias.status == StoredSample.status,
-                    StoredSample.id < stored_sample_alias.id
-                )
-            ).filter(
-                stored_sample_alias.id.is_(None)
-            ).group_by(Participant.id)
-
-            if nph_participant_id:
-                return stored_samples_subquery.filter(Participant.id == nph_participant_id)
-
-            if query_def := kwargs.get('query_def'):
-                if applicable_filters := [
-                    filter_obj for filter_obj
-                    in query_def.field_filters
-                    if filter_obj.field_name in ['modified']
-                ]:
-                    stored_samples_subquery = self._set_filters(
-                        query=stored_samples_subquery,
-                        filters=applicable_filters,
-                        model_type=StoredSample
-                    )
-
-            return stored_samples_subquery.subquery()
-
-    def get_orders_samples_subquery(self, *, nph_participant_id=None, **kwargs):
-        parent_study_category = aliased(StudyCategory)
-        parent_study_category_module = aliased(StudyCategory)
-        parent_ordered_sample = aliased(OrderedSample)
-        stored_samples_subquery = self.get_stored_samples_subquery(**kwargs)
-        with self.session() as session:
-            sample_orders = session.query(
-                Order.participant_id.label('orders_samples_pid'),
-                func.json_object(
-                    'orders_sample_json',
-                    func.json_arrayagg(
-                        func.json_object(
-                            'orderID', Order.nph_order_id,
-                            'visitID', parent_study_category.name,
-                            'studyID', parent_study_category_module.name,
-                            'timepointID', StudyCategory.name,
-                            'clientID', Order.client_id,
-                            'specimenCode', case(
-                                [
-                                    (OrderedSample.identifier.isnot(None), OrderedSample.identifier),
-                                ],
-                                else_=OrderedSample.test
-                            ),
-                            'volume', OrderedSample.volume,
-                            'volumeUOM', OrderedSample.volumeUnits,
-                            'orderedSampleStatus', case(
-                                [
-                                    (Order.status == 'cancelled', 'Cancelled'),
-                                    (OrderedSample.status.ilike('cancelled'), 'Cancelled'),
-                                ],
-                                else_='Active'
-                            ),
-                            'collectionDateUTC', case(
-                                [
-                                    (OrderedSample.parent_sample_id.isnot(None), parent_ordered_sample.collected),
-                                ],
-                                else_=OrderedSample.collected
-                            ),
-                            'processingDateUTC', case(
-                                [
-                                    (OrderedSample.parent_sample_id.isnot(None), OrderedSample.collected),
-                                ],
-                                else_=None
-                            ),
-                            'finalizedDateUTC', case(
-                                [
-                                    (OrderedSample.finalized.isnot(None), OrderedSample.finalized),
-                                ],
-                                else_=None
-                            ),
-                            'sampleID', case(
-                                [
-                                    (OrderedSample.aliquot_id.isnot(None), OrderedSample.aliquot_id),
-                                ],
-                                else_=OrderedSample.nph_sample_id
-                            ),
-                            'kitID', case(
-                                [
-                                    (OrderedSample.identifier.ilike("ST%"), Order.nph_order_id),
-                                    (OrderedSample.test.ilike("ST%"), Order.nph_order_id),
-                                ],
-                                else_=None
-                            ),
-                        )
-                    ), type_=JSON
-                ).label('orders_sample_status'),
-                stored_samples_subquery.c.orders_sample_biobank_status
-            ).join(
-                OrderedSample,
-                OrderedSample.order_id == Order.id
-            ).join(
-                StudyCategory,
-                StudyCategory.id == Order.category_id
-            ).join(
-                PairingEvent,
-                PairingEvent.participant_id == Order.participant_id
-            ).join(
-                Site,
-                Site.id == PairingEvent.site_id
-            ).outerjoin(
-                parent_study_category,
-                parent_study_category.id == StudyCategory.parent_id
-            ).outerjoin(
-                parent_study_category_module,
-                parent_study_category_module.id == parent_study_category.parent_id
-            ).outerjoin(
-                parent_ordered_sample,
-                parent_ordered_sample.id == OrderedSample.parent_sample_id
-            ).outerjoin(
-                stored_samples_subquery,
-                stored_samples_subquery.c.stored_sample_pid == Order.participant_id
-            ).group_by(Order.participant_id)
-
-            if nph_participant_id:
-                sample_orders = sample_orders.filter(
-                    Order.participant_id == nph_participant_id
-                )
-                return sample_orders.all()
-
-            if query_def := kwargs.get('query_def'):
-                if query_def.field_filters:
-                    return sample_orders
-
-            return sample_orders.subquery()
 
     def get_diet_status_subquery(self):
         diet_alias = aliased(DietEvent)
@@ -321,10 +172,12 @@ class NphParticipantDao(BaseDao):
                 and_(
                     Participant.id == diet_alias.participant_id,
                     DietEvent.diet_name == diet_alias.diet_name,
-                    DietEvent.created < diet_alias.created
+                    DietEvent.created < diet_alias.created,
+                    diet_alias.ignore_flag == 0
                 )
             ).filter(
-              diet_alias.id.is_(None)
+                diet_alias.id.is_(None),
+                DietEvent.ignore_flag == 0
             ).group_by(
                 Participant.id
             ).subquery()
@@ -345,7 +198,7 @@ class NphParticipantDao(BaseDao):
             ).join(
                 DeactivationEvent,
                 DeactivationEvent.participant_id == Participant.id
-            ).group_by(Participant.id).subquery()
+            ).filter(DeactivationEvent.ignore_flag == 0).group_by(Participant.id).subquery()
 
     def get_withdrawal_subquery(self):
         with self.session() as session:
@@ -363,7 +216,7 @@ class NphParticipantDao(BaseDao):
             ).join(
                 WithdrawalEvent,
                 WithdrawalEvent.participant_id == Participant.id
-            ).group_by(Participant.id).subquery()
+            ).filter(WithdrawalEvent.ignore_flag == 0).group_by(Participant.id).subquery()
 
 
 class NphStudyCategoryDao(UpdatableDao):
@@ -378,13 +231,24 @@ class NphStudyCategoryDao(UpdatableDao):
         # return False and empty string if module not exist
         # otherwise, return True and time point id
         module = aliased(StudyCategory)
-        visit_type = aliased(StudyCategory)
+        visit = aliased(StudyCategory)
         time_point = aliased(StudyCategory)
+
         query = Query(time_point)
         query.session = session
-        result = query.filter(module.id == visit_type.parent_id, visit_type.id == time_point.parent_id,
-                              module.name == order.module, visit_type.name == order.visitType,
-                              time_point.name == order.timepoint).first()
+
+        visit_attr_name = 'visitType'
+        if config.getSettingJson('nph_read_visitPeriod', default=False):
+            visit_attr_name = 'visitPeriod'
+
+        result = query.filter(
+            module.id == visit.parent_id,
+            visit.id == time_point.parent_id,
+            module.name == order.module,
+            visit.name == getattr(order, visit_attr_name),
+            time_point.name == order.timepoint
+        ).first()
+
         if not result:
             return False, ""
         else:
@@ -397,20 +261,32 @@ class NphStudyCategoryDao(UpdatableDao):
         query = Query(StudyCategory)
         query.session = session
         time_point_record = query.filter(StudyCategory.id == category_id).first()
+
+        should_read_visit_period = config.getSettingJson('nph_read_visitPeriod', default=False)
+        visit_label = 'visitPeriod' if should_read_visit_period else 'visitType'
         if time_point_record:
-            visit_type_record = query.filter(StudyCategory.id == time_point_record.parent_id,
-                                             StudyCategory.type_label == "visitType").first()
+            visit_type_record = query.filter(
+                StudyCategory.id == time_point_record.parent_id,
+                StudyCategory.type_label == visit_label
+            ).first()
             if visit_type_record:
-                module_record = query.filter(StudyCategory.id == visit_type_record.parent_id,
-                                             StudyCategory.type_label == "module").first()
+                module_record = query.filter(
+                    StudyCategory.id == visit_type_record.parent_id,
+                    StudyCategory.type_label == "module"
+                ).first()
         return time_point_record, visit_type_record, module_record
 
     @staticmethod
     def validate_model(obj):
         if obj.__dict__.get("module") is None:
             raise BadRequest("Module is missing")
-        if obj.__dict__.get("visitType") is None:
+
+        should_read_visit_period = config.getSettingJson('nph_read_visitPeriod', default=False)
+        if not should_read_visit_period and obj.__dict__.get("visitType") is None:
             raise BadRequest("Visit Type is missing")
+        elif should_read_visit_period and obj.__dict__.get("visitPeriod") is None:
+            raise BadRequest("Visit Type is missing")
+
         if obj.__dict__.get("timepoint") is None:
             raise BadRequest("Time Point ID is missing")
 
@@ -431,8 +307,14 @@ class NphStudyCategoryDao(UpdatableDao):
         query = Query(StudyCategory)
         query.session = session
         if module:
-            result = query.filter(StudyCategory.type_label == "visitType", StudyCategory.name == order.visitType,
-                                  StudyCategory.parent_id == module.id).first()
+            should_read_visit_period = config.getSettingJson('nph_read_visitPeriod', default=False)
+            visit_name = order.visitPeriod if should_read_visit_period else order.visitType
+            visit_label = 'visitPeriod' if should_read_visit_period else 'visitType'
+            result = query.filter(
+                StudyCategory.type_label == visit_label,
+                StudyCategory.name == visit_name,
+                StudyCategory.parent_id == module.id
+            ).first()
             if result:
                 return True, result
 
@@ -554,8 +436,12 @@ class NphOrderDao(UpdatableDao):
 
         if payload.module != module_record.name:
             raise BadRequest(f"Module does not exist: {payload.module}")
-        if payload.visitType != visit_type_record.name:
-            raise BadRequest(f"VisitType does not match the corresponding module: {payload.visitType}")
+
+        should_read_visit_period = config.getSettingJson('nph_read_visitPeriod', default=False)
+        visit_name = payload.visitPeriod if should_read_visit_period else payload.visitType
+        if visit_name != visit_type_record.name:
+            raise BadRequest(f"VisitType does not match the corresponding module: {visit_name}")
+
         if payload.timepoint != time_point_record.name:
             raise BadRequest(f"TimePoint does not match the corresponding visitType: {payload.timepoint}")
 
@@ -756,8 +642,11 @@ class NphOrderDao(UpdatableDao):
             session=session
         )
         if not visit_exist:
+            should_read_visit_period = config.getSettingJson('nph_read_visitPeriod', default=False)
+            category_label = 'visitPeriod' if should_read_visit_period else 'visitType'
+            category_name = order.visitPeriod if should_read_visit_period else order.visitType
             visit = self.study_category_dao.insert_with_session(
-                obj=StudyCategory(name=order.visitType, type_label="visitType"),
+                obj=StudyCategory(name=category_name, type_label=category_label),
                 session=session
             )
             module.children.append(visit)
@@ -1157,7 +1046,6 @@ class NphIntakeDao(BaseDao):
 class NphBiospecimenDao(BaseDao):
     def __init__(self):
         super().__init__(Order, order_by_ending=["participant_id"])
-        self.nph_participant_dao = NphParticipantDao()
 
     def get_id(self, obj):
         return obj.id
@@ -1169,7 +1057,7 @@ class NphBiospecimenDao(BaseDao):
         return payload
 
     def _initialize_query(self, session, query_def):
-        return self.nph_participant_dao.get_orders_samples_subquery(query_def=query_def)
+        return self.get_orders_samples_subquery(query_def=query_def)
 
     def make_query_filter(self, field_name, value):
         if field_name == 'last_modified':
@@ -1264,6 +1152,159 @@ class NphBiospecimenDao(BaseDao):
                 } for stored_sample in stored_samples
             ]
         return order_samples
+
+    def get_stored_samples_subquery(
+        self, *, nph_participant_id=None, **kwargs
+    ):
+        stored_sample_alias = aliased(StoredSample)
+        with self.session() as session:
+            stored_samples_subquery = session.query(
+                Participant.id.label('stored_sample_pid'),
+                func.json_object(
+                    'orders_sample_biobank_json',
+                    func.json_arrayagg(
+                        func.json_object(
+                            'limsID', StoredSample.lims_id,
+                            'biobankModified', StoredSample.biobank_modified,
+                            'status', StoredSample.status,
+                            'orderSampleID', StoredSample.sample_id
+                        )
+                    ), type_=JSON
+                ).label('orders_sample_biobank_status')
+            ).join(
+                StoredSample,
+                StoredSample.biobank_id == Participant.biobank_id
+            ).outerjoin(
+                stored_sample_alias,
+                and_(
+                    StoredSample.biobank_id == stored_sample_alias.biobank_id,
+                    stored_sample_alias.sample_id == StoredSample.sample_id,
+                    stored_sample_alias.status == StoredSample.status,
+                    StoredSample.id < stored_sample_alias.id
+                )
+            ).filter(
+                stored_sample_alias.id.is_(None)
+            ).group_by(Participant.id)
+
+            if nph_participant_id:
+                return stored_samples_subquery.filter(Participant.id == nph_participant_id)
+
+            if query_def := kwargs.get('query_def'):
+                if applicable_filters := [
+                    filter_obj for filter_obj
+                    in query_def.field_filters
+                    if filter_obj.field_name in ['modified']
+                ]:
+                    stored_samples_subquery = self._set_filters(
+                        query=stored_samples_subquery,
+                        filters=applicable_filters,
+                        model_type=StoredSample
+                    )
+
+            return stored_samples_subquery.subquery()
+
+    def get_orders_samples_subquery(self, *, nph_participant_id=None, **kwargs):
+        parent_study_category = aliased(StudyCategory)
+        parent_study_category_module = aliased(StudyCategory)
+        parent_ordered_sample = aliased(OrderedSample)
+        stored_samples_subquery = self.get_stored_samples_subquery(**kwargs)
+        with self.session() as session:
+            sample_orders = session.query(
+                Order.participant_id.label('orders_samples_pid'),
+                func.json_object(
+                    'orders_sample_json',
+                    func.json_arrayagg(
+                        func.json_object(
+                            'orderID', Order.nph_order_id,
+                            'visitID', parent_study_category.name,
+                            'studyID', parent_study_category_module.name,
+                            'timepointID', StudyCategory.name,
+                            'clientID', Order.client_id,
+                            'specimenCode', case(
+                                [
+                                    (OrderedSample.identifier.isnot(None), OrderedSample.identifier),
+                                ],
+                                else_=OrderedSample.test
+                            ),
+                            'volume', OrderedSample.volume,
+                            'volumeUOM', OrderedSample.volumeUnits,
+                            'orderedSampleStatus', case(
+                                [
+                                    (Order.status == 'cancelled', 'Cancelled'),
+                                    (OrderedSample.status.ilike('cancelled'), 'Cancelled'),
+                                ],
+                                else_='Active'
+                            ),
+                            'collectionDateUTC', case(
+                                [
+                                    (OrderedSample.parent_sample_id.isnot(None), parent_ordered_sample.collected),
+                                ],
+                                else_=OrderedSample.collected
+                            ),
+                            'processingDateUTC', case(
+                                [
+                                    (OrderedSample.parent_sample_id.isnot(None), OrderedSample.collected),
+                                ],
+                                else_=None
+                            ),
+                            'finalizedDateUTC', case(
+                                [
+                                    (OrderedSample.finalized.isnot(None), OrderedSample.finalized),
+                                ],
+                                else_=None
+                            ),
+                            'sampleID', case(
+                                [
+                                    (OrderedSample.aliquot_id.isnot(None), OrderedSample.aliquot_id),
+                                ],
+                                else_=OrderedSample.nph_sample_id
+                            ),
+                            'kitID', case(
+                                [
+                                    (OrderedSample.identifier.ilike("ST%"), Order.nph_order_id),
+                                    (OrderedSample.test.ilike("ST%"), Order.nph_order_id),
+                                ],
+                                else_=None
+                            ),
+                        )
+                    ), type_=JSON
+                ).label('orders_sample_status'),
+                stored_samples_subquery.c.orders_sample_biobank_status
+            ).join(
+                OrderedSample,
+                OrderedSample.order_id == Order.id
+            ).join(
+                StudyCategory,
+                StudyCategory.id == Order.category_id
+            ).join(
+                PairingEvent,
+                PairingEvent.participant_id == Order.participant_id
+            ).join(
+                Site,
+                Site.id == PairingEvent.site_id
+            ).outerjoin(
+                parent_study_category,
+                parent_study_category.id == StudyCategory.parent_id
+            ).outerjoin(
+                parent_study_category_module,
+                parent_study_category_module.id == parent_study_category.parent_id
+            ).outerjoin(
+                parent_ordered_sample,
+                parent_ordered_sample.id == OrderedSample.parent_sample_id
+            ).outerjoin(
+                stored_samples_subquery,
+                stored_samples_subquery.c.stored_sample_pid == Order.participant_id
+            ).group_by(Order.participant_id)
+
+            if nph_participant_id:
+                sample_orders = sample_orders.filter(
+                    Order.participant_id == nph_participant_id
+                )
+                return sample_orders.all()
+
+            if query_def := kwargs.get('query_def'):
+                if query_def.field_filters:
+                    return sample_orders
 
 
 class NphSampleUpdateDao(BaseDao):

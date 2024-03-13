@@ -2,6 +2,7 @@ import collections
 import datetime
 import functools
 import operator
+from dateutil.relativedelta import relativedelta
 
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicSetDao
@@ -24,7 +25,7 @@ def validate_and_update_genomic_set_by_id(genomic_set_id, dao=None):
   :type dao: GenomicSetDao or None
   """
     now = clock.CLOCK.now()
-    date_of_birth_cutoff = datetime.date(year=now.year - GENOMIC_VALID_AGE, month=now.month, day=now.day)
+    date_of_birth_cutoff = (now - relativedelta(years=GENOMIC_VALID_AGE)).date()
     dao = dao or GenomicSetDao()
 
     update_queue = collections.deque()

@@ -5,6 +5,7 @@ from rdr_service import config
 from rdr_service.genomic_enums import GenomicSubProcessResult, GenomicWorkflowState, GenomicManifestTypes, \
     GenomicContaminationCategory
 from rdr_service.model.config_utils import get_biobank_id_prefix
+from rdr_service.model.consent_file import ConsentFile, ConsentType, ConsentSyncStatus
 from rdr_service.model.genomics import GenomicGCValidationMetrics, GenomicSetMember, GenomicFileProcessed
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus, QuestionnaireStatus
@@ -40,6 +41,12 @@ class GenomicQueryClass:
                 ).join(
                     GenomicGCValidationMetrics,
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                ).join(
+                    ConsentFile,
+                    sqlalchemy.and_(
+                        ConsentFile.participant_id == GenomicSetMember.participantId,
+                        ConsentFile.type == ConsentType.GROR,
+                    )
                 ).outerjoin(
                     self.aliases['gsm'],
                     sqlalchemy.and_(
@@ -60,7 +67,11 @@ class GenomicQueryClass:
                 (GenomicSetMember.blockResults != 1) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
-                (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
+                (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) &
+                (ConsentFile.sync_status.in_([
+                    ConsentSyncStatus.READY_FOR_SYNC,
+                    ConsentSyncStatus.SYNC_COMPLETE
+                ]))
             ).group_by(
                 GenomicSetMember.biobankId,
                 GenomicSetMember.sampleId,
@@ -487,7 +498,6 @@ class GenomicQueryClass:
             LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id
         WHERE TRUE
             AND ss.test in ('1ED04', '1ED10', '1SAL2')
-            AND ss.rdr_created > :from_date_param
             AND ps.consent_cohort = :cohort_3_param
             AND m.id IS NULL
         """
@@ -525,71 +535,4 @@ class GenomicQueryClass:
             "invalid_structure": GenomicSubProcessResult.INVALID_FILE_STRUCTURE.number,
             "from_date": from_date
         }
-        return query_sql, query_params
-
-    @staticmethod
-    def short_read_ingestions_summary(from_date):
-        query_sql = """
-                # AW1 Ingestions
-                SELECT count(distinct raw.id) as record_count
-                    , count(distinct m.id) as ingested_count
-                    , count(distinct raw.id) - count(distinct m.id) as delta_count
-                    , "aw1" as file_type
-                    , LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(raw.file_path, "/", -1), "_", 1)) as gc_site_id
-                    , CASE
-                        WHEN SUBSTRING_INDEX(SUBSTRING_INDEX(
-                                SUBSTRING_INDEX(raw.file_path, "/", -1), "_", 3), "_", -1
-                            ) = "SEQ"
-                        THEN "aou_wgs"
-                        WHEN SUBSTRING_INDEX(SUBSTRING_INDEX(
-                                SUBSTRING_INDEX(raw.file_path, "/", -1), "_", 3), "_", -1
-                            ) = "GEN"
-                        THEN "aou_array"
-                      END AS genome_type
-                    ,raw.file_path
-                FROM genomic_aw1_raw raw
-                    LEFT JOIN genomic_manifest_file mf ON mf.file_path = raw.file_path
-                    LEFT JOIN genomic_file_processed f ON f.genomic_manifest_file_id = mf.id
-                    LEFT JOIN genomic_set_member m ON m.aw1_file_processed_id = f.id
-                        AND m.ignore_flag = 0
-                WHERE TRUE
-                    AND raw.created >= :from_date
-                    AND raw.ignore_flag = 0
-                    AND raw.biobank_id <> ""
-                GROUP BY raw.file_path, file_type
-                UNION
-                # AW2 Ingestions
-                SELECT count(distinct raw.id) as record_count
-                    , count(distinct m.id) as ingested_count
-                    , count(distinct i.id) as incident_count
-                    , "aw2" as file_type
-                    , LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(raw.file_path, "/", -1), "_", 1)) as gc_site_id
-                    , CASE
-                        WHEN SUBSTRING_INDEX(SUBSTRING_INDEX(
-                                SUBSTRING_INDEX(raw.file_path, "/", -1), "_", 3), "_", -1
-                            ) = "SEQ"
-                        THEN "aou_wgs"
-                        WHEN SUBSTRING_INDEX(SUBSTRING_INDEX(
-                                SUBSTRING_INDEX(raw.file_path, "/", -1), "_", 3), "_", -1
-                            ) = "GEN"
-                        THEN "aou_array"
-                          END AS genome_type
-                        , raw.file_path
-                FROM genomic_aw2_raw raw
-                    LEFT JOIN genomic_manifest_file mf ON mf.file_path = raw.file_path
-                    LEFT JOIN genomic_file_processed f ON f.genomic_manifest_file_id = mf.id
-                    LEFT JOIN genomic_gc_validation_metrics m ON m.genomic_file_processed_id = f.id
-                        AND m.ignore_flag = 0
-                    LEFT JOIN genomic_incident i ON i.source_file_processed_id = f.id
-                WHERE TRUE
-                    AND raw.created >=  :from_date
-                    AND raw.ignore_flag = 0
-                    AND raw.biobank_id <> ""
-                GROUP BY raw.file_path, file_type
-            """
-
-        query_params = {
-            "from_date": from_date
-        }
-
         return query_sql, query_params

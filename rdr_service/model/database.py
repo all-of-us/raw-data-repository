@@ -28,7 +28,9 @@ from rdr_service.model.code import CodeBook, Code, CodeHistory
 from rdr_service.model.calendar import Calendar
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.deceased_report_import_record import DeceasedReportImportRecord
+from rdr_service.model.duplicate_account import DuplicateAccount
 from rdr_service.model.ehr import EhrReceipt, ParticipantEhrReceipt
+from rdr_service.model.enrollment_dependencies import EnrollmentDependencies
 from rdr_service.model.enrollment_status_history import EnrollmentStatusHistory
 from rdr_service.model.ghost_api_check import GhostApiCheck
 from rdr_service.model.hpo import HPO
@@ -73,6 +75,7 @@ from rdr_service.model.curation_etl import CdrEtlRunHistory, CdrEtlSurveyHistory
 from rdr_service.model.pediatric_data_log import PediatricDataLog
 from rdr_service.model.ppi_validation_errors import PpiValidationErrors
 from rdr_service.model.profile_update import ProfileUpdate
+from rdr_service.model.participant_data_to_tactis import ParticipantDataToTactis
 
 from rdr_service.model.study_nph import Participant
 from rdr_service.model.study_nph_sms import SmsSample, SmsJobRun

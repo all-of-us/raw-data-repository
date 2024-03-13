@@ -1,3 +1,4 @@
+from enum import Enum
 import json
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -48,6 +49,14 @@ class ParticipantCohort(messages.Enum):
     COHORT_1 = 1  # Beta participants.  Consent before April 24, 2018.
     COHORT_2 = 2  # National Launch Participants. Consent between April 24, 2018 and April 21, 2020 (03:59:59 UTC)
     COHORT_3 = 3  # New Participants with consent starting from April 21, 2020 04:00:00 UTC  (midnight eastern)
+
+
+class ParticipantCohortEnum(Enum):
+    """ Participant Cohort Group (using regular python enums)"""
+    UNSET = 0
+    COHORT_1 = 1
+    COHORT_2 = 2
+    COHORT_3 = 3
 
 
 # Added for DA-1622, enabling identification of Genomics pilot participants from Cohort 2

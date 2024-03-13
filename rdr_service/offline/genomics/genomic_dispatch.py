@@ -11,7 +11,7 @@ from rdr_service.model.genomics import (GenomicLRRaw, GenomicL0Raw, GenomicPRRaw
                                         GenomicRRRaw, GenomicR0Raw,
                                         GenomicR1Raw, GenomicL1Raw, GenomicA2Raw, GenomicA3Raw, GenomicA1Raw,
                                         GenomicR2Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, GenomicL3Raw, GenomicL4Raw,
-                                        GenomicL5Raw, GenomicL6Raw)
+                                        GenomicL5Raw, GenomicL6Raw, GenomicL1FRaw, GenomicL4FRaw, GenomicL6FRaw)
 
 from rdr_service.services.system_utils import JSONObject
 
@@ -106,6 +106,10 @@ def load_manifest_into_raw_table(
             'job_id': GenomicJob.LOAD_L1_TO_RAW_TABLE,
             'model': GenomicL1Raw
         },
+        "l1f": {
+            'job_id': GenomicJob.LOAD_L1F_TO_RAW_TABLE,
+            'model': GenomicL1FRaw
+        },
         "l2_ont": {
             'job_id': GenomicJob.LOAD_L2_ONT_TO_RAW_TABLE,
             'model': GenomicL2ONTRaw
@@ -122,6 +126,10 @@ def load_manifest_into_raw_table(
             'job_id': GenomicJob.LOAD_L4_TO_RAW_TABLE,
             'model': GenomicL4Raw
         },
+        "l4f": {
+            'job_id': GenomicJob.LOAD_L4F_TO_RAW_TABLE,
+            'model': GenomicL4FRaw
+        },
         "l5": {
             'job_id': GenomicJob.LOAD_L5_TO_RAW_TABLE,
             'model': GenomicL5Raw
@@ -129,6 +137,10 @@ def load_manifest_into_raw_table(
         "l6": {
             'job_id': GenomicJob.LOAD_L6_TO_RAW_TABLE,
             'model': GenomicL6Raw
+        },
+        "l6f": {
+            'job_id': GenomicJob.LOAD_L6F_TO_RAW_TABLE,
+            'model': GenomicL6FRaw
         }
     }
     pr_raw_map = {
@@ -226,11 +238,14 @@ def dispatch_genomic_job_from_task(
         GenomicJob.CVL_W5NF_WORKFLOW,
         GenomicJob.LR_LR_WORKFLOW,
         GenomicJob.LR_L1_WORKFLOW,
+        GenomicJob.LR_L1F_WORKFLOW,
         GenomicJob.LR_L2_ONT_WORKFLOW,
         GenomicJob.LR_L2_PB_CCS_WORKFLOW,
         GenomicJob.LR_L4_WORKFLOW,
+        GenomicJob.LR_L4F_WORKFLOW,
         GenomicJob.LR_L5_WORKFLOW,
         GenomicJob.LR_L6_WORKFLOW,
+        GenomicJob.LR_L6F_WORKFLOW,
         GenomicJob.PR_PR_WORKFLOW,
         GenomicJob.PR_P1_WORKFLOW,
         GenomicJob.PR_P2_WORKFLOW,

@@ -1,0 +1,5 @@
+"biobank_id","sample_id","biobankid_sampleid","aggregation_level","flowcell_id","barcode","lr_site_id","long_read_platform","sex_at_birth","bam_path","drc_contamination","drc_sex_concordance","drc_array_concordance","drc_mean_coverage","drc_processing_status","drc_failure_mode","drc_failure_mode_desc","drc_processing_count","pass_to_research_pipeline"
+"T01","1111","T01_1111","sample","dna_r10.4.1_e8.2_400bps_modbases_5mc_cg_sup_prom.cfg","20210126_1832_2C_PAG49067_2ac8d7d2","bi","ont","M","path_to_bam","20","20","20","20","pass","failure","failure_desc","0","false"
+"T02","2222","T02_2222","sample","dna_r10.4.1_e8.2_400bps_modbases_5mc_cg_sup_prom.cfg","20210126_1832_2C_PAG49067_2ac8d7d2","bi","ont","M","path_to_bam","20","20","20","20","pass","failure","failure_desc","0","false"
+"T03","3333","T03_3333","sample","dna_r10.4.1_e8.2_400bps_modbases_5mc_cg_sup_prom.cfg","20210126_1832_2C_PAG49067_2ac8d7d2","bi","ont","M","path_to_bam","20","20","20","20","pass","failure","failure_desc","0","false"
+

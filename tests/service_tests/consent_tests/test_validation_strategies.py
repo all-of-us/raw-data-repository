@@ -2,7 +2,7 @@ import mock.mock
 
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
-from rdr_service.services.consent.validation import ReplacementStoringStrategy
+from rdr_service.services.consent.validation import ReplacementStoringStrategy, StoreResultStrategy
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -35,3 +35,67 @@ class ValidationOutputStrategyIntegrationTest(BaseTestCase):
             # Make sure the rebuild notification was sent to PDR with non-null ids
             sent_ids = rebuild_mock.call_args.args[0]
             self.assertFalse(any([file_id is None for file_id in sent_ids]))
+
+    def test_store_one_result_per_response(self):
+        """
+        Validation should only save one valid result per type consent response.
+        """
+        participant_id = self.data_generator.create_database_participant_summary().participantId
+
+        # out of several successful validation results of the same response,
+        # only one successful one should save
+        consent_response_a = self.data_generator.create_database_consent_response()
+        result_a1 = ConsentFile(
+            participant_id=participant_id,
+            type=ConsentType.PRIMARY,
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC,
+            file_exists=True,
+            file_path='new_file_a1',
+            consent_response=consent_response_a
+        )
+        result_a2 = ConsentFile(
+            participant_id=participant_id,
+            type=ConsentType.PRIMARY,
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC,
+            file_exists=True,
+            file_path='new_file_a2',
+            consent_response=consent_response_a
+        )
+
+        # out of several unsuccessful results for a response,
+        # all of them should be saved
+        consent_response_b = self.data_generator.create_database_consent_response()
+        result_b1 = ConsentFile(
+            participant_id=participant_id,
+            type=ConsentType.PRIMARY,
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            file_exists=True,
+            file_path='new_file_b1',
+            consent_response=consent_response_b
+        )
+        result_b2 = ConsentFile(
+            participant_id=participant_id,
+            type=ConsentType.PRIMARY,
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            file_exists=True,
+            file_path='new_file_b2',
+            consent_response=consent_response_b
+        )
+
+        with StoreResultStrategy(
+            self.session, ConsentDao()
+        ) as strategy:
+            strategy.add_all([
+                result_a1, result_a2,
+                result_b1, result_b2
+            ])
+
+        stored_results = self.session.query(ConsentFile).filter(
+            ConsentFile.participant_id == participant_id
+        ).order_by(
+            ConsentFile.file_path
+        ).all()
+        self.assertEqual(
+            [result_a1, result_b1, result_b2],
+            stored_results
+        )

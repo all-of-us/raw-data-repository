@@ -6,6 +6,7 @@ import threading
 import unittest
 
 from copy import deepcopy
+from dateutil.relativedelta import relativedelta
 from mock import patch
 from urllib.parse import urlencode
 
@@ -54,6 +55,7 @@ TIME_6 = datetime.datetime(2015, 1, 1)
 TEST_AGE_BUCKET_DOB_DATE_OBJ = datetime.date(1980, 10, 9)
 
 participant_summary_default_values = {
+    "ageAtConsentMonths": 0,
     "ageRange": "UNSET",
     "race": "PMI_Skip",
     "hpoId": "UNSET",
@@ -344,6 +346,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         if patient_statuses:
             expected["patientStatus"] = patient_statuses
 
+        age_at_consent_delta = relativedelta(TIME_1, dob)
         expected.update(
             {
                 "enrollmentStatus": "INTERESTED",
@@ -368,7 +371,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
                 "enrollmentStatusParticipantV3_2Time": TIME_1.isoformat(),
                 'enrollmentStatusEnrolledParticipantV3_2Time': TIME_1.isoformat(),
-                "isParticipantMediatedEhrDataAvailable": False
+                "isParticipantMediatedEhrDataAvailable": False,
+                "ageAtConsentMonths": age_at_consent_delta.years * 12 + age_at_consent_delta.months
             }
         )
 
@@ -4589,28 +4593,46 @@ class ParticipantSummaryApiTest(BaseTestCase):
     def test_displaying_linked_accounts(self):
         first_parent = self.data_generator.create_database_participant_summary()
         second_parent = self.data_generator.create_database_participant_summary()
-        child_id = self.data_generator.create_database_participant_summary().participantId
+        child = self.data_generator.create_database_participant_summary()
+        child_id = child.participantId
 
         PediatricDataLogDao.record_age_range(participant_id=child_id, age_range_str='TEEN')
         self.session.add(AccountLink(participant_id=child_id, related_id=first_parent.participantId))
         self.session.add(AccountLink(participant_id=child_id, related_id=second_parent.participantId))
         self.session.commit()
 
-        response = self.send_get(f'Participant/P{child_id}/Summary')
+        # Check that guardians show up for pediatric accounts
+        child_response = self.send_get(f'Participant/P{child_id}/Summary')
         self.assertEqual(
             [
                 {
                     'participantId': f'P{first_parent.participantId}',
                     'firstName': first_parent.firstName,
-                    'lastName': first_parent.lastName
+                    'lastName': first_parent.lastName,
+                    'relation': 'guardian'
                 },
                 {
                     'participantId': f'P{second_parent.participantId}',
                     'firstName': second_parent.firstName,
-                    'lastName': second_parent.lastName
+                    'lastName': second_parent.lastName,
+                    'relation': 'guardian'
                 }
             ],
-            response.get('relatedParticipants')
+            child_response.get('relatedParticipants')
+        )
+
+        # Check that pediatric accounts show up for guardians
+        adult_response = self.send_get(f'Participant/P{first_parent.participantId}/Summary')
+        self.assertEqual(
+            [
+                {
+                    'participantId': f'P{child_id}',
+                    'firstName': child.firstName,
+                    'lastName': child.lastName,
+                    'relation': 'pediatric'
+                }
+            ],
+            adult_response.get('relatedParticipants')
         )
 
     def test_pediatric_environmental_exposures(self):
@@ -4718,9 +4740,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
         self.session.commit()
 
-        response = self.send_get(f'ParticipantSummary')
-        self.assertEqual([], response['entry'])
-        logging_mock.error.assert_called_with('Pediatric participant has unconsented guardian')
+        self.send_get(f'ParticipantSummary')
+        logging_mock.warning.assert_called_with('Found link to unconsented participant')
 
     def test_pmb_eligible_masking(self):
         """
@@ -4742,6 +4763,47 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.temporarily_override_config_setting(config.ENABLED_STATUS_FIELD_LIST, ['enrollmentStatusV3_2'])
         response = self.send_get(f'Participant/P{summary.participantId}/Summary')
         self.assertEqual('ENROLLED_PARTICIPANT', response['enrollmentStatusV3_2'])
+
+    def test_age_at_consent(self):
+        participant_summary = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollmentFirstYesAuthored=datetime.datetime(2021, 7, 17),
+            dateOfBirth=datetime.date(1978, 10, 9),
+        )
+        response = self.send_get(f"Participant/P{participant_summary.participantId}/Summary")
+        self.assertEqual(513, response['ageAtConsentMonths'])
+
+        filter_response = self.send_get(f"ParticipantSummary?ageAtConsentMonths=513")
+        self.assertEqual(1, len(filter_response['entry']))
+
+        younger_summary = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollmentFirstYesAuthored=datetime.datetime(2020, 9, 1),
+            dateOfBirth=datetime.date(2018, 7, 9),
+        )
+        older_summary = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollmentFirstYesAuthored=datetime.datetime(1998, 7, 1),
+            dateOfBirth=datetime.date(1923, 10, 1),
+        )
+
+        filter_response = self.send_get(f"ParticipantSummary?ageAtConsentMonths=ge513")
+        self.assertSetEqual(
+            {f'P{participant_summary.participantId}', f'P{older_summary.participantId}'},
+            {participant['resource']['participantId'] for participant in filter_response['entry']}
+        )
+        filter_response = self.send_get(f"ParticipantSummary?ageAtConsentMonths=lt513")
+        self.assertEqual(
+            [f'P{younger_summary.participantId}'],
+            [participant['resource']['participantId'] for participant in filter_response['entry']]
+        )
+
+        sort_response = self.send_get(f"ParticipantSummary?_sort:desc=ageAtConsentMonths&_sync=true")
+        self.assertEqual(
+            [
+                f'P{older_summary.participantId}',
+                f'P{participant_summary.participantId}',
+                f'P{younger_summary.participantId}'
+            ],
+            [participant['resource']['participantId'] for participant in sort_response['entry']]
+        )
 
     @classmethod
     def _get_summary_response_id_list(self, response):

@@ -163,7 +163,10 @@ class EnrollmentCalculation:
             participant_info.lifestyle_authored_time,
             participant_info.earliest_biobank_received_dna_time
         ]
-        if participant_info.consent_cohort == ParticipantCohort.COHORT_3:
+        if (
+            participant_info.consent_cohort == ParticipantCohort.COHORT_3
+            and not participant_info.is_pediatric_participant
+        ):
             dates_needed_for_upgrade.append(participant_info.gror_authored_time)
 
         core_minus_pm_reqs_met_time = cls._get_requirements_met_date(dates_needed_for_upgrade)
@@ -219,19 +222,15 @@ class EnrollmentCalculation:
                 participant_info.basics_authored_time
             )
 
-        if (
-            participant_info.first_full_ehr_consent_authored_time
-            and participant_info.basics_authored_time
-            and participant_info.gror_authored_time
-        ):
-            enrollment.upgrade_3_2_status(
-                EnrollmentStatusV32.PMB_ELIGIBLE,
-                max(
-                    participant_info.first_full_ehr_consent_authored_time,
-                    participant_info.basics_authored_time,
-                    participant_info.gror_authored_time
-                )
-            )
+        dates_needed_for_pmb_eligible = [
+            participant_info.first_full_ehr_consent_authored_time,
+            participant_info.basics_authored_time
+        ]
+        if not participant_info.is_pediatric_participant:
+            dates_needed_for_pmb_eligible.append(participant_info.gror_authored_time)
+        met_pmb_eligible_reqs_time = cls._get_requirements_met_date(dates_needed_for_pmb_eligible)
+        if met_pmb_eligible_reqs_time:
+            enrollment.upgrade_3_2_status(EnrollmentStatusV32.PMB_ELIGIBLE, met_pmb_eligible_reqs_time)
 
         if cls._meets_requirements_for_core_minus_pm(participant_info):
             enrollment.upgrade_3_2_status(
@@ -253,7 +252,6 @@ class EnrollmentCalculation:
             participant_info.first_ehr_consent_date,
             participant_info.basics_authored_time,
             participant_info.overall_health_authored_time,
-            participant_info.lifestyle_authored_time,
             participant_info.earliest_height_measurement_time,
             participant_info.earliest_weight_measurement_time,
             participant_info.wgs_sequencing_time,
@@ -261,6 +259,11 @@ class EnrollmentCalculation:
         ]
         if participant_info.consent_cohort == ParticipantCohort.COHORT_1:
             required_timestamp_list.append(participant_info.dna_update_time)
+
+        if participant_info.is_pediatric_participant:
+            required_timestamp_list.append(participant_info.exposures_authored_time)
+        else:
+            required_timestamp_list.append(participant_info.lifestyle_authored_time)
 
         if any(required_time is None for required_time in required_timestamp_list):
             return  # If any required timestamps are missing, leave Core Data flag as False

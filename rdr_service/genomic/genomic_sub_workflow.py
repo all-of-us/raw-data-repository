@@ -22,21 +22,15 @@ class GenomicBaseSubWorkflow(ABC):
         self.increment_set_number = None
 
     def get_sub_workflow_method(self):
-        return {
+        sub_workflow_map = {
             GenomicJob.PR_PR_WORKFLOW: self.run_request_ingestion,
             GenomicJob.PR_P1_WORKFLOW: self.run_sample_ingestion,
-            GenomicJob.PR_P2_WORKFLOW: self.run_bypass,
             GenomicJob.RNA_RR_WORKFLOW: self.run_request_ingestion,
             GenomicJob.RNA_R1_WORKFLOW: self.run_sample_ingestion,
-            GenomicJob.RNA_R2_WORKFLOW: self.run_bypass,
             GenomicJob.LR_LR_WORKFLOW: self.run_request_ingestion,
-            GenomicJob.LR_L1_WORKFLOW: self.run_sample_ingestion,
-            GenomicJob.LR_L2_ONT_WORKFLOW: self.run_bypass,
-            GenomicJob.LR_L2_PB_CCS_WORKFLOW: self.run_bypass,
-            GenomicJob.LR_L4_WORKFLOW: self.run_bypass,
-            GenomicJob.LR_L5_WORKFLOW: self.run_bypass,
-            GenomicJob.LR_L6_WORKFLOW: self.run_bypass
-        }[self.job_id]
+            GenomicJob.LR_L1_WORKFLOW: self.run_sample_ingestion
+        }
+        return sub_workflow_map.get(self.job_id)
 
     @classmethod
     def create_genomic_sub_workflow(cls, *, dao, job_id, job_run_id, **kwargs):
@@ -51,8 +45,6 @@ class GenomicBaseSubWorkflow(ABC):
                 payload=payload,
                 queue=task_queue
             )
-
-    def run_bypass(self) -> None: ...
 
     def set_model_string_attributes(self) -> List[str]:
         return [str(obj).split('.')[-1] for obj in self.dao.model_type.__table__.columns]
@@ -112,7 +104,10 @@ class GenomicBaseSubWorkflow(ABC):
     def run_workflow(self, *, row_data) -> None:
         self.row_data = row_data
         self.set_instance_attributes_from_data()
-        self.get_sub_workflow_method()()
+        executed_sub_workflow = self.get_sub_workflow_method()
+        if not executed_sub_workflow:
+            return
+        executed_sub_workflow()
 
     def handle_request_differences(self, *, request_biobank_ids: List[str], returned_biobank_ids: List[str]) -> None:
         missing_in_returned = list(set(request_biobank_ids) - set(returned_biobank_ids))
@@ -138,6 +133,7 @@ class GenomicBaseSubWorkflow(ABC):
 
         new_pipeline_members = self.dao.get_new_pipeline_members(
             biobank_ids=request_biobank_ids,
+            parent_tube_ids=[row.get('parent_tube_id') for row in self.row_data]
         )
 
         returned_biobank_ids = [obj.biobank_id for obj in new_pipeline_members]
@@ -213,4 +209,11 @@ class GenomicSubLongReadWorkflow(GenomicBaseSubWorkflow):
             'sample_id': None,
             'ignore_flag': 0,
             'long_read_platform': self.get_platform_value()
+        }
+
+    @classmethod
+    def get_base_member_attributes(cls, new_member) -> dict:
+        return {
+            'biobank_id': new_member.biobank_id,
+            'collection_tube_id': new_member.collection_tube_id
         }

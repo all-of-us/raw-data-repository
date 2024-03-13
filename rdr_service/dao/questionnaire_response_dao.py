@@ -13,7 +13,6 @@ from sqlalchemy import and_, or_
 from sqlalchemy.orm import aliased, joinedload, Session, subqueryload
 from werkzeug.exceptions import BadRequest
 
-from rdr_service import singletons
 from rdr_service.api_util import dispatch_task
 from rdr_service.dao.account_link_dao import AccountLinkDao
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
@@ -75,8 +74,6 @@ from rdr_service.code_constants import (
     APPLE_HEALTH_KIT_STOP_SHARING_MODULE,
     FITBIT_SHARING_MODULE,
     FITBIT_STOP_SHARING_MODULE,
-    THE_BASICS_PPI_MODULE,
-    BASICS_PROFILE_UPDATE_QUESTION_CODES,
     REMOTE_PM_MODULE,
     REMOTE_PM_UNIT,
     MEASUREMENT_SYS,
@@ -350,29 +347,9 @@ class ResponseValidator:
 class QuestionnaireResponseDao(BaseDao):
     def __init__(self):
         super(QuestionnaireResponseDao, self).__init__(QuestionnaireResponse)
-        # DA-2419:  For classifying TheBasics payloads as they are received.  Cache TTL set to 24 hours
-        self.thebasics_profile_update_codes = singletons.get(singletons.BASICS_PROFILE_UPDATE_CODES_CACHE_INDEX,
-                                                             lambda: self._load_thebasics_profile_update_codes(),
-                                                             cache_ttl_seconds=86400
-                                                             )
 
         # Need to record what types of consents are provided by the response when walking the answers
         self.consents_provided = []
-
-    @staticmethod
-    def _load_thebasics_profile_update_codes():
-        """
-        Invoked when the singleton cache needs to load the list of TheBasics profile update codes
-        :return:  List of code id values for the profile update / secondary contact questions
-        """
-        results = []
-        code_dao = CodeDao()
-        for code_value in BASICS_PROFILE_UPDATE_QUESTION_CODES:
-            code = code_dao.get_code(PPI_SYSTEM, code_value)
-            if code:
-                results.append(code.codeId)
-
-        return results
 
     def get_id(self, obj):
         return obj.questionnaireResponseId
@@ -476,7 +453,6 @@ class QuestionnaireResponseDao(BaseDao):
         except (AttributeError, ValueError, TypeError, LookupError):
             logging.error('Code error encountered when validating the response', exc_info=True)
 
-        module = self._get_module_name(questionnaire_history)
         questionnaire_response.created = clock.CLOCK.now()
         questionnaire_response.classificationType = QuestionnaireResponseClassificationType.COMPLETE  # Default
         if not questionnaire_response.authored:
@@ -504,16 +480,7 @@ class QuestionnaireResponseDao(BaseDao):
             session, questionnaire_response.participantId, code_ids
         )
 
-        # DA-2419: participant_summary update will not be triggered by a TheBasics response if it only contains
-        # profile update data (not a full survey). PTSC may eventually start marking TheBasics profile update
-        # payloads with in-progress FHIR status;  for now, must inspect the response content/code ids to determine
-        if (module == THE_BASICS_PPI_MODULE and
-            (questionnaire_response.status == QuestionnaireResponseStatus.IN_PROGRESS or
-             all(c in self.thebasics_profile_update_codes for c in code_ids))
-        ):
-            questionnaire_response.classificationType = QuestionnaireResponseClassificationType.PROFILE_UPDATE
-        # in-progress status can also denote other partial/incomplete payloads, such as incomplete COPE survey responses
-        elif questionnaire_response.status == QuestionnaireResponseStatus.IN_PROGRESS:
+        if questionnaire_response.status == QuestionnaireResponseStatus.IN_PROGRESS:
             questionnaire_response.classificationType = QuestionnaireResponseClassificationType.PARTIAL
 
         # TODO:  If we later classify ConsentPII payloads that contain updates to participant's own profile data
@@ -1077,7 +1044,14 @@ class QuestionnaireResponseDao(BaseDao):
                     if self._code_in_list(
                         code.value, [CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PEDIATRIC_EHR_CONSENT]
                     ):
-                        if ehr_consent:
+                        if (
+                            participant_summary.consentForElectronicHealthRecords is not None
+                            and authored <= participant_summary.consentForElectronicHealthRecordsAuthored
+                        ):
+                            # if we're getting a response that is the same or older than what we already have
+                            # then don't change the current status
+                            new_status = participant_summary.consentForElectronicHealthRecords
+                        elif ehr_consent:
                             new_status = QuestionnaireStatus.SUBMITTED_NOT_VALIDATED
                         else:
                             new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT

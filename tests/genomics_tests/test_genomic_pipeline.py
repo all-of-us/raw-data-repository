@@ -46,6 +46,7 @@ from rdr_service.model.biobank_order import (
 )
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
@@ -1388,7 +1389,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Should be a aou_wgs and aou_array for each
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(14, len(new_genomic_members))
+        self.assertEqual(16, len(new_genomic_members))
 
         all_ps_origins = [self.summary_dao.get_by_participant_id(obj.participantId).participantOrigin
                        for obj in new_genomic_members]
@@ -1488,84 +1489,84 @@ class GenomicPipelineTest(BaseTestCase):
 
             rows.sort(key=operator.itemgetter(ExpectedCsvColumns.BIOBANK_ID, ExpectedCsvColumns.GENOME_TYPE ))
 
-            self.assertEqual("T100002", rows[0][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100002, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+            self.assertEqual("T100001", rows[0][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100001, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
-            self.assertEqual("Y", rows[0][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("N", rows[0][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[0][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[0][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_array", rows[0][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100002", rows[1][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100002, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+            self.assertEqual("T100001", rows[1][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100001, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
-            self.assertEqual("Y", rows[1][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[1][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[1][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_wgs", rows[1][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100003", rows[2][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual('003_1ED10', rows[2][ExpectedCsvColumns.COLLECTION_TUBE_ID])
+            self.assertEqual("T100002", rows[2][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100002, int(rows[2][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[2][ExpectedCsvColumns.SEX_AT_BIRTH])
-            self.assertEqual("N", rows[2][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("Y", rows[2][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[2][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[2][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_array", rows[2][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100003", rows[3][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual('003_1ED10', rows[3][ExpectedCsvColumns.COLLECTION_TUBE_ID])
+            self.assertEqual("T100002", rows[3][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100002, int(rows[3][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[3][ExpectedCsvColumns.SEX_AT_BIRTH])
-            self.assertEqual("N", rows[3][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("Y", rows[3][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[3][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[3][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_wgs", rows[3][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100004", rows[4][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100004, int(rows[4][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
-            self.assertEqual("NA", rows[4][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("T100003", rows[4][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual('003_1ED10', rows[4][ExpectedCsvColumns.COLLECTION_TUBE_ID])
+            self.assertEqual("F", rows[4][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[4][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[4][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[4][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_array", rows[4][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100004", rows[5][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100004, int(rows[5][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
-            self.assertEqual("NA", rows[5][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("T100003", rows[5][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual('003_1ED10', rows[5][ExpectedCsvColumns.COLLECTION_TUBE_ID])
+            self.assertEqual("F", rows[5][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[5][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[5][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[5][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_wgs", rows[5][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100006", rows[6][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100006, int(rows[6][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
-            self.assertEqual("F", rows[6][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("T100004", rows[6][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100004, int(rows[6][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+            self.assertEqual("NA", rows[6][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[6][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("N", rows[6][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[6][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[6][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_array", rows[6][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100006", rows[7][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100006, int(rows[7][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
-            self.assertEqual("F", rows[7][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("T100004", rows[7][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100004, int(rows[7][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+            self.assertEqual("NA", rows[7][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[7][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("N", rows[7][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[7][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[7][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_wgs", rows[7][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100007", rows[8][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100007, int(rows[8][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+            self.assertEqual("T100006", rows[8][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100006, int(rows[8][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[8][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[8][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("Y", rows[8][ExpectedCsvColumns.VALIDATION_PASSED])
-            self.assertEqual("Y", rows[8][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("N", rows[8][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[8][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_array", rows[8][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100007", rows[9][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100007, int(rows[9][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+            self.assertEqual("T100006", rows[9][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100006, int(rows[9][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[9][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[9][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("Y", rows[9][ExpectedCsvColumns.VALIDATION_PASSED])
-            self.assertEqual("Y", rows[9][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("N", rows[9][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[9][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_wgs", rows[9][ExpectedCsvColumns.GENOME_TYPE])
 
         # Test the end-to-end result code
@@ -2436,6 +2437,12 @@ class GenomicPipelineTest(BaseTestCase):
         ps_list = self.summary_dao.get_all()
         ror_start = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)
         for p in ps_list:
+            # add validated consents for GROR
+            self.data_generator.create_database_consent_file(
+                participant_id=p.participantId,
+                type=ConsentType.GROR,
+                sync_status=ConsentSyncStatus.SYNC_COMPLETE
+            )
             p.consentForGenomicsRORAuthored = ror_start
             if p.participantId == 2:
                 p.consentForStudyEnrollmentAuthored = ror_start
@@ -2526,9 +2533,12 @@ class GenomicPipelineTest(BaseTestCase):
         # finally run the manifest workflow
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         a1_time = datetime.datetime(2020, 4, 1, 0, 0, 0, 0)
+
         with clock.FakeClock(a1_time):
             genomic_gem_pipeline.gem_a1_manifest_workflow()  # run_id = 3
+
         a1f = a1_time.strftime("%Y-%m-%d-%H-%M-%S")
+
         # Test Genomic Set Member updated with GEM Array Manifest job run
         with self.member_dao.session() as member_session:
             test_member_1 = member_session.query(
@@ -2716,6 +2726,14 @@ class GenomicPipelineTest(BaseTestCase):
                                                 recon_gc_man_id=1,
                                                 genome_center='jh',
                                                 genomic_workflow_state=GenomicWorkflowState.GEM_READY)
+
+        # add validated consents for GROR
+        for summary in self.summary_dao.get_all():
+            self.data_generator.create_database_consent_file(
+                participant_id=summary.participantId,
+                type=ConsentType.GROR,
+                sync_status=ConsentSyncStatus.SYNC_COMPLETE
+            )
 
         self._update_test_sample_ids()
 

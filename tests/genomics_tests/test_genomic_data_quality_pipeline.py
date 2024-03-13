@@ -179,6 +179,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
             file_path=aw1_manifest_path,
             package_id="PKG-2104-026571",
             biobank_id="A10001",
+            genome_type='aou_wgs'
         )
 
         # Create genomic_aw2_raw record
@@ -187,6 +188,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
             biobank_id="A10001",
             sample_id="100001",
             biobankidsampleid="A10001_100001",
+            genome_type='aou_wgs'
         )
 
         # Create AW1 genomic_manifest_file record
@@ -242,10 +244,10 @@ class GenomicDataQualityReportTest(BaseTestCase):
 
         expected_report = "```Daily Ingestions (Shortread) Summary\n"
         expected_report += "record_count    ingested_count    delta_count    "
-        expected_report += "file_type    gc_site_id    genome_type    file_path\n"
-        expected_report += "1    0    1    aw1    rdr    aou_wgs    "
+        expected_report += "file_type    genome_type    file_path\n"
+        expected_report += "1    0    1    aw1    aou_wgs    "
         expected_report += f"{aw1_manifest_path}\n"
-        expected_report += "1    0    0    aw2    rdr    aou_wgs    "
+        expected_report += "1    0    1    aw2    aou_wgs    "
         expected_report += f"{aw2_manifest_path}"
         expected_report += "\n```"
 
@@ -349,7 +351,6 @@ class GenomicDataQualityReportTest(BaseTestCase):
             if num < 2:
                 # should have a delta of 1 on LR flow
                 self.data_generator.create_database_genomic_long_read(
-                    genomic_set_member_id=genomic_set_member.id,
                     biobank_id=genomic_set_member.biobankId,
                     collection_tube_id=f'{num}11111',
                     genome_type="aou_long_read",

@@ -1641,7 +1641,6 @@ class GenomicLongRead(Base):
                 primary_key=True, autoincrement=True, nullable=False)
     created = Column(DateTime)
     modified = Column(DateTime)
-    genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"), nullable=False, index=True)
     biobank_id = Column(String(128), nullable=False, index=True)
     collection_tube_id = Column(String(255), nullable=True, index=True)
     sample_id = Column(String(80), nullable=True, index=True)
@@ -1761,6 +1760,57 @@ class GenomicL1Raw(Base):
 
 event.listen(GenomicL1Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicL1Raw, 'before_update', model_update_listener)
+
+
+class GenomicL1FRaw(Base):
+    """
+    Raw Data from L1D files
+    """
+    __tablename__ = 'genomic_l1f_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    package_id = Column(String(255), nullable=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    box_storageunit_id = Column(String(255), nullable=True)
+    box_id_plate_id = Column(String(255), nullable=True)
+    well_position = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    parent_sample_id = Column(String(255), nullable=True)
+    collection_tubeid = Column(String(255), nullable=True)
+    matrix_id = Column(String(255), nullable=True)
+    collection_date = Column(String(255), nullable=True)
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    age = Column(String(255), nullable=True)
+    ny_state_y_n = Column(String(255), nullable=True)
+    sample_type = Column(String(255), nullable=True)
+    treatments = Column(String(255), nullable=True)
+    quantity_ul = Column(String(255), nullable=True)
+    total_concentration_ng_ul = Column(String(255), nullable=True)
+    total_dna_ng = Column(String(255), nullable=True)
+    visit_description = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    study = Column(String(255), nullable=True)
+    tracking_number = Column(String(255), nullable=True)
+    contact = Column(String(255), nullable=True)
+    email = Column(String(255), nullable=True)
+    study_pi = Column(String(255), nullable=True)
+    genome_type = Column(String(80), nullable=True)
+    lr_site_id = Column(String(80), nullable=True)
+    long_read_platform = Column(String(80), nullable=True)
+    failure_mode = Column(String(255), nullable=True)
+    failure_mode_desc = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL1FRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicL1FRaw, 'before_update', model_update_listener)
 
 
 class GenomicL2ONTRaw(Base):
@@ -1936,6 +1986,45 @@ event.listen(GenomicL4Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicL4Raw, 'before_update', model_update_listener)
 
 
+class GenomicL4FRaw(Base):
+    """
+    Raw Data from L4F files
+    """
+    __tablename__ = 'genomic_l4f_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    aggregation_level = Column(String(255), nullable=True)
+    flowcell_id = Column(String(255), nullable=True)
+    barcode = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    bam_path = Column(String(255), nullable=True)
+    drc_contamination = Column(String(255), nullable=True)
+    drc_sex_concordance = Column(String(255), nullable=True)
+    drc_array_concordance = Column(String(255), nullable=True)
+    drc_mean_coverage = Column(String(255), nullable=True)
+    drc_processing_status = Column(String(255), nullable=True)
+    drc_failure_mode = Column(String(255), nullable=True)
+    drc_failure_mode_desc = Column(String(255), nullable=True)
+    drc_processing_count = Column(String(255), nullable=True)
+    pass_to_research_pipeline = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL4FRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicL4FRaw, 'before_update', model_update_listener)
+
+
 class GenomicL5Raw(Base):
     """
     Raw Data from L5 files
@@ -1996,6 +2085,41 @@ class GenomicL6Raw(Base):
 
 event.listen(GenomicL6Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicL6Raw, 'before_update', model_update_listener)
+
+
+class GenomicL6FRaw(Base):
+    """
+    Raw Data from L6F files
+    """
+    __tablename__ = 'genomic_l6f_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    long_read_platform = Column(String(255), nullable=True)
+    lr_site_id = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    drc_contamination = Column(String(255), nullable=True)
+    drc_sex_concordance = Column(String(255), nullable=True)
+    drc_array_concordance = Column(String(255), nullable=True)
+    drc_mean_coverage = Column(String(255), nullable=True)
+    drc_processing_status = Column(String(255), nullable=True)
+    drc_failure_mode = Column(String(255), nullable=True)
+    drc_failure_mode_desc = Column(String(255), nullable=True)
+    drc_processing_count = Column(String(255), nullable=True)
+    pass_to_research_pipeline = Column(String(255), nullable=True)
+
+
+event.listen(GenomicL6FRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicL6FRaw, 'before_update', model_update_listener)
 
 
 class GenomicProteomics(Base):

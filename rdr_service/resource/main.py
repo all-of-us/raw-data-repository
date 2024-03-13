@@ -103,10 +103,6 @@ def _build_resource_app():
     # Begin Genomic Cloud Task API Endpoints
     #
 
-    _api.add_resource(genomic_cloud_tasks_api.RebuildGenomicTableRecordsApi,
-                      TASK_PREFIX + "RebuildGenomicTableRecordsApi",
-                      endpoint="rebuild_genomic_table_records_task", methods=["POST"])
-
     # Load AW1/AW2 raw manifest
     _api.add_resource(genomic_cloud_tasks_api.LoadRawAWNManifestDataAPI,
                       TASK_PREFIX + "LoadRawAWNManifestDataAPI",

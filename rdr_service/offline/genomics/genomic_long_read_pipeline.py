@@ -33,7 +33,8 @@ def lr_l0_manifest_workflow():
 def lr_l3_manifest_workflow():
     with GenomicJobController(
         GenomicJob.LR_L3_WORKFLOW,
-        bucket_name=config.DRC_BROAD_BUCKET_NAME
+        bucket_name=config.DRC_BROAD_BUCKET_NAME,
+        max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)
     ) as controller:
         controller.generate_manifest(
             manifest_type=GenomicManifestTypes.LR_L3,

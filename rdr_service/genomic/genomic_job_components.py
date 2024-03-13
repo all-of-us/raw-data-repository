@@ -16,6 +16,7 @@ from dateutil.parser import parse
 import sqlalchemy
 
 from rdr_service import clock, config
+from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow
 from rdr_service.genomic.genomic_sub_workflow import GenomicSubWorkflow, GenomicSubLongReadWorkflow
@@ -26,7 +27,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.model.config_utils import get_biobank_id_prefix
-from rdr_service.resource.generators.genomics import genomic_user_event_metrics_batch_update
+
 from rdr_service.api_util import (
     open_cloud_file,
     list_blobs,
@@ -58,8 +59,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicAW2RawDao,
     GenomicIncidentDao,
     UserEventMetricsDao,
-    GenomicQueriesDao,
-    GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao, GenomicPRDao, GenomicRNADao)
+    GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao, GenomicPRDao, GenomicRNADao,
+    GenomicShortReadDao, GenomicCVLDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -298,11 +299,14 @@ class GenomicFileIngester:
             GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
             GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L1_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L1F_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L2_ONT_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L2_PB_CCS_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L4_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L4F_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L5_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.LR_L6_WORKFLOW: self._ingest_lr_manifest,
+            GenomicJob.LR_L6F_WORKFLOW: self._ingest_lr_manifest,
             GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
             GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
@@ -694,7 +698,8 @@ class GenomicFileIngester:
                     session.add_all(batch)
                     session.commit()
                     # Batch update PDR resource records.
-                    genomic_user_event_metrics_batch_update([r.id for r in batch])
+                    # Publish PDR data-pipeline pub-sub event in chunks up to 250 records.
+                    submit_pipeline_pubsub_msg_from_model(batch, database='rdr')
 
                 item_count = 0
                 batch.clear()
@@ -705,7 +710,7 @@ class GenomicFileIngester:
                 session.add_all(batch)
                 session.commit()
                 # Batch update PDR resource records.
-                genomic_user_event_metrics_batch_update([r.id for r in batch])
+                submit_pipeline_pubsub_msg_from_model(batch, database='rdr')
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -790,7 +795,8 @@ class GenomicFileIngester:
             for key in row.copy():
                 if not key:
                     del row[key]
-            data_to_ingest['rows'].append(row)
+            clean_row = {k.lower().replace('\ufeff', ''): v for k, v in row.copy().items()}
+            data_to_ingest['rows'].append(clean_row)
         return data_to_ingest
 
     def _process_aw1_attribute_data(self, aw1_data, member):
@@ -2135,10 +2141,23 @@ class GenomicFileValidator:
             LR L1 manifest name rule
             """
             return (
-                len(filename_components) == 4 and
+                len(filename_components) <= 5 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'lr' and
+                'pkg' in filename_components[3] and
+                filename.lower().endswith('csv')
+            )
+
+        def lr_l1f_manifest_name_rule():
+            """
+            LR L1F manifest name rule
+            """
+            return (
+                len(filename_components) <= 5 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'l1f' and
                 'pkg' in filename_components[3] and
                 filename.lower().endswith('csv')
             )
@@ -2148,7 +2167,7 @@ class GenomicFileValidator:
             LR L2 ONT manifest name rule
             """
             return (
-                len(filename_components) == 6 and
+                len(filename_components) <= 7 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'l2' and
@@ -2161,7 +2180,7 @@ class GenomicFileValidator:
             LR L2 PB CCS manifest name rule
             """
             return (
-                len(filename_components) == 6 and
+                len(filename_components) <= 7 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'l2' and
@@ -2171,12 +2190,12 @@ class GenomicFileValidator:
 
         def lr_l4_manifest_name_rule():
             """
-            LR L4 manifest name rule
+            LR L4/L4F manifest name rule
             """
             return (
-                len(filename_components) == 3 and
+                len(filename_components) <= 4 and
                 filename_components[0] == 'aou' and
-                filename_components[1] == 'l4' and
+                filename_components[1] in ['l4', 'l4f'] and
                 filename.lower().endswith('csv')
             )
 
@@ -2185,7 +2204,7 @@ class GenomicFileValidator:
             LR L5 manifest name rule
             """
             return (
-                len(filename_components) == 3 and
+                len(filename_components) <= 4 and
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'l5' and
                 filename.lower().endswith('csv')
@@ -2193,12 +2212,12 @@ class GenomicFileValidator:
 
         def lr_l6_manifest_name_rule():
             """
-            LR L6 manifest name rule
+            LR L6/L6F manifest name rule
             """
             return (
-                len(filename_components) == 3 and
+                len(filename_components) <= 4 and
                 filename_components[0] == 'aou' and
-                filename_components[1] == 'l6' and
+                filename_components[1] in ['l6', 'l6f'] and
                 filename.lower().endswith('csv')
             )
 
@@ -2299,11 +2318,14 @@ class GenomicFileValidator:
             GenomicJob.CVL_W5NF_WORKFLOW: cvl_w5nf_manifest_name_rule,
             GenomicJob.LR_LR_WORKFLOW: lr_lr_manifest_name_rule,
             GenomicJob.LR_L1_WORKFLOW: lr_l1_manifest_name_rule,
+            GenomicJob.LR_L1F_WORKFLOW: lr_l1f_manifest_name_rule,
             GenomicJob.LR_L2_ONT_WORKFLOW: lr_l2_ont_manifest_name_rule,
             GenomicJob.LR_L2_PB_CCS_WORKFLOW: lr_l2_pb_ccs_manifest_name_rule,
             GenomicJob.LR_L4_WORKFLOW: lr_l4_manifest_name_rule,
+            GenomicJob.LR_L4F_WORKFLOW: lr_l4_manifest_name_rule,
             GenomicJob.LR_L5_WORKFLOW: lr_l5_manifest_name_rule,
             GenomicJob.LR_L6_WORKFLOW: lr_l6_manifest_name_rule,
+            GenomicJob.LR_L6F_WORKFLOW: lr_l6_manifest_name_rule,
             GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule,
             GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule,
             GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule,
@@ -2313,7 +2335,7 @@ class GenomicFileValidator:
         }
 
         try:
-            return ingestion_name_rules[self.job_id]()
+            return ingestion_name_rules.get(self.job_id)()
         except KeyError:
             return GenomicSubProcessResult.ERROR
 
@@ -2425,17 +2447,26 @@ class GenomicFileValidator:
                 return self.CVL_W5NF_SCHEMA
             if self.job_id == GenomicJob.LR_LR_WORKFLOW:
                 return self.LR_LR_SCHEMA
-            if self.job_id == GenomicJob.LR_L1_WORKFLOW:
+            if self.job_id in [
+                GenomicJob.LR_L1_WORKFLOW,
+                GenomicJob.LR_L1F_WORKFLOW
+            ]:
                 return self.LR_L1_SCHEMA
             if self.job_id == GenomicJob.LR_L2_ONT_WORKFLOW:
                 return self.LR_L2_ONT_SCHEMA
             if self.job_id == GenomicJob.LR_L2_PB_CCS_WORKFLOW:
                 return self.LR_L2_PB_CCS_SCHEMA
-            if self.job_id == GenomicJob.LR_L4_WORKFLOW:
+            if self.job_id in [
+                GenomicJob.LR_L4_WORKFLOW,
+                GenomicJob.LR_L4F_WORKFLOW
+            ]:
                 return self.LR_L4_SCHEMA
             if self.job_id == GenomicJob.LR_L5_WORKFLOW:
                 return self.LR_L5_SCHEMA
-            if self.job_id == GenomicJob.LR_L6_WORKFLOW:
+            if self.job_id in [
+                GenomicJob.LR_L6_WORKFLOW,
+                GenomicJob.LR_L6F_WORKFLOW
+            ]:
                 return self.LR_L6_SCHEMA
             if self.job_id == GenomicJob.PR_PR_WORKFLOW:
                 return self.PR_PR_SCHEMA
@@ -2534,7 +2565,7 @@ class GenomicBiobankSamplesCoupler:
         self.controller = controller
         self.query = GenomicQueryClass()
 
-    def create_new_genomic_participants(self, from_date):
+    def create_new_genomic_participants(self):
         """
         This method determines which samples to enter into the genomic system
         from Cohort 3 (New Participants).
@@ -2543,7 +2574,7 @@ class GenomicBiobankSamplesCoupler:
         :param: from_date : the date from which to lookup new biobank_ids
         :return: result
         """
-        samples = self._get_new_biobank_samples(from_date)
+        samples = self._get_new_biobank_samples()
 
         if samples:
             samples_meta = self.GenomicSampleMeta(*samples)
@@ -2850,7 +2881,7 @@ class GenomicBiobankSamplesCoupler:
         except Exception as e:
             raise Exception("Error occurred on genomic member insert: {0}".format(e))
 
-    def _get_new_biobank_samples(self, from_date):
+    def _get_new_biobank_samples(self):
         """
         Retrieves BiobankStoredSample objects with `rdr_created`
         after the last run of the new participant workflow job.
@@ -2867,7 +2898,6 @@ class GenomicBiobankSamplesCoupler:
             "dob_param": GENOMIC_VALID_AGE,
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
-            "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
             "cohort_3_param": ParticipantCohort.COHORT_3.__int__(),
@@ -3147,8 +3177,9 @@ class ManifestDefinitionProvider:
             input_manifest=self.kwargs.get('input_manifest'),
             genome_type=self.genome_type
         )
-        self.query_dao = GenomicQueriesDao()
+        self.short_read_dao = GenomicShortReadDao()
         self.long_read_dao = GenomicLongReadDao()
+        self.cvl_dao = GenomicCVLDao()
         self.pr_dao = GenomicPRDao()
         self.rna_dao = GenomicRNADao()
 
@@ -3399,7 +3430,7 @@ class ManifestDefinitionProvider:
                     f'{CVL_W1IL_PGX_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_'
                     f'{ResultsModuleType.PGXV1.name}_{now_formatted}.csv',
                 'signal': 'manifest-generated',
-                'query': self.query_dao.get_data_ready_for_w1il_manifest,
+                'query': self.cvl_dao.get_data_ready_for_w1il_manifest,
                 'params': {
                     'module': 'pgx',
                     'cvl_id': self.cvl_site_id
@@ -3410,7 +3441,7 @@ class ManifestDefinitionProvider:
                 'output_filename':
                     f'{CVL_W1IL_HDR_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_'
                     f'{ResultsModuleType.HDRV1.name}_{now_formatted}.csv',
-                'query': self.query_dao.get_data_ready_for_w1il_manifest,
+                'query': self.cvl_dao.get_data_ready_for_w1il_manifest,
                 'params': {
                     'module': 'hdr',
                     'cvl_id': self.cvl_site_id
@@ -3420,7 +3451,7 @@ class ManifestDefinitionProvider:
                 'job_run_field': 'cvlW2wJobRunId',
                 'output_filename':
                     f'{CVL_W2W_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W2W_{now_formatted}.csv',
-                'query': self.query_dao.get_data_ready_for_w2w_manifest,
+                'query': self.cvl_dao.get_data_ready_for_w2w_manifest,
                 'params': {
                     'cvl_id': self.cvl_site_id
                 }
@@ -3429,7 +3460,7 @@ class ManifestDefinitionProvider:
                 'job_run_field': 'cvlW3srManifestJobRunID',
                 'output_filename': f'{CVL_W3SR_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W3SR'
                                    f'_{now_formatted}.csv',
-                'query': self.query_dao.get_w3sr_records,
+                'query': self.cvl_dao.get_w3sr_records,
                 'params': {
                     'site_id': self.cvl_site_id
                 }
@@ -3438,7 +3469,7 @@ class ManifestDefinitionProvider:
                 'job_run_field': 'aw3ManifestJobRunID',
                 'output_filename': f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
                 'signal': 'bypass',
-                'query': self.query_dao.get_aw3_array_records,
+                'query': self.short_read_dao.get_aw3_array_records,
                 'params': {
                     'genome_type': self.genome_type
                 }
@@ -3448,7 +3479,7 @@ class ManifestDefinitionProvider:
                 'output_filename': f'{self.kwargs.get("pipeline_id")}/'
                                    f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
                 'signal': 'bypass',
-                'query': self.query_dao.get_aw3_wgs_records,
+                'query': self.short_read_dao.get_aw3_wgs_records,
                 'params': {
                     'genome_type': self.genome_type,
                     'pipeline_id': self.kwargs.get('pipeline_id')
