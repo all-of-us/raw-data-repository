@@ -1,5 +1,6 @@
 import datetime
 import http.client
+
 import mock
 from typing import Collection
 
@@ -844,6 +845,21 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
             'childAccountType': 'SIX_AND_BELOW'
         })
         summary_update_mock.assert_not_called()
+
+
+    def test_bypass_origin_check_with_users(self):
+        BaseTestCase.switch_auth_user("example@spellman.com", "vibrent")
+        response = self.send_post("Participant", self.participant)
+        participant_id = response["participantId"]
+        # Expecting a Failed Response without the bypass origin check  flag
+        BaseTestCase.switch_auth_user("example@cebyok.com", "example")
+        bad_get_response = self.send_get("Participant/%s" % participant_id, expected_status=http.client.BAD_REQUEST)
+        self.assertEqual(bad_get_response.json['message'], 'Can not retrieve participant from a different origin')
+        # Expecting a passing response with the bypass origin check flag
+        BaseTestCase.switch_auth_user("example@cebyok.com", "example", bypass_origin_check=True)
+        get_response = self.send_get("Participant/%s" % participant_id)
+        self.assertEqual(response, get_response)
+        BaseTestCase.switch_auth_user("example@example.com", "example")
 
 
 def _add_code_answer(code_answers, link_id, code):

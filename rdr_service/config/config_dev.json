@@ -29,6 +29,21 @@
         ]
       }
     },
+    "example@cebyok.com": {
+      "roles": [
+        "ptc"
+      ],
+      "bypassOriginCheck": 1,
+      "clientId": "example",
+      "allow_list_ip_ranges": {
+        "ip6": [
+          ""
+        ],
+        "ip4": [
+          "127.0.0.33/45"
+        ]
+      }
+    },
     "example@spellman.com": {
       "roles": [
         "ptc",

@@ -20,8 +20,14 @@ from rdr_service.api_util import (
     get_organization_id_from_external_id,
     get_site_id_from_google_group,
     parse_json_enum,
-    DEV_MAIL)
-from rdr_service.app_util import get_oauth_id, lookup_user_info, get_account_origin_id, is_care_evo_and_not_prod
+    DEV_MAIL,
+)
+from rdr_service.app_util import (
+    get_oauth_id,
+    lookup_user_info,
+    get_account_origin_id,
+    is_care_evo_and_not_prod
+)
 from rdr_service.code_constants import UNSET, ORIGINATING_SOURCES
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.dao.consent_dao import ConsentDao
@@ -94,6 +100,10 @@ class ParticipantDao(UpdatableDao):
         with self.session() as session:
             obj = self.get_with_session(session, id_)
         if obj:
+            email = get_oauth_id()
+            user_info = lookup_user_info(email)
+            if user_info.get("bypassOriginCheck"):
+                return obj
             client = get_account_origin_id()
             # Care evolution can GET participants from PTSC as long as env < prod.
             if obj.participantOrigin != client and client in ORIGINATING_SOURCES and not is_care_evo_and_not_prod():
