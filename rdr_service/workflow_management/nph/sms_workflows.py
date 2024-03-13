@@ -147,9 +147,9 @@ class SmsWorkflow:
         Main method for ingestion jobs.
         """
 
+        file_end = self.file_path.split(".")[-1]
         # Ensure file is CSV
-        if not str(self.file_path).endswith(".csv"):
-            file_end = self.file_path.split(".")[-1]
+        if not file_end == ".csv":
             if config.getSettingJson(config.NPH_SLACK_WEBHOOKS, {}):
                 kwargs = {
                     "slack": True,
