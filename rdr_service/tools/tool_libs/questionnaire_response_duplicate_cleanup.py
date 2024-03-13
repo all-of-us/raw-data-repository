@@ -25,7 +25,7 @@ class ResponseDuplicateFix(ToolBase):
         while end < from_ts:
             days_in_month = monthrange(from_ts.year, from_ts.month)[1]
             response_detector.flag_duplicate_responses(days_in_month + 1, from_ts, self.args.project)
-            next_month = from_ts.month + 1 if from_ts.month > 1 else 12
+            next_month = from_ts.month - 1 if from_ts.month > 1 else 12
             from_ts = from_ts - timedelta(days=monthrange(from_ts.year, next_month)[1])
 
         return
