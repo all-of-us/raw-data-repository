@@ -26,8 +26,7 @@ from rdr_service.app_util import (
     get_oauth_id,
     lookup_user_info,
     get_account_origin_id,
-    is_care_evo_and_not_prod,
-    get_validated_user_info,
+    is_care_evo_and_not_prod
 )
 from rdr_service.code_constants import UNSET, ORIGINATING_SOURCES
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
@@ -101,7 +100,8 @@ class ParticipantDao(UpdatableDao):
         with self.session() as session:
             obj = self.get_with_session(session, id_)
         if obj:
-            _, user_info = get_validated_user_info()
+            email = get_oauth_id()
+            user_info = lookup_user_info(email)
             if user_info.get("bypassOriginCheck"):
                 return obj
             client = get_account_origin_id()
