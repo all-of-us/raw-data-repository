@@ -3,8 +3,7 @@ import sys
 import pytz
 
 from calendar import monthrange
-from datetime import datetime, tzinfo, timedelta
-from rdr_service.services.system_utils import setup_logging, setup_i18n
+from datetime import datetime, timedelta
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
 
 _logger = logging.getLogger("rdr_logger")
