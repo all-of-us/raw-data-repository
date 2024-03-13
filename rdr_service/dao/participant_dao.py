@@ -94,6 +94,10 @@ class ParticipantDao(UpdatableDao):
         with self.session() as session:
             obj = self.get_with_session(session, id_)
         if obj:
+            email = get_oauth_id()
+            user_info = lookup_user_info(email)
+            if user_info.get("bypassOriginCheck"):
+                return obj
             client = get_account_origin_id()
             # Care evolution can GET participants from PTSC as long as env < prod.
             if obj.participantOrigin != client and client in ORIGINATING_SOURCES and not is_care_evo_and_not_prod():

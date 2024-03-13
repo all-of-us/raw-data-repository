@@ -1,8 +1,11 @@
 import datetime
 import http.client
+from copy import deepcopy
+
 import mock
 from typing import Collection
 
+from rdr_service import config
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.clock import FakeClock
@@ -844,6 +847,23 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
             'childAccountType': 'SIX_AND_BELOW'
         })
         summary_update_mock.assert_not_called()
+
+    def test_bypass_origin_check_in_dev_config(self):
+        response = self.send_post("Participant", self.participant)
+        participant_id = response["participantId"]
+        new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
+        if new_user_info["example@cebyok.com"]["bypassOriginCheck"]:
+            get_response = self.send_get("Participant/%s" % participant_id)
+        self.assertEqual(response, get_response)
+
+    def test_bypass_origin_check_with_users(self):
+        BaseTestCase.switch_auth_user("example@spellman.com", "vibrent")
+        response = self.send_post("Participant", self.participant)
+        participant_id = response["participantId"]
+        BaseTestCase.switch_auth_user("example@cebyok.com", "example", bypass_origin_check=True)
+        get_response = self.send_get("Participant/%s" % participant_id)
+        BaseTestCase.switch_auth_user("example@example.com", "example")
+        self.assertEqual(response, get_response)
 
 
 def _add_code_answer(code_answers, link_id, code):
