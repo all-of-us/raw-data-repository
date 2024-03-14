@@ -853,42 +853,43 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         without the bypass origin check flag
         """
         BaseTestCase.switch_auth_user("example@spellman.com", "vibrent")
-        with FakeClock(TIME_1):
-            response = self.send_post("Participant", self.participant)
-            participant_id = response["participantId"]
-            # Expecting a Failed Response without the bypass origin check flag
-            BaseTestCase.switch_auth_user("example@cebyok.com", "example")
-            bad_get_response = self.send_get(
-                "Participant/%s" % participant_id, expected_status=http.client.BAD_REQUEST
-            )
-            bad_put_response = self.send_put(
-                f"Participant/{participant_id}",
-                response,
-                headers={"If-Match": 'W/"1"'},
-                expected_status=http.client.BAD_REQUEST
-            )
-            self.assertEqual(
-                bad_get_response.json["message"],
-                "Can not retrieve participant from a different origin",
-            )
-            self.assertEqual(
-                bad_put_response.json["message"],
-                "example not able to update participant from                             vibrent",
-            )
-            # Expecting a passing response with the bypass origin check flag
-            BaseTestCase.switch_auth_user(
-                "example@cebyok.com", "example", bypass_origin_check=True
-            )
-            get_response = self.send_get("Participant/%s" % participant_id)
-            put_response = self.send_put(
-                f"Participant/{participant_id}",
-                response,
-                headers={"If-Match": 'W/"1"'},
-            )
-            self.assertEqual(response, get_response)
-            del response['meta']['versionId']
-            del put_response['meta']['versionId']
-            self.assertEqual(response, put_response)
+        response = self.send_post("Participant", self.participant)
+        participant_id = response["participantId"]
+        # Expecting a Failed Response without the bypass origin check flag
+        BaseTestCase.switch_auth_user("example@cebyok.com", "example")
+        bad_get_response = self.send_get(
+            "Participant/%s" % participant_id, expected_status=http.client.BAD_REQUEST
+        )
+        bad_put_response = self.send_put(
+            f"Participant/{participant_id}",
+            response,
+            headers={"If-Match": 'W/"1"'},
+            expected_status=http.client.BAD_REQUEST
+        )
+        self.assertEqual(
+            bad_get_response.json["message"],
+            "Can not retrieve participant from a different origin",
+        )
+        self.assertEqual(
+            bad_put_response.json["message"],
+            "example not able to update participant from                             vibrent",
+        )
+        # Expecting a passing response with the bypass origin check flag
+        BaseTestCase.switch_auth_user(
+            "example@cebyok.com", "example", bypass_origin_check=True
+        )
+        get_response = self.send_get("Participant/%s" % participant_id)
+        put_response = self.send_put(
+            f"Participant/{participant_id}",
+            response,
+            headers={"If-Match": 'W/"1"'},
+        )
+        self.assertEqual(response, get_response)
+        del response['meta']['versionId']
+        del response['lastModified']
+        del put_response['meta']['versionId']
+        del put_response['lastModified']
+        self.assertEqual(response, put_response)
         BaseTestCase.switch_auth_user("example@example.com", "example")
 
 
