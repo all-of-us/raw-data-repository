@@ -795,7 +795,7 @@ class ParticipantSummaryDao(UpdatableDao):
             participant_id=summary.participantId,
             session=session
         )
-        EnrollmentDependenciesDao.set_weight_physical_measurements_time(
+        EnrollmentDependenciesDao.set_height_physical_measurements_time(
             value=min_or_none(meas.finalized for meas in core_measurements if meas.satisfiesHeightRequirements),
             participant_id=summary.participantId,
             session=session
