@@ -33,8 +33,7 @@ def main(client):
     num_no_change = 0
     num_updates = 0
     num_errors = 0
-    p_pair_list = ["site", "organization", "awardee"]
-    ps_pair_list = ["biospecimen", "physical_measurements"]
+    pair_list = ["site", "organization", "awardee"]
     biospecimen_fields = [
         "createdInfo",
         "collectedInfo",
@@ -44,8 +43,8 @@ def main(client):
 
     pairing_key = client.args.pairing
 
-    if client.args.pairing not in p_pair_list and client.args.pairing not in ps_pair_list:
-        sys.exit("Pairing must be one of site|organization|awardee|biospecimen|physical_measurements")
+    if client.args.pairing not in pair_list:
+        sys.exit("Pairing must be one of site|organization|awardee")
 
     with open(client.args.file) as csvfile:
         reader = csv.reader(csvfile)
@@ -196,7 +195,7 @@ if __name__ == "__main__":
     arg_parser.add_argument("--dry_run", action="store_true")
     arg_parser.add_argument(
         "--pairing",
-        help="set level of pairing as one of" "[site|organization|awardee|biospecimen|physical_measurements]",
+        help="set level of pairing as one of" "[site|organization|awardee]",
         required=True
     )
     arg_parser.add_argument(
