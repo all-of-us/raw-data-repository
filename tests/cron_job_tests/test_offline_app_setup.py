@@ -99,3 +99,4 @@ class OfflineAppTest(BaseTestCase):
     def test_ptsc_test_participant_cleanup_request(self, mock_checker):
         response = self.send_cron_request('PTSCTestParticipantCleanupRequest')
         self.assertEqual(response, {"success": "true"})
+        mock_checker.assert_not_called()
