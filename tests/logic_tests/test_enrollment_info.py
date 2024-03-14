@@ -323,9 +323,6 @@ class TestEnrollmentInfo(BaseTestCase):
         current_state = EnrollmentCalculation.get_enrollment_info(participant_info)
         self.assertEqual(EnrollmentStatusV32.PMB_ELIGIBLE, current_state.version_3_2_status)
 
-        bobjson = participant_info.to_json_dict()
-        print(bobjson)
-
     def test_pediatric_core(self):
         """
         Test that Exposures survey replaces Lifestyle requirement for Core status for pediatrics,
