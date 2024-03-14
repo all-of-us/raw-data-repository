@@ -914,27 +914,29 @@ def ptsc_test_participant_cleanup_request():
         month = 1
     else:
         month = date.month + 1
-    email_message = ("Dear PTSC Team,\n\nPlease begin the quarterly Test Account Maintenance process to ensure that "
-                     "any existing test accounts are flagged in PTSC systems and communicated to DRC in time for this "
-                     "quarters EHR Submission Cycle and subsequent curation work.\n\nPer Scott’s request, we have been "
-                     "advised to provide one month’s notice for this process, making the target completion date "
-                     "{0}/{1}.\n\nThanks,\nDRC Team".format(str(month), date.strftime("%d/%Y")))
+    email_message = (
+        "Dear PTSC Team,\n\nPlease begin the quarterly Test Account Maintenance process to ensure that "
+        "any existing test accounts are flagged in PTSC systems and communicated to DRC in time for this "
+        "quarters EHR Submission Cycle and subsequent curation work.\n\nPer Scott’s request, we have been "
+        "advised to provide one month’s notice for this process, making the target completion date "
+        f"{str(month)}/{date.strftime('%d/%Y')}.\n\nThanks,\nDRC Team"
+    )
 
     email = Email(
-        recipients=["Analytics.Support@researchallofus.org"],
-        cc_recipients=config.getSetting("participant_cleanup_cc_list"),
         subject="Test Participant Cleanup Reminder",
+        recipients=["Analytics.Support@researchallofus.org"],
+        cc_recipients=config.getSettingList('participant_cleanup_cc_list', default=[]),
         plain_text_content=email_message
     )
     try:
         logging.info("Sending ptsc cleanup email...")
-        EmailService.send_email(email)
-        logging.info("Success!")
+        if config.GAE_PROJECT == RdrEnvironment.PROD.value:
+            EmailService.send_email(email)
+        logging.info("Email sent successfully.")
         return '{"success": "true"}'
     except ConnectionError as e:
         logging.error(f"Failed to send ptsc cleanup email: {e}")
         return '{"success": "false"}'
-
 
 @app_util.auth_required_cron
 def nph_sms_n1_generation():

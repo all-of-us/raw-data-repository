@@ -291,8 +291,6 @@ SENSITIVE_EHR_RELEASE_DATE = 'sensitive_ehr_release_date'
 PM_HEIGHT_CODES = 'pm_height_codes'
 PM_WEIGHT_CODES = 'pm_weight_codes'
 
-PARTICIPANT_CLEANUP_CC_LIST = 'participant_cleanup_cc_list'
-
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
 
@@ -509,7 +507,6 @@ def getSetting(key, default=_NO_DEFAULT):
     if default != _NO_DEFAULT:
         default = [default]
     settings_list = getSettingList(key, default)
-
     if len(settings_list) != 1:
         raise InvalidConfigException("Config key {} has multiple entries in datastore.".format(key))
     return settings_list[0]
