@@ -186,11 +186,12 @@ class ParticipantDao(UpdatableDao):
                     base_name = "example"  # TODO: This is a hack because something sets up configs different
                     # when running all tests and it doesnt have the clientId key.
             base_name = base_name.lower()
-            if base_name in ORIGINATING_SOURCES and base_name != existing_obj.participantOrigin:
-                logging.warning(f"{base_name} tried to modify participant from \
-                        {existing_obj.participantOrigin}")
-                raise BadRequest(f"{base_name} not able to update participant from \
-                        {existing_obj.participantOrigin}")
+            if not user_info.get("bypassOriginCheck"):
+                if base_name in ORIGINATING_SOURCES and base_name != existing_obj.participantOrigin:
+                    logging.warning(f"{base_name} tried to modify participant from \
+                            {existing_obj.participantOrigin}")
+                    raise BadRequest(f"{base_name} not able to update participant from \
+                            {existing_obj.participantOrigin}")
         super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
         # Once a participant marks their withdrawal status as NO_USE, it can't be changed back.
         # TODO: Consider the future ability to un-withdraw.
