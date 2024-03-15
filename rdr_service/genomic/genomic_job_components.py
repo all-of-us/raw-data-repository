@@ -549,7 +549,7 @@ class GenomicFileIngester:
                 # get row from list
                 row_copy = list(filter(lambda x: x.get('sampleid') == member.sampleId, cleaned_rows))[0]
 
-                # build member dict
+                # build/append member dict
                 updated_members.append({
                     'id': member.id,
                     'aw4ManifestJobRunID': self.job_run_id,
@@ -557,10 +557,10 @@ class GenomicFileIngester:
                     'qcStatusStr': member.qcStatus.name
                 })
 
-                # row_copy = self.clean_row_keys(row)
+                # get metrics from list
                 current_metric = list(filter(lambda x: x.id == member.id, metrics))[0]
 
-                # get metrics from list
+                # build/append metric dict
                 metrics_dict = {
                     'id': current_metric.id,
                     'drcSexConcordance': row_copy.get('drcsexconcordance'),
@@ -574,11 +574,12 @@ class GenomicFileIngester:
                             'drcContamination': row_copy.get('drccontamination'),
                             'drcMeanCoverage': row_copy.get('drcmeancoverage'),
                             'drcFpConcordance': row_copy.get('drcfpconcordance'),
-                        }
-                    )
-                # end with bulk update
-                self.metrics_dao.bulk_update(updated_metrics)
-                self.member_dao.bulk_update(member)
+                        })
+                updated_metrics.append(metrics_dict)
+
+            # end with bulk update
+            self.member_dao.bulk_update(updated_members)
+            self.metrics_dao.bulk_update(updated_metrics)
 
             return GenomicSubProcessResult.SUCCESS
 
