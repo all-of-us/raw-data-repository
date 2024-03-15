@@ -77,7 +77,7 @@ pycparser==2.20           # via cffi
 pygments==2.15.1           # via sphinx
 pyjwt==2.4.0              # via oauthlib
 pylint==2.17.4            # via -r requirements.in
-pyopenssl==24.0.0         # via requests
+pyopenssl==21.0.0         # via requests
 pyparsing==2.4.7          # via packaging
 python-dateutil==2.8.1    # via alembic, faker
 python-editor==1.0.4      # via alembic
