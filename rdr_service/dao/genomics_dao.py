@@ -580,21 +580,24 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             ).first()
         return member
 
-    def get_member_from_aw3_sample(self, sample_id):
+    def get_member_ids_from_aw3_sample_ids(self, *, sample_ids: List[int]):
         """
         Retrieves a genomic set member record matching the sample_id
         The sample_id is supplied in AW1 manifest, not biobank_stored_sample_id
-        :param sample_id:
-        :return: a GenomicSetMember object
+        :param sample_ids:
+        :return: a list of GenomicSetMember objects
         """
         with self.session() as session:
-            member = session.query(GenomicSetMember).filter(
-                GenomicSetMember.sampleId == sample_id,
+            return session.query(
+                GenomicSetMember.id,
+                GenomicSetMember.participantId,
+                GenomicSetMember.sampleId
+            ).filter(
+                GenomicSetMember.sampleId.in_(sample_ids),
                 GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicSetMember.ignoreFlag == 0,
                 GenomicSetMember.aw3ManifestJobRunID.isnot(None)
-            ).first()
-        return member
+            ).all()
 
     def get_member_from_collection_tube(self, tube_id, genome_type, state=None):
         """
@@ -1766,6 +1769,26 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                             GenomicGCValidationMetrics.ignoreFlag != 1)
                     .all()
             )
+
+    def get_metrics_by_member_ids(self, *, member_ids: List[int], pipeline_id: str):
+        """
+        Retrieves gc metric record with the member_id
+        :param: member_id
+        :param: pipeline_id
+        :return: GenomicGCValidationMetrics object
+        """
+        with self.session() as session:
+            record = session.query(
+                GenomicGCValidationMetrics.id
+            ).filter(
+                GenomicGCValidationMetrics.genomicSetMemberId.in_(member_ids),
+                GenomicGCValidationMetrics.ignoreFlag != 1
+            )
+            if pipeline_id:
+                record = record.filter(
+                    GenomicGCValidationMetrics.pipelineId == pipeline_id
+                )
+            return record.all()
 
     def get_metrics_by_member_id(self, member_id, pipeline_id=None):
         """

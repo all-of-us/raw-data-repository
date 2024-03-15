@@ -524,42 +524,20 @@ class GenomicFileIngester:
         :return:
         """
         try:
-            for row in rows:
-                row_copy = self.clean_row_keys(row)
+            cleaned_rows: List[dict] = [self.clean_row_keys(row) for row in rows]
+            sample_ids = [obj.get('sampleid') for obj in cleaned_rows]
+            pipeline_id: str = cleaned_rows[0].get('pipelineid')
 
-                pipeline_id = row_copy.get('pipelineid')
-                sample_id = row_copy.get('sampleid')
-
-                member = self.member_dao.get_member_from_aw3_sample(sample_id)
-                if member is None:
-                    logging.warning(f'Invalid sample ID: {sample_id}')
-                    continue
-
-                member.aw4ManifestJobRunID = self.job_run_id
-                member.qcStatus = self._get_qc_status_from_value(row_copy['qcstatus'])
-                member.qcStatusStr = member.qcStatus.name
-
-                metrics = self.metrics_dao.get_metrics_by_member_id(
-                    member_id=member.id,
+            members: List = self.member_dao.get_member_ids_from_aw3_sample_ids(sample_ids=sample_ids)
+            metrics: List = self.metrics_dao.get_metrics_by_member_ids(
+                    member_ids=[obj.id for obj in members],
                     pipeline_id=pipeline_id
                 )
 
-                if metrics:
-                    metrics.drcSexConcordance = row_copy['drcsexconcordance']
-                    metrics.aw4ManifestJobRunID = self.job_run_id
+            updated_members, updated_metrics = [], []
 
-                    if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
-                        metrics.drcCallRate = row_copy['drccallrate']
-
-                    elif self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
-                        metrics.drcContamination = row_copy['drccontamination']
-                        metrics.drcMeanCoverage = row_copy['drcmeancoverage']
-                        metrics.drcFpConcordance = row_copy['drcfpconcordance']
-
-                    self.metrics_dao.upsert(metrics)
-
-                self.member_dao.update(member)
-
+            for member in members:
+                # call enrollment cloud task
                 self.controller.execute_cloud_task(
                     endpoint='update_enrollment_status',
                     payload={
@@ -567,6 +545,40 @@ class GenomicFileIngester:
                     },
                     task_queue='resource-tasks'
                 )
+
+                # get row from list
+                row_copy = list(filter(lambda x: x.get('sampleid') == member.sampleId, cleaned_rows))[0]
+
+                # build member dict
+                updated_members.append({
+                    'id': member.id,
+                    'aw4ManifestJobRunID': self.job_run_id,
+                    'qcStatus': self._get_qc_status_from_value(row_copy.get('qcstatus')),
+                    'qcStatusStr': member.qcStatus.name
+                })
+
+                # row_copy = self.clean_row_keys(row)
+                current_metric = list(filter(lambda x: x.id == member.id, metrics))[0]
+
+                # get metrics from list
+                metrics_dict = {
+                    'id': current_metric.id,
+                    'drcSexConcordance': row_copy.get('drcsexconcordance'),
+                    'aw4ManifestJobRunID': self.job_run_id,
+                }
+                if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
+                    metrics_dict.update({'drcCallRate': row_copy.get('drccallrate')})
+                elif self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
+                    metrics_dict.update(
+                        {
+                            'drcContamination': row_copy.get('drccontamination'),
+                            'drcMeanCoverage': row_copy.get('drcmeancoverage'),
+                            'drcFpConcordance': row_copy.get('drcfpconcordance'),
+                        }
+                    )
+                # end with bulk update
+                self.metrics_dao.bulk_update(updated_metrics)
+                self.member_dao.bulk_update(member)
 
             return GenomicSubProcessResult.SUCCESS
 
