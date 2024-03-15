@@ -933,10 +933,10 @@ def ptsc_test_participant_cleanup_request():
         if config.GAE_PROJECT == RdrEnvironment.PROD.value:
             EmailService.send_email(email)
         logging.info("Email sent successfully.")
-        return '{"success": "true"}'
+        return {"success": "true", "message": email_message}
     except ConnectionError as e:
         logging.error(f"Failed to send ptsc cleanup email: {e}")
-        return '{"success": "false"}'
+        return {"success": "false"}
 
 @app_util.auth_required_cron
 def nph_sms_n1_generation():

@@ -95,8 +95,9 @@ class OfflineAppTest(BaseTestCase):
                                        call(origin='careevolution', in_seconds=180)])
         config.GAE_PROJECT = saved_config_project
 
-    @mock.patch('rdr_service.offline.main.ptsc_test_participant_cleanup_request')
+    @mock.patch('rdr_service.offline.main.Email')
     def test_ptsc_test_participant_cleanup_request(self, mock_checker):
         response = self.send_cron_request('PTSCTestParticipantCleanupRequest')
-        self.assertEqual(response, {"success": "true"})
-        mock_checker.assert_not_called()
+        self.assertEqual(response["success"], "true")
+        self.assertIn("Dear PTSC Team,", response["message"])
+        mock_checker.assert_called()
