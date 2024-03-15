@@ -398,17 +398,34 @@ class BiobankOrderDaoTest(BaseTestCase):
 
     def test_repairing_an_order(self):
         ParticipantSummaryDao().insert(self.participant_summary(self.participant))
-        order = self._make_biobank_order()
+        # Create order with values we plan to update to for easy json conversion.
+        order = self._make_biobank_order(**{
+                                             'sourceSiteId': 2,
+                                             'collectedSiteId': 2,
+                                             'processedSiteId': 2,
+                                             'finalizedSiteId': 2
+                                            })
         order_json = self.dao.to_client_json(order)
-        order.sourceSiteId = 2
-        order.collectedSiteId = 2
-        order.processedSiteId = 2
-        order.finalizedSiteId = 1
         order_json['status'] = 're-pairing'
+
+        # change site values to expected defaults before inserting order into the dao
+        order.sourceSiteId = 1
+        order.collectedSiteId = 1
+        order.processedSiteId = 1
+        order.finalizedSiteId = 1
         self.dao.insert(order)
+
+        # run update and check that values equal what was sent in the JSON, not what was inserted manually.
         updated_order = self.dao.update_with_patch(order.biobankOrderId, order_json, order.version)
-        self.assertNotEqual(updated_order.sourceSiteId, order.sourceSiteId)
-        self.assertNotEqual(updated_order.collectedSiteId, order.collectedSiteId)
-        self.assertNotEqual(updated_order.processedSiteId, order.processedSiteId)
-        self.assertNotEqual(updated_order.finalizedSiteId, order.finalizedSiteId)
+        self.assertNotEqual(order.sourceSiteId, updated_order.sourceSiteId)
+        self.assertEqual(2, updated_order.sourceSiteId)
+
+        self.assertNotEqual(order.collectedSiteId, updated_order.collectedSiteId)
+        self.assertEqual(2, updated_order.collectedSiteId)
+
+        self.assertNotEqual(order.processedSiteId, updated_order.processedSiteId)
+        self.assertEqual(2, updated_order.processedSiteId)
+
+        self.assertNotEqual(order.finalizedSiteId, updated_order.finalizedSiteId)
+        self.assertEqual(2, updated_order.finalizedSiteId)
 

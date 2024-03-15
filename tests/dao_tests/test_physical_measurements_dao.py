@@ -464,12 +464,18 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
 
     def test_repairing_a_record(self):
         self._make_summary()
+
+        # Create PM entry with values we plan to update to for easy json conversion.
         measurement = self._make_physical_measurements()
         measurement_json = self.dao.to_client_json(measurement)
+        measurement_json['status'] = 're-pairing'
+
+        # Update PM entry to default sites before inserting into dao
         measurement.createdSiteId = 2
         measurement.finalizedSiteId = 1
-        measurement_json['status'] = 're-pairing'
         self.dao.insert(measurement)
+
+        # Run update and ensure that the updated order uses what was in the json we sent
         with self.dao.session() as session:
             updated_measurement = self.dao.update_with_patch(
                 measurement.physicalMeasurementsId,
@@ -477,4 +483,7 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
                 measurement_json
             )
         self.assertNotEqual(measurement.createdSiteId, updated_measurement.createdSiteId)
+        self.assertEqual(1, updated_measurement.createdSiteId)
+
         self.assertNotEqual(measurement.finalizedSiteId, updated_measurement.finalizedSiteId)
+        self.assertEqual(2, updated_measurement.finalizedSiteId)
