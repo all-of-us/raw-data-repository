@@ -30,6 +30,7 @@ from rdr_service.dao.bq_code_dao import BQCodeGenerator
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.enrollment_dependencies_dao import cache as enrollment_cache
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrder, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
@@ -535,6 +536,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         for key, original_data in self.config_data_to_reset.items():
             config.override_setting(key, original_data)
         self.config_data_to_reset = {}
+
+        enrollment_cache.clear()  # Remove any enrollment dependency data created by the test
 
     def setup_storage(self):
         temp_folder_path = mkdtemp()
