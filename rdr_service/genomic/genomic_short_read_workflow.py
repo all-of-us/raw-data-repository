@@ -469,11 +469,11 @@ class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
         return row
 
     def run_ingestion(self, rows: List[OrderedDict]) -> str:
-        """ Since input files vary in column names,
-        this standardizes the field-names before passing to the bulk inserter
+        """ AW2 ingestion which create/updates a GenomicGCValidationMetrics obj
         :param rows:
         :return result code
         """
+
         feedback_dao = GenomicManifestFeedbackDao()
         members_to_update, cleaned_rows = [], [self.file_ingester.clean_row_keys(row) for row in
                                                rows]
@@ -578,5 +578,76 @@ class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
 
         # BULK Update for ALL members
         self.file_ingester.member_dao.bulk_update(members_to_update)
+
+        return GenomicSubProcessResult.SUCCESS
+
+
+class GenomicAW4Workflow(BaseGenomicShortReadWorkflow):
+
+    def get_gc_data(self):
+        ...
+
+    def run_ingestion(self, rows: List[OrderedDict]) -> str:
+        """
+        AW4 ingestion updates GenomicSetMember and GenomicGCValidationMetrics objs
+        :param rows:
+        :return result code
+        """
+        cleaned_rows: List[dict] = [self.file_ingester.clean_row_keys(row) for row in rows]
+        sample_ids = [obj.get('sampleid') for obj in cleaned_rows]
+        pipeline_id: str = cleaned_rows[0].get('pipelineid')
+
+        members: List = self.file_ingester.member_dao.get_member_ids_from_aw3_sample_ids(sample_ids=sample_ids)
+        metrics: List = self.file_ingester.metrics_dao.get_metrics_by_member_ids(
+            member_ids=[obj.id for obj in members],
+            pipeline_id=pipeline_id
+        )
+
+        updated_members, updated_metrics = [], []
+
+        for member in members:
+            # call enrollment cloud task
+            self.file_ingester.controller.execute_cloud_task(
+                endpoint='update_enrollment_status',
+                payload={
+                    'participant_id': member.participantId
+                },
+                task_queue='resource-tasks'
+            )
+
+            # get row from list
+            row_copy = list(filter(lambda x: x.get('sampleid') == member.sampleId, cleaned_rows))[0]
+
+            # build/append member dict
+            updated_members.append({
+                'id': member.id,
+                'aw4ManifestJobRunID': self.file_ingester.controller.job_run.id,
+                'qcStatus': self.file_ingester.get_qc_status_from_value(row_copy.get('qcstatus')),
+                'qcStatusStr': member.qcStatus.name
+            })
+
+            # get metrics from list
+            current_metric = list(filter(lambda x: x.id == member.id, metrics))[0]
+
+            # build/append metric dict
+            metrics_dict = {
+                'id': current_metric.id,
+                'drcSexConcordance': row_copy.get('drcsexconcordance'),
+                'aw4ManifestJobRunID': self.file_ingester.controller.job_run.id
+            }
+            if self.file_ingester.controller.job_run.id == GenomicJob.AW4_ARRAY_WORKFLOW:
+                metrics_dict.update({'drcCallRate': row_copy.get('drccallrate')})
+            elif self.file_ingester.controller.job_run.id == GenomicJob.AW4_WGS_WORKFLOW:
+                metrics_dict.update(
+                    {
+                        'drcContamination': row_copy.get('drccontamination'),
+                        'drcMeanCoverage': row_copy.get('drcmeancoverage'),
+                        'drcFpConcordance': row_copy.get('drcfpconcordance'),
+                    })
+            updated_metrics.append(metrics_dict)
+
+        # end with bulk update
+        self.file_ingester.member_dao.bulk_update(updated_members)
+        self.file_ingester.metrics_dao.bulk_update(updated_metrics)
 
         return GenomicSubProcessResult.SUCCESS

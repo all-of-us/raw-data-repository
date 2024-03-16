@@ -18,7 +18,7 @@ import sqlalchemy
 from rdr_service import clock, config
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
 from rdr_service.dao.code_dao import CodeDao
-from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow
+from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow, GenomicAW4Workflow
 from rdr_service.genomic.genomic_sub_workflow import GenomicSubWorkflow, GenomicSubLongReadWorkflow
 from rdr_service.genomic_enums import ResultsModuleType
 from rdr_service.genomic.genomic_data import GenomicQueryClass
@@ -280,13 +280,13 @@ class GenomicFileIngester:
             GenomicJob.AW1_MANIFEST: GenomicAW1Workflow,
             GenomicJob.AW1F_MANIFEST: GenomicAW1Workflow,
             GenomicJob.METRICS_INGESTION: GenomicAW2Workflow,
+            GenomicJob.AW4_ARRAY_WORKFLOW: GenomicAW4Workflow,
+            GenomicJob.AW4_WGS_WORKFLOW: GenomicAW4Workflow,
         }
 
         current_ingestion_map = {
             GenomicJob.GEM_A2_MANIFEST: self._ingest_gem_a2_manifest,
             GenomicJob.GEM_METRICS_INGEST: self._ingest_gem_metrics_manifest,
-            GenomicJob.AW4_ARRAY_WORKFLOW: self._ingest_aw4_manifest,
-            GenomicJob.AW4_WGS_WORKFLOW: self._ingest_aw4_manifest,
             GenomicJob.AW1C_INGEST: self._ingest_aw1c_manifest,
             GenomicJob.AW1CF_INGEST: self._ingest_aw1c_manifest,
             GenomicJob.AW5_ARRAY_MANIFEST: self._ingest_aw5_manifest,
@@ -514,75 +514,6 @@ class GenomicFileIngester:
                 self.member_dao.update(member)
 
             return GenomicSubProcessResult.SUCCESS
-        except (RuntimeError, KeyError):
-            return GenomicSubProcessResult.ERROR
-
-    def _ingest_aw4_manifest(self, rows):
-        """
-        Processes the AW4 manifest file data
-        :param rows:
-        :return:
-        """
-        try:
-            cleaned_rows: List[dict] = [self.clean_row_keys(row) for row in rows]
-            sample_ids = [obj.get('sampleid') for obj in cleaned_rows]
-            pipeline_id: str = cleaned_rows[0].get('pipelineid')
-
-            members: List = self.member_dao.get_member_ids_from_aw3_sample_ids(sample_ids=sample_ids)
-            metrics: List = self.metrics_dao.get_metrics_by_member_ids(
-                    member_ids=[obj.id for obj in members],
-                    pipeline_id=pipeline_id
-                )
-
-            updated_members, updated_metrics = [], []
-
-            for member in members:
-                # call enrollment cloud task
-                self.controller.execute_cloud_task(
-                    endpoint='update_enrollment_status',
-                    payload={
-                        'participant_id': member.participantId
-                    },
-                    task_queue='resource-tasks'
-                )
-
-                # get row from list
-                row_copy = list(filter(lambda x: x.get('sampleid') == member.sampleId, cleaned_rows))[0]
-
-                # build/append member dict
-                updated_members.append({
-                    'id': member.id,
-                    'aw4ManifestJobRunID': self.job_run_id,
-                    'qcStatus': self._get_qc_status_from_value(row_copy.get('qcstatus')),
-                    'qcStatusStr': member.qcStatus.name
-                })
-
-                # get metrics from list
-                current_metric = list(filter(lambda x: x.id == member.id, metrics))[0]
-
-                # build/append metric dict
-                metrics_dict = {
-                    'id': current_metric.id,
-                    'drcSexConcordance': row_copy.get('drcsexconcordance'),
-                    'aw4ManifestJobRunID': self.job_run_id,
-                }
-                if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
-                    metrics_dict.update({'drcCallRate': row_copy.get('drccallrate')})
-                elif self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
-                    metrics_dict.update(
-                        {
-                            'drcContamination': row_copy.get('drccontamination'),
-                            'drcMeanCoverage': row_copy.get('drcmeancoverage'),
-                            'drcFpConcordance': row_copy.get('drcfpconcordance'),
-                        })
-                updated_metrics.append(metrics_dict)
-
-            # end with bulk update
-            self.member_dao.bulk_update(updated_members)
-            self.metrics_dao.bulk_update(updated_metrics)
-
-            return GenomicSubProcessResult.SUCCESS
-
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
@@ -1241,7 +1172,7 @@ class GenomicFileIngester:
         return int(sample.biobankId) == int(bid)
 
     @staticmethod
-    def _get_qc_status_from_value(aw4_value):
+    def get_qc_status_from_value(aw4_value):
         """
         Returns the GenomicQcStatus enum value for
         :param aw4_value: string from AW4 file (PASS/FAIL)
