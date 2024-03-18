@@ -16,8 +16,8 @@ from rdr_service.genomic_enums import GenomicWorkflowState, GenomicSubProcessRes
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicSampleContamination, \
     GenomicGCValidationMetrics
-
 # pylint: disable=broad-except
+
 
 class BaseGenomicShortReadWorkflow(ABC):
 
