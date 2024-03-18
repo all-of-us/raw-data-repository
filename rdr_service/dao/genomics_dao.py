@@ -1770,7 +1770,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
                     .all()
             )
 
-    def get_metrics_by_member_ids(self, *, member_ids: List[int], pipeline_id: str):
+    def get_metrics_by_member_ids(self, *, member_ids: List[int], pipeline_id: str=None):
         """
         Retrieves gc metric record with the member_id
         :param: member_id
@@ -1778,17 +1778,18 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoMixin):
         :return: GenomicGCValidationMetrics object
         """
         with self.session() as session:
-            record = session.query(
-                GenomicGCValidationMetrics.id
+            records = session.query(
+                GenomicGCValidationMetrics.id,
+                GenomicGCValidationMetrics.genomicSetMemberId
             ).filter(
                 GenomicGCValidationMetrics.genomicSetMemberId.in_(member_ids),
                 GenomicGCValidationMetrics.ignoreFlag != 1
             )
             if pipeline_id:
-                record = record.filter(
+                records = records.filter(
                     GenomicGCValidationMetrics.pipelineId == pipeline_id
                 )
-            return record.all()
+            return records.all()
 
     def get_metrics_by_member_id(self, member_id, pipeline_id=None):
         """
