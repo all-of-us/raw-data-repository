@@ -276,50 +276,6 @@ class GenomicFileIngester:
         logging.info(f'Ingesting data from {self.file_obj.fileName}')
         logging.info("Validating file.")
 
-        workflow_map = {
-            GenomicJob.AW1_MANIFEST: GenomicAW1Workflow,
-            GenomicJob.AW1F_MANIFEST: GenomicAW1Workflow,
-            GenomicJob.METRICS_INGESTION: GenomicAW2Workflow,
-            GenomicJob.AW4_ARRAY_WORKFLOW: GenomicAW4Workflow,
-            GenomicJob.AW4_WGS_WORKFLOW: GenomicAW4Workflow,
-        }
-
-        current_ingestion_map = {
-            GenomicJob.GEM_A2_MANIFEST: self._ingest_gem_a2_manifest,
-            GenomicJob.GEM_METRICS_INGEST: self._ingest_gem_metrics_manifest,
-            GenomicJob.AW1C_INGEST: self._ingest_aw1c_manifest,
-            GenomicJob.AW1CF_INGEST: self._ingest_aw1c_manifest,
-            GenomicJob.AW5_ARRAY_MANIFEST: self._ingest_aw5_manifest,
-            GenomicJob.AW5_WGS_MANIFEST: self._ingest_aw5_manifest,
-            GenomicJob.CVL_W2SC_WORKFLOW: self._ingest_cvl_w2sc_manifest,
-            GenomicJob.CVL_W3NS_WORKFLOW: self._ingest_cvl_w3ns_manifest,
-            GenomicJob.CVL_W3SS_WORKFLOW: self._ingest_cvl_w3ss_manifest,
-            GenomicJob.CVL_W3SC_WORKFLOW: self._ingest_cvl_w3sc_manifest,
-            GenomicJob.CVL_W4WR_WORKFLOW: self._ingest_cvl_w4wr_manifest,
-            GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
-            GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L1_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L1F_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L2_ONT_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L2_PB_CCS_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L4_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L4F_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L5_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L6_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L6F_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
-            GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
-            GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
-            GenomicJob.RNA_RR_WORKFLOW: self._ingest_rna_manifest,
-            GenomicJob.RNA_R1_WORKFLOW: self._ingest_rna_manifest,
-            GenomicJob.RNA_R2_WORKFLOW: self._ingest_rna_manifest
-        }
-
-        current_ingestion_workflow = current_ingestion_map.get(self.job_id)
-        if not current_ingestion_workflow:
-            current_workflow = workflow_map.get(self.job_id)(file_ingester=self)
-            current_ingestion_workflow = current_workflow.run_ingestion
-
         self.file_validator.valid_schema = None
 
         validation_result = self.file_validator.validate_ingestion_file(
@@ -336,9 +292,54 @@ class GenomicFileIngester:
             return validation_result
 
         try:
-            ingestions = self._set_data_ingest_iterations(data_to_ingest['rows'])
-            for row in ingestions:
+            workflow_map = {
+                GenomicJob.AW1_MANIFEST: GenomicAW1Workflow,
+                GenomicJob.AW1F_MANIFEST: GenomicAW1Workflow,
+                GenomicJob.METRICS_INGESTION: GenomicAW2Workflow,
+                GenomicJob.AW4_ARRAY_WORKFLOW: GenomicAW4Workflow,
+                GenomicJob.AW4_WGS_WORKFLOW: GenomicAW4Workflow,
+            }
+
+            current_ingestion_map = {
+                GenomicJob.GEM_A2_MANIFEST: self._ingest_gem_a2_manifest,
+                GenomicJob.GEM_METRICS_INGEST: self._ingest_gem_metrics_manifest,
+                GenomicJob.AW1C_INGEST: self._ingest_aw1c_manifest,
+                GenomicJob.AW1CF_INGEST: self._ingest_aw1c_manifest,
+                GenomicJob.AW5_ARRAY_MANIFEST: self._ingest_aw5_manifest,
+                GenomicJob.AW5_WGS_MANIFEST: self._ingest_aw5_manifest,
+                GenomicJob.CVL_W2SC_WORKFLOW: self._ingest_cvl_w2sc_manifest,
+                GenomicJob.CVL_W3NS_WORKFLOW: self._ingest_cvl_w3ns_manifest,
+                GenomicJob.CVL_W3SS_WORKFLOW: self._ingest_cvl_w3ss_manifest,
+                GenomicJob.CVL_W3SC_WORKFLOW: self._ingest_cvl_w3sc_manifest,
+                GenomicJob.CVL_W4WR_WORKFLOW: self._ingest_cvl_w4wr_manifest,
+                GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
+                GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L1_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L1F_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L2_ONT_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L2_PB_CCS_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L4_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L4F_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L5_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L6_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L6F_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
+                GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
+                GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
+                GenomicJob.RNA_RR_WORKFLOW: self._ingest_rna_manifest,
+                GenomicJob.RNA_R1_WORKFLOW: self._ingest_rna_manifest,
+                GenomicJob.RNA_R2_WORKFLOW: self._ingest_rna_manifest
+            }
+
+            current_ingestion_workflow = current_ingestion_map.get(self.job_id)
+            if not current_ingestion_workflow:
+                current_workflow = workflow_map.get(self.job_id)(file_ingester=self)
+                current_ingestion_workflow = current_workflow.run_ingestion
+
+            manifest_ingestions = self._set_data_ingest_iterations(data_to_ingest['rows'])
+            for row in manifest_ingestions:
                 current_ingestion_workflow(row)
+
             self._set_manifest_file_resolved()
             return GenomicSubProcessResult.SUCCESS
         # pylint: disable=broad-except

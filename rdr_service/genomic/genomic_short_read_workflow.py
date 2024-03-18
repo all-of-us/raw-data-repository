@@ -630,24 +630,28 @@ class GenomicAW4Workflow(BaseGenomicShortReadWorkflow):
             current_metric = list(filter(lambda x: x.id == member.id, metrics))[0]
 
             # build/append metric dict
-            metrics_dict = {
-                'id': current_metric.id,
-                'drcSexConcordance': row_copy.get('drcsexconcordance'),
-                'aw4ManifestJobRunID': self.file_ingester.controller.job_run.id
-            }
-            if self.file_ingester.controller.job_run.id == GenomicJob.AW4_ARRAY_WORKFLOW:
-                metrics_dict.update({'drcCallRate': row_copy.get('drccallrate')})
-            elif self.file_ingester.controller.job_run.id == GenomicJob.AW4_WGS_WORKFLOW:
-                metrics_dict.update(
-                    {
-                        'drcContamination': row_copy.get('drccontamination'),
-                        'drcMeanCoverage': row_copy.get('drcmeancoverage'),
-                        'drcFpConcordance': row_copy.get('drcfpconcordance'),
-                    })
-            updated_metrics.append(metrics_dict)
+            if current_metric:
+                current_metric = current_metric[0]
+
+                metrics_dict = {
+                    'id': current_metric.id,
+                    'drcSexConcordance': row_copy.get('drcsexconcordance'),
+                    'aw4ManifestJobRunID': self.file_ingester.controller.job_run.id
+                }
+                if self.file_ingester.controller.job_run.id == GenomicJob.AW4_ARRAY_WORKFLOW:
+                    metrics_dict.update({'drcCallRate': row_copy.get('drccallrate')})
+                elif self.file_ingester.controller.job_run.id == GenomicJob.AW4_WGS_WORKFLOW:
+                    metrics_dict.update(
+                        {
+                            'drcContamination': row_copy.get('drccontamination'),
+                            'drcMeanCoverage': row_copy.get('drcmeancoverage'),
+                            'drcFpConcordance': row_copy.get('drcfpconcordance'),
+                        })
+                updated_metrics.append(metrics_dict)
 
         # end with bulk update
         self.file_ingester.member_dao.bulk_update(updated_members)
-        self.file_ingester.metrics_dao.bulk_update(updated_metrics)
+        if updated_metrics:
+            self.file_ingester.metrics_dao.bulk_update(updated_metrics)
 
         return GenomicSubProcessResult.SUCCESS
