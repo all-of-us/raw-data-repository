@@ -92,8 +92,6 @@ def add_additional_arguments(parser):
                         help="Single participant id or comma-separated list of id integer values to backfill")
     parser.add_argument('--from-file', required=False,
                         help="file of integer participant id values to backfill")
-    parser.add_argument('--allow-downgrade', default=False, action="store_true",
-                        help='Force recalculation of enrollment status, and allow status to revert to a lower status')
 
 
 def run():
