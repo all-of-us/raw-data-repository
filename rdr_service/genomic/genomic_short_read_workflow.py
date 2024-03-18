@@ -12,7 +12,7 @@ from rdr_service.genomic.genomic_mappings import array_file_types_attributes, wg
     genome_center_datafile_prefix_map, wgs_metrics_manifest_mapping
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.genomic_enums import GenomicWorkflowState, GenomicSubProcessResult, GenomicIncidentCode, GenomicJob, \
-    GenomicSetMemberStatus, GenomicContaminationCategory
+    GenomicSetMemberStatus, GenomicContaminationCategory, GenomicQcStatus
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicSampleContamination, \
     GenomicGCValidationMetrics
@@ -587,6 +587,21 @@ class GenomicAW4Workflow(BaseGenomicShortReadWorkflow):
     def get_gc_data(self):
         ...
 
+    @classmethod
+    def get_qc_status_from_value(cls, *, value_to_check):
+        """
+        Returns the GenomicQcStatus enum value for
+        :param value_to_check: string from AW4 file (PASS/FAIL)
+        :return: GenomicQcStatus
+        """
+        if value_to_check.strip().lower() == 'pass':
+            return GenomicQcStatus.PASS
+        elif value_to_check.strip().lower() == 'fail':
+            return GenomicQcStatus.FAIL
+        else:
+            logging.warning(f'Value from AW4 "{value_to_check}" is not PASS/FAIL.')
+            return GenomicQcStatus.UNSET
+
     def run_ingestion(self, rows: List[OrderedDict]) -> str:
         """
         AW4 ingestion updates GenomicSetMember and GenomicGCValidationMetrics objs
@@ -622,7 +637,7 @@ class GenomicAW4Workflow(BaseGenomicShortReadWorkflow):
             updated_members.append({
                 'id': member.id,
                 'aw4ManifestJobRunID': self.file_ingester.controller.job_run.id,
-                'qcStatus': self.file_ingester.get_qc_status_from_value(row_copy.get('qcstatus')),
+                'qcStatus': self.get_qc_status_from_value(value_to_check=row_copy.get('qcstatus')),
                 'qcStatusStr': member.qcStatus.name
             })
 

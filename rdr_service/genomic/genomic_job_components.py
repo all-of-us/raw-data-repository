@@ -47,7 +47,7 @@ from rdr_service.participant_enums import (
     ParticipantCohort)
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
     GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
-    GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode
+    GenomicContaminationCategory, GenomicIncidentCode
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -1171,21 +1171,6 @@ class GenomicFileIngester:
         if not sample:
             return False
         return int(sample.biobankId) == int(bid)
-
-    @staticmethod
-    def get_qc_status_from_value(aw4_value):
-        """
-        Returns the GenomicQcStatus enum value for
-        :param aw4_value: string from AW4 file (PASS/FAIL)
-        :return: GenomicQcStatus
-        """
-        if aw4_value.strip().lower() == 'pass':
-            return GenomicQcStatus.PASS
-        elif aw4_value.strip().lower() == 'fail':
-            return GenomicQcStatus.FAIL
-        else:
-            logging.warning(f'Value from AW4 "{aw4_value}" is not PASS/FAIL.')
-            return GenomicQcStatus.UNSET
 
     @staticmethod
     def _participant_has_potentially_clean_samples(session, biobank_id):
