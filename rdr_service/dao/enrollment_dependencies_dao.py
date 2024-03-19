@@ -31,7 +31,7 @@ class EnrollmentDependenciesDao:
             cache[participant_id] = obj
             session.add(obj)
 
-        if getattr(obj, field_name) is None:
+        if getattr(obj, field_name) is None or value is None:
             setattr(obj, field_name, value)
 
     @classmethod

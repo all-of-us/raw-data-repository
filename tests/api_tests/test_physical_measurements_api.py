@@ -1,10 +1,10 @@
 import datetime
 import http.client
-import mock
 import json
 
 from rdr_service import main
 from rdr_service.clock import FakeClock
+from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.measurements import Measurement
@@ -13,7 +13,6 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import SampleStatus, UNSET_HPO_ID
-from rdr_service.services.system_utils import DateRange
 from tests.test_data import data_path, load_measurement_json, load_measurement_json_amendment
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -574,30 +573,28 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
                 count += 1
         self.assertEqual(count, 4)
 
-    @mock.patch('rdr_service.dao.participant_summary_dao.QuestionnaireResponseRepository')
-    def test_core_date_remains_unchanged(self, response_repo_mock):
+    def test_core_date_remains_unchanged(self):
         """Newly submitted physical measurements should not update the core stored date we have for a participant"""
 
         # Set up a participant that can be CORE after their physical measurements are in
         generic_timestamp = datetime.datetime(2023, 1, 1)
         summary: ParticipantSummary = self.data_generator.create_database_participant_summary(
             consentForStudyEnrollmentFirstYesAuthored=generic_timestamp,
-            consentForGenomicsRORAuthored=generic_timestamp,
-            questionnaireOnTheBasicsAuthored=generic_timestamp,
-            questionnaireOnOverallHealthAuthored=generic_timestamp,
-            questionnaireOnLifestyleAuthored=generic_timestamp,
             ehrReceiptTime=generic_timestamp,
             samplesToIsolateDNA=SampleStatus.RECEIVED
         )
-
-        self.data_generator.create_database_biobank_stored_sample(
-            biobankId=summary.biobankId,
-            test='1ED04',
-            confirmed=generic_timestamp
+        EnrollmentDependenciesDao.set_biobank_received_dna_time(generic_timestamp, summary.participantId, self.session)
+        EnrollmentDependenciesDao.set_intent_to_share_ehr_time(generic_timestamp, summary.participantId, self.session)
+        EnrollmentDependenciesDao.set_basics_survey_authored_time(
+            generic_timestamp, summary.participantId, self.session
         )
-        response_repo_mock.get_interest_in_sharing_ehr_ranges.return_value = [
-            DateRange(start=generic_timestamp)
-        ]
+        EnrollmentDependenciesDao.set_overall_health_survey_authored_time(
+            generic_timestamp, summary.participantId, self.session
+        )
+        EnrollmentDependenciesDao.set_lifestyle_survey_authored_time(
+            generic_timestamp, summary.participantId, self.session
+        )
+        EnrollmentDependenciesDao.set_gror_consent_authored_time(generic_timestamp, summary.participantId, self.session)
 
         # Send the first PM
         participant_id_str = f'P{summary.participantId}'
@@ -628,28 +625,26 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         )['entry'][0]['resource']
         self.assertEqual(first_measurement_date_str, summary_json['enrollmentStatusCoreStoredSampleTime'])
 
-    @mock.patch('rdr_service.dao.participant_summary_dao.QuestionnaireResponseRepository')
-    def test_has_height_weight_status(self, response_repo_mock):
+    def test_has_height_weight_status(self):
         # Set up a participant that can be CORE after their physical measurements are in
         generic_timestamp = datetime.datetime(2023, 1, 1)
         summary: ParticipantSummary = self.data_generator.create_database_participant_summary(
             consentForStudyEnrollmentFirstYesAuthored=generic_timestamp,
-            consentForGenomicsRORAuthored=generic_timestamp,
-            questionnaireOnTheBasicsAuthored=generic_timestamp,
-            questionnaireOnOverallHealthAuthored=generic_timestamp,
-            questionnaireOnLifestyleAuthored=generic_timestamp,
             ehrReceiptTime=generic_timestamp,
             samplesToIsolateDNA=SampleStatus.RECEIVED
         )
-
-        self.data_generator.create_database_biobank_stored_sample(
-            biobankId=summary.biobankId,
-            test='1ED04',
-            confirmed=generic_timestamp
+        EnrollmentDependenciesDao.set_biobank_received_dna_time(generic_timestamp, summary.participantId, self.session)
+        EnrollmentDependenciesDao.set_intent_to_share_ehr_time(generic_timestamp, summary.participantId, self.session)
+        EnrollmentDependenciesDao.set_basics_survey_authored_time(
+            generic_timestamp, summary.participantId, self.session
         )
-        response_repo_mock.get_interest_in_sharing_ehr_ranges.return_value = [
-            DateRange(start=generic_timestamp)
-        ]
+        EnrollmentDependenciesDao.set_overall_health_survey_authored_time(
+            generic_timestamp, summary.participantId, self.session
+        )
+        EnrollmentDependenciesDao.set_lifestyle_survey_authored_time(
+            generic_timestamp, summary.participantId, self.session
+        )
+        EnrollmentDependenciesDao.set_gror_consent_authored_time(generic_timestamp, summary.participantId, self.session)
 
         # Send the first PM
         participant_id_str = f'P{summary.participantId}'
